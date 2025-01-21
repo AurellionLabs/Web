@@ -1,4 +1,4 @@
-import { AddressLike, BigNumberish, BrowserProvider, BytesLike, Contract, Signer, ethers } from "ethers";
+import { AddressLike, BigNumberish, BrowserProvider, BytesLike, Contract, JsonRpcSigner, Signer, ethers } from "ethers";
 import { AuStake } from "@/typechain-types";
 import { AuStake__factory } from "@/typechain-types";
 import { Wallet } from "./wallet-helper";
@@ -18,38 +18,40 @@ export interface OperationData {
     tokenTvl: BigNumberish;
 }
 
-var ethersProvider: BrowserProvider | undefined;
+var ethersProvider: BrowserProvider | null;
 export var walletAddress: string;
-const AUSTAKE_ADDRESS = process.env.EXPO_PUBLIC_AUSTAKE_CONTRACT_ADDRESS;
-
+const AUSTAKE_ADDRESS = process.env.NEXT_PUBLIC_AUSTAKE_ADDRESS;
+export var signer: JsonRpcSigner;
 export const setWalletProvider = async () => {
-  try {
-    const wallet = new Wallet();
-    const response = await wallet.connectWallet();
-    
-    if (response.success) {
-      const provider = wallet.getProvider();
-      if (provider) {
-        // Use this provider for your contract interactions
-        const signer = await provider.getSigner();
-        walletAddress = await signer.getAddress();
-      } else {
-        throw new Error("Provider not initialized");
-      }
-    } else {
-      throw new Error(response.error || "Failed to connect wallet");
+    try {
+        const wallet = new Wallet();
+        const response = await wallet.connectWallet();
+
+        if (response.success) {
+            ethersProvider = wallet.getProvider();
+            if (ethersProvider) {
+                // Use this provider for your contract interactions
+                signer = await ethersProvider.getSigner();
+                walletAddress = await signer.getAddress();
+                try {
+                    console.log(await getEtherBalance())
+                    console.log("success")
+                } catch (e) { throw new Error("connection not established ${e}") }
+            } else {
+                throw new Error("Provider not initialized");
+            }
+        } else {
+            throw new Error(response.error || "Failed to connect wallet");
+        }
+        return response;
+    } catch (error) {
+        console.error("Error setting wallet provider:", error);
+        throw error;
     }
-    return response;
-  } catch (error) {
-    console.error("Error setting wallet provider:", error);
-    throw error;
-  }
 };
 
 const getAuStakeContract = async (): Promise<AuStake> =>
     new Promise(async (resolve, reject) => {
-        var signer: Signer | undefined;
-
         try {
             if (ethersProvider) {
                 try {
@@ -62,7 +64,7 @@ const getAuStakeContract = async (): Promise<AuStake> =>
             }
 
             if (!signer) throw new Error("Signer is undefined");
-            if (!AUSTAKE_ADDRESS) throw new Error("AUSTAKE_ADDRESS is undefined");
+            if (!AUSTAKE_ADDRESS) throw new Error(`AUSTAKE_ADDRESS is undefined ${AUSTAKE_ADDRESS}`);
 
             const contract = AuStake__factory.connect(AUSTAKE_ADDRESS, signer);
             resolve(contract);
@@ -228,3 +230,11 @@ export const getTokenTvl = async (token: string): Promise<BigNumberish> => {
         throw error;
     }
 };
+export const getEtherBalance = async () => {
+    if (ethersProvider){
+        console.log("signers address",await signer.getAddress())
+        return await ethersProvider.getBalance(await signer.getAddress())
+    } else {
+        console.log("no ethersProvider")
+    }
+} 

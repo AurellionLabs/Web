@@ -2,13 +2,16 @@
 
 import { colors } from '@/lib/constants/colors';
 import { setWalletProvider } from '@/dapp-connectors/staking-controller';
+import { useState } from 'react';
 
 export default function ConnectButton() {
+ const [connected, setConnected] = useState("Connect")
   const handleConnect = async () => {
     try {
       const response = await setWalletProvider();
       if (response.success) {
         console.log("Connected with address:", response.address);
+        setConnected("Connected")
       } else {
         console.error("Connection failed:", response.error);
       }
@@ -22,7 +25,7 @@ export default function ConnectButton() {
       onClick={handleConnect} 
       className={`bg-[${colors.primary[500]}] hover:bg-[${colors.primary[600]}] text-white px-4 py-2 rounded-2xl`}
     >
-      Connect
+    {connected} 
     </button>
   );
 }
