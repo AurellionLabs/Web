@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";  // Add this import
 import { colors } from '@/lib/constants/colors'
 import { ethers } from 'ethers';
 import { useState } from 'react';
+import { createOperation } from '@/dapp-connectors/staking-controller'
 export default function CreateOperationPage() {
   const [formData, setFormData] = useState({
     name: '',
@@ -19,6 +20,7 @@ export default function CreateOperationPage() {
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("handleSubmit")
     e.preventDefault();
     setLoading(true);
     setError('');
