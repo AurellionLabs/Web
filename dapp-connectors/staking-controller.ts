@@ -115,20 +115,21 @@ export const getOperationList = async () => {
         return (operationList)
     }
 }
-    export const stake = async (
-        token: string,
-        operationId: BytesLike,
-        amount: BigNumberish
-    ) => {
-        const contract = await getAuStakeContract();
-        try {
-            const tx = await contract.stake(token, operationId, amount);
-            await tx.wait();
-        } catch (error) {
-            console.error("Error staking tokens:", error);
-            throw error;
-        }
-    };
+
+export const stake = async (
+    token: string,
+    operationId: BytesLike,
+    amount: BigNumberish
+) => {
+    const contract = await getAuStakeContract();
+    try {
+        const tx = await contract.stake(token, operationId, amount);
+        await tx.wait();
+    } catch (error) {
+        console.error("Error staking tokens:", error);
+        throw error;
+    }
+};
 
 
 export const triggerReward = async (
