@@ -5,48 +5,27 @@ import { PoolTable } from "@/components/ui/pool-table"
 import { Button } from "@/components/ui/button"
 import { colors } from '@/lib/constants/colors'
 import { getOperation, getOperationList, OperationData, walletAddress } from '@/dapp-connectors/staking-controller'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useChainProvider } from '@/hooks/main.provider'
 
 
 export default function PoolsPage() {
-    const operations: OperationData[] = []
-    const {setConnected, connected} = useChainProvider();
+    const [operations, setOperations] = useState<OperationData[]>();
+    const { setConnected, connected } = useChainProvider();
     useEffect(() => {
-        console.log("fetching operations...")
+        console.log("fetching operations...");
         const fetchOperations = async () => {
-            const ids = await getOperationList()
-            console.log(ids)
-            ids?.map(async (id) => {
-                console.log("fetching ops")
-                operations.push(await getOperation(id))
-                console.log("operations",operations)
-            })
-        }
+            const ids = await getOperationList(); // Fetch list of IDs
+            console.log(ids);
+            if (ids) {
+                const operationsData = await Promise.all(ids.map(id => getOperation(id)));
+                setOperations(operationsData); // Update with completed data
+            }
+        };
         if (walletAddress) {
-            fetchOperations()
+            fetchOperations();
         }
-    }, [connected])
-    const pools = [
-        {
-            id: 1,
-            operation: 'Goat Funding',
-            tvl: '$138.6M',
-            apr: '22.978',
-            volume: '$59.1M',
-            priceChange: '+0.52',
-        },
-        {
-            id: 2,
-            operation: 'Goat Fund',
-            tvl: '$136.5M',
-            apr: '2.889',
-            volume: '$3.6M',
-            priceChange: '+0.52',
-        }
-        // Add more pools as needed
-    ]
-
+    }, [connected]);
     return (
         <div className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}>
             <div className="max-w-7xl mx-auto">
@@ -79,10 +58,12 @@ export default function PoolsPage() {
                     <h2 className="text-xl font-semibold">Top pools by TVL</h2>
                 </div>
 
-                {
-                    operations && <PoolTable operations={operations} />
-                }
-                <div className="mt-8">
+                {operations && (
+                    <>
+                        {console.log('PoolTable triggered with operations:', operations)}
+                        <PoolTable operations={operations} />
+                    </>
+                )}    <div className="mt-8">
                     <div className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}]`}>
                         <div className="flex items-start gap-3">
                             <div className={`w-12 h-12 bg-[${colors.primary[500]}]/20 rounded-xl flex items-center justify-center`}>

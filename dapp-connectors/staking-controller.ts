@@ -259,4 +259,3 @@ export const getEtherBalance = async () => {
         console.log("no ethersProvider")
     }
 }
-

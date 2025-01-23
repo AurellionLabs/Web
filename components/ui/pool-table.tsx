@@ -3,14 +3,6 @@ import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { OperationData } from '@/dapp-connectors/staking-controller'
 
-interface Pool {
-  id: number
-  operation: string
-  tvl: string
-  apr: string
-  volume: string
-  priceChange: string
-}
 
 interface OperationTableProps{
   operations: OperationData[]
@@ -31,9 +23,12 @@ export function PoolTable( {operations} : OperationTableProps) {
             </tr>
           </thead>
           <tbody>
+          <>
+            {console.log("this is what we are mapping",operations)}
             {operations.map((operation, index) => (
-              <PoolRow key={operation.id} index={index + 1} {...operation} />
+              <PoolRow key={operation.id} index={index + 1} operation={operation} />
             ))}
+            </>
           </tbody>
         </table>
       </div>
