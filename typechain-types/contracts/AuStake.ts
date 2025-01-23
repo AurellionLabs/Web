@@ -26,6 +26,7 @@ import type {
 export interface AuStakeInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "activeOperations"
       | "admins"
       | "burn"
       | "createOperation"
@@ -59,6 +60,10 @@ export interface AuStakeInterface extends Interface {
       | "Unstaked"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "activeOperations",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(functionFragment: "admins", values: [AddressLike]): string;
   encodeFunctionData(
     functionFragment: "burn",
@@ -138,6 +143,10 @@ export interface AuStakeInterface extends Interface {
     values: [AddressLike, BytesLike, AddressLike]
   ): string;
 
+  decodeFunctionResult(
+    functionFragment: "activeOperations",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "admins", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
   decodeFunctionResult(
@@ -355,6 +364,8 @@ export interface AuStake extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  activeOperations: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+
   admins: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
 
   burn: TypedContractMethod<
@@ -378,7 +389,8 @@ export interface AuStake extends BaseContract {
   getOperation: TypedContractMethod<
     [id: BytesLike],
     [
-      [string, string, string, bigint, bigint, bigint] & {
+      [string, string, string, string, bigint, bigint, bigint] & {
+        opId: string;
         name: string;
         token: string;
         provider: string;
@@ -393,7 +405,8 @@ export interface AuStake extends BaseContract {
   idToOperation: TypedContractMethod<
     [arg0: BytesLike],
     [
-      [string, string, string, bigint, bigint, bigint] & {
+      [string, string, string, string, bigint, bigint, bigint] & {
+        id: string;
         name: string;
         token: string;
         provider: string;
@@ -498,6 +511,9 @@ export interface AuStake extends BaseContract {
   ): T;
 
   getFunction(
+    nameOrSignature: "activeOperations"
+  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  getFunction(
     nameOrSignature: "admins"
   ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
   getFunction(
@@ -525,7 +541,8 @@ export interface AuStake extends BaseContract {
   ): TypedContractMethod<
     [id: BytesLike],
     [
-      [string, string, string, bigint, bigint, bigint] & {
+      [string, string, string, string, bigint, bigint, bigint] & {
+        opId: string;
         name: string;
         token: string;
         provider: string;
@@ -541,7 +558,8 @@ export interface AuStake extends BaseContract {
   ): TypedContractMethod<
     [arg0: BytesLike],
     [
-      [string, string, string, bigint, bigint, bigint] & {
+      [string, string, string, string, bigint, bigint, bigint] & {
+        id: string;
         name: string;
         token: string;
         provider: string;

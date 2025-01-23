@@ -10,6 +10,7 @@ export interface StakeData {
 }
 
 export interface OperationData {
+    id: string;
     name: string;
     token: string;
     provider: string;
@@ -18,7 +19,7 @@ export interface OperationData {
     tokenTvl: BigNumberish;
 }
 
-var ethersProvider: BrowserProvider | null;
+export var ethersProvider: BrowserProvider | null;
 export var walletAddress: string;
 const AUSTAKE_ADDRESS = process.env.NEXT_PUBLIC_AUSTAKE_ADDRESS;
 export var signer: JsonRpcSigner;
@@ -95,21 +96,40 @@ export const createOperation = async (
         throw error;
     }
 };
-
-export const stake = async (
-    token: string,
-    operationId: BytesLike,
-    amount: BigNumberish
-) => {
+export const getOperationList = async () => {
     const contract = await getAuStakeContract();
-    try {
-        const tx = await contract.stake(token, operationId, amount);
-        await tx.wait();
-    } catch (error) {
-        console.error("Error staking tokens:", error);
-        throw error;
+    console.log("got contract")
+    const operationList: string[] = []
+    const operationsBuilt = false
+    var index = 0
+    while (!operationsBuilt) {
+        try {
+            const id = await contract.activeOperations(index)
+            console.log("fetched id",id)
+            operationList.push(id)
+            index++
+        }
+        catch (e) {
+            console.error("Error getting Operation list likely end of list:", e)
+        }
+        return (operationList)
     }
-};
+}
+    export const stake = async (
+        token: string,
+        operationId: BytesLike,
+        amount: BigNumberish
+    ) => {
+        const contract = await getAuStakeContract();
+        try {
+            const tx = await contract.stake(token, operationId, amount);
+            await tx.wait();
+        } catch (error) {
+            console.error("Error staking tokens:", error);
+            throw error;
+        }
+    };
+
 
 export const triggerReward = async (
     token: string,
@@ -178,12 +198,13 @@ export const getOperation = async (operationId: BytesLike): Promise<OperationDat
     try {
         const operation = await contract.getOperation(operationId);
         return {
-            name: operation[0],
-            token: operation[1],
-            provider: operation[2],
-            lengthInDays: operation[3],
-            reward: operation[4],
-            tokenTvl: operation[5]
+            id: operation[0],
+            name: operation[1],
+            token: operation[2],
+            provider: operation[3],
+            lengthInDays: operation[4],
+            reward: operation[5],
+            tokenTvl: operation[6]
         };
     } catch (error) {
         console.error("Error getting operation:", error);
@@ -231,10 +252,11 @@ export const getTokenTvl = async (token: string): Promise<BigNumberish> => {
     }
 };
 export const getEtherBalance = async () => {
-    if (ethersProvider){
-        console.log("signers address",await signer.getAddress())
+    if (ethersProvider) {
+        console.log("signers address", await signer.getAddress())
         return await ethersProvider.getBalance(await signer.getAddress())
     } else {
         console.log("no ethersProvider")
     }
-} 
+}
+

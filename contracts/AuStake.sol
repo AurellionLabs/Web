@@ -13,6 +13,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     }
     
     struct Operation {
+        bytes32 id;
         string name;
         address token;
         address provider;
@@ -22,6 +23,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     }
     
     address payable public projectWallet;
+    bytes32[] public activeOperations;
     mapping(bytes32 => Operation) public idToOperation;
     mapping(address => bool) public admins;
     uint256 public lockPeriod;
@@ -66,17 +68,16 @@ contract AuStake is ReentrancyGuard, Ownable {
         
         operationIdCounter++;
         bytes32 id = keccak256(abi.encode(operationIdCounter));
-        
         Operation storage operation = idToOperation[id];
         operation.name = name;
         operation.token = token;
         operation.provider = provider;
         operation.lengthInDays = lengthInDays;
         operation.reward = reward;
-        
+        operation.id = id;
         providerToOperationIds[provider].push(id);
         tokenToOperationIds[token] = id;
-        
+        activeOperations.push(id);
         emit OperationCreated(id, name, token);
         return id;
     }
@@ -136,7 +137,17 @@ contract AuStake is ReentrancyGuard, Ownable {
         
         IERC20 tokenContract = IERC20(token);
         require(tokenContract.transfer(user, reward), "Reward transfer failed");
-        
+        uint swapIndex;
+        bool swapFound = false;
+        for(uint i=0;i < activeOperations.length; i++){
+            if(activeOperations[i] == operationId){
+                swapIndex = i;
+                swapFound = true;
+                break;
+        }}
+        require(swapFound == true,"Operation Id not found");
+        activeOperations[activeOperations.length -1 ] = activeOperations[swapIndex];
+        activeOperations.pop();
         emit RewardPaid(user, reward, operationId);
     }
     
@@ -161,6 +172,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     }
     
     function getOperation(bytes32 id) external view returns (
+        bytes32 opId,
         string memory name,
         address token,
         address provider,
@@ -170,6 +182,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     ) {
         Operation storage operation = idToOperation[id];
         return (
+            operation.id,
             operation.name,
             operation.token,
             operation.provider,

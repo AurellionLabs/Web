@@ -31,13 +31,13 @@ export default function CreateOperationPage() {
       // Convert reward to proper format (assuming 18 decimals)
       const rewardInWei = ethers.parseEther(formData.reward);
       
-      await createOperation(
-        formData.name,
-        formData.token,
-        formData.provider,
-        parseInt(formData.lengthInDays),
-        rewardInWei
-      );
+      console.log(
+          await createOperation(
+              formData.name,
+              formData.token,
+              formData.provider,
+              parseInt(formData.lengthInDays),
+              rewardInWei))
 
     } catch (error: any) {
       setError(error.message || 'An error occurred while creating the operation');

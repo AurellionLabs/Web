@@ -1,22 +1,22 @@
 import { PoolRow } from './pool-row'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
+import { OperationData } from '@/dapp-connectors/staking-controller'
 
 interface Pool {
   id: number
-  token0: string
-  token1: string
+  operation: string
   tvl: string
   apr: string
   volume: string
   priceChange: string
 }
 
-interface PoolTableProps {
-  pools: Pool[]
+interface OperationTableProps{
+  operations: OperationData[]
 }
 
-export function PoolTable({ pools }: PoolTableProps) {
+export function PoolTable( {operations} : OperationTableProps) {
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800">
       <div className="overflow-x-auto">
@@ -31,8 +31,8 @@ export function PoolTable({ pools }: PoolTableProps) {
             </tr>
           </thead>
           <tbody>
-            {pools.map((pool, index) => (
-              <PoolRow key={pool.id} index={index + 1} {...pool} />
+            {operations.map((operation, index) => (
+              <PoolRow key={operation.id} index={index + 1} {...operation} />
             ))}
           </tbody>
         </table>
