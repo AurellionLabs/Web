@@ -1,4 +1,4 @@
-import { PoolsProvider } from "@/app/providers/pools.provider";
+import { PoolsProvider } from '@/app/providers/pools.provider';
 
 export default function PoolsLayout({
   children,
