@@ -1,21 +1,33 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { ArrowDownIcon, Settings2Icon } from 'lucide-react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState } from 'react';
+import { ArrowDownIcon, Settings2Icon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function SwapScreen() {
-  const [fromToken, setFromToken] = useState('')
-  const [toToken, setToToken] = useState('')
-  const [fromAmount, setFromAmount] = useState('')
-  const [toAmount, setToAmount] = useState('')
+  const [fromToken, setFromToken] = useState('');
+  const [toToken, setToToken] = useState('');
+  const [fromAmount, setFromAmount] = useState('');
+  const [toAmount, setToAmount] = useState('');
 
   const handleSwap = () => {
-    console.log('Swap initiated')
-  }
+    console.log('Swap initiated');
+  };
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -29,7 +41,12 @@ export default function SwapScreen() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between">
-              <label htmlFor="fromAmount" className="text-sm font-medium text-gray-700 dark:text-gray-300">From</label>
+              <label
+                htmlFor="fromAmount"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                From
+              </label>
               <span className="text-sm text-gray-500">Balance: 0.0</span>
             </div>
             <div className="flex space-x-2">
@@ -54,18 +71,27 @@ export default function SwapScreen() {
             </div>
           </div>
           <div className="flex justify-center">
-            <Button variant="ghost" size="icon" onClick={() => {
-              setFromToken(toToken)
-              setToToken(fromToken)
-              setFromAmount(toAmount)
-              setToAmount(fromAmount)
-            }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setFromToken(toToken);
+                setToToken(fromToken);
+                setFromAmount(toAmount);
+                setToAmount(fromAmount);
+              }}
+            >
               <ArrowDownIcon className="h-4 w-4" />
             </Button>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <label htmlFor="toAmount" className="text-sm font-medium text-gray-700 dark:text-gray-300">To</label>
+              <label
+                htmlFor="toAmount"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                To
+              </label>
               <span className="text-sm text-gray-500">Balance: 0.0</span>
             </div>
             <div className="flex space-x-2">
@@ -91,10 +117,11 @@ export default function SwapScreen() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button className="w-full" onClick={handleSwap}>Swap</Button>
+          <Button className="w-full" onClick={handleSwap}>
+            Swap
+          </Button>
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
-

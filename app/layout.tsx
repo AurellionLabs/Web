@@ -1,18 +1,18 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import Link from "next/link";
-import { Search } from "lucide-react";
-import { colors } from "@/lib/constants/colors";
-import { setWalletProvider } from "@/dapp-connectors/staking-controller";
-import ConnectButton from "@/components/ConnectButtont";
-import MainProvider from "@/app/providers/main.provider";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import Link from 'next/link';
+import { Search } from 'lucide-react';
+import { colors } from '@/lib/constants/colors';
+import { setWalletProvider } from '@/dapp-connectors/staking-controller';
+import ConnectButton from '@/components/ConnectButtont';
+import MainProvider from '@/app/providers/main.provider';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "AuStake",
-  description: "Staking platform for Aurellion tokenized real-world assets",
+  title: 'AuStake',
+  description: 'Staking platform for Aurellion tokenized real-world assets',
 };
 
 export default function RootLayout({

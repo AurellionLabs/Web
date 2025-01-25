@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { Line } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,7 +10,7 @@ import {
   Title,
   Tooltip,
   Filler,
-} from 'chart.js'
+} from 'chart.js';
 
 ChartJS.register(
   CategoryScale,
@@ -19,8 +19,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Filler
-)
+  Filler,
+);
 
 export default function Chart() {
   const data = {
@@ -36,7 +36,7 @@ export default function Chart() {
         pointRadius: 0,
       },
     ],
-  }
+  };
 
   const options = {
     responsive: true,
@@ -63,8 +63,7 @@ export default function Chart() {
       axis: 'x' as const,
       intersect: false,
     },
-  }
+  };
 
-  return <Line options={options} data={data} />
+  return <Line options={options} data={data} />;
 }
-

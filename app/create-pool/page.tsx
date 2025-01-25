@@ -1,21 +1,25 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function CreatePool() {
-  const [poolName, setPoolName] = useState('')
-  const [assetAddress, setAssetAddress] = useState('')
-  const [initialLiquidity, setInitialLiquidity] = useState('')
+  const [poolName, setPoolName] = useState('');
+  const [assetAddress, setAssetAddress] = useState('');
+  const [initialLiquidity, setInitialLiquidity] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // Create pool logic here
-    console.log('Creating new pool:', { poolName, assetAddress, initialLiquidity })
-  }
+    console.log('Creating new pool:', {
+      poolName,
+      assetAddress,
+      initialLiquidity,
+    });
+  };
 
   return (
     <div className="max-w-md mx-auto">
@@ -63,6 +67,5 @@ export default function CreatePool() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
-

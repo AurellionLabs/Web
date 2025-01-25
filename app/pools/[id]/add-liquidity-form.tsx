@@ -1,19 +1,21 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function AddLiquidityForm({ poolId }: { poolId: string }) {
-  const [amount0, setAmount0] = useState('')
-  const [amount1, setAmount1] = useState('')
+  const [amount0, setAmount0] = useState('');
+  const [amount1, setAmount1] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // Add liquidity logic here
-    console.log(`Adding liquidity to pool ${poolId}: ${amount0} Token0, ${amount1} Token1`)
-  }
+    console.log(
+      `Adding liquidity to pool ${poolId}: ${amount0} Token0, ${amount1} Token1`,
+    );
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -43,6 +45,5 @@ export default function AddLiquidityForm({ poolId }: { poolId: string }) {
         Add Liquidity
       </Button>
     </form>
-  )
+  );
 }
-
