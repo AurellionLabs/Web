@@ -10,20 +10,22 @@ import { PoolBalance } from "@/components/ui/pool-balance"
 import { Progress } from "@/components/ui/progress"
 import { colors } from '@/lib/constants/colors'
 import dynamic from 'next/dynamic'
+import { usePoolsProvider } from '@/app/providers/pools.provider'
+import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils'
 
 const Chart = dynamic(() => import('./chart'), { ssr: false })
 
 export default function PoolDetails({ params }: { params: { id: string } }) {
+  const {selectedPool} = usePoolsProvider()
   const [timeRange, setTimeRange] = useState('1D')
   const [operationProgress, setOperationProgress] = useState(0)
   const [isOperationComplete, setIsOperationComplete] = useState(false)
-  
+
   const poolData = {
-    token0: 'WBTC',
-    token1: 'USDC',
+    name: selectedPool?.name,
     price: '53.17M',
     priceChange: '-0.3',
-    tvl: '$138.6M',
+    tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
     tvlChange: '+0.26%',
     volume24h: '$29.1M',
     volumeChange: '-74.02%',
@@ -85,7 +87,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             Pools
           </Link>
           <span className="text-gray-600">/</span>
-          <span className="text-gray-400">{poolData.token0}/{poolData.token1}</span>
+          <span className="text-gray-400">{poolData.name}</span>
         </div>
 
         {/* Header */}
@@ -103,7 +105,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">
-                  {poolData.token0}/{poolData.token1}
+                  {poolData.name}
                 </h1>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400">v3</span>
