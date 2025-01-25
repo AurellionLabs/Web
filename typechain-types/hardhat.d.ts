@@ -2,134 +2,134 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 import {
   DeployContractOptions,
   FactoryOptions,
   HardhatEthersHelpers as HardhatEthersHelpersBase,
-} from "@nomicfoundation/hardhat-ethers/types";
+} from '@nomicfoundation/hardhat-ethers/types';
 
-import * as Contracts from ".";
+import * as Contracts from '.';
 
-declare module "hardhat/types/runtime" {
+declare module 'hardhat/types/runtime' {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
     getContractFactory(
-      name: "Ownable",
-      signerOrOptions?: ethers.Signer | FactoryOptions
+      name: 'Ownable',
+      signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.Ownable__factory>;
     getContractFactory(
-      name: "IERC20Metadata",
-      signerOrOptions?: ethers.Signer | FactoryOptions
+      name: 'IERC20Metadata',
+      signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.IERC20Metadata__factory>;
     getContractFactory(
-      name: "IERC20",
-      signerOrOptions?: ethers.Signer | FactoryOptions
+      name: 'IERC20',
+      signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.IERC20__factory>;
     getContractFactory(
-      name: "AuraGoat",
-      signerOrOptions?: ethers.Signer | FactoryOptions
+      name: 'AuraGoat',
+      signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.AuraGoat__factory>;
     getContractFactory(
-      name: "AuStake",
-      signerOrOptions?: ethers.Signer | FactoryOptions
+      name: 'AuStake',
+      signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.AuStake__factory>;
 
     getContractAt(
-      name: "Ownable",
+      name: 'Ownable',
       address: string | ethers.Addressable,
-      signer?: ethers.Signer
+      signer?: ethers.Signer,
     ): Promise<Contracts.Ownable>;
     getContractAt(
-      name: "IERC20Metadata",
+      name: 'IERC20Metadata',
       address: string | ethers.Addressable,
-      signer?: ethers.Signer
+      signer?: ethers.Signer,
     ): Promise<Contracts.IERC20Metadata>;
     getContractAt(
-      name: "IERC20",
+      name: 'IERC20',
       address: string | ethers.Addressable,
-      signer?: ethers.Signer
+      signer?: ethers.Signer,
     ): Promise<Contracts.IERC20>;
     getContractAt(
-      name: "AuraGoat",
+      name: 'AuraGoat',
       address: string | ethers.Addressable,
-      signer?: ethers.Signer
+      signer?: ethers.Signer,
     ): Promise<Contracts.AuraGoat>;
     getContractAt(
-      name: "AuStake",
+      name: 'AuStake',
       address: string | ethers.Addressable,
-      signer?: ethers.Signer
+      signer?: ethers.Signer,
     ): Promise<Contracts.AuStake>;
 
     deployContract(
-      name: "Ownable",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      name: 'Ownable',
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.Ownable>;
     deployContract(
-      name: "IERC20Metadata",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      name: 'IERC20Metadata',
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.IERC20Metadata>;
     deployContract(
-      name: "IERC20",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      name: 'IERC20',
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.IERC20>;
     deployContract(
-      name: "AuraGoat",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      name: 'AuraGoat',
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.AuraGoat>;
     deployContract(
-      name: "AuStake",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      name: 'AuStake',
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.AuStake>;
 
     deployContract(
-      name: "Ownable",
+      name: 'Ownable',
       args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.Ownable>;
     deployContract(
-      name: "IERC20Metadata",
+      name: 'IERC20Metadata',
       args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.IERC20Metadata>;
     deployContract(
-      name: "IERC20",
+      name: 'IERC20',
       args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.IERC20>;
     deployContract(
-      name: "AuraGoat",
+      name: 'AuraGoat',
       args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.AuraGoat>;
     deployContract(
-      name: "AuStake",
+      name: 'AuStake',
       args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.AuStake>;
 
     // default types
     getContractFactory(
       name: string,
-      signerOrOptions?: ethers.Signer | FactoryOptions
+      signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<ethers.ContractFactory>;
     getContractFactory(
       abi: any[],
       bytecode: ethers.BytesLike,
-      signer?: ethers.Signer
+      signer?: ethers.Signer,
     ): Promise<ethers.ContractFactory>;
     getContractAt(
       nameOrAbi: string | any[],
       address: string | ethers.Addressable,
-      signer?: ethers.Signer
+      signer?: ethers.Signer,
     ): Promise<ethers.Contract>;
     deployContract(
       name: string,
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<ethers.Contract>;
     deployContract(
       name: string,
       args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<ethers.Contract>;
   }
 }

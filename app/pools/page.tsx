@@ -1,29 +1,29 @@
-"use client";
-import Link from "next/link";
-import { ArrowUpRight, Plus } from "lucide-react";
-import { PoolTable } from "@/components/ui/pool-table";
-import { Button } from "@/components/ui/button";
-import { colors } from "@/lib/constants/colors";
+'use client';
+import Link from 'next/link';
+import { ArrowUpRight, Plus } from 'lucide-react';
+import { PoolTable } from '@/components/ui/pool-table';
+import { Button } from '@/components/ui/button';
+import { colors } from '@/lib/constants/colors';
 import {
   getOperation,
   getOperationList,
   OperationData,
   walletAddress,
-} from "@/dapp-connectors/staking-controller";
-import { useEffect, useState } from "react";
-import { useChainProvider } from "@/app/providers/main.provider";
+} from '@/dapp-connectors/staking-controller';
+import { useEffect, useState } from 'react';
+import { useChainProvider } from '@/app/providers/main.provider';
 
 export default function PoolsPage() {
   const [operations, setOperations] = useState<OperationData[]>();
   const { setConnected, connected } = useChainProvider();
   useEffect(() => {
-    console.log("fetching operations...");
+    console.log('fetching operations...');
     const fetchOperations = async () => {
       const ids = await getOperationList(); // Fetch list of IDs
       console.log(ids);
       if (ids) {
         const operationsData = await Promise.all(
-          ids.map((id) => getOperation(id))
+          ids.map((id) => getOperation(id)),
         );
         setOperations(operationsData); // Update with completed data
       }
@@ -73,10 +73,10 @@ export default function PoolsPage() {
         </div>
         {operations && (
           <>
-            {console.log("PoolTable triggered with operations:", operations)}
+            {console.log('PoolTable triggered with operations:', operations)}
             <PoolTable operations={operations} />
           </>
-        )}{" "}
+        )}{' '}
         <div className="mt-8">
           <div
             className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}]`}

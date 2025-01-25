@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { parseUnits } from "ethers";
-import { ArrowLeft, HelpCircle, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { parseUnits } from 'ethers';
+import { ArrowLeft, HelpCircle, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { stake } from "@/dapp-connectors/staking-controller";
-import { AURAGOAT_TOKEN_ADDRESS } from "@/constants";
+} from '@/components/ui/tooltip';
+import { stake } from '@/dapp-connectors/staking-controller';
+import { AURAGOAT_TOKEN_ADDRESS } from '@/constants';
 
 export default function AddLiquidity({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const [amount, setAmount] = useState("");
-  const [error, setError] = useState("");
+  const router = useRouter();
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   // This would be fetched from your API/wallet
   const poolData = {
-    name: "AURA/USDC Pool",
-    exchangeRate: "1 AURA = 2.5 USDC",
-    auraBalance: "101.85",
-    healthFactor: "1.91",
-    supplyAPY: "6.74",
+    name: 'AURA/USDC Pool',
+    exchangeRate: '1 AURA = 2.5 USDC',
+    auraBalance: '101.85',
+    healthFactor: '1.91',
+    supplyAPY: '6.74',
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,10 +36,10 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     try {
       const amountBigNumberish = parseUnits(amount, 18);
       await stake(AURAGOAT_TOKEN_ADDRESS, params.id, amountBigNumberish);
-      console.log("Successfully added liquidity");
-      router.push(`/pools/${params.id}`)
+      console.log('Successfully added liquidity');
+      router.push(`/pools/${params.id}`);
     } catch (error: any) {
-      setError(error.message || "An error occurred when adding liquidity");
+      setError(error.message || 'An error occurred when adding liquidity');
     } finally {
       setLoading(false);
     }
@@ -157,7 +157,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                           <HelpCircle className="h-4 w-4" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Liquidation occurs at {"<"}1.0</p>
+                          <p>Liquidation occurs at {'<'}1.0</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -174,7 +174,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
               className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 text-lg"
               disabled={!amount || !isAmountValid || loading}
             >
-              {loading ? "Adding...." : "Add Liquidity"}
+              {loading ? 'Adding....' : 'Add Liquidity'}
             </Button>
           </form>
         </div>

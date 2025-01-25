@@ -1,13 +1,13 @@
 interface Transaction {
-  time: string
-  type: string
-  usdValue: string
-  token0Amount: string
-  token1Amount: string
+  time: string;
+  type: string;
+  usdValue: string;
+  token0Amount: string;
+  token1Amount: string;
 }
 
 interface TransactionTableProps {
-  transactions: Transaction[]
+  transactions: Transaction[];
 }
 
 export function TransactionTable({ transactions }: TransactionTableProps) {
@@ -29,16 +29,20 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
           </thead>
           <tbody>
             {transactions.map((tx, index) => (
-              <tr 
+              <tr
                 key={index}
                 className="border-t border-gray-800 hover:bg-gray-800/50 transition-colors"
               >
                 <td className="py-4 px-4 text-gray-400">{tx.time}</td>
-                <td className={`py-4 px-4 ${
-                  tx.type === 'Remove' ? 'text-red-500' : 
-                  tx.type === 'Add' ? 'text-green-500' : 
-                  'text-gray-400'
-                }`}>
+                <td
+                  className={`py-4 px-4 ${
+                    tx.type === 'Remove'
+                      ? 'text-red-500'
+                      : tx.type === 'Add'
+                        ? 'text-green-500'
+                        : 'text-gray-400'
+                  }`}
+                >
                   {tx.type}
                 </td>
                 <td className="py-4 px-4 text-right">{tx.usdValue}</td>
@@ -50,6 +54,5 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
         </table>
       </div>
     </div>
-  )
+  );
 }
-

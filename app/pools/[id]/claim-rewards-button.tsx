@@ -1,17 +1,16 @@
-'use client'
+'use client';
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button';
 
 export default function ClaimRewardsButton({ poolId }: { poolId: string }) {
   const handleClaim = () => {
     // Claim rewards logic here
-    console.log(`Claiming rewards from pool ${poolId}`)
-  }
+    console.log(`Claiming rewards from pool ${poolId}`);
+  };
 
   return (
     <Button onClick={handleClaim} variant="outline" className="w-full">
       Claim Rewards
     </Button>
-  )
+  );
 }
-

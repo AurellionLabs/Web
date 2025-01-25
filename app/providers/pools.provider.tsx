@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { OperationData } from "@/dapp-connectors/staking-controller";
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import { OperationData } from '@/dapp-connectors/staking-controller';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 // Define the shape of the context
 interface PoolsContextType {
@@ -16,9 +16,8 @@ const PoolsContext = createContext<PoolsContextType | undefined>(undefined);
 export const PoolsProvider = ({ children }: { children: ReactNode }) => {
   const [selectedPool, setSelectedPool] = useState<OperationData | undefined>();
 
-
   return (
-    <PoolsContext.Provider value={{ selectedPool, setSelectedPool}}>
+    <PoolsContext.Provider value={{ selectedPool, setSelectedPool }}>
       {children}
     </PoolsContext.Provider>
   );
@@ -28,7 +27,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 export const usePoolsProvider = () => {
   const context = useContext(PoolsContext);
   if (!context) {
-    throw new Error("usePools must be used within a PoolsProvider");
+    throw new Error('usePools must be used within a PoolsProvider');
   }
   return context;
 };
