@@ -1,127 +1,112 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowDownIcon, Settings2Icon } from 'lucide-react';
+import Link from 'next/link';
+import {
+  ArrowRightIcon,
+  BarChart3Icon,
+  CoinsIcon,
+  ShieldCheckIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
-  CardFooter,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
-export default function SwapScreen() {
-  const [fromToken, setFromToken] = useState('');
-  const [toToken, setToToken] = useState('');
-  const [fromAmount, setFromAmount] = useState('');
-  const [toAmount, setToAmount] = useState('');
-
-  const handleSwap = () => {
-    console.log('Swap initiated');
-  };
-
+export default function HomePage() {
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Swap</CardTitle>
-          <Button variant="ghost" size="icon">
-            <Settings2Icon className="h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <label
-                htmlFor="fromAmount"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                From
-              </label>
-              <span className="text-sm text-gray-500">Balance: 0.0</span>
-            </div>
-            <div className="flex space-x-2">
-              <Input
-                id="fromAmount"
-                type="number"
-                placeholder="0.0"
-                value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value)}
-                className="flex-grow"
-              />
-              <Select value={fromToken} onValueChange={setFromToken}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Token" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="eth">ETH</SelectItem>
-                  <SelectItem value="usdc">USDC</SelectItem>
-                  <SelectItem value="dai">DAI</SelectItem>
-                </SelectContent>
-              </Select>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* Hero Section */}
+      <section className="px-4 py-20 md:py-32">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center space-y-6">
+            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+              Participate in Real World Asset Pools
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Provide liquidity to real-world transactions and earn yields
+              through our decentralized platform.
+            </p>
+            <div className="flex gap-4 justify-center pt-6">
+              <Link href="/create-pool">
+                <Button size="lg" className="text-lg">
+                  Create Pool <ArrowRightIcon className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/pools">
+                <Button size="lg" variant="outline" className="text-lg">
+                  Explore Pools
+                </Button>
+              </Link>
             </div>
           </div>
-          <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setFromToken(toToken);
-                setToToken(fromToken);
-                setFromAmount(toAmount);
-                setToAmount(fromAmount);
-              }}
-            >
-              <ArrowDownIcon className="h-4 w-4" />
-            </Button>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="px-4 py-20 bg-white/50 dark:bg-gray-800/50">
+        <div className="container mx-auto max-w-6xl">
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Why Choose Our Platform?
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card>
+              <CardHeader>
+                <CoinsIcon className="h-12 w-12 text-blue-600 mb-4" />
+                <CardTitle>Earn Real Yields</CardTitle>
+                <CardDescription>
+                  Generate returns by providing liquidity to real-world
+                  transactions and assets
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <ShieldCheckIcon className="h-12 w-12 text-purple-600 mb-4" />
+                <CardTitle>Secure & Transparent</CardTitle>
+                <CardDescription>
+                  Smart contract-powered pools with automated risk management
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <BarChart3Icon className="h-12 w-12 text-green-600 mb-4" />
+                <CardTitle>Analytics & Insights</CardTitle>
+                <CardDescription>
+                  Track your performance with detailed analytics and portfolio
+                  management tools
+                </CardDescription>
+              </CardHeader>
+            </Card>
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <label
-                htmlFor="toAmount"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                To
-              </label>
-              <span className="text-sm text-gray-500">Balance: 0.0</span>
-            </div>
-            <div className="flex space-x-2">
-              <Input
-                id="toAmount"
-                type="number"
-                placeholder="0.0"
-                value={toAmount}
-                onChange={(e) => setToAmount(e.target.value)}
-                className="flex-grow"
-              />
-              <Select value={toToken} onValueChange={setToToken}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Token" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="eth">ETH</SelectItem>
-                  <SelectItem value="usdc">USDC</SelectItem>
-                  <SelectItem value="dai">DAI</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button className="w-full" onClick={handleSwap}>
-            Swap
-          </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="px-4 py-20">
+        <div className="container mx-auto max-w-4xl text-center">
+          <Card className="bg-gradient-to-r from-blue-600 to-purple-600">
+            <CardContent className="py-12">
+              <h3 className="text-3xl font-bold text-white mb-6">
+                Ready to Start Earning?
+              </h3>
+              <p className="text-white/90 mb-8 text-lg">
+                Join our growing community of liquidity providers and start
+                earning yields today.
+              </p>
+              <Link href="/create-pool">
+                <Button size="lg" variant="secondary" className="text-lg">
+                  Get Started Now
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
     </div>
   );
 }
