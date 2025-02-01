@@ -38,22 +38,10 @@ export default function RootLayout({
                   </Link>
                   <nav className="flex gap-6">
                     <Link
-                      href="/trade"
-                      className="text-gray-400 hover:text-white"
-                    >
-                      Trade
-                    </Link>
-                    <Link
-                      href="/explore"
-                      className="text-gray-400 hover:text-white"
-                    >
-                      Explore
-                    </Link>
-                    <Link
                       href="/pools"
                       className="text-gray-400 hover:text-white"
                     >
-                      Pool
+                      Pools
                     </Link>
                   </nav>
                 </div>
