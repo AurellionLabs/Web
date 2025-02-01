@@ -47,9 +47,9 @@ async function main() {
     console.log(`AuStake Contract: ${auStakeAddress}`);
     console.log(`Project Wallet: ${projectWallet}`);
     console.log(`Initial Owner: ${initialOwner}`);
-    console.log(`Generated .env`)
-    console.log(`NEXT_PUBLIC_AUSTAKE_ADDRESS=${auStakeAddress}`)
-    console.log(`NEXT_PUBLIC_AURA_ADDRESS=${auraGoatAddress}`)
+    console.log(`Generated .env`);
+    console.log(`NEXT_PUBLIC_AUSTAKE_ADDRESS=${auStakeAddress}`);
+    console.log(`NEXT_PUBLIC_AURA_ADDRESS=${auraGoatAddress}`);
   } catch (error) {
     console.error('Error during deployment:', error);
     process.exit(1);
