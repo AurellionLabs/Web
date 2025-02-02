@@ -23,22 +23,22 @@ export interface StakeData {
   time: BigNumberish;
 }
 export interface GroupedStakes {
-    daily: { [key: string]: number };
-    weekly: { [key: string]: number };
-    monthly: { [key: string]: number };
-    yearly: { [key: string]: number };
+  daily: { [key: string]: number };
+  weekly: { [key: string]: number };
+  monthly: { [key: string]: number };
+  yearly: { [key: string]: number };
 }
 export interface OperationData {
-    id: string;
-    name: string;
-    token: string;
-    provider: string;
-    deadline: bigint;
-    startDate: bigint;
-    rwaName: string;
-    reward: bigint;
-    tokenTvl: bigint;
-    operationStatus: bigint;
+  id: string;
+  name: string;
+  token: string;
+  provider: string;
+  deadline: bigint;
+  startDate: bigint;
+  rwaName: string;
+  reward: bigint;
+  tokenTvl: bigint;
+  operationStatus: bigint;
 }
 
 export var ethersProvider: BrowserProvider | null;
@@ -101,34 +101,34 @@ const getAuStakeContract = async (): Promise<AuStake> =>
   });
 
 export const createOperation = async (
-    name: string,
-    token: string,
-    provider: string,
-    lengthInDays: number,
-    reward: BigNumberish,
-    rwaName: string,
+  name: string,
+  token: string,
+  provider: string,
+  lengthInDays: number,
+  reward: BigNumberish,
+  rwaName: string,
 ): Promise<string> => {
-    const contract = await getAuStakeContract();
-    try {
-        const tx = await contract.createOperation(
-            name,
-            token,
-            provider,
-            lengthInDays,
-            reward,
-            rwaName
-        );
-        const receipt = await tx.wait();
-        const event = receipt?.logs.find(
-            (log) => log.fragment?.name === 'OperationCreated',
-        );
-        if (!event || !event.args)
-            throw new Error('Operation creation event not found');
-        return event.args[0];
-    } catch (error) {
-        console.error('Error creating operation:', error);
-        throw error;
-    }
+  const contract = await getAuStakeContract();
+  try {
+    const tx = await contract.createOperation(
+      name,
+      token,
+      provider,
+      lengthInDays,
+      reward,
+      rwaName,
+    );
+    const receipt = await tx.wait();
+    const event = receipt?.logs.find(
+      (log) => log.fragment?.name === 'OperationCreated',
+    );
+    if (!event || !event.args)
+      throw new Error('Operation creation event not found');
+    return event.args[0];
+  } catch (error) {
+    console.error('Error creating operation:', error);
+    throw error;
+  }
 };
 
 export const getOperationMetrics = async (operationId: BytesLike) => {
@@ -147,21 +147,28 @@ export const getOperationMetrics = async (operationId: BytesLike) => {
   };
 };
 
-export const getStakeHistory = async (operationId: BytesLike): Promise<StakedEvent.OutputObject[]> => {
-    console.log("in getStakeHistory")
-    const contract = await getAuStakeContract();
-    console.log("before filter")
-    const filter = contract.filters.Staked(undefined, undefined, undefined, operationId);
-    console.log("after filter", filter)
-    const events = await contract.queryFilter(filter);
-    console.log("events")
-    return events.map(e => ({
-        token: e.args.token,
-        user: e.args?.user,
-        amount: e.args?.amount,
-        operationId: e.args.operationId,
-        time: e.args?.time,
-    }));
+export const getStakeHistory = async (
+  operationId: BytesLike,
+): Promise<StakedEvent.OutputObject[]> => {
+  console.log('in getStakeHistory');
+  const contract = await getAuStakeContract();
+  console.log('before filter');
+  const filter = contract.filters.Staked(
+    undefined,
+    undefined,
+    undefined,
+    operationId,
+  );
+  console.log('after filter', filter);
+  const events = await contract.queryFilter(filter);
+  console.log('events');
+  return events.map((e) => ({
+    token: e.args.token,
+    user: e.args?.user,
+    amount: e.args?.amount,
+    operationId: e.args.operationId,
+    time: e.args?.time,
+  }));
 };
 export const groupStakesByInterval = (
   stakes: StakedEvent.OutputObject[],
@@ -173,10 +180,10 @@ export const groupStakesByInterval = (
     yearly: {},
   };
 
-    stakes.forEach(stake => {
-        console.log(stake)
-        const date = new Date(Number(stake.time) * 1000);
-        const amount = Number(formatEthereumValue(stake.amount));
+  stakes.forEach((stake) => {
+    console.log(stake);
+    const date = new Date(Number(stake.time) * 1000);
+    const amount = Number(formatEthereumValue(stake.amount));
     // Daily
     const dailyKey = date.toISOString().split('T')[0];
     grouped.daily[dailyKey] = (grouped.daily[dailyKey] || 0) + amount;

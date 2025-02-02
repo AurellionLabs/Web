@@ -5,65 +5,66 @@ import * as fs from 'fs';
 dotenv.config();
 
 async function main() {
-    try {
-        // Get the signers
-        const [deployer]: HardhatEthersSigner[] = await ethers.getSigners();
-        console.log('Deploying contracts with account:', deployer.address);
-        console.log(
-            'Account balance:',
-            (await deployer.provider.getBalance(deployer.address)).toString(),
-        );
+  try {
+    // Get the signers
+    const [deployer]: HardhatEthersSigner[] = await ethers.getSigners();
+    console.log('Deploying contracts with account:', deployer.address);
+    console.log(
+      'Account balance:',
+      (await deployer.provider.getBalance(deployer.address)).toString(),
+    );
 
-        // Deploy AuraGoat token first
-        console.log('\nDeploying AuraGoat token...');
-        const AuraGoat = await ethers.getContractFactory('AuraGoat');
-        const auraGoat = await AuraGoat.deploy();
-        await auraGoat.waitForDeployment();
-        const auraGoatAddress = await auraGoat.getAddress();
-        console.log('AuraGoat token deployed to:', auraGoatAddress);
+    // Deploy AuraGoat token first
+    console.log('\nDeploying AuraGoat token...');
+    const AuraGoat = await ethers.getContractFactory('AuraGoat');
+    const auraGoat = await AuraGoat.deploy();
+    await auraGoat.waitForDeployment();
+    const auraGoatAddress = await auraGoat.getAddress();
+    console.log('AuraGoat token deployed to:', auraGoatAddress);
 
-        // Deploy AuStake contract
-        console.log('\nDeploying AuStake contract...');
-        const AuStake = await ethers.getContractFactory('AuStake');
+    // Deploy AuStake contract
+    console.log('\nDeploying AuStake contract...');
+    const AuStake = await ethers.getContractFactory('AuStake');
 
-        // Contract constructor parameters
-        const projectWallet = deployer.address;
-        const initialOwner = deployer.address;
+    // Contract constructor parameters
+    const projectWallet = deployer.address;
+    const initialOwner = deployer.address;
 
-        const auStake = await AuStake.deploy(projectWallet, initialOwner);
-        await auStake.waitForDeployment();
-        const auStakeAddress = await auStake.getAddress();
-        console.log('AuStake contract deployed to:', auStakeAddress);
+    const auStake = await AuStake.deploy(projectWallet, initialOwner);
+    await auStake.waitForDeployment();
+    const auStakeAddress = await auStake.getAddress();
+    console.log('AuStake contract deployed to:', auStakeAddress);
 
-        // Wait for additional block confirmations
-        console.log('\nWaiting for block confirmations...');
-        await auStake.deploymentTransaction()?.wait(5);
+    // Wait for additional block confirmations
+    console.log('\nWaiting for block confirmations...');
+    await auStake.deploymentTransaction()?.wait(5);
 
-        // Print deployment summary
-        console.log('\nDeployment Summary');
-        console.log('==================');
-        console.log(`Deployer: ${deployer.address}`);
-        console.log(`AuraGoat Token: ${auraGoatAddress}`);
-        console.log(`AuStake Contract: ${auStakeAddress}`);
-        console.log(`Project Wallet: ${projectWallet}`);
-        console.log(`Initial Owner: ${initialOwner}`);
-        console.log('Writing constants to:', process.cwd() + '/chain-constants.ts');
-        console.log(`Generated Constants`)
-        console.log(`NEXT_PUBLIC_AUSTAKE_ADDRESS=${auStakeAddress}`)
-        console.log(`NEXT_PUBLIC_AURA_ADDRESS=${auraGoatAddress}`)
-        await fs.promises.writeFile('chain-constants.ts',
-            `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";\n` +
-            `export const NEXT_PUBLIC_AURA_ADDRESS = "${auraGoatAddress}";\n`
-        );
-    } catch (error) {
-        console.error('Error during deployment:', error);
-        process.exit(1);
-    }
+    // Print deployment summary
+    console.log('\nDeployment Summary');
+    console.log('==================');
+    console.log(`Deployer: ${deployer.address}`);
+    console.log(`AuraGoat Token: ${auraGoatAddress}`);
+    console.log(`AuStake Contract: ${auStakeAddress}`);
+    console.log(`Project Wallet: ${projectWallet}`);
+    console.log(`Initial Owner: ${initialOwner}`);
+    console.log('Writing constants to:', process.cwd() + '/chain-constants.ts');
+    console.log(`Generated Constants`);
+    console.log(`NEXT_PUBLIC_AUSTAKE_ADDRESS=${auStakeAddress}`);
+    console.log(`NEXT_PUBLIC_AURA_ADDRESS=${auraGoatAddress}`);
+    await fs.promises.writeFile(
+      'chain-constants.ts',
+      `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";\n` +
+        `export const NEXT_PUBLIC_AURA_ADDRESS = "${auraGoatAddress}";\n`,
+    );
+  } catch (error) {
+    console.error('Error during deployment:', error);
+    process.exit(1);
+  }
 }
 
 main()
-    .then(() => process.exit(0))
-    .catch((error) => {
-        console.error(error);
-        process.exit(1);
-    });
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
