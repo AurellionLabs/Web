@@ -17,19 +17,23 @@ export default function PoolsPage() {
   const [operations, setOperations] = useState<OperationData[]>();
   const { setConnected, connected } = useChainProvider();
   useEffect(() => {
-    console.log('fetching operations...');
-    const fetchOperations = async () => {
-      const ids = await getOperationList(); // Fetch list of IDs
-      console.log(ids);
-      if (ids) {
-        const operationsData = await Promise.all(
-          ids.map((id) => getOperation(id)),
-        );
-        setOperations(operationsData); // Update with completed data
+    if (connected) {
+      console.log('fetching operations...');
+      const fetchOperations = async () => {
+        const ids = await getOperationList(); // Fetch list of IDs
+        console.log(ids);
+        if (ids) {
+          const operationsData = await Promise.all(
+            ids.map((id) => getOperation(id)),
+          );
+          setOperations(operationsData); // Update with completed data
+        }
+      };
+      if (walletAddress) {
+        fetchOperations();
       }
-    };
-    if (walletAddress) {
-      fetchOperations();
+    } else {
+      console.log('Wallet not connected');
     }
   }, [connected]);
   return (

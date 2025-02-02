@@ -43,6 +43,9 @@ const formSchema = z.object({
   reward: z.string().min(1, {
     message: 'Please enter a reward amount.',
   }),
+  asset: z.string().min(1, {
+    message: 'Please enter the pools asset .',
+  }),
 });
 
 export default function CreateOperationPage() {
@@ -54,6 +57,7 @@ export default function CreateOperationPage() {
       provider: '',
       lengthInDays: '',
       reward: '',
+      asset: '',
     },
   });
 
@@ -67,8 +71,8 @@ export default function CreateOperationPage() {
         values.provider,
         parseInt(values.lengthInDays),
         rewardInWei,
+        values.asset,
       );
-
       toast.success('Operation created successfully!');
     } catch (error: any) {
       toast.error(
@@ -113,6 +117,23 @@ export default function CreateOperationPage() {
                     </FormControl>
                     <FormDescription>
                       Choose a descriptive name for your operation.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="asset"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Asset</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Goat" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter the assset that will be used in an operation.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -191,7 +212,6 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
-
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-600 text-white"
