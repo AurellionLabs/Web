@@ -76,7 +76,14 @@ export interface AuStakeInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createOperation",
-    values: [string, AddressLike, AddressLike, BigNumberish, BigNumberish]
+    values: [
+      string,
+      AddressLike,
+      AddressLike,
+      BigNumberish,
+      BigNumberish,
+      string
+    ]
   ): string;
   encodeFunctionData(
     functionFragment: "getOperation",
@@ -398,7 +405,8 @@ export interface AuStake extends BaseContract {
       token: AddressLike,
       provider: AddressLike,
       deadline: BigNumberish,
-      reward: BigNumberish
+      reward: BigNumberish,
+      rwaName: string
     ],
     [string],
     "nonpayable"
@@ -424,12 +432,25 @@ export interface AuStake extends BaseContract {
   idToOperation: TypedContractMethod<
     [arg0: BytesLike],
     [
-      [string, string, string, string, bigint, bigint, bigint, bigint] & {
+      [
+        string,
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        string,
+        bigint,
+        bigint,
+        bigint
+      ] & {
         id: string;
         name: string;
         token: string;
         provider: string;
         deadline: bigint;
+        startDate: bigint;
+        rwaName: string;
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
@@ -558,7 +579,8 @@ export interface AuStake extends BaseContract {
       token: AddressLike,
       provider: AddressLike,
       deadline: BigNumberish,
-      reward: BigNumberish
+      reward: BigNumberish,
+      rwaName: string
     ],
     [string],
     "nonpayable"
@@ -586,12 +608,25 @@ export interface AuStake extends BaseContract {
   ): TypedContractMethod<
     [arg0: BytesLike],
     [
-      [string, string, string, string, bigint, bigint, bigint, bigint] & {
+      [
+        string,
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        string,
+        bigint,
+        bigint,
+        bigint
+      ] & {
         id: string;
         name: string;
         token: string;
         provider: string;
         deadline: bigint;
+        startDate: bigint;
+        rwaName: string;
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;

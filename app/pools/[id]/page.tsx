@@ -44,9 +44,9 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         volume24h: groupedStake?.daily,
         volumeChange: '-74.02%',
         fees24h: '$87.3K',
-        token0Balance: '1.3K WBTC',
-        token1Balance: '16.1M USDC',
-        lockupPeriod: 7 * 24 * 60 * 60 * 1000,
+        token0Balance: `${selectedPool?.rwaName}`,
+        token1Balance: 'Funding',
+        lockupPeriod: Number(selectedPool?.deadline) * 24 * 60 * 60 * 1000,
         transactions: [
             {
                 time: '2m ago',

@@ -24,6 +24,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     address token;
     address provider;
     uint256 deadline;
+    uint256 startDate;
+    string rwaName;
     // implement a rep score
     uint256 reward;
     uint256 tokenTvl;
@@ -84,7 +86,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     address token,
     address provider,
     uint256 deadline,
-    uint256 reward
+    uint256 reward,
+    string memory rwaName
   ) public adminOnly returns (bytes32) {
     require(token != address(0), 'Invalid token address');
     require(provider != address(0), 'Invalid provider address');
@@ -100,6 +103,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     operation.reward = reward;
     operation.operationStatus = OperationStatus.ACTIVE;
     operation.id = id;
+    operation.startDate = block.timestamp;
+    operation.rwaName = rwaName;
     providerToOperationIds[provider].push(id);
     tokenToOperationIds[token] = id;
     activeOperations.push(id);

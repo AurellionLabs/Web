@@ -12,8 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { stake } from '@/dapp-connectors/staking-controller';
-import { AURAGOAT_TOKEN_ADDRESS } from '@/constants';
+import { getOperation, stake } from '@/dapp-connectors/staking-controller';
 
 export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -35,7 +34,8 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     setLoading(true);
     try {
       const amountBigNumberish = parseUnits(amount, 18);
-      await stake(AURAGOAT_TOKEN_ADDRESS, params.id, amountBigNumberish);
+      const operation = await getOperation(params.id)
+      await stake(operation.token, params.id, amountBigNumberish);
       console.log('Successfully added liquidity');
       router.push(`/pools/${params.id}`);
     } catch (error: any) {

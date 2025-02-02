@@ -13,6 +13,7 @@ import { AuStake__factory } from '@/typechain-types';
 import { Wallet } from './wallet-helper';
 import { StakedEvent } from '@/typechain-types/contracts/AuStake';
 import { formatEthereumValue } from './ethereum-utils';
+import { NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
 
 export interface StakeData {
     token: AddressLike;
@@ -22,10 +23,10 @@ export interface StakeData {
     time: BigNumberish;
 }
 export interface GroupedStakes {
-    daily: { [key: string]: number};
-    weekly: { [key: string]: number};
-    monthly: { [key: string]: number};
-    yearly: { [key: string]: number};
+    daily: { [key: string]: number };
+    weekly: { [key: string]: number };
+    monthly: { [key: string]: number };
+    yearly: { [key: string]: number };
 }
 export interface OperationData {
     id: string;
@@ -33,6 +34,8 @@ export interface OperationData {
     token: string;
     provider: string;
     deadline: bigint;
+    startDate: bigint;
+    rwaName: string;
     reward: bigint;
     tokenTvl: bigint;
     operationStatus: bigint;
@@ -41,7 +44,7 @@ export interface OperationData {
 
 export var ethersProvider: BrowserProvider | null;
 export var walletAddress: string;
-const AUSTAKE_ADDRESS = process.env.NEXT_PUBLIC_AUSTAKE_ADDRESS;
+const AUSTAKE_ADDRESS = NEXT_PUBLIC_AUSTAKE_ADDRESS;
 export var signer: JsonRpcSigner;
 export const setWalletProvider = async () => {
     try {
@@ -104,6 +107,7 @@ export const createOperation = async (
     provider: string,
     lengthInDays: number,
     reward: BigNumberish,
+    rwaName: string,
 ): Promise<string> => {
     const contract = await getAuStakeContract();
     try {
@@ -113,6 +117,7 @@ export const createOperation = async (
             provider,
             lengthInDays,
             reward,
+            rwaName
         );
         const receipt = await tx.wait();
         const event = receipt?.logs.find(
@@ -146,7 +151,7 @@ export const getStakeHistory = async (operationId: BytesLike): Promise<StakedEve
     const contract = await getAuStakeContract();
     console.log("before filter")
     const filter = contract.filters.Staked(undefined, undefined, undefined, operationId);
-    console.log("after filter",filter)
+    console.log("after filter", filter)
     const events = await contract.queryFilter(filter);
     console.log("events")
     return events.map(e => ({
@@ -167,7 +172,7 @@ export const groupStakesByInterval = (stakes: StakedEvent.OutputObject[]): Group
 
     stakes.forEach(stake => {
         console.log(stake)
-        const date = new Date(Number(stake.time)*1000);
+        const date = new Date(Number(stake.time) * 1000);
         const amount = Number(formatEthereumValue(stake.amount));
 
         // Daily
