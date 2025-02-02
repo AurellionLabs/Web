@@ -22,8 +22,8 @@ ChartJS.register(
   Filler,
 );
 interface ChartProps {
-    groupedStakes?: GroupedStakes;
-    timeRange?: string;
+  groupedStakes?: GroupedStakes;
+  timeRange?: string;
 }
 
 export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
@@ -46,17 +46,17 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
     },
     scales: {
       x: {
-        display: true,  // Changed to true
+        display: true, // Changed to true
         grid: {
-          display: false
-        }
+          display: false,
+        },
       },
       y: {
-        display: true,  // Changed to true
+        display: true, // Changed to true
         beginAtZero: true,
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
-        }
+          color: 'rgba(255, 255, 255, 0.1)',
+        },
       },
     },
     interaction: {
@@ -68,13 +68,13 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
 
   const getDataByTimeRange = () => {
     console.log('GroupedStakes:', groupedStakes);
-    
+
     if (!groupedStakes) {
       return { labels: [], values: [] };
     }
 
     let dataPoints: { [key: string]: number } = {};
-    
+
     switch (timeRange) {
       case '1D':
         dataPoints = groupedStakes.daily;
@@ -93,7 +93,7 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
     }
 
     const sortedKeys = Object.keys(dataPoints).sort();
-    const values = sortedKeys.map(key => dataPoints[key]);
+    const values = sortedKeys.map((key) => dataPoints[key]);
 
     // If we only have one point, add a zero point before it to make the line visible
     if (sortedKeys.length === 1) {
@@ -108,7 +108,7 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
 
     return {
       labels: sortedKeys,
-      values
+      values,
     };
   };
 
@@ -124,7 +124,7 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
         borderColor: 'rgb(245, 158, 11)',
         backgroundColor: 'rgba(245, 158, 11, 0.1)',
         tension: 0.4,
-        pointRadius: 4,  // Increased point size
+        pointRadius: 4, // Increased point size
         pointBackgroundColor: 'rgb(245, 158, 11)',
       },
     ],
