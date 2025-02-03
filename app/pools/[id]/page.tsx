@@ -26,10 +26,11 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const [operationProgress, setOperationProgress] = useState(0);
   const [isOperationComplete, setIsOperationComplete] = useState(false);
   const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>();
+  const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
   const calculateDateValues = async () => {
     console.log('getting history');
     const history = await getStakeHistory(params.id);
-    const groupedStaked = groupStakesByInterval(history);
+    const groupedStaked: GroupedStakes = groupStakesByInterval(history);
     return groupedStaked;
   };
   const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
@@ -40,18 +41,12 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     return daily;
   };
 
-  const calculateDailyPercentageChange = () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-
-
-  }
   const poolData = {
     name: selectedPool?.name,
     price: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
     priceChange: '-0.3',
     tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
-    tvlChange: '+0.26%',
+    tvlChange: dailyPercentageChange,
     volume24h: groupedStake?.daily,
     volumeChange: '-74.02%',
     fees24h: '$87.3K',
@@ -97,14 +92,15 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
       console.log('Fetched grouped stakes:', data);
       setGroupedStake(data);
 
-      const today = new Date()
+      const today = new Date();
       const todayKey = today.toISOString().split('T')[0];
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-
       const yesterdayKey = yesterday.toISOString().split('T')[0];
 
-      const difference = data[todayKey] - data[yesterdayKey] 
+      const difference = data.daily[todayKey] - data.daily[yesterdayKey];
+      const percentageChange = (difference / data.daily[yesterdayKey]) * 100;
+      setDailyPercentageChange(percentageChange.toFixed(2));
     };
     getPool();
   }, []);

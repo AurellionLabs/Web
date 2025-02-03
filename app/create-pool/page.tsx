@@ -26,6 +26,7 @@ import {
 import { ethers } from 'ethers';
 import { createOperation } from '@/dapp-connectors/staking-controller';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
   name: z.string().min(3, {
@@ -49,6 +50,7 @@ const formSchema = z.object({
 });
 
 export default function CreateOperationPage() {
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,6 +76,7 @@ export default function CreateOperationPage() {
         values.asset,
       );
       toast.success('Operation created successfully!');
+      router.push('/pools');
     } catch (error: any) {
       toast.error(
         error.message || 'Failed to create operation. Please try again.',
