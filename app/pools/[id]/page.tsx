@@ -13,24 +13,39 @@ import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 import {
+  getOperation,
   getStakeHistory,
   GroupedStakes,
   groupStakesByInterval,
+  StakeData,
+  triggerReward,
+  unlockReward,
+  walletAddress,
 } from '@/dapp-connectors/staking-controller';
+import { StakedEvent } from '@/typechain-types/contracts/AuStake';
+import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
 export default function PoolDetails({ params }: { params: { id: string } }) {
-  const { selectedPool } = usePoolsProvider();
+  const { setSelectedPool, selectedPool } = usePoolsProvider();
   const [timeRange, setTimeRange] = useState('1D');
+  const [remainingTime, setRemainingTime] = useState(0);
   const [operationProgress, setOperationProgress] = useState(0);
   const [isOperationComplete, setIsOperationComplete] = useState(false);
+  const [isProvider, setIsProvider] = useState(false);
   const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>();
+  const [stakeHistory, setStakeHistory] = useState<
+    StakedEvent.OutputObject[] | undefined
+  >();
   const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
   const calculateDateValues = async () => {
     console.log('getting history');
     const history = await getStakeHistory(params.id);
-    const groupedStaked: GroupedStakes = groupStakesByInterval(history);
+    if (history) {
+      setStakeHistory(history);
+    } else console.log('no history');
+    const groupedStaked = groupStakesByInterval(history);
     return groupedStaked;
   };
   const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
@@ -40,10 +55,26 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     console.log(daily);
     return daily;
   };
-
+  const handleRewardClaim = async () => {
+    if (isProvider) {
+      await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, params.id);
+    }
+    try {
+      await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id);
+    } catch (e) {
+      console.error('couldnt claim error with', e);
+    }
+  };
+  const handleRewardUnlock = async () => {
+    try {
+      await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, params.id);
+    } catch (e) {
+      console.error('couldnt claim error with', e);
+    }
+  };
   const poolData = {
     name: selectedPool?.name,
-    price: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
+    price: '53.17M',
     priceChange: '-0.3',
     tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
     tvlChange: dailyPercentageChange,
@@ -72,19 +103,91 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setOperationProgress((prevProgress) => {
-        if (prevProgress >= 100) {
-          clearInterval(interval);
-          setIsOperationComplete(true);
-          return 100;
-        }
-        return prevProgress + 1;
+    const getCurrentTimings = () => {
+      // Early return if data isn't loaded yet
+      if (!selectedPool?.startDate || !selectedPool?.deadline) {
+        console.log('Timing data:', {
+          startDate: selectedPool?.startDate,
+          deadline: selectedPool?.deadline,
+        });
+        return {
+          progress: 0,
+          remainingTime: 0,
+        };
+      }
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      const startTime = Number(selectedPool.startDate);
+      const duration = Number(selectedPool.deadline);
+
+      // Debug log for our core timing values
+      console.log('Core timing values:', {
+        currentTime,
+        startTime,
+        duration,
+        endTime: startTime + duration,
       });
-    }, poolData.lockupPeriod / 100);
+
+      // Ensure our numbers are valid
+      if (isNaN(startTime) || isNaN(duration)) {
+        console.log('Invalid number conversion');
+        return {
+          progress: 0,
+          remainingTime: 0,
+        };
+      }
+
+      const endTime = startTime + duration;
+      const remainingTime = Math.max(0, endTime - currentTime);
+
+      let progress = 0;
+      if (currentTime < startTime) {
+        progress = 0;
+      } else if (currentTime >= endTime) {
+        if (Number(selectedPool.operationStatus) === 3) {
+          setIsOperationComplete(true);
+        }
+        progress = 100;
+      } else {
+        const elapsed = currentTime - startTime;
+        progress = (elapsed * 100) / duration;
+      }
+
+      // Debug log our calculated values
+      console.log('Calculated values:', {
+        remainingTime,
+        progress,
+        isComplete: currentTime >= endTime,
+      });
+
+      return {
+        progress: Math.min(100, Math.max(0, progress)),
+        remainingTime: remainingTime * 1000,
+      };
+    };
+
+    // Don't set up the interval until we have data
+    if (!selectedPool?.startDate || !selectedPool?.deadline) {
+      return;
+    }
+
+    const initial = getCurrentTimings();
+    setOperationProgress(initial.progress);
+    setRemainingTime(initial.remainingTime);
+
+    const interval = setInterval(() => {
+      const current = getCurrentTimings();
+      setOperationProgress(current.progress);
+      setRemainingTime(current.remainingTime);
+
+      if (current.progress >= 100) {
+        clearInterval(interval);
+      }
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [poolData.lockupPeriod]);
+  }, [selectedPool]);
+
   useEffect(() => {
     const getPool = async () => {
       console.log('attempting to get pools');
@@ -100,11 +203,12 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
 
       const difference = data.daily[todayKey] - data.daily[yesterdayKey];
       const percentageChange = (difference / data.daily[yesterdayKey]) * 100;
-      setDailyPercentageChange(percentageChange.toFixed(2));
+      setDailyPercentageChange(percentageChange.toFixed(2) ?? '0');
+      setSelectedPool(await getOperation(params.id));
+      setIsProvider(walletAddress == selectedPool?.provider);
     };
     getPool();
   }, []);
-
   const formatTime = (milliseconds: number) => {
     const seconds = Math.floor(milliseconds / 1000);
     const days = Math.floor(seconds / (3600 * 24));
@@ -232,19 +336,25 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 <div className="flex justify-between text-sm text-gray-400">
                   <span>Time remaining</span>
                   <span>
-                    {formatTime(
-                      ((100 - operationProgress) * poolData.lockupPeriod) / 100,
-                    )}
+                    {remainingTime ? formatTime(remainingTime) : 'Loading...'}
                   </span>
                 </div>
               </div>
-              <Button className="w-full mt-4" disabled={!isOperationComplete}>
-                {isOperationComplete ? 'Withdraw' : 'Withdraw (Locked)'}
+              <Button
+                onClick={handleRewardClaim}
+                className="w-full mt-4"
+                disabled={!isOperationComplete || isProvider}
+              >
+                {!isProvider
+                  ? 'Unlock'
+                  : isOperationComplete
+                    ? 'Withdraw'
+                    : 'Withdraw (Locked)'}
               </Button>
             </div>
 
             {/* Transactions */}
-            <TransactionTable transactions={poolData.transactions} />
+            <TransactionTable transactions={stakeHistory} />
           </div>
 
           {/* Stats */}

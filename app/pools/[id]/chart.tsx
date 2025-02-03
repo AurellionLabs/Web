@@ -68,14 +68,15 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
 
   const getDataByTimeRange = () => {
     console.log('GroupedStakes:', groupedStakes);
-
     if (!groupedStakes) {
       return { labels: [], values: [] };
     }
 
     let dataPoints: { [key: string]: number } = {};
-
     switch (timeRange) {
+      case '1H':
+        dataPoints = groupedStakes.hourly;
+        break;
       case '1D':
         dataPoints = groupedStakes.daily;
         break;
@@ -92,26 +93,68 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
         dataPoints = groupedStakes.daily;
     }
 
-    const sortedKeys = Object.keys(dataPoints).sort();
+    // Sort keys by converting strings to dates first for proper chronological ordering
+    const sortedKeys = Object.keys(dataPoints).sort((a, b) => {
+      // For hourly format, append minutes and seconds before parsing
+      const parseDate = (dateStr: string) => {
+        if (timeRange === '1H') {
+          // Append ':00:00' to make it a valid ISO datetime string
+          return new Date(dateStr + ':00:00');
+        }
+        return new Date(dateStr);
+      };
+
+      const dateA = parseDate(a);
+      const dateB = parseDate(b);
+      return dateA.getTime() - dateB.getTime();
+    });
+
     const values = sortedKeys.map((key) => dataPoints[key]);
 
-    // If we only have one point, add a zero point before it to make the line visible
+    // Format labels based on time range
+    const formattedLabels = sortedKeys.map((key) => {
+      if (timeRange === '1H') {
+        // Add the missing time components before parsing
+        const fullDate = new Date(key + ':00:00');
+        // Format to show hour and minute
+        return fullDate.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false, // Use 24-hour format for consistency
+        });
+      }
+      return key;
+    });
+
+    // Handle single point case
     if (sortedKeys.length === 1) {
-      const date = new Date(sortedKeys[0]);
-      date.setDate(date.getDate() - 1);
-      sortedKeys.unshift(date.toISOString().split('T')[0]);
+      const date = new Date(
+        sortedKeys[0] + (timeRange === '1H' ? ':00:00' : ''),
+      );
+      if (timeRange === '1H') {
+        date.setHours(date.getHours() - 1);
+        formattedLabels.unshift(
+          date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }),
+        );
+      } else {
+        date.setDate(date.getDate() - 1);
+        formattedLabels.unshift(date.toISOString().split('T')[0]);
+      }
       values.unshift(0);
     }
 
-    console.log('Chart Labels:', sortedKeys);
-    console.log('Chart Values:', values);
+    console.log('Formatted Labels:', formattedLabels);
+    console.log('Values:', values);
 
     return {
-      labels: sortedKeys,
+      labels: formattedLabels,
       values,
     };
   };
-
   const { labels, values } = getDataByTimeRange();
 
   const data = {

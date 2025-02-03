@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { parseUnits } from 'ethers';
@@ -12,7 +12,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { getOperation, stake } from '@/dapp-connectors/staking-controller';
+import {
+  getOperation,
+  requestTokenAllowance,
+  stake,
+} from '@/dapp-connectors/staking-controller';
 import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 
 export default function AddLiquidity({ params }: { params: { id: string } }) {
@@ -35,7 +39,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     setLoading(true);
     try {
       const amountBigNumberish = parseUnits(amount, 18);
-
+      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amount);
       await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
       console.log('Successfully added liquidity');
       router.push(`/pools/${params.id}`);

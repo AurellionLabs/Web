@@ -293,6 +293,7 @@ export namespace StakedEvent {
     user: AddressLike,
     amount: BigNumberish,
     operationId: BytesLike,
+    eType: string,
     time: BigNumberish,
   ];
   export type OutputTuple = [
@@ -300,6 +301,7 @@ export namespace StakedEvent {
     user: string,
     amount: bigint,
     operationId: string,
+    eType: string,
     time: bigint,
   ];
   export interface OutputObject {
@@ -307,6 +309,7 @@ export namespace StakedEvent {
     user: string;
     amount: bigint;
     operationId: string;
+    eType: string;
     time: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -321,18 +324,24 @@ export namespace UnstakedEvent {
     user: AddressLike,
     amount: BigNumberish,
     operationId: BytesLike,
+    eType: string,
+    time: BigNumberish,
   ];
   export type OutputTuple = [
     token: string,
     user: string,
     amount: bigint,
     operationId: string,
+    eType: string,
+    time: bigint,
   ];
   export interface OutputObject {
     token: string;
     user: string;
     amount: bigint;
     operationId: string;
+    eType: string;
+    time: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -803,7 +812,7 @@ export interface AuStake extends BaseContract {
       RewardPaidEvent.OutputObject
     >;
 
-    'Staked(address,address,uint256,bytes32,uint256)': TypedContractEvent<
+    'Staked(address,address,uint256,bytes32,string,uint256)': TypedContractEvent<
       StakedEvent.InputTuple,
       StakedEvent.OutputTuple,
       StakedEvent.OutputObject
@@ -814,7 +823,7 @@ export interface AuStake extends BaseContract {
       StakedEvent.OutputObject
     >;
 
-    'Unstaked(address,address,uint256,bytes32)': TypedContractEvent<
+    'Unstaked(address,address,uint256,bytes32,string,uint256)': TypedContractEvent<
       UnstakedEvent.InputTuple,
       UnstakedEvent.OutputTuple,
       UnstakedEvent.OutputObject

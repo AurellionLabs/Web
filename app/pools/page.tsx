@@ -27,6 +27,7 @@ export default function PoolsPage() {
             ids.map((id) => getOperation(id)),
           );
           setOperations(operationsData); // Update with completed data
+          console.log('these are your operations', operations);
         }
       };
       if (walletAddress) {

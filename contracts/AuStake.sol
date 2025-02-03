@@ -50,13 +50,16 @@ contract AuStake is ReentrancyGuard, Ownable {
     address indexed user,
     uint256 amount,
     bytes32 indexed operationId,
+    string eType,
     uint time
   );
   event Unstaked(
     address indexed token,
     address indexed user,
     uint256 amount,
-    bytes32 indexed operationId
+    bytes32 indexed operationId,
+    string eType,
+    uint time
   );
   event RewardPaid(
     address indexed user,
@@ -141,7 +144,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     idToOperation[operationId].tokenTvl += amount;
     tokenTvl[token] += amount;
 
-    emit Staked(token, msg.sender, amount, operationId, block.timestamp);
+    emit Staked(token, msg.sender, amount, operationId, "Staked", block.timestamp);
   }
 
   function burn(
@@ -162,7 +165,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     tokenTvl[token] -= amount;
     idToOperation[operationId].tokenTvl -= amount;
 
-    emit Unstaked(token, user, amount, operationId);
+    emit Unstaked(token, user, amount, operationId, "Staked",block.timestamp);
   }
 
   function unlockReward(address token, bytes32 operationId) public {
@@ -171,18 +174,6 @@ contract AuStake is ReentrancyGuard, Ownable {
       'sender is not the provider'
     );
     IERC20 tokenContract = IERC20(token);
-    uint swapIndex;
-    bool swapFound = false;
-    for (uint i = 0; i < activeOperations.length; i++) {
-      if (activeOperations[i] == operationId) {
-        swapIndex = i;
-        swapFound = true;
-        break;
-      }
-    }
-    require(swapFound == true, 'Operation Id not found');
-    activeOperations[activeOperations.length - 1] = activeOperations[swapIndex];
-    activeOperations.pop();
     idToOperation[operationId].operationStatus = OperationStatus.COMPLETE;
     require(
       tokenContract.transferFrom(
@@ -207,12 +198,25 @@ contract AuStake is ReentrancyGuard, Ownable {
     Stake storage userStake = operationStakes[operationId][user];
     require(userStake.isActive, 'No active stake');
     IERC20 tokenContract = IERC20(token);
-
     Operation storage operation = idToOperation[operationId];
     uint256 userShare = (userStake.amount * 1e18) / operation.tokenTvl;
     uint256 reward = (operation.reward * userShare) / 1e18;
     operation.tokenTvl -= reward;
-    operation.operationStatus = OperationStatus.PAID;
+    if(operation.tokenTvl == 0){
+        uint swapIndex;
+        bool swapFound = false;
+        for (uint i = 0; i < activeOperations.length; i++) {
+            if (activeOperations[i] == operationId) {
+                swapIndex = i;
+                swapFound = true;
+                break;
+            }
+        }
+        require(swapFound == true, 'Operation Id not found');
+        activeOperations[activeOperations.length - 1] = activeOperations[swapIndex];
+        activeOperations.pop();
+        operation.operationStatus = OperationStatus.PAID;
+    }
     require(tokenContract.transfer(user, reward), 'Reward transfer failed');
     emit RewardPaid(user, reward, operationId);
   }

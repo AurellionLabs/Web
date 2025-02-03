@@ -10,7 +10,11 @@ interface PoolRowProps {
   operation: OperationData;
   index: number;
 }
-
+const formatDaysLeft = (deadline: number) => {
+  const now = Math.floor(Date.now() / 1000);
+  const daysLeft = Math.max(0, Math.floor((deadline - now) / 86400));
+  return daysLeft.toString();
+};
 export function PoolRow({ operation, index }: PoolRowProps) {
   const { setSelectedPool } = usePoolsProvider();
   const [formattedValues, setFormattedValues] = useState({
@@ -26,7 +30,7 @@ export function PoolRow({ operation, index }: PoolRowProps) {
     setFormattedValues({
       tokenTvl: formatEthereumValue(operation.tokenTvl),
       reward: formatEthereumValue(operation.reward),
-      lengthInDays: operation.lengthInDays?.toString() || '0',
+      lengthInDays: formatDaysLeft(Number(operation.deadline)) || '0',
     });
   }, [operation]);
 
