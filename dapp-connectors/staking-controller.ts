@@ -14,6 +14,7 @@ import { Wallet } from './wallet-helper';
 import { StakedEvent, UnstakedEvent } from '@/typechain-types/contracts/AuStake';
 import { formatEthereumValue } from './ethereum-utils';
 import { NEXT_PUBLIC_AURA_ADDRESS, NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
+import { AURAGOAT_TOKEN_ADDRESS } from '@/constants';
 
 export interface StakeData {
     token: AddressLike;
@@ -201,12 +202,19 @@ export const getStakeHistory = async (
 export const requestTokenAllowance = async (token: AddressLike, amount: BigNumberish = 1000000000000 * 10 ** 18) => {
     const contract = await getAuraContract()
     const allowance = await contract.allowance(walletAddress, NEXT_PUBLIC_AUSTAKE_ADDRESS)
-    if (allowance < Number(amount)) {
-        const totalSupply = await contract.totalSupply()
-        if (totalSupply > Number(amount)) {
-            await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, totalSupply)
-        } else await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, amount)
+    var tx;
+    try {
+        if (allowance < Number(amount)) {
+            const totalSupply = await contract.totalSupply()
+            if (totalSupply > Number(amount)) {
+                tx = await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, totalSupply)
+            } else tx = await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, amount)
+        }
+    } catch (e) {
+        console.error(`Allowance failed to be increased, amount: ${amount} `)
     }
+    if (tx)
+        await tx.wait()
 }
 export const getWithdrawHistory = async (
     operationId: BytesLike,
@@ -312,14 +320,27 @@ export const stake = async (
     }
 };
 
-export const triggerReward = async (
-    token: string,
+export const unlockReward = async (
+    token = AURAGOAT_TOKEN_ADDRESS,
     operationId: BytesLike,
-    user: string,
 ) => {
     const contract = await getAuStakeContract();
     try {
-        const tx = await contract.claimReward(token, operationId, user);
+        const tx = await contract.unlockReward(token, operationId);
+        await tx.wait();
+    } catch (error) {
+        console.error('Error triggering reward:', error);
+        throw error;
+    }
+};
+
+export const triggerReward = async (
+    token: string,
+    operationId: BytesLike,
+) => {
+    const contract = await getAuStakeContract();
+    try {
+        const tx = await contract.claimReward(token, operationId, walletAddress);
         await tx.wait();
     } catch (error) {
         console.error('Error triggering reward:', error);
