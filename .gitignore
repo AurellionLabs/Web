@@ -3,3 +3,4 @@ node_modules/
 .swc/
 .*.env
 artifacts/build-info/
+cache/
