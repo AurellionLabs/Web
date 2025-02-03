@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getOperation, stake } from '@/dapp-connectors/staking-controller';
+import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 
 export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -34,8 +35,8 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     setLoading(true);
     try {
       const amountBigNumberish = parseUnits(amount, 18);
-      const operation = await getOperation(params.id)
-      await stake(operation.token, params.id, amountBigNumberish);
+
+      await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
       console.log('Successfully added liquidity');
       router.push(`/pools/${params.id}`);
     } catch (error: any) {

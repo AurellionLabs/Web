@@ -21,53 +21,53 @@ import {
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
 export default function PoolDetails({ params }: { params: { id: string } }) {
-    const { selectedPool } = usePoolsProvider();
-    const [timeRange, setTimeRange] = useState('1D');
-    const [operationProgress, setOperationProgress] = useState(0);
-    const [isOperationComplete, setIsOperationComplete] = useState(false);
-    const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>()
-    const calculateDateValues = async () => {
-        console.log("getting history")
-        const history = await getStakeHistory(params.id)
-        const groupedStaked = groupStakesByInterval(history)
-        return groupedStaked
-    }
-    const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
-        if (!groupedStake?.daily) return "0";
-        const today = new Date().toISOString().split('T')[0];
-        const daily = groupedStake.daily[today]?.toString() || "0";
-        console.log(daily)
-        return daily
-    };
-    const poolData = {
-        name: selectedPool?.name,
-        price: '53.17M',
-        priceChange: '-0.3',
-        tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
-        tvlChange: '+0.26%',
-        volume24h: groupedStake?.daily,
-        volumeChange: '-74.02%',
-        fees24h: '$87.3K',
-        token0Balance: `${selectedPool?.rwaName}`,
-        token1Balance: 'Funding',
-        lockupPeriod: Number(selectedPool?.deadline) * 24 * 60 * 60 * 1000,
-        transactions: [
-            {
-                time: '2m ago',
-                type: 'Remove',
-                usdValue: '$6,832.74',
-                token0Amount: '0.04274',
-                token1Amount: '2,800.14',
-            },
-            {
-                time: '33m ago',
-                type: 'Buy WBTC',
-                usdValue: '$456.33',
-                token0Amount: '0.00484',
-                token1Amount: '456.663',
-            },
-        ],
-    };
+  const { selectedPool } = usePoolsProvider();
+  const [timeRange, setTimeRange] = useState('1D');
+  const [operationProgress, setOperationProgress] = useState(0);
+  const [isOperationComplete, setIsOperationComplete] = useState(false);
+  const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>();
+  const calculateDateValues = async () => {
+    console.log('getting history');
+    const history = await getStakeHistory(params.id);
+    const groupedStaked = groupStakesByInterval(history);
+    return groupedStaked;
+  };
+  const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
+    if (!groupedStake?.daily) return '0';
+    const today = new Date().toISOString().split('T')[0];
+    const daily = groupedStake.daily[today]?.toString() || '0';
+    console.log(daily);
+    return daily;
+  };
+  const poolData = {
+    name: selectedPool?.name,
+    price: '53.17M',
+    priceChange: '-0.3',
+    tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
+    tvlChange: '+0.26%',
+    volume24h: groupedStake?.daily,
+    volumeChange: '-74.02%',
+    fees24h: '$87.3K',
+    token0Balance: `${selectedPool?.rwaName}`,
+    token1Balance: 'Funding',
+    lockupPeriod: Number(selectedPool?.deadline) * 24 * 60 * 60 * 1000,
+    transactions: [
+      {
+        time: '2m ago',
+        type: 'Remove',
+        usdValue: '$6,832.74',
+        token0Amount: '0.04274',
+        token1Amount: '2,800.14',
+      },
+      {
+        time: '33m ago',
+        type: 'Buy WBTC',
+        usdValue: '$456.33',
+        token0Amount: '0.00484',
+        token1Amount: '456.663',
+      },
+    ],
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {

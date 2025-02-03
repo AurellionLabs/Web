@@ -11,8 +11,6 @@ export default function ConnectButton() {
   useEffect(() => {
     try {
       handleConnect();
-      setConnected(true);
-      setConnectedText('Connected');
     } catch (error) {
       console.error('Connection error:', error);
     }

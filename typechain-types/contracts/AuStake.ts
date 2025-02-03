@@ -75,15 +75,15 @@ export interface AuStakeInterface extends Interface {
     values: [AddressLike, BytesLike, AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "createOperation",
+    functionFragment: 'createOperation',
     values: [
       string,
       AddressLike,
       AddressLike,
       BigNumberish,
       BigNumberish,
-      string
-    ]
+      string,
+    ],
   ): string;
   encodeFunctionData(
     functionFragment: 'getOperation',
@@ -406,7 +406,7 @@ export interface AuStake extends BaseContract {
       provider: AddressLike,
       deadline: BigNumberish,
       reward: BigNumberish,
-      rwaName: string
+      rwaName: string,
     ],
     [string],
     'nonpayable'
@@ -442,7 +442,7 @@ export interface AuStake extends BaseContract {
         string,
         bigint,
         bigint,
-        bigint
+        bigint,
       ] & {
         id: string;
         name: string;
@@ -580,7 +580,7 @@ export interface AuStake extends BaseContract {
       provider: AddressLike,
       deadline: BigNumberish,
       reward: BigNumberish,
-      rwaName: string
+      rwaName: string,
     ],
     [string],
     'nonpayable'
@@ -614,7 +614,7 @@ export interface AuStake extends BaseContract {
         string,
         bigint,
         bigint,
-        bigint
+        bigint,
       ] & {
         id: string;
         name: string;
