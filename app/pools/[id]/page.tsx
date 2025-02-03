@@ -39,9 +39,16 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     console.log(daily);
     return daily;
   };
+
+  const calculateDailyPercentageChange = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+
+  }
   const poolData = {
     name: selectedPool?.name,
-    price: '53.17M',
+    price: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
     priceChange: '-0.3',
     tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
     tvlChange: '+0.26%',
@@ -89,6 +96,15 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
       const data = await calculateDateValues();
       console.log('Fetched grouped stakes:', data);
       setGroupedStake(data);
+
+      const today = new Date()
+      const todayKey = today.toISOString().split('T')[0];
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const yesterdayKey = yesterday.toISOString().split('T')[0];
+
+      const difference = data[todayKey] - data[yesterdayKey] 
     };
     getPool();
   }, []);
