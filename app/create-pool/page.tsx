@@ -24,8 +24,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ethers } from 'ethers';
-import { createOperation } from '@/dapp-connectors/staking-controller';
+import { createOperation, requestTokenAllowance } from '@/dapp-connectors/staking-controller';
 import { toast } from 'sonner';
+import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 
 const formSchema = z.object({
   name: z.string().min(3, {
@@ -64,6 +65,8 @@ export default function CreateOperationPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const rewardInWei = ethers.parseEther(values.reward);
+
+      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS,rewardInWei)
 
       await createOperation(
         values.name,

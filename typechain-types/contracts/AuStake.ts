@@ -13,7 +13,7 @@ import type {
   ContractRunner,
   ContractMethod,
   Listener,
-} from 'ethers';
+} from "ethers";
 import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
@@ -21,207 +21,207 @@ import type {
   TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from '../common';
+} from "../common";
 
 export interface AuStakeInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | 'activeOperations'
-      | 'admins'
-      | 'burn'
-      | 'claimReward'
-      | 'createOperation'
-      | 'getOperation'
-      | 'idToOperation'
-      | 'lockPeriod'
-      | 'operationStakes'
-      | 'owner'
-      | 'projectWallet'
-      | 'providerToOperationIds'
-      | 'renounceOwnership'
-      | 'setAdmin'
-      | 'setLockPeriod'
-      | 'setOperationReward'
-      | 'setProjectWallet'
-      | 'stake'
-      | 'stakes'
-      | 'tokenToOperationIds'
-      | 'tokenTvl'
-      | 'transferOwnership'
-      | 'unlockReward',
+      | "activeOperations"
+      | "admins"
+      | "burn"
+      | "claimReward"
+      | "createOperation"
+      | "getOperation"
+      | "idToOperation"
+      | "lockPeriod"
+      | "operationStakes"
+      | "owner"
+      | "projectWallet"
+      | "providerToOperationIds"
+      | "renounceOwnership"
+      | "setAdmin"
+      | "setLockPeriod"
+      | "setOperationReward"
+      | "setProjectWallet"
+      | "stake"
+      | "stakes"
+      | "tokenToOperationIds"
+      | "tokenTvl"
+      | "transferOwnership"
+      | "unlockReward"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
-      | 'AdminStatusChanged'
-      | 'OperationCreated'
-      | 'OwnershipTransferred'
-      | 'RewardPaid'
-      | 'Staked'
-      | 'Unstaked',
+      | "AdminStatusChanged"
+      | "OperationCreated"
+      | "OwnershipTransferred"
+      | "RewardPaid"
+      | "Staked"
+      | "Unstaked"
   ): EventFragment;
 
   encodeFunctionData(
-    functionFragment: 'activeOperations',
-    values: [BigNumberish],
+    functionFragment: "activeOperations",
+    values: [BigNumberish]
   ): string;
-  encodeFunctionData(functionFragment: 'admins', values: [AddressLike]): string;
+  encodeFunctionData(functionFragment: "admins", values: [AddressLike]): string;
   encodeFunctionData(
-    functionFragment: 'burn',
-    values: [AddressLike, AddressLike, BytesLike],
-  ): string;
-  encodeFunctionData(
-    functionFragment: 'claimReward',
-    values: [AddressLike, BytesLike, AddressLike],
+    functionFragment: "burn",
+    values: [AddressLike, AddressLike, BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'createOperation',
+    functionFragment: "claimReward",
+    values: [AddressLike, BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "createOperation",
     values: [
       string,
       AddressLike,
       AddressLike,
       BigNumberish,
       BigNumberish,
-      string,
-    ],
+      string
+    ]
   ): string;
   encodeFunctionData(
-    functionFragment: 'getOperation',
-    values: [BytesLike],
+    functionFragment: "getOperation",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'idToOperation',
-    values: [BytesLike],
+    functionFragment: "idToOperation",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'lockPeriod',
-    values?: undefined,
+    functionFragment: "lockPeriod",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'operationStakes',
-    values: [BytesLike, AddressLike],
+    functionFragment: "operationStakes",
+    values: [BytesLike, AddressLike]
   ): string;
-  encodeFunctionData(functionFragment: 'owner', values?: undefined): string;
+  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'projectWallet',
-    values?: undefined,
-  ): string;
-  encodeFunctionData(
-    functionFragment: 'providerToOperationIds',
-    values: [AddressLike, BigNumberish],
+    functionFragment: "projectWallet",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'renounceOwnership',
-    values?: undefined,
+    functionFragment: "providerToOperationIds",
+    values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setAdmin',
-    values: [AddressLike, boolean],
+    functionFragment: "renounceOwnership",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'setLockPeriod',
-    values: [BigNumberish],
+    functionFragment: "setAdmin",
+    values: [AddressLike, boolean]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setOperationReward',
-    values: [BytesLike, BigNumberish],
+    functionFragment: "setLockPeriod",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setProjectWallet',
-    values: [AddressLike],
+    functionFragment: "setOperationReward",
+    values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'stake',
-    values: [AddressLike, BytesLike, BigNumberish],
+    functionFragment: "setProjectWallet",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'stakes',
-    values: [AddressLike, AddressLike],
+    functionFragment: "stake",
+    values: [AddressLike, BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'tokenToOperationIds',
-    values: [AddressLike],
+    functionFragment: "stakes",
+    values: [AddressLike, AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'tokenTvl',
-    values: [AddressLike],
+    functionFragment: "tokenToOperationIds",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'transferOwnership',
-    values: [AddressLike],
+    functionFragment: "tokenTvl",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'unlockReward',
-    values: [AddressLike, BytesLike],
+    functionFragment: "transferOwnership",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "unlockReward",
+    values: [AddressLike, BytesLike]
   ): string;
 
   decodeFunctionResult(
-    functionFragment: 'activeOperations',
-    data: BytesLike,
+    functionFragment: "activeOperations",
+    data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'admins', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'burn', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "admins", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'claimReward',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: 'createOperation',
-    data: BytesLike,
+    functionFragment: "claimReward",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getOperation',
-    data: BytesLike,
+    functionFragment: "createOperation",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'idToOperation',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'lockPeriod', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'operationStakes',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'owner', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'projectWallet',
-    data: BytesLike,
+    functionFragment: "getOperation",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'providerToOperationIds',
-    data: BytesLike,
+    functionFragment: "idToOperation",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "lockPeriod", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "operationStakes",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "projectWallet",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'renounceOwnership',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'setAdmin', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'setLockPeriod',
-    data: BytesLike,
+    functionFragment: "providerToOperationIds",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setOperationReward',
-    data: BytesLike,
+    functionFragment: "renounceOwnership",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "setAdmin", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "setLockPeriod",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setProjectWallet',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'stake', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'stakes', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'tokenToOperationIds',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'tokenTvl', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'transferOwnership',
-    data: BytesLike,
+    functionFragment: "setOperationReward",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'unlockReward',
-    data: BytesLike,
+    functionFragment: "setProjectWallet",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "stake", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "stakes", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "tokenToOperationIds",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "tokenTvl", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "transferOwnership",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "unlockReward",
+    data: BytesLike
   ): Result;
 }
 
@@ -242,7 +242,7 @@ export namespace OperationCreatedEvent {
   export type InputTuple = [
     operationId: BytesLike,
     name: string,
-    token: AddressLike,
+    token: AddressLike
   ];
   export type OutputTuple = [operationId: string, name: string, token: string];
   export interface OutputObject {
@@ -273,7 +273,7 @@ export namespace RewardPaidEvent {
   export type InputTuple = [
     user: AddressLike,
     amount: BigNumberish,
-    operationId: BytesLike,
+    operationId: BytesLike
   ];
   export type OutputTuple = [user: string, amount: bigint, operationId: string];
   export interface OutputObject {
@@ -293,20 +293,23 @@ export namespace StakedEvent {
     user: AddressLike,
     amount: BigNumberish,
     operationId: BytesLike,
-    time: BigNumberish,
+    eType: string,
+    time: BigNumberish
   ];
   export type OutputTuple = [
     token: string,
     user: string,
     amount: bigint,
     operationId: string,
-    time: bigint,
+    eType: string,
+    time: bigint
   ];
   export interface OutputObject {
     token: string;
     user: string;
     amount: bigint;
     operationId: string;
+    eType: string;
     time: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -321,18 +324,24 @@ export namespace UnstakedEvent {
     user: AddressLike,
     amount: BigNumberish,
     operationId: BytesLike,
+    eType: string,
+    time: BigNumberish
   ];
   export type OutputTuple = [
     token: string,
     user: string,
     amount: bigint,
     operationId: string,
+    eType: string,
+    time: bigint
   ];
   export interface OutputObject {
     token: string;
     user: string;
     amount: bigint;
     operationId: string;
+    eType: string;
+    time: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -349,54 +358,54 @@ export interface AuStake extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
 
-  activeOperations: TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
+  activeOperations: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
 
-  admins: TypedContractMethod<[arg0: AddressLike], [boolean], 'view'>;
+  admins: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
 
   burn: TypedContractMethod<
     [token: AddressLike, user: AddressLike, operationId: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   claimReward: TypedContractMethod<
     [token: AddressLike, operationId: BytesLike, user: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   createOperation: TypedContractMethod<
@@ -406,10 +415,10 @@ export interface AuStake extends BaseContract {
       provider: AddressLike,
       deadline: BigNumberish,
       reward: BigNumberish,
-      rwaName: string,
+      rwaName: string
     ],
     [string],
-    'nonpayable'
+    "nonpayable"
   >;
 
   getOperation: TypedContractMethod<
@@ -424,9 +433,9 @@ export interface AuStake extends BaseContract {
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
 
   idToOperation: TypedContractMethod<
@@ -442,7 +451,7 @@ export interface AuStake extends BaseContract {
         string,
         bigint,
         bigint,
-        bigint,
+        bigint
       ] & {
         id: string;
         name: string;
@@ -454,12 +463,12 @@ export interface AuStake extends BaseContract {
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
 
-  lockPeriod: TypedContractMethod<[], [bigint], 'view'>;
+  lockPeriod: TypedContractMethod<[], [bigint], "view">;
 
   operationStakes: TypedContractMethod<
     [arg0: BytesLike, arg1: AddressLike],
@@ -468,51 +477,51 @@ export interface AuStake extends BaseContract {
         amount: bigint;
         timestamp: bigint;
         isActive: boolean;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
 
-  owner: TypedContractMethod<[], [string], 'view'>;
+  owner: TypedContractMethod<[], [string], "view">;
 
-  projectWallet: TypedContractMethod<[], [string], 'view'>;
+  projectWallet: TypedContractMethod<[], [string], "view">;
 
   providerToOperationIds: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    'view'
+    "view"
   >;
 
-  renounceOwnership: TypedContractMethod<[], [void], 'nonpayable'>;
+  renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
 
   setAdmin: TypedContractMethod<
     [user: AddressLike, status: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setLockPeriod: TypedContractMethod<
     [_lockPeriod: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setOperationReward: TypedContractMethod<
     [id: BytesLike, amount: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setProjectWallet: TypedContractMethod<
     [_projectWallet: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   stake: TypedContractMethod<
     [token: AddressLike, operationId: BytesLike, amount: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   stakes: TypedContractMethod<
@@ -522,57 +531,57 @@ export interface AuStake extends BaseContract {
         amount: bigint;
         timestamp: bigint;
         isActive: boolean;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
 
   tokenToOperationIds: TypedContractMethod<
     [arg0: AddressLike],
     [string],
-    'view'
+    "view"
   >;
 
-  tokenTvl: TypedContractMethod<[arg0: AddressLike], [bigint], 'view'>;
+  tokenTvl: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
   transferOwnership: TypedContractMethod<
     [newOwner: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   unlockReward: TypedContractMethod<
     [token: AddressLike, operationId: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: 'activeOperations',
-  ): TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
+    nameOrSignature: "activeOperations"
+  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
   getFunction(
-    nameOrSignature: 'admins',
-  ): TypedContractMethod<[arg0: AddressLike], [boolean], 'view'>;
+    nameOrSignature: "admins"
+  ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'burn',
+    nameOrSignature: "burn"
   ): TypedContractMethod<
     [token: AddressLike, user: AddressLike, operationId: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'claimReward',
+    nameOrSignature: "claimReward"
   ): TypedContractMethod<
     [token: AddressLike, operationId: BytesLike, user: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'createOperation',
+    nameOrSignature: "createOperation"
   ): TypedContractMethod<
     [
       name: string,
@@ -580,12 +589,14 @@ export interface AuStake extends BaseContract {
       provider: AddressLike,
       deadline: BigNumberish,
       reward: BigNumberish,
-      rwaName: string,
+      rwaName: string
     ],
     [string],
-    'nonpayable'
+    "nonpayable"
   >;
-  getFunction(nameOrSignature: 'getOperation'): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "getOperation"
+  ): TypedContractMethod<
     [id: BytesLike],
     [
       [string, string, string, string, bigint, bigint, bigint, bigint] & {
@@ -597,11 +608,13 @@ export interface AuStake extends BaseContract {
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
-  getFunction(nameOrSignature: 'idToOperation'): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "idToOperation"
+  ): TypedContractMethod<
     [arg0: BytesLike],
     [
       [
@@ -614,7 +627,7 @@ export interface AuStake extends BaseContract {
         string,
         bigint,
         bigint,
-        bigint,
+        bigint
       ] & {
         id: string;
         name: string;
@@ -626,132 +639,136 @@ export interface AuStake extends BaseContract {
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'lockPeriod',
-  ): TypedContractMethod<[], [bigint], 'view'>;
-  getFunction(nameOrSignature: 'operationStakes'): TypedContractMethod<
+    nameOrSignature: "lockPeriod"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "operationStakes"
+  ): TypedContractMethod<
     [arg0: BytesLike, arg1: AddressLike],
     [
       [bigint, bigint, boolean] & {
         amount: bigint;
         timestamp: bigint;
         isActive: boolean;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'owner',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "owner"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'projectWallet',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "projectWallet"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'providerToOperationIds',
+    nameOrSignature: "providerToOperationIds"
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'renounceOwnership',
-  ): TypedContractMethod<[], [void], 'nonpayable'>;
+    nameOrSignature: "renounceOwnership"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'setAdmin',
+    nameOrSignature: "setAdmin"
   ): TypedContractMethod<
     [user: AddressLike, status: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'setLockPeriod',
-  ): TypedContractMethod<[_lockPeriod: BigNumberish], [void], 'nonpayable'>;
+    nameOrSignature: "setLockPeriod"
+  ): TypedContractMethod<[_lockPeriod: BigNumberish], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'setOperationReward',
+    nameOrSignature: "setOperationReward"
   ): TypedContractMethod<
     [id: BytesLike, amount: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'setProjectWallet',
-  ): TypedContractMethod<[_projectWallet: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "setProjectWallet"
+  ): TypedContractMethod<[_projectWallet: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'stake',
+    nameOrSignature: "stake"
   ): TypedContractMethod<
     [token: AddressLike, operationId: BytesLike, amount: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
-  getFunction(nameOrSignature: 'stakes'): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "stakes"
+  ): TypedContractMethod<
     [arg0: AddressLike, arg1: AddressLike],
     [
       [bigint, bigint, boolean] & {
         amount: bigint;
         timestamp: bigint;
         isActive: boolean;
-      },
+      }
     ],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'tokenToOperationIds',
-  ): TypedContractMethod<[arg0: AddressLike], [string], 'view'>;
+    nameOrSignature: "tokenToOperationIds"
+  ): TypedContractMethod<[arg0: AddressLike], [string], "view">;
   getFunction(
-    nameOrSignature: 'tokenTvl',
-  ): TypedContractMethod<[arg0: AddressLike], [bigint], 'view'>;
+    nameOrSignature: "tokenTvl"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'transferOwnership',
-  ): TypedContractMethod<[newOwner: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "transferOwnership"
+  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'unlockReward',
+    nameOrSignature: "unlockReward"
   ): TypedContractMethod<
     [token: AddressLike, operationId: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   getEvent(
-    key: 'AdminStatusChanged',
+    key: "AdminStatusChanged"
   ): TypedContractEvent<
     AdminStatusChangedEvent.InputTuple,
     AdminStatusChangedEvent.OutputTuple,
     AdminStatusChangedEvent.OutputObject
   >;
   getEvent(
-    key: 'OperationCreated',
+    key: "OperationCreated"
   ): TypedContractEvent<
     OperationCreatedEvent.InputTuple,
     OperationCreatedEvent.OutputTuple,
     OperationCreatedEvent.OutputObject
   >;
   getEvent(
-    key: 'OwnershipTransferred',
+    key: "OwnershipTransferred"
   ): TypedContractEvent<
     OwnershipTransferredEvent.InputTuple,
     OwnershipTransferredEvent.OutputTuple,
     OwnershipTransferredEvent.OutputObject
   >;
   getEvent(
-    key: 'RewardPaid',
+    key: "RewardPaid"
   ): TypedContractEvent<
     RewardPaidEvent.InputTuple,
     RewardPaidEvent.OutputTuple,
     RewardPaidEvent.OutputObject
   >;
   getEvent(
-    key: 'Staked',
+    key: "Staked"
   ): TypedContractEvent<
     StakedEvent.InputTuple,
     StakedEvent.OutputTuple,
     StakedEvent.OutputObject
   >;
   getEvent(
-    key: 'Unstaked',
+    key: "Unstaked"
   ): TypedContractEvent<
     UnstakedEvent.InputTuple,
     UnstakedEvent.OutputTuple,
@@ -759,7 +776,7 @@ export interface AuStake extends BaseContract {
   >;
 
   filters: {
-    'AdminStatusChanged(address,bool)': TypedContractEvent<
+    "AdminStatusChanged(address,bool)": TypedContractEvent<
       AdminStatusChangedEvent.InputTuple,
       AdminStatusChangedEvent.OutputTuple,
       AdminStatusChangedEvent.OutputObject
@@ -770,7 +787,7 @@ export interface AuStake extends BaseContract {
       AdminStatusChangedEvent.OutputObject
     >;
 
-    'OperationCreated(bytes32,string,address)': TypedContractEvent<
+    "OperationCreated(bytes32,string,address)": TypedContractEvent<
       OperationCreatedEvent.InputTuple,
       OperationCreatedEvent.OutputTuple,
       OperationCreatedEvent.OutputObject
@@ -781,7 +798,7 @@ export interface AuStake extends BaseContract {
       OperationCreatedEvent.OutputObject
     >;
 
-    'OwnershipTransferred(address,address)': TypedContractEvent<
+    "OwnershipTransferred(address,address)": TypedContractEvent<
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
       OwnershipTransferredEvent.OutputObject
@@ -792,7 +809,7 @@ export interface AuStake extends BaseContract {
       OwnershipTransferredEvent.OutputObject
     >;
 
-    'RewardPaid(address,uint256,bytes32)': TypedContractEvent<
+    "RewardPaid(address,uint256,bytes32)": TypedContractEvent<
       RewardPaidEvent.InputTuple,
       RewardPaidEvent.OutputTuple,
       RewardPaidEvent.OutputObject
@@ -803,7 +820,7 @@ export interface AuStake extends BaseContract {
       RewardPaidEvent.OutputObject
     >;
 
-    'Staked(address,address,uint256,bytes32,uint256)': TypedContractEvent<
+    "Staked(address,address,uint256,bytes32,string,uint256)": TypedContractEvent<
       StakedEvent.InputTuple,
       StakedEvent.OutputTuple,
       StakedEvent.OutputObject
@@ -814,7 +831,7 @@ export interface AuStake extends BaseContract {
       StakedEvent.OutputObject
     >;
 
-    'Unstaked(address,address,uint256,bytes32)': TypedContractEvent<
+    "Unstaked(address,address,uint256,bytes32,string,uint256)": TypedContractEvent<
       UnstakedEvent.InputTuple,
       UnstakedEvent.OutputTuple,
       UnstakedEvent.OutputObject

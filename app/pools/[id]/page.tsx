@@ -16,7 +16,9 @@ import {
   getStakeHistory,
   GroupedStakes,
   groupStakesByInterval,
+  StakeData,
 } from '@/dapp-connectors/staking-controller';
+import { StakedEvent } from '@/typechain-types/contracts/AuStake';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
@@ -26,9 +28,13 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const [operationProgress, setOperationProgress] = useState(0);
   const [isOperationComplete, setIsOperationComplete] = useState(false);
   const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>();
+  const [stakeHistory, setStakeHistory] = useState<StakedEvent.OutputObject[] | undefined>();
   const calculateDateValues = async () => {
     console.log('getting history');
     const history = await getStakeHistory(params.id);
+    if(history){
+        setStakeHistory(history)
+    }else console.log("no history")
     const groupedStaked = groupStakesByInterval(history);
     return groupedStaked;
   };
@@ -232,7 +238,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             </div>
 
             {/* Transactions */}
-            <TransactionTable transactions={poolData.transactions} />
+            <TransactionTable transactions={stakeHistory} />
           </div>
 
           {/* Stats */}

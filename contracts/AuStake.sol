@@ -50,13 +50,16 @@ contract AuStake is ReentrancyGuard, Ownable {
     address indexed user,
     uint256 amount,
     bytes32 indexed operationId,
+    string eType,
     uint time
   );
   event Unstaked(
     address indexed token,
     address indexed user,
     uint256 amount,
-    bytes32 indexed operationId
+    bytes32 indexed operationId,
+    string eType,
+    uint time
   );
   event RewardPaid(
     address indexed user,
@@ -141,7 +144,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     idToOperation[operationId].tokenTvl += amount;
     tokenTvl[token] += amount;
 
-    emit Staked(token, msg.sender, amount, operationId, block.timestamp);
+    emit Staked(token, msg.sender, amount, operationId, "Staked", block.timestamp);
   }
 
   function burn(
@@ -162,7 +165,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     tokenTvl[token] -= amount;
     idToOperation[operationId].tokenTvl -= amount;
 
-    emit Unstaked(token, user, amount, operationId);
+    emit Unstaked(token, user, amount, operationId, "Staked",block.timestamp);
   }
 
   function unlockReward(address token, bytes32 operationId) public {
