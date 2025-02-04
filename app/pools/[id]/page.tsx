@@ -256,8 +256,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                         </Button>
                         <div className="flex items-center gap-2">
                             <div className="flex -space-x-1">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-gray-900" />
-                                <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-gray-900" />
+                                <div className="w-8 h-8 rounded-full bg-amber-500 border-2 border-gray-900" />
+                                <div className="w-8 h-8 rounded-full bg-red-700 border-2 border-gray-900" />
                             </div>
                             <div>
                                 <h1 className="text-xl sm:text-2xl font-bold">
@@ -286,8 +286,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                             Swap
                         </Button>
                         <Button
-                            variant="outline"
-                            className={`border-[${colors.neutral[800]}] hover:bg-[${colors.neutral[800]}] flex-grow sm:flex-grow-0`}
+                            variant="default"
                             asChild
                         >
                             <Link href={`/pools/${params.id}/add-liquidity`}>

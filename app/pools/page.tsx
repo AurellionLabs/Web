@@ -43,7 +43,7 @@ export default function PoolsPage() {
           <h1 className="text-2xl font-semibold">Your positions</h1>
           <Button
             asChild
-            className={`bg-[${colors.primary[500]}] hover:bg-[${colors.primary[600]}]`}
+            className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
           >
             <Link href="/create-pool">
               <Plus className="w-4 h-4 mr-2" />

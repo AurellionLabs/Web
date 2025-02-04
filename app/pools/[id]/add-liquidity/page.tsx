@@ -63,7 +63,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     const isAmountValid = Number(amount) <= Number(poolData.auraBalance);
 
     return (
-        <div className="min-h-screen bg-gray-950 text-white p-6">
+        <div className="min-h-screen bg-zinc-950 text-white p-6">
             <div className="max-w-xl mx-auto">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
@@ -81,7 +81,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                     </Button>
                 </div>
 
-                <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+                <div className="rounded-2xl border border-gray-800 p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
                             <div className="flex justify-between mb-2">

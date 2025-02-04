@@ -4,6 +4,7 @@ import { colors } from '@/lib/constants/colors';
 import { setWalletProvider } from '@/dapp-connectors/staking-controller';
 import { useEffect, useState } from 'react';
 import { useChainProvider } from '@/app/providers/main.provider';
+import { Button } from './ui/button';
 
 export default function ConnectButton() {
   const [connectedText, setConnectedText] = useState('Connect');
@@ -31,11 +32,11 @@ export default function ConnectButton() {
   };
 
   return (
-    <button
+    <Button variant={"default"} 
       onClick={handleConnect}
-      className={`bg-[${colors.primary[500]}] hover:bg-[${colors.primary[600]}] text-white px-4 py-2 rounded-2xl`}
+      className={`px-4 py-2 `}
     >
       {connectedText}
-    </button>
+    </Button>
   );
 }

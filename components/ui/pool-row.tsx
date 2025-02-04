@@ -47,8 +47,8 @@ export function PoolRow({ operation, index }: PoolRowProps) {
           onClick={handleClick}
         >
           <div className="flex -space-x-1">
-            <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-gray-900" />
-            <div className="w-6 h-6 rounded-full bg-green-500 border-2 border-gray-900" />
+            <div className="w-6 h-6 rounded-full bg-amber-600 border-2 border-gray-900" />
+            <div className="w-6 h-6 rounded-full bg-red-700 border-2 border-gray-900" />
           </div>
           <span>{operation.name}</span>
           <span className="text-green-500 text-sm">

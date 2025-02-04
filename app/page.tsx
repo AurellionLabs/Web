@@ -18,12 +18,12 @@ import {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen ">
       {/* Hero Section */}
       <section className="px-4 py-20 md:py-32">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center space-y-6">
-            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-red-900">
               Participate in Real World Asset Pools
             </h1>
             <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
@@ -47,7 +47,7 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="px-4 py-20 bg-white/50 dark:bg-gray-800/50">
+      <section className="px-4 py-20 ">
         <div className="container mx-auto max-w-6xl">
           <h2 className="text-3xl font-bold text-center mb-12">
             Why Choose Our Platform?
@@ -55,7 +55,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8">
             <Card>
               <CardHeader>
-                <CoinsIcon className="h-12 w-12 text-blue-600 mb-4" />
+                <CoinsIcon className="h-12 w-12 text-amber-600 mb-4" />
                 <CardTitle>Earn Real Yields</CardTitle>
                 <CardDescription>
                   Generate returns by providing liquidity to real-world
@@ -65,7 +65,7 @@ export default function HomePage() {
             </Card>
             <Card>
               <CardHeader>
-                <ShieldCheckIcon className="h-12 w-12 text-purple-600 mb-4" />
+                <ShieldCheckIcon className="h-12 w-12 text-red-600 mb-4" />
                 <CardTitle>Secure & Transparent</CardTitle>
                 <CardDescription>
                   Smart contract-powered pools with automated risk management
@@ -74,7 +74,7 @@ export default function HomePage() {
             </Card>
             <Card>
               <CardHeader>
-                <BarChart3Icon className="h-12 w-12 text-green-600 mb-4" />
+                <BarChart3Icon className="h-12 w-12 text-amber-600 mb-4" />
                 <CardTitle>Analytics & Insights</CardTitle>
                 <CardDescription>
                   Track your performance with detailed analytics and portfolio
@@ -89,7 +89,7 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="px-4 py-20">
         <div className="container mx-auto max-w-4xl text-center">
-          <Card className="bg-gradient-to-r from-blue-600 to-purple-600">
+          <Card className="">
             <CardContent className="py-12">
               <h3 className="text-3xl font-bold text-white mb-6">
                 Ready to Start Earning?
