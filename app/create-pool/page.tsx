@@ -216,7 +216,8 @@ export default function CreateOperationPage() {
               />
               <Button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-600 text-stone-900"
+                variant={"default"}
+                className="w-full text-stone-900"
                 disabled={form.formState.isSubmitting}
               >
                 {form.formState.isSubmitting
