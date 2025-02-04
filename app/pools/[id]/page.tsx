@@ -42,6 +42,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const [stakeHistory, setStakeHistory] = useState<
     StakedEvent.OutputObject[] | undefined
   >();
+  const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
   const calculateDateValues = async () => {
     const history = await getStakeHistory(params.id);
     if (history) {
@@ -90,7 +91,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
     tvlChange: '+0.26%',
     volume24h: groupedStake?.daily,
-    volumeChange: '-74.02%',
+    volumeChange: dailyPercentageChange,
     fees24h: '$87.3K',
     token0Balance: `${selectedPool?.rwaName}`,
     token1Balance: 'Funding',
@@ -199,6 +200,24 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     const data = await calculateDateValues();
     setGroupedStake(data);
     setSelectedPool(await getOperation(params.id));
+
+    // calculate daily percentage change
+    const today = new Date();
+    const todayKey = today.toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = yesterday.toISOString().split('T')[0];
+
+    const todayValue = data?.daily?.[todayKey] ?? 0;
+    const yesterdayValue = data?.daily?.[yesterdayKey] ?? 0;
+
+    let percentageChange = 0;
+    if (yesterdayValue !== 0) {
+      const difference = todayValue - yesterdayValue;
+      percentageChange = (difference / yesterdayValue) * 100;
+    }
+
+    setDailyPercentageChange(percentageChange.toFixed(2));
   };
   useEffect(() => {
     getPool();
