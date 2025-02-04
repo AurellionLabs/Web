@@ -247,14 +247,17 @@ contract AuStake is ReentrancyGuard, Ownable {
     external
     view
     returns (
-      bytes32 opId,
-      string memory name,
-      address token,
-      address provider,
-      uint256 deadline,
-      uint256 reward,
-      uint256 tokenTvl,
-      OperationStatus operationStatus
+    bytes32 returnId,
+    string memory name,
+    address token,
+    address provider,
+    uint256 deadline,
+    uint256 startDate,
+    string memory rwaName,
+    // implement a rep score
+    uint256 reward,
+    uint256 tokenTvl,
+    OperationStatus operationStatus
     )
   {
     Operation storage operation = idToOperation[id];
@@ -264,10 +267,13 @@ contract AuStake is ReentrancyGuard, Ownable {
       operation.token,
       operation.provider,
       operation.deadline,
+      operation.startDate,
+      operation.rwaName,
       operation.reward,
       operation.tokenTvl,
       operation.operationStatus
     );
   }
 }
+
 

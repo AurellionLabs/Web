@@ -24,6 +24,7 @@ import {
 } from '@/dapp-connectors/staking-controller';
 import { StakedEvent } from '@/typechain-types/contracts/AuStake';
 import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
+import { COMPLETE, PAID } from '@/constants';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
@@ -32,12 +33,14 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     const [timeRange, setTimeRange] = useState('1D');
     const [remainingTime, setRemainingTime] = useState(0);
     const [operationProgress, setOperationProgress] = useState(0);
+    const [isComplete, setIsComplete] = useState(false)
+    const [isPaid, setIsPaid] = useState(false)
+    const [status, setStatus] = useState("")
     const [isOperationComplete, setIsOperationComplete] = useState(false);
     const [isProvider, setIsProvider] = useState(false);
     const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>();
     const [stakeHistory, setStakeHistory] = useState<StakedEvent.OutputObject[] | undefined>();
     const calculateDateValues = async () => {
-        console.log('getting history');
         const history = await getStakeHistory(params.id);
         if (history) {
             setStakeHistory(history)
@@ -49,12 +52,22 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         if (!groupedStake?.daily) return '0';
         const today = new Date().toISOString().split('T')[0];
         const daily = groupedStake.daily[today]?.toString() || '0';
-        console.log(daily);
         return daily;
     };
     const handleRewardClaim = async () => {
-        if (isProvider) {
+        await getPool()
+        if(Number(selectedPool?.operationStatus) == PAID){
+            setIsPaid(true)
+            setStatus("Paid")
+        }
+        if(Number(selectedPool?.operationStatus) == COMPLETE){
+            setIsComplete(true)
+            setStatus("Complete")
+        }
+        if (isProvider && Number(selectedPool?.operationStatus) != COMPLETE && Number(selectedPool?.operationStatus) != PAID) {
             await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, params.id)
+            setIsComplete(true)
+            setStatus("Complete")
         }
         try {
             await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id)
@@ -100,8 +113,9 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     };
 
     useEffect(() => {
+        console.log("use effect for this page iss actually working believe it or not")
         const getCurrentTimings = () => {
-            // Early return if data isn't loaded yet
+            // First check if we have the required data
             if (!selectedPool?.startDate || !selectedPool?.deadline) {
                 console.log('Timing data:', {
                     startDate: selectedPool?.startDate,
@@ -113,65 +127,58 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 };
             }
 
+            // Get current time in seconds
             const currentTime = Math.floor(Date.now() / 1000);
+
+            // Get start time from the contract
             const startTime = Number(selectedPool.startDate);
-            const duration = Number(selectedPool.deadline);
 
-            // Debug log for our core timing values
-            console.log('Core timing values:', {
-                currentTime,
-                startTime,
-                duration,
-                endTime: startTime + duration
-            });
+            // Convert the deadline (days) to seconds
+            // We multiply by 24 hours * 60 minutes * 60 seconds to get total seconds
+            const durationInSeconds = Number(selectedPool.deadline) * 24 * 60 * 60;
 
-            // Ensure our numbers are valid
-            if (isNaN(startTime) || isNaN(duration)) {
-                console.log('Invalid number conversion');
-                return {
-                    progress: 0,
-                    remainingTime: 0
-                };
-            }
+            // Calculate when the operation ends
+            const endTime = startTime + durationInSeconds;
 
-            const endTime = startTime + duration;
+            // Calculate how much time is left (in seconds)
             const remainingTime = Math.max(0, endTime - currentTime);
 
+            // Calculate the progress percentage
             let progress = 0;
             if (currentTime < startTime) {
+                // Operation hasn't started yet
                 progress = 0;
             } else if (currentTime >= endTime) {
-                if (Number(selectedPool.operationStatus) === 3) {
+                // Operation is complete
+                if (Number(selectedPool.operationStatus) === COMPLETE) {
                     setIsOperationComplete(true);
                 }
                 progress = 100;
             } else {
+                // Operation is in progress
                 const elapsed = currentTime - startTime;
-                progress = (elapsed * 100) / duration;
+                progress = (elapsed * 100) / durationInSeconds;
             }
-
-            // Debug log our calculated values
-            console.log('Calculated values:', {
-                remainingTime,
-                progress,
-                isComplete: currentTime >= endTime
-            });
 
             return {
                 progress: Math.min(100, Math.max(0, progress)),
+                // Convert remaining seconds to milliseconds for formatTime function
                 remainingTime: remainingTime * 1000
             };
         };
 
-        // Don't set up the interval until we have data
+        // Only start the interval if we have the required data
         if (!selectedPool?.startDate || !selectedPool?.deadline) {
+            console.error(`no deadline ${selectedPool?.deadline} or startdate ${selectedPool?.startDate}`)
             return;
         }
 
+        // Calculate initial values
         const initial = getCurrentTimings();
         setOperationProgress(initial.progress);
         setRemainingTime(initial.remainingTime);
 
+        // Update values every second
         const interval = setInterval(() => {
             const current = getCurrentTimings();
             setOperationProgress(current.progress);
@@ -182,20 +189,41 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             }
         }, 1000);
 
+        // Clean up interval when component unmounts
         return () => clearInterval(interval);
-    }, [selectedPool]);
+    }, [selectedPool]); // We depend on selectedPool changes
+
+    const getPool = async () => {
+        const data = await calculateDateValues();
+        setGroupedStake(data);
+        setSelectedPool(await getOperation(params.id))
+    };
+    useEffect(() => {
+        console.log("fetching local version of pool")
+        getPool();
+    }, [selectedPool,status]);
 
     useEffect(() => {
-        const getPool = async () => {
-            console.log('attempting to get pools');
-            const data = await calculateDateValues();
-            console.log('Fetched grouped stakes:', data);
-            setGroupedStake(data);
-            setSelectedPool(await getOperation(params.id))
-            setIsProvider(walletAddress == selectedPool?.provider)
-        };
-        getPool();
-    }, []);
+        console.log("Current operation status",Number(selectedPool?.operationStatus))
+        if (selectedPool){
+            if (Number(selectedPool.operationStatus) == 3) {
+                setIsOperationComplete(true);
+                console.log("set status to complete")
+                setIsComplete(true)
+                setStatus("Complete")
+            }
+        
+            if (Number(selectedPool.operationStatus) == 4) {
+                setIsPaid(true)
+                setStatus("Paid")
+            }
+        }
+    }, [selectedPool])
+
+    useEffect(() => {
+        setIsProvider(walletAddress == selectedPool?.provider)
+    }, [isProvider, selectedPool])
+
     const formatTime = (milliseconds: number) => {
         const seconds = Math.floor(milliseconds / 1000);
         const days = Math.floor(seconds / (3600 * 24));
@@ -327,10 +355,11 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                                     </span>
                                 </div>
                             </div>
-                            <Button onClick={handleRewardClaim} className="w-full mt-4" disabled={(!isOperationComplete || isProvider)}>
-                                {!isProvider ? 'Unlock'
+                            <Button onClick={handleRewardClaim} className="w-full mt-4" disabled={(!isComplete && !isProvider && isPaid)}>
+                                {isProvider ?
+                                    isComplete ? status : 'Unlock'
                                     :
-                                    isOperationComplete ? 'Withdraw' : 'Withdraw (Locked)'
+                                    isComplete ? 'Withdraw' : 'Withdraw (Locked)'
                                 }
                             </Button>
                         </div>

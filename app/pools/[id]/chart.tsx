@@ -67,7 +67,6 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
     };
 
     const getDataByTimeRange = () => {
-        console.log('GroupedStakes:', groupedStakes);
         if (!groupedStakes) {
             return { labels: [], values: [] };
         }
@@ -144,9 +143,6 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
             }
             values.unshift(0);
         }
-
-        console.log('Formatted Labels:', formattedLabels);
-        console.log('Values:', values);
 
         return {
             labels: formattedLabels,

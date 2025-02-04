@@ -1,2 +1,5 @@
-export const AURAGOAT_TOKEN_ADDRESS =
-  '0xbAe73e3777463a02928356fDe7018735908ebC9A';
+export const INACTIVE = 0
+export const ACTIVE = 1
+export const COMPLETE = 2
+export const PAID = 3 
+

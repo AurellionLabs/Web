@@ -424,12 +424,25 @@ export interface AuStake extends BaseContract {
   getOperation: TypedContractMethod<
     [id: BytesLike],
     [
-      [string, string, string, string, bigint, bigint, bigint, bigint] & {
-        opId: string;
+      [
+        string,
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        string,
+        bigint,
+        bigint,
+        bigint
+      ] & {
+        returnId: string;
         name: string;
         token: string;
         provider: string;
         deadline: bigint;
+        startDate: bigint;
+        rwaName: string;
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
@@ -599,12 +612,25 @@ export interface AuStake extends BaseContract {
   ): TypedContractMethod<
     [id: BytesLike],
     [
-      [string, string, string, string, bigint, bigint, bigint, bigint] & {
-        opId: string;
+      [
+        string,
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        string,
+        bigint,
+        bigint,
+        bigint
+      ] & {
+        returnId: string;
         name: string;
         token: string;
         provider: string;
         deadline: bigint;
+        startDate: bigint;
+        rwaName: string;
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;

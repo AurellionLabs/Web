@@ -87,7 +87,9 @@ const getAuStakeContract = async (): Promise<AuStake> =>
                     throw new Error('getSigner failed with ' + e);
                 }
             } else {
-                throw new Error('ethersProvider is undefined');
+                console.error('ethersProvider is undefined');
+                console.log("restablishing connection")
+                await setWalletProvider()
             }
 
             if (!signer) throw new Error('Signer is undefined');
@@ -112,7 +114,9 @@ const getAuraContract = async (): Promise<AuraGoat> =>
                     throw new Error('getSigner failed with ' + e);
                 }
             } else {
-                throw new Error('ethersProvider is undefined');
+                console.error('ethersProvider is undefined');
+                console.log("restablishing connection")
+                await setWalletProvider()
             }
 
             if (!signer) throw new Error('Signer is undefined');
@@ -177,9 +181,7 @@ export const getOperationMetrics = async (operationId: BytesLike) => {
 export const getStakeHistory = async (
     operationId: BytesLike,
 ): Promise<StakedEvent.OutputObject[]> => {
-    console.log('in getStakeHistory');
     const contract = await getAuStakeContract();
-    console.log('before filter');
     const filter = contract.filters.Staked(
         undefined,
         undefined,
@@ -187,9 +189,7 @@ export const getStakeHistory = async (
         operationId,
         undefined
     );
-    console.log('after filter', filter);
     const events = await contract.queryFilter(filter);
-    console.log('events');
     return events.map((e) => ({
         token: e.args.token,
         user: e.args?.user,
@@ -219,18 +219,14 @@ export const requestTokenAllowance = async (token: AddressLike, amount: BigNumbe
 export const getWithdrawHistory = async (
     operationId: BytesLike,
 ): Promise<UnstakedEvent.OutputObject[]> => {
-    console.log('in getStakeHistory');
     const contract = await getAuStakeContract();
-    console.log('before filter');
     const filter = contract.filters.Unstaked(
         undefined,
         undefined,
         undefined,
         operationId,
     );
-    console.log('after filter', filter);
     const events = await contract.queryFilter(filter);
-    console.log('events');
 
     return events.map((e) => ({
         token: e.args.token,
@@ -253,7 +249,6 @@ export const groupStakesByInterval = (
     };
 
     stakes.forEach((stake) => {
-        console.log(stake);
         const date = new Date(Number(stake.time) * 1000);
         const amount = Number(formatEthereumValue(stake.amount));
 
@@ -284,14 +279,12 @@ export const groupStakesByInterval = (
 };
 export const getOperationList = async () => {
     const contract = await getAuStakeContract();
-    console.log('got contract');
     const operationList: string[] = [];
     var operationsBuilt = false;
     var index = 0;
     while (!operationsBuilt) {
         try {
             const id = await contract.activeOperations(index);
-            console.log('fetched id', id);
             operationList.push(id);
             index++;
         } catch (e) {
@@ -407,9 +400,11 @@ export const getOperation = async (
             token: operation[2],
             provider: operation[3],
             deadline: operation[4],
-            reward: operation[5],
-            tokenTvl: operation[6],
-            operationStatus: operation[7],
+            startDate: operation[5],
+            rwaName: operation[6],
+            reward: operation[7],
+            tokenTvl: operation[8],
+            operationStatus: operation[9],
         };
     } catch (error) {
         console.error('Error getting operation:', error);
