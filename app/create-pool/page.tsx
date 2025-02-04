@@ -24,7 +24,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ethers } from 'ethers';
-import { createOperation, requestTokenAllowance } from '@/dapp-connectors/staking-controller';
+import {
+  createOperation,
+  requestTokenAllowance,
+} from '@/dapp-connectors/staking-controller';
 import { toast } from 'sonner';
 import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 
@@ -47,6 +50,12 @@ const formSchema = z.object({
   asset: z.string().min(1, {
     message: 'Please enter the pools asset .',
   }),
+  fundingGoal: z.string().min(1, {
+    message: 'Please enter the funding goal.',
+  }),
+  assetPrice: z.string().min(1, {
+    message: 'Please enter the asset price.',
+  }),
 });
 
 export default function CreateOperationPage() {
@@ -59,13 +68,14 @@ export default function CreateOperationPage() {
       lengthInDays: '',
       reward: '',
       asset: '',
+      fundingGoal: '',
+      assetPrice: '',
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-
-      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS)
+      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS);
 
       await createOperation(
         values.name,
@@ -74,6 +84,8 @@ export default function CreateOperationPage() {
         parseInt(values.lengthInDays),
         values.reward,
         values.asset,
+        values.fundingGoal,
+        values.assetPrice,
       );
       toast.success('Operation created successfully!');
     } catch (error: any) {
@@ -214,9 +226,41 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="fundingGoal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Funding Goal</FormLabel>
+                    <FormControl>
+                      <Input type="text" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter the funding goal in tokens.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="assetPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Asset Price</FormLabel>
+                    <FormControl>
+                      <Input type="text" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter the asset price in tokens.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button
                 type="submit"
-                variant={"default"}
+                variant={'default'}
                 className="w-full text-stone-900"
                 disabled={form.formState.isSubmitting}
               >
