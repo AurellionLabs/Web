@@ -83,6 +83,7 @@ export interface AuStakeInterface extends Interface {
       BigNumberish,
       BigNumberish,
       string,
+      BigNumberish,
     ],
   ): string;
   encodeFunctionData(
@@ -416,6 +417,7 @@ export interface AuStake extends BaseContract {
       deadline: BigNumberish,
       reward: BigNumberish,
       rwaName: string,
+      goal: BigNumberish,
     ],
     [string],
     'nonpayable'
@@ -424,7 +426,17 @@ export interface AuStake extends BaseContract {
   getOperation: TypedContractMethod<
     [id: BytesLike],
     [
-      [string, string, string, string, bigint, bigint, bigint, bigint] & {
+      [
+        string,
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+      ] & {
         opId: string;
         name: string;
         token: string;
@@ -432,6 +444,7 @@ export interface AuStake extends BaseContract {
         deadline: bigint;
         reward: bigint;
         tokenTvl: bigint;
+        goal: bigint;
         operationStatus: bigint;
       },
     ],
@@ -452,6 +465,7 @@ export interface AuStake extends BaseContract {
         bigint,
         bigint,
         bigint,
+        bigint,
       ] & {
         id: string;
         name: string;
@@ -463,6 +477,7 @@ export interface AuStake extends BaseContract {
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
+        goal: bigint;
       },
     ],
     'view'
@@ -590,6 +605,7 @@ export interface AuStake extends BaseContract {
       deadline: BigNumberish,
       reward: BigNumberish,
       rwaName: string,
+      goal: BigNumberish,
     ],
     [string],
     'nonpayable'
@@ -597,7 +613,17 @@ export interface AuStake extends BaseContract {
   getFunction(nameOrSignature: 'getOperation'): TypedContractMethod<
     [id: BytesLike],
     [
-      [string, string, string, string, bigint, bigint, bigint, bigint] & {
+      [
+        string,
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+      ] & {
         opId: string;
         name: string;
         token: string;
@@ -605,6 +631,7 @@ export interface AuStake extends BaseContract {
         deadline: bigint;
         reward: bigint;
         tokenTvl: bigint;
+        goal: bigint;
         operationStatus: bigint;
       },
     ],
@@ -624,6 +651,7 @@ export interface AuStake extends BaseContract {
         bigint,
         bigint,
         bigint,
+        bigint,
       ] & {
         id: string;
         name: string;
@@ -635,6 +663,7 @@ export interface AuStake extends BaseContract {
         reward: bigint;
         tokenTvl: bigint;
         operationStatus: bigint;
+        goal: bigint;
       },
     ],
     'view'

@@ -47,6 +47,7 @@ export interface OperationData {
   reward: bigint;
   tokenTvl: bigint;
   operationStatus: bigint;
+  goal: bigint;
 }
 
 export var ethersProvider: BrowserProvider | null;
@@ -150,6 +151,7 @@ export const createOperation = async (
   lengthInDays: number,
   reward: BigNumberish,
   rwaName: string,
+  goal: BigNumberish,
 ): Promise<string> => {
   const contract = await getAuStakeContract();
   try {
@@ -160,6 +162,7 @@ export const createOperation = async (
       lengthInDays,
       reward,
       rwaName,
+      goal,
     );
     const receipt = await tx.wait();
     const event = receipt?.logs.find(
@@ -428,6 +431,7 @@ export const getOperation = async (
       reward: operation[5],
       tokenTvl: operation[6],
       operationStatus: operation[7],
+      goal: operation[8],
     };
   } catch (error) {
     console.error('Error getting operation:', error);

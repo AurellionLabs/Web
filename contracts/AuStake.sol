@@ -30,6 +30,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     uint256 reward;
     uint256 tokenTvl;
     OperationStatus operationStatus;
+    uint256 goal;
   }
 
   address payable public projectWallet;
@@ -90,7 +91,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     address provider,
     uint256 deadline,
     uint256 reward,
-    string memory rwaName
+    string memory rwaName,
+    uint256 goal
   ) public adminOnly returns (bytes32) {
     require(token != address(0), 'Invalid token address');
     require(provider != address(0), 'Invalid provider address');
@@ -108,6 +110,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     operation.id = id;
     operation.startDate = block.timestamp;
     operation.rwaName = rwaName;
+    operation.goal = goal;
     providerToOperationIds[provider].push(id);
     tokenToOperationIds[token] = id;
     activeOperations.push(id);
@@ -254,7 +257,8 @@ contract AuStake is ReentrancyGuard, Ownable {
       uint256 deadline,
       uint256 reward,
       uint256 tokenTvl,
-      OperationStatus operationStatus
+      OperationStatus operationStatus,
+      uint256 goal
     )
   {
     Operation storage operation = idToOperation[id];
@@ -266,7 +270,8 @@ contract AuStake is ReentrancyGuard, Ownable {
       operation.deadline,
       operation.reward,
       operation.tokenTvl,
-      operation.operationStatus
+      operation.operationStatus,
+      operation.goal
     );
   }
 }

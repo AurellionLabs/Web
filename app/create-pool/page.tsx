@@ -48,6 +48,9 @@ const formSchema = z.object({
   reward: z.string().min(1, {
     message: 'Please enter a reward amount.',
   }),
+  goal: z.string().min(1, {
+    message: 'Please enter a goal amount.',
+  }),
   asset: z.string().min(1, {
     message: 'Please enter the pools asset .',
   }),
@@ -63,6 +66,7 @@ export default function CreateOperationPage() {
       provider: '',
       lengthInDays: '',
       reward: '',
+      goal: '',
       asset: '',
     },
   });
@@ -70,7 +74,7 @@ export default function CreateOperationPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const rewardInWei = ethers.parseEther(values.reward);
-
+      const goalInWei = ethers.parseEther(values.goal);
       await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, rewardInWei);
 
       await createOperation(
@@ -80,6 +84,7 @@ export default function CreateOperationPage() {
         parseInt(values.lengthInDays),
         rewardInWei,
         values.asset,
+        goalInWei,
       );
       toast.success('Operation created successfully!');
       router.push('/pools');
@@ -216,6 +221,22 @@ export default function CreateOperationPage() {
                     </FormControl>
                     <FormDescription>
                       Enter the reward amount in tokens.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="goal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Goal Amount</FormLabel>
+                    <FormControl>
+                      <Input type="text" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter the goal amount in tokens.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
