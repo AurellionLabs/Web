@@ -32,7 +32,8 @@ export default function ConnectButton() {
   };
 
   return (
-    <Button variant={"default"} 
+    <Button
+      variant={'default'}
       onClick={handleConnect}
       className={`px-4 py-2 `}
     >

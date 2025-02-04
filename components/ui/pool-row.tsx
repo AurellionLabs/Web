@@ -27,7 +27,6 @@ export function PoolRow({ operation, index }: PoolRowProps) {
     setSelectedPool(operation);
   };
   useEffect(() => {
-      
     setFormattedValues({
       tokenTvl: formatEthereumValue(operation.tokenTvl),
       reward: String(Number(operation.reward)),
