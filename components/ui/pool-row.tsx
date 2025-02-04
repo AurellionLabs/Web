@@ -30,7 +30,7 @@ export function PoolRow({ operation, index }: PoolRowProps) {
       
     setFormattedValues({
       tokenTvl: formatEthereumValue(operation.tokenTvl),
-      reward: formatEthereumValue(operation.reward),
+      reward: String(Number(operation.reward)),
       lengthInDays: formatDaysLeft(Number(operation.deadline)) || '0',
     });
   }, [operation]);

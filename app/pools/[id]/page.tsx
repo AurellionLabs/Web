@@ -63,21 +63,15 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         if(Number(selectedPool?.operationStatus) == COMPLETE){
             setIsComplete(true)
             setStatus("Complete")
+            await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id)
         }
-        if (isProvider && Number(selectedPool?.operationStatus) != COMPLETE && Number(selectedPool?.operationStatus) != PAID) {
-            await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, params.id)
+        if ( selectedPool && isProvider && Number(selectedPool?.operationStatus) != COMPLETE && Number(selectedPool?.operationStatus) != PAID) {
+            await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, selectedPool)
             setIsComplete(true)
             setStatus("Complete")
         }
         try {
             await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id)
-        } catch (e) {
-            console.error("couldnt claim error with", e)
-        }
-    }
-    const handleRewardUnlock = async () => {
-        try {
-            await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, params.id)
         } catch (e) {
             console.error("couldnt claim error with", e)
         }
@@ -113,7 +107,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     };
 
     useEffect(() => {
-        console.log("use effect for this page iss actually working believe it or not")
         const getCurrentTimings = () => {
             // First check if we have the required data
             if (!selectedPool?.startDate || !selectedPool?.deadline) {
@@ -199,21 +192,19 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         setSelectedPool(await getOperation(params.id))
     };
     useEffect(() => {
-        console.log("fetching local version of pool")
         getPool();
     }, [selectedPool,status]);
 
     useEffect(() => {
-        console.log("Current operation status",Number(selectedPool?.operationStatus))
         if (selectedPool){
-            if (Number(selectedPool.operationStatus) == 3) {
+            if (Number(selectedPool.operationStatus) == COMPLETE) {
                 setIsOperationComplete(true);
                 console.log("set status to complete")
                 setIsComplete(true)
                 setStatus("Complete")
             }
         
-            if (Number(selectedPool.operationStatus) == 4) {
+            if (Number(selectedPool.operationStatus) == PAID) {
                 setIsPaid(true)
                 setStatus("Paid")
             }
@@ -355,7 +346,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                                     </span>
                                 </div>
                             </div>
-                            <Button onClick={handleRewardClaim} className="w-full mt-4" disabled={(!isComplete && !isProvider && isPaid)}>
+                            <Button onClick={handleRewardClaim} className="w-full mt-4" disabled={(!isComplete && !isProvider || isPaid)}>
                                 {isProvider ?
                                     isComplete ? status : 'Unlock'
                                     :

@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuStake.sol": {
-      "lastModificationDate": 1738626315110,
-      "contentHash": "c4744d4bbfb2ae02d2a8a144f7263958",
+      "lastModificationDate": 1738676848122,
+      "contentHash": "b50c86b0375f90a8ec523a04311d6cf1",
       "sourceName": "contracts/AuStake.sol",
       "solcConfig": {
         "version": "0.8.28",

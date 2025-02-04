@@ -1,23 +1,35 @@
-import { BigNumberish } from 'ethers';
+import { BigNumberish, formatUnits } from 'ethers';
 
 // utils/ethereum.ts
 export const formatEthereumValue = (
   weiValue: BigNumberish,
-  decimals = 4,
+  tokenDecimals = 18,
+  displayDecimals = 4
 ): string => {
   if (!weiValue) return '0';
+  
   try {
-    const valueInWei =
-      typeof weiValue === 'string' ? BigInt(weiValue) : weiValue;
-    // Convert to string first to preserve precision
-    const etherValue = (Number(valueInWei) / Math.pow(10, 18)).toString();
-    // Split at decimal
-    const [whole, decimal = ''] = etherValue.split('.');
-    // Truncate decimal to 18 places without rounding
-    const truncatedDecimal = decimal.slice(0, 18);
-    return truncatedDecimal ? `${whole}.${truncatedDecimal}` : whole;
+    // Use ethers' formatUnits which properly handles BigNumber values
+    const formattedValue = formatUnits(weiValue, tokenDecimals);
+    
+    // Split the value to handle decimals properly
+    const [whole, fraction = ''] = formattedValue.split('.');
+    
+    // Format the decimal places without rounding
+    const truncatedDecimal = fraction.slice(0, displayDecimals);
+    
+    // Remove trailing zeros
+    const cleanDecimal = truncatedDecimal.replace(/0+$/, '');
+    
+    // Only include decimal point if we have decimal values
+    return cleanDecimal ? `${whole}.${cleanDecimal}` : whole;
+    
   } catch (error) {
-    console.error('Error formatting Ethereum value:', error);
+    console.error('Error formatting token value:', error, {
+      value: weiValue,
+      tokenDecimals,
+      displayDecimals
+    });
     return '0';
   }
 };

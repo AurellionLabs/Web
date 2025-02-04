@@ -14,7 +14,6 @@ import { Wallet } from './wallet-helper';
 import { StakedEvent, UnstakedEvent } from '@/typechain-types/contracts/AuStake';
 import { formatEthereumValue } from './ethereum-utils';
 import { NEXT_PUBLIC_AURA_ADDRESS, NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
-import { AURAGOAT_TOKEN_ADDRESS } from '@/constants';
 
 export interface StakeData {
     token: AddressLike;
@@ -216,6 +215,17 @@ export const requestTokenAllowance = async (token: AddressLike, amount: BigNumbe
     if (tx)
         await tx.wait()
 }
+export const getBalance = async () => {
+    const contract = await getAuraContract()
+    const allowance = await contract.allowance(walletAddress, NEXT_PUBLIC_AUSTAKE_ADDRESS)
+    var tx;
+    try {
+        return await contract.balanceOf(walletAddress)
+    } catch (e) {
+        throw new Error(`Failed to fetch balance with error:${e} `)
+    }
+
+}
 export const getWithdrawHistory = async (
     operationId: BytesLike,
 ): Promise<UnstakedEvent.OutputObject[]> => {
@@ -314,13 +324,19 @@ export const stake = async (
 };
 
 export const unlockReward = async (
-    token = AURAGOAT_TOKEN_ADDRESS,
-    operationId: BytesLike,
+    token = NEXT_PUBLIC_AURA_ADDRESS,
+    operation: OperationData,
 ) => {
     const contract = await getAuStakeContract();
+    var tx;
     try {
-        const tx = await contract.unlockReward(token, operationId);
+        const rewardPortion = (operation.tokenTvl * operation.reward) / 100n;
+        const totalAmountNeeded = operation.tokenTvl + rewardPortion;
+        await requestTokenAllowance(token,totalAmountNeeded);
+        // Call the unlock reward function
+        tx = await contract.unlockReward(token, operation.id);
         await tx.wait();
+
     } catch (error) {
         console.error('Error triggering reward:', error);
         throw error;

@@ -64,16 +64,15 @@ export default function CreateOperationPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const rewardInWei = ethers.parseEther(values.reward);
 
-      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS,rewardInWei)
+      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS)
 
       await createOperation(
         values.name,
         values.token,
         values.provider,
         parseInt(values.lengthInDays),
-        rewardInWei,
+        values.reward,
         values.asset,
       );
       toast.success('Operation created successfully!');
