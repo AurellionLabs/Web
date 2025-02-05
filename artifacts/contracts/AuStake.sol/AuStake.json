@@ -285,6 +285,16 @@
           "internalType": "string",
           "name": "rwaName",
           "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "fundingGoal",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "assetPrice",
+          "type": "uint256"
         }
       ],
       "name": "createOperation",
@@ -357,6 +367,16 @@
           "internalType": "enum AuStake.OperationStatus",
           "name": "operationStatus",
           "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "fundingGoal",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "assetPrice",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -421,6 +441,16 @@
           "internalType": "enum AuStake.OperationStatus",
           "name": "operationStatus",
           "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "fundingGoal",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "assetPrice",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",

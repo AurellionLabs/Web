@@ -39,6 +39,8 @@ contract AuStake is ReentrancyGuard, Ownable {
         uint256 reward;                // Reward percentage (100 = 100%)
         uint256 tokenTvl;              // Total value locked
         OperationStatus operationStatus; // Current status
+        uint256 fundingGoal;           // Funding goal
+        uint256 assetPrice;            // Asset price
     }
 
     // State variables
@@ -105,7 +107,9 @@ contract AuStake is ReentrancyGuard, Ownable {
         address provider,
         uint256 deadline,
         uint256 reward,
-        string memory rwaName
+        string memory rwaName,
+        uint256 fundingGoal,
+        uint256 assetPrice
     ) public adminOnly returns (bytes32) {
         require(token != address(0), 'Invalid token address');
         require(provider != address(0), 'Invalid provider address');
@@ -124,7 +128,9 @@ contract AuStake is ReentrancyGuard, Ownable {
         operation.id = id;
         operation.startDate = block.timestamp;
         operation.rwaName = rwaName;
-        
+        operation.fundingGoal = fundingGoal;
+        operation.assetPrice = assetPrice;
+
         providerToOperationIds[provider].push(id);
         tokenToOperationIds[token] = id;
         activeOperations.push(id);
@@ -281,7 +287,9 @@ contract AuStake is ReentrancyGuard, Ownable {
             string memory rwaName,
             uint256 reward,
             uint256 tokenTvl,
-            OperationStatus operationStatus
+            OperationStatus operationStatus,
+            uint256 fundingGoal,
+            uint256 assetPrice
         )
     {
         Operation storage operation = idToOperation[id];
@@ -295,7 +303,9 @@ contract AuStake is ReentrancyGuard, Ownable {
             operation.rwaName,
             operation.reward,
             operation.tokenTvl,
-            operation.operationStatus
+            operation.operationStatus,
+            operation.fundingGoal,
+            operation.assetPrice
         );
     }
 }
