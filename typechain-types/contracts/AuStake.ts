@@ -28,7 +28,6 @@ export interface AuStakeInterface extends Interface {
     nameOrSignature:
       | "activeOperations"
       | "admins"
-      | "burn"
       | "claimReward"
       | "createOperation"
       | "getOperation"
@@ -66,10 +65,6 @@ export interface AuStakeInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "admins", values: [AddressLike]): string;
-  encodeFunctionData(
-    functionFragment: "burn",
-    values: [AddressLike, AddressLike, BytesLike]
-  ): string;
   encodeFunctionData(
     functionFragment: "claimReward",
     values: [AddressLike, BytesLike, AddressLike]
@@ -160,7 +155,6 @@ export interface AuStakeInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "admins", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "claimReward",
     data: BytesLike
@@ -396,12 +390,6 @@ export interface AuStake extends BaseContract {
 
   admins: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
 
-  burn: TypedContractMethod<
-    [token: AddressLike, user: AddressLike, operationId: BytesLike],
-    [void],
-    "nonpayable"
-  >;
-
   claimReward: TypedContractMethod<
     [token: AddressLike, operationId: BytesLike, user: AddressLike],
     [void],
@@ -579,13 +567,6 @@ export interface AuStake extends BaseContract {
   getFunction(
     nameOrSignature: "admins"
   ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "burn"
-  ): TypedContractMethod<
-    [token: AddressLike, user: AddressLike, operationId: BytesLike],
-    [void],
-    "nonpayable"
-  >;
   getFunction(
     nameOrSignature: "claimReward"
   ): TypedContractMethod<

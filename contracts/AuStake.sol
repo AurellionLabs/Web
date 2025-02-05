@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import './AuraGoat20.sol';
+import './Aura.sol';
 
 /**
  * @title AuStake
@@ -168,29 +168,6 @@ contract AuStake is ReentrancyGuard, Ownable {
         emit Staked(token, msg.sender, amount, operationId, "Staked", block.timestamp);
     }
 
-    /**
-     * @dev Burns staked tokens (admin only)
-     */
-    function burn(
-        address token,
-        address user,
-        bytes32 operationId
-    ) public nonReentrant adminOnly {
-        Stake storage userStake = stakes[token][user];
-        require(userStake.isActive, 'No active stake');
-        require(idToOperation[operationId].token == token, 'Token mismatch');
-
-        uint256 amount = userStake.amount;
-        userStake.isActive = false;
-
-        AuraGoat tokenContract = AuraGoat(token);
-        require(tokenContract.burn(user, amount), 'Failed to burn tokens');
-
-        tokenTvl[token] -= amount;
-        idToOperation[operationId].tokenTvl -= amount;
-
-        emit Unstaked(token, user, amount, operationId, "Burned", block.timestamp);
-    }
 
     /**
      * @dev Provider unlocks rewards for an operation
