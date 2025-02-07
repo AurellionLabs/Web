@@ -90,7 +90,10 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const poolData = {
     name: selectedPool?.name,
     tvl: selectedPool ? formatEthereumValue(selectedPool.tokenTvl, 18, 2) : '0',
-    tvlChange: '+0.26%',
+    completionPercentage:
+      selectedPool?.tokenTvl && selectedPool?.fundingGoal
+        ? `${Math.round((Number(formatEthereumValue(selectedPool.tokenTvl)) / Number(selectedPool.fundingGoal)) * 100)}%`
+        : '0%',
     fundingGoal: selectedPool?.fundingGoal
       ? `$${Math.round(Number(selectedPool.fundingGoal.toString())).toLocaleString()}`
       : '0',
@@ -412,7 +415,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                   <StatCard
                     title="Funding Goal"
                     value={poolData.fundingGoal}
-                    change={poolData.tvlChange}
+                    change={poolData.completionPercentage}
                   />
                   <StatCard
                     title="24h volume"

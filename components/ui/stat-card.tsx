@@ -5,16 +5,15 @@ interface StatCardProps {
 }
 
 export function StatCard({ title, value, change }: StatCardProps) {
+  const isPositive =
+    change && (change.startsWith('+') || !change.includes('-'));
+
   return (
     <div>
       <div className="flex justify-between mb-1">
         <span className="text-gray-400">{title}</span>
         {change && (
-          <span
-            className={
-              change.startsWith('+') ? 'text-green-500' : 'text-red-500'
-            }
-          >
+          <span className={isPositive ? 'text-green-500' : 'text-red-500'}>
             {change}
           </span>
         )}
