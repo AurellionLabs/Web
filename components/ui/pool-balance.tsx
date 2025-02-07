@@ -18,7 +18,7 @@ export function PoolBalance({
         <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-amber-600 to-red-700"
-            style={{ width: '70%' }}
+            style={{ width: '10%' }}
           />
         </div>
       </div>
