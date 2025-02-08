@@ -88,8 +88,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     }
   };
   const poolData = {
-    name: selectedPool?.name,
-    tvl: selectedPool ? formatEthereumValue(selectedPool.tokenTvl, 18, 2) : '0',
+    name: selectedPool?.name || '',
+    tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, 18, 2) : '0'}`,
     completionPercentage:
       selectedPool?.tokenTvl && selectedPool?.fundingGoal
         ? `${Math.round((Number(formatEthereumValue(selectedPool.tokenTvl)) / Number(selectedPool.fundingGoal)) * 100)}%`
@@ -342,7 +342,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             >
               <div className="mb-6">
                 <div className="text-2xl sm:text-3xl font-bold mb-1">
-                  ${poolData.tvl}
+                  {poolData.tvl}
                 </div>
               </div>
               <div className="h-[200px] sm:h-[300px]">
@@ -407,22 +407,17 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             >
               <h2 className="text-lg font-semibold mb-4">Stats</h2>
               <div className="space-y-6">
+                <StatCard title="Funding Goal" value={poolData.fundingGoal} />
+                <StatCard title="Total TVL" value={poolData.tvl} />
                 <PoolBalance
-                  token0Balance={poolData.token0Balance}
-                  token1Balance={poolData.token1Balance}
+                  poolName={poolData.name}
+                  completionPercentage={poolData.completionPercentage}
                 />
-                <div className="space-y-4">
-                  <StatCard
-                    title="Funding Goal"
-                    value={poolData.fundingGoal}
-                    change={poolData.completionPercentage}
-                  />
-                  <StatCard
-                    title="24h volume"
-                    value={poolData.volume24h}
-                    change={poolData.volumeChange}
-                  />
-                </div>
+                <StatCard
+                  title="24h volume"
+                  value={poolData.volume24h}
+                  change={poolData.volumeChange}
+                />
               </div>
             </div>
           </div>
