@@ -89,6 +89,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   };
   const poolData = {
     name: selectedPool?.name || '',
+    description: selectedPool?.description || '',
     tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, 18, 2) : '0'}`,
     completionPercentage:
       selectedPool?.tokenTvl && selectedPool?.fundingGoal
@@ -207,7 +208,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     const data = await calculateDateValues();
     setGroupedStake(data);
     setSelectedPool(await getOperation(params.id));
-
     // calculate daily percentage change
     const today = new Date();
     const todayKey = today.toISOString().split('T')[0];
@@ -303,10 +303,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 <h1 className="text-xl sm:text-2xl font-bold">
                   {poolData.name}
                 </h1>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400">v3</span>
-                  <span className="text-gray-400">0.3%</span>
-                </div>
               </div>
             </div>
           </div>
@@ -407,6 +403,16 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             >
               <h2 className="text-lg font-semibold mb-4">Stats</h2>
               <div className="space-y-6">
+                {poolData.description && (
+                  <div className="border-b border-[#2D3139] pb-4">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">
+                      Description
+                    </h3>
+                    <p className="text-sm text-gray-200">
+                      {poolData.description}
+                    </p>
+                  </div>
+                )}
                 <StatCard title="Funding Goal" value={poolData.fundingGoal} />
                 <StatCard title="Total TVL" value={poolData.tvl} />
                 <PoolBalance

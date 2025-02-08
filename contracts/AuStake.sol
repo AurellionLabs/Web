@@ -31,6 +31,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     struct Operation {
         bytes32 id;                     // Unique identifier
         string name;                    // Operation name
+        string description;             // Operation description
         address token;                  // Token being staked
         address provider;               // Provider of the operation
         uint256 deadline;              // Duration in days
@@ -103,6 +104,7 @@ contract AuStake is ReentrancyGuard, Ownable {
      */
     function createOperation(
         string memory name,
+        string memory description,
         address token,
         address provider,
         uint256 deadline,
@@ -120,6 +122,7 @@ contract AuStake is ReentrancyGuard, Ownable {
         bytes32 id = keccak256(abi.encode(operationIdCounter));
         Operation storage operation = idToOperation[id];
         operation.name = name;
+        operation.description = description;
         operation.token = token;
         operation.provider = provider;
         operation.deadline = deadline;
@@ -303,6 +306,7 @@ contract AuStake is ReentrancyGuard, Ownable {
         returns (
             bytes32 returnId,
             string memory name,
+            string memory description,
             address token,
             address provider,
             uint256 deadline,
@@ -319,6 +323,7 @@ contract AuStake is ReentrancyGuard, Ownable {
         return (
             operation.id,
             operation.name,
+            operation.description,
             operation.token,
             operation.provider,
             operation.deadline,

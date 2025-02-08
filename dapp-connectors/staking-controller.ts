@@ -38,6 +38,7 @@ export interface GroupedStakes {
 export interface OperationData {
   id: string;
   name: string;
+  description: string;
   token: string;
   provider: string;
   deadline: bigint;
@@ -150,6 +151,7 @@ const getAuraContract = async (): Promise<AuraGoat> =>
 
 export const createOperation = async (
   name: string,
+  description: string,
   token: string,
   provider: string,
   lengthInDays: number,
@@ -162,6 +164,7 @@ export const createOperation = async (
   try {
     const tx = await contract.createOperation(
       name,
+      description,
       token,
       provider,
       lengthInDays,
@@ -445,16 +448,17 @@ export const getOperation = async (
     return {
       id: operation[0],
       name: operation[1],
-      token: operation[2],
-      provider: operation[3],
-      deadline: operation[4],
-      startDate: operation[5],
-      rwaName: operation[6],
-      reward: operation[7],
-      tokenTvl: operation[8],
-      operationStatus: operation[9],
-      fundingGoal: operation[10],
-      assetPrice: operation[11],
+      description: operation[2],
+      token: operation[3],
+      provider: operation[4],
+      deadline: operation[5],
+      startDate: operation[6],
+      rwaName: operation[7],
+      reward: operation[8],
+      tokenTvl: operation[9],
+      operationStatus: operation[10],
+      fundingGoal: operation[11],
+      assetPrice: operation[12],
     };
   } catch (error) {
     console.error('Error getting operation:', error);

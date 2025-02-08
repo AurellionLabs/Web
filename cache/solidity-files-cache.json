@@ -2,12 +2,13 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/dineth/Developer/side-projects/Web/contracts/AuStake.sol": {
-      "lastModificationDate": 1738705541371,
-      "contentHash": "4fdb1b1bc9e459a1efa6a3e9b99992cd",
+      "lastModificationDate": 1738974187979,
+      "contentHash": "3fe11deac0ebbb117247ffd82a5c6deb",
       "sourceName": "contracts/AuStake.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -49,6 +50,7 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -89,6 +91,7 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -125,6 +128,7 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -163,6 +167,7 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -199,6 +204,7 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -235,6 +241,7 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
