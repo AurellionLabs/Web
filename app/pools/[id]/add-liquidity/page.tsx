@@ -21,7 +21,6 @@ import {
 } from '@/dapp-connectors/staking-controller';
 import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
-
 export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [amount, setAmount] = useState('');
@@ -31,11 +30,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const [operation, setOperation] = useState<OperationData>();
   // This would be fetched from your API/wallet
   const poolData = {
-    name: 'AURA/USDC Pool',
-    exchangeRate: '1 AURA = 2.5 USDC',
-    auraBalance: '101.85',
-    healthFactor: '1.91',
-    supplyAPY: '6.74',
+    name: operation?.name,
+    assetPrice: `1 ${operation?.rwaName} = $${Number(operation?.assetPrice)}`,
+    supplyAPY: Number(operation?.reward),
   };
   useEffect(() => {
     const _getBalance = async () => {
@@ -66,7 +63,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     }
   };
 
-  const isAmountValid = Number(amount) <= Number(poolData.auraBalance);
+  const isAmountValid = Number(amount) <= Number(balance);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
@@ -118,7 +115,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                 />
                 <button
                   type="button"
-                  onClick={() => setAmount(poolData.auraBalance)}
+                  onClick={() => setAmount(balance)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 text-sm font-semibold hover:text-amber-400"
                 >
                   MAX
@@ -137,7 +134,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <div className="flex items-center gap-2 text-gray-400">
-                    Exchange Rate
+                    Asset Price
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -149,7 +146,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  <div>{poolData.exchangeRate}</div>
+                  <div>{poolData.assetPrice}</div>
                 </div>
 
                 <div className="flex justify-between">
@@ -169,25 +166,6 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   <div className="text-green-500">
                     {Number(operation?.reward)}%
                   </div>
-                </div>
-
-                <div className="flex justify-between">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    Health factor
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <HelpCircle className="h-4 w-4" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            You are trusting the pool provider to pay out reward
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="text-yellow-500">{poolData.healthFactor}</div>
                 </div>
               </div>
             </div>
