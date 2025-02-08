@@ -52,10 +52,13 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     return groupedStaked;
   };
   const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
-    if (!groupedStake?.daily) return '0';
+    if (!groupedStake?.daily) return '0.00';
     const today = new Date().toISOString().split('T')[0];
-    const daily = groupedStake.daily[today]?.toString() || '0';
-    return daily;
+    const value = Number(groupedStake.daily[today] || 0);
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
   const handleRewardClaim = async () => {
     await getPool();
@@ -85,12 +88,17 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     }
   };
   const poolData = {
-    name: selectedPool?.name,
-    price: '53.17M',
-    priceChange: '-0.3',
-    tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
-    tvlChange: '+0.26%',
-    volume24h: groupedStake?.daily,
+    name: selectedPool?.name || '',
+    description: selectedPool?.description || '',
+    tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, 18, 2) : '0'}`,
+    completionPercentage:
+      selectedPool?.tokenTvl && selectedPool?.fundingGoal
+        ? `${Math.round((Number(formatEthereumValue(selectedPool.tokenTvl)) / Number(selectedPool.fundingGoal)) * 100)}%`
+        : '0%',
+    fundingGoal: selectedPool?.fundingGoal
+      ? `$${Math.round(Number(selectedPool.fundingGoal.toString())).toLocaleString()}`
+      : '0',
+    volume24h: `$${getTotalDailyVolume(groupedStake)}`,
     volumeChange: dailyPercentageChange,
     fees24h: '$87.3K',
     token0Balance: `${selectedPool?.rwaName}`,
@@ -200,7 +208,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     const data = await calculateDateValues();
     setGroupedStake(data);
     setSelectedPool(await getOperation(params.id));
-
     // calculate daily percentage change
     const today = new Date();
     const todayKey = today.toISOString().split('T')[0];
@@ -216,8 +223,13 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
       const difference = todayValue - yesterdayValue;
       percentageChange = (difference / yesterdayValue) * 100;
     }
-
-    setDailyPercentageChange(percentageChange.toFixed(2));
+    const percentageChangeStr =
+      percentageChange > 0
+        ? `+${percentageChange.toFixed(2)}%`
+        : percentageChange < 0
+          ? `${percentageChange.toFixed(2)}%`
+          : `${percentageChange.toFixed(2)}%`;
+    setDailyPercentageChange(percentageChangeStr);
   };
   useEffect(() => {
     getPool();
@@ -291,10 +303,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 <h1 className="text-xl sm:text-2xl font-bold">
                   {poolData.name}
                 </h1>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400">v3</span>
-                  <span className="text-gray-400">0.3%</span>
-                </div>
               </div>
             </div>
           </div>
@@ -330,9 +338,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             >
               <div className="mb-6">
                 <div className="text-2xl sm:text-3xl font-bold mb-1">
-                  ${poolData.price}
+                  {poolData.tvl}
                 </div>
-                <div className="text-red-500">{poolData.priceChange}%</div>
               </div>
               <div className="h-[200px] sm:h-[300px]">
                 <Chart groupedStakes={groupedStake} timeRange={timeRange} />
@@ -396,23 +403,27 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             >
               <h2 className="text-lg font-semibold mb-4">Stats</h2>
               <div className="space-y-6">
+                {poolData.description && (
+                  <div className="border-b border-[#2D3139] pb-4">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">
+                      Description
+                    </h3>
+                    <p className="text-sm text-gray-200">
+                      {poolData.description}
+                    </p>
+                  </div>
+                )}
+                <StatCard title="Funding Goal" value={poolData.fundingGoal} />
+                <StatCard title="Total TVL" value={poolData.tvl} />
                 <PoolBalance
-                  token0Balance={poolData.token0Balance}
-                  token1Balance={poolData.token1Balance}
+                  poolName={poolData.name}
+                  completionPercentage={poolData.completionPercentage}
                 />
-                <div className="space-y-4">
-                  <StatCard
-                    title="TVL"
-                    value={poolData.tvl}
-                    change={poolData.tvlChange}
-                  />
-                  <StatCard
-                    title="24h volume"
-                    value={getTotalDailyVolume(groupedStake)}
-                    change={poolData.volumeChange}
-                  />
-                  <StatCard title="24h fees" value={poolData.fees24h} />
-                </div>
+                <StatCard
+                  title="24h volume"
+                  value={poolData.volume24h}
+                  change={poolData.volumeChange}
+                />
               </div>
             </div>
           </div>

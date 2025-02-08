@@ -56,6 +56,9 @@ const formSchema = z.object({
   assetPrice: z.string().min(1, {
     message: 'Please enter the asset price.',
   }),
+  description: z.string().min(10, {
+    message: 'Description must be at least 10 characters.',
+  }),
 });
 
 export default function CreateOperationPage() {
@@ -70,6 +73,7 @@ export default function CreateOperationPage() {
       asset: '',
       fundingGoal: '',
       assetPrice: '',
+      description: '',
     },
   });
 
@@ -79,6 +83,7 @@ export default function CreateOperationPage() {
 
       await createOperation(
         values.name,
+        values.description,
         values.token,
         values.provider,
         parseInt(values.lengthInDays),
@@ -111,10 +116,10 @@ export default function CreateOperationPage() {
       <Card className="border-primary-200 dark:border-primary-800">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-primary-700 dark:text-primary-300">
-            Create New Operation
+            Create New Pool
           </CardTitle>
           <CardDescription>
-            Set up a new operation by providing the required details below.
+            Set up a new pool by providing the required details below.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,12 +130,29 @@ export default function CreateOperationPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Operation Name</FormLabel>
+                    <FormLabel>Pool Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter operation name" {...field} />
+                      <Input placeholder="Enter pool name" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Choose a descriptive name for your operation.
+                      Choose a descriptive name for your pool.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pool Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter pool description" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Describe the pool and its purpose.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
