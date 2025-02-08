@@ -12,7 +12,7 @@ export const colors = {
     800: '#92400e',
     900: '#78350f',
   },
-  
+
   // Secondary colors (Blue)
   secondary: {
     50: '#eff6ff',
@@ -26,7 +26,7 @@ export const colors = {
     800: '#1e40af',
     900: '#1e3a8a',
   },
-  
+
   // Tertiary colors (Green)
   tertiary: {
     50: '#ecfdf5',
@@ -40,7 +40,7 @@ export const colors = {
     800: '#065f46',
     900: '#064e3b',
   },
-  
+
   // Neutral colors
   neutral: {
     50: '#fafafa',
@@ -54,17 +54,16 @@ export const colors = {
     800: '#27272a',
     900: '#18181b',
   },
-  
+
   // Text colors
   text: {
     primary: '#ffffff',
     secondary: '#a1a1aa',
   },
-  
+
   // Background colors
   background: {
     primary: '#18181b',
     secondary: '#27272a',
   },
-}
-
+};

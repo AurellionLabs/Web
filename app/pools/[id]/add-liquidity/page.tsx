@@ -1,19 +1,34 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { ArrowLeft, HelpCircle, X } from 'lucide-react'
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { parseUnits } from 'ethers';
+import { ArrowLeft, HelpCircle, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from '@/components/ui/tooltip';
+import {
+  getBalance,
+  getOperation,
+  OperationData,
+  requestTokenAllowance,
+  stake,
+} from '@/dapp-connectors/staking-controller';
+import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
+import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 
 export default function AddLiquidity({ params }: { params: { id: string } }) {
-  const [amount, setAmount] = useState('')
-
+  const router = useRouter();
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [balance, setBalance] = useState('...');
+  const [operation, setOperation] = useState<OperationData>();
   // This would be fetched from your API/wallet
   const poolData = {
     name: 'AURA/USDC Pool',
@@ -21,18 +36,40 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     auraBalance: '101.85',
     healthFactor: '1.91',
     supplyAPY: '6.74',
-  }
+  };
+  useEffect(() => {
+    const _getBalance = async () => {
+      setBalance(formatEthereumValue(await getBalance()));
+    };
+    _getBalance();
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Add liquidity logic here
-    console.log('Adding liquidity:', amount)
-  }
+  useEffect(() => {
+    const _getOperation = async () => {
+      setOperation(await getOperation(params.id));
+    };
+    _getOperation();
+  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const amountBigNumberish = parseUnits(amount, 18);
+      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
+      await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
+      console.log('Successfully added liquidity');
+      router.push(`/pools/${params.id}`);
+    } catch (error: any) {
+      setError(error.message || 'An error occurred when adding liquidity');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const isAmountValid = Number(amount) <= Number(poolData.auraBalance)
+  const isAmountValid = Number(amount) <= Number(poolData.auraBalance);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-zinc-950 text-white p-6">
       <div className="max-w-xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -41,7 +78,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                 <ArrowLeft className="h-6 w-6" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold">Supply {poolData.name}</h1>
+            <h1 className="text-2xl font-bold">Supply {operation?.name}</h1>
           </div>
           <Button variant="ghost" size="icon" asChild>
             <Link href={`/pools/${params.id}`}>
@@ -50,7 +87,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
           </Button>
         </div>
 
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+        <div className="rounded-2xl border border-gray-800 p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <div className="flex justify-between mb-2">
@@ -68,7 +105,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   </TooltipProvider>
                 </label>
                 <div className="text-sm text-gray-400">
-                  Wallet balance: {poolData.auraBalance} AURA
+                  Wallet balance: {balance} AURA
                 </div>
               </div>
               <div className="relative">
@@ -96,7 +133,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Transaction overview</h3>
-              
+
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <div className="flex items-center gap-2 text-gray-400">
@@ -129,7 +166,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  <div className="text-green-500">{poolData.supplyAPY}%</div>
+                  <div className="text-green-500">
+                    {Number(operation?.reward)}%
+                  </div>
                 </div>
 
                 <div className="flex justify-between">
@@ -141,7 +180,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                           <HelpCircle className="h-4 w-4" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Liquidation occurs at {'<'}1.0</p>
+                          <p>
+                            You are trusting the pool provider to pay out reward
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -150,18 +191,19 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                 </div>
               </div>
             </div>
-
-            <Button 
-              type="submit" 
+            {error && (
+              <div className="text-red-500 text-sm">{`error when submitting form ${error}`}</div>
+            )}
+            <Button
+              type="submit"
               className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 text-lg"
-              disabled={!amount || !isAmountValid}
+              disabled={!amount || !isAmountValid || loading}
             >
-              Supply
+              {loading ? 'Adding....' : 'Add Liquidity'}
             </Button>
           </form>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
