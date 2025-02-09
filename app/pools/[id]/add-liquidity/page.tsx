@@ -30,7 +30,7 @@ const assetSchema = z.object({
 export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [assetAmount, setAssetAmount] = useState('');
-  const [auraAmount, setAuraAmount] = useState('');
+  const [tokenAmount, setTokenAmount] = useState('');
   const [error, setError] = useState('');
   const [validationError, setValidationError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,9 +61,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (assetAmount && operation?.assetPrice) {
       const calculatedAura = Number(assetAmount) * Number(operation.assetPrice);
-      setAuraAmount(calculatedAura.toString());
+      setTokenAmount(calculatedAura.toString());
     } else {
-      setAuraAmount('');
+      setTokenAmount('');
     }
   }, [assetAmount, operation?.assetPrice]);
 
@@ -85,7 +85,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const amountBigNumberish = parseUnits(auraAmount, 18);
+      const amountBigNumberish = parseUnits(tokenAmount, 18);
       await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
       await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
       console.log('Successfully added liquidity');
@@ -106,7 +106,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     }
   };
 
-  const isAmountValid = Number(auraAmount) <= Number(balance);
+  const isAmountValid = Number(tokenAmount) <= Number(balance);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
@@ -173,9 +173,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   {validationError}
                 </div>
               )}
-              {!isAmountValid && auraAmount && (
+              {!isAmountValid && tokenAmount && (
                 <div className="mt-2 text-red-500 text-sm">
-                  Insufficient AURA balance
+                  Insufficient token balance
                 </div>
               )}
             </div>
@@ -197,7 +197,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   Total Cost
                 </div>
                 <div className="text-sm">
-                  {auraAmount ? `${auraAmount} AURA` : '0 AURA'}
+                  {tokenAmount ? `$${tokenAmount}` : '$0'}
                 </div>
               </div>
 
@@ -216,7 +216,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
             <Button
               type="submit"
               className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 text-lg font-medium"
-              disabled={!auraAmount || !isAmountValid || loading}
+              disabled={!tokenAmount || !isAmountValid || loading}
             >
               {loading ? 'Processing...' : 'Add Liquidity'}
             </Button>
