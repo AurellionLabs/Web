@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { parseUnits } from 'ethers';
+import { parseUnits, formatUnits } from 'ethers';
 import { ArrowLeft, HelpCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { z } from 'zod';
@@ -34,13 +34,17 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const [error, setError] = useState('');
   const [validationError, setValidationError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [balance, setBalance] = useState('...');
+  const [balance, setBalance] = useState<string>('0');
   const [operation, setOperation] = useState<OperationData>();
   // This would be fetched from your API/wallet
   const poolData = {
     name: operation?.name,
-    assetPrice: `1 ${operation?.rwaName} = $${Number(operation?.assetPrice)}`,
-    supplyAPY: Number(operation?.reward),
+    assetPrice: operation?.assetPrice
+      ? `1 ${operation.rwaName} = $${formatEthereumValue(operation.assetPrice, 18, 2)}`
+      : '0',
+    supplyAPY: operation?.reward
+      ? `${(Number(operation.reward) / 100).toFixed(2)}%`
+      : '0%',
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,18 +64,32 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   // Calculate AURA amount when asset amount changes
   useEffect(() => {
     if (assetAmount && operation?.assetPrice) {
-      const calculatedAura = Number(assetAmount) * Number(operation.assetPrice);
-      setTokenAmount(calculatedAura.toString());
+      try {
+        const assetPriceInEther = formatUnits(operation.assetPrice, 18);
+        const calculatedAura = (
+          Number(assetAmount) * Number(assetPriceInEther)
+        ).toFixed(18);
+        setTokenAmount(calculatedAura);
+      } catch (error) {
+        console.error('Error calculating token amount:', error);
+        setTokenAmount('');
+      }
     } else {
       setTokenAmount('');
     }
   }, [assetAmount, operation?.assetPrice]);
 
   useEffect(() => {
-    const _getBalance = async () => {
-      setBalance(formatEthereumValue(await getBalance()));
+    const fetchBalance = async () => {
+      try {
+        const balanceValue = await getBalance();
+        setBalance(balanceValue?.toString() || '0');
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+        setBalance('0');
+      }
     };
-    _getBalance();
+    fetchBalance();
   }, []);
 
   useEffect(() => {
@@ -85,6 +103,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     e.preventDefault();
     setLoading(true);
     try {
+      // Convert token amount to wei before sending to contract
       const amountBigNumberish = parseUnits(tokenAmount, 18);
       await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
       await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
@@ -99,14 +118,40 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
   const handleSetMax = () => {
     if (balance && operation?.assetPrice) {
+      // Convert both balance and asset price from wei for calculation
+      const balanceInEther = formatUnits(balance, 18);
+      const assetPriceInEther = formatUnits(operation.assetPrice, 18);
       const maxAssets = Math.floor(
-        Number(balance) / Number(operation.assetPrice),
+        Number(balanceInEther) / Number(assetPriceInEther),
       );
       setAssetAmount(maxAssets.toString());
     }
   };
 
-  const isAmountValid = Number(tokenAmount) <= Number(balance);
+  const isAmountValid = () => {
+    try {
+      if (!balance || !tokenAmount) return false;
+      const balanceInEther = formatUnits(balance, 18);
+      return Number(tokenAmount) <= Number(balanceInEther);
+    } catch (error) {
+      console.error('Error checking amount validity:', error);
+      return false;
+    }
+  };
+
+  const getMaxQuantity = () => {
+    try {
+      if (!balance || !operation?.assetPrice) return '0';
+      const balanceInEther = formatUnits(balance, 18);
+      const assetPriceInEther = formatUnits(operation.assetPrice, 18);
+      return Math.floor(
+        Number(balanceInEther) / Number(assetPriceInEther),
+      ).toString();
+    } catch (error) {
+      console.error('Error calculating max quantity:', error);
+      return '0';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
@@ -139,13 +184,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                     Enter asset quantity you want to add to the pool
                   </p>
                   <span className="text-sm text-gray-400 pt-4">
-                    Max quantity:{' '}
-                    {operation?.assetPrice
-                      ? Math.floor(
-                          Number(balance) / Number(operation.assetPrice),
-                        )
-                      : '...'}{' '}
-                    item(s)
+                    Max quantity: {getMaxQuantity()} item(s)
                   </span>
                 </div>
               </div>
@@ -173,7 +212,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   {validationError}
                 </div>
               )}
-              {!isAmountValid && tokenAmount && (
+              {!isAmountValid() && tokenAmount && (
                 <div className="mt-2 text-red-500 text-sm">
                   Insufficient token balance
                 </div>
@@ -189,7 +228,11 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                 <div className="flex items-center gap-2 text-sm text-gray-400">
                   Price per {operation?.rwaName}
                 </div>
-                <div className="text-sm">{poolData.assetPrice}</div>
+                <div className="text-sm">
+                  {operation?.assetPrice
+                    ? `1 ${operation.rwaName} = $${formatEthereumValue(operation.assetPrice, 18, 2)}`
+                    : '0'}
+                </div>
               </div>
 
               <div className="flex justify-between items-center">
@@ -197,7 +240,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   Total Cost
                 </div>
                 <div className="text-sm">
-                  {tokenAmount ? `$${tokenAmount}` : '$0'}
+                  {tokenAmount ? `$${Number(tokenAmount).toFixed(2)}` : '$0'}
                 </div>
               </div>
 
@@ -206,7 +249,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   APY
                 </div>
                 <div className="text-sm text-green-500">
-                  {Number(operation?.reward)}%
+                  {operation?.reward
+                    ? `${(Number(operation.reward) / 100).toFixed(2)}%`
+                    : '0%'}
                 </div>
               </div>
             </div>
@@ -216,7 +261,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
             <Button
               type="submit"
               className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 text-lg font-medium"
-              disabled={!tokenAmount || !isAmountValid || loading}
+              disabled={!tokenAmount || !isAmountValid() || loading}
             >
               {loading ? 'Processing...' : 'Add Liquidity'}
             </Button>

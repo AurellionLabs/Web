@@ -40,7 +40,7 @@ export default function PoolsPage() {
     >
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-semibold">Your positions</h1>
+          <h1 className="text-2xl font-semibold">Pools</h1>
           <Button
             asChild
             className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
@@ -51,7 +51,7 @@ export default function PoolsPage() {
             </Link>
           </Button>
         </div>
-        <div
+        {/* <div
           className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}] mb-8`}
         >
           <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export default function PoolsPage() {
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Top pools by TVL</h2>
         </div>
