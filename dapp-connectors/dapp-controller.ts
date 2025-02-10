@@ -1,19 +1,26 @@
 import { AddressLike, BigNumberish, BrowserProvider, BytesLike, Contract, Signer, ethers } from "ethers";
-import { ParcelData, Journey, ResourceData, Order } from "@/constants/Types";
-import { Node, Status } from "@/constants/ChainTypes";
-import { LocationContract } from "@/types/ethers-contracts/AurellionAbi"
-import { AurumNodeManager } from "@/types/ethers-contracts/AurumAbi";
-import { AurellionAbi__factory } from "@/types/factories/AurellionAbi__factory";
-import { AurumAbi__factory } from "@/types/ethers-contracts";
-import { AurumAbi, AurumNodeAbi, AurellionAbi, AuraAbi } from "@/types/ethers-contracts";
-import { AurumNode__factory } from "..//types/factories/AurumNodeAbi__factory";
+//import {  Journey, ResourceData, Order } from "@/constants/Types";
+
+import { AurumNode, AurumNode__factory, AurumNodeManager, AurumNodeManager__factory, LocationContract, LocationContract__factory } from "@/typechain-types";
+import { NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS } from "@/chain-constants";
+import { AurumNodeInterface } from "@/typechain-types/contracts/Aurum.sol/AurumNode";
 var ethersProvider: BrowserProvider | undefined;
-const AUSYS_ADDRESS = process.env.EXPO_PUBLIC_AUSYS_CONTRACT_ADDRESS;
 const NODE_MANAGER_ADDRESS =
     process.env.EXPO_PUBLIC_NODE_MANAGER_CONTRACT_ADDRESS;
 export const GOAT_CONTRACT_ADDRESS =
     process.env.EXPO_PUBLIC_GOAT_CONTRACT_ADDRESS;
 export var walletAddress: string;
+export type ResourceData = {
+    id: bigint
+    amount: bigint
+}
+export enum Status {
+  PENDING = 0,
+  IN_PROGRESS = 1,
+  COMPLETED = 2,
+  CANCELED = 3,
+}
+
 export const setWalletProvider = async (_ethersProvider: BrowserProvider) => {
     console.log("heeeeeeeeeeeeeeeere");
     var signer: Signer | undefined;
@@ -41,7 +48,7 @@ export const setWalletProvider = async (_ethersProvider: BrowserProvider) => {
     }
 };
 
-const getAurumContract = async (): Promise<AurumAbi> =>
+const getAurumContract = async (): Promise<AurumNodeManager> =>
     new Promise(async (resolve, reject) => {
         console.log("here");
         var signer: Signer | undefined;
@@ -61,7 +68,7 @@ const getAurumContract = async (): Promise<AurumAbi> =>
             if (!signer) throw new Error("Signer is undefined");
             if (!NODE_MANAGER_ADDRESS)
                 throw new Error("NODE_MANAGER_ADDRESS is undefined");
-            const contract = AurumAbi__factory.connect(NODE_MANAGER_ADDRESS, signer)
+            const contract = AurumNodeManager__factory.connect(NODE_MANAGER_ADDRESS, signer)
             console.log("Manager Address", NODE_MANAGER_ADDRESS);
             const walletAddress = await signer.getAddress();
             console.log(walletAddress);
@@ -73,7 +80,7 @@ const getAurumContract = async (): Promise<AurumAbi> =>
         }
     });
 
-const getAurumNodeContract = async (address: string): Promise<AurumNodeAbi> =>
+const getAurumNodeContract = async (address: string): Promise<AurumNode> =>
     new Promise(async (resolve, reject) => {
         console.log("here");
         var signer: Signer | undefined;
@@ -104,7 +111,7 @@ const getAurumNodeContract = async (address: string): Promise<AurumNodeAbi> =>
             reject(error);
         }
     });
-const getAusysContract = async (): Promise<AurellionAbi> =>
+const getAusysContract = async (): Promise<LocationContract> =>
     new Promise(async (resolve, reject) => {
         console.log("here");
         var signer: Signer | undefined;
@@ -117,10 +124,10 @@ const getAusysContract = async (): Promise<AurellionAbi> =>
                 }
             else throw new Error("ethersProvider is underfined");
             if (!signer) throw new Error("Signer is undefined");
-            if (!AUSYS_ADDRESS) throw new Error("AUSYS_ADDRESS is undefined");
-            const contract = AurellionAbi__factory.connect(AUSYS_ADDRESS, signer);
+            if (!NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS) throw new Error("NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS is undefined");
+            const contract = LocationContract__factory.connect(NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS, signer);
             resolve(contract);
-            console.log("Ausys Address", AUSYS_ADDRESS);
+            console.log("Ausys Address", NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS);
         } catch (error) {
             console.error(
                 "Error when tring to initialise Ausys contract object:",
@@ -158,7 +165,7 @@ export const loadAvailableAssets = async () => {
     }
 };
 // Node Functions:
-export const registerNode = async (nodeData: Node) => {
+export const registerNode = async (nodeData: AurumNodeManager.NodeStruct) => {
     const contract = await getAurumContract();
     try {
         await contract.registerNode(nodeData);
@@ -226,7 +233,7 @@ export const updateLocation = async (location: AurumNodeManager.NodeLocationData
     }
 };
 
-export const getNode = async (nodeAddress: string): Promise<Node> => {
+export const getNode = async (nodeAddress: string): Promise<AurumNodeManager.NodeStruct> => {
     const contract = await getAurumContract();
     try {
         const nodeData = await contract.getNode(nodeAddress);
@@ -379,7 +386,7 @@ export const fetchNodeAvailableOrders = async (): Promise<LocationContract.Order
 
         const pendingOrders = await Promise.all(
             orderIdList.map(async (orderId: string) => {
-                const order: LocationContract.OrderStruct= await contract.idToOrder(orderId);
+                const order: LocationContract.OrderStruct = await contract.idToOrder(orderId);
                 return order.currentStatus === Status.PENDING ? order : undefined;
             })
         );
@@ -401,7 +408,7 @@ export const fetchCustomerOrders = async (): Promise<LocationContract.OrderStruc
     var x = true;
     var counter = 0;
     var orderIdList: string[] = [];
-    
+
     try {
         while (x == true) {
             try {
@@ -432,7 +439,7 @@ export const fetchCustomerOrders = async (): Promise<LocationContract.OrderStruc
 // Ausys
 
 export const jobCreation = async (
-    locationData: ParcelData,
+    locationData: LocationContract.ParcelDataStruct,
     recipientWalletAddress: string
 ) => {
     try {

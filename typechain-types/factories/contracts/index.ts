@@ -2,8 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 export * as auSysSol from "./AuSys.sol";
-export * as auraGoatRedSol from "./AuraGoatRed.sol";
 export * as aurumSol from "./Aurum.sol";
 export { AuStake__factory } from "./AuStake__factory";
 export { Aura__factory } from "./Aura__factory";
 export { AuraGoat__factory } from "./AuraGoat__factory";
+export { AuraGoatRed__factory } from "./AuraGoatRed__factory";

@@ -3,10 +3,9 @@
 /* eslint-disable */
 import type * as auSysSol from "./AuSys.sol";
 export type { auSysSol };
-import type * as auraGoatRedSol from "./AuraGoatRed.sol";
-export type { auraGoatRedSol };
 import type * as aurumSol from "./Aurum.sol";
 export type { aurumSol };
 export type { AuStake } from "./AuStake";
 export type { Aura } from "./Aura";
 export type { AuraGoat } from "./AuraGoat";
+export type { AuraGoatRed } from "./AuraGoatRed";
