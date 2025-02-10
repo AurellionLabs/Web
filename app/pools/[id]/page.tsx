@@ -93,10 +93,14 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, 18, 2) : '0'}`,
     completionPercentage:
       selectedPool?.tokenTvl && selectedPool?.fundingGoal
-        ? `${Math.round((Number(formatEthereumValue(selectedPool.tokenTvl)) / Number(selectedPool.fundingGoal)) * 100)}%`
+        ? `${(
+            (Number(formatEthereumValue(selectedPool.tokenTvl)) /
+              Number(formatEthereumValue(selectedPool.fundingGoal))) *
+            100
+          ).toFixed(2)}%`
         : '0%',
     fundingGoal: selectedPool?.fundingGoal
-      ? `$${Math.round(Number(selectedPool.fundingGoal.toString())).toLocaleString()}`
+      ? `$${formatEthereumValue(selectedPool.fundingGoal, 18, 2)}`
       : '0',
     volume24h: `$${getTotalDailyVolume(groupedStake)}`,
     volumeChange: dailyPercentageChange,
@@ -104,6 +108,9 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     token0Balance: `${selectedPool?.rwaName}`,
     token1Balance: 'Funding',
     lockupPeriod: Number(selectedPool?.deadline) * 24 * 60 * 60 * 1000,
+    reward: selectedPool?.reward
+      ? `${(Number(selectedPool.reward) / 100).toFixed(2)}%`
+      : '0%',
     transactions: [
       {
         time: '2m ago',

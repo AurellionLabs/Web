@@ -29,7 +29,7 @@ export function PoolRow({ operation, index }: PoolRowProps) {
   useEffect(() => {
     setFormattedValues({
       tokenTvl: formatEthereumValue(operation.tokenTvl),
-      reward: String(Number(operation.reward)),
+      reward: (Number(operation.reward) / 100).toFixed(2),
       lengthInDays: formatDaysLeft(Number(operation.deadline)) || '0',
     });
   }, [operation]);
