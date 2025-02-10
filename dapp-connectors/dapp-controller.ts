@@ -353,7 +353,7 @@ export const fetchNodeOrders = async (): Promise<LocationContract.OrderStruct[]>
         }
 
         orderIdList.map(async (orderId: string) => {
-            let order: LocationContract.OrderStruct = await contract.idToOrder(orderId)
+            let order = await contract.idToOrder(orderId)
             orders.push(order)
         })
 
