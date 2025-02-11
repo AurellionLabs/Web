@@ -85,7 +85,6 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
         const fetchBalance = async () => {
             try {
                 const balanceValue = await getBalance();
-                console.log("balanceValue", balanceValue)
                 setBalance(balanceValue?.toString() || '0');
             } catch (error) {
                 console.error('Error fetching balance:', error);
@@ -142,7 +141,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     const isAmountValid = () => {
         try {
             if (!balance || !tokenAmount) return false;
-            const balanceInEther = formatUnits(balance, 18);
+            const balanceInEther = formatUnits(balance, decimals);
             return Number(tokenAmount) <= Number(balanceInEther);
         } catch (error) {
             console.error('Error checking amount validity:', error);
