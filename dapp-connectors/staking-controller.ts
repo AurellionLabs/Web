@@ -295,9 +295,9 @@ export const getWithdrawHistory = async (
     time: e.args?.time,
   }));
 };
-export const groupStakesByInterval = (
+export const groupStakesByInterval = async (
   stakes: StakedEvent.OutputObject[],
-): GroupedStakes => {
+): Promise<GroupedStakes> => {
   const grouped: GroupedStakes = {
     hourly: {},
     daily: {},
@@ -306,9 +306,10 @@ export const groupStakesByInterval = (
     yearly: {},
   };
 
+  const decimals = await getDecimal()
   stakes.forEach((stake) => {
     const date = new Date(Number(stake.time) * 1000);
-    const amount = Number(formatEthereumValue(stake.amount));
+    const amount = Number(formatEthereumValue(stake.amount,Number(decimals)));
 
     // Hourly - we'll use ISO string and keep the hour part
     const hourlyKey = date.toISOString().slice(0, 13); // Format: "2024-02-03T15"

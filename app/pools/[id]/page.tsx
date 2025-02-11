@@ -56,7 +56,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         if (history) {
             setStakeHistory(history);
         } else console.log('no history');
-        const groupedStaked = groupStakesByInterval(history);
+        const groupedStaked = await groupStakesByInterval(history);
         return groupedStaked;
     };
     const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {

@@ -40,7 +40,7 @@ export function PoolRow({ operation, index }: PoolRowProps) {
             reward: (Number(operation.reward) / 100).toFixed(2),
             lengthInDays: formatDaysLeft(Number(operation.deadline)) || '0',
         });
-    }, [operation]);
+    }, [operation,decimals]);
 
     return (
         <tr
