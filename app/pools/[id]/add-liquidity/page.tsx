@@ -112,8 +112,8 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
         e.preventDefault();
         setLoading(true);
         try {
-            // Convert token amount to wei before sending to contract
-            const amountBigNumberish = parseUnits(tokenAmount, 18);
+            // Convert token amount  before sending to contract
+            const amountBigNumberish = parseUnits(tokenAmount, decimals);
             await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
             await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
             console.log('Successfully added liquidity');
