@@ -26,6 +26,10 @@ const config: HardhatUserConfig = {
       url: process.env.RPC_URL || '',
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
+    arbitrum: {
+      url: process.env.ARB_RPC_URL || '',
+      accounts: process.env.ARB_PRIVATE_KEY ? [process.env.ARB_PRIVATE_KEY] : [],
+    },
   },
 };
 

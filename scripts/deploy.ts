@@ -37,7 +37,7 @@ async function main() {
       process.cwd() + '/chain-constants.ts',
     );
     const constants = `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";
-export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${USDC}";
+export const NEXT_PUBLIC_AURA_ADDRESS = "${USDC}";
 `;
 
     await fs.promises.writeFile('chain-constants.ts', constants);
