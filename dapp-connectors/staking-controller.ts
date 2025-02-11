@@ -265,6 +265,15 @@ export const getBalance = async () => {
     throw new Error(`Failed to fetch balance with error:${e} `);
   }
 };
+
+export const getDecimal = async () => {
+  const contract = await getAuraContract();
+  try {
+    return await contract.decimals()
+  } catch (e) {
+    throw new Error(`Failed to fetch balance with error:${e} `);
+  }
+};
 export const getWithdrawHistory = async (
   operationId: BytesLike,
 ): Promise<UnstakedEvent.OutputObject[]> => {
