@@ -3,15 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { parseUnits } from 'ethers';
+import { parseUnits, formatUnits } from 'ethers';
 import { ArrowLeft, HelpCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { z } from 'zod';
 import {
   getBalance,
   getOperation,
@@ -22,26 +17,79 @@ import {
 import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 
+const assetSchema = z.object({
+  amount: z.string().refine(
+    (val) => {
+      if (val === '') return true;
+      return /^\d+$/.test(val) && Number(val) >= 0;
+    },
+    { message: 'Please enter a valid whole number' },
+  ),
+});
+
 export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [amount, setAmount] = useState('');
+  const [assetAmount, setAssetAmount] = useState('');
+  const [tokenAmount, setTokenAmount] = useState('');
   const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [balance, setBalance] = useState('...');
+  const [balance, setBalance] = useState<string>('0');
   const [operation, setOperation] = useState<OperationData>();
   // This would be fetched from your API/wallet
   const poolData = {
-    name: 'AURA/USDC Pool',
-    exchangeRate: '1 AURA = 2.5 USDC',
-    auraBalance: '101.85',
-    healthFactor: '1.91',
-    supplyAPY: '6.74',
+    name: operation?.name,
+    assetPrice: operation?.assetPrice
+      ? `1 ${operation.rwaName} = $${formatEthereumValue(operation.assetPrice, 18, 2)}`
+      : '0',
+    supplyAPY: operation?.reward
+      ? `${(Number(operation.reward) / 100).toFixed(2)}%`
+      : '0%',
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setValidationError('');
+
+    try {
+      assetSchema.parse({ amount: value });
+      setAssetAmount(value);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        setValidationError(err.errors[0].message);
+      }
+    }
+  };
+
+  // Calculate AURA amount when asset amount changes
   useEffect(() => {
-    const _getBalance = async () => {
-      setBalance(formatEthereumValue(await getBalance()));
+    if (assetAmount && operation?.assetPrice) {
+      try {
+        const assetPriceInEther = formatUnits(operation.assetPrice, 18);
+        const calculatedAura = (
+          Number(assetAmount) * Number(assetPriceInEther)
+        ).toFixed(18);
+        setTokenAmount(calculatedAura);
+      } catch (error) {
+        console.error('Error calculating token amount:', error);
+        setTokenAmount('');
+      }
+    } else {
+      setTokenAmount('');
+    }
+  }, [assetAmount, operation?.assetPrice]);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const balanceValue = await getBalance();
+        setBalance(balanceValue?.toString() || '0');
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+        setBalance('0');
+      }
     };
-    _getBalance();
+    fetchBalance();
   }, []);
 
   useEffect(() => {
@@ -50,11 +98,13 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     };
     _getOperation();
   }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const amountBigNumberish = parseUnits(amount, 18);
+      // Convert token amount to wei before sending to contract
+      const amountBigNumberish = parseUnits(tokenAmount, 18);
       await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
       await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
       console.log('Successfully added liquidity');
@@ -66,7 +116,42 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     }
   };
 
-  const isAmountValid = Number(amount) <= Number(poolData.auraBalance);
+  const handleSetMax = () => {
+    if (balance && operation?.assetPrice) {
+      // Convert both balance and asset price from wei for calculation
+      const balanceInEther = formatUnits(balance, 18);
+      const assetPriceInEther = formatUnits(operation.assetPrice, 18);
+      const maxAssets = Math.floor(
+        Number(balanceInEther) / Number(assetPriceInEther),
+      );
+      setAssetAmount(maxAssets.toString());
+    }
+  };
+
+  const isAmountValid = () => {
+    try {
+      if (!balance || !tokenAmount) return false;
+      const balanceInEther = formatUnits(balance, 18);
+      return Number(tokenAmount) <= Number(balanceInEther);
+    } catch (error) {
+      console.error('Error checking amount validity:', error);
+      return false;
+    }
+  };
+
+  const getMaxQuantity = () => {
+    try {
+      if (!balance || !operation?.assetPrice) return '0';
+      const balanceInEther = formatUnits(balance, 18);
+      const assetPriceInEther = formatUnits(operation.assetPrice, 18);
+      return Math.floor(
+        Number(balanceInEther) / Number(assetPriceInEther),
+      ).toString();
+    } catch (error) {
+      console.error('Error calculating max quantity:', error);
+      return '0';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
@@ -88,118 +173,97 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
         </div>
 
         <div className="rounded-2xl border border-gray-800 p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
             <div>
-              <div className="flex justify-between mb-2">
-                <label className="flex items-center gap-2 text-sm text-gray-400">
-                  Amount
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Amount of AURA to supply to the pool</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </label>
-                <div className="text-sm text-gray-400">
-                  Wallet balance: {balance} AURA
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-lg font-medium text-white">
+                    Quantity
+                  </label>
+                  <p className="text-sm text-gray-400">
+                    Enter asset quantity you want to add to the pool
+                  </p>
+                  <span className="text-sm text-gray-400 pt-4">
+                    Max quantity: {getMaxQuantity()} item(s)
+                  </span>
                 </div>
               </div>
+
               <div className="relative">
                 <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  value={assetAmount}
+                  onChange={handleInputChange}
                   className="w-full bg-gray-800 rounded-xl p-4 pr-20 text-2xl focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="0.00"
+                  placeholder="0"
                 />
                 <button
                   type="button"
-                  onClick={() => setAmount(poolData.auraBalance)}
+                  onClick={handleSetMax}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 text-sm font-semibold hover:text-amber-400"
                 >
                   MAX
                 </button>
               </div>
-              {!isAmountValid && amount && (
+              {validationError && (
                 <div className="mt-2 text-red-500 text-sm">
-                  Amount exceeds available balance
+                  {validationError}
+                </div>
+              )}
+              {!isAmountValid() && tokenAmount && (
+                <div className="mt-2 text-red-500 text-sm">
+                  Insufficient token balance
                 </div>
               )}
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Transaction overview</h3>
+            <div className="space-y-3 bg-gray-900/50 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-gray-400 mb-3">
+                Transaction Details
+              </h3>
 
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    Exchange Rate
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <HelpCircle className="h-4 w-4" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Current exchange rate between AURA and USDC</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div>{poolData.exchangeRate}</div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  Price per {operation?.rwaName}
                 </div>
-
-                <div className="flex justify-between">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    Supply APY
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <HelpCircle className="h-4 w-4" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Annual Percentage Yield for supplying liquidity</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="text-green-500">
-                    {Number(operation?.reward)}%
-                  </div>
+                <div className="text-sm">
+                  {operation?.assetPrice
+                    ? `1 ${operation.rwaName} = $${formatEthereumValue(operation.assetPrice, 18, 2)}`
+                    : '0'}
                 </div>
+              </div>
 
-                <div className="flex justify-between">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    Health factor
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <HelpCircle className="h-4 w-4" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            You are trusting the pool provider to pay out reward
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="text-yellow-500">{poolData.healthFactor}</div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  Total Cost
+                </div>
+                <div className="text-sm">
+                  {tokenAmount ? `$${Number(tokenAmount).toFixed(2)}` : '$0'}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  APY
+                </div>
+                <div className="text-sm text-green-500">
+                  {operation?.reward
+                    ? `${(Number(operation.reward) / 100).toFixed(2)}%`
+                    : '0%'}
                 </div>
               </div>
             </div>
-            {error && (
-              <div className="text-red-500 text-sm">{`error when submitting form ${error}`}</div>
-            )}
+
+            {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
+
             <Button
               type="submit"
-              className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 text-lg"
-              disabled={!amount || !isAmountValid || loading}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 text-lg font-medium"
+              disabled={!tokenAmount || !isAmountValid() || loading}
             >
-              {loading ? 'Adding....' : 'Add Liquidity'}
+              {loading ? 'Processing...' : 'Add Liquidity'}
             </Button>
           </form>
         </div>
