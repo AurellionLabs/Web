@@ -2,5 +2,6 @@ node_modules/
 .next/
 .swc/
 .*.env
+.env
 artifacts/build-info/
 cache/

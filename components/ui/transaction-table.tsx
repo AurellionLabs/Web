@@ -1,7 +1,8 @@
 'use client';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
+import { getDecimal } from '@/dapp-connectors/staking-controller';
 import { StakedEvent } from '@/typechain-types/contracts/AuStake';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Transaction {
   time: string;
@@ -19,8 +20,15 @@ interface TransactionTableProps {
 }
 
 export function TransactionTable({ transactions }: TransactionTableProps) {
+  const [decimals, setDecimals] = useState(0);
   useEffect(() => {
     console.log('Transactions object', transactions);
+  }, []);
+  useEffect(() => {
+    const _getDecimal = async () => {
+      setDecimals(Number(await getDecimal()));
+    };
+    _getDecimal();
   }, []);
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800">
@@ -59,10 +67,10 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                     {tx.eType}
                   </td>
                   <td className="py-4 px-4 text-right">
-                    {formatEthereumValue(tx.amount)}
+                    {formatEthereumValue(tx.amount, 6)}
                   </td>
                   <td className="py-4 px-4 text-right">
-                    {formatEthereumValue(tx.amount)}
+                    {formatEthereumValue(tx.amount, 6)}
                   </td>
                 </tr>
               ))

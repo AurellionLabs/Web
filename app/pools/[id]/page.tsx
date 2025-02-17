@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 import {
+  getDecimal,
   getOperation,
   getStakeHistory,
   GroupedStakes,
@@ -34,6 +35,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const [remainingTime, setRemainingTime] = useState(0);
   const [operationProgress, setOperationProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [decimals, setDecimals] = useState(0);
   const [isPaid, setIsPaid] = useState(false);
   const [status, setStatus] = useState('');
   const [isOperationComplete, setIsOperationComplete] = useState(false);
@@ -43,12 +45,18 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     StakedEvent.OutputObject[] | undefined
   >();
   const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
+  useEffect(() => {
+    const _getDecimal = async () => {
+      setDecimals(Number(await getDecimal()));
+    };
+    _getDecimal();
+  }, []);
   const calculateDateValues = async () => {
     const history = await getStakeHistory(params.id);
     if (history) {
       setStakeHistory(history);
     } else console.log('no history');
-    const groupedStaked = groupStakesByInterval(history);
+    const groupedStaked = await groupStakesByInterval(history);
     return groupedStaked;
   };
   const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
@@ -90,11 +98,11 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const poolData = {
     name: selectedPool?.name || '',
     description: selectedPool?.description || '',
-    tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, 18, 2) : '0'}`,
+    tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, decimals, 2) : '0'}`,
     completionPercentage:
       selectedPool?.tokenTvl && selectedPool?.fundingGoal
         ? `${(
-            (Number(formatEthereumValue(selectedPool.tokenTvl)) /
+            (Number(formatEthereumValue(selectedPool.tokenTvl, decimals)) /
               Number(formatEthereumValue(selectedPool.fundingGoal))) *
             100
           ).toFixed(2)}%`

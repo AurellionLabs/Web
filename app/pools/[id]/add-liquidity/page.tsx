@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { z } from 'zod';
 import {
   getBalance,
+  getDecimal,
   getOperation,
   OperationData,
   requestTokenAllowance,
@@ -34,6 +35,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const [error, setError] = useState('');
   const [validationError, setValidationError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [decimals, setDecimals] = useState(0);
   const [balance, setBalance] = useState<string>('0');
   const [operation, setOperation] = useState<OperationData>();
   // This would be fetched from your API/wallet
@@ -99,12 +101,19 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     _getOperation();
   }, []);
 
+  useEffect(() => {
+    const _getDecimal = async () => {
+      setDecimals(Number(await getDecimal()));
+    };
+    _getDecimal();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Convert token amount to wei before sending to contract
-      const amountBigNumberish = parseUnits(tokenAmount, 18);
+      // Convert token amount  before sending to contract
+      const amountBigNumberish = parseUnits(tokenAmount, decimals);
       await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
       await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
       console.log('Successfully added liquidity');
@@ -124,6 +133,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
       const maxAssets = Math.floor(
         Number(balanceInEther) / Number(assetPriceInEther),
       );
+      console.log(maxAssets);
       setAssetAmount(maxAssets.toString());
     }
   };
@@ -131,7 +141,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const isAmountValid = () => {
     try {
       if (!balance || !tokenAmount) return false;
-      const balanceInEther = formatUnits(balance, 18);
+      const balanceInEther = formatUnits(balance, decimals);
       return Number(tokenAmount) <= Number(balanceInEther);
     } catch (error) {
       console.error('Error checking amount validity:', error);
@@ -140,10 +150,15 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   };
 
   const getMaxQuantity = () => {
+    console.log('in handle set max');
     try {
       if (!balance || !operation?.assetPrice) return '0';
-      const balanceInEther = formatUnits(balance, 18);
+      console.log('settng max');
+      const balanceInEther = formatUnits(balance, decimals);
       const assetPriceInEther = formatUnits(operation.assetPrice, 18);
+      console.log(
+        `balanceInEther$ ${balanceInEther} assetPriceInEther${assetPriceInEther}`,
+      );
       return Math.floor(
         Number(balanceInEther) / Number(assetPriceInEther),
       ).toString();
