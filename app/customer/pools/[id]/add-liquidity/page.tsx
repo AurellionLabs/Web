@@ -117,7 +117,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
       await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
       await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
       console.log('Successfully added liquidity');
-      router.push(`/pools/${params.id}`);
+      router.push(`/customer/pools/${params.id}`);
     } catch (error: any) {
       setError(error.message || 'An error occurred when adding liquidity');
     } finally {
@@ -174,14 +174,14 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
-              <Link href={`/pools/${params.id}`}>
+              <Link href={`/customer/pools/${params.id}`}>
                 <ArrowLeft className="h-6 w-6" />
               </Link>
             </Button>
             <h1 className="text-2xl font-bold">Supply {operation?.name}</h1>
           </div>
           <Button variant="ghost" size="icon" asChild>
-            <Link href={`/pools/${params.id}`}>
+            <Link href={`/customer/pools/${params.id}`}>
               <X className="h-6 w-6" />
             </Link>
           </Button>

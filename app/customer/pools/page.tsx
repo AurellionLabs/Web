@@ -11,20 +11,25 @@ import {
   walletAddress,
 } from '@/dapp-connectors/staking-controller';
 import { useEffect, useState } from 'react';
-import { useChainProvider } from '@/app/providers/main.provider';
-
+import { useMainProvider } from '@/app/providers/main.provider';
 export default function PoolsPage() {
+  const { setCurrentUserRole } = useMainProvider();
   const [operations, setOperations] = useState<OperationData[]>();
-  const { setConnected, connected } = useChainProvider();
+  const { connected } = useMainProvider();
+
+  useEffect(() => {
+    setCurrentUserRole('customer');
+  }, [setCurrentUserRole]);
+
   useEffect(() => {
     if (connected) {
       const fetchOperations = async () => {
-        const ids = await getOperationList(); // Fetch list of IDs
+        const ids = await getOperationList();
         if (ids) {
           const operationsData = await Promise.all(
             ids.map((id) => getOperation(id)),
           );
-          setOperations(operationsData); // Update with completed data
+          setOperations(operationsData);
         }
       };
       if (walletAddress) {
@@ -34,6 +39,7 @@ export default function PoolsPage() {
       console.log('Wallet not connected');
     }
   }, [connected]);
+
   return (
     <div
       className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
@@ -45,7 +51,7 @@ export default function PoolsPage() {
             asChild
             className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
           >
-            <Link href="/create-pool">
+            <Link href="/customer/create-pool">
               <Plus className="w-4 h-4 mr-2" />
               Create Pool
             </Link>

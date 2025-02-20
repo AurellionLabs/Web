@@ -31,12 +31,12 @@ export default function HomePage() {
               through our decentralized platform.
             </p>
             <div className="flex gap-4 justify-center pt-6">
-              <Link href="/create-pool">
+              <Link href="/customer/create-pool">
                 <Button size="lg" className="text-lg">
                   Create Pool <ArrowRightIcon className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link href="/pools">
+              <Link href="/customer/pools">
                 <Button size="lg" variant="outline" className="text-lg">
                   Explore Pools
                 </Button>
@@ -98,7 +98,7 @@ export default function HomePage() {
                 Join our growing community of liquidity providers and start
                 earning yields today.
               </p>
-              <Link href="/create-pool">
+              <Link href="/customer/create-pool">
                 <Button size="lg" variant="secondary" className="text-lg">
                   Get Started Now
                 </Button>

@@ -3,12 +3,12 @@
 import { colors } from '@/lib/constants/colors';
 import { setWalletProvider } from '@/dapp-connectors/staking-controller';
 import { useEffect, useState } from 'react';
-import { useChainProvider } from '@/app/providers/main.provider';
 import { Button } from './ui/button';
+import { useMainProvider } from '@/app/providers/main.provider';
 
 export default function ConnectButton() {
   const [connectedText, setConnectedText] = useState('Connect');
-  const { connected, setConnected } = useChainProvider();
+  const { connected, setConnected } = useMainProvider();
   useEffect(() => {
     try {
       handleConnect();
