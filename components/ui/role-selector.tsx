@@ -23,7 +23,7 @@ const roles = [
   {
     value: 'customer',
     label: 'Customer',
-    path: '/pools',
+    path: '/customer/pools',
   },
   {
     value: 'node',

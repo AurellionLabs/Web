@@ -48,7 +48,7 @@ export default function RootLayout({
                   </Link>
                   <nav className="flex gap-6">
                     <Link
-                      href="/pools"
+                      href="/customer/pools"
                       className="text-gray-400 hover:text-white"
                     >
                       Pools

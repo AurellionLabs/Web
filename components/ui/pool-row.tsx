@@ -52,7 +52,7 @@ export function PoolRow({ operation, index }: PoolRowProps) {
       <td className={`py-4 px-4 text-[${colors.text.secondary}]`}>{index}</td>
       <td className="py-4 px-4">
         <Link
-          href={`/pools/${operation.id}`}
+          href={`/customer/pools/${operation.id}`}
           className={`flex items-center gap-2 hover:text-[${colors.primary[500]}]`}
           onClick={handleClick}
         >

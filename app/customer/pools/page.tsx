@@ -51,7 +51,7 @@ export default function PoolsPage() {
             asChild
             className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
           >
-            <Link href="/create-pool">
+            <Link href="/customer/create-pool">
               <Plus className="w-4 h-4 mr-2" />
               Create Pool
             </Link>

@@ -130,7 +130,7 @@ export default function CreateOperationPage() {
     <div className="container max-w-2xl mx-auto py-10">
       <div className="mb-6">
         <Link
-          href="/pools"
+          href="/customer/pools"
           className="inline-flex items-center text-sm text-primary-500 hover:text-primary-600"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

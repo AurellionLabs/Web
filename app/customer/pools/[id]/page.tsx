@@ -289,7 +289,10 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             Explore
           </Link>
           <span className="text-gray-600">/</span>
-          <Link href="/pools" className="text-gray-400 hover:text-white">
+          <Link
+            href="/customer/pools"
+            className="text-gray-400 hover:text-white"
+          >
             Pools
           </Link>
           <span className="text-gray-600">/</span>
@@ -305,7 +308,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
               asChild
               className="hidden sm:flex"
             >
-              <Link href="/pools">
+              <Link href="/customer/pools">
                 <ArrowLeft className="h-6 w-6" />
               </Link>
             </Button>
@@ -337,7 +340,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
               Swap
             </Button>
             <Button variant="default" asChild>
-              <Link href={`/pools/${params.id}/add-liquidity`}>
+              <Link href={`/customer/pools/${params.id}/add-liquidity`}>
                 Add liquidity
               </Link>
             </Button>
