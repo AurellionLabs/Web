@@ -1,20 +1,14 @@
 'use client';
 
 import { useMainProvider } from '@/app/providers/main.provider';
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function NodePage() {
-  const { currentUserRole } = useMainProvider();
-  const router = useRouter();
+  const { setCurrentUserRole } = useMainProvider();
 
   useEffect(() => {
-    if (currentUserRole !== 'node') {
-      router.push('/');
-    }
-  }, [currentUserRole, router]);
-
-  if (currentUserRole !== 'node') return null;
+    setCurrentUserRole('node');
+  }, [setCurrentUserRole]);
 
   return (
     <div className="container mx-auto py-8">

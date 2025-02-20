@@ -17,25 +17,30 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useMainProvider } from '@/app/providers/main.provider';
+import { useRouter } from 'next/navigation';
 
 const roles = [
   {
     value: 'customer',
     label: 'Customer',
+    path: '/pools',
   },
   {
     value: 'node',
     label: 'Node',
+    path: '/node',
   },
   {
     value: 'driver',
     label: 'Driver',
+    path: '/driver',
   },
 ] as const;
 
 export function RoleSelector() {
   const [open, setOpen] = React.useState(false);
   const { currentUserRole, setCurrentUserRole } = useMainProvider();
+  const router = useRouter();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -64,6 +69,7 @@ export function RoleSelector() {
                 onSelect={(currentValue) => {
                   setCurrentUserRole(currentValue as typeof currentUserRole);
                   setOpen(false);
+                  router.push(r.path);
                 }}
               >
                 <Check

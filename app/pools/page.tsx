@@ -12,10 +12,15 @@ import {
 } from '@/dapp-connectors/staking-controller';
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
-import { RoleGuard } from '@/components/role-guard';
 export default function PoolsPage() {
+  const { setCurrentUserRole } = useMainProvider();
   const [operations, setOperations] = useState<OperationData[]>();
   const { connected } = useMainProvider();
+
+  useEffect(() => {
+    setCurrentUserRole('customer');
+  }, [setCurrentUserRole]);
+
   useEffect(() => {
     if (connected) {
       const fetchOperations = async () => {
@@ -36,24 +41,23 @@ export default function PoolsPage() {
   }, [connected]);
 
   return (
-    <RoleGuard allowedRoles={['customer']}>
-      <div
-        className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-2xl font-semibold">Pools</h1>
-            <Button
-              asChild
-              className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
-            >
-              <Link href="/create-pool">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Pool
-              </Link>
-            </Button>
-          </div>
-          {/* <div
+    <div
+      className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
+    >
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-semibold">Pools</h1>
+          <Button
+            asChild
+            className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
+          >
+            <Link href="/create-pool">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Pool
+            </Link>
+          </Button>
+        </div>
+        {/* <div
           className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}] mb-8`}
         >
           <div className="flex items-center gap-3">
@@ -72,46 +76,45 @@ export default function PoolsPage() {
             </div>
           </div>
         </div> */}
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold">Top pools by TVL</h2>
-          </div>
-          {operations && (
-            <>
-              <PoolTable operations={operations} />
-            </>
-          )}{' '}
-          <div className="mt-8">
-            <div
-              className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}]`}
-            >
-              <div className="flex items-start gap-3">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">Top pools by TVL</h2>
+        </div>
+        {operations && (
+          <>
+            <PoolTable operations={operations} />
+          </>
+        )}{' '}
+        <div className="mt-8">
+          <div
+            className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}]`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-12 h-12 bg-[${colors.primary[500]}]/20 rounded-xl flex items-center justify-center`}
+              >
                 <div
-                  className={`w-12 h-12 bg-[${colors.primary[500]}]/20 rounded-xl flex items-center justify-center`}
+                  className={`w-6 h-6 bg-[${colors.primary[500]}] rounded-lg`}
+                />
+              </div>
+              <div>
+                <h3 className="font-medium mb-1">
+                  Learn about liquidity provision
+                </h3>
+                <p className="text-sm text-gray-400 mb-3">
+                  Providing liquidity on different protocols.
+                </p>
+                <Link
+                  href="/learn"
+                  className={`text-[${colors.primary[500]}] hover:text-[${colors.primary[400]}] flex items-center gap-1 text-sm`}
                 >
-                  <div
-                    className={`w-6 h-6 bg-[${colors.primary[500]}] rounded-lg`}
-                  />
-                </div>
-                <div>
-                  <h3 className="font-medium mb-1">
-                    Learn about liquidity provision
-                  </h3>
-                  <p className="text-sm text-gray-400 mb-3">
-                    Providing liquidity on different protocols.
-                  </p>
-                  <Link
-                    href="/learn"
-                    className={`text-[${colors.primary[500]}] hover:text-[${colors.primary[400]}] flex items-center gap-1 text-sm`}
-                  >
-                    Learn more
-                    <ArrowUpRight className="w-4 h-4" />
-                  </Link>
-                </div>
+                  Learn more
+                  <ArrowUpRight className="w-4 h-4" />
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </RoleGuard>
+    </div>
   );
 }

@@ -1,20 +1,14 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useMainProvider } from '../providers/main.provider';
 
 export default function DriverPage() {
-  const { currentUserRole } = useMainProvider();
-  const router = useRouter();
+  const { setCurrentUserRole } = useMainProvider();
 
   useEffect(() => {
-    if (currentUserRole !== 'driver') {
-      router.push('/');
-    }
-  }, [currentUserRole, router]);
-
-  if (currentUserRole !== 'driver') return null;
+    setCurrentUserRole('driver');
+  }, [setCurrentUserRole]);
 
   return (
     <div className="container mx-auto py-8">
