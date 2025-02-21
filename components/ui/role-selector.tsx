@@ -42,6 +42,38 @@ export function RoleSelector() {
   const { currentUserRole, setCurrentUserRole } = useMainProvider();
   const router = useRouter();
 
+  const checkNodeRegistration = async () => {
+    try {
+      // TODO: Add your blockchain call here to check if the wallet is registered as a node
+      // const isRegistered = await yourContract.isRegisteredNode(walletAddress);
+      // return isRegistered;
+      return true;
+    } catch (error) {
+      console.error('Error checking node registration:', error);
+      return false;
+    }
+  };
+
+  const handleRoleSelect = async (currentValue: string) => {
+    if (currentValue === 'node') {
+      const isRegisteredNode = await checkNodeRegistration();
+      setCurrentUserRole(currentValue as typeof currentUserRole);
+      setOpen(false);
+      if (isRegisteredNode) {
+        router.push('/node/dashboard');
+      } else {
+        router.push('/node/register');
+      }
+    } else {
+      setCurrentUserRole(currentValue as typeof currentUserRole);
+      setOpen(false);
+      const selectedRole = roles.find((r) => r.value === currentValue);
+      if (selectedRole) {
+        router.push(selectedRole.path);
+      }
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -66,11 +98,7 @@ export function RoleSelector() {
               <CommandItem
                 key={r.value}
                 value={r.value}
-                onSelect={(currentValue) => {
-                  setCurrentUserRole(currentValue as typeof currentUserRole);
-                  setOpen(false);
-                  router.push(r.path);
-                }}
+                onSelect={handleRoleSelect}
               >
                 <Check
                   className={cn(
