@@ -23,17 +23,14 @@ const roles = [
   {
     value: 'customer',
     label: 'Customer',
-    path: '/customer/pools',
   },
   {
     value: 'node',
     label: 'Node',
-    path: '/node',
   },
   {
     value: 'driver',
     label: 'Driver',
-    path: '/driver',
   },
 ] as const;
 
@@ -47,7 +44,7 @@ export function RoleSelector() {
       // TODO: Add your blockchain call here to check if the wallet is registered as a node
       // const isRegistered = await yourContract.isRegisteredNode(walletAddress);
       // return isRegistered;
-      return true;
+      return false;
     } catch (error) {
       console.error('Error checking node registration:', error);
       return false;
@@ -55,22 +52,19 @@ export function RoleSelector() {
   };
 
   const handleRoleSelect = async (currentValue: string) => {
+    setCurrentUserRole(currentValue as typeof currentUserRole);
+    setOpen(false);
     if (currentValue === 'node') {
       const isRegisteredNode = await checkNodeRegistration();
-      setCurrentUserRole(currentValue as typeof currentUserRole);
-      setOpen(false);
       if (isRegisteredNode) {
         router.push('/node/dashboard');
       } else {
         router.push('/node/register');
       }
-    } else {
-      setCurrentUserRole(currentValue as typeof currentUserRole);
-      setOpen(false);
-      const selectedRole = roles.find((r) => r.value === currentValue);
-      if (selectedRole) {
-        router.push(selectedRole.path);
-      }
+    } else if (currentValue === 'customer') {
+      router.push('/customer/pools');
+    } else if (currentValue === 'driver') {
+      router.push('/driver');
     }
   };
 
