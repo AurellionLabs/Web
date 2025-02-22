@@ -1,10 +1,11 @@
-import { AddressLike, BigNumberish, BrowserProvider, BytesLike, Contract, Signer, ethers } from "ethers";
+import { AddressLike, BigNumberish, BrowserProvider, BytesLike, Contract, JsonRpcSigner, Signer, ethers } from "ethers";
 //import {  Journey, ResourceData, Order } from "@/constants/Types";
 
 import { AurumNode, AurumNode__factory, AurumNodeManager, AurumNodeManager__factory, LocationContract, LocationContract__factory } from "@/typechain-types";
 import { NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS } from "@/chain-constants";
 import { AurumNodeInterface } from "@/typechain-types/contracts/Aurum.sol/AurumNode";
-var ethersProvider: BrowserProvider | undefined;
+let ethersProvider: BrowserProvider | undefined;
+let signer: JsonRpcSigner | undefined;
 const NODE_MANAGER_ADDRESS =
     process.env.EXPO_PUBLIC_NODE_MANAGER_CONTRACT_ADDRESS;
 export const GOAT_CONTRACT_ADDRESS =
@@ -22,155 +23,95 @@ export enum Status {
 }
 
 export const setWalletProvider = async (_ethersProvider: BrowserProvider) => {
-    console.log("heeeeeeeeeeeeeeeere");
-    var signer: Signer | undefined;
-    console.log("ethers provider param", _ethersProvider);
-    ethersProvider = _ethersProvider;
-    // this will console log as empty {} but it actually does definitely exist
-    console.log("here");
-    console.log("ethers provider in dapp controller", ethersProvider);
     try {
-        if (ethersProvider)
-            try {
-                signer = await ethersProvider.getSigner();
-                walletAddress = await signer.getAddress();
-                console.log("signer set");
-            } catch (e) {
-                throw new Error("getSigner failed with " + e);
-            }
-        else console.error("ethersProvider is underfined");
-        if (!signer) throw new Error("Signer is undefined");
+        ethersProvider = _ethersProvider;
+        signer = await ethersProvider.getSigner();
         walletAddress = await signer.getAddress();
+        console.log("Wallet connected successfully. Address:", walletAddress);
     } catch (error) {
-        console.error(
-            `failed to set address:${walletAddress} \n error: ${error} \n provider: ${ethersProvider}`
-        );
+        console.error("Failed to connect wallet:", error);
+        throw error;
     }
 };
 
-const getAurumContract = async (): Promise<AurumNodeManager> =>
-    new Promise(async (resolve, reject) => {
-        console.log("here");
-        var signer: Signer | undefined;
-
-        try {
-            if (ethersProvider)
-                try {
-                    signer = await ethersProvider.getSigner();
-                } catch (e) {
-                    throw new Error("getSigner failed with " + e);
-                }
-            else
-                console.error(
-                    "ethersProvider is underfined ethersProvider:",
-                    ethersProvider
-                );
-            if (!signer) throw new Error("Signer is undefined");
-            if (!NODE_MANAGER_ADDRESS)
-                throw new Error("NODE_MANAGER_ADDRESS is undefined");
-            const contract = AurumNodeManager__factory.connect(NODE_MANAGER_ADDRESS, signer)
-            console.log("Manager Address", NODE_MANAGER_ADDRESS);
-            const walletAddress = await signer.getAddress();
-            console.log(walletAddress);
-            console.log("calling function");
-            resolve(contract);
-        } catch (error) {
-            console.error("Error fetching contract:", error);
-            reject(error);
-        }
-    });
-
-const getAurumNodeContract = async (address: string): Promise<AurumNode> =>
-    new Promise(async (resolve, reject) => {
-        console.log("here");
-        var signer: Signer | undefined;
-
-        try {
-            if (ethersProvider)
-                try {
-                    signer = await ethersProvider.getSigner();
-                } catch (e) {
-                    throw new Error("getSigner failed with " + e);
-                }
-            else
-                console.error(
-                    "ethersProvider is underfined ethersProvider:",
-                    ethersProvider
-                );
-            if (!signer) throw new Error("Signer is undefined");
-            if (!NODE_MANAGER_ADDRESS)
-                throw new Error("NODE_MANAGER_ADDRESS is undefined");
-            const contract = AurumNode__factory.connect(address, signer);
-            console.log("Manager Address", NODE_MANAGER_ADDRESS);
-            const walletAddress = await signer.getAddress();
-            console.log(walletAddress);
-            console.log("calling function");
-            resolve(contract);
-        } catch (error) {
-            console.error("Error fetching contract:", error);
-            reject(error);
-        }
-    });
-const getAusysContract = async (): Promise<LocationContract> =>
-    new Promise(async (resolve, reject) => {
-        console.log("here");
-        var signer: Signer | undefined;
-        try {
-            if (ethersProvider)
-                try {
-                    signer = await ethersProvider.getSigner();
-                } catch (e) {
-                    throw new Error("getSigner failed with " + e);
-                }
-            else throw new Error("ethersProvider is underfined");
-            if (!signer) throw new Error("Signer is undefined");
-            if (!NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS) throw new Error("NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS is undefined");
-            const contract = LocationContract__factory.connect(NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS, signer);
-            resolve(contract);
-            console.log("Ausys Address", NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS);
-        } catch (error) {
-            console.error(
-                "Error when tring to initialise Ausys contract object:",
-                error
-            );
-            reject(error);
-        }
-    });
-export const loadAvailableAssets = async () => {
-    console.log("here");
-    const contract = await getAurumContract();
+const getAurumContract = async (): Promise<AurumNodeManager> => {
+    if (!ethersProvider || !signer) {
+        throw new Error("Wallet not connected. Please connect your wallet.");
+    }
+    if (!NODE_MANAGER_ADDRESS) {
+        throw new Error("NODE_MANAGER_ADDRESS is undefined");
+    }
     try {
-        console.log("Manager Address", NODE_MANAGER_ADDRESS);
-        console.log(walletAddress);
-        console.log("calling function");
-        var x;
-        var count = 0;
-        var assetList: ResourceData[] = []
-        while (x == true) {
-            count++;
-            try {
-                var id = await contract.resourceList(count)
-                var amount = await contract.supplyPerResource(id)
-                var asset: ResourceData = { id, amount }
-                assetList.push(asset)
-            } catch (e) {
-                console.error("probably end of list", e)
-                x = false
-            }
-        }
-        return assetList;
+        const contract = AurumNodeManager__factory.connect(NODE_MANAGER_ADDRESS, signer);
+        console.log("AurumNodeManager contract fetched successfully.");
+        return contract;
     } catch (error) {
-        console.error("Error in asset search:", error);
+        console.error("Error fetching AurumNodeManager contract:", error);
         throw error;
     }
+};
+
+const getAurumNodeContract = async (address: string): Promise<AurumNode> => {
+    if (!ethersProvider || !signer) {
+        throw new Error("Wallet not connected. Please connect your wallet.");
+    }
+    try {
+        const contract = AurumNode__factory.connect(address, signer);
+        console.log("AurumNode contract fetched successfully.");
+        return contract;
+    } catch (error) {
+        console.error("Error fetching AurumNode contract:", error);
+        throw error;
+    }
+};
+const getAusysContract = async (): Promise<LocationContract> => {
+    if (!ethersProvider || !signer) {
+        throw new Error("Wallet not connected. Please connect your wallet.");
+    }
+    if (!NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS) {
+        throw new Error("NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS is undefined");
+    }
+    try {
+        const contract = LocationContract__factory.connect(NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS, signer);
+        console.log("LocationContract contract fetched successfully.");
+        return contract;
+    } catch (error) {
+        console.error("Error fetching LocationContract contract:", error);
+        throw error;
+    }
+};
+export const loadAvailableAssets = async (): Promise<ResourceData[]> => {
+    const contract = await getAurumContract();
+    let count = 1;
+    const assetList: ResourceData[] = [];
+    let id;
+    let amount;
+    try {
+        while (true) {
+            id = await contract.resourceList(count);
+            amount = await contract.supplyPerResource(id);
+            assetList.push({ id, amount });
+            count++;
+        }
+    } catch (error) {
+        if (error.message.includes("out of bounds")) {
+            console.log("End of asset list reached.");
+        } else {
+            console.error("Error loading available assets:", error);
+            throw error;
+        }
+    }
+    return assetList;
 };
 // Node Functions:
 export const registerNode = async (nodeData: AurumNodeManager.NodeStruct) => {
     const contract = await getAurumContract();
     try {
-        await contract.registerNode(nodeData);
+        const tx = await contract.registerNode(nodeData);
+        await tx.wait();
+        console.log("Node registered successfully. Transaction hash:", tx.hash);
     } catch (error) {
-        console.error("Error when registering node:", error);
+        console.error("Error registering node:", error);
         throw error;
     }
 };

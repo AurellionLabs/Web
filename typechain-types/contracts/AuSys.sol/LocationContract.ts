@@ -50,43 +50,6 @@ export declare namespace LocationContract {
     endName: string;
   };
 
-  export type JourneyStruct = {
-    parcelData: LocationContract.ParcelDataStruct;
-    journeyId: BytesLike;
-    currentStatus: BigNumberish;
-    sender: AddressLike;
-    receiver: AddressLike;
-    driver: AddressLike;
-    journeyStart: BigNumberish;
-    journeyEnd: BigNumberish;
-    bounty: BigNumberish;
-    ETA: BigNumberish;
-  };
-
-  export type JourneyStructOutput = [
-    parcelData: LocationContract.ParcelDataStructOutput,
-    journeyId: string,
-    currentStatus: bigint,
-    sender: string,
-    receiver: string,
-    driver: string,
-    journeyStart: bigint,
-    journeyEnd: bigint,
-    bounty: bigint,
-    ETA: bigint
-  ] & {
-    parcelData: LocationContract.ParcelDataStructOutput;
-    journeyId: string;
-    currentStatus: bigint;
-    sender: string;
-    receiver: string;
-    driver: string;
-    journeyStart: bigint;
-    journeyEnd: bigint;
-    bounty: bigint;
-    ETA: bigint;
-  };
-
   export type OrderStruct = {
     id: BytesLike;
     token: AddressLike;
@@ -132,6 +95,43 @@ export declare namespace LocationContract {
     currentStatus: bigint;
     contracatualAgreement: string;
   };
+
+  export type JourneyStruct = {
+    parcelData: LocationContract.ParcelDataStruct;
+    journeyId: BytesLike;
+    currentStatus: BigNumberish;
+    sender: AddressLike;
+    receiver: AddressLike;
+    driver: AddressLike;
+    journeyStart: BigNumberish;
+    journeyEnd: BigNumberish;
+    bounty: BigNumberish;
+    ETA: BigNumberish;
+  };
+
+  export type JourneyStructOutput = [
+    parcelData: LocationContract.ParcelDataStructOutput,
+    journeyId: string,
+    currentStatus: bigint,
+    sender: string,
+    receiver: string,
+    driver: string,
+    journeyStart: bigint,
+    journeyEnd: bigint,
+    bounty: bigint,
+    ETA: bigint
+  ] & {
+    parcelData: LocationContract.ParcelDataStructOutput;
+    journeyId: string;
+    currentStatus: bigint;
+    sender: string;
+    receiver: string;
+    driver: string;
+    journeyStart: bigint;
+    journeyEnd: bigint;
+    bounty: bigint;
+    ETA: bigint;
+  };
 }
 
 export interface LocationContractInterface extends Interface {
@@ -147,6 +147,7 @@ export interface LocationContractInterface extends Interface {
       | "driverHandOn"
       | "driverToJourneyId"
       | "generateReward"
+      | "getCompleteOrder"
       | "getjourney"
       | "handOff"
       | "handOn"
@@ -212,6 +213,10 @@ export interface LocationContractInterface extends Interface {
   encodeFunctionData(
     functionFragment: "generateReward",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getCompleteOrder",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getjourney",
@@ -363,6 +368,10 @@ export interface LocationContractInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "generateReward",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getCompleteOrder",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getjourney", data: BytesLike): Result;
@@ -566,6 +575,12 @@ export interface LocationContract extends BaseContract {
     [id: BytesLike, driver: AddressLike],
     [void],
     "nonpayable"
+  >;
+
+  getCompleteOrder: TypedContractMethod<
+    [id: BytesLike],
+    [LocationContract.OrderStructOutput],
+    "view"
   >;
 
   getjourney: TypedContractMethod<
@@ -859,6 +874,13 @@ export interface LocationContract extends BaseContract {
     [id: BytesLike, driver: AddressLike],
     [void],
     "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "getCompleteOrder"
+  ): TypedContractMethod<
+    [id: BytesLike],
+    [LocationContract.OrderStructOutput],
+    "view"
   >;
   getFunction(
     nameOrSignature: "getjourney"

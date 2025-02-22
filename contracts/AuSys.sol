@@ -458,7 +458,7 @@ contract locationContract {
     orderIds.push(id);
   }
 
-  function getCompleteOrder(bytes32 id) public view returns (Order memory) {
+  function getOrder(bytes32 id) public view returns (Order memory) {
     return idToOrder[id];
   }
 }

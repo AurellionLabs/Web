@@ -15,61 +15,7 @@ async function main() {
             (await deployer.provider.getBalance(deployer.address)).toString()
         );
 
-        // Deploy Aura contract
-        console.log('\nDeploying Aura contract...');
-        const Aura = await ethers.getContractFactory("Aura");
-        const aura = await Aura.deploy();
-        await aura.waitForDeployment();
-        const auraAddress = await aura.getAddress();
-        console.log("Aura deployed to:", auraAddress);
-
-        // Mint tokens to treasury
-        const mintAmount = ethers.parseUnits("1000000", 18);
-        const mintTx = await aura.mintTokenToTreasury(mintAmount);
-        await mintTx.wait();
-        console.log(`Minted ${mintAmount.toString()} tokens to treasury`);
-
-        // Deploy locationContract
-        console.log('\nDeploying locationContract...');
-        const LocationContract = await ethers.getContractFactory("locationContract");
-        const ausys = await LocationContract.deploy(auraAddress);
-        await ausys.waitForDeployment();
-        const ausysAddress = await ausys.getAddress();
-        console.log("locationContract deployed to:", ausysAddress);
-
-        // Approve aura spending
-        const auraTotalSupply = await aura.totalSupply();
-        const approveTx = await aura.approve(ausysAddress, auraTotalSupply);
-        await approveTx.wait();
-        console.log(`Approved ${auraTotalSupply.toString()} for spending by locationContract`);
-
-        // Deploy AurumNodeManager
-        console.log('\nDeploying AurumNodeManager...');
-        const AurumNodeManager = await ethers.getContractFactory("AurumNodeManager");
-        const aurumNodeManager = await AurumNodeManager.deploy(
-            ausysAddress,
-            "0x9d4CCf6c3d6a1d5583c2918028c86Cc8267a0BE6"
-        );
-        await aurumNodeManager.waitForDeployment();
-        const aurumNodeManagerAddress = await aurumNodeManager.getAddress();
-        console.log("AurumNodeManager deployed to:", aurumNodeManagerAddress);
-
-        // Deploy AuraGoat
-        console.log('\nDeploying AuraGoat...');
-        const AuraGoat = await ethers.getContractFactory("AuraGoat");
-        const auraGoat = await AuraGoat.deploy(
-            "0x9d4CCf6c3d6a1d5583c2918028c86Cc8267a0BE6",
-            "",
-            aurumNodeManagerAddress
-        );
-        await auraGoat.waitForDeployment();
-        const auraGoatAddress = await auraGoat.getAddress();
-        console.log("AuraGoat deployed to:", auraGoatAddress);
-
-        // Add token to AurumNodeManager
-        const addTokenTx = await aurumNodeManager.addToken(auraGoatAddress);
-        await addTokenTx.wait();
-        console.log(`Added AuraGoat token to AurumNodeManager`);
+        const USDC = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
 
         // Deploy AuStake contract
         console.log('\nDeploying AuStake contract...');
@@ -88,10 +34,7 @@ async function main() {
         // Write deployment addresses to file
         console.log('\nWriting constants to:', process.cwd() + '/chain-constants.ts');
         const constants = `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";
-export const NEXT_PUBLIC_AURA_ADDRESS = "${auraGoatAddress}";
-export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${auraAddress}";
-export const NEXT_PUBLIC_LOCATION_CONTRACT_ADDRESS = "${ausysAddress}";
-export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
+export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${USDC}";
 `;
 
         await fs.promises.writeFile('chain-constants.ts', constants);
@@ -100,10 +43,7 @@ export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress
         console.log('\nDeployment Summary');
         console.log('==================');
         console.log(`Deployer: ${deployer.address}`);
-        console.log(`Aura Token: ${auraAddress}`);
-        console.log(`Location Contract: ${ausysAddress}`);
-        console.log(`AurumNodeManager: ${aurumNodeManagerAddress}`);
-        console.log(`AuraGoat Token: ${auraGoatAddress}`);
+        console.log(`Aura Token: ${USDC}`);
         console.log(`AuStake Contract: ${auStakeAddress}`);
         console.log(`Project Wallet: ${projectWallet}`);
         console.log(`Initial Owner: ${initialOwner}`);
