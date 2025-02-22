@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -53,8 +53,20 @@ type SortConfig = {
 export default function OrdersPage() {
   const { setCurrentUserRole } = useMainProvider();
   const { orders } = useNode();
-  const searchParams = useSearchParams();
 
+  useEffect(() => {
+    setCurrentUserRole('node');
+  }, [setCurrentUserRole]);
+
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OrdersContent orders={orders} />
+    </Suspense>
+  );
+}
+
+function OrdersContent({ orders }: { orders: Order[] }) {
+  const searchParams = useSearchParams();
   const [filteredOrders, setFilteredOrders] = useState<Order[]>(orders);
   const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,10 +82,6 @@ export default function OrdersPage() {
     assetType: 'all',
     status: searchParams.get('status') || 'all',
   });
-
-  useEffect(() => {
-    setCurrentUserRole('node');
-  }, [setCurrentUserRole]);
 
   const handleSort = (key: 'quantity' | 'value') => {
     setSortConfig((prevSort) => ({
