@@ -44,7 +44,7 @@ export function RoleSelector() {
       // TODO: Add your blockchain call here to check if the wallet is registered as a node
       // const isRegistered = await yourContract.isRegisteredNode(walletAddress);
       // return isRegistered;
-      return false;
+      return true;
     } catch (error) {
       console.error('Error checking node registration:', error);
       return false;

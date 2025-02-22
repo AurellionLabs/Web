@@ -24,7 +24,7 @@ export const useMainProvider = () => {
   return context;
 };
 
-const MainProvider = ({ children }: { children: ReactNode }) => {
+export const MainProvider = ({ children }: { children: ReactNode }) => {
   const [connected, setConnected] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('customer');
 
@@ -41,5 +41,3 @@ const MainProvider = ({ children }: { children: ReactNode }) => {
     </ChainContext.Provider>
   );
 };
-
-export default MainProvider;
