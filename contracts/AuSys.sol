@@ -346,6 +346,11 @@ contract locationContract {
     uint bounty,
     uint ETA
   ) public {
+    require(sender != address(0), "Invalid sender");
+    require(receiver != address(0), "Invalid receiver");
+    require(bounty > 0, "Invalid bounty");
+    require(ETA > block.timestamp, "Invalid ETA");
+    
     // TO DO transfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
     auraToken.transferFrom(sender, address(this), bounty * 10 ** 18);
     customerToTokenAmount[sender] += bounty;
@@ -371,7 +376,12 @@ contract locationContract {
     receiverToJourneyId[receiver].push(journey.journeyId);
     // add journeyId to global mapping of journeys
     numberToJourneyID[journeyIdCounter] = journey.journeyId;
+
+    emit JourneyCreated(journey.journeyId, sender, receiver);
   }
+
+  event JourneyCreated(bytes32 indexed journeyId, address indexed sender, address indexed receiver);
+  event JourneyStatusUpdated(bytes32 indexed journeyId, Status newStatus);
 
   // TODO: node Acceptance function as this is just forced creation of order by a node, algo runs acceptance and then creation is pushed through
   //made flexible by adding nullish value to any param

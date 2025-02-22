@@ -69,6 +69,7 @@ contract AurumNodeManager {
 
     //PLEASEESSEEEE CALLL MEEEEEEE
     function addToken(AuraGoat _auraGoat) public {
+        require(address(_auraGoat) != address(0), "Invalid token address");
         auraGoat = _auraGoat;
     }
 
@@ -80,6 +81,8 @@ contract AurumNodeManager {
     mapping(uint256 => bool) public resourceExists;
 
     function registerNode(Node memory node) public returns (address id) {
+        require(node.owner != address(0), "Invalid owner address");
+        require(node.supportedAssets.length == node.capacity.length, "Arrays length mismatch");
         aurumNode NodeContract = new aurumNode(
             node.owner,
             ausys,
@@ -100,6 +103,7 @@ contract AurumNodeManager {
         for (uint i = 0; i < node.supportedAssets.length; i++) {
             resourceList.push(node.supportedAssets[i]);
         }
+        emit NodeRegistered(id, node.owner);
     }
 
     function getNode(
@@ -166,6 +170,7 @@ contract AurumNodeManager {
                 resourceExists[currentAsset] = true;
             }
         }
+        emit NodeCapacityUpdated(node, quantities);
     }
 
     function expensiveFuzzyUpdateCapacity(
@@ -231,6 +236,9 @@ contract AurumNodeManager {
     //mint token with added item so onchain rep
     // erc1155 with unique id for goat grae and multiple stuff in  ID
     //delete item
+
+    event NodeRegistered(address indexed nodeAddress, address indexed owner);
+    event NodeCapacityUpdated(address indexed node, uint256[] quantities);
 }
 
 contract aurumNode {
