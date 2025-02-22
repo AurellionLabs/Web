@@ -37,7 +37,7 @@ export function PoolTable({ operations }: OperationTableProps) {
       </div>
       <div className="p-4 border-t border-gray-800">
         <Link
-          href="/pools/explore"
+          href="/customer/pools/explore"
           className="text-amber-500 hover:text-amber-400 flex items-center gap-1 text-sm"
         >
           Explore more pools

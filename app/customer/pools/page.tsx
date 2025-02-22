@@ -11,20 +11,25 @@ import {
   walletAddress,
 } from '@/dapp-connectors/staking-controller';
 import { useEffect, useState } from 'react';
-import { useChainProvider } from '@/app/providers/main.provider';
-
+import { useMainProvider } from '@/app/providers/main.provider';
 export default function PoolsPage() {
+  const { setCurrentUserRole } = useMainProvider();
   const [operations, setOperations] = useState<OperationData[]>();
-  const { setConnected, connected } = useChainProvider();
+  const { connected } = useMainProvider();
+
+  useEffect(() => {
+    setCurrentUserRole('customer');
+  }, [setCurrentUserRole]);
+
   useEffect(() => {
     if (connected) {
       const fetchOperations = async () => {
-        const ids = await getOperationList(); // Fetch list of IDs
+        const ids = await getOperationList();
         if (ids) {
           const operationsData = await Promise.all(
             ids.map((id) => getOperation(id)),
           );
-          setOperations(operationsData); // Update with completed data
+          setOperations(operationsData);
         }
       };
       if (walletAddress) {
@@ -34,24 +39,25 @@ export default function PoolsPage() {
       console.log('Wallet not connected');
     }
   }, [connected]);
+
   return (
     <div
       className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
     >
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-semibold">Your positions</h1>
+          <h1 className="text-2xl font-semibold">Pools</h1>
           <Button
             asChild
             className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
           >
-            <Link href="/create-pool">
+            <Link href="/customer/create-pool">
               <Plus className="w-4 h-4 mr-2" />
               Create Pool
             </Link>
           </Button>
         </div>
-        <div
+        {/* <div
           className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}] mb-8`}
         >
           <div className="flex items-center gap-3">
@@ -69,7 +75,7 @@ export default function PoolsPage() {
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Top pools by TVL</h2>
         </div>

@@ -1,7 +1,10 @@
 'use client';
 import Link from 'next/link';
 import { colors } from '@/lib/constants/colors';
-import { OperationData } from '@/dapp-connectors/staking-controller';
+import {
+  getDecimal,
+  OperationData,
+} from '@/dapp-connectors/staking-controller';
 import { useState, useEffect } from 'react';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
@@ -17,6 +20,7 @@ const formatDaysLeft = (deadline: number) => {
 };
 export function PoolRow({ operation, index }: PoolRowProps) {
   const { setSelectedPool } = usePoolsProvider();
+  const [decimals, setDecimals] = useState(0);
   const [formattedValues, setFormattedValues] = useState({
     tokenTvl: '0',
     reward: '0',
@@ -26,13 +30,20 @@ export function PoolRow({ operation, index }: PoolRowProps) {
   const handleClick = () => {
     setSelectedPool(operation);
   };
+
+  useEffect(() => {
+    const _getDecimal = async () => {
+      setDecimals(Number(await getDecimal()));
+    };
+    _getDecimal();
+  }, []);
   useEffect(() => {
     setFormattedValues({
-      tokenTvl: formatEthereumValue(operation.tokenTvl),
-      reward: String(Number(operation.reward)),
+      tokenTvl: formatEthereumValue(operation.tokenTvl, decimals),
+      reward: (Number(operation.reward) / 100).toFixed(2),
       lengthInDays: formatDaysLeft(Number(operation.deadline)) || '0',
     });
-  }, [operation]);
+  }, [operation, decimals]);
 
   return (
     <tr
@@ -41,7 +52,7 @@ export function PoolRow({ operation, index }: PoolRowProps) {
       <td className={`py-4 px-4 text-[${colors.text.secondary}]`}>{index}</td>
       <td className="py-4 px-4">
         <Link
-          href={`/pools/${operation.id}`}
+          href={`/customer/pools/${operation.id}`}
           className={`flex items-center gap-2 hover:text-[${colors.primary[500]}]`}
           onClick={handleClick}
         >

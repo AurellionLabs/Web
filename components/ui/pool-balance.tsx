@@ -1,24 +1,24 @@
 interface PoolBalanceProps {
-  token0Balance: string;
-  token1Balance: string;
+  poolName: string;
+  completionPercentage: string;
 }
 
 export function PoolBalance({
-  token0Balance,
-  token1Balance,
+  poolName,
+  completionPercentage,
 }: PoolBalanceProps) {
   return (
     <div>
-      <h3 className="text-sm text-gray-400 mb-2">Pool balances</h3>
+      <h3 className="text-sm text-gray-400 mb-2">Completion Progress</h3>
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span>{token0Balance}</span>
-          <span>{token1Balance}</span>
+          <span>{poolName}</span>
+          <span className="text-green-500">{completionPercentage}</span>
         </div>
         <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-amber-600 to-red-700"
-            style={{ width: '70%' }}
+            style={{ width: `${completionPercentage}` }}
           />
         </div>
       </div>

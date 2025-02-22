@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 import {
+  getDecimal,
   getOperation,
   getStakeHistory,
   GroupedStakes,
@@ -34,6 +35,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const [remainingTime, setRemainingTime] = useState(0);
   const [operationProgress, setOperationProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [decimals, setDecimals] = useState(0);
   const [isPaid, setIsPaid] = useState(false);
   const [status, setStatus] = useState('');
   const [isOperationComplete, setIsOperationComplete] = useState(false);
@@ -43,19 +45,28 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     StakedEvent.OutputObject[] | undefined
   >();
   const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
+  useEffect(() => {
+    const _getDecimal = async () => {
+      setDecimals(Number(await getDecimal()));
+    };
+    _getDecimal();
+  }, []);
   const calculateDateValues = async () => {
     const history = await getStakeHistory(params.id);
     if (history) {
       setStakeHistory(history);
     } else console.log('no history');
-    const groupedStaked = groupStakesByInterval(history);
+    const groupedStaked = await groupStakesByInterval(history);
     return groupedStaked;
   };
   const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
-    if (!groupedStake?.daily) return '0';
+    if (!groupedStake?.daily) return '0.00';
     const today = new Date().toISOString().split('T')[0];
-    const daily = groupedStake.daily[today]?.toString() || '0';
-    return daily;
+    const value = Number(groupedStake.daily[today] || 0);
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
   const handleRewardClaim = async () => {
     await getPool();
@@ -85,17 +96,29 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     }
   };
   const poolData = {
-    name: selectedPool?.name,
-    price: '53.17M',
-    priceChange: '-0.3',
-    tvl: selectedPool ? formatEthereumValue(selectedPool?.tokenTvl) : '0',
-    tvlChange: '+0.26%',
-    volume24h: groupedStake?.daily,
+    name: selectedPool?.name || '',
+    description: selectedPool?.description || '',
+    tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, decimals, 2) : '0'}`,
+    completionPercentage:
+      selectedPool?.tokenTvl && selectedPool?.fundingGoal
+        ? `${(
+            (Number(formatEthereumValue(selectedPool.tokenTvl, decimals)) /
+              Number(formatEthereumValue(selectedPool.fundingGoal))) *
+            100
+          ).toFixed(2)}%`
+        : '0%',
+    fundingGoal: selectedPool?.fundingGoal
+      ? `$${formatEthereumValue(selectedPool.fundingGoal, 18, 2)}`
+      : '0',
+    volume24h: `$${getTotalDailyVolume(groupedStake)}`,
     volumeChange: dailyPercentageChange,
     fees24h: '$87.3K',
     token0Balance: `${selectedPool?.rwaName}`,
     token1Balance: 'Funding',
     lockupPeriod: Number(selectedPool?.deadline) * 24 * 60 * 60 * 1000,
+    reward: selectedPool?.reward
+      ? `${(Number(selectedPool.reward) / 100).toFixed(2)}%`
+      : '0%',
     transactions: [
       {
         time: '2m ago',
@@ -200,7 +223,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     const data = await calculateDateValues();
     setGroupedStake(data);
     setSelectedPool(await getOperation(params.id));
-
     // calculate daily percentage change
     const today = new Date();
     const todayKey = today.toISOString().split('T')[0];
@@ -216,8 +238,13 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
       const difference = todayValue - yesterdayValue;
       percentageChange = (difference / yesterdayValue) * 100;
     }
-
-    setDailyPercentageChange(percentageChange.toFixed(2));
+    const percentageChangeStr =
+      percentageChange > 0
+        ? `+${percentageChange.toFixed(2)}%`
+        : percentageChange < 0
+          ? `${percentageChange.toFixed(2)}%`
+          : `${percentageChange.toFixed(2)}%`;
+    setDailyPercentageChange(percentageChangeStr);
   };
   useEffect(() => {
     getPool();
@@ -262,7 +289,10 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             Explore
           </Link>
           <span className="text-gray-600">/</span>
-          <Link href="/pools" className="text-gray-400 hover:text-white">
+          <Link
+            href="/customer/pools"
+            className="text-gray-400 hover:text-white"
+          >
             Pools
           </Link>
           <span className="text-gray-600">/</span>
@@ -278,7 +308,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
               asChild
               className="hidden sm:flex"
             >
-              <Link href="/pools">
+              <Link href="/customer/pools">
                 <ArrowLeft className="h-6 w-6" />
               </Link>
             </Button>
@@ -291,10 +321,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 <h1 className="text-xl sm:text-2xl font-bold">
                   {poolData.name}
                 </h1>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400">v3</span>
-                  <span className="text-gray-400">0.3%</span>
-                </div>
               </div>
             </div>
           </div>
@@ -314,7 +340,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
               Swap
             </Button>
             <Button variant="default" asChild>
-              <Link href={`/pools/${params.id}/add-liquidity`}>
+              <Link href={`/customer/pools/${params.id}/add-liquidity`}>
                 Add liquidity
               </Link>
             </Button>
@@ -330,9 +356,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             >
               <div className="mb-6">
                 <div className="text-2xl sm:text-3xl font-bold mb-1">
-                  ${poolData.price}
+                  {poolData.tvl}
                 </div>
-                <div className="text-red-500">{poolData.priceChange}%</div>
               </div>
               <div className="h-[200px] sm:h-[300px]">
                 <Chart groupedStakes={groupedStake} timeRange={timeRange} />
@@ -396,23 +421,27 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             >
               <h2 className="text-lg font-semibold mb-4">Stats</h2>
               <div className="space-y-6">
+                {poolData.description && (
+                  <div className="border-b border-[#2D3139] pb-4">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">
+                      Description
+                    </h3>
+                    <p className="text-sm text-gray-200">
+                      {poolData.description}
+                    </p>
+                  </div>
+                )}
+                <StatCard title="Funding Goal" value={poolData.fundingGoal} />
+                <StatCard title="Total TVL" value={poolData.tvl} />
                 <PoolBalance
-                  token0Balance={poolData.token0Balance}
-                  token1Balance={poolData.token1Balance}
+                  poolName={poolData.name}
+                  completionPercentage={poolData.completionPercentage}
                 />
-                <div className="space-y-4">
-                  <StatCard
-                    title="TVL"
-                    value={poolData.tvl}
-                    change={poolData.tvlChange}
-                  />
-                  <StatCard
-                    title="24h volume"
-                    value={getTotalDailyVolume(groupedStake)}
-                    change={poolData.volumeChange}
-                  />
-                  <StatCard title="24h fees" value={poolData.fees24h} />
-                </div>
+                <StatCard
+                  title="24h volume"
+                  value={poolData.volume24h}
+                  change={poolData.volumeChange}
+                />
               </div>
             </div>
           </div>

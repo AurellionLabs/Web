@@ -73,6 +73,7 @@ export interface AuStakeInterface extends Interface {
     functionFragment: "createOperation",
     values: [
       string,
+      string,
       AddressLike,
       AddressLike,
       BigNumberish,
@@ -401,6 +402,7 @@ export interface AuStake extends BaseContract {
   createOperation: TypedContractMethod<
     [
       name: string,
+      description: string,
       token: AddressLike,
       provider: AddressLike,
       deadline: BigNumberish,
@@ -421,6 +423,7 @@ export interface AuStake extends BaseContract {
         string,
         string,
         string,
+        string,
         bigint,
         bigint,
         string,
@@ -432,6 +435,7 @@ export interface AuStake extends BaseContract {
       ] & {
         returnId: string;
         name: string;
+        description: string;
         token: string;
         provider: string;
         deadline: bigint;
@@ -455,6 +459,7 @@ export interface AuStake extends BaseContract {
         string,
         string,
         string,
+        string,
         bigint,
         bigint,
         string,
@@ -466,6 +471,7 @@ export interface AuStake extends BaseContract {
       ] & {
         id: string;
         name: string;
+        description: string;
         token: string;
         provider: string;
         deadline: bigint;
@@ -591,6 +597,7 @@ export interface AuStake extends BaseContract {
   ): TypedContractMethod<
     [
       name: string,
+      description: string,
       token: AddressLike,
       provider: AddressLike,
       deadline: BigNumberish,
@@ -612,6 +619,7 @@ export interface AuStake extends BaseContract {
         string,
         string,
         string,
+        string,
         bigint,
         bigint,
         string,
@@ -623,6 +631,7 @@ export interface AuStake extends BaseContract {
       ] & {
         returnId: string;
         name: string;
+        description: string;
         token: string;
         provider: string;
         deadline: bigint;
@@ -647,6 +656,7 @@ export interface AuStake extends BaseContract {
         string,
         string,
         string,
+        string,
         bigint,
         bigint,
         string,
@@ -658,6 +668,7 @@ export interface AuStake extends BaseContract {
       ] & {
         id: string;
         name: string;
+        description: string;
         token: string;
         provider: string;
         deadline: bigint;

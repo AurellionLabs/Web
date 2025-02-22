@@ -46,7 +46,7 @@ export function PoolCard({
           <span className="font-semibold">{volume}</span>
         </div>
       </div>
-      <Link href={`/pools/${id}`} className="block w-full">
+      <Link href={`/customer/pools/${id}`} className="block w-full">
         <Button className="w-full">View Details</Button>
       </Link>
     </div>

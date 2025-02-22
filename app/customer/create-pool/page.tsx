@@ -41,20 +41,41 @@ const formSchema = z.object({
   provider: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
     message: 'Please enter a valid provider address.',
   }),
-  lengthInDays: z.string().min(1, {
-    message: 'Please enter the length in days.',
-  }),
-  reward: z.string().min(1, {
-    message: 'Please enter a reward amount.',
-  }),
+  lengthInDays: z
+    .string()
+    .refine(
+      (val) =>
+        !isNaN(parseInt(val)) &&
+        Number.isInteger(Number(val)) &&
+        parseInt(val) > 0,
+      {
+        message: 'Please enter a valid whole number greater than 0.',
+      },
+    ),
+  reward: z.string().refine(
+    (val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 1 && num <= 100;
+    },
+    {
+      message: 'Reward amount must be between 1 and 100.',
+    },
+  ),
   asset: z.string().min(1, {
     message: 'Please enter the pools asset .',
   }),
-  fundingGoal: z.string().min(1, {
-    message: 'Please enter the funding goal.',
-  }),
-  assetPrice: z.string().min(1, {
-    message: 'Please enter the asset price.',
+  fundingGoal: z
+    .string()
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      message: 'Please enter a valid number greater than 0.',
+    }),
+  assetPrice: z
+    .string()
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      message: 'Please enter a valid number greater than 0.',
+    }),
+  description: z.string().min(10, {
+    message: 'Description must be at least 10 characters.',
   }),
 });
 
@@ -70,6 +91,7 @@ export default function CreateOperationPage() {
       asset: '',
       fundingGoal: '',
       assetPrice: '',
+      description: '',
     },
   });
 
@@ -77,15 +99,23 @@ export default function CreateOperationPage() {
     try {
       await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS);
 
+      // Convert decimal values to wei (18 decimals)
+      const fundingGoalWei = ethers.parseUnits(values.fundingGoal, 18);
+      const assetPriceWei = ethers.parseUnits(values.assetPrice, 18);
+
+      // Convert reward to basis points (multiply by 100 to preserve 2 decimal places)
+      const rewardBasisPoints = Math.round(parseFloat(values.reward) * 100);
+
       await createOperation(
         values.name,
+        values.description,
         values.token,
         values.provider,
         parseInt(values.lengthInDays),
-        values.reward,
+        rewardBasisPoints,
         values.asset,
-        values.fundingGoal,
-        values.assetPrice,
+        fundingGoalWei,
+        assetPriceWei,
       );
       toast.success('Operation created successfully!');
     } catch (error: any) {
@@ -100,7 +130,7 @@ export default function CreateOperationPage() {
     <div className="container max-w-2xl mx-auto py-10">
       <div className="mb-6">
         <Link
-          href="/pools"
+          href="/customer/pools"
           className="inline-flex items-center text-sm text-primary-500 hover:text-primary-600"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -111,10 +141,10 @@ export default function CreateOperationPage() {
       <Card className="border-primary-200 dark:border-primary-800">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-primary-700 dark:text-primary-300">
-            Create New Operation
+            Create New Pool
           </CardTitle>
           <CardDescription>
-            Set up a new operation by providing the required details below.
+            Set up a new pool by providing the required details below.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,12 +155,29 @@ export default function CreateOperationPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Operation Name</FormLabel>
+                    <FormLabel>Pool Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter operation name" {...field} />
+                      <Input placeholder="Enter pool name" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Choose a descriptive name for your operation.
+                      Choose a descriptive name for your pool.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pool Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter pool description" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Describe the pool and its purpose.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -198,12 +245,14 @@ export default function CreateOperationPage() {
                       <Input
                         type="number"
                         min="1"
+                        step="1"
                         placeholder="Enter number of days"
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Specify the duration of the operation in days.
+                      Specify the duration of the operation in days (whole
+                      numbers only).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -215,12 +264,19 @@ export default function CreateOperationPage() {
                 name="reward"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Reward Amount</FormLabel>
+                    <FormLabel>APY</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="0.00" {...field} />
+                      <Input
+                        type="number"
+                        step="any"
+                        min="1"
+                        max="100"
+                        placeholder="0.00"
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
-                      Enter the reward amount in tokens.
+                      Enter the APY (as a percentage between 1 and 100)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -233,10 +289,16 @@ export default function CreateOperationPage() {
                   <FormItem>
                     <FormLabel>Funding Goal</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="0.00" {...field} />
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        placeholder="0.00"
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
-                      Enter the funding goal in tokens.
+                      Enter the funding goal in tokens (decimals allowed).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -249,10 +311,16 @@ export default function CreateOperationPage() {
                   <FormItem>
                     <FormLabel>Asset Price</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="0.00" {...field} />
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        placeholder="0.00"
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
-                      Enter the asset price in tokens.
+                      Enter the asset price in tokens (decimals allowed).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
