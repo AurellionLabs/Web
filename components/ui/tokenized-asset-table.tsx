@@ -1,6 +1,7 @@
 import { colors } from '@/lib/constants/colors';
 import { Button } from './button';
 import { ArrowUpDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface TokenizedAsset {
   id: string;
@@ -28,6 +29,8 @@ export function TokenizedAssetTable({
   onSort,
   sortConfig,
 }: TokenizedAssetTableProps) {
+  const router = useRouter();
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -73,14 +76,14 @@ export function TokenizedAssetTable({
                   <ArrowUpDown className="h-4 w-4" />
                 </Button>
               </th>
-              <th className="h-12 px-4 text-right">Action</th>
             </tr>
           </thead>
           <tbody>
             {assets.map((asset) => (
               <tr
                 key={asset.id}
-                className="border-b border-gray-800 hover:bg-gray-800/50"
+                onClick={() => router.push(`/customer/trading/${asset.id}`)}
+                className="border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition-colors"
               >
                 <td className="py-4 px-4">
                   <div>
@@ -97,17 +100,6 @@ export function TokenizedAssetTable({
                 </td>
                 <td className="py-4 px-4">
                   {formatCurrency(asset.totalValue)}
-                </td>
-                <td className="py-4 px-4 text-right">
-                  <Button
-                    onClick={() => {
-                      // TODO: Implement trade action
-                      console.log('Trade clicked for asset:', asset.id);
-                    }}
-                    className="bg-amber-500 hover:bg-amber-600"
-                  >
-                    Trade
-                  </Button>
                 </td>
               </tr>
             ))}

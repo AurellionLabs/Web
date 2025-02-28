@@ -12,11 +12,20 @@ export interface TokenizedAsset {
   totalValue: number;
 }
 
+export interface Order {
+  assetId: string;
+  quantity: number;
+  deliveryLocation: string;
+  totalPrice: number;
+}
+
 interface TradeContextType {
   assets: TokenizedAsset[];
   setAssets: (assets: TokenizedAsset[]) => void;
   fetchAssets: () => Promise<void>;
   isLoading: boolean;
+  getAssetById: (id: string) => TokenizedAsset | undefined;
+  placeOrder: (order: Order) => Promise<boolean>;
 }
 
 const TradeContext = createContext<TradeContextType | null>(null);
@@ -120,9 +129,34 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const getAssetById = useCallback(
+    (id: string) => {
+      return assets.find((asset) => asset.id === id);
+    },
+    [assets],
+  );
+
+  const placeOrder = useCallback(async (order: Order): Promise<boolean> => {
+    try {
+      // TODO: Replace with actual blockchain transaction
+      console.log('Placing order:', order);
+      return true;
+    } catch (error) {
+      console.error('Error placing order:', error);
+      return false;
+    }
+  }, []);
+
   return (
     <TradeContext.Provider
-      value={{ assets, setAssets, fetchAssets, isLoading }}
+      value={{
+        assets,
+        setAssets,
+        fetchAssets,
+        isLoading,
+        getAssetById,
+        placeOrder,
+      }}
     >
       {children}
     </TradeContext.Provider>
