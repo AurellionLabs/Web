@@ -13,7 +13,7 @@ import type {
   ContractRunner,
   ContractMethod,
   Listener,
-} from "ethers";
+} from 'ethers';
 import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
@@ -21,7 +21,7 @@ import type {
   TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from '../../common';
 
 export declare namespace LocationContract {
   export type LocationStruct = { lat: string; lng: string };
@@ -42,7 +42,7 @@ export declare namespace LocationContract {
     startLocation: LocationContract.LocationStructOutput,
     endLocation: LocationContract.LocationStructOutput,
     startName: string,
-    endName: string
+    endName: string,
   ] & {
     startLocation: LocationContract.LocationStructOutput;
     endLocation: LocationContract.LocationStructOutput;
@@ -79,7 +79,7 @@ export declare namespace LocationContract {
     nodes: string[],
     locationData: LocationContract.ParcelDataStructOutput,
     currentStatus: bigint,
-    contracatualAgreement: string
+    contracatualAgreement: string,
   ] & {
     id: string;
     token: string;
@@ -119,7 +119,7 @@ export declare namespace LocationContract {
     journeyStart: bigint,
     journeyEnd: bigint,
     bounty: bigint,
-    ETA: bigint
+    ETA: bigint,
   ] & {
     parcelData: LocationContract.ParcelDataStructOutput;
     journeyId: string;
@@ -137,127 +137,130 @@ export declare namespace LocationContract {
 export interface LocationContractInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "addReceiver"
-      | "assignDriverToJourneyId"
-      | "assignJourneyToBox"
-      | "boxActivate"
-      | "customerHandOff"
-      | "customerToJourneyId"
-      | "customerToOrderIds"
-      | "driverHandOn"
-      | "driverToJourneyId"
-      | "generateReward"
-      | "getCompleteOrder"
-      | "getjourney"
-      | "handOff"
-      | "handOn"
-      | "idToOrder"
-      | "journeyCreation"
-      | "journeyIdCounter"
-      | "journeyIdToJourney"
-      | "journeyToOrderId"
-      | "nodeHandOff"
-      | "nodeToOrderIds"
-      | "numberOfJourneysAssigned"
-      | "numberOfJourneysCreatedForCustomer"
-      | "numberOfJourneysCreatedForReceiver"
-      | "numberToJourneyID"
-      | "orderCreation"
-      | "orderIds"
-      | "orderJourneyCreation"
-      | "packageSign"
-      | "receiverToJourneyId"
-      | "setNodeManager"
-      | "subJourneyCount"
-      | "subJourneys"
+      | 'addReceiver'
+      | 'assignDriverToJourneyId'
+      | 'assignJourneyToBox'
+      | 'boxActivate'
+      | 'customerHandOff'
+      | 'customerToJourneyId'
+      | 'customerToOrderIds'
+      | 'driverHandOn'
+      | 'driverToJourneyId'
+      | 'generateReward'
+      | 'getOrder'
+      | 'getjourney'
+      | 'handOff'
+      | 'handOn'
+      | 'idToOrder'
+      | 'journeyCreation'
+      | 'journeyIdCounter'
+      | 'journeyIdToJourney'
+      | 'journeyToOrderId'
+      | 'nodeHandOff'
+      | 'nodeToOrderIds'
+      | 'numberOfJourneysAssigned'
+      | 'numberOfJourneysCreatedForCustomer'
+      | 'numberOfJourneysCreatedForReceiver'
+      | 'numberToJourneyID'
+      | 'orderCreation'
+      | 'orderIds'
+      | 'orderJourneyCreation'
+      | 'packageSign'
+      | 'receiverToJourneyId'
+      | 'setNodeManager'
+      | 'subJourneyCount'
+      | 'subJourneys',
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "emitSig" | "printUint"): EventFragment;
+  getEvent(
+    nameOrSignatureOrTopic:
+      | 'JourneyCreated'
+      | 'JourneyStatusUpdated'
+      | 'emitSig'
+      | 'printUint',
+  ): EventFragment;
 
   encodeFunctionData(
-    functionFragment: "addReceiver",
-    values: [BytesLike, AddressLike, AddressLike]
+    functionFragment: 'addReceiver',
+    values: [BytesLike, AddressLike, AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "assignDriverToJourneyId",
-    values: [AddressLike, BytesLike]
+    functionFragment: 'assignDriverToJourneyId',
+    values: [AddressLike, BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "assignJourneyToBox",
-    values: [BytesLike, BigNumberish]
+    functionFragment: 'assignJourneyToBox',
+    values: [BytesLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "boxActivate",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'boxActivate',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "customerHandOff",
-    values: [AddressLike, BytesLike]
+    functionFragment: 'customerHandOff',
+    values: [AddressLike, BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "customerToJourneyId",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'customerToJourneyId',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "customerToOrderIds",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'customerToOrderIds',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "driverHandOn",
-    values: [AddressLike, BytesLike]
+    functionFragment: 'driverHandOn',
+    values: [AddressLike, BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "driverToJourneyId",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'driverToJourneyId',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "generateReward",
-    values: [BytesLike, AddressLike]
+    functionFragment: 'generateReward',
+    values: [BytesLike, AddressLike],
+  ): string;
+  encodeFunctionData(functionFragment: 'getOrder', values: [BytesLike]): string;
+  encodeFunctionData(
+    functionFragment: 'getjourney',
+    values: [BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "getCompleteOrder",
-    values: [BytesLike]
+    functionFragment: 'handOff',
+    values: [AddressLike, AddressLike, BytesLike, AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "getjourney",
-    values: [BytesLike]
+    functionFragment: 'handOn',
+    values: [AddressLike, AddressLike, BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "handOff",
-    values: [AddressLike, AddressLike, BytesLike, AddressLike]
+    functionFragment: 'idToOrder',
+    values: [BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "handOn",
-    values: [AddressLike, AddressLike, BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "idToOrder",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "journeyCreation",
+    functionFragment: 'journeyCreation',
     values: [
       AddressLike,
       AddressLike,
       LocationContract.ParcelDataStruct,
       BigNumberish,
-      BigNumberish
-    ]
+      BigNumberish,
+    ],
   ): string;
   encodeFunctionData(
-    functionFragment: "journeyIdCounter",
-    values?: undefined
+    functionFragment: 'journeyIdCounter',
+    values?: undefined,
   ): string;
   encodeFunctionData(
-    functionFragment: "journeyIdToJourney",
-    values: [BytesLike]
+    functionFragment: 'journeyIdToJourney',
+    values: [BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "journeyToOrderId",
-    values: [BytesLike]
+    functionFragment: 'journeyToOrderId',
+    values: [BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeHandOff",
+    functionFragment: 'nodeHandOff',
     values: [
       AddressLike,
       AddressLike,
@@ -266,39 +269,39 @@ export interface LocationContractInterface extends Interface {
       BigNumberish[],
       AddressLike,
       BigNumberish[],
-      BytesLike
-    ]
+      BytesLike,
+    ],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeToOrderIds",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'nodeToOrderIds',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "numberOfJourneysAssigned",
-    values: [AddressLike]
+    functionFragment: 'numberOfJourneysAssigned',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "numberOfJourneysCreatedForCustomer",
-    values: [AddressLike]
+    functionFragment: 'numberOfJourneysCreatedForCustomer',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "numberOfJourneysCreatedForReceiver",
-    values: [AddressLike]
+    functionFragment: 'numberOfJourneysCreatedForReceiver',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "numberToJourneyID",
-    values: [BigNumberish]
+    functionFragment: 'numberToJourneyID',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "orderCreation",
-    values: [LocationContract.OrderStruct]
+    functionFragment: 'orderCreation',
+    values: [LocationContract.OrderStruct],
   ): string;
   encodeFunctionData(
-    functionFragment: "orderIds",
-    values: [BigNumberish]
+    functionFragment: 'orderIds',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "orderJourneyCreation",
+    functionFragment: 'orderJourneyCreation',
     values: [
       BytesLike,
       AddressLike,
@@ -306,147 +309,179 @@ export interface LocationContractInterface extends Interface {
       LocationContract.ParcelDataStruct,
       BigNumberish,
       BigNumberish,
-      BigNumberish
-    ]
+      BigNumberish,
+    ],
   ): string;
   encodeFunctionData(
-    functionFragment: "packageSign",
-    values: [AddressLike, AddressLike, BytesLike]
+    functionFragment: 'packageSign',
+    values: [AddressLike, AddressLike, BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "receiverToJourneyId",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'receiverToJourneyId',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "setNodeManager",
-    values: [AddressLike]
+    functionFragment: 'setNodeManager',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "subJourneyCount",
-    values: [BytesLike]
+    functionFragment: 'subJourneyCount',
+    values: [BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "subJourneys",
-    values: [BigNumberish]
+    functionFragment: 'subJourneys',
+    values: [BigNumberish],
   ): string;
 
   decodeFunctionResult(
-    functionFragment: "addReceiver",
-    data: BytesLike
+    functionFragment: 'addReceiver',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "assignDriverToJourneyId",
-    data: BytesLike
+    functionFragment: 'assignDriverToJourneyId',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "assignJourneyToBox",
-    data: BytesLike
+    functionFragment: 'assignJourneyToBox',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "boxActivate",
-    data: BytesLike
+    functionFragment: 'boxActivate',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "customerHandOff",
-    data: BytesLike
+    functionFragment: 'customerHandOff',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "customerToJourneyId",
-    data: BytesLike
+    functionFragment: 'customerToJourneyId',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "customerToOrderIds",
-    data: BytesLike
+    functionFragment: 'customerToOrderIds',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "driverHandOn",
-    data: BytesLike
+    functionFragment: 'driverHandOn',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "driverToJourneyId",
-    data: BytesLike
+    functionFragment: 'driverToJourneyId',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "generateReward",
-    data: BytesLike
+    functionFragment: 'generateReward',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(functionFragment: 'getOrder', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'getjourney', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'handOff', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'handOn', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'idToOrder', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'journeyCreation',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getCompleteOrder",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "getjourney", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "handOff", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "handOn", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "idToOrder", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "journeyCreation",
-    data: BytesLike
+    functionFragment: 'journeyIdCounter',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "journeyIdCounter",
-    data: BytesLike
+    functionFragment: 'journeyIdToJourney',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "journeyIdToJourney",
-    data: BytesLike
+    functionFragment: 'journeyToOrderId',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "journeyToOrderId",
-    data: BytesLike
+    functionFragment: 'nodeHandOff',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "nodeHandOff",
-    data: BytesLike
+    functionFragment: 'nodeToOrderIds',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "nodeToOrderIds",
-    data: BytesLike
+    functionFragment: 'numberOfJourneysAssigned',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "numberOfJourneysAssigned",
-    data: BytesLike
+    functionFragment: 'numberOfJourneysCreatedForCustomer',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "numberOfJourneysCreatedForCustomer",
-    data: BytesLike
+    functionFragment: 'numberOfJourneysCreatedForReceiver',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "numberOfJourneysCreatedForReceiver",
-    data: BytesLike
+    functionFragment: 'numberToJourneyID',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "numberToJourneyID",
-    data: BytesLike
+    functionFragment: 'orderCreation',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(functionFragment: 'orderIds', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'orderJourneyCreation',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "orderCreation",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "orderIds", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "orderJourneyCreation",
-    data: BytesLike
+    functionFragment: 'packageSign',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "packageSign",
-    data: BytesLike
+    functionFragment: 'receiverToJourneyId',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "receiverToJourneyId",
-    data: BytesLike
+    functionFragment: 'setNodeManager',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "setNodeManager",
-    data: BytesLike
+    functionFragment: 'subJourneyCount',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "subJourneyCount",
-    data: BytesLike
+    functionFragment: 'subJourneys',
+    data: BytesLike,
   ): Result;
-  decodeFunctionResult(
-    functionFragment: "subJourneys",
-    data: BytesLike
-  ): Result;
+}
+
+export namespace JourneyCreatedEvent {
+  export type InputTuple = [
+    journeyId: BytesLike,
+    sender: AddressLike,
+    receiver: AddressLike,
+  ];
+  export type OutputTuple = [
+    journeyId: string,
+    sender: string,
+    receiver: string,
+  ];
+  export interface OutputObject {
+    journeyId: string;
+    sender: string;
+    receiver: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace JourneyStatusUpdatedEvent {
+  export type InputTuple = [journeyId: BytesLike, newStatus: BigNumberish];
+  export type OutputTuple = [journeyId: string, newStatus: bigint];
+  export interface OutputObject {
+    journeyId: string;
+    newStatus: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace emitSigEvent {
@@ -483,110 +518,110 @@ export interface LocationContract extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
+    event: TCEvent,
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
+    event?: TCEvent,
   ): Promise<this>;
 
   addReceiver: TypedContractMethod<
     [orderId: BytesLike, receiver: AddressLike, sender: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   assignDriverToJourneyId: TypedContractMethod<
     [driver: AddressLike, journeyID: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   assignJourneyToBox: TypedContractMethod<
     [journey: BytesLike, box: BigNumberish],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   boxActivate: TypedContractMethod<
     [driver: AddressLike, box: BigNumberish],
     [boolean],
-    "view"
+    'view'
   >;
 
   customerHandOff: TypedContractMethod<
     [arg0: AddressLike, arg1: BytesLike],
     [boolean],
-    "view"
+    'view'
   >;
 
   customerToJourneyId: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
 
   customerToOrderIds: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
 
   driverHandOn: TypedContractMethod<
     [arg0: AddressLike, arg1: BytesLike],
     [boolean],
-    "view"
+    'view'
   >;
 
   driverToJourneyId: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
 
   generateReward: TypedContractMethod<
     [id: BytesLike, driver: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  getCompleteOrder: TypedContractMethod<
+  getOrder: TypedContractMethod<
     [id: BytesLike],
     [LocationContract.OrderStructOutput],
-    "view"
+    'view'
   >;
 
   getjourney: TypedContractMethod<
     [id: BytesLike],
     [LocationContract.JourneyStructOutput],
-    "view"
+    'view'
   >;
 
   handOff: TypedContractMethod<
@@ -594,16 +629,16 @@ export interface LocationContract extends BaseContract {
       driver: AddressLike,
       receiver: AddressLike,
       id: BytesLike,
-      token: AddressLike
+      token: AddressLike,
     ],
     [boolean],
-    "nonpayable"
+    'nonpayable'
   >;
 
   handOn: TypedContractMethod<
     [driver: AddressLike, sender: AddressLike, id: BytesLike],
     [boolean],
-    "nonpayable"
+    'nonpayable'
   >;
 
   idToOrder: TypedContractMethod<
@@ -620,7 +655,7 @@ export interface LocationContract extends BaseContract {
         string,
         LocationContract.ParcelDataStructOutput,
         bigint,
-        string
+        string,
       ] & {
         id: string;
         token: string;
@@ -633,9 +668,9 @@ export interface LocationContract extends BaseContract {
         locationData: LocationContract.ParcelDataStructOutput;
         currentStatus: bigint;
         contracatualAgreement: string;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
 
   journeyCreation: TypedContractMethod<
@@ -644,13 +679,13 @@ export interface LocationContract extends BaseContract {
       receiver: AddressLike,
       _data: LocationContract.ParcelDataStruct,
       bounty: BigNumberish,
-      ETA: BigNumberish
+      ETA: BigNumberish,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  journeyIdCounter: TypedContractMethod<[], [bigint], "view">;
+  journeyIdCounter: TypedContractMethod<[], [bigint], 'view'>;
 
   journeyIdToJourney: TypedContractMethod<
     [arg0: BytesLike],
@@ -665,7 +700,7 @@ export interface LocationContract extends BaseContract {
         bigint,
         bigint,
         bigint,
-        bigint
+        bigint,
       ] & {
         parcelData: LocationContract.ParcelDataStructOutput;
         journeyId: string;
@@ -677,12 +712,12 @@ export interface LocationContract extends BaseContract {
         journeyEnd: bigint;
         bounty: bigint;
         ETA: bigint;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
 
-  journeyToOrderId: TypedContractMethod<[arg0: BytesLike], [string], "view">;
+  journeyToOrderId: TypedContractMethod<[arg0: BytesLike], [string], 'view'>;
 
   nodeHandOff: TypedContractMethod<
     [
@@ -693,49 +728,49 @@ export interface LocationContract extends BaseContract {
       tokenIds: BigNumberish[],
       token: AddressLike,
       quantities: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [boolean],
-    "nonpayable"
+    'nonpayable'
   >;
 
   nodeToOrderIds: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
 
   numberOfJourneysAssigned: TypedContractMethod<
     [arg0: AddressLike],
     [bigint],
-    "view"
+    'view'
   >;
 
   numberOfJourneysCreatedForCustomer: TypedContractMethod<
     [arg0: AddressLike],
     [bigint],
-    "view"
+    'view'
   >;
 
   numberOfJourneysCreatedForReceiver: TypedContractMethod<
     [arg0: AddressLike],
     [bigint],
-    "view"
+    'view'
   >;
 
   numberToJourneyID: TypedContractMethod<
     [arg0: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
 
   orderCreation: TypedContractMethod<
     [order: LocationContract.OrderStruct],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  orderIds: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  orderIds: TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
 
   orderJourneyCreation: TypedContractMethod<
     [
@@ -745,31 +780,31 @@ export interface LocationContract extends BaseContract {
       _data: LocationContract.ParcelDataStruct,
       bounty: BigNumberish,
       ETA: BigNumberish,
-      tokenQuantity: BigNumberish
+      tokenQuantity: BigNumberish,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   packageSign: TypedContractMethod<
     [driver: AddressLike, sender: AddressLike, id: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   receiverToJourneyId: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
 
   setNodeManager: TypedContractMethod<
     [_nodeManager: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  subJourneyCount: TypedContractMethod<[arg0: BytesLike], [bigint], "view">;
+  subJourneyCount: TypedContractMethod<[arg0: BytesLike], [bigint], 'view'>;
 
   subJourneys: TypedContractMethod<
     [arg0: BigNumberish],
@@ -784,7 +819,7 @@ export interface LocationContract extends BaseContract {
         bigint,
         bigint,
         bigint,
-        bigint
+        bigint,
       ] & {
         parcelData: LocationContract.ParcelDataStructOutput;
         journeyId: string;
@@ -796,121 +831,119 @@ export interface LocationContract extends BaseContract {
         journeyEnd: bigint;
         bounty: bigint;
         ETA: bigint;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
+    key: string | FunctionFragment,
   ): T;
 
   getFunction(
-    nameOrSignature: "addReceiver"
+    nameOrSignature: 'addReceiver',
   ): TypedContractMethod<
     [orderId: BytesLike, receiver: AddressLike, sender: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "assignDriverToJourneyId"
+    nameOrSignature: 'assignDriverToJourneyId',
   ): TypedContractMethod<
     [driver: AddressLike, journeyID: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "assignJourneyToBox"
+    nameOrSignature: 'assignJourneyToBox',
   ): TypedContractMethod<
     [journey: BytesLike, box: BigNumberish],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "boxActivate"
+    nameOrSignature: 'boxActivate',
   ): TypedContractMethod<
     [driver: AddressLike, box: BigNumberish],
     [boolean],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "customerHandOff"
+    nameOrSignature: 'customerHandOff',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BytesLike],
     [boolean],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "customerToJourneyId"
+    nameOrSignature: 'customerToJourneyId',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "customerToOrderIds"
+    nameOrSignature: 'customerToOrderIds',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "driverHandOn"
+    nameOrSignature: 'driverHandOn',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BytesLike],
     [boolean],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "driverToJourneyId"
+    nameOrSignature: 'driverToJourneyId',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "generateReward"
+    nameOrSignature: 'generateReward',
   ): TypedContractMethod<
     [id: BytesLike, driver: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "getCompleteOrder"
+    nameOrSignature: 'getOrder',
   ): TypedContractMethod<
     [id: BytesLike],
     [LocationContract.OrderStructOutput],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "getjourney"
+    nameOrSignature: 'getjourney',
   ): TypedContractMethod<
     [id: BytesLike],
     [LocationContract.JourneyStructOutput],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "handOff"
+    nameOrSignature: 'handOff',
   ): TypedContractMethod<
     [
       driver: AddressLike,
       receiver: AddressLike,
       id: BytesLike,
-      token: AddressLike
+      token: AddressLike,
     ],
     [boolean],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "handOn"
+    nameOrSignature: 'handOn',
   ): TypedContractMethod<
     [driver: AddressLike, sender: AddressLike, id: BytesLike],
     [boolean],
-    "nonpayable"
+    'nonpayable'
   >;
-  getFunction(
-    nameOrSignature: "idToOrder"
-  ): TypedContractMethod<
+  getFunction(nameOrSignature: 'idToOrder'): TypedContractMethod<
     [arg0: BytesLike],
     [
       [
@@ -924,7 +957,7 @@ export interface LocationContract extends BaseContract {
         string,
         LocationContract.ParcelDataStructOutput,
         bigint,
-        string
+        string,
       ] & {
         id: string;
         token: string;
@@ -937,29 +970,27 @@ export interface LocationContract extends BaseContract {
         locationData: LocationContract.ParcelDataStructOutput;
         currentStatus: bigint;
         contracatualAgreement: string;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "journeyCreation"
+    nameOrSignature: 'journeyCreation',
   ): TypedContractMethod<
     [
       sender: AddressLike,
       receiver: AddressLike,
       _data: LocationContract.ParcelDataStruct,
       bounty: BigNumberish,
-      ETA: BigNumberish
+      ETA: BigNumberish,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "journeyIdCounter"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "journeyIdToJourney"
-  ): TypedContractMethod<
+    nameOrSignature: 'journeyIdCounter',
+  ): TypedContractMethod<[], [bigint], 'view'>;
+  getFunction(nameOrSignature: 'journeyIdToJourney'): TypedContractMethod<
     [arg0: BytesLike],
     [
       [
@@ -972,7 +1003,7 @@ export interface LocationContract extends BaseContract {
         bigint,
         bigint,
         bigint,
-        bigint
+        bigint,
       ] & {
         parcelData: LocationContract.ParcelDataStructOutput;
         journeyId: string;
@@ -984,15 +1015,15 @@ export interface LocationContract extends BaseContract {
         journeyEnd: bigint;
         bounty: bigint;
         ETA: bigint;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "journeyToOrderId"
-  ): TypedContractMethod<[arg0: BytesLike], [string], "view">;
+    nameOrSignature: 'journeyToOrderId',
+  ): TypedContractMethod<[arg0: BytesLike], [string], 'view'>;
   getFunction(
-    nameOrSignature: "nodeHandOff"
+    nameOrSignature: 'nodeHandOff',
   ): TypedContractMethod<
     [
       sendingNode: AddressLike,
@@ -1002,42 +1033,42 @@ export interface LocationContract extends BaseContract {
       tokenIds: BigNumberish[],
       token: AddressLike,
       quantities: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [boolean],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "nodeToOrderIds"
+    nameOrSignature: 'nodeToOrderIds',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "numberOfJourneysAssigned"
-  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+    nameOrSignature: 'numberOfJourneysAssigned',
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], 'view'>;
   getFunction(
-    nameOrSignature: "numberOfJourneysCreatedForCustomer"
-  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+    nameOrSignature: 'numberOfJourneysCreatedForCustomer',
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], 'view'>;
   getFunction(
-    nameOrSignature: "numberOfJourneysCreatedForReceiver"
-  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+    nameOrSignature: 'numberOfJourneysCreatedForReceiver',
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], 'view'>;
   getFunction(
-    nameOrSignature: "numberToJourneyID"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+    nameOrSignature: 'numberToJourneyID',
+  ): TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
   getFunction(
-    nameOrSignature: "orderCreation"
+    nameOrSignature: 'orderCreation',
   ): TypedContractMethod<
     [order: LocationContract.OrderStruct],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "orderIds"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+    nameOrSignature: 'orderIds',
+  ): TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
   getFunction(
-    nameOrSignature: "orderJourneyCreation"
+    nameOrSignature: 'orderJourneyCreation',
   ): TypedContractMethod<
     [
       orderId: BytesLike,
@@ -1046,34 +1077,32 @@ export interface LocationContract extends BaseContract {
       _data: LocationContract.ParcelDataStruct,
       bounty: BigNumberish,
       ETA: BigNumberish,
-      tokenQuantity: BigNumberish
+      tokenQuantity: BigNumberish,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "packageSign"
+    nameOrSignature: 'packageSign',
   ): TypedContractMethod<
     [driver: AddressLike, sender: AddressLike, id: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "receiverToJourneyId"
+    nameOrSignature: 'receiverToJourneyId',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "setNodeManager"
-  ): TypedContractMethod<[_nodeManager: AddressLike], [void], "nonpayable">;
+    nameOrSignature: 'setNodeManager',
+  ): TypedContractMethod<[_nodeManager: AddressLike], [void], 'nonpayable'>;
   getFunction(
-    nameOrSignature: "subJourneyCount"
-  ): TypedContractMethod<[arg0: BytesLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "subJourneys"
-  ): TypedContractMethod<
+    nameOrSignature: 'subJourneyCount',
+  ): TypedContractMethod<[arg0: BytesLike], [bigint], 'view'>;
+  getFunction(nameOrSignature: 'subJourneys'): TypedContractMethod<
     [arg0: BigNumberish],
     [
       [
@@ -1086,7 +1115,7 @@ export interface LocationContract extends BaseContract {
         bigint,
         bigint,
         bigint,
-        bigint
+        bigint,
       ] & {
         parcelData: LocationContract.ParcelDataStructOutput;
         journeyId: string;
@@ -1098,20 +1127,34 @@ export interface LocationContract extends BaseContract {
         journeyEnd: bigint;
         bounty: bigint;
         ETA: bigint;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
 
   getEvent(
-    key: "emitSig"
+    key: 'JourneyCreated',
+  ): TypedContractEvent<
+    JourneyCreatedEvent.InputTuple,
+    JourneyCreatedEvent.OutputTuple,
+    JourneyCreatedEvent.OutputObject
+  >;
+  getEvent(
+    key: 'JourneyStatusUpdated',
+  ): TypedContractEvent<
+    JourneyStatusUpdatedEvent.InputTuple,
+    JourneyStatusUpdatedEvent.OutputTuple,
+    JourneyStatusUpdatedEvent.OutputObject
+  >;
+  getEvent(
+    key: 'emitSig',
   ): TypedContractEvent<
     emitSigEvent.InputTuple,
     emitSigEvent.OutputTuple,
     emitSigEvent.OutputObject
   >;
   getEvent(
-    key: "printUint"
+    key: 'printUint',
   ): TypedContractEvent<
     printUintEvent.InputTuple,
     printUintEvent.OutputTuple,
@@ -1119,7 +1162,29 @@ export interface LocationContract extends BaseContract {
   >;
 
   filters: {
-    "emitSig(address,bytes32)": TypedContractEvent<
+    'JourneyCreated(bytes32,address,address)': TypedContractEvent<
+      JourneyCreatedEvent.InputTuple,
+      JourneyCreatedEvent.OutputTuple,
+      JourneyCreatedEvent.OutputObject
+    >;
+    JourneyCreated: TypedContractEvent<
+      JourneyCreatedEvent.InputTuple,
+      JourneyCreatedEvent.OutputTuple,
+      JourneyCreatedEvent.OutputObject
+    >;
+
+    'JourneyStatusUpdated(bytes32,uint8)': TypedContractEvent<
+      JourneyStatusUpdatedEvent.InputTuple,
+      JourneyStatusUpdatedEvent.OutputTuple,
+      JourneyStatusUpdatedEvent.OutputObject
+    >;
+    JourneyStatusUpdated: TypedContractEvent<
+      JourneyStatusUpdatedEvent.InputTuple,
+      JourneyStatusUpdatedEvent.OutputTuple,
+      JourneyStatusUpdatedEvent.OutputObject
+    >;
+
+    'emitSig(address,bytes32)': TypedContractEvent<
       emitSigEvent.InputTuple,
       emitSigEvent.OutputTuple,
       emitSigEvent.OutputObject
@@ -1130,7 +1195,7 @@ export interface LocationContract extends BaseContract {
       emitSigEvent.OutputObject
     >;
 
-    "printUint(uint256)": TypedContractEvent<
+    'printUint(uint256)': TypedContractEvent<
       printUintEvent.InputTuple,
       printUintEvent.OutputTuple,
       printUintEvent.OutputObject

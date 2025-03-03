@@ -75,7 +75,9 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                 </tr>
               ))
             ) : (
-              <p>No Transactions yet</p>
+              <tr>
+                <td className="p-4">No Transactions yet</td>
+              </tr>
             )}
           </tbody>
         </table>

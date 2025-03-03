@@ -12,6 +12,7 @@ import {
 } from '@/dapp-connectors/staking-controller';
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
+
 export default function PoolsPage() {
   const { setCurrentUserRole } = useMainProvider();
   const [operations, setOperations] = useState<OperationData[]>();
@@ -24,12 +25,24 @@ export default function PoolsPage() {
   useEffect(() => {
     if (connected) {
       const fetchOperations = async () => {
-        const ids = await getOperationList();
-        if (ids) {
-          const operationsData = await Promise.all(
-            ids.map((id) => getOperation(id)),
-          );
-          setOperations(operationsData);
+        try {
+          const ids = await getOperationList();
+          if (ids) {
+            const operationsData = await Promise.all(
+              ids.map(async (id) => {
+                try {
+                  return await getOperation(id);
+                } catch (error) {
+                  console.error(`Error fetching operation ${id}:`, error);
+                  return null;
+                }
+              }),
+            );
+            setOperations(operationsData.filter((op) => op !== null));
+          }
+        } catch (error) {
+          console.error('Failed to fetch operations:', error);
+          // Add user feedback here - toast notification
         }
       };
       if (walletAddress) {
@@ -47,15 +60,17 @@ export default function PoolsPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-semibold">Pools</h1>
-          <Button
-            asChild
-            className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
-          >
-            <Link href="/customer/create-pool">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Pool
-            </Link>
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button
+              asChild
+              className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
+            >
+              <Link href="/customer/create-pool">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Pool
+              </Link>
+            </Button>
+          </div>
         </div>
         {/* <div
           className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}] mb-8`}

@@ -13,7 +13,7 @@ import type {
   ContractRunner,
   ContractMethod,
   Listener,
-} from "ethers";
+} from 'ethers';
 import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
@@ -21,7 +21,7 @@ import type {
   TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from '../../common';
 
 export declare namespace AurumNodeManager {
   export type LocationStruct = { lat: string; lng: string };
@@ -38,7 +38,7 @@ export declare namespace AurumNodeManager {
 
   export type NodeLocationDataStructOutput = [
     addressName: string,
-    location: AurumNodeManager.LocationStructOutput
+    location: AurumNodeManager.LocationStructOutput,
   ] & { addressName: string; location: AurumNodeManager.LocationStructOutput };
 
   export type NodeStruct = {
@@ -56,7 +56,7 @@ export declare namespace AurumNodeManager {
     owner: string,
     supportedAssets: bigint[],
     status: string,
-    capacity: bigint[]
+    capacity: bigint[],
   ] & {
     location: AurumNodeManager.NodeLocationDataStructOutput;
     validNode: string;
@@ -70,52 +70,54 @@ export declare namespace AurumNodeManager {
 export interface AurumNodeManagerInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "AllNodes"
-      | "addToken"
-      | "expensiveFuzzyUpdateCapacity"
-      | "getNode"
-      | "nodeHandoff"
-      | "nodeIdCounter"
-      | "nodeList"
-      | "ownedNodes"
-      | "registerNode"
-      | "resourceExists"
-      | "resourceList"
-      | "setAdmin"
-      | "supplyPerResource"
-      | "updateLocation"
-      | "updateOwner"
-      | "updateStatus"
-      | "updateSupportedAssets"
+      | 'AllNodes'
+      | 'addToken'
+      | 'expensiveFuzzyUpdateCapacity'
+      | 'getNode'
+      | 'nodeHandoff'
+      | 'nodeIdCounter'
+      | 'nodeList'
+      | 'ownedNodes'
+      | 'registerNode'
+      | 'resourceExists'
+      | 'resourceList'
+      | 'setAdmin'
+      | 'supplyPerResource'
+      | 'updateLocation'
+      | 'updateOwner'
+      | 'updateStatus'
+      | 'updateSupportedAssets',
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
-      | "eventUpdateAdmin"
-      | "eventUpdateLocation"
-      | "eventUpdateOwner"
-      | "eventUpdateStatus"
-      | "eventUpdateSupportedAssets"
+      | 'NodeCapacityUpdated'
+      | 'NodeRegistered'
+      | 'eventUpdateAdmin'
+      | 'eventUpdateLocation'
+      | 'eventUpdateOwner'
+      | 'eventUpdateStatus'
+      | 'eventUpdateSupportedAssets',
   ): EventFragment;
 
   encodeFunctionData(
-    functionFragment: "AllNodes",
-    values: [AddressLike]
+    functionFragment: 'AllNodes',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "addToken",
-    values: [AddressLike]
+    functionFragment: 'addToken',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "expensiveFuzzyUpdateCapacity",
-    values: [AddressLike, BigNumberish[], BigNumberish[]]
+    functionFragment: 'expensiveFuzzyUpdateCapacity',
+    values: [AddressLike, BigNumberish[], BigNumberish[]],
   ): string;
   encodeFunctionData(
-    functionFragment: "getNode",
-    values: [AddressLike]
+    functionFragment: 'getNode',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeHandoff",
+    functionFragment: 'nodeHandoff',
     values: [
       AddressLike,
       AddressLike,
@@ -124,108 +126,134 @@ export interface AurumNodeManagerInterface extends Interface {
       BigNumberish[],
       AddressLike,
       BigNumberish[],
-      BytesLike
-    ]
+      BytesLike,
+    ],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeIdCounter",
-    values?: undefined
+    functionFragment: 'nodeIdCounter',
+    values?: undefined,
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeList",
-    values: [BigNumberish]
+    functionFragment: 'nodeList',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "ownedNodes",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'ownedNodes',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "registerNode",
-    values: [AurumNodeManager.NodeStruct]
+    functionFragment: 'registerNode',
+    values: [AurumNodeManager.NodeStruct],
   ): string;
   encodeFunctionData(
-    functionFragment: "resourceExists",
-    values: [BigNumberish]
+    functionFragment: 'resourceExists',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "resourceList",
-    values: [BigNumberish]
+    functionFragment: 'resourceList',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "setAdmin",
-    values: [AddressLike]
+    functionFragment: 'setAdmin',
+    values: [AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "supplyPerResource",
-    values: [BigNumberish]
+    functionFragment: 'supplyPerResource',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "updateLocation",
-    values: [AurumNodeManager.NodeLocationDataStruct, AddressLike]
+    functionFragment: 'updateLocation',
+    values: [AurumNodeManager.NodeLocationDataStruct, AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "updateOwner",
-    values: [AddressLike, AddressLike]
+    functionFragment: 'updateOwner',
+    values: [AddressLike, AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "updateStatus",
-    values: [BytesLike, AddressLike]
+    functionFragment: 'updateStatus',
+    values: [BytesLike, AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "updateSupportedAssets",
-    values: [AddressLike, BigNumberish[], BigNumberish[]]
+    functionFragment: 'updateSupportedAssets',
+    values: [AddressLike, BigNumberish[], BigNumberish[]],
   ): string;
 
-  decodeFunctionResult(functionFragment: "AllNodes", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "addToken", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'AllNodes', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'addToken', data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "expensiveFuzzyUpdateCapacity",
-    data: BytesLike
+    functionFragment: 'expensiveFuzzyUpdateCapacity',
+    data: BytesLike,
   ): Result;
-  decodeFunctionResult(functionFragment: "getNode", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'getNode', data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "nodeHandoff",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "nodeIdCounter",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "nodeList", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "ownedNodes", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "registerNode",
-    data: BytesLike
+    functionFragment: 'nodeHandoff',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "resourceExists",
-    data: BytesLike
+    functionFragment: 'nodeIdCounter',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(functionFragment: 'nodeList', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'ownedNodes', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'registerNode',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "resourceList",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "setAdmin", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "supplyPerResource",
-    data: BytesLike
+    functionFragment: 'resourceExists',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "updateLocation",
-    data: BytesLike
+    functionFragment: 'resourceList',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(functionFragment: 'setAdmin', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'supplyPerResource',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "updateOwner",
-    data: BytesLike
+    functionFragment: 'updateLocation',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "updateStatus",
-    data: BytesLike
+    functionFragment: 'updateOwner',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "updateSupportedAssets",
-    data: BytesLike
+    functionFragment: 'updateStatus',
+    data: BytesLike,
   ): Result;
+  decodeFunctionResult(
+    functionFragment: 'updateSupportedAssets',
+    data: BytesLike,
+  ): Result;
+}
+
+export namespace NodeCapacityUpdatedEvent {
+  export type InputTuple = [node: AddressLike, quantities: BigNumberish[]];
+  export type OutputTuple = [node: string, quantities: bigint[]];
+  export interface OutputObject {
+    node: string;
+    quantities: bigint[];
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace NodeRegisteredEvent {
+  export type InputTuple = [nodeAddress: AddressLike, owner: AddressLike];
+  export type OutputTuple = [nodeAddress: string, owner: string];
+  export interface OutputObject {
+    nodeAddress: string;
+    owner: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace eventUpdateAdminEvent {
@@ -282,7 +310,7 @@ export namespace eventUpdateStatusEvent {
 export namespace eventUpdateSupportedAssetsEvent {
   export type InputTuple = [
     supportedAssets: string[],
-    capacity: BigNumberish[]
+    capacity: BigNumberish[],
   ];
   export type OutputTuple = [supportedAssets: string[], capacity: bigint[]];
   export interface OutputObject {
@@ -304,38 +332,38 @@ export interface AurumNodeManager extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
+    event: TCEvent,
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
+    event?: TCEvent,
   ): Promise<this>;
 
   AllNodes: TypedContractMethod<
@@ -345,29 +373,29 @@ export interface AurumNodeManager extends BaseContract {
         AurumNodeManager.NodeLocationDataStructOutput,
         string,
         string,
-        string
+        string,
       ] & {
         location: AurumNodeManager.NodeLocationDataStructOutput;
         validNode: string;
         owner: string;
         status: string;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
 
-  addToken: TypedContractMethod<[_auraGoat: AddressLike], [void], "nonpayable">;
+  addToken: TypedContractMethod<[_auraGoat: AddressLike], [void], 'nonpayable'>;
 
   expensiveFuzzyUpdateCapacity: TypedContractMethod<
     [node: AddressLike, quantities: BigNumberish[], assets: BigNumberish[]],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   getNode: TypedContractMethod<
     [nodeAddress: AddressLike],
     [AurumNodeManager.NodeStructOutput],
-    "view"
+    'view'
   >;
 
   nodeHandoff: TypedContractMethod<
@@ -379,106 +407,104 @@ export interface AurumNodeManager extends BaseContract {
       tokenIds: BigNumberish[],
       token: AddressLike,
       quantities: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  nodeIdCounter: TypedContractMethod<[], [bigint], "view">;
+  nodeIdCounter: TypedContractMethod<[], [bigint], 'view'>;
 
-  nodeList: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  nodeList: TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
 
   ownedNodes: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
 
   registerNode: TypedContractMethod<
     [node: AurumNodeManager.NodeStruct],
     [string],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  resourceExists: TypedContractMethod<[arg0: BigNumberish], [boolean], "view">;
+  resourceExists: TypedContractMethod<[arg0: BigNumberish], [boolean], 'view'>;
 
-  resourceList: TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+  resourceList: TypedContractMethod<[arg0: BigNumberish], [bigint], 'view'>;
 
-  setAdmin: TypedContractMethod<[_admin: AddressLike], [void], "nonpayable">;
+  setAdmin: TypedContractMethod<[_admin: AddressLike], [void], 'nonpayable'>;
 
   supplyPerResource: TypedContractMethod<
     [arg0: BigNumberish],
     [bigint],
-    "view"
+    'view'
   >;
 
   updateLocation: TypedContractMethod<
     [newLocation: AurumNodeManager.NodeLocationDataStruct, node: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   updateOwner: TypedContractMethod<
     [owner: AddressLike, node: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   updateStatus: TypedContractMethod<
     [status: BytesLike, node: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   updateSupportedAssets: TypedContractMethod<
     [node: AddressLike, quantities: BigNumberish[], assets: BigNumberish[]],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
+    key: string | FunctionFragment,
   ): T;
 
-  getFunction(
-    nameOrSignature: "AllNodes"
-  ): TypedContractMethod<
+  getFunction(nameOrSignature: 'AllNodes'): TypedContractMethod<
     [arg0: AddressLike],
     [
       [
         AurumNodeManager.NodeLocationDataStructOutput,
         string,
         string,
-        string
+        string,
       ] & {
         location: AurumNodeManager.NodeLocationDataStructOutput;
         validNode: string;
         owner: string;
         status: string;
-      }
+      },
     ],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "addToken"
-  ): TypedContractMethod<[_auraGoat: AddressLike], [void], "nonpayable">;
+    nameOrSignature: 'addToken',
+  ): TypedContractMethod<[_auraGoat: AddressLike], [void], 'nonpayable'>;
   getFunction(
-    nameOrSignature: "expensiveFuzzyUpdateCapacity"
+    nameOrSignature: 'expensiveFuzzyUpdateCapacity',
   ): TypedContractMethod<
     [node: AddressLike, quantities: BigNumberish[], assets: BigNumberish[]],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "getNode"
+    nameOrSignature: 'getNode',
   ): TypedContractMethod<
     [nodeAddress: AddressLike],
     [AurumNodeManager.NodeStructOutput],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "nodeHandoff"
+    nameOrSignature: 'nodeHandoff',
   ): TypedContractMethod<
     [
       node: AddressLike,
@@ -488,102 +514,116 @@ export interface AurumNodeManager extends BaseContract {
       tokenIds: BigNumberish[],
       token: AddressLike,
       quantities: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "nodeIdCounter"
-  ): TypedContractMethod<[], [bigint], "view">;
+    nameOrSignature: 'nodeIdCounter',
+  ): TypedContractMethod<[], [bigint], 'view'>;
   getFunction(
-    nameOrSignature: "nodeList"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+    nameOrSignature: 'nodeList',
+  ): TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
   getFunction(
-    nameOrSignature: "ownedNodes"
+    nameOrSignature: 'ownedNodes',
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [string],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "registerNode"
+    nameOrSignature: 'registerNode',
   ): TypedContractMethod<
     [node: AurumNodeManager.NodeStruct],
     [string],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "resourceExists"
-  ): TypedContractMethod<[arg0: BigNumberish], [boolean], "view">;
+    nameOrSignature: 'resourceExists',
+  ): TypedContractMethod<[arg0: BigNumberish], [boolean], 'view'>;
   getFunction(
-    nameOrSignature: "resourceList"
-  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+    nameOrSignature: 'resourceList',
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], 'view'>;
   getFunction(
-    nameOrSignature: "setAdmin"
-  ): TypedContractMethod<[_admin: AddressLike], [void], "nonpayable">;
+    nameOrSignature: 'setAdmin',
+  ): TypedContractMethod<[_admin: AddressLike], [void], 'nonpayable'>;
   getFunction(
-    nameOrSignature: "supplyPerResource"
-  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+    nameOrSignature: 'supplyPerResource',
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], 'view'>;
   getFunction(
-    nameOrSignature: "updateLocation"
+    nameOrSignature: 'updateLocation',
   ): TypedContractMethod<
     [newLocation: AurumNodeManager.NodeLocationDataStruct, node: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "updateOwner"
+    nameOrSignature: 'updateOwner',
   ): TypedContractMethod<
     [owner: AddressLike, node: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "updateStatus"
+    nameOrSignature: 'updateStatus',
   ): TypedContractMethod<
     [status: BytesLike, node: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "updateSupportedAssets"
+    nameOrSignature: 'updateSupportedAssets',
   ): TypedContractMethod<
     [node: AddressLike, quantities: BigNumberish[], assets: BigNumberish[]],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   getEvent(
-    key: "eventUpdateAdmin"
+    key: 'NodeCapacityUpdated',
+  ): TypedContractEvent<
+    NodeCapacityUpdatedEvent.InputTuple,
+    NodeCapacityUpdatedEvent.OutputTuple,
+    NodeCapacityUpdatedEvent.OutputObject
+  >;
+  getEvent(
+    key: 'NodeRegistered',
+  ): TypedContractEvent<
+    NodeRegisteredEvent.InputTuple,
+    NodeRegisteredEvent.OutputTuple,
+    NodeRegisteredEvent.OutputObject
+  >;
+  getEvent(
+    key: 'eventUpdateAdmin',
   ): TypedContractEvent<
     eventUpdateAdminEvent.InputTuple,
     eventUpdateAdminEvent.OutputTuple,
     eventUpdateAdminEvent.OutputObject
   >;
   getEvent(
-    key: "eventUpdateLocation"
+    key: 'eventUpdateLocation',
   ): TypedContractEvent<
     eventUpdateLocationEvent.InputTuple,
     eventUpdateLocationEvent.OutputTuple,
     eventUpdateLocationEvent.OutputObject
   >;
   getEvent(
-    key: "eventUpdateOwner"
+    key: 'eventUpdateOwner',
   ): TypedContractEvent<
     eventUpdateOwnerEvent.InputTuple,
     eventUpdateOwnerEvent.OutputTuple,
     eventUpdateOwnerEvent.OutputObject
   >;
   getEvent(
-    key: "eventUpdateStatus"
+    key: 'eventUpdateStatus',
   ): TypedContractEvent<
     eventUpdateStatusEvent.InputTuple,
     eventUpdateStatusEvent.OutputTuple,
     eventUpdateStatusEvent.OutputObject
   >;
   getEvent(
-    key: "eventUpdateSupportedAssets"
+    key: 'eventUpdateSupportedAssets',
   ): TypedContractEvent<
     eventUpdateSupportedAssetsEvent.InputTuple,
     eventUpdateSupportedAssetsEvent.OutputTuple,
@@ -591,7 +631,29 @@ export interface AurumNodeManager extends BaseContract {
   >;
 
   filters: {
-    "eventUpdateAdmin(address)": TypedContractEvent<
+    'NodeCapacityUpdated(address,uint256[])': TypedContractEvent<
+      NodeCapacityUpdatedEvent.InputTuple,
+      NodeCapacityUpdatedEvent.OutputTuple,
+      NodeCapacityUpdatedEvent.OutputObject
+    >;
+    NodeCapacityUpdated: TypedContractEvent<
+      NodeCapacityUpdatedEvent.InputTuple,
+      NodeCapacityUpdatedEvent.OutputTuple,
+      NodeCapacityUpdatedEvent.OutputObject
+    >;
+
+    'NodeRegistered(address,address)': TypedContractEvent<
+      NodeRegisteredEvent.InputTuple,
+      NodeRegisteredEvent.OutputTuple,
+      NodeRegisteredEvent.OutputObject
+    >;
+    NodeRegistered: TypedContractEvent<
+      NodeRegisteredEvent.InputTuple,
+      NodeRegisteredEvent.OutputTuple,
+      NodeRegisteredEvent.OutputObject
+    >;
+
+    'eventUpdateAdmin(address)': TypedContractEvent<
       eventUpdateAdminEvent.InputTuple,
       eventUpdateAdminEvent.OutputTuple,
       eventUpdateAdminEvent.OutputObject
@@ -602,7 +664,7 @@ export interface AurumNodeManager extends BaseContract {
       eventUpdateAdminEvent.OutputObject
     >;
 
-    "eventUpdateLocation(string,address)": TypedContractEvent<
+    'eventUpdateLocation(string,address)': TypedContractEvent<
       eventUpdateLocationEvent.InputTuple,
       eventUpdateLocationEvent.OutputTuple,
       eventUpdateLocationEvent.OutputObject
@@ -613,7 +675,7 @@ export interface AurumNodeManager extends BaseContract {
       eventUpdateLocationEvent.OutputObject
     >;
 
-    "eventUpdateOwner(address,address)": TypedContractEvent<
+    'eventUpdateOwner(address,address)': TypedContractEvent<
       eventUpdateOwnerEvent.InputTuple,
       eventUpdateOwnerEvent.OutputTuple,
       eventUpdateOwnerEvent.OutputObject
@@ -624,7 +686,7 @@ export interface AurumNodeManager extends BaseContract {
       eventUpdateOwnerEvent.OutputObject
     >;
 
-    "eventUpdateStatus(bytes1,address)": TypedContractEvent<
+    'eventUpdateStatus(bytes1,address)': TypedContractEvent<
       eventUpdateStatusEvent.InputTuple,
       eventUpdateStatusEvent.OutputTuple,
       eventUpdateStatusEvent.OutputObject
@@ -635,7 +697,7 @@ export interface AurumNodeManager extends BaseContract {
       eventUpdateStatusEvent.OutputObject
     >;
 
-    "eventUpdateSupportedAssets(string[],uint256[])": TypedContractEvent<
+    'eventUpdateSupportedAssets(string[],uint256[])': TypedContractEvent<
       eventUpdateSupportedAssetsEvent.InputTuple,
       eventUpdateSupportedAssetsEvent.OutputTuple,
       eventUpdateSupportedAssetsEvent.OutputObject

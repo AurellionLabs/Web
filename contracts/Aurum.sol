@@ -2,6 +2,7 @@
 import "./Aura.sol";
 import "./AuSys.sol";
 import "./AuraGoat.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 pragma solidity 0.8.28;
 
 //TODO: make an asset name to number finder on smart contract
@@ -241,7 +242,7 @@ contract AurumNodeManager {
     event NodeCapacityUpdated(address indexed node, uint256[] quantities);
 }
 
-contract aurumNode {
+contract aurumNode is ERC1155Holder {
     address public owner;
     locationContract ausys;
     AuraGoat auraGoat;

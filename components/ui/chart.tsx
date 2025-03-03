@@ -2,6 +2,14 @@
 
 import * as React from 'react';
 import * as RechartsPrimitive from 'recharts';
+import {
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from 'recharts';
 
 import { cn } from '@/lib/utils';
 
@@ -363,3 +371,52 @@ export {
   ChartLegendContent,
   ChartStyle,
 };
+
+export function Chart({ data }) {
+  // Sort data by timestamp to ensure proper line drawing
+  const sortedData = [...data].sort((a, b) => a.time - b.time);
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart
+        data={sortedData}
+        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+      >
+        <XAxis
+          dataKey="time"
+          stroke="#888888"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => new Date(value).toLocaleDateString()}
+        />
+        <YAxis
+          stroke="#888888"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => `$${value}`}
+        />
+        <Tooltip
+          cursor={{ stroke: '#666666', strokeWidth: 1 }}
+          contentStyle={{
+            backgroundColor: '#1c1c1c',
+            border: '1px solid #333',
+            borderRadius: '8px',
+            padding: '8px',
+          }}
+          labelFormatter={(label) => new Date(label).toLocaleString()}
+        />
+        <Line
+          type="monotone"
+          dataKey="amount"
+          stroke="#f59e0b"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 6, fill: '#f59e0b' }}
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}

@@ -12,42 +12,45 @@ import type {
   ContractRunner,
   ContractMethod,
   Listener,
-} from "ethers";
+} from 'ethers';
 import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
   TypedEventLog,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from '../../common';
 
 export interface AurumNodeInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "addItem"
-      | "nodeHandOn"
-      | "nodeHandoff"
-      | "nodeSign"
-      | "owner"
+      | 'addItem'
+      | 'nodeHandOn'
+      | 'nodeHandoff'
+      | 'nodeSign'
+      | 'onERC1155BatchReceived'
+      | 'onERC1155Received'
+      | 'owner'
+      | 'supportsInterface',
   ): FunctionFragment;
 
   encodeFunctionData(
-    functionFragment: "addItem",
+    functionFragment: 'addItem',
     values: [
       AddressLike,
       BytesLike,
       BigNumberish,
       BigNumberish,
       AddressLike,
-      BytesLike
-    ]
+      BytesLike,
+    ],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeHandOn",
-    values: [AddressLike, AddressLike, BytesLike]
+    functionFragment: 'nodeHandOn',
+    values: [AddressLike, AddressLike, BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeHandoff",
+    functionFragment: 'nodeHandoff',
     values: [
       AddressLike,
       AddressLike,
@@ -56,23 +59,53 @@ export interface AurumNodeInterface extends Interface {
       BigNumberish[],
       AddressLike,
       BigNumberish[],
-      BytesLike
-    ]
+      BytesLike,
+    ],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeSign",
-    values: [AddressLike, AddressLike, BytesLike]
+    functionFragment: 'nodeSign',
+    values: [AddressLike, AddressLike, BytesLike],
   ): string;
-  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: 'onERC1155BatchReceived',
+    values: [
+      AddressLike,
+      AddressLike,
+      BigNumberish[],
+      BigNumberish[],
+      BytesLike,
+    ],
+  ): string;
+  encodeFunctionData(
+    functionFragment: 'onERC1155Received',
+    values: [AddressLike, AddressLike, BigNumberish, BigNumberish, BytesLike],
+  ): string;
+  encodeFunctionData(functionFragment: 'owner', values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: 'supportsInterface',
+    values: [BytesLike],
+  ): string;
 
-  decodeFunctionResult(functionFragment: "addItem", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "nodeHandOn", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'addItem', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'nodeHandOn', data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "nodeHandoff",
-    data: BytesLike
+    functionFragment: 'nodeHandoff',
+    data: BytesLike,
   ): Result;
-  decodeFunctionResult(functionFragment: "nodeSign", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'nodeSign', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'onERC1155BatchReceived',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: 'onERC1155Received',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(functionFragment: 'owner', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'supportsInterface',
+    data: BytesLike,
+  ): Result;
 }
 
 export interface AurumNode extends BaseContract {
@@ -84,38 +117,38 @@ export interface AurumNode extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
+    event: TCEvent,
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
+    event?: TCEvent,
   ): Promise<this>;
 
   addItem: TypedContractMethod<
@@ -125,16 +158,16 @@ export interface AurumNode extends BaseContract {
       weight: BigNumberish,
       amount: BigNumberish,
       item: AddressLike,
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   nodeHandOn: TypedContractMethod<
     [driver: AddressLike, reciever: AddressLike, id: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   nodeHandoff: TypedContractMethod<
@@ -146,26 +179,56 @@ export interface AurumNode extends BaseContract {
       tokenIds: BigNumberish[],
       token: AddressLike,
       quantities: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   nodeSign: TypedContractMethod<
     [node: AddressLike, driver: AddressLike, jobid: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  owner: TypedContractMethod<[], [string], "view">;
+  onERC1155BatchReceived: TypedContractMethod<
+    [
+      arg0: AddressLike,
+      arg1: AddressLike,
+      arg2: BigNumberish[],
+      arg3: BigNumberish[],
+      arg4: BytesLike,
+    ],
+    [string],
+    'nonpayable'
+  >;
+
+  onERC1155Received: TypedContractMethod<
+    [
+      arg0: AddressLike,
+      arg1: AddressLike,
+      arg2: BigNumberish,
+      arg3: BigNumberish,
+      arg4: BytesLike,
+    ],
+    [string],
+    'nonpayable'
+  >;
+
+  owner: TypedContractMethod<[], [string], 'view'>;
+
+  supportsInterface: TypedContractMethod<
+    [interfaceId: BytesLike],
+    [boolean],
+    'view'
+  >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
+    key: string | FunctionFragment,
   ): T;
 
   getFunction(
-    nameOrSignature: "addItem"
+    nameOrSignature: 'addItem',
   ): TypedContractMethod<
     [
       itemOwner: AddressLike,
@@ -173,20 +236,20 @@ export interface AurumNode extends BaseContract {
       weight: BigNumberish,
       amount: BigNumberish,
       item: AddressLike,
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "nodeHandOn"
+    nameOrSignature: 'nodeHandOn',
   ): TypedContractMethod<
     [driver: AddressLike, reciever: AddressLike, id: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "nodeHandoff"
+    nameOrSignature: 'nodeHandoff',
   ): TypedContractMethod<
     [
       node: AddressLike,
@@ -196,21 +259,50 @@ export interface AurumNode extends BaseContract {
       tokenIds: BigNumberish[],
       token: AddressLike,
       quantities: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "nodeSign"
+    nameOrSignature: 'nodeSign',
   ): TypedContractMethod<
     [node: AddressLike, driver: AddressLike, jobid: BytesLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "owner"
-  ): TypedContractMethod<[], [string], "view">;
+    nameOrSignature: 'onERC1155BatchReceived',
+  ): TypedContractMethod<
+    [
+      arg0: AddressLike,
+      arg1: AddressLike,
+      arg2: BigNumberish[],
+      arg3: BigNumberish[],
+      arg4: BytesLike,
+    ],
+    [string],
+    'nonpayable'
+  >;
+  getFunction(
+    nameOrSignature: 'onERC1155Received',
+  ): TypedContractMethod<
+    [
+      arg0: AddressLike,
+      arg1: AddressLike,
+      arg2: BigNumberish,
+      arg3: BigNumberish,
+      arg4: BytesLike,
+    ],
+    [string],
+    'nonpayable'
+  >;
+  getFunction(
+    nameOrSignature: 'owner',
+  ): TypedContractMethod<[], [string], 'view'>;
+  getFunction(
+    nameOrSignature: 'supportsInterface',
+  ): TypedContractMethod<[interfaceId: BytesLike], [boolean], 'view'>;
 
   filters: {};
 }

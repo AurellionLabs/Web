@@ -26,6 +26,8 @@ import {
 import { StakedEvent } from '@/typechain-types/contracts/AuStake';
 import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 import { COMPLETE, PAID } from '@/constants';
+import { toast } from 'react-hot-toast';
+import { WalletConnection } from '@/components/ui/wallet-connection';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
@@ -45,6 +47,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     StakedEvent.OutputObject[] | undefined
   >();
   const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
+  const [isClaimingReward, setIsClaimingReward] = useState(false);
+
   useEffect(() => {
     const _getDecimal = async () => {
       setDecimals(Number(await getDecimal()));
@@ -69,30 +73,51 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     });
   };
   const handleRewardClaim = async () => {
-    await getPool();
-    if (Number(selectedPool?.operationStatus) == PAID) {
-      setIsPaid(true);
-      setStatus('Paid');
-    }
-    if (Number(selectedPool?.operationStatus) == COMPLETE) {
-      setIsComplete(true);
-      setStatus('Complete');
-      await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id);
-    }
-    if (
-      selectedPool &&
-      isProvider &&
-      Number(selectedPool?.operationStatus) != COMPLETE &&
-      Number(selectedPool?.operationStatus) != PAID
-    ) {
-      await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, selectedPool);
-      setIsComplete(true);
-      setStatus('Complete');
-    }
+    setIsClaimingReward(true);
     try {
-      await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id);
-    } catch (e) {
-      console.error('couldnt claim error with', e);
+      await getPool();
+
+      if (Number(selectedPool?.operationStatus) === PAID) {
+        setIsPaid(true);
+        setStatus('Paid');
+        return;
+      }
+
+      if (Number(selectedPool?.operationStatus) === COMPLETE) {
+        setIsComplete(true);
+        setStatus('Complete');
+        await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id);
+        toast.success('Reward claimed successfully');
+        return;
+      }
+
+      if (
+        selectedPool &&
+        isProvider &&
+        Number(selectedPool?.operationStatus) !== COMPLETE &&
+        Number(selectedPool?.operationStatus) !== PAID
+      ) {
+        await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, selectedPool);
+        setIsComplete(true);
+        setStatus('Complete');
+        toast.success('Reward unlocked successfully');
+      }
+    } catch (error: any) {
+      console.error('Error claiming reward:', error);
+      toast.error(error.message || 'Failed to claim reward');
+    } finally {
+      setIsClaimingReward(false);
+    }
+  };
+  const getCompletionPercentage = (tvl: bigint, goal: bigint): string => {
+    if (!goal) return '0';
+    try {
+      // Multiply by 10000 for 2 decimal precision without floating point
+      const percentage = (tvl * BigInt(10000)) / goal;
+      return `${(Number(percentage) / 100).toFixed(2)}%`;
+    } catch (error) {
+      console.error('Error calculating completion percentage:', error);
+      return '0%';
     }
   };
   const poolData = {
@@ -101,11 +126,10 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, decimals, 2) : '0'}`,
     completionPercentage:
       selectedPool?.tokenTvl && selectedPool?.fundingGoal
-        ? `${(
-            (Number(formatEthereumValue(selectedPool.tokenTvl, decimals)) /
-              Number(formatEthereumValue(selectedPool.fundingGoal))) *
-            100
-          ).toFixed(2)}%`
+        ? getCompletionPercentage(
+            BigInt(selectedPool.tokenTvl),
+            BigInt(selectedPool.fundingGoal),
+          )
         : '0%',
     fundingGoal: selectedPool?.fundingGoal
       ? `$${formatEthereumValue(selectedPool.fundingGoal, 18, 2)}`

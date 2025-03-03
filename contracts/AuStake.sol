@@ -210,8 +210,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     uint256 amount = userStake.amount;
     userStake.isActive = false;
 
-    AuraGoat tokenContract = AuraGoat(token);
-    require(tokenContract.burn(user, amount), 'Failed to burn tokens');
+    IERC20 tokenContract = IERC20(token);
+    require(tokenContract.transfer(projectWallet, amount), 'Failed to transfer tokens');
 
     tokenTvl[token] -= amount;
     idToOperation[operationId].tokenTvl -= amount;
@@ -232,8 +232,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     Operation storage operation = idToOperation[operationId];
 
     // Calculate total rewards using basis points
-    uint256 totalRewardsNeeded = (operation.tokenTvl * operation.reward) /
-      REWARD_PRECISION;
+    uint256 totalRewardsNeeded = (operation.tokenTvl * operation.reward) / REWARD_PRECISION;
 
     operation.operationStatus = OperationStatus.COMPLETE;
 
@@ -264,94 +263,29 @@ contract AuStake is ReentrancyGuard, Ownable {
     Operation storage operation = idToOperation[operationId];
 
     // Calculate reward using basis points
-    uint256 rewardAmount = (userStake.amount * operation.reward) /
-      REWARD_PRECISION;
+    uint256 rewardAmount = (userStake.amount * operation.reward) / REWARD_PRECISION;
     uint256 totalReturn = userStake.amount + rewardAmount;
 
-    userStake.isActive = false;
+    userStake.isActive = false; // Prevent double claims
     operation.tokenTvl -= userStake.amount;
 
-        idToOperation[operationId].tokenTvl += amount;
-        tokenTvl[token] += amount;
-
-        emit Staked(token, msg.sender, amount, operationId, "Staked", block.timestamp);
-    }
-
-
-    /**
-     * @dev Provider unlocks rewards for an operation
-     */
-    function unlockReward(address token, bytes32 operationId) public {
-        require(
-            idToOperation[operationId].provider == msg.sender,
-            'sender is not the provider'
-        );
-        
-        IERC20 tokenContract = IERC20(token);
-        Operation storage operation = idToOperation[operationId];
-        
-        // Calculate total rewards needed based on TVL and reward percentage
-        uint256 totalRewardsNeeded = (operation.tokenTvl * operation.reward) / 100;
-        
-        operation.operationStatus = OperationStatus.COMPLETE;
-        
-        require(
-            tokenContract.transferFrom(msg.sender, address(this), totalRewardsNeeded),
-            'Reward transfer failed'
-        );
-    }
-
-    /**
-     * @dev Users claim their stake plus reward
-     * Reward is calculated as a percentage of their original stake
-     */
-    function claimReward(
-        address token,
-        bytes32 operationId,
-        address user
-    ) external {
-        require(idToOperation[operationId].token == token, 'Token mismatch');
-        require(
-            idToOperation[operationId].operationStatus == OperationStatus.COMPLETE,
-            'Operation not complete'
-        );
-
-        Stake storage userStake = operationStakes[operationId][user];
-        require(userStake.isActive, 'No active stake');
-        
-        IERC20 tokenContract = IERC20(token);
-        Operation storage operation = idToOperation[operationId];
-        
-        // Calculate reward as percentage of original stake
-        uint256 rewardAmount = (userStake.amount * operation.reward) / 100;
-        uint256 totalReturn = userStake.amount + rewardAmount;
-        
-        userStake.isActive = false;  // Prevent double claims
-        operation.tokenTvl -= userStake.amount;
-        
-        if(operation.tokenTvl == 0) {
-            // Remove from active operations when TVL reaches 0
-            uint swapIndex;
-            bool swapFound = false;
-            for (uint i = 0; i < activeOperations.length; i++) {
-                if (activeOperations[i] == operationId) {
-                    swapIndex = i;
-                    swapFound = true;
-                    break;
-                }
-            }
-            require(swapFound, 'Operation Id not found');
-            activeOperations[activeOperations.length - 1] = activeOperations[swapIndex];
-            activeOperations.pop();
-            operation.operationStatus = OperationStatus.PAID;
+    if (operation.tokenTvl == 0) {
+      // Remove from active operations when TVL reaches 0
+      uint256 swapIndex;
+      bool swapFound = false;
+      for (uint256 i = 0; i < activeOperations.length; i++) {
+        if (activeOperations[i] == operationId) {
+          swapIndex = i;
+          swapFound = true;
+          break;
         }
       }
-      require(swapFound, 'Operation Id not found');
-      activeOperations[activeOperations.length - 1] = activeOperations[
-        swapIndex
-      ];
-      activeOperations.pop();
-      operation.operationStatus = OperationStatus.PAID;
+
+      if (swapFound) {
+        activeOperations[activeOperations.length - 1] = activeOperations[swapIndex];
+        activeOperations.pop();
+        operation.operationStatus = OperationStatus.PAID;
+      }
     }
 
     require(

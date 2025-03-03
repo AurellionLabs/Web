@@ -60,29 +60,25 @@ contract AuraGoat is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     uint weight,
     uint256 amount,
     bytes memory data
-  ) external validNode(account) onlyOwner {
+  ) external validNode(account) {
     uint tokenID;
-    if (weight > a5) {
+    if (weight >= a5) {
       tokenID = 50;
       _mint(account, tokenID, amount, data);
     }
-
-    if (weight > a4) {
+    if (weight >= a4) {
       tokenID = 40;
       _mint(account, tokenID, amount, data);
     }
-
-    if (weight > a3) {
+    if (weight >= a3) {
       tokenID = 30;
       _mint(account, tokenID, amount, data);
     }
-
-    if (weight > a2) {
+    if (weight >= a2) {
       tokenID = 20;
       _mint(account, tokenID, amount, data);
     }
-
-    if (weight > a1) {
+    if (weight >= a1) {
       tokenID = 10;
       _mint(account, tokenID, amount, data);
     }
