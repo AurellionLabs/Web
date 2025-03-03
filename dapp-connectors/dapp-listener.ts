@@ -10,7 +10,11 @@ export async function listenForSignature(jobID: string): Promise<boolean> {
       throw new Error('Signer is undefined');
     }
     const signerAddr = await signer.getAddress();
-    const contract = new ethers.Contract(REACT_APP_AUSYS_CONTRACT_ADDRESS, contractABI, signer);
+    const contract = new ethers.Contract(
+      REACT_APP_AUSYS_CONTRACT_ADDRESS,
+      contractABI,
+      signer,
+    );
     const journey = await contract.jobIdToJourney(jobID);
     let driverSig;
     let customerSig;
@@ -45,7 +49,11 @@ export async function listenForSignature(jobID: string): Promise<boolean> {
         console.log('filteredSigs');
         const timeout = setTimeout(() => {
           contract.off(filteredSigs, handler); // Stop listening to prevent memory leaks
-          reject(new Error('Timeout: No signature detected within the specified time.'));
+          reject(
+            new Error(
+              'Timeout: No signature detected within the specified time.',
+            ),
+          );
         }, 120000);
 
         const handler = (address: string, id: string) => {

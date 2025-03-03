@@ -13,7 +13,7 @@ import type {
   ContractRunner,
   ContractMethod,
   Listener,
-} from "ethers";
+} from 'ethers';
 import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
@@ -21,176 +21,176 @@ import type {
   TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from "../common";
+} from '../common';
 
 export interface AuraGoatInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "balanceOf"
-      | "balanceOfBatch"
-      | "burn"
-      | "burnBatch"
-      | "exists"
-      | "isApprovedForAll"
-      | "mintBatch"
-      | "nodeMint"
-      | "owner"
-      | "renounceOwnership"
-      | "safeBatchTransferFrom"
-      | "safeTransferFrom"
-      | "setApprovalForAll"
-      | "setURI"
-      | "supportsInterface"
-      | "totalSupply"
-      | "transferOwnership"
-      | "updateGradeReq"
-      | "uri"
+      | 'balanceOf'
+      | 'balanceOfBatch'
+      | 'burn'
+      | 'burnBatch'
+      | 'exists'
+      | 'isApprovedForAll'
+      | 'mintBatch'
+      | 'nodeMint'
+      | 'owner'
+      | 'renounceOwnership'
+      | 'safeBatchTransferFrom'
+      | 'safeTransferFrom'
+      | 'setApprovalForAll'
+      | 'setURI'
+      | 'supportsInterface'
+      | 'totalSupply'
+      | 'transferOwnership'
+      | 'updateGradeReq'
+      | 'uri',
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
-      | "ApprovalForAll"
-      | "OwnershipTransferred"
-      | "TransferBatch"
-      | "TransferSingle"
-      | "URI"
+      | 'ApprovalForAll'
+      | 'OwnershipTransferred'
+      | 'TransferBatch'
+      | 'TransferSingle'
+      | 'URI',
   ): EventFragment;
 
   encodeFunctionData(
-    functionFragment: "balanceOf",
-    values: [AddressLike, BigNumberish]
+    functionFragment: 'balanceOf',
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "balanceOfBatch",
-    values: [AddressLike[], BigNumberish[]]
+    functionFragment: 'balanceOfBatch',
+    values: [AddressLike[], BigNumberish[]],
   ): string;
   encodeFunctionData(
-    functionFragment: "burn",
-    values: [AddressLike, BigNumberish, BigNumberish]
+    functionFragment: 'burn',
+    values: [AddressLike, BigNumberish, BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "burnBatch",
-    values: [AddressLike, BigNumberish[], BigNumberish[]]
+    functionFragment: 'burnBatch',
+    values: [AddressLike, BigNumberish[], BigNumberish[]],
   ): string;
   encodeFunctionData(
-    functionFragment: "exists",
-    values: [BigNumberish]
+    functionFragment: 'exists',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "isApprovedForAll",
-    values: [AddressLike, AddressLike]
+    functionFragment: 'isApprovedForAll',
+    values: [AddressLike, AddressLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "mintBatch",
-    values: [AddressLike, BigNumberish[], BigNumberish[], BytesLike]
+    functionFragment: 'mintBatch',
+    values: [AddressLike, BigNumberish[], BigNumberish[], BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "nodeMint",
-    values: [AddressLike, BigNumberish, BigNumberish, BytesLike]
+    functionFragment: 'nodeMint',
+    values: [AddressLike, BigNumberish, BigNumberish, BytesLike],
   ): string;
-  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
+  encodeFunctionData(functionFragment: 'owner', values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "renounceOwnership",
-    values?: undefined
+    functionFragment: 'renounceOwnership',
+    values?: undefined,
   ): string;
   encodeFunctionData(
-    functionFragment: "safeBatchTransferFrom",
+    functionFragment: 'safeBatchTransferFrom',
     values: [
       AddressLike,
       AddressLike,
       BigNumberish[],
       BigNumberish[],
-      BytesLike
-    ]
+      BytesLike,
+    ],
   ): string;
   encodeFunctionData(
-    functionFragment: "safeTransferFrom",
-    values: [AddressLike, AddressLike, BigNumberish, BigNumberish, BytesLike]
+    functionFragment: 'safeTransferFrom',
+    values: [AddressLike, AddressLike, BigNumberish, BigNumberish, BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "setApprovalForAll",
-    values: [AddressLike, boolean]
+    functionFragment: 'setApprovalForAll',
+    values: [AddressLike, boolean],
   ): string;
-  encodeFunctionData(functionFragment: "setURI", values: [string]): string;
+  encodeFunctionData(functionFragment: 'setURI', values: [string]): string;
   encodeFunctionData(
-    functionFragment: "supportsInterface",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "totalSupply",
-    values: [BigNumberish]
+    functionFragment: 'supportsInterface',
+    values: [BytesLike],
   ): string;
   encodeFunctionData(
-    functionFragment: "transferOwnership",
-    values: [AddressLike]
+    functionFragment: 'totalSupply',
+    values: [BigNumberish],
   ): string;
   encodeFunctionData(
-    functionFragment: "updateGradeReq",
-    values: [BigNumberish, BigNumberish]
+    functionFragment: 'transferOwnership',
+    values: [AddressLike],
   ): string;
-  encodeFunctionData(functionFragment: "uri", values: [BigNumberish]): string;
+  encodeFunctionData(
+    functionFragment: 'updateGradeReq',
+    values: [BigNumberish, BigNumberish],
+  ): string;
+  encodeFunctionData(functionFragment: 'uri', values: [BigNumberish]): string;
 
-  decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'balanceOf', data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "balanceOfBatch",
-    data: BytesLike
+    functionFragment: 'balanceOfBatch',
+    data: BytesLike,
   ): Result;
-  decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "burnBatch", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "exists", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'burn', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'burnBatch', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'exists', data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "isApprovedForAll",
-    data: BytesLike
+    functionFragment: 'isApprovedForAll',
+    data: BytesLike,
   ): Result;
-  decodeFunctionResult(functionFragment: "mintBatch", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "nodeMint", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'mintBatch', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'nodeMint', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: 'owner', data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "renounceOwnership",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "safeBatchTransferFrom",
-    data: BytesLike
+    functionFragment: 'renounceOwnership',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "safeTransferFrom",
-    data: BytesLike
+    functionFragment: 'safeBatchTransferFrom',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "setApprovalForAll",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "setURI", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "supportsInterface",
-    data: BytesLike
+    functionFragment: 'safeTransferFrom',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "totalSupply",
-    data: BytesLike
+    functionFragment: 'setApprovalForAll',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(functionFragment: 'setURI', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'supportsInterface',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "transferOwnership",
-    data: BytesLike
+    functionFragment: 'totalSupply',
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(
-    functionFragment: "updateGradeReq",
-    data: BytesLike
+    functionFragment: 'transferOwnership',
+    data: BytesLike,
   ): Result;
-  decodeFunctionResult(functionFragment: "uri", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: 'updateGradeReq',
+    data: BytesLike,
+  ): Result;
+  decodeFunctionResult(functionFragment: 'uri', data: BytesLike): Result;
 }
 
 export namespace ApprovalForAllEvent {
   export type InputTuple = [
     account: AddressLike,
     operator: AddressLike,
-    approved: boolean
+    approved: boolean,
   ];
   export type OutputTuple = [
     account: string,
     operator: string,
-    approved: boolean
+    approved: boolean,
   ];
   export interface OutputObject {
     account: string;
@@ -222,14 +222,14 @@ export namespace TransferBatchEvent {
     from: AddressLike,
     to: AddressLike,
     ids: BigNumberish[],
-    values: BigNumberish[]
+    values: BigNumberish[],
   ];
   export type OutputTuple = [
     operator: string,
     from: string,
     to: string,
     ids: bigint[],
-    values: bigint[]
+    values: bigint[],
   ];
   export interface OutputObject {
     operator: string;
@@ -250,14 +250,14 @@ export namespace TransferSingleEvent {
     from: AddressLike,
     to: AddressLike,
     id: BigNumberish,
-    value: BigNumberish
+    value: BigNumberish,
   ];
   export type OutputTuple = [
     operator: string,
     from: string,
     to: string,
     id: bigint,
-    value: bigint
+    value: bigint,
   ];
   export interface OutputObject {
     operator: string;
@@ -294,70 +294,70 @@ export interface AuraGoat extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
+    event: TCEvent,
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
+    event?: TCEvent,
   ): Promise<this>;
 
   balanceOf: TypedContractMethod<
     [account: AddressLike, id: BigNumberish],
     [bigint],
-    "view"
+    'view'
   >;
 
   balanceOfBatch: TypedContractMethod<
     [accounts: AddressLike[], ids: BigNumberish[]],
     [bigint[]],
-    "view"
+    'view'
   >;
 
   burn: TypedContractMethod<
     [account: AddressLike, id: BigNumberish, value: BigNumberish],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   burnBatch: TypedContractMethod<
     [account: AddressLike, ids: BigNumberish[], values: BigNumberish[]],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  exists: TypedContractMethod<[id: BigNumberish], [boolean], "view">;
+  exists: TypedContractMethod<[id: BigNumberish], [boolean], 'view'>;
 
   isApprovedForAll: TypedContractMethod<
     [account: AddressLike, operator: AddressLike],
     [boolean],
-    "view"
+    'view'
   >;
 
   mintBatch: TypedContractMethod<
@@ -365,10 +365,10 @@ export interface AuraGoat extends BaseContract {
       to: AddressLike,
       ids: BigNumberish[],
       amounts: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   nodeMint: TypedContractMethod<
@@ -376,15 +376,15 @@ export interface AuraGoat extends BaseContract {
       account: AddressLike,
       weight: BigNumberish,
       amount: BigNumberish,
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  owner: TypedContractMethod<[], [string], "view">;
+  owner: TypedContractMethod<[], [string], 'view'>;
 
-  renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
+  renounceOwnership: TypedContractMethod<[], [void], 'nonpayable'>;
 
   safeBatchTransferFrom: TypedContractMethod<
     [
@@ -392,10 +392,10 @@ export interface AuraGoat extends BaseContract {
       to: AddressLike,
       ids: BigNumberish[],
       amounts: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   safeTransferFrom: TypedContractMethod<
@@ -404,200 +404,200 @@ export interface AuraGoat extends BaseContract {
       to: AddressLike,
       id: BigNumberish,
       amount: BigNumberish,
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   setApprovalForAll: TypedContractMethod<
     [operator: AddressLike, approved: boolean],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  setURI: TypedContractMethod<[newuri: string], [void], "nonpayable">;
+  setURI: TypedContractMethod<[newuri: string], [void], 'nonpayable'>;
 
   supportsInterface: TypedContractMethod<
     [interfaceId: BytesLike],
     [boolean],
-    "view"
+    'view'
   >;
 
-  totalSupply: TypedContractMethod<[id: BigNumberish], [bigint], "view">;
+  totalSupply: TypedContractMethod<[id: BigNumberish], [bigint], 'view'>;
 
   transferOwnership: TypedContractMethod<
     [newOwner: AddressLike],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
   updateGradeReq: TypedContractMethod<
     [tier: BigNumberish, weight: BigNumberish],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
 
-  uri: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  uri: TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
+    key: string | FunctionFragment,
   ): T;
 
   getFunction(
-    nameOrSignature: "balanceOf"
+    nameOrSignature: 'balanceOf',
   ): TypedContractMethod<
     [account: AddressLike, id: BigNumberish],
     [bigint],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "balanceOfBatch"
+    nameOrSignature: 'balanceOfBatch',
   ): TypedContractMethod<
     [accounts: AddressLike[], ids: BigNumberish[]],
     [bigint[]],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "burn"
+    nameOrSignature: 'burn',
   ): TypedContractMethod<
     [account: AddressLike, id: BigNumberish, value: BigNumberish],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "burnBatch"
+    nameOrSignature: 'burnBatch',
   ): TypedContractMethod<
     [account: AddressLike, ids: BigNumberish[], values: BigNumberish[]],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "exists"
-  ): TypedContractMethod<[id: BigNumberish], [boolean], "view">;
+    nameOrSignature: 'exists',
+  ): TypedContractMethod<[id: BigNumberish], [boolean], 'view'>;
   getFunction(
-    nameOrSignature: "isApprovedForAll"
+    nameOrSignature: 'isApprovedForAll',
   ): TypedContractMethod<
     [account: AddressLike, operator: AddressLike],
     [boolean],
-    "view"
+    'view'
   >;
   getFunction(
-    nameOrSignature: "mintBatch"
+    nameOrSignature: 'mintBatch',
   ): TypedContractMethod<
     [
       to: AddressLike,
       ids: BigNumberish[],
       amounts: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "nodeMint"
+    nameOrSignature: 'nodeMint',
   ): TypedContractMethod<
     [
       account: AddressLike,
       weight: BigNumberish,
       amount: BigNumberish,
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "owner"
-  ): TypedContractMethod<[], [string], "view">;
+    nameOrSignature: 'owner',
+  ): TypedContractMethod<[], [string], 'view'>;
   getFunction(
-    nameOrSignature: "renounceOwnership"
-  ): TypedContractMethod<[], [void], "nonpayable">;
+    nameOrSignature: 'renounceOwnership',
+  ): TypedContractMethod<[], [void], 'nonpayable'>;
   getFunction(
-    nameOrSignature: "safeBatchTransferFrom"
+    nameOrSignature: 'safeBatchTransferFrom',
   ): TypedContractMethod<
     [
       from: AddressLike,
       to: AddressLike,
       ids: BigNumberish[],
       amounts: BigNumberish[],
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "safeTransferFrom"
+    nameOrSignature: 'safeTransferFrom',
   ): TypedContractMethod<
     [
       from: AddressLike,
       to: AddressLike,
       id: BigNumberish,
       amount: BigNumberish,
-      data: BytesLike
+      data: BytesLike,
     ],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "setApprovalForAll"
+    nameOrSignature: 'setApprovalForAll',
   ): TypedContractMethod<
     [operator: AddressLike, approved: boolean],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "setURI"
-  ): TypedContractMethod<[newuri: string], [void], "nonpayable">;
+    nameOrSignature: 'setURI',
+  ): TypedContractMethod<[newuri: string], [void], 'nonpayable'>;
   getFunction(
-    nameOrSignature: "supportsInterface"
-  ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
+    nameOrSignature: 'supportsInterface',
+  ): TypedContractMethod<[interfaceId: BytesLike], [boolean], 'view'>;
   getFunction(
-    nameOrSignature: "totalSupply"
-  ): TypedContractMethod<[id: BigNumberish], [bigint], "view">;
+    nameOrSignature: 'totalSupply',
+  ): TypedContractMethod<[id: BigNumberish], [bigint], 'view'>;
   getFunction(
-    nameOrSignature: "transferOwnership"
-  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
+    nameOrSignature: 'transferOwnership',
+  ): TypedContractMethod<[newOwner: AddressLike], [void], 'nonpayable'>;
   getFunction(
-    nameOrSignature: "updateGradeReq"
+    nameOrSignature: 'updateGradeReq',
   ): TypedContractMethod<
     [tier: BigNumberish, weight: BigNumberish],
     [void],
-    "nonpayable"
+    'nonpayable'
   >;
   getFunction(
-    nameOrSignature: "uri"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+    nameOrSignature: 'uri',
+  ): TypedContractMethod<[arg0: BigNumberish], [string], 'view'>;
 
   getEvent(
-    key: "ApprovalForAll"
+    key: 'ApprovalForAll',
   ): TypedContractEvent<
     ApprovalForAllEvent.InputTuple,
     ApprovalForAllEvent.OutputTuple,
     ApprovalForAllEvent.OutputObject
   >;
   getEvent(
-    key: "OwnershipTransferred"
+    key: 'OwnershipTransferred',
   ): TypedContractEvent<
     OwnershipTransferredEvent.InputTuple,
     OwnershipTransferredEvent.OutputTuple,
     OwnershipTransferredEvent.OutputObject
   >;
   getEvent(
-    key: "TransferBatch"
+    key: 'TransferBatch',
   ): TypedContractEvent<
     TransferBatchEvent.InputTuple,
     TransferBatchEvent.OutputTuple,
     TransferBatchEvent.OutputObject
   >;
   getEvent(
-    key: "TransferSingle"
+    key: 'TransferSingle',
   ): TypedContractEvent<
     TransferSingleEvent.InputTuple,
     TransferSingleEvent.OutputTuple,
     TransferSingleEvent.OutputObject
   >;
   getEvent(
-    key: "URI"
+    key: 'URI',
   ): TypedContractEvent<
     URIEvent.InputTuple,
     URIEvent.OutputTuple,
@@ -605,7 +605,7 @@ export interface AuraGoat extends BaseContract {
   >;
 
   filters: {
-    "ApprovalForAll(address,address,bool)": TypedContractEvent<
+    'ApprovalForAll(address,address,bool)': TypedContractEvent<
       ApprovalForAllEvent.InputTuple,
       ApprovalForAllEvent.OutputTuple,
       ApprovalForAllEvent.OutputObject
@@ -616,7 +616,7 @@ export interface AuraGoat extends BaseContract {
       ApprovalForAllEvent.OutputObject
     >;
 
-    "OwnershipTransferred(address,address)": TypedContractEvent<
+    'OwnershipTransferred(address,address)': TypedContractEvent<
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
       OwnershipTransferredEvent.OutputObject
@@ -627,7 +627,7 @@ export interface AuraGoat extends BaseContract {
       OwnershipTransferredEvent.OutputObject
     >;
 
-    "TransferBatch(address,address,address,uint256[],uint256[])": TypedContractEvent<
+    'TransferBatch(address,address,address,uint256[],uint256[])': TypedContractEvent<
       TransferBatchEvent.InputTuple,
       TransferBatchEvent.OutputTuple,
       TransferBatchEvent.OutputObject
@@ -638,7 +638,7 @@ export interface AuraGoat extends BaseContract {
       TransferBatchEvent.OutputObject
     >;
 
-    "TransferSingle(address,address,address,uint256,uint256)": TypedContractEvent<
+    'TransferSingle(address,address,address,uint256,uint256)': TypedContractEvent<
       TransferSingleEvent.InputTuple,
       TransferSingleEvent.OutputTuple,
       TransferSingleEvent.OutputObject
@@ -649,7 +649,7 @@ export interface AuraGoat extends BaseContract {
       TransferSingleEvent.OutputObject
     >;
 
-    "URI(string,uint256)": TypedContractEvent<
+    'URI(string,uint256)': TypedContractEvent<
       URIEvent.InputTuple,
       URIEvent.OutputTuple,
       URIEvent.OutputObject
