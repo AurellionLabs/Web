@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/popover';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useRouter } from 'next/navigation';
+import { checkIfNodeExists } from '@/dapp-connectors/aurum-controller';
+import { useNode } from '@/app/providers/node.provider';
 
 const roles = [
   {
@@ -38,13 +40,11 @@ export function RoleSelector() {
   const [open, setOpen] = React.useState(false);
   const { currentUserRole, setCurrentUserRole } = useMainProvider();
   const router = useRouter();
+  const { isRegisteredNode: nodeStatus } = useNode();
 
   const checkNodeRegistration = async () => {
     try {
-      // TODO: Add your blockchain call here to check if the wallet is registered as a node
-      // const isRegistered = await yourContract.isRegisteredNode(walletAddress);
-      // return isRegistered;
-      return true;
+      return nodeStatus;
     } catch (error) {
       console.error('Error checking node registration:', error);
       return false;
@@ -54,10 +54,11 @@ export function RoleSelector() {
   const handleRoleSelect = async (currentValue: string) => {
     setCurrentUserRole(currentValue as typeof currentUserRole);
     setOpen(false);
+
     if (currentValue === 'node') {
       const isRegisteredNode = await checkNodeRegistration();
       if (isRegisteredNode) {
-        router.push('/node/dashboard');
+        router.push('/node/overview');
       } else {
         router.push('/node/register');
       }

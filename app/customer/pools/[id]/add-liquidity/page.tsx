@@ -17,6 +17,7 @@ import {
 } from '@/dapp-connectors/staking-controller';
 import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
+import { toast } from 'react-hot-toast';
 
 const assetSchema = z.object({
   amount: z.string().refine(
@@ -67,10 +68,11 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (assetAmount && operation?.assetPrice) {
       try {
-        const assetPriceInEther = formatUnits(operation.assetPrice, 18);
+        const assetAmountBigInt = BigInt(assetAmount);
+        const assetPriceBigInt = BigInt(operation.assetPrice);
         const calculatedAura = (
-          Number(assetAmount) * Number(assetPriceInEther)
-        ).toFixed(18);
+          assetAmountBigInt * assetPriceBigInt
+        ).toString();
         setTokenAmount(calculatedAura);
       } catch (error) {
         console.error('Error calculating token amount:', error);
@@ -112,13 +114,31 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     e.preventDefault();
     setLoading(true);
     try {
-      // Convert token amount  before sending to contract
       const amountBigNumberish = parseUnits(tokenAmount, decimals);
-      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS, amountBigNumberish);
-      await stake(NEXT_PUBLIC_AURA_ADDRESS, params.id, amountBigNumberish);
-      console.log('Successfully added liquidity');
+
+      // First approve the token spend
+      const allowanceTx = await requestTokenAllowance(
+        NEXT_PUBLIC_AURA_ADDRESS,
+        amountBigNumberish,
+      );
+      await allowanceTx.wait();
+
+      // Then stake
+      const stakeTx = await stake(
+        NEXT_PUBLIC_AURA_ADDRESS,
+        params.id,
+        amountBigNumberish,
+      );
+      await stakeTx.wait();
+
+      toast.success('Successfully added liquidity');
       router.push(`/customer/pools/${params.id}`);
     } catch (error: any) {
+      if (error.code === 'ACTION_REJECTED') {
+        toast.error('Transaction rejected by user');
+      } else {
+        toast.error(error.message || 'Failed to add liquidity');
+      }
       setError(error.message || 'An error occurred when adding liquidity');
     } finally {
       setLoading(false);
@@ -150,18 +170,11 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   };
 
   const getMaxQuantity = () => {
-    console.log('in handle set max');
     try {
       if (!balance || !operation?.assetPrice) return '0';
-      console.log('settng max');
-      const balanceInEther = formatUnits(balance, decimals);
-      const assetPriceInEther = formatUnits(operation.assetPrice, 18);
-      console.log(
-        `balanceInEther$ ${balanceInEther} assetPriceInEther${assetPriceInEther}`,
-      );
-      return Math.floor(
-        Number(balanceInEther) / Number(assetPriceInEther),
-      ).toString();
+      const balanceBigInt = BigInt(balance);
+      const assetPriceBigInt = BigInt(operation.assetPrice);
+      return (balanceBigInt / assetPriceBigInt).toString();
     } catch (error) {
       console.error('Error calculating max quantity:', error);
       return '0';

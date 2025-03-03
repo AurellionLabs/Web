@@ -1,0 +1,336 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Button } from './button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { formatAddress } from '@/lib/utils';
+import { ethers } from 'ethers';
+import { SUPPORTED_CHAINS, NETWORK_CONFIGS } from '@/config/network';
+import { useMainProvider } from '@/app/providers/main.provider';
+import { initializeProvider } from '@/dapp-connectors/base-controller';
+
+interface WalletInfo {
+  balance: string;
+  ens: string | null;
+}
+
+export function WalletConnection() {
+  const { isWalletConnected, setIsWalletConnected } = useMainProvider();
+  const [isOpen, setIsOpen] = useState(false);
+  const [account, setAccount] = useState<string>('');
+  const [chainId, setChainId] = useState<number>();
+  const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
+  const [walletInfo, setWalletInfo] = useState<WalletInfo>({
+    balance: '0',
+    ens: null,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastTx, setLastTx] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (window.ethereum) {
+        try {
+          // Get current chain
+          const chainIdHex = await window.ethereum.request({
+            method: 'eth_chainId',
+          });
+          const currentChainId = parseInt(chainIdHex, 16);
+          setChainId(currentChainId);
+          setIsCorrectNetwork(SUPPORTED_CHAINS.includes(currentChainId));
+
+          // Get current account
+          const accounts = await window.ethereum.request({
+            method: 'eth_accounts',
+          });
+          if (accounts.length > 0) {
+            setAccount(accounts[0]);
+          }
+        } catch (error) {
+          console.error('Error checking connection:', error);
+        }
+      }
+    };
+
+    checkConnection();
+
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener(
+          'accountsChanged',
+          handleAccountsChanged,
+        );
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && account) {
+      fetchWalletInfo(account);
+    }
+  }, [isOpen, account]);
+
+  const handleAccountsChanged = (accounts: string[]) => {
+    if (accounts.length === 0) {
+      // User disconnected
+      setAccount('');
+      toast.error('Wallet disconnected');
+    } else {
+      // Account changed
+      setAccount(accounts[0]);
+      toast.success(`Switched to account ${formatAddress(accounts[0])}`);
+    }
+  };
+
+  const handleChainChanged = (chainIdHex: string) => {
+    const newChainId = parseInt(chainIdHex, 16);
+    setChainId(newChainId);
+    setIsCorrectNetwork(SUPPORTED_CHAINS.includes(newChainId));
+
+    if (!SUPPORTED_CHAINS.includes(newChainId)) {
+      toast.error('Please switch to a supported network');
+    } else {
+      toast.success('Network switched successfully');
+    }
+
+    // Reload the page to refresh providers
+    window.location.reload();
+  };
+
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      toast.error('Please install MetaMask');
+      return;
+    }
+
+    try {
+      const { provider, signer } = await initializeProvider();
+      if (!signer) throw new Error('Failed to get signer');
+
+      const address = await signer.getAddress();
+      setAccount(address);
+      setIsWalletConnected(true);
+
+      // Fetch initial chain info
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      setChainId(chainId);
+      setIsCorrectNetwork(SUPPORTED_CHAINS.includes(chainId));
+
+      setIsOpen(true);
+    } catch (error: any) {
+      console.error('Wallet connection error:', error);
+      if (error.code === 4001) {
+        toast.error('Please connect to MetaMask');
+      } else {
+        toast.error('Error connecting wallet');
+      }
+      setIsWalletConnected(false);
+    }
+  };
+
+  const switchNetwork = async () => {
+    if (!window.ethereum) return;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${SUPPORTED_CHAINS[0].toString(16)}` }],
+      });
+    } catch (error: any) {
+      if (error.code === 4902) {
+        // Chain not added, prompt to add it
+        toast.error('Please add the network to your wallet');
+      } else {
+        toast.error('Error switching network');
+      }
+    }
+  };
+
+  const fetchWalletInfo = async (address: string) => {
+    if (!window.ethereum) return;
+
+    setIsLoading(true);
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const balance = await provider.getBalance(address);
+      const formattedBalance = ethers.formatEther(balance);
+
+      // Try to get ENS name if on mainnet
+      let ens = null;
+      if (chainId === 1) {
+        ens = await provider.lookupAddress(address);
+      }
+
+      setWalletInfo({ balance: formattedBalance, ens });
+    } catch (error) {
+      console.error('Error fetching wallet info:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addNetwork = async (chainId: number) => {
+    if (!window?.ethereum) {
+      toast.error('Please install MetaMask');
+      return;
+    }
+
+    const config = NETWORK_CONFIGS[chainId];
+    if (!config) return;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [
+          {
+            chainId: `0x${chainId.toString(16)}`,
+            chainName: config.name,
+            nativeCurrency: config.currency,
+            rpcUrls: [config.rpcUrl],
+            blockExplorerUrls: [config.blockExplorer],
+          },
+        ],
+      });
+    } catch (error: any) {
+      toast.error('Failed to add network');
+    }
+  };
+
+  const handleButtonClick = async () => {
+    console.log('Button clicked, account:', account);
+    if (account) {
+      console.log('Opening modal');
+      setIsOpen(true);
+    } else {
+      console.log('Connecting wallet');
+      await connectWallet();
+    }
+  };
+
+  useEffect(() => {
+    console.log('Modal open state:', isOpen);
+  }, [isOpen]);
+
+  // Add null check and default values for the explorer URLs
+  const getExplorerUrl = (chainId: number | undefined, path: string) => {
+    if (!chainId || !NETWORK_CONFIGS[chainId]) {
+      return '#'; // Return fallback URL if chain not supported
+    }
+    return `${NETWORK_CONFIGS[chainId].blockExplorer}/${path}`;
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        onClick={handleButtonClick}
+        variant={!isCorrectNetwork && account ? 'destructive' : 'default'}
+      >
+        {!account
+          ? 'Connect Wallet'
+          : !isCorrectNetwork
+            ? 'Wrong Network'
+            : formatAddress(account)}
+      </Button>
+
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Wallet Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span>Account</span>
+              <div className="text-right">
+                <span className="font-mono">{formatAddress(account)}</span>
+                {walletInfo.ens && (
+                  <div className="text-sm text-gray-500">{walletInfo.ens}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span>Balance</span>
+              <span>
+                {isLoading
+                  ? 'Loading...'
+                  : `${Number(walletInfo.balance).toFixed(4)} ETH`}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span>Network</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={
+                    !isCorrectNetwork ? 'text-red-500' : 'text-green-500'
+                  }
+                >
+                  {chainId
+                    ? NETWORK_CONFIGS[chainId]?.name || `Chain ID: ${chainId}`
+                    : 'Not Connected'}
+                </span>
+                {!isCorrectNetwork && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addNetwork(SUPPORTED_CHAINS[0])}
+                  >
+                    Add Network
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {lastTx && (
+              <div className="pt-4 border-t">
+                <div className="text-sm text-gray-500">Last Transaction</div>
+                <a
+                  href={getExplorerUrl(chainId, `tx/${lastTx}`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline text-sm"
+                >
+                  View on Explorer
+                </a>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => navigator.clipboard.writeText(account)}
+                variant="outline"
+                className="flex-1"
+              >
+                Copy Address
+              </Button>
+              <Button
+                onClick={() =>
+                  window.open(getExplorerUrl(chainId, `address/${account}`))
+                }
+                variant="outline"
+                className="flex-1"
+              >
+                View on Explorer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -2,6 +2,7 @@ import { colors } from '@/lib/constants/colors';
 import { Button } from './button';
 import { ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTrade } from '@/app/providers/trade.provider';
 
 interface TokenizedAsset {
   id: string;

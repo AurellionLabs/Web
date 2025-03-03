@@ -1,6 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+  useEffect,
+} from 'react';
+import { getOrders } from '@/dapp-connectors/ausys-controller';
 
 export interface TokenizedAsset {
   id: string;
@@ -13,40 +21,39 @@ export interface TokenizedAsset {
 }
 
 export interface Order {
-  assetId: string;
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  assetClass: string;
   quantity: number;
+  pricePerUnit: number;
+  totalValue: number;
   deliveryLocation: string;
-  totalPrice: number;
 }
 
-interface TradeContextType {
+export interface TradeContextType {
   assets: TokenizedAsset[];
   setAssets: (assets: TokenizedAsset[]) => void;
   fetchAssets: () => Promise<void>;
   isLoading: boolean;
   getAssetById: (id: string) => TokenizedAsset | undefined;
   placeOrder: (order: Order) => Promise<boolean>;
+  orders: Order[];
+  loadOrders: () => Promise<void>;
 }
 
-const TradeContext = createContext<TradeContextType | null>(null);
+const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
-export function useTradeProvider() {
-  const context = useContext(TradeContext);
-  if (!context) {
-    throw new Error('useTradeProvider must be used within a TradeProvider');
-  }
-  return context;
-}
-
-export function TradeProvider({ children }: { children: React.ReactNode }) {
+export function TradeProvider({ children }: { children: ReactNode }) {
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchAssets = useCallback(async () => {
+    console.log('fetchAssets called');
     setIsLoading(true);
     try {
-      // TODO: Replace this with actual blockchain call
-      // Example: const assets = await contract.getTokenizedAssets();
+      // Using mock data for now
       const mockData: TokenizedAsset[] = [
         {
           id: '1',
@@ -121,13 +128,19 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
           totalValue: 5760,
         },
       ];
+      console.log('Setting mock data:', mockData);
       setAssets(mockData);
     } catch (error) {
-      console.error('Error fetching tokenized assets:', error);
+      console.error('Error fetching assets:', error);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  // Call fetchAssets on mount
+  useEffect(() => {
+    fetchAssets();
+  }, [fetchAssets]);
 
   const getAssetById = useCallback(
     (id: string) => {
@@ -147,6 +160,23 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loadOrders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedOrders = await getOrders();
+      // Map to match local Order type
+      const mappedOrders: Order[] = fetchedOrders.map((order) => ({
+        ...order,
+        deliveryLocation: '', // Add missing required field
+      }));
+      setOrders(mappedOrders);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return (
     <TradeContext.Provider
       value={{
@@ -156,9 +186,19 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         getAssetById,
         placeOrder,
+        orders,
+        loadOrders,
       }}
     >
       {children}
     </TradeContext.Provider>
   );
+}
+
+export function useTrade() {
+  const context = useContext(TradeContext);
+  if (!context) {
+    throw new Error('useTrade must be used within TradeProvider');
+  }
+  return context;
 }

@@ -23,8 +23,10 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {},
     sepolia: {
-      url: process.env.RPC_URL || '',
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      url: process.env.SEP_RPC_URL || '',
+      accounts: process.env.SEP_PRIVATE_KEY
+        ? [process.env.SEP_PRIVATE_KEY]
+        : [],
     },
     arbitrum: {
       url: process.env.ARB_RPC_URL || '',
