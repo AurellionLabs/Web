@@ -283,3 +283,36 @@ export const getJourney = async (journeyId: BytesLike) => {
     handleContractError(error, 'get journey');
   }
 };
+
+export interface Order {
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  assetClass: string;
+  quantity: number;
+  pricePerUnit: number;
+  totalValue: number;
+  status: string;
+}
+
+export const getOrders = async (): Promise<Order[]> => {
+  const contract = await getAusysContract();
+  try {
+    // Mock data matching TokenizedAsset structure
+    return [
+      {
+        id: '1',
+        nodeId: 'node1',
+        nodeName: 'Test Node',
+        assetClass: 'goat',
+        quantity: 10,
+        pricePerUnit: 500,
+        totalValue: 5000,
+        status: 'active',
+      },
+    ];
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    throw error;
+  }
+};

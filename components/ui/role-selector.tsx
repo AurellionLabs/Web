@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/popover';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useRouter } from 'next/navigation';
-import { isRegisteredNode } from '@/dapp-connectors/aurum-controller';
+import { checkIfNodeExists } from '@/dapp-connectors/aurum-controller';
 import { useNode } from '@/app/providers/node.provider';
 
 const roles = [
@@ -54,6 +54,7 @@ export function RoleSelector() {
   const handleRoleSelect = async (currentValue: string) => {
     setCurrentUserRole(currentValue as typeof currentUserRole);
     setOpen(false);
+
     if (currentValue === 'node') {
       const isRegisteredNode = await checkNodeRegistration();
       if (isRegisteredNode) {

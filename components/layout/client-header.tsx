@@ -20,6 +20,48 @@ export function ClientHeader() {
   }, []);
 
   if (!mounted) return null;
+  <header className="border-b border-[${colors.neutral[800]}]">
+    <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2">
+            <div
+              className={`w-8 h-8 bg-[${colors.primary[500]}] rounded-full`}
+            />
+            <Image
+              src="logo.png"
+              alt="Aurellion Labs Logo"
+              width={64}
+              height={64}
+              priority
+              className="object-contain p-2"
+            />
+            <span className="font-semibold">Aurellion Labs</span>
+          </Link>
+          <nav className="flex gap-6">
+            <Link
+              href="/customer/pools"
+              className="text-gray-400 hover:text-white"
+            >
+              Pools
+            </Link>
+            {currentUserRole === 'customer' && (
+              <Link
+                href="/customer/trading"
+                className="text-gray-400 hover:text-white"
+              >
+                Trading
+              </Link>
+            )}
+          </nav>
+        </div>
+        <div className="flex items-center gap-4">
+          <RoleSelector />
+          <ConnectButton />
+        </div>
+      </div>
+    </div>
+  </header>;
 
   return (
     <header className="border-b border-[${colors.neutral[800]}]">
@@ -47,6 +89,14 @@ export function ClientHeader() {
               >
                 Pools
               </Link>
+              {currentUserRole === 'customer' && (
+                <Link
+                  href="/customer/trading"
+                  className="text-gray-400 hover:text-white"
+                >
+                  Trading
+                </Link>
+              )}
               {currentUserRole === 'node' && (
                 <>
                   <Link

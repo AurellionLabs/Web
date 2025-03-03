@@ -21,13 +21,13 @@ import {
   StakeData,
   triggerReward,
   unlockReward,
-  walletAddress,
 } from '@/dapp-connectors/staking-controller';
 import { StakedEvent } from '@/typechain-types/contracts/AuStake';
-import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { COMPLETE, PAID } from '@/constants';
 import { toast } from 'react-hot-toast';
 import { WalletConnection } from '@/components/ui/wallet-connection';
+import { getCurrentWalletAddress as walletAddress } from '@/dapp-connectors/base-controller';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
@@ -86,7 +86,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
       if (Number(selectedPool?.operationStatus) === COMPLETE) {
         setIsComplete(true);
         setStatus('Complete');
-        await triggerReward(NEXT_PUBLIC_AURA_ADDRESS, params.id);
+        await triggerReward(NEXT_PUBLIC_AURA_TOKEN_ADDRESS, params.id);
         toast.success('Reward claimed successfully');
         return;
       }
@@ -97,7 +97,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         Number(selectedPool?.operationStatus) !== COMPLETE &&
         Number(selectedPool?.operationStatus) !== PAID
       ) {
-        await unlockReward(NEXT_PUBLIC_AURA_ADDRESS, selectedPool);
+        await unlockReward(NEXT_PUBLIC_AURA_TOKEN_ADDRESS, selectedPool);
         setIsComplete(true);
         setStatus('Complete');
         toast.success('Reward unlocked successfully');
@@ -291,8 +291,12 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   }, [selectedPool]);
 
   useEffect(() => {
-    setIsProvider(walletAddress == selectedPool?.provider);
-  }, [isProvider, selectedPool]);
+    const checkProvider = async () => {
+      const address = await walletAddress();
+      setIsProvider(address === selectedPool?.provider);
+    };
+    checkProvider();
+  }, [selectedPool]);
 
   const formatTime = (milliseconds: number) => {
     const seconds = Math.floor(milliseconds / 1000);
