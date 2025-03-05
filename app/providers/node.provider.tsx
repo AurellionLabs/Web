@@ -1,75 +1,150 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+  useCallback,
+} from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  getNodeOrders,
+  getNodeStatus,
+  getOwnedNodeAddressList,
+  getNode,
+} from '@/dapp-connectors/aurum-controller';
+import { BytesLike, BigNumberish, AddressLike } from 'ethers';
 
-// Types
+// Update types to match blockchain data
 export type Order = {
   id: string;
   customer: string;
   asset: string;
   quantity: number;
-  value: string; // Numeric string without unit
+  value: string;
   status: 'active' | 'pending' | 'completed' | 'cancelled';
 };
 
 type NodeContextType = {
   orders: Order[];
+  isRegisteredNode: boolean;
+  nodeStatus: string;
+  selectedNode: string | null;
+  nodes: NodeData[];
+  loadNodes: () => Promise<void>;
+  selectNode: (nodeAddress: string) => void;
+  currentNodeData: NodeData | null;
 };
 
-// Mock data
-const mockOrders: Order[] = [
-  {
-    id: '1',
-    customer: '0x1234...5678',
-    asset: 'goat',
-    quantity: 2,
-    value: '2000',
-    status: 'active',
-  },
-  {
-    id: '2',
-    customer: '0x8765...4321',
-    asset: 'sheep',
-    quantity: 1,
-    value: '1000',
-    status: 'completed',
-  },
-  {
-    id: '3',
-    customer: '0x9876...5432',
-    asset: 'cow',
-    quantity: 1,
-    value: '3000',
-    status: 'pending',
-  },
-  // Add more mock data for pagination testing
-  ...Array.from({ length: 20 }, (_, i) => ({
-    id: `${i + 4}`,
-    customer: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
-    asset: ['goat', 'sheep', 'cow', 'chicken', 'duck'][
-      Math.floor(Math.random() * 5)
-    ],
-    quantity: Math.floor(Math.random() * 10) + 1,
-    value: Math.floor(Math.random() * 5000).toString(),
-    status: ['active', 'pending', 'completed', 'cancelled'][
-      Math.floor(Math.random() * 3)
-    ] as Order['status'],
-  })),
-];
+type NodeData = {
+  address: string;
+  status: BytesLike;
+  location: {
+    addressName: string;
+    location: { lat: string; lng: string };
+  };
+  supportedAssets: BigNumberish[];
+  capacity: BigNumberish[];
+  validNode: BytesLike;
+  owner: AddressLike;
+};
 
-// Create context
 const NodeContext = createContext<NodeContextType | undefined>(undefined);
 
-// Provider component
-export function NodeProvider({ children }: { children: ReactNode }) {
-  // In a real application, you might want to add functions to update orders
-  // and fetch them from your blockchain
+export const NodeProvider = ({ children }: { children: ReactNode }) => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [nodeStatus, setNodeStatus] = useState<string>('');
+  const [isRegisteredNode, setIsRegisteredNode] = useState(false);
+  const [nodes, setNodes] = useState<NodeData[]>([]);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [currentNodeData, setCurrentNodeData] = useState<NodeData | null>(null);
+  const router = useRouter();
+
+  const loadNodes = useCallback(async () => {
+    try {
+      const addresses = await getOwnedNodeAddressList();
+      const nodesData = await Promise.all(
+        addresses.map(async (address) => {
+          const data = await getNode(address);
+          return {
+            address,
+            ...data,
+          };
+        }),
+      );
+      setNodes(nodesData);
+
+      // Also update current node data if we have a selected node
+      if (selectedNode) {
+        const updatedNodeData = await getNode(selectedNode);
+        setCurrentNodeData({
+          ...updatedNodeData,
+          address: selectedNode,
+        });
+      }
+
+      // If we have nodes but none selected, select the first one
+      if (nodesData.length > 0 && !selectedNode) {
+        selectNode(nodesData[0].address);
+      }
+    } catch (error) {
+      console.error('Error loading nodes:', error);
+    }
+  }, [selectedNode]);
+
+  const selectNode = useCallback(
+    async (nodeAddress: string) => {
+      try {
+        const nodeData = await getNode(nodeAddress);
+        setSelectedNode(nodeAddress);
+        setCurrentNodeData({
+          ...nodeData,
+          address: nodeAddress, // Add the address to match NodeData type
+        });
+
+        // Update orders for the selected node
+        const nodeOrders = await getNodeOrders(nodeAddress);
+        setOrders(
+          nodeOrders.map((id) => ({
+            id: id.toString(),
+            customer: '-',
+            asset: 'Asset #' + id,
+            quantity: 0,
+            value: '0',
+            status: 'pending' as const,
+          })),
+        );
+
+        // Update node status
+        const status = await getNodeStatus(nodeAddress);
+        setIsRegisteredNode(!!status);
+        setNodeStatus(status);
+
+        // Optionally update URL for deep linking
+        const params = new URLSearchParams(window.location.search);
+        params.set('node', nodeAddress);
+        router.push(`${window.location.pathname}?${params.toString()}`);
+      } catch (error) {
+        console.error('Error selecting node:', error);
+      }
+    },
+    [router],
+  );
+
   const value = {
-    orders: mockOrders,
+    orders,
+    isRegisteredNode,
+    nodeStatus,
+    selectedNode,
+    nodes,
+    loadNodes,
+    selectNode,
+    currentNodeData,
   };
 
   return <NodeContext.Provider value={value}>{children}</NodeContext.Provider>;
-}
+};
 
 // Hook for using the node context
 export function useNode() {

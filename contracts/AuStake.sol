@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import './AuraGoat20.sol';
+import './Aura.sol';
 
 /**
  * @title AuStake
@@ -210,8 +210,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     uint256 amount = userStake.amount;
     userStake.isActive = false;
 
-    AuraGoat tokenContract = AuraGoat(token);
-    require(tokenContract.burn(user, amount), 'Failed to burn tokens');
+    IERC20 tokenContract = IERC20(token);
+    require(tokenContract.transfer(projectWallet, amount), 'Failed to transfer tokens');
 
     tokenTvl[token] -= amount;
     idToOperation[operationId].tokenTvl -= amount;
@@ -232,8 +232,7 @@ contract AuStake is ReentrancyGuard, Ownable {
     Operation storage operation = idToOperation[operationId];
 
     // Calculate total rewards using basis points
-    uint256 totalRewardsNeeded = (operation.tokenTvl * operation.reward) /
-      REWARD_PRECISION;
+    uint256 totalRewardsNeeded = (operation.tokenTvl * operation.reward) / REWARD_PRECISION;
 
     operation.operationStatus = OperationStatus.COMPLETE;
 
@@ -264,30 +263,29 @@ contract AuStake is ReentrancyGuard, Ownable {
     Operation storage operation = idToOperation[operationId];
 
     // Calculate reward using basis points
-    uint256 rewardAmount = (userStake.amount * operation.reward) /
-      REWARD_PRECISION;
+    uint256 rewardAmount = (userStake.amount * operation.reward) / REWARD_PRECISION;
     uint256 totalReturn = userStake.amount + rewardAmount;
 
-    userStake.isActive = false;
+    userStake.isActive = false; // Prevent double claims
     operation.tokenTvl -= userStake.amount;
 
     if (operation.tokenTvl == 0) {
       // Remove from active operations when TVL reaches 0
-      uint swapIndex;
+      uint256 swapIndex;
       bool swapFound = false;
-      for (uint i = 0; i < activeOperations.length; i++) {
+      for (uint256 i = 0; i < activeOperations.length; i++) {
         if (activeOperations[i] == operationId) {
           swapIndex = i;
           swapFound = true;
           break;
         }
       }
-      require(swapFound, 'Operation Id not found');
-      activeOperations[activeOperations.length - 1] = activeOperations[
-        swapIndex
-      ];
-      activeOperations.pop();
-      operation.operationStatus = OperationStatus.PAID;
+
+      if (swapFound) {
+        activeOperations[activeOperations.length - 1] = activeOperations[swapIndex];
+        activeOperations.pop();
+        operation.operationStatus = OperationStatus.PAID;
+      }
     }
 
     require(

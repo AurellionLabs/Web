@@ -2,13 +2,12 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuStake.sol": {
-      "lastModificationDate": 1739268266630,
-      "contentHash": "643ab68f520c620e8fa612a45a06ae33",
+      "lastModificationDate": 1738753992048,
+      "contentHash": "5a0173aad351dfdefab5778a6d82bfd3",
       "sourceName": "contracts/AuStake.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
-          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -34,7 +33,7 @@
         "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "@openzeppelin/contracts/security/ReentrancyGuard.sol",
         "@openzeppelin/contracts/access/Ownable.sol",
-        "./AuraGoat20.sol"
+        "./Aura.sol"
       ],
       "versionPragmas": [
         "^0.8.28"
@@ -43,14 +42,13 @@
         "AuStake"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuraGoat20.sol": {
-      "lastModificationDate": 1739268266631,
-      "contentHash": "0a21bab47fd15a118eb38edae38bf2a7",
-      "sourceName": "contracts/AuraGoat20.sol",
+    "/home/aurellius/Documents/AurellionWeb/Web/contracts/Aura.sol": {
+      "lastModificationDate": 1738705720252,
+      "contentHash": "6954f83f6c1d638877bc4bb6d46b82f7",
+      "sourceName": "contracts/Aura.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
-          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -81,7 +79,7 @@
         "^0.8.17"
       ],
       "artifacts": [
-        "AuraGoat"
+        "Aura"
       ]
     },
     "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol": {
@@ -91,7 +89,6 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
-          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -121,43 +118,6 @@
         "ReentrancyGuard"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
-      "lastModificationDate": 1736734220451,
-      "contentHash": "df36f7051335cd1e748b1b6463b7fdd3",
-      "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-      "solcConfig": {
-        "version": "0.8.28",
-        "settings": {
-          "viaIR": true,
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.0"
-      ],
-      "artifacts": [
-        "IERC20"
-      ]
-    },
     "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/access/Ownable.sol": {
       "lastModificationDate": 1736734220456,
       "contentHash": "5a20b2cad87ddb61c7a3a6af21289e28",
@@ -165,7 +125,6 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
-          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -197,6 +156,42 @@
         "Ownable"
       ]
     },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+      "lastModificationDate": 1736734220451,
+      "contentHash": "df36f7051335cd1e748b1b6463b7fdd3",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC20"
+      ]
+    },
     "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/Context.sol": {
       "lastModificationDate": 1736734220432,
       "contentHash": "5f2c5c4b6af2dd4551027144797bc8be",
@@ -204,7 +199,6 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
-          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -241,7 +235,6 @@
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
-          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -271,6 +264,512 @@
       ],
       "artifacts": [
         "IERC20Metadata"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuraGoatRed.sol": {
+      "lastModificationDate": 1738753016008,
+      "contentHash": "5d8a09dfbdaa34ef6c1fd1bc2e2a278f",
+      "sourceName": "contracts/AuraGoatRed.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+        "@openzeppelin/contracts/utils/Context.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "AuraGoatRed"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol": {
+      "lastModificationDate": 1736734220436,
+      "contentHash": "65c9d9c87e2b4df70e723819774a0482",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/ERC1155.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC1155.sol",
+        "./IERC1155Receiver.sol",
+        "./extensions/IERC1155MetadataURI.sol",
+        "../../utils/Address.sol",
+        "../../utils/Context.sol",
+        "../../utils/introspection/ERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ERC1155"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/Address.sol": {
+      "lastModificationDate": 1736734220106,
+      "contentHash": "211ffd288c1588ba8c10eae668ca3c66",
+      "sourceName": "@openzeppelin/contracts/utils/Address.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.1"
+      ],
+      "artifacts": [
+        "Address"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol": {
+      "lastModificationDate": 1736734220438,
+      "contentHash": "0e7db055ce108f9da7bb6686a00287c0",
+      "sourceName": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ERC165"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol": {
+      "lastModificationDate": 1736734220449,
+      "contentHash": "9f8822b72fe2702979e40160cb6d9636",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../utils/introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC1155Receiver"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol": {
+      "lastModificationDate": 1736734220449,
+      "contentHash": "93aa9af4f5d2d2095a71ccde917038bb",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/IERC1155.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../utils/introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC1155"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol": {
+      "lastModificationDate": 1736734220449,
+      "contentHash": "9148c2e10c4efb12c71a7f080da5559b",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../IERC1155.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC1155MetadataURI"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol": {
+      "lastModificationDate": 1736734220450,
+      "contentHash": "03e6768535ac4da0e9756f1d8a4a018a",
+      "sourceName": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC165"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol": {
+      "lastModificationDate": 1736734220437,
+      "contentHash": "6a99607f60a77d468b7ed41303ea4a6c",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../ERC1155.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ERC1155Supply"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuraGoat.sol": {
+      "lastModificationDate": 1738705546471,
+      "contentHash": "a6e9705b4963cbbec7a17cf8b1933374",
+      "sourceName": "contracts/AuraGoat.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./Aurum.sol",
+        "@openzeppelin/contracts/token/ERC1155/ERC1155.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol",
+        "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "AuraGoat"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/contracts/Aurum.sol": {
+      "lastModificationDate": 1738704309830,
+      "contentHash": "ccbada26426be79873e3f7999b327603",
+      "sourceName": "contracts/Aurum.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./Aura.sol",
+        "./AuSys.sol",
+        "./AuraGoat.sol"
+      ],
+      "versionPragmas": [
+        "0.8.28"
+      ],
+      "artifacts": [
+        "AurumNodeManager",
+        "aurumNode"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol": {
+      "lastModificationDate": 1736734220437,
+      "contentHash": "319ae047a2324eed34ea1d673e586059",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../ERC1155.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ERC1155Burnable"
+      ]
+    },
+    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuSys.sol": {
+      "lastModificationDate": 1738704280774,
+      "contentHash": "9f358353fb81f51d0573c1ef8a9c0bb2",
+      "sourceName": "contracts/AuSys.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./Aura.sol",
+        "./Aurum.sol",
+        "./AuraGoat.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "locationContract"
       ]
     }
   }

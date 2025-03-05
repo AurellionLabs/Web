@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
-import { useTradeProvider } from '@/app/providers/trade.provider';
+import { useTrade } from '@/app/providers/trade.provider';
 import { colors } from '@/lib/constants/colors';
 import { TokenizedAssetTable } from '@/components/ui/tokenized-asset-table';
 import { AssetClassFilter } from '@/components/ui/asset-class-filter';
@@ -13,7 +13,7 @@ type SortConfig = {
 
 export default function TradingPage() {
   const { setCurrentUserRole, connected } = useMainProvider();
-  const { assets, fetchAssets, isLoading } = useTradeProvider();
+  const { assets, fetchAssets, isLoading } = useTrade();
   const [selectedAssetClass, setSelectedAssetClass] = useState<string>('all');
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: null,
@@ -25,10 +25,16 @@ export default function TradingPage() {
   }, [setCurrentUserRole]);
 
   useEffect(() => {
+    console.log('Connected status:', connected);
     if (connected) {
+      console.log('Fetching assets...');
       fetchAssets();
     }
   }, [connected, fetchAssets]);
+
+  useEffect(() => {
+    console.log('Current assets:', assets);
+  }, [assets]);
 
   const handleSort = (key: SortConfig['key']) => {
     setSortConfig((prevSort) => ({

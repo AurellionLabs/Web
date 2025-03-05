@@ -8,41 +8,33 @@ interface ConnectResponse {
 }
 
 export class Wallet {
-  private provider: BrowserProvider | null;
+  private provider: BrowserProvider | null = null;
 
-  constructor() {
-    this.provider = null;
-  }
-
-  public async connectWallet(): Promise<ConnectResponse> {
+  async connectWallet() {
     try {
-      // Check if MetaMask is installed
+      // Check if ethereum is already injected
       if (typeof window.ethereum === 'undefined') {
         return {
           success: false,
-          error: 'Please install MetaMask to use this feature',
+          error: 'Please install MetaMask',
         };
       }
 
-      // Request account access
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts',
-      });
-
-      // Get the provider and connected address
+      // Use the existing provider instead of creating a new one
       this.provider = new BrowserProvider(window.ethereum);
-      const address = accounts[0];
 
-      // Return success response
+      // Request accounts
+      await this.provider.send('eth_requestAccounts', []);
+
       return {
         success: true,
-        address,
+        provider: this.provider,
       };
     } catch (error: any) {
-      // Handle user rejection or other errors
+      console.error('Wallet connection error:', error);
       return {
         success: false,
-        error: error.message || 'Failed to connect wallet',
+        error: error.message,
       };
     }
   }
@@ -101,7 +93,7 @@ export class Wallet {
     }
   }
 
-  public getProvider(): BrowserProvider | null {
+  getProvider() {
     return this.provider;
   }
 }

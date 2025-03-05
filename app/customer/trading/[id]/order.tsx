@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useTradeProvider } from '@/app/providers/trade.provider';
+import { useTrade } from '@/app/providers/trade.provider';
 import { colors } from '@/lib/constants/colors';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -36,7 +36,7 @@ type OrderFormValues = z.infer<typeof orderFormSchema>;
 
 export default function OrderPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { getAssetById, placeOrder } = useTradeProvider();
+  const { getAssetById, placeOrder } = useTrade();
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [error, setError] = useState('');
 
@@ -78,10 +78,14 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
     try {
       const success = await placeOrder({
-        assetId: asset.id,
+        id: asset.id,
+        nodeId: asset.nodeId,
+        nodeName: asset.nodeName,
+        assetClass: asset.assetClass,
         quantity: data.quantity,
+        pricePerUnit: asset.pricePerUnit,
+        totalValue: data.quantity * asset.pricePerUnit,
         deliveryLocation: data.deliveryLocation,
-        totalPrice: data.quantity * asset.pricePerUnit,
       });
 
       if (success) {

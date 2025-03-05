@@ -103,8 +103,10 @@ export default function CreateOperationPage() {
       const fundingGoalWei = ethers.parseUnits(values.fundingGoal, 18);
       const assetPriceWei = ethers.parseUnits(values.assetPrice, 18);
 
-      // Convert reward to basis points (multiply by 100 to preserve 2 decimal places)
-      const rewardBasisPoints = Math.round(parseFloat(values.reward) * 100);
+      // Convert reward to basis points (multiply by 100 for percentage)
+      const rewardBasisPoints = BigInt(
+        Math.floor(parseFloat(values.reward) * 100),
+      );
 
       await createOperation(
         values.name,

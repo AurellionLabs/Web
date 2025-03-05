@@ -1,7 +1,8 @@
 'use client';
 
 import { FC, useEffect, useState } from 'react';
-import { useTradeProvider } from '@/app/providers/trade.provider';
+import { useMainProvider } from '@/app/providers/main.provider';
+import { useTrade } from '@/app/providers/trade.provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { colors } from '@/lib/constants/colors';
@@ -53,7 +54,8 @@ const TIME_PERIODS = [
 type TimePeriod = (typeof TIME_PERIODS)[number]['value'];
 
 const TradingPoolPage: FC<PageProps> = ({ params }) => {
-  const { getAssetById, placeOrder } = useTradeProvider();
+  const { setCurrentUserRole, isWalletConnected } = useMainProvider();
+  const { assets, fetchAssets, isLoading, placeOrder } = useTrade();
   const [quantity, setQuantity] = useState<number>(1);
   const [deliveryLocation, setDeliveryLocation] = useState<string>('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -61,7 +63,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const router = useRouter();
 
-  const asset = getAssetById(params.id);
+  const asset = assets.find((a) => a.id === params.id);
 
   // Generate mock price history data based on selected period
   const generatePriceHistory = () => {
@@ -200,10 +202,14 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
     try {
       const success = await placeOrder({
-        assetId: asset.id,
+        id: asset.id,
+        nodeId: asset.nodeId,
+        nodeName: asset.nodeName,
+        assetClass: asset.assetClass,
         quantity,
+        pricePerUnit: asset.pricePerUnit,
+        totalValue: totalPrice,
         deliveryLocation,
-        totalPrice,
       });
 
       if (success) {
