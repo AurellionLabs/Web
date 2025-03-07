@@ -5,8 +5,7 @@ import { MainProvider } from './providers/main.provider';
 import { NodeProvider } from './providers/node.provider';
 import { ClientLayout } from '@/components/layout/client-layout';
 import { TradeProvider } from './providers/trade.provider';
-import Image from 'next/image';
-import { RoleSelector } from '@/components/ui/role-selector';
+import { CustomerProvider } from './providers/customer.provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -25,9 +24,11 @@ export default function RootLayout({
       <body className={inter.className}>
         <MainProvider>
           <NodeProvider>
-            <TradeProvider>
-              <ClientLayout>{children}</ClientLayout>
-            </TradeProvider>
+            <CustomerProvider>
+              <TradeProvider>
+                <ClientLayout>{children}</ClientLayout>
+              </TradeProvider>
+            </CustomerProvider>
           </NodeProvider>
         </MainProvider>
       </body>

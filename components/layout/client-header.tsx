@@ -83,19 +83,27 @@ export function ClientHeader() {
               <span className="font-semibold">Aurellion Labs</span>
             </Link>
             <nav className="flex gap-6">
-              <Link
-                href="/customer/pools"
-                className="text-gray-400 hover:text-white"
-              >
-                Pools
-              </Link>
               {currentUserRole === 'customer' && (
-                <Link
-                  href="/customer/trading"
-                  className="text-gray-400 hover:text-white"
-                >
-                  Trading
-                </Link>
+                <>
+                  <Link
+                    href="/customer/dashboard"
+                    className="text-gray-400 hover:text-white"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/customer/pools"
+                    className="text-gray-400 hover:text-white"
+                  >
+                    Pools
+                  </Link>
+                  <Link
+                    href="/customer/trading"
+                    className="text-gray-400 hover:text-white"
+                  >
+                    Trading
+                  </Link>
+                </>
               )}
               {currentUserRole === 'node' && (
                 <>
