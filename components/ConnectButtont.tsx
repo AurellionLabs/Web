@@ -8,7 +8,7 @@ import { useMainProvider } from '@/app/providers/main.provider';
 
 export default function ConnectButton() {
   const [connectedText, setConnectedText] = useState('Connect');
-  const { connected, setConnected } = useMainProvider();
+  const { connected, setIsWalletConnected } = useMainProvider();
   useEffect(() => {
     try {
       handleConnect();
@@ -21,7 +21,7 @@ export default function ConnectButton() {
       const response = await setWalletProvider();
       if (response.success) {
         console.log('Connected with address:', response.address);
-        setConnected(true);
+        setIsWalletConnected(true);
         setConnectedText('Connected');
       } else {
         console.error('Connection failed:', response.error);

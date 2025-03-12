@@ -29,6 +29,7 @@ contract AurumNodeManager {
         uint256[] supportedAssets;
         bytes1 status;
         uint256[] capacity;
+        uint256[] assetPrices;
         //capacity needs to be kept on an asset by asset basis
     }
     struct Asset {
@@ -64,7 +65,7 @@ contract AurumNodeManager {
     }
     modifier isOwner(address node) {
         address owner = AllNodes[node].owner;
-        require(msg.sender == owner);
+        require(msg.sender == owner, "Not the owner");
         _;
     }
 
@@ -83,7 +84,11 @@ contract AurumNodeManager {
 
     function registerNode(Node memory node) public returns (address id) {
         require(node.owner != address(0), "Invalid owner address");
-        require(node.supportedAssets.length == node.capacity.length, "Arrays length mismatch");
+        require(
+            node.supportedAssets.length == node.capacity.length && 
+            node.supportedAssets.length == node.assetPrices.length, 
+            "Arrays length mismatch"
+        );
         aurumNode NodeContract = new aurumNode(
             node.owner,
             ausys,
@@ -99,7 +104,8 @@ contract AurumNodeManager {
         updateSupportedAssets(
             address(NodeContract),
             node.capacity,
-            node.supportedAssets
+            node.supportedAssets,
+            node.assetPrices
         );
         for (uint i = 0; i < node.supportedAssets.length; i++) {
             resourceList.push(node.supportedAssets[i]);
@@ -141,9 +147,14 @@ contract AurumNodeManager {
     function updateSupportedAssets(
         address node,
         uint256[] memory quantities,
-        uint256[] memory assets
+        uint256[] memory assets,
+        uint256[] memory prices
     ) public {
-        require(quantities.length == assets.length, "Array lengths must match");
+        require(
+            quantities.length == assets.length && 
+            quantities.length == prices.length, 
+            "Array lengths must match"
+        );
         Node storage targetNode = AllNodes[node];
         require(
             assets.length == targetNode.supportedAssets.length,
@@ -152,6 +163,8 @@ contract AurumNodeManager {
 
         for (uint256 i = 0; i < targetNode.supportedAssets.length; i++) {
             if (targetNode.supportedAssets[i] == assets[i]) {
+                targetNode.capacity[i] = quantities[i];
+                targetNode.assetPrices[i] = prices[i];
                 if (targetNode.capacity[i] > quantities[i]) {
                     supplyPerResource[assets[i]] =
                         targetNode.capacity[i] -
@@ -161,7 +174,6 @@ contract AurumNodeManager {
                         targetNode.capacity[i] +
                         quantities[i];
                 }
-                targetNode.capacity[i] = quantities[i];
             }
         }
         for (uint256 i = 0; i < targetNode.supportedAssets.length; i++) {
@@ -240,6 +252,16 @@ contract AurumNodeManager {
 
     event NodeRegistered(address indexed nodeAddress, address indexed owner);
     event NodeCapacityUpdated(address indexed node, uint256[] quantities);
+
+    function getAssetPrice(address node, uint256 assetId) public view returns (uint256) {
+        Node storage targetNode = AllNodes[node];
+        for (uint256 i = 0; i < targetNode.supportedAssets.length; i++) {
+            if (targetNode.supportedAssets[i] == assetId) {
+                return targetNode.assetPrices[i];
+            }
+        }
+        revert("Asset not found");
+    }
 }
 
 contract aurumNode is ERC1155Holder {

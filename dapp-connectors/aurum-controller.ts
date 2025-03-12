@@ -64,7 +64,7 @@ const getAurumNodeContract = async (address: string): Promise<AurumNode> => {
 
 export const loadAvailableAssets = async (): Promise<ResourceData[]> => {
   const contract = await getAurumContract();
-  let count = 1;
+  let count = 0;
   const assetList: ResourceData[] = [];
   let id;
   let amount;
@@ -80,6 +80,45 @@ export const loadAvailableAssets = async (): Promise<ResourceData[]> => {
       console.log('End of asset list reached.');
     } else {
       console.error('Error loading available assets:', err);
+      throw err;
+    }
+  }
+  return assetList;
+};
+
+export const getAllNodeAssets = async (): Promise<TokenizedAsset[]> => {
+  const contract = await getAurumContract();
+  let count = 0;
+  const assetList: TokenizedAsset[] = [];
+
+  try {
+    while (true) {
+      const nodeAddress = await contract.nodeList(count);
+      // Use getNode instead of directly accessing AllNodes
+      const node = await contract.getNode(nodeAddress);
+
+      // Now we can access supportedAssets
+      for (let i = 0; i < node.supportedAssets.length; i++) {
+        const assetId = Number(node.supportedAssets[i]);
+        const capacity = node.capacity[i].toString();
+
+        assetList.push({
+          id: assetId,
+          amount: capacity,
+          name: getAssetName(assetId),
+          status: 'Active',
+          nodeAddress,
+          nodeName: node.location.addressName,
+          price: node.assetPrices[i].toString(),
+        });
+      }
+      count++;
+    }
+  } catch (err: any) {
+    if (err?.message?.includes('out of bounds')) {
+      console.log('End of node list reached.');
+    } else {
+      console.error('Error loading node assets:', err);
       throw err;
     }
   }
@@ -303,6 +342,9 @@ export interface TokenizedAsset {
   amount: string;
   name: string;
   status: string;
+  nodeAddress?: string;
+  nodeName?: string;
+  price?: string;
 }
 
 export const getNodeAssets = async (
@@ -463,6 +505,38 @@ export const getTokenizedAmount = async (
     return Number(balance);
   } catch (error) {
     console.error('Error getting tokenized amount:', error);
+    throw error;
+  }
+};
+
+export const updateAssetPrice = async (
+  nodeAddress: string,
+  assetId: number,
+  newPrice: bigint,
+  supportedAssets: number[],
+  assetPrices: bigint[],
+) => {
+  const contract = await getAurumContract();
+  try {
+    // Find index of asset to update
+    const assetIndex = supportedAssets.findIndex((a) => a === assetId);
+    if (assetIndex === -1) throw new Error('Asset not found');
+
+    // Create new prices array with updated value
+    const newPrices = [...assetPrices];
+    newPrices[assetIndex] = newPrice;
+
+    // Update using existing contract function
+    const tx = await contract.updateSupportedAssets(
+      nodeAddress,
+      supportedAssets.map((a) => BigInt(a)),
+      newPrices,
+    );
+
+    await tx.wait();
+    return tx;
+  } catch (error) {
+    console.error('Error updating asset price:', error);
     throw error;
   }
 };
