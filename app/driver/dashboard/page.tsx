@@ -371,7 +371,19 @@ export default function DriverDashboard() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <Card className={`bg-[${colors.background.secondary}]`}>
+          <Card
+            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+            onClick={() => {
+              setActiveTab('available');
+              setFilters({
+                jobId: '',
+                pickupLocation: '',
+                dropOffLocation: '',
+                status: 'all',
+              });
+              setCurrentPage(1);
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -385,7 +397,19 @@ export default function DriverDashboard() {
             </CardContent>
           </Card>
 
-          <Card className={`bg-[${colors.background.secondary}]`}>
+          <Card
+            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+            onClick={() => {
+              setActiveTab('my-deliveries');
+              setFilters({
+                jobId: '',
+                pickupLocation: '',
+                dropOffLocation: '',
+                status: DeliveryStatus.ACCEPTED.toString(),
+              });
+              setCurrentPage(1);
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -399,7 +423,19 @@ export default function DriverDashboard() {
             </CardContent>
           </Card>
 
-          <Card className={`bg-[${colors.background.secondary}]`}>
+          <Card
+            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+            onClick={() => {
+              setActiveTab('my-deliveries');
+              setFilters({
+                jobId: '',
+                pickupLocation: '',
+                dropOffLocation: '',
+                status: DeliveryStatus.PICKED_UP.toString(),
+              });
+              setCurrentPage(1);
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -413,7 +449,19 @@ export default function DriverDashboard() {
             </CardContent>
           </Card>
 
-          <Card className={`bg-[${colors.background.secondary}]`}>
+          <Card
+            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+            onClick={() => {
+              setActiveTab('my-deliveries');
+              setFilters({
+                jobId: '',
+                pickupLocation: '',
+                dropOffLocation: '',
+                status: DeliveryStatus.COMPLETED.toString(),
+              });
+              setCurrentPage(1);
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
