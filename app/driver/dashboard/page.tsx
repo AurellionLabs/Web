@@ -37,27 +37,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { JourneyActionDialog } from '@/components/ui/journey-action-dialog';
 
 type TabType = 'available' | 'my-journeys';
-
-const JOURNEY_STATUSES = [
-  { value: 'all', label: 'All Statuses' },
-  { value: JourneyStatus.PENDING, label: 'Available' },
-  { value: JourneyStatus.IN_PROGRESS, label: 'In Progress' },
-  { value: JourneyStatus.COMPLETED, label: 'Completed' },
-  { value: JourneyStatus.CANCELED, label: 'Canceled' },
-] as const;
 
 export default function DriverDashboard() {
   const { setCurrentUserRole } = useMainProvider();
@@ -69,6 +53,7 @@ export default function DriverDashboard() {
     refreshJourneys,
     acceptJourney,
     completeJourney,
+    confirmPickup,
   } = useDriver();
   const [activeTab, setActiveTab] = useState<TabType>('available');
 
@@ -141,8 +126,11 @@ export default function DriverDashboard() {
 
   // Calculate statistics
   const availableCount = availableJourneys.length;
-  const activeJourneys = myJourneys.filter(
-    (journey: Journey) => journey.currentStatus === JourneyStatus.IN_PROGRESS,
+  const toPickupCount = myJourneys.filter(
+    (journey: Journey) => journey.currentStatus === JourneyStatus.ACCEPTED,
+  ).length;
+  const toCompleteCount = myJourneys.filter(
+    (journey: Journey) => journey.currentStatus === JourneyStatus.PICKED_UP,
   ).length;
   const completedJourneys = myJourneys.filter(
     (journey: Journey) => journey.currentStatus === JourneyStatus.COMPLETED,
@@ -170,7 +158,7 @@ export default function DriverDashboard() {
         title: 'Journey Accepted',
         description: 'You have successfully accepted this journey.',
       });
-      setActiveTab('my-journeys'); // Switch to My Journeys tab after accepting
+      setActiveTab('my-journeys');
     } catch (err) {
       toast({
         title: 'Error',
@@ -180,17 +168,33 @@ export default function DriverDashboard() {
     }
   };
 
-  const handleCompleteJourney = async (jobId: string) => {
+  const handlePickupJourney = async (jobId: string) => {
     try {
-      await completeJourney(jobId);
+      await confirmPickup(jobId);
       toast({
-        title: 'Journey Completed',
-        description: 'Journey has been marked as completed.',
+        title: 'Pickup Confirmed',
+        description: 'You have confirmed picking up the parcel.',
       });
     } catch (err) {
       toast({
         title: 'Error',
-        description: 'Failed to complete journey. Please try again.',
+        description: 'Failed to confirm pickup. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCompleteJourney = async (jobId: string) => {
+    try {
+      await completeJourney(jobId);
+      toast({
+        title: 'Delivery Confirmed',
+        description: 'You have successfully delivered the parcel.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to confirm delivery. Please try again.',
         variant: 'destructive',
       });
     }
@@ -247,9 +251,14 @@ export default function DriverDashboard() {
                     Available
                   </span>
                 )}
-                {journey.currentStatus === JourneyStatus.IN_PROGRESS && (
+                {journey.currentStatus === JourneyStatus.ACCEPTED && (
                   <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
-                    In Progress
+                    Accepted
+                  </span>
+                )}
+                {journey.currentStatus === JourneyStatus.PICKED_UP && (
+                  <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
+                    Picked Up
                   </span>
                 )}
                 {journey.currentStatus === JourneyStatus.COMPLETED && (
@@ -298,28 +307,35 @@ export default function DriverDashboard() {
             <div className="text-2xl font-bold text-amber-500">
               ${journey.bounty.toFixed(2)}
             </div>
-            {journey.currentStatus === JourneyStatus.PENDING && (
-              <Button
-                onClick={() => handleAcceptJourney(journey.jobId)}
-                className="bg-amber-500 hover:bg-amber-600"
-              >
-                Accept Journey
-              </Button>
-            )}
-            {journey.currentStatus === JourneyStatus.IN_PROGRESS && (
-              <Button
-                onClick={() => handleCompleteJourney(journey.jobId)}
-                className="bg-amber-500 hover:bg-amber-600"
-              >
-                Mark as Completed
-              </Button>
-            )}
-            {journey.currentStatus === JourneyStatus.COMPLETED && (
-              <div className="flex items-center gap-2 text-green-500">
-                <CheckCircle className="h-5 w-5" />
-                <span className="text-sm">Completed</span>
-              </div>
-            )}
+            <>
+              {journey.currentStatus === JourneyStatus.PENDING && (
+                <JourneyActionDialog
+                  journey={journey}
+                  onConfirm={handleAcceptJourney}
+                  variant="accept"
+                />
+              )}
+              {journey.currentStatus === JourneyStatus.ACCEPTED && (
+                <JourneyActionDialog
+                  journey={journey}
+                  onConfirm={handlePickupJourney}
+                  variant="pickup"
+                />
+              )}
+              {journey.currentStatus === JourneyStatus.PICKED_UP && (
+                <JourneyActionDialog
+                  journey={journey}
+                  onConfirm={handleCompleteJourney}
+                  variant="complete"
+                />
+              )}
+              {journey.currentStatus === JourneyStatus.COMPLETED && (
+                <div className="flex items-center gap-2 text-green-500">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="text-sm">Completed</span>
+                </div>
+              )}
+            </>
           </div>
         </div>
       </CardContent>
@@ -351,7 +367,7 @@ export default function DriverDashboard() {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Card className={`bg-[${colors.background.secondary}]`}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -371,11 +387,25 @@ export default function DriverDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-400">
-                    Active Deliveries
+                    To Pick Up
                   </p>
-                  <h3 className="text-2xl font-bold mt-2">{activeJourneys}</h3>
+                  <h3 className="text-2xl font-bold mt-2">{toPickupCount}</h3>
                 </div>
-                <Activity className="h-8 w-8 text-amber-500" />
+                <MapPin className="h-8 w-8 text-amber-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={`bg-[${colors.background.secondary}]`}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-400">
+                    To Complete
+                  </p>
+                  <h3 className="text-2xl font-bold mt-2">{toCompleteCount}</h3>
+                </div>
+                <Navigation className="h-8 w-8 text-amber-500" />
               </div>
             </CardContent>
           </Card>
@@ -415,6 +445,7 @@ export default function DriverDashboard() {
 
         {/* Tabbed Interface */}
         <Tabs
+          value={activeTab}
           defaultValue="available"
           className="w-full"
           onValueChange={(value) => setActiveTab(value as TabType)}
@@ -521,10 +552,11 @@ export default function DriverDashboard() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem
-                          value={JourneyStatus.IN_PROGRESS.toString()}
-                        >
-                          In Progress
+                        <SelectItem value={JourneyStatus.ACCEPTED.toString()}>
+                          Accepted
+                        </SelectItem>
+                        <SelectItem value={JourneyStatus.PICKED_UP.toString()}>
+                          Picked Up
                         </SelectItem>
                         <SelectItem value={JourneyStatus.COMPLETED.toString()}>
                           Completed
