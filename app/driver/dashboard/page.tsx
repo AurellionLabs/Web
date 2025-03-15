@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import {
   useDriver,
-  JourneyStatus,
-  Journey,
+  DeliveryStatus,
+  Delivery,
 } from '@/app/providers/driver.provider';
 import { colors } from '@/lib/constants/colors';
 import {
@@ -39,20 +39,20 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { JourneyActionDialog } from '@/components/ui/journey-action-dialog';
+import { DeliveryActionDialog } from '@/components/ui/delivery-action-dialog';
 
-type TabType = 'available' | 'my-journeys';
+type TabType = 'available' | 'my-deliveries';
 
 export default function DriverDashboard() {
   const { setCurrentUserRole } = useMainProvider();
   const {
-    availableJourneys,
-    myJourneys,
+    availableDeliveries,
+    myDeliveries,
     isLoading,
     error,
-    refreshJourneys,
-    acceptJourney,
-    completeJourney,
+    refreshDeliveries,
+    acceptDelivery,
+    completeDelivery,
     confirmPickup,
   } = useDriver();
   const [activeTab, setActiveTab] = useState<TabType>('available');
@@ -67,24 +67,24 @@ export default function DriverDashboard() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const journeysPerPage = 5;
+  const deliveriesPerPage = 5;
 
   useEffect(() => {
     setCurrentUserRole('driver');
   }, [setCurrentUserRole]);
 
-  // Filter my journeys based on status and search
-  const filteredMyJourneys = myJourneys.filter((journey: Journey) => {
+  // Filter my deliveries based on status and search
+  const filteredMyDeliveries = myDeliveries.filter((delivery: Delivery) => {
     if (
       filters.jobId &&
-      !journey.jobId.toLowerCase().includes(filters.jobId.toLowerCase())
+      !delivery.jobId.toLowerCase().includes(filters.jobId.toLowerCase())
     ) {
       return false;
     }
 
     if (
       filters.status !== 'all' &&
-      journey.currentStatus !== parseInt(filters.status as string)
+      delivery.currentStatus !== parseInt(filters.status as string)
     ) {
       return false;
     }
@@ -92,19 +92,19 @@ export default function DriverDashboard() {
     return true;
   });
 
-  // Filter available journeys based on location search
-  const filteredAvailableJourneys = availableJourneys.filter(
-    (journey: Journey) => {
+  // Filter available deliveries based on location search
+  const filteredAvailableDeliveries = availableDeliveries.filter(
+    (delivery: Delivery) => {
       if (
         filters.jobId &&
-        !journey.jobId.toLowerCase().includes(filters.jobId.toLowerCase())
+        !delivery.jobId.toLowerCase().includes(filters.jobId.toLowerCase())
       ) {
         return false;
       }
 
       if (
         filters.pickupLocation &&
-        !journey.parcelData.startName
+        !delivery.parcelData.startName
           .toLowerCase()
           .includes(filters.pickupLocation.toLowerCase())
       ) {
@@ -113,7 +113,7 @@ export default function DriverDashboard() {
 
       if (
         filters.dropOffLocation &&
-        !journey.parcelData.endName
+        !delivery.parcelData.endName
           .toLowerCase()
           .includes(filters.dropOffLocation.toLowerCase())
       ) {
@@ -125,50 +125,53 @@ export default function DriverDashboard() {
   );
 
   // Calculate statistics
-  const availableCount = availableJourneys.length;
-  const toPickupCount = myJourneys.filter(
-    (journey: Journey) => journey.currentStatus === JourneyStatus.ACCEPTED,
+  const availableCount = availableDeliveries.length;
+  const toPickupCount = myDeliveries.filter(
+    (delivery: Delivery) => delivery.currentStatus === DeliveryStatus.ACCEPTED,
   ).length;
-  const toCompleteCount = myJourneys.filter(
-    (journey: Journey) => journey.currentStatus === JourneyStatus.PICKED_UP,
+  const toCompleteCount = myDeliveries.filter(
+    (delivery: Delivery) => delivery.currentStatus === DeliveryStatus.PICKED_UP,
   ).length;
-  const completedJourneys = myJourneys.filter(
-    (journey: Journey) => journey.currentStatus === JourneyStatus.COMPLETED,
+  const completedDeliveries = myDeliveries.filter(
+    (delivery: Delivery) => delivery.currentStatus === DeliveryStatus.COMPLETED,
   ).length;
 
-  // Calculate total earnings from completed journeys
-  const totalEarnings = myJourneys
+  // Calculate total earnings from completed deliveries
+  const totalEarnings = myDeliveries
     .filter(
-      (journey: Journey) => journey.currentStatus === JourneyStatus.COMPLETED,
+      (delivery: Delivery) =>
+        delivery.currentStatus === DeliveryStatus.COMPLETED,
     )
-    .reduce((total: number, journey: Journey) => total + journey.bounty, 0);
+    .reduce((total: number, delivery: Delivery) => total + delivery.fee, 0);
 
   // Calculate pagination
-  const currentJourneys =
-    activeTab === 'available' ? filteredAvailableJourneys : filteredMyJourneys;
-  const totalPages = Math.ceil(currentJourneys.length / journeysPerPage);
-  const startIndex = (currentPage - 1) * journeysPerPage;
-  const endIndex = startIndex + journeysPerPage;
-  const paginatedJourneys = currentJourneys.slice(startIndex, endIndex);
+  const currentDeliveries =
+    activeTab === 'available'
+      ? filteredAvailableDeliveries
+      : filteredMyDeliveries;
+  const totalPages = Math.ceil(currentDeliveries.length / deliveriesPerPage);
+  const startIndex = (currentPage - 1) * deliveriesPerPage;
+  const endIndex = startIndex + deliveriesPerPage;
+  const paginatedDeliveries = currentDeliveries.slice(startIndex, endIndex);
 
-  const handleAcceptJourney = async (jobId: string) => {
+  const handleAcceptDelivery = async (jobId: string) => {
     try {
-      await acceptJourney(jobId);
+      await acceptDelivery(jobId);
       toast({
-        title: 'Journey Accepted',
-        description: 'You have successfully accepted this journey.',
+        title: 'Delivery Accepted',
+        description: 'You have successfully accepted this delivery.',
       });
-      setActiveTab('my-journeys');
+      setActiveTab('my-deliveries');
     } catch (err) {
       toast({
         title: 'Error',
-        description: 'Failed to accept journey. Please try again.',
+        description: 'Failed to accept delivery. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
-  const handlePickupJourney = async (jobId: string) => {
+  const handlePickupDelivery = async (jobId: string) => {
     try {
       await confirmPickup(jobId);
       toast({
@@ -184,9 +187,9 @@ export default function DriverDashboard() {
     }
   };
 
-  const handleCompleteJourney = async (jobId: string) => {
+  const handleCompleteDelivery = async (jobId: string) => {
     try {
-      await completeJourney(jobId);
+      await completeDelivery(jobId);
       toast({
         title: 'Delivery Confirmed',
         description: 'You have successfully delivered the parcel.',
@@ -207,7 +210,7 @@ export default function DriverDashboard() {
       >
         <div className="flex items-center gap-2">
           <RefreshCw className="h-6 w-6 animate-spin" />
-          <span>Loading journeys...</span>
+          <span>Loading deliveries...</span>
         </div>
       </div>
     );
@@ -221,13 +224,13 @@ export default function DriverDashboard() {
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
             <h2 className="text-lg font-semibold text-red-500">
-              Error Loading Journeys
+              Error Loading Deliveries
             </h2>
             <p className="text-gray-400 mt-1">{error}</p>
             <Button
               variant="outline"
               className="mt-4"
-              onClick={() => refreshJourneys()}
+              onClick={() => refreshDeliveries()}
             >
               Try Again
             </Button>
@@ -237,31 +240,31 @@ export default function DriverDashboard() {
     );
   }
 
-  const renderJourneyCard = (journey: Journey) => (
-    <Card key={journey.jobId} className="bg-[#1a1f2d] border-0">
+  const renderDeliveryCard = (delivery: Delivery) => (
+    <Card key={delivery.jobId} className="bg-[#1a1f2d] border-0">
       <CardContent className="pt-6">
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-400">Job ID:</span>
-              <span className="font-medium">{journey.jobId}</span>
+              <span className="font-medium">{delivery.jobId}</span>
               <span className="ml-4">
-                {journey.currentStatus === JourneyStatus.PENDING && (
+                {delivery.currentStatus === DeliveryStatus.PENDING && (
                   <span className="bg-blue-500/10 text-blue-500 text-xs px-2 py-1 rounded-full">
                     Available
                   </span>
                 )}
-                {journey.currentStatus === JourneyStatus.ACCEPTED && (
+                {delivery.currentStatus === DeliveryStatus.ACCEPTED && (
                   <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
                     Accepted
                   </span>
                 )}
-                {journey.currentStatus === JourneyStatus.PICKED_UP && (
+                {delivery.currentStatus === DeliveryStatus.PICKED_UP && (
                   <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
                     Picked Up
                   </span>
                 )}
-                {journey.currentStatus === JourneyStatus.COMPLETED && (
+                {delivery.currentStatus === DeliveryStatus.COMPLETED && (
                   <span className="bg-green-500/10 text-green-500 text-xs px-2 py-1 rounded-full">
                     Completed
                   </span>
@@ -275,7 +278,7 @@ export default function DriverDashboard() {
                   <div>
                     <div className="text-sm font-medium">Pickup Location</div>
                     <div className="text-sm text-gray-400">
-                      {journey.parcelData.startName}
+                      {delivery.parcelData.startName}
                     </div>
                   </div>
                 </div>
@@ -286,7 +289,7 @@ export default function DriverDashboard() {
                   <div>
                     <div className="text-sm font-medium">Delivery Location</div>
                     <div className="text-sm text-gray-400">
-                      {journey.parcelData.endName}
+                      {delivery.parcelData.endName}
                     </div>
                   </div>
                 </div>
@@ -295,41 +298,41 @@ export default function DriverDashboard() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">ETA: {journey.ETA} mins</span>
+                <span className="text-sm">ETA: {delivery.ETA} mins</span>
               </div>
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">Customer: {journey.customer}</span>
+                <span className="text-sm">Customer: {delivery.customer}</span>
               </div>
             </div>
           </div>
           <div className="flex flex-col justify-between items-end">
             <div className="text-2xl font-bold text-amber-500">
-              ${journey.bounty.toFixed(2)}
+              ${delivery.fee.toFixed(2)}
             </div>
             <>
-              {journey.currentStatus === JourneyStatus.PENDING && (
-                <JourneyActionDialog
-                  journey={journey}
-                  onConfirm={handleAcceptJourney}
+              {delivery.currentStatus === DeliveryStatus.PENDING && (
+                <DeliveryActionDialog
+                  delivery={delivery}
+                  onConfirm={handleAcceptDelivery}
                   variant="accept"
                 />
               )}
-              {journey.currentStatus === JourneyStatus.ACCEPTED && (
-                <JourneyActionDialog
-                  journey={journey}
-                  onConfirm={handlePickupJourney}
+              {delivery.currentStatus === DeliveryStatus.ACCEPTED && (
+                <DeliveryActionDialog
+                  delivery={delivery}
+                  onConfirm={handlePickupDelivery}
                   variant="pickup"
                 />
               )}
-              {journey.currentStatus === JourneyStatus.PICKED_UP && (
-                <JourneyActionDialog
-                  journey={journey}
-                  onConfirm={handleCompleteJourney}
+              {delivery.currentStatus === DeliveryStatus.PICKED_UP && (
+                <DeliveryActionDialog
+                  delivery={delivery}
+                  onConfirm={handleCompleteDelivery}
                   variant="complete"
                 />
               )}
-              {journey.currentStatus === JourneyStatus.COMPLETED && (
+              {delivery.currentStatus === DeliveryStatus.COMPLETED && (
                 <div className="flex items-center gap-2 text-green-500">
                   <CheckCircle className="h-5 w-5" />
                   <span className="text-sm">Completed</span>
@@ -353,13 +356,13 @@ export default function DriverDashboard() {
             <h1 className="text-3xl font-bold">Driver Dashboard</h1>
             <p className="text-gray-400 mt-1">
               Welcome back! Here's an overview of your deliveries and available
-              journeys.
+              jobs.
             </p>
           </div>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => refreshJourneys()}
+            onClick={() => refreshDeliveries()}
             className="h-10 w-10"
           >
             <RefreshCw className="h-4 w-4" />
@@ -373,7 +376,7 @@ export default function DriverDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-400">
-                    Available Journeys
+                    Available Deliveries
                   </p>
                   <h3 className="text-2xl font-bold mt-2">{availableCount}</h3>
                 </div>
@@ -418,7 +421,7 @@ export default function DriverDashboard() {
                     Completed Deliveries
                   </p>
                   <h3 className="text-2xl font-bold mt-2">
-                    {completedJourneys}
+                    {completedDeliveries}
                   </h3>
                 </div>
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
@@ -451,8 +454,8 @@ export default function DriverDashboard() {
           onValueChange={(value) => setActiveTab(value as TabType)}
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="available">Available Journeys</TabsTrigger>
-            <TabsTrigger value="my-journeys">My Journeys</TabsTrigger>
+            <TabsTrigger value="available">Available Deliveries</TabsTrigger>
+            <TabsTrigger value="my-deliveries">My Deliveries</TabsTrigger>
           </TabsList>
 
           <TabsContent value="available">
@@ -510,18 +513,20 @@ export default function DriverDashboard() {
                   </div>
                 </div>
 
-                {/* Journey List */}
+                {/* Delivery List */}
                 <div className="space-y-4">
-                  {paginatedJourneys.map(renderJourneyCard)}
+                  {paginatedDeliveries.map(renderDeliveryCard)}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="my-journeys">
+          <TabsContent value="my-deliveries">
             <Card className={`bg-[${colors.background.secondary}]`}>
               <CardHeader>
-                <CardDescription>Manage your accepted journeys</CardDescription>
+                <CardDescription>
+                  Manage your accepted deliveries
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {/* Status-based filters */}
@@ -552,13 +557,13 @@ export default function DriverDashboard() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value={JourneyStatus.ACCEPTED.toString()}>
+                        <SelectItem value={DeliveryStatus.ACCEPTED.toString()}>
                           Accepted
                         </SelectItem>
-                        <SelectItem value={JourneyStatus.PICKED_UP.toString()}>
+                        <SelectItem value={DeliveryStatus.PICKED_UP.toString()}>
                           Picked Up
                         </SelectItem>
-                        <SelectItem value={JourneyStatus.COMPLETED.toString()}>
+                        <SelectItem value={DeliveryStatus.COMPLETED.toString()}>
                           Completed
                         </SelectItem>
                       </SelectContent>
@@ -566,9 +571,9 @@ export default function DriverDashboard() {
                   </div>
                 </div>
 
-                {/* Journey List */}
+                {/* Delivery List */}
                 <div className="space-y-4">
-                  {paginatedJourneys.map(renderJourneyCard)}
+                  {paginatedDeliveries.map(renderDeliveryCard)}
                 </div>
               </CardContent>
             </Card>
@@ -576,12 +581,12 @@ export default function DriverDashboard() {
         </Tabs>
 
         {/* Pagination */}
-        {currentJourneys.length > journeysPerPage && (
+        {currentDeliveries.length > deliveriesPerPage && (
           <div className="flex justify-between items-center mt-4">
             <div className="text-sm text-gray-400">
               Showing {startIndex + 1} to{' '}
-              {Math.min(endIndex, currentJourneys.length)} of{' '}
-              {currentJourneys.length} journeys
+              {Math.min(endIndex, currentDeliveries.length)} of{' '}
+              {currentDeliveries.length} deliveries
             </div>
             <div className="flex gap-2">
               <Button

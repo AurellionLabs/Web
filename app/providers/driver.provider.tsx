@@ -14,7 +14,7 @@ export type ParcelData = {
   endName: string;
 };
 
-export enum JourneyStatus {
+export enum DeliveryStatus {
   PENDING = 0,
   ACCEPTED = 1,
   PICKED_UP = 2,
@@ -22,41 +22,43 @@ export enum JourneyStatus {
   CANCELED = 4,
 }
 
-export interface Journey {
+export interface Delivery {
   jobId: string;
   customer: string;
-  bounty: number;
+  fee: number;
   ETA: number;
-  currentStatus: JourneyStatus;
+  currentStatus: DeliveryStatus;
   parcelData: ParcelData;
 }
 
 export interface DriverContextType {
-  availableJourneys: Journey[];
-  myJourneys: Journey[];
+  availableDeliveries: Delivery[];
+  myDeliveries: Delivery[];
   isLoading: boolean;
   error: string | null;
-  refreshJourneys: () => Promise<void>;
-  acceptJourney: (jobId: string) => Promise<void>;
+  refreshDeliveries: () => Promise<void>;
+  acceptDelivery: (jobId: string) => Promise<void>;
   confirmPickup: (jobId: string) => Promise<void>;
-  completeJourney: (jobId: string) => Promise<void>;
+  completeDelivery: (jobId: string) => Promise<void>;
 }
 
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
 
 export function DriverProvider({ children }: { children: React.ReactNode }) {
-  const [availableJourneys, setAvailableJourneys] = useState<Journey[]>([]);
-  const [myJourneys, setMyJourneys] = useState<Journey[]>([]);
+  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>(
+    [],
+  );
+  const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Mock data for testing
-  const mockAvailableJourneys: Journey[] = [
+  const mockAvailableDeliveries: Delivery[] = [
     {
       jobId: 'J001',
-      currentStatus: JourneyStatus.PENDING,
+      currentStatus: DeliveryStatus.PENDING,
       customer: 'John Doe',
-      bounty: 50.0,
+      fee: 50.0,
       ETA: 45,
       parcelData: {
         startLocation: { lat: '1.2345', lng: '2.3456' },
@@ -67,9 +69,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     },
     {
       jobId: 'J002',
-      currentStatus: JourneyStatus.PENDING,
+      currentStatus: DeliveryStatus.PENDING,
       customer: 'Jane Smith',
-      bounty: 75.0,
+      fee: 75.0,
       ETA: 60,
       parcelData: {
         startLocation: { lat: '5.6789', lng: '6.7890' },
@@ -80,12 +82,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     },
   ];
 
-  const mockMyJourneys: Journey[] = [
+  const mockMyDeliveries: Delivery[] = [
     {
       jobId: 'J003',
-      currentStatus: JourneyStatus.ACCEPTED,
+      currentStatus: DeliveryStatus.ACCEPTED,
       customer: 'Alice Chen',
-      bounty: 65.0,
+      fee: 65.0,
       ETA: 30,
       parcelData: {
         startLocation: { lat: '9.0123', lng: '10.1234' },
@@ -96,9 +98,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     },
     {
       jobId: 'J004',
-      currentStatus: JourneyStatus.PICKED_UP,
+      currentStatus: DeliveryStatus.PICKED_UP,
       customer: 'David Lee',
-      bounty: 85.0,
+      fee: 85.0,
       ETA: 45,
       parcelData: {
         startLocation: { lat: '13.4567', lng: '14.5678' },
@@ -109,9 +111,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     },
     {
       jobId: 'J005',
-      currentStatus: JourneyStatus.COMPLETED,
+      currentStatus: DeliveryStatus.COMPLETED,
       customer: 'Frank Zhang',
-      bounty: 55.0,
+      fee: 55.0,
       ETA: 35,
       parcelData: {
         startLocation: { lat: '17.8901', lng: '18.9012' },
@@ -122,9 +124,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     },
     {
       jobId: 'J006',
-      currentStatus: JourneyStatus.COMPLETED,
+      currentStatus: DeliveryStatus.COMPLETED,
       customer: 'Henry Lim',
-      bounty: 45.0,
+      fee: 45.0,
       ETA: 25,
       parcelData: {
         startLocation: { lat: '21.2345', lng: '22.3456' },
@@ -136,57 +138,63 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   ];
 
   // TODO: Replace this with actual blockchain integration
-  const fetchJourneysFromBlockchain = async (): Promise<{
-    available: Journey[];
-    assigned: Journey[];
+  const fetchDeliveriesFromBlockchain = async (): Promise<{
+    available: Delivery[];
+    assigned: Delivery[];
   }> => {
     // This is where you'll integrate your blockchain calls
     // For now, returning mock data
     return {
-      available: mockAvailableJourneys,
-      assigned: mockMyJourneys,
+      available: mockAvailableDeliveries,
+      assigned: mockMyDeliveries,
     };
   };
 
-  const refreshJourneys = async () => {
+  const refreshDeliveries = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await fetchJourneysFromBlockchain();
-      setAvailableJourneys(data.available);
-      setMyJourneys(data.assigned);
+      const data = await fetchDeliveriesFromBlockchain();
+      setAvailableDeliveries(data.available);
+      setMyDeliveries(data.assigned);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch journeys');
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch deliveries',
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const acceptJourney = async (jobId: string) => {
+  const acceptDelivery = async (jobId: string) => {
     try {
       setError(null);
       // TODO: Replace with actual blockchain transaction
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Update local state after successful blockchain transaction
-      const journeyToAccept = availableJourneys.find((j) => j.jobId === jobId);
-      if (!journeyToAccept) throw new Error('Journey not found');
+      const deliveryToAccept = availableDeliveries.find(
+        (d) => d.jobId === jobId,
+      );
+      if (!deliveryToAccept) throw new Error('Delivery not found');
 
-      // Remove from available journeys
-      setAvailableJourneys((prev) =>
-        prev.filter((journey) => journey.jobId !== jobId),
+      // Remove from available deliveries
+      setAvailableDeliveries((prev) =>
+        prev.filter((delivery) => delivery.jobId !== jobId),
       );
 
-      // Add to my journeys
-      setMyJourneys((prev) => [
+      // Add to my deliveries
+      setMyDeliveries((prev) => [
         ...prev,
         {
-          ...journeyToAccept,
-          currentStatus: JourneyStatus.ACCEPTED,
+          ...deliveryToAccept,
+          currentStatus: DeliveryStatus.ACCEPTED,
         },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept journey');
+      setError(
+        err instanceof Error ? err.message : 'Failed to accept delivery',
+      );
       throw err;
     }
   };
@@ -198,15 +206,15 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Update local state after successful blockchain transaction
-      const journeyToPickup = myJourneys.find((j) => j.jobId === jobId);
-      if (!journeyToPickup) throw new Error('Journey not found');
+      const deliveryToPickup = myDeliveries.find((d) => d.jobId === jobId);
+      if (!deliveryToPickup) throw new Error('Delivery not found');
 
-      // Update journey status in myJourneys
-      setMyJourneys((prev) =>
-        prev.map((journey) =>
-          journey.jobId === jobId
-            ? { ...journey, currentStatus: JourneyStatus.PICKED_UP }
-            : journey,
+      // Update delivery status in myDeliveries
+      setMyDeliveries((prev) =>
+        prev.map((delivery) =>
+          delivery.jobId === jobId
+            ? { ...delivery, currentStatus: DeliveryStatus.PICKED_UP }
+            : delivery,
         ),
       );
     } catch (err) {
@@ -215,43 +223,43 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const completeJourney = async (jobId: string) => {
+  const completeDelivery = async (jobId: string) => {
     try {
       setError(null);
       // TODO: Replace with actual blockchain transaction
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Update journey status in myJourneys
-      setMyJourneys((prev) =>
-        prev.map((journey) =>
-          journey.jobId === jobId
-            ? { ...journey, currentStatus: JourneyStatus.COMPLETED }
-            : journey,
+      // Update delivery status in myDeliveries
+      setMyDeliveries((prev) =>
+        prev.map((delivery) =>
+          delivery.jobId === jobId
+            ? { ...delivery, currentStatus: DeliveryStatus.COMPLETED }
+            : delivery,
         ),
       );
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to complete journey',
+        err instanceof Error ? err.message : 'Failed to complete delivery',
       );
       throw err;
     }
   };
 
   useEffect(() => {
-    refreshJourneys();
+    refreshDeliveries();
   }, []);
 
   return (
     <DriverContext.Provider
       value={{
-        availableJourneys,
-        myJourneys,
+        availableDeliveries,
+        myDeliveries,
         isLoading,
         error,
-        refreshJourneys,
-        acceptJourney,
+        refreshDeliveries,
+        acceptDelivery,
         confirmPickup,
-        completeJourney,
+        completeDelivery,
       }}
     >
       {children}
