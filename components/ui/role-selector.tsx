@@ -63,9 +63,9 @@ export function RoleSelector() {
         router.push('/node/register');
       }
     } else if (currentValue === 'customer') {
-      router.push('/customer/pools');
+      router.push('/customer/dashboard');
     } else if (currentValue === 'driver') {
-      router.push('/driver');
+      router.push('/driver/dashboard');
     }
   };
 
