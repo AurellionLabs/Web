@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { CustomerOrder } from '@/app/providers/customer.provider';
+import { useState } from 'react';
 
 interface OrderActionDialogProps {
   order: CustomerOrder;
@@ -57,14 +58,20 @@ export function OrderActionDialog({
   onConfirm,
   variant,
 }: OrderActionDialogProps) {
+  const [open, setOpen] = useState(false);
   const config = ACTION_CONFIGS[variant];
   const confirmationMessage =
     variant === 'cancel'
       ? 'Are you sure you want to cancel this order?'
       : 'By confirming receipt, you acknowledge that you have received the order in good condition.';
 
+  const handleConfirm = async () => {
+    await onConfirm(order.id);
+    setOpen(false);
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant={config.buttonVariant}
@@ -130,13 +137,7 @@ export function OrderActionDialog({
             type="button"
             variant="ghost"
             className="w-full"
-            onClick={(e) => {
-              e.preventDefault();
-              const closeDialog = document.querySelector(
-                'button[data-state="open"]',
-              ) as HTMLButtonElement;
-              if (closeDialog) closeDialog.click();
-            }}
+            onClick={() => setOpen(false)}
           >
             {config.cancelText}
           </Button>
@@ -144,13 +145,7 @@ export function OrderActionDialog({
             type="submit"
             variant={config.buttonVariant}
             className={`w-full ${variant === 'confirm' ? 'bg-green-500 hover:bg-green-600' : ''}`}
-            onClick={() => {
-              onConfirm(order.id);
-              const closeDialog = document.querySelector(
-                'button[data-state="open"]',
-              ) as HTMLButtonElement;
-              if (closeDialog) closeDialog.click();
-            }}
+            onClick={handleConfirm}
           >
             {config.confirmText}
           </Button>

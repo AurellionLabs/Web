@@ -6,6 +6,7 @@ import { NodeProvider } from './providers/node.provider';
 import { ClientLayout } from '@/components/layout/client-layout';
 import { TradeProvider } from './providers/trade.provider';
 import { CustomerProvider } from './providers/customer.provider';
+import { DriverProvider } from './providers/driver.provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -25,9 +26,11 @@ export default function RootLayout({
         <MainProvider>
           <NodeProvider>
             <CustomerProvider>
-              <TradeProvider>
-                <ClientLayout>{children}</ClientLayout>
-              </TradeProvider>
+              <DriverProvider>
+                <TradeProvider>
+                  <ClientLayout>{children}</ClientLayout>
+                </TradeProvider>
+              </DriverProvider>
             </CustomerProvider>
           </NodeProvider>
         </MainProvider>
