@@ -2,23 +2,37 @@ interface StatCardProps {
   title: string;
   value: string;
   change?: string;
+  icon?: React.ReactNode;
+  description?: string;
 }
 
-export function StatCard({ title, value, change }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  change,
+  icon,
+  description,
+}: StatCardProps) {
   const isPositive =
     change && (change.startsWith('+') || !change.includes('-'));
 
   return (
-    <div>
-      <div className="flex justify-between mb-1">
-        <span className="text-gray-400">{title}</span>
-        {change && (
-          <span className={isPositive ? 'text-green-500' : 'text-red-500'}>
-            {change}
-          </span>
+    <div className="flex items-center space-x-4 p-4 bg-gray-800 rounded-lg">
+      {icon && <div>{icon}</div>}
+      <div className="flex-1">
+        <div className="flex justify-between mb-1">
+          <span className="text-gray-400">{title}</span>
+          {change && (
+            <span className={isPositive ? 'text-green-500' : 'text-red-500'}>
+              {change}
+            </span>
+          )}
+        </div>
+        <div className="text-2xl font-semibold">{value}</div>
+        {description && (
+          <div className="text-sm text-gray-400 mt-1">{description}</div>
         )}
       </div>
-      <div className="text-2xl font-semibold">{value}</div>
     </div>
   );
 }

@@ -7,3 +7,4 @@ artifacts/build-info/
 cache/*
 .env
 artifacts/
+typechain-types/

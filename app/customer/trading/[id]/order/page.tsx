@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,12 +20,29 @@ import {
   FormControl,
   FormMessage,
 } from '@/components/ui/form';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+// Replace with your actual Google Maps API key
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 export default function OrderPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { getAssetById, placeOrder } = useTrade();
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [error, setError] = useState('');
+  const [autocomplete, setAutocomplete] =
+    useState<google.maps.places.Autocomplete | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    address: string;
+    lat: string;
+    lng: string;
+  } | null>(null);
+
+  // Load Google Maps script
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: ['places'],
+  });
 
   const asset = getAssetById(params.id);
 
@@ -54,6 +71,25 @@ export default function OrderPage({ params }: { params: { id: string } }) {
     },
   });
 
+  const onPlaceChanged = () => {
+    if (autocomplete) {
+      const place = autocomplete.getPlace();
+      if (place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat().toString();
+        const lng = place.geometry.location.lng().toString();
+        const address = place.formatted_address || '';
+
+        setSelectedLocation({
+          address,
+          lat,
+          lng,
+        });
+
+        form.setValue('deliveryLocation', address);
+      }
+    }
+  };
+
   if (!asset) {
     return (
       <div
@@ -66,41 +102,24 @@ export default function OrderPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const totalPrice = form.getValues('quantity') * asset.pricePerUnit;
+  const totalPrice = form.watch('quantity') * asset.pricePerUnit;
 
   return (
     <div
       className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
     >
-      <div className="max-w-3xl mx-auto">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-4 sm:mb-6">
-          <Link
-            href="/customer/trading"
-            className="text-gray-400 hover:text-white"
-          >
-            Trading
-          </Link>
-          <span className="text-gray-600">/</span>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center mb-6">
           <Link
             href={`/customer/trading/${params.id}`}
-            className="text-gray-400 hover:text-white"
+            className="flex items-center text-gray-400 hover:text-white transition-colors"
           >
-            {asset.assetClass}
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Asset
           </Link>
-          <span className="text-gray-600">/</span>
-          <span className="text-gray-400">Place Order</span>
         </div>
 
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/customer/trading/${params.id}`}>
-              <ArrowLeft className="h-6 w-6" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">Place Order</h1>
-        </div>
+        <h1 className="text-2xl font-bold mb-6">Place Order</h1>
 
         <div
           className={`bg-[${colors.background.secondary}] rounded-2xl border border-[${colors.neutral[800]}] p-6`}
@@ -110,6 +129,14 @@ export default function OrderPage({ params }: { params: { id: string } }) {
               onSubmit={form.handleSubmit(async (data) => {
                 setIsPlacingOrder(true);
                 setError('');
+
+                if (!selectedLocation) {
+                  setError(
+                    'Please select a valid delivery location from the dropdown',
+                  );
+                  setIsPlacingOrder(false);
+                  return;
+                }
 
                 try {
                   const success = await placeOrder({
@@ -121,6 +148,10 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                     pricePerUnit: asset.pricePerUnit,
                     totalValue: data.quantity * asset.pricePerUnit,
                     deliveryLocation: data.deliveryLocation,
+                    deliveryCoordinates: {
+                      lat: selectedLocation.lat,
+                      lng: selectedLocation.lng,
+                    },
                   });
 
                   if (success) {
@@ -136,62 +167,93 @@ export default function OrderPage({ params }: { params: { id: string } }) {
               })}
               className="space-y-6"
             >
-              <FormField
-                control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        max={asset.quantity}
-                        {...field}
-                        className="mt-2"
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          field.onChange(value === '' ? '' : Number(value));
-                        }}
-                      />
-                    </FormControl>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Max available: {asset.quantity}
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold mb-4">Order Details</h2>
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="1"
+                              max={asset.quantity}
+                              {...field}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                if (value > asset.quantity) {
+                                  form.setValue('quantity', asset.quantity);
+                                } else if (value < 1) {
+                                  form.setValue('quantity', 1);
+                                } else {
+                                  field.onChange(e);
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              <FormField
-                control={form.control}
-                name="deliveryLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Delivery Location</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="Enter delivery address"
-                        className="mt-2"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="pt-4 border-t border-[${colors.neutral[800]}]">
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-400">Price per unit</span>
-                  <span>${asset.pricePerUnit.toFixed(2)}</span>
+                    <FormField
+                      control={form.control}
+                      name="deliveryLocation"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Delivery Location</FormLabel>
+                          <FormControl>
+                            {isLoaded ? (
+                              <Autocomplete
+                                onLoad={(autocomplete) =>
+                                  setAutocomplete(autocomplete)
+                                }
+                                onPlaceChanged={onPlaceChanged}
+                                restrictions={{ country: ['us', 'ca', 'uk'] }}
+                              >
+                                <Input
+                                  {...field}
+                                  placeholder="Enter delivery address"
+                                  className="w-full"
+                                />
+                              </Autocomplete>
+                            ) : (
+                              <Input
+                                {...field}
+                                placeholder="Loading Google Maps..."
+                                disabled
+                              />
+                            )}
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between mb-6">
-                  <span className="text-gray-400">Total Price</span>
-                  <span className="text-xl font-bold">
-                    ${totalPrice.toFixed(2)}
-                  </span>
+
+                <div className="pt-4 border-t border-gray-700">
+                  <h3 className="text-sm font-medium text-gray-400 mb-2">
+                    Order Summary
+                  </h3>
+                  <div className="flex justify-between mb-2">
+                    <span>Price per unit:</span>
+                    <span>${asset.pricePerUnit.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span>Quantity:</span>
+                    <span>{form.watch('quantity')}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold pt-2 border-t border-gray-700">
+                    <span>Total:</span>
+                    <span className="text-xl font-bold">
+                      ${totalPrice.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
 
                 {error && (
@@ -202,7 +264,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
                 <Button
                   type="submit"
-                  disabled={isPlacingOrder}
+                  disabled={isPlacingOrder || !isLoaded || !!loadError}
                   className="w-full bg-amber-500 hover:bg-amber-600 text-white font-medium"
                 >
                   {isPlacingOrder ? 'Placing Order...' : 'Place Order'}

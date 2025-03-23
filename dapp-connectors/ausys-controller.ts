@@ -129,6 +129,29 @@ export const fetchCustomerJobs = async () => {
     return [];
   }
 };
+export const fetchAllJourneys = async () => {
+  const contract = await getAusysContract();
+  const journeyIds = await fetchAllJourneyIds();
+  const journeys = await Promise.all(
+    journeyIds.map(async (journeyId) => {
+      const journey = await contract.journeyIdToJourney(journeyId);
+      return journey;
+    }),
+  );
+  return journeys;
+};
+
+export const fetchJourney = async (journeyId: string) => {
+  const contract = await getAusysContract();
+  const journey = await contract.journeyIdToJourney(journeyId);
+  return journey;
+};
+
+export const fetchOrderIdFromJourney = async (journeyId: string) => {
+  const contract = await getAusysContract();
+  const orderId = await contract.journeyToOrderId(journeyId);
+  return orderId;
+};
 
 export const fetchReceiverJobs = async () => {
   const contract = await getAusysContract();
@@ -163,6 +186,22 @@ export const fetchReceiverJobs = async () => {
     console.error('General error in fetchReceiverJobs:', error);
     return [];
   }
+};
+
+export const fetchAllJourneyIds = async () => {
+  const contract = await getAusysContract();
+  const journeyIds: string[] = [];
+  try {
+    let i = 0;
+    while (true) {
+      const journey = await contract.numberToJourneyID(i);
+      journeyIds.push(journey);
+      i++;
+    }
+  } catch (error) {
+    handleContractError(error, 'likely at end of list');
+  }
+  return journeyIds;
 };
 
 export const checkIfDriverAssignedToJobId = async (journeyId: string) => {
@@ -310,4 +349,14 @@ export const getOrders = async (): Promise<
     }
   }
   return orderList;
+};
+
+export const getOrder = async (orderId: BytesLike) => {
+  const contract = await getAusysContract();
+  try {
+    const order = await contract.getOrder(orderId);
+    return order;
+  } catch (error) {
+    handleContractError(error, 'failed to get order');
+  }
 };

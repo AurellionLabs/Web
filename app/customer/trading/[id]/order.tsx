@@ -20,7 +20,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-
+import { getWalletAddress } from '@/dapp-connectors/base-controller';
+import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 const orderFormSchema = z.object({
   quantity: z.coerce
     .number()
@@ -78,16 +79,35 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
     try {
       const success = await placeOrder({
-        id: asset.id,
-        nodeId: asset.nodeId,
-        nodeName: asset.nodeName,
-        assetClass: asset.assetClass,
-        quantity: data.quantity,
-        pricePerUnit: asset.pricePerUnit,
-        totalValue: data.quantity * asset.pricePerUnit,
-        deliveryLocation: data.deliveryLocation,
-      });
+        id: '0xf',
+        token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        tokenId: BigInt(asset.id),
+        tokenQuantity: BigInt(data.quantity),
+        requestedTokenQuantity: BigInt(data.quantity),
+        price: BigInt(asset.pricePerUnit),
+        txFee: BigInt(0),
+        customer: getWalletAddress(),
+        journeyIds: [],
+        nodes: [],
+        locationData: {
+          startLocation: {
+            lat: '34.0522',
+            lng: '-118.2437',
+          },
+          endLocation: {
+            lat: '40.7128',
+            lng: '-74.0060',
+          },
 
+          startName: 'Los Angeles, CA',
+          endName: 'New York',
+          currentStatus: BigInt(0),
+          contracatualAgreement: '0xf',
+        },
+        currentStatus: BigInt(0),
+        contracatualAgreement: '0xf',
+      });
+      // TODO: change this its bad code we shouldnt be putting contractual agreement twice
       if (success) {
         router.push('/customer/trading');
       } else {

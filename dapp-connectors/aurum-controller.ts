@@ -92,37 +92,63 @@ export const getAllNodeAssets = async (): Promise<TokenizedAsset[]> => {
   const assetList: TokenizedAsset[] = [];
 
   try {
+    // Try to get nodes one by one until we hit an error
     while (true) {
-      const nodeAddress = await contract.nodeList(count);
-      // Use getNode instead of directly accessing AllNodes
-      const node = await contract.getNode(nodeAddress);
+      try {
+        console.log(`Fetching node at index ${count}`);
+        const nodeAddress = await contract.nodeList(count);
 
-      // Now we can access supportedAssets
-      for (let i = 0; i < node.supportedAssets.length; i++) {
-        const assetId = Number(node.supportedAssets[i]);
-        const capacity = node.capacity[i].toString();
+        // Check if we got a valid address
+        if (
+          !nodeAddress ||
+          nodeAddress === '0x0000000000000000000000000000000000000000'
+        ) {
+          console.log('Reached end of node list (empty address)');
+          break;
+        }
 
-        assetList.push({
-          id: assetId,
-          amount: capacity,
-          name: getAssetName(assetId),
-          status: 'Active',
-          nodeAddress,
-          nodeName: node.location.addressName,
-          price: node.assetPrices[i].toString(),
-        });
+        // Use getNode to get node details
+        const node = await contract.getNode(nodeAddress);
+
+        // Process node assets
+        for (let i = 0; i < node.supportedAssets.length; i++) {
+          const assetId = Number(node.supportedAssets[i]);
+          const capacity = node.capacity[i].toString();
+          const price = node.assetPrices[i]?.toString() || '0';
+
+          // Get tokenized amount (minted amount) instead of capacity
+          const tokenizedAmount = await getTokenizedAmount(
+            nodeAddress,
+            assetId,
+          );
+
+          assetList.push({
+            id: assetId,
+            amount: tokenizedAmount.toString(), // Use tokenized amount instead of capacity
+            name: getAssetName(assetId),
+            status: 'Active',
+            nodeAddress,
+            nodeName: node.location.addressName || 'Unknown',
+            price: price,
+            capacity: capacity, // Keep capacity as additional info if needed
+          });
+        }
+
+        count++;
+      } catch (nodeError) {
+        // This is expected when we reach the end of the list
+        console.log(`Reached end of node list at index ${count}`);
+        break;
       }
-      count++;
     }
-  } catch (err: any) {
-    if (err?.message?.includes('out of bounds')) {
-      console.log('End of node list reached.');
-    } else {
-      console.error('Error loading node assets:', err);
-      throw err;
-    }
+
+    console.log(`Total assets found: ${assetList.length}`);
+    return assetList;
+  } catch (err) {
+    // This would be an unexpected error in the outer function
+    console.error('Fatal error in getAllNodeAssets:', err);
+    return [];
   }
-  return assetList;
 };
 
 export interface NodeLocationData {
@@ -137,9 +163,10 @@ export interface NodeStruct {
   location: NodeLocationData;
   validNode: string; // bytes1
   owner: string;
-  supportedAssets: number[];
+  supportedAssets: bigint[];
   status: string; // bytes1
-  capacity: number[];
+  capacity: bigint[];
+  assetPrices: bigint[];
 }
 
 export const registerNode = async (nodeData: AurumNodeManager.NodeStruct) => {
@@ -262,9 +289,7 @@ export const nodeHandOn = async (
   }
 };
 
-export const getNode = async (
-  nodeAddress: string,
-): Promise<AurumNodeManager.NodeStruct> => {
+export const getNode = async (nodeAddress: string): Promise<NodeStruct> => {
   const contract = await getAurumContract();
   try {
     const nodeData = await contract.getNode(nodeAddress);
@@ -272,14 +297,13 @@ export const getNode = async (
       location: nodeData.location,
       validNode: nodeData.validNode,
       owner: nodeData.owner,
-      supportedAssets: nodeData.supportedAssets.map((assetId: bigint) =>
-        Number(assetId),
-      ),
+      supportedAssets: nodeData.supportedAssets,
       status: nodeData.status,
-      capacity: nodeData.capacity.map((cap: bigint) => Number(cap)),
+      capacity: nodeData.capacity,
+      assetPrices: nodeData.assetPrices,
     };
   } catch (error) {
-    console.error(`Unable to get node with address ${nodeAddress}:`, error);
+    console.error('Error getting node:', error);
     throw error;
   }
 };
@@ -345,6 +369,7 @@ export interface TokenizedAsset {
   nodeAddress?: string;
   nodeName?: string;
   price?: string;
+  capacity: string;
 }
 
 export const getNodeAssets = async (
@@ -354,22 +379,24 @@ export const getNodeAssets = async (
   try {
     const node = await contract.getNode(nodeAddress);
     const assets = node.supportedAssets;
+    const prices = node.assetPrices;
+    const capacities = node.capacity;
 
     // Get actual tokenized amounts for each asset
     const assetsWithBalances = await Promise.all(
-      assets.map(async (assetId) => {
+      assets.map(async (assetId, index) => {
         const tokenId = Number(assetId) * 10; // Convert to token ID format
-        console.log('tokenId', tokenId);
         const auraGoat = await getAuraGoatContract(
           NEXT_PUBLIC_AURA_GOAT_ADDRESS,
         );
         const balance = await auraGoat.balanceOf(nodeAddress, tokenId);
-        console.log('balance', balance.toString()); // Convert BigInt to string for logging
         return {
           id: Number(assetId),
-          amount: balance.toString(), // Convert BigInt to number for display
+          amount: balance.toString(),
           name: getAssetName(Number(assetId)),
           status: 'Active',
+          price: prices[index]?.toString() || '0', // Add price information
+          capacity: capacities[index]?.toString() || '0', // Add capacity
         };
       }),
     );
@@ -411,10 +438,16 @@ export const updateSupportedAssets = async (
   node: string,
   quantities: BigNumberish[],
   assets: BigNumberish[],
+  prices: BigNumberish[],
 ) => {
   const contract = await getAurumContract();
   try {
-    const tx = await contract.updateSupportedAssets(node, quantities, assets);
+    const tx = await contract.updateSupportedAssets(
+      node,
+      quantities,
+      assets,
+      prices,
+    );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
     console.log('Assets updated successfully. Transaction hash:', receipt.hash);
     return receipt;
@@ -430,6 +463,7 @@ export const updateAssetCapacity = async (
   newCapacity: number,
   supportedAssets: BigNumberish[],
   capacities: BigNumberish[],
+  assetPrices: BigNumberish[],
 ) => {
   const contract = await getAurumContract();
   try {
@@ -449,6 +483,7 @@ export const updateAssetCapacity = async (
       nodeAddress,
       newCapacities,
       supportedAssets,
+      assetPrices,
     );
 
     return tx;
@@ -513,28 +548,32 @@ export const updateAssetPrice = async (
   nodeAddress: string,
   assetId: number,
   newPrice: bigint,
-  supportedAssets: number[],
+  supportedAssets: bigint[],
   assetPrices: bigint[],
 ) => {
   const contract = await getAurumContract();
   try {
     // Find index of asset to update
-    const assetIndex = supportedAssets.findIndex((a) => a === assetId);
+    const assetIndex = Array.from(supportedAssets).findIndex(
+      (a) => Number(a) === assetId,
+    );
     if (assetIndex === -1) throw new Error('Asset not found');
 
     // Create new prices array with updated value
-    const newPrices = [...assetPrices];
-    newPrices[assetIndex] = newPrice;
+    const newPrices = Array.from(assetPrices).map((price, i) =>
+      i === assetIndex ? newPrice : price,
+    );
 
     // Update using existing contract function
     const tx = await contract.updateSupportedAssets(
       nodeAddress,
-      supportedAssets.map((a) => BigInt(a)),
-      newPrices,
+      Array.from(supportedAssets).map((a) => a), // Keep capacities the same
+      Array.from(supportedAssets).map((a) => a), // Keep assets the same
+      newPrices, // Update prices
     );
 
-    await tx.wait();
-    return tx;
+    const receipt = await tx.wait();
+    return receipt;
   } catch (error) {
     console.error('Error updating asset price:', error);
     throw error;

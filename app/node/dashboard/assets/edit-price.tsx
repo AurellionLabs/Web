@@ -17,8 +17,8 @@ interface EditPriceProps {
   nodeAddress: string;
   assetId: number;
   currentPrice: string;
-  supportedAssets: number[];
-  assetPrices: string[];
+  supportedAssets: bigint[];
+  assetPrices: bigint[];
   onPriceUpdated: () => void;
 }
 
@@ -44,7 +44,7 @@ export function EditPrice({
         assetId,
         BigInt(newPrice),
         supportedAssets,
-        assetPrices.map((p) => BigInt(p)),
+        assetPrices,
       );
 
       toast.success('Asset price updated successfully');
@@ -61,7 +61,7 @@ export function EditPrice({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="ghost" className="w-full justify-start">
           Edit Price
         </Button>
       </DialogTrigger>

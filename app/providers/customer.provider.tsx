@@ -1,6 +1,11 @@
 'use client';
 
 import {
+  customerPackageSign,
+  getOrders,
+} from '@/dapp-connectors/ausys-controller';
+import { LocationContract } from '@/typechain-types';
+import {
   createContext,
   useContext,
   ReactNode,
@@ -45,13 +50,20 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       setError(null);
+      const contractOrders = await getOrders();
 
-      // TODO: Replace this with actual blockchain call
-      // Simulating API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Map contract orders to CustomerOrder format
+      const mappedOrders: CustomerOrder[] = contractOrders.map((order) => ({
+        id: order.id,
+        asset: order.token,
+        quantity: Number(order.tokenQuantity),
+        value: order.price.toString(),
+        status: getOrderStatus(order.currentStatus),
+        timestamp: Date.now(), // You might want to use a real timestamp if available
+        deliveryLocation: order.locationData.endName,
+      }));
 
-      // Using mock data for now
-      setOrders(mockOrders);
+      setOrders(mappedOrders);
     } catch (err) {
       console.error('Error loading orders:', err);
       setError('Failed to load orders');
@@ -84,9 +96,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const confirmReceipt = useCallback(async (orderId: string) => {
     try {
       setIsLoading(true);
-      // TODO: Replace with actual blockchain call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      await customerPackageSign(orderId);
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === orderId
@@ -258,3 +268,21 @@ const mockOrders: CustomerOrder[] = [
     timestamp: Date.now() - 1296000000, // 15 days ago
   },
 ];
+
+// Add this helper function
+function getOrderStatus(
+  status: bigint,
+): 'pending' | 'in_progress' | 'completed' | 'cancelled' {
+  switch (Number(status)) {
+    case 0:
+      return 'pending';
+    case 1:
+      return 'in_progress';
+    case 2:
+      return 'completed';
+    case 3:
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}
