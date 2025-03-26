@@ -37,7 +37,7 @@ export interface TradeContextType {
   fetchAssets: () => Promise<void>;
   isLoading: boolean;
   getAssetById: (id: string) => TokenizedAsset | undefined;
-  placeOrder: (orderData: any) => Promise<boolean>;
+  placeOrder: (orderData: LocationContract.OrderStruct) => Promise<boolean>;
   orders: LocationContract.OrderStruct[];
   loadOrders: () => Promise<void>;
 }

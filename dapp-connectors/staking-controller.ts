@@ -23,7 +23,7 @@ import {
 } from '@/typechain-types/contracts/AuStake';
 import { formatEthereumValue } from './ethereum-utils';
 import {
-  NEXT_PUBLIC_AURA_ADDRESS,
+  NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
 } from '@/chain-constants';
 import {
