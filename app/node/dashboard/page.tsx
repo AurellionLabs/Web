@@ -53,10 +53,12 @@ import {
   updateAssetCapacity,
   getTokenizedAmount,
   nodeMintAsset,
+  updateAssetPrice,
 } from '@/dapp-connectors/aurum-controller';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { MapView } from '@/components/ui/map-view';
+import { EditNodeModal } from './edit-node-modal';
 
 const tokenizeFormSchema = z.object({
   assetId: z.string({
@@ -78,6 +80,11 @@ interface EditingCapacity {
   value: string;
 }
 
+interface EditingPrice {
+  id: number;
+  value: string;
+}
+
 export default function NodeDashboardPage() {
   const { currentNodeData, selectedNode, orders, loadNodes } = useNode();
   const router = useRouter();
@@ -95,6 +102,7 @@ export default function NodeDashboardPage() {
   const [isUpdatingCapacity, setIsUpdatingCapacity] = useState(false);
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
+  const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
 
   // Form handling
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
@@ -110,11 +118,22 @@ export default function NodeDashboardPage() {
 
     setIsTokenizing(true);
     try {
-      // Add your tokenization logic here
+      const assetId = isAddingNewAsset
+        ? Number(newAssetId)
+        : Number(values.assetId);
+      const quantity = Number(values.quantity);
+
+      await nodeMintAsset(selectedNode, assetId, quantity);
+
+      const nodeAssets = await getNodeAssets(selectedNode);
+      setAssets(nodeAssets);
+
       toast.success('Asset tokenized successfully');
       setIsAddAssetOpen(false);
       form.reset();
+      setIsAddingNewAsset(false);
     } catch (error) {
+      console.error('Error tokenizing asset:', error);
       toast.error('Failed to tokenize asset');
     } finally {
       setIsTokenizing(false);
@@ -123,11 +142,12 @@ export default function NodeDashboardPage() {
 
   // Computed values from currentNodeData with proper type handling
   const supportedAssets = currentNodeData?.supportedAssets?.length || 0;
-  const totalCapacity =
-    currentNodeData?.capacity?.reduce(
-      (prev, curr) => Number(prev) + Number(curr),
+  const tokenizedValue = assets
+    .reduce(
+      (total, asset) => total + Number(asset.price) * Number(asset.amount),
       0,
-    ) || 0;
+    )
+    .toFixed(2);
 
   useEffect(() => {
     const loadAssets = async () => {
@@ -160,70 +180,11 @@ export default function NodeDashboardPage() {
         <tr key={id} className="border-b">
           <td className="p-4">{id}</td>
           <td className="p-4">{getAssetName(id)}</td>
+          <td className="p-4">{Number(currentNodeData.capacity[index])}</td>
           <td className="p-4">
-            {editingCapacity?.id === id ? (
-              <Input
-                type="number"
-                value={editingCapacity.value}
-                onChange={(e) =>
-                  setEditingCapacity({ id, value: e.target.value })
-                }
-                className="w-24"
-                placeholder="Enter new total amount"
-              />
-            ) : (
-              Number(currentNodeData.capacity[index])
-            )}
-          </td>
-          <td className="p-4 flex gap-2">
-            {editingCapacity?.id === id ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isUpdatingCapacity}
-                  onClick={async () => {
-                    setIsUpdatingCapacity(true);
-                    try {
-                      await handleCapacityUpdate(id, editingCapacity.value);
-                    } catch (error) {
-                      toast.error('Failed to update amount');
-                    } finally {
-                      setIsUpdatingCapacity(false);
-                    }
-                  }}
-                >
-                  {isUpdatingCapacity ? (
-                    <>
-                      <LoadingSpinner />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save'
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingCapacity(null)}
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setEditingCapacity({
-                    id,
-                    value: currentNodeData.capacity[index].toString(),
-                  })
-                }
-              >
-                Edit Amount
-              </Button>
-            )}
+            {currentNodeData.assetPrices && currentNodeData.assetPrices[index]
+              ? Number(currentNodeData.assetPrices[index])
+              : '0'}
           </td>
         </tr>
       );
@@ -252,19 +213,17 @@ export default function NodeDashboardPage() {
 
     setIsUpdatingCapacity(true);
     try {
-      const tx = await updateAssetCapacity(
+      await updateAssetCapacity(
         selectedNode,
         assetId,
         parseInt(newValue),
         currentNodeData.supportedAssets,
         currentNodeData.capacity,
+        currentNodeData.assetPrices || [],
       );
 
-      // Wait for transaction to be mined
-      await tx.wait();
-
       // Update the node data in context
-      await loadNodes(); // This will refresh the nodes data in context
+      await loadNodes();
 
       setEditingCapacity(null);
       toast.success('Capacity updated successfully');
@@ -273,6 +232,37 @@ export default function NodeDashboardPage() {
       toast.error('Failed to update capacity');
     } finally {
       setIsUpdatingCapacity(false);
+    }
+  };
+
+  const handlePriceUpdate = async (assetId: number, newValue: string) => {
+    if (!currentNodeData || !selectedNode) return;
+
+    try {
+      // Convert BigNumberish arrays to bigint arrays
+      const supportedAssetsBigInt = Array.from(
+        currentNodeData.supportedAssets,
+      ).map((asset) => BigInt(asset.toString()));
+      const assetPricesBigInt = Array.from(
+        currentNodeData.assetPrices || [],
+      ).map((price) => BigInt(price.toString()));
+
+      await updateAssetPrice(
+        selectedNode,
+        assetId,
+        BigInt(newValue),
+        supportedAssetsBigInt,
+        assetPricesBigInt,
+      );
+
+      // Update the node data in context
+      await loadNodes();
+
+      setEditingPrice(null);
+      toast.success('Price updated successfully');
+    } catch (error) {
+      console.error('Error updating price:', error);
+      toast.error('Failed to update price');
     }
   };
 
@@ -294,176 +284,182 @@ export default function NodeDashboardPage() {
               Status:{' '}
               {currentNodeData?.status === '0x01' ? 'Active' : 'Inactive'}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isUpdatingStatus}
-              onClick={handleStatusUpdate}
-            >
-              {isUpdatingStatus ? (
-                <>
-                  <LoadingSpinner />
-                  Updating...
-                </>
-              ) : currentNodeData?.status === '0x01' ? (
-                'Deactivate'
-              ) : (
-                'Activate'
-              )}
-            </Button>
           </div>
         </div>
-        <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
-          <DialogTrigger asChild>
-            <Button disabled={isTokenizing}>
-              {isTokenizing ? (
-                <>
-                  <LoadingSpinner />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Asset
-                </>
-              )}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Tokenize New Asset</DialogTitle>
-              <DialogDescription>
-                Add a new asset to be tokenized in the network.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
-                <FormField
-                  control={form.control}
-                  name="assetId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Asset</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          if (value === 'new') {
-                            setIsAddingNewAsset(true);
-                          } else {
-                            field.onChange(value);
-                            setIsAddingNewAsset(false);
-                          }
-                        }}
-                        defaultValue={field.value}
-                      >
+        <div className="flex gap-2">
+          <EditNodeModal
+            nodeAddress={selectedNode || ''}
+            nodeData={currentNodeData}
+            assetNames={Object.fromEntries(
+              Array.from(currentNodeData.supportedAssets || []).map((id) => [
+                Number(id),
+                getAssetName(Number(id)),
+              ]),
+            )}
+            onNodeUpdated={loadNodes}
+          />
+          <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
+            <DialogTrigger asChild>
+              <Button disabled={isTokenizing}>
+                {isTokenizing ? (
+                  <>
+                    <LoadingSpinner />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Asset
+                  </>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Tokenize New Asset</DialogTitle>
+                <DialogDescription>
+                  Add a new asset to be tokenized in the network.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
+                  <FormField
+                    control={form.control}
+                    name="assetId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Asset</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            if (value === 'new') {
+                              setIsAddingNewAsset(true);
+                            } else {
+                              field.onChange(value);
+                              setIsAddingNewAsset(false);
+                            }
+                          }}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an asset" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {nodeAssets.map((asset) => (
+                              <SelectItem
+                                key={asset.id}
+                                value={asset.id.toString()}
+                              >
+                                Asset #{asset.id} (Capacity: {asset.capacity})
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="new">+ Add New Asset</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {isAddingNewAsset && (
+                          <div className="mt-2">
+                            <FormLabel>New Asset ID</FormLabel>
+                            <Input
+                              type="number"
+                              placeholder="Enter new asset ID"
+                              value={newAssetId}
+                              onChange={(e) => {
+                                setNewAssetId(e.target.value);
+                                field.onChange(e.target.value);
+                              }}
+                            />
+                            <FormDescription>
+                              Enter a unique ID for the new asset
+                            </FormDescription>
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quantity</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an asset" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {nodeAssets.map((asset) => (
-                            <SelectItem
-                              key={asset.id}
-                              value={asset.id.toString()}
-                            >
-                              Asset #{asset.id} (Capacity: {asset.capacity})
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="new">+ Add New Asset</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {isAddingNewAsset && (
-                        <div className="mt-2">
-                          <FormLabel>New Asset ID</FormLabel>
                           <Input
                             type="number"
-                            placeholder="Enter new asset ID"
-                            value={newAssetId}
-                            onChange={(e) => {
-                              setNewAssetId(e.target.value);
-                              field.onChange(e.target.value);
-                            }}
+                            placeholder="Enter quantity"
+                            {...field}
                           />
-                          <FormDescription>
-                            Enter a unique ID for the new asset
-                          </FormDescription>
-                        </div>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="quantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantity</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Enter quantity"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Enter the number of assets to tokenize.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isTokenizing}
-                >
-                  {isTokenizing ? (
-                    <>
-                      <LoadingSpinner />
-                      Tokenizing...
-                    </>
-                  ) : (
-                    'Tokenize Asset'
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                        </FormControl>
+                        <FormDescription>
+                          Enter the number of assets to tokenize.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isTokenizing}
+                  >
+                    {isTokenizing ? (
+                      <>
+                        <LoadingSpinner />
+                        Tokenizing...
+                      </>
+                    ) : (
+                      'Tokenize Asset'
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Supported Assets</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatCard title="Count" value={supportedAssets.toString()} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Capacity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatCard title="Units" value={totalCapacity.toString()} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Node Address</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-mono">
-              {selectedNode || 'No node registered'}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          title="Supported Assets"
+          value={supportedAssets.toString()}
+          description="Total number of assets supported"
+          icon={
+            <div className="h-8 w-8 bg-blue-500/20 text-blue-500 flex items-center justify-center rounded-full">
+              A
+            </div>
+          }
+        />
+        <StatCard
+          title="Tokenized Value"
+          value={`$${tokenizedValue}`}
+          description="Total value of tokenized assets"
+          icon={
+            <div className="h-8 w-8 bg-green-500/20 text-green-500 flex items-center justify-center rounded-full">
+              $
+            </div>
+          }
+        />
+        <StatCard
+          title="Node Status"
+          value={currentNodeData?.status === '0x01' ? 'Active' : 'Inactive'}
+          description="Current operational status"
+          icon={
+            <div
+              className={`h-8 w-8 ${
+                currentNodeData?.status === '0x01'
+                  ? 'bg-green-500/20 text-green-500'
+                  : 'bg-red-500/20 text-red-500'
+              } flex items-center justify-center rounded-full`}
+            >
+              S
+            </div>
+          }
+        />
       </div>
 
       {/* Tokenized Assets Table - Shows actual minted tokens */}
@@ -518,12 +514,11 @@ export default function NodeDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Asset Capacity Table - Shows and allows editing of max capacities */}
       <Card>
         <CardHeader>
-          <CardTitle>Asset Capacities</CardTitle>
+          <CardTitle>Asset Details</CardTitle>
           <CardDescription>
-            Maximum capacity for each supported asset
+            Capacity and pricing for each supported asset
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -531,10 +526,10 @@ export default function NodeDashboardPage() {
             <table className="w-full caption-bottom text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="h-12 px-4 text-left align-middle">Asset ID</th>
+                  <th className="h-12 px-4 text-left align-middle">ID</th>
                   <th className="h-12 px-4 text-left align-middle">Name</th>
                   <th className="h-12 px-4 text-left align-middle">Capacity</th>
-                  <th className="h-12 px-4 text-left align-middle">Actions</th>
+                  <th className="h-12 px-4 text-left align-middle">Price $</th>
                 </tr>
               </thead>
               <tbody>{renderAssetRows()}</tbody>
@@ -620,6 +615,49 @@ export default function NodeDashboardPage() {
           />
         </Card>
       </div>
+
+      {editingPrice && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg w-96">
+            <h3 className="text-lg font-medium mb-4">Edit Asset Price</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Price (in wei)
+                </label>
+                <Input
+                  type="number"
+                  value={editingPrice.value}
+                  onChange={(e) =>
+                    setEditingPrice({ ...editingPrice, value: e.target.value })
+                  }
+                  className="w-full"
+                  placeholder="Enter new price"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingPrice(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await handlePriceUpdate(
+                        editingPrice.id,
+                        editingPrice.value,
+                      );
+                    } catch (error) {
+                      toast.error('Failed to update price');
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

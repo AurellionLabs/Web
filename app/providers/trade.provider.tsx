@@ -8,7 +8,18 @@ import React, {
   ReactNode,
   useEffect,
 } from 'react';
-import { getOrders } from '@/dapp-connectors/ausys-controller';
+import {
+  customerMakeOrder,
+  getOrders,
+} from '@/dapp-connectors/ausys-controller';
+import { LocationContract } from '@/typechain-types';
+import {
+  getAllNodeAssets,
+  loadAvailableAssets,
+} from '@/dapp-connectors/aurum-controller';
+import { ethers } from 'ethers';
+import { getWalletAddress } from '@/dapp-connectors/base-controller';
+import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
 export interface TokenizedAsset {
   id: string;
@@ -20,25 +31,14 @@ export interface TokenizedAsset {
   totalValue: number;
 }
 
-export interface Order {
-  id: string;
-  nodeId: string;
-  nodeName: string;
-  assetClass: string;
-  quantity: number;
-  pricePerUnit: number;
-  totalValue: number;
-  deliveryLocation: string;
-}
-
 export interface TradeContextType {
   assets: TokenizedAsset[];
   setAssets: (assets: TokenizedAsset[]) => void;
   fetchAssets: () => Promise<void>;
   isLoading: boolean;
   getAssetById: (id: string) => TokenizedAsset | undefined;
-  placeOrder: (order: Order) => Promise<boolean>;
-  orders: Order[];
+  placeOrder: (orderData: any) => Promise<boolean>;
+  orders: LocationContract.OrderStruct[];
   loadOrders: () => Promise<void>;
 }
 
@@ -46,92 +46,46 @@ const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
 export function TradeProvider({ children }: { children: ReactNode }) {
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<LocationContract.OrderStruct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAssets = useCallback(async () => {
     console.log('fetchAssets called');
     setIsLoading(true);
+    setError(null);
+
     try {
-      // Using mock data for now
-      const mockData: TokenizedAsset[] = [
-        {
-          id: '1',
-          nodeId: 'node1',
-          nodeName: 'Green Valley Farm',
-          assetClass: 'goat',
-          quantity: 10,
-          pricePerUnit: 500,
-          totalValue: 5000,
-        },
-        {
-          id: '2',
-          nodeId: 'node1',
-          nodeName: 'Green Valley Farm',
-          assetClass: 'sheep',
-          quantity: 15,
-          pricePerUnit: 600,
-          totalValue: 9000,
-        },
-        {
-          id: '3',
-          nodeId: 'node2',
-          nodeName: 'Highland Ranch',
-          assetClass: 'goat',
-          quantity: 8,
-          pricePerUnit: 550,
-          totalValue: 4400,
-        },
-        {
-          id: '4',
-          nodeId: 'node3',
-          nodeName: 'Sunrise Farms',
-          assetClass: 'cattle',
-          quantity: 5,
-          pricePerUnit: 2000,
-          totalValue: 10000,
-        },
-        {
-          id: '5',
-          nodeId: 'node3',
-          nodeName: 'Sunrise Farms',
-          assetClass: 'sheep',
-          quantity: 25,
-          pricePerUnit: 550,
-          totalValue: 13750,
-        },
-        {
-          id: '6',
-          nodeId: 'node4',
-          nodeName: 'Mountain View Ranch',
-          assetClass: 'cattle',
-          quantity: 3,
-          pricePerUnit: 2200,
-          totalValue: 6600,
-        },
-        {
-          id: '7',
-          nodeId: 'node2',
-          nodeName: 'Highland Ranch',
-          assetClass: 'sheep',
-          quantity: 20,
-          pricePerUnit: 580,
-          totalValue: 11600,
-        },
-        {
-          id: '8',
-          nodeId: 'node4',
-          nodeName: 'Mountain View Ranch',
-          assetClass: 'goat',
-          quantity: 12,
-          pricePerUnit: 480,
-          totalValue: 5760,
-        },
-      ];
-      console.log('Setting mock data:', mockData);
-      setAssets(mockData);
+      const nodeAssets = await getAllNodeAssets();
+      console.log(`Retrieved ${nodeAssets.length} assets`);
+
+      if (nodeAssets.length === 0) {
+        console.log('No assets available for trading');
+        setAssets([]);
+        return;
+      }
+
+      // Process assets to include price information
+      const processedAssets = nodeAssets.map((asset) => {
+        // Use nullish coalescing to ensure we have a string before parsing
+        const priceInDollars = parseFloat(asset.price ?? '0');
+
+        return {
+          id: asset.id.toString(),
+          quantity: parseInt(asset.amount ?? '0'),
+          pricePerUnit: priceInDollars,
+          totalValue: priceInDollars * parseInt(asset.amount ?? '0'),
+          nodeId: asset.nodeAddress ?? '',
+          nodeName: asset.nodeName ?? 'Unknown Node',
+          assetClass: asset.name ?? 'Unknown Asset',
+        };
+      });
+
+      setAssets(processedAssets);
     } catch (error) {
-      console.error('Error fetching assets:', error);
+      console.error('Error loading assets:', error);
+      setError('No assets available for trading. Please try again later.');
+      setAssets([]);
     } finally {
       setIsLoading(false);
     }
@@ -149,11 +103,77 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     [assets],
   );
 
-  const placeOrder = useCallback(async (order: Order): Promise<boolean> => {
+  const placeOrder = useCallback(async (orderData: any): Promise<boolean> => {
     try {
-      // TODO: Replace with actual blockchain transaction
-      console.log('Placing order:', order);
-      return true;
+      // Ensure wallet is connected
+      const walletAddress = getWalletAddress();
+      if (!walletAddress) {
+        console.error('Wallet not connected');
+        return false;
+      }
+
+      // Log more details for debugging
+      console.log('Wallet address:', walletAddress);
+      console.log('Token address:', NEXT_PUBLIC_AURA_GOAT_ADDRESS);
+      console.log('Order data:', orderData);
+
+      // Generate a proper BytesLike ID (32 bytes)
+      // Use ethers.js to properly format the ID as bytes32
+      const randomId = Math.floor(Math.random() * 1000000).toString(16);
+      const paddedId = randomId.padStart(64, '0'); // Pad to 32 bytes (64 hex chars)
+      const bytesLikeId = '0x' + paddedId;
+
+      // Map UI order to blockchain OrderStruct
+      const blockchainOrder: LocationContract.OrderStruct = {
+        id: bytesLikeId, // Properly formatted bytes32 value
+        token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        tokenId: BigInt(orderData.id),
+        tokenQuantity: BigInt(orderData.quantity),
+        requestedTokenQuantity: BigInt(orderData.quantity),
+        price: BigInt(Math.floor(orderData.pricePerUnit * orderData.quantity)),
+        txFee: BigInt(0),
+        customer: walletAddress,
+        journeyIds: [],
+        nodes: [orderData.nodeId],
+        locationData: {
+          startLocation: { lat: '34.0522', lng: '-118.2437' },
+          endLocation: orderData.deliveryCoordinates || {
+            lat: '40.7128',
+            lng: '-74.0060',
+          },
+          startName: 'Los Angeles, CA',
+          endName: orderData.deliveryLocation || 'New York',
+        },
+        currentStatus: BigInt(0),
+        contracatualAgreement: '0x' + '1'.padStart(64, '0'), // Also properly formatted
+      };
+
+      console.log('Placing order with data:', blockchainOrder);
+
+      // Check if provider is properly configured
+      try {
+        // Attempt to make the order
+        await customerMakeOrder(blockchainOrder);
+        console.log('Order placed successfully');
+        return true;
+      } catch (contractError: any) {
+        console.error('Contract interaction error:', contractError);
+
+        // Check for specific error types
+        if (contractError.code === 'UNCONFIGURED_NAME') {
+          console.error(
+            'Network configuration error. Please check your wallet connection.',
+          );
+        } else if (contractError.code === 'INVALID_ARGUMENT') {
+          console.error(
+            'Invalid argument format. Check the data types being passed to the contract.',
+          );
+        }
+
+        throw new Error(
+          `Failed to make customer order: ${contractError.message}`,
+        );
+      }
     } catch (error) {
       console.error('Error placing order:', error);
       return false;
@@ -165,11 +185,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     try {
       const fetchedOrders = await getOrders();
       // Map to match local Order type
-      const mappedOrders: Order[] = fetchedOrders.map((order) => ({
-        ...order,
-        deliveryLocation: '', // Add missing required field
-      }));
-      setOrders(mappedOrders);
+      setOrders(fetchedOrders);
     } catch (error) {
       console.error('Error loading orders:', error);
     } finally {

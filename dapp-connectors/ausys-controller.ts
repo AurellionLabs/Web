@@ -11,7 +11,7 @@ import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import {
   ethersProvider,
   signer,
-  walletAddress,
+  getWalletAddress,
   handleContractError,
 } from './base-controller';
 
@@ -49,7 +49,7 @@ export const jobCreation = async (
   try {
     const contract = await getAusysContract();
     const tx = await contract.journeyCreation(
-      walletAddress,
+      getWalletAddress(),
       recipientWalletAddress,
       locationData,
       1,
@@ -69,7 +69,7 @@ export const customerPackageSign = async (journeyId: string) => {
     const journey = await contract.journeyIdToJourney(journeyId);
     const tx = await contract.packageSign(
       journey.driver,
-      walletAddress,
+      getWalletAddress(),
       journeyId,
     );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
@@ -84,7 +84,7 @@ export const driverPackageSign = async (journeyId: string) => {
     const contract = await getAusysContract();
     const journey = await contract.journeyIdToJourney(journeyId);
     const tx = await contract.packageSign(
-      walletAddress,
+      getWalletAddress(),
       journey.receiver,
       journeyId,
     );
@@ -99,13 +99,16 @@ export const fetchCustomerJobs = async () => {
   const contract = await getAusysContract();
   try {
     const jobNumber =
-      await contract.numberOfJourneysCreatedForCustomer(walletAddress);
+      await contract.numberOfJourneysCreatedForCustomer(getWalletAddress());
     const journeyIds = [];
     const journeys: LocationContract.JourneyStruct[] = [];
 
     for (let i = 0; i < jobNumber; i++) {
       try {
-        const journeyId = await contract.customerToJourneyId(walletAddress, i);
+        const journeyId = await contract.customerToJourneyId(
+          getWalletAddress(),
+          i,
+        );
         journeyIds.push(journeyId);
       } catch (err) {
         console.error(`Error fetching job with index ${i}:`, err);
@@ -126,18 +129,41 @@ export const fetchCustomerJobs = async () => {
     return [];
   }
 };
+export const fetchAllJourneys = async () => {
+  const contract = await getAusysContract();
+  const journeyIds = await fetchAllJourneyIds();
+  const journeys = await Promise.all(
+    journeyIds.map(async (journeyId) => {
+      const journey = await contract.journeyIdToJourney(journeyId);
+      return journey;
+    }),
+  );
+  return journeys;
+};
+
+export const fetchJourney = async (journeyId: string) => {
+  const contract = await getAusysContract();
+  const journey = await contract.journeyIdToJourney(journeyId);
+  return journey;
+};
+
+export const fetchOrderIdFromJourney = async (journeyId: string) => {
+  const contract = await getAusysContract();
+  const orderId = await contract.journeyToOrderId(journeyId);
+  return orderId;
+};
 
 export const fetchReceiverJobs = async () => {
   const contract = await getAusysContract();
   try {
     const jobNumber =
-      await contract.numberOfJourneysCreatedForReceiver(walletAddress);
+      await contract.numberOfJourneysCreatedForReceiver(getWalletAddress());
     const jobs = [];
     const jobsObjList: LocationContract.JourneyStruct[] = [];
 
     for (let i = 0; i < jobNumber; i++) {
       try {
-        const job = await contract.receiverToJourneyId(walletAddress, i);
+        const job = await contract.receiverToJourneyId(getWalletAddress(), i);
         jobs.push(job);
       } catch (err) {
         console.error(`Error fetching journeyId with index ${i}:`, err);
@@ -162,6 +188,22 @@ export const fetchReceiverJobs = async () => {
   }
 };
 
+export const fetchAllJourneyIds = async () => {
+  const contract = await getAusysContract();
+  const journeyIds: string[] = [];
+  try {
+    let i = 0;
+    while (true) {
+      const journey = await contract.numberToJourneyID(i);
+      journeyIds.push(journey);
+      i++;
+    }
+  } catch (error) {
+    handleContractError(error, 'likely at end of list');
+  }
+  return journeyIds;
+};
+
 export const checkIfDriverAssignedToJobId = async (journeyId: string) => {
   const contract = await getAusysContract();
   try {
@@ -175,7 +217,10 @@ export const checkIfDriverAssignedToJobId = async (journeyId: string) => {
 export const assignDriverToJobId = async (journeyId: string) => {
   const contract = await getAusysContract();
   try {
-    const tx = await contract.assignDriverToJourneyId(walletAddress, journeyId);
+    const tx = await contract.assignDriverToJourneyId(
+      getWalletAddress(),
+      journeyId,
+    );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
     return receipt;
   } catch (error) {
@@ -284,35 +329,34 @@ export const getJourney = async (journeyId: BytesLike) => {
   }
 };
 
-export interface Order {
-  id: string;
-  nodeId: string;
-  nodeName: string;
-  assetClass: string;
-  quantity: number;
-  pricePerUnit: number;
-  totalValue: number;
-  status: string;
-}
+export const getOrders = async (): Promise<
+  LocationContract.OrderStructOutput[]
+> => {
+  const contract = await getAusysContract();
+  let indexing = true;
+  let orderCount = 0;
+  const orderList: LocationContract.OrderStructOutput[] = [];
 
-export const getOrders = async (): Promise<Order[]> => {
+  while (indexing) {
+    try {
+      const id = await contract.orderIds(orderCount);
+      const order = await contract.getOrder(id);
+      orderList.push(order);
+      orderCount++;
+    } catch (e) {
+      console.log('likely at end of list', e);
+      indexing = false;
+    }
+  }
+  return orderList;
+};
+
+export const getOrder = async (orderId: BytesLike) => {
   const contract = await getAusysContract();
   try {
-    // Mock data matching TokenizedAsset structure
-    return [
-      {
-        id: '1',
-        nodeId: 'node1',
-        nodeName: 'Test Node',
-        assetClass: 'goat',
-        quantity: 10,
-        pricePerUnit: 500,
-        totalValue: 5000,
-        status: 'active',
-      },
-    ];
+    const order = await contract.getOrder(orderId);
+    return order;
   } catch (error) {
-    console.error('Error fetching orders:', error);
-    throw error;
+    handleContractError(error, 'failed to get order');
   }
 };

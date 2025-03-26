@@ -46,6 +46,7 @@ type NodeData = {
   };
   supportedAssets: BigNumberish[];
   capacity: BigNumberish[];
+  assetPrices: BigNumberish[];
   validNode: BytesLike;
   owner: AddressLike;
 };

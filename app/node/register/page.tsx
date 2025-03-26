@@ -71,29 +71,47 @@ const formSchema = z.object({
   capacity: z.array(z.number()).min(1, {
     message: 'Please specify capacity for each asset.',
   }),
+  prices: z.array(z.number()).min(1, {
+    message: 'Please specify price for each asset.',
+  }),
 });
 
-const CapacityInput = ({
-  value,
-  onChange,
+const CapacityAndPriceInput = ({
+  capacityValue,
+  priceValue,
+  onCapacityChange,
+  onPriceChange,
 }: {
-  value: number[];
-  onChange: (value: number[]) => void;
+  capacityValue: number[];
+  priceValue: number[];
+  onCapacityChange: (value: number[]) => void;
+  onPriceChange: (value: number[]) => void;
 }) => {
   return (
-    <div className="space-y-2">
-      {value.map((cap, index) => (
-        <Input
-          key={index}
-          type="number"
-          value={cap}
-          onChange={(e) => {
-            const newValue = [...value];
-            newValue[index] = parseInt(e.target.value);
-            onChange(newValue);
-          }}
-          placeholder={`Capacity for asset ${index + 1}`}
-        />
+    <div className="space-y-4">
+      {capacityValue.map((cap, index) => (
+        <div key={index} className="grid grid-cols-2 gap-4">
+          <Input
+            type="number"
+            value={cap}
+            onChange={(e) => {
+              const newValue = [...capacityValue];
+              newValue[index] = parseInt(e.target.value);
+              onCapacityChange(newValue);
+            }}
+            placeholder={`Capacity for asset ${index + 1}`}
+          />
+          <Input
+            type="number"
+            value={priceValue[index]}
+            onChange={(e) => {
+              const newValue = [...priceValue];
+              newValue[index] = parseInt(e.target.value);
+              onPriceChange(newValue);
+            }}
+            placeholder={`Price for asset ${index + 1}`}
+          />
+        </div>
       ))}
     </div>
   );
@@ -159,6 +177,7 @@ export default function NodeRegistrationPage() {
       lng: '',
       supportedAssets: [],
       capacity: [],
+      prices: [],
     },
   });
 
@@ -194,6 +213,7 @@ export default function NodeRegistrationPage() {
         supportedAssets: values.supportedAssets,
         status: '0x01',
         capacity: values.capacity,
+        assetPrices: values.prices,
       };
       console.log('Registering Node', nodeData);
       await registerNode(nodeData);
@@ -313,15 +333,19 @@ export default function NodeRegistrationPage() {
                 name="capacity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Capacity</FormLabel>
+                    <FormLabel>Capacity and Prices</FormLabel>
                     <FormControl>
-                      <CapacityInput
-                        value={field.value}
-                        onChange={field.onChange}
+                      <CapacityAndPriceInput
+                        capacityValue={field.value}
+                        priceValue={form.watch('prices')}
+                        onCapacityChange={field.onChange}
+                        onPriceChange={(value) =>
+                          form.setValue('prices', value)
+                        }
                       />
                     </FormControl>
                     <FormDescription>
-                      Enter the capacity for each selected asset.
+                      Enter the capacity and price for each selected asset.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

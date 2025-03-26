@@ -311,7 +311,12 @@ contract locationContract {
       //reducing the capacity of the recieving nod if it is a
       if (receiver == order.customer) {
         order.currentStatus = Status.Completed;
-        nodeManager.updateSupportedAssets(sendingNode, quantities, tokenIds);
+        nodeManager.updateSupportedAssets(
+          sendingNode,
+          quantities,
+          tokenIds,
+          new uint256[](tokenIds.length)
+        );
         uint nodeReward = order.txFee / order.nodes.length;
 
         for (uint i = 0; i > order.nodes.length; i++)
@@ -452,7 +457,8 @@ contract locationContract {
           nodeManager.updateSupportedAssets(
             sender,
             _node.capacity,
-            _node.supportedAssets
+            _node.supportedAssets,
+            _node.assetPrices
           );
         }
     }

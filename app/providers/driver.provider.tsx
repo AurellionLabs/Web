@@ -1,5 +1,18 @@
 'use client';
 
+import {
+  assignDriverToJobId,
+  checkIfDriverAssignedToJobId,
+  driverPackageSign,
+  fetchAllJourneys,
+  fetchJourney,
+  fetchOrderIdFromJourney,
+  getOrder,
+  packageHandOff,
+  packageHandOn,
+} from '@/dapp-connectors/ausys-controller';
+import { getWalletAddress } from '@/dapp-connectors/base-controller';
+import { AddressLike } from 'ethers';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type Location = {
@@ -52,114 +65,135 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data for testing
-  const mockAvailableDeliveries: Delivery[] = [
-    {
-      jobId: 'J001',
-      currentStatus: DeliveryStatus.PENDING,
-      customer: 'John Doe',
-      fee: 50.0,
-      ETA: 45,
-      parcelData: {
-        startLocation: { lat: '1.2345', lng: '2.3456' },
-        endLocation: { lat: '3.4567', lng: '4.5678' },
-        startName: '123 Main St, City A',
-        endName: '456 Oak St, City B',
-      },
-    },
-    {
-      jobId: 'J002',
-      currentStatus: DeliveryStatus.PENDING,
-      customer: 'Jane Smith',
-      fee: 75.0,
-      ETA: 60,
-      parcelData: {
-        startLocation: { lat: '5.6789', lng: '6.7890' },
-        endLocation: { lat: '7.8901', lng: '8.9012' },
-        startName: '789 Pine St, City C',
-        endName: '321 Elm St, City D',
-      },
-    },
-  ];
-
-  const mockMyDeliveries: Delivery[] = [
-    {
-      jobId: 'J003',
-      currentStatus: DeliveryStatus.ACCEPTED,
-      customer: 'Alice Chen',
-      fee: 65.0,
-      ETA: 30,
-      parcelData: {
-        startLocation: { lat: '9.0123', lng: '10.1234' },
-        endLocation: { lat: '11.2345', lng: '12.3456' },
-        startName: '741 Maple St, City E',
-        endName: '852 Cedar St, City F',
-      },
-    },
-    {
-      jobId: 'J004',
-      currentStatus: DeliveryStatus.PICKED_UP,
-      customer: 'David Lee',
-      fee: 85.0,
-      ETA: 45,
-      parcelData: {
-        startLocation: { lat: '13.4567', lng: '14.5678' },
-        endLocation: { lat: '15.6789', lng: '16.7890' },
-        startName: '963 Birch St, City G',
-        endName: '147 Walnut St, City H',
-      },
-    },
-    {
-      jobId: 'J005',
-      currentStatus: DeliveryStatus.COMPLETED,
-      customer: 'Frank Zhang',
-      fee: 55.0,
-      ETA: 35,
-      parcelData: {
-        startLocation: { lat: '17.8901', lng: '18.9012' },
-        endLocation: { lat: '19.0123', lng: '20.1234' },
-        startName: '258 Cherry St, City I',
-        endName: '369 Plum St, City J',
-      },
-    },
-    {
-      jobId: 'J006',
-      currentStatus: DeliveryStatus.COMPLETED,
-      customer: 'Henry Lim',
-      fee: 45.0,
-      ETA: 25,
-      parcelData: {
-        startLocation: { lat: '21.2345', lng: '22.3456' },
-        endLocation: { lat: '23.4567', lng: '24.5678' },
-        startName: '951 Peach St, City K',
-        endName: '753 Apple St, City L',
-      },
-    },
-  ];
-
-  // TODO: Replace this with actual blockchain integration
   const fetchDeliveriesFromBlockchain = async (): Promise<{
     available: Delivery[];
     assigned: Delivery[];
   }> => {
-    // This is where you'll integrate your blockchain calls
-    // For now, returning mock data
+    const jounreys = await fetchAllJourneys();
+    const assigned = (await Promise.all(
+      jounreys.map(async (journey) => {
+        const isAssigned = await checkIfDriverAssignedToJobId(
+          journey.journeyId,
+        );
+        if (isAssigned) {
+          return {
+            jobId: journey.journeyId,
+            currentStatus: Number(journey.currentStatus),
+            customer: journey.sender,
+            fee: Number(journey.bounty) || 0,
+            ETA: Number(journey.ETA) || 0,
+            parcelData: journey.parcelData,
+          } as Delivery;
+        }
+        return null;
+      }),
+    )) as (Delivery | null)[];
+
+    const available = await Promise.all(
+      jounreys.map(async (journey) => {
+        const isAssigned = await checkIfDriverAssignedToJobId(
+          journey.journeyId,
+        );
+        if (!isAssigned) {
+          return {
+            jobId: journey.journeyId,
+            currentStatus: Number(journey.currentStatus),
+            customer: journey.sender,
+            fee: Number(journey.bounty) || 0,
+            ETA: Number(journey.ETA) || 0,
+            parcelData: journey.parcelData,
+          };
+        }
+        return null;
+      }),
+    );
     return {
-      available: mockAvailableDeliveries,
-      assigned: mockMyDeliveries,
+      available: available.filter((delivery) => delivery !== null),
+      assigned: assigned.filter((delivery) => delivery !== null),
     };
   };
 
   const refreshDeliveries = async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      setIsLoading(true);
-      setError(null);
-      const data = await fetchDeliveriesFromBlockchain();
-      setAvailableDeliveries(data.available);
-      setMyDeliveries(data.assigned);
+      console.log('Fetching all journeys...');
+      const journeys = await fetchAllJourneys();
+      console.log('Fetched journeys:', journeys);
+
+      if (!journeys || journeys.length === 0) {
+        console.log('No journeys available');
+        setAvailableDeliveries([]);
+        setMyDeliveries([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Process journeys into deliveries
+      const processedDeliveries = await Promise.all(
+        journeys.map(async (journey) => {
+          try {
+            const orderId = await fetchOrderIdFromJourney(journey.journeyId);
+            const order = await getOrder(orderId);
+
+            return {
+              jobId: journey.journeyId,
+              customer: order?.customer || '',
+              fee: Number(journey.bounty),
+              ETA: Number(journey.ETA),
+              currentStatus: Number(journey.currentStatus),
+              parcelData: journey.parcelData,
+            };
+          } catch (err) {
+            console.error(
+              `Error processing journey ${journey.journeyId}:`,
+              err,
+            );
+            return null;
+          }
+        }),
+      );
+
+      // Filter out any null values from failed processing
+      const validDeliveries = processedDeliveries.filter(
+        (delivery) => delivery !== null,
+      ) as Delivery[];
+      console.log('Processed deliveries:', validDeliveries);
+
+      // Split into available and my deliveries
+      const walletAddress = getWalletAddress();
+      const available: Delivery[] = [];
+      const mine: Delivery[] = [];
+
+      for (const delivery of validDeliveries) {
+        try {
+          const isAssigned = await checkIfDriverAssignedToJobId(delivery.jobId);
+          if (
+            isAssigned &&
+            delivery.currentStatus !== DeliveryStatus.COMPLETED
+          ) {
+            mine.push(delivery);
+          } else if (
+            !isAssigned &&
+            delivery.currentStatus === DeliveryStatus.PENDING
+          ) {
+            available.push(delivery);
+          }
+        } catch (err) {
+          console.error(
+            `Error checking assignment for job ${delivery.jobId}:`,
+            err,
+          );
+        }
+      }
+
+      setAvailableDeliveries(available);
+      setMyDeliveries(mine);
     } catch (err) {
+      console.error('Error refreshing deliveries:', err);
       setError(
-        err instanceof Error ? err.message : 'Failed to fetch deliveries',
+        err instanceof Error ? err.message : 'Failed to load deliveries',
       );
     } finally {
       setIsLoading(false);
@@ -169,10 +203,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const acceptDelivery = async (jobId: string) => {
     try {
       setError(null);
-      // TODO: Replace with actual blockchain transaction
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Update local state after successful blockchain transaction
+      await assignDriverToJobId(jobId);
       const deliveryToAccept = availableDeliveries.find(
         (d) => d.jobId === jobId,
       );
@@ -202,9 +233,18 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const confirmPickup = async (jobId: string) => {
     try {
       setError(null);
-      // TODO: Replace with actual blockchain transaction
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      await driverPackageSign(jobId);
+      const journey = await fetchJourney(jobId);
+      try {
+        await packageHandOn(journey.sender, journey.driver, journey.journeyId);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to hand on package wait for customer to sign',
+        );
+        throw err;
+      }
       // Update local state after successful blockchain transaction
       const deliveryToPickup = myDeliveries.find((d) => d.jobId === jobId);
       if (!deliveryToPickup) throw new Error('Delivery not found');
@@ -226,8 +266,25 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const completeDelivery = async (jobId: string) => {
     try {
       setError(null);
-      // TODO: Replace with actual blockchain transaction
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await driverPackageSign(jobId);
+      const journey = await fetchJourney(jobId);
+      const orderId = await fetchOrderIdFromJourney(journey.journeyId);
+      const order = await getOrder(orderId);
+      try {
+        await packageHandOff(
+          journey.sender,
+          journey.driver,
+          journey.journeyId,
+          order?.token as AddressLike,
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to package hand off wait for customer to sign',
+        );
+        throw err;
+      }
 
       // Update delivery status in myDeliveries
       setMyDeliveries((prev) =>
