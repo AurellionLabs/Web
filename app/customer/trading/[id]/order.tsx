@@ -101,8 +101,6 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
           startName: 'Los Angeles, CA',
           endName: 'New York',
-          currentStatus: BigInt(0),
-          contracatualAgreement: '0xf',
         },
         currentStatus: BigInt(0),
         contracatualAgreement: '0xf',
