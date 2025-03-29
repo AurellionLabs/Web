@@ -97,8 +97,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [fetchAssets]);
 
   const getAssetById = useCallback(
-    (id: string) => {
-      return assets.find((asset) => asset.id === id);
+    (nodeId: string) => {
+      return assets.find((asset) => asset.nodeId === nodeId);
     },
     [assets],
   );
