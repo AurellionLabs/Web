@@ -136,7 +136,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         journeyIds: [],
         nodes: [orderData.nodeId],
         locationData: {
-          startLocation: { lat: '34.0522', lng: '-118.2437' },
+          startLocation: orderData.nodeLocation,
           endLocation: orderData.deliveryCoordinates || {
             lat: '40.7128',
             lng: '-74.0060',
