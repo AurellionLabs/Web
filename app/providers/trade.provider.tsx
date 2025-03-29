@@ -15,7 +15,7 @@ import {
 import { LocationContract } from '@/typechain-types';
 import {
   getAllNodeAssets,
-  loadAvailableAssets,
+  NodeLocationData,
 } from '@/dapp-connectors/aurum-controller';
 import { ethers } from 'ethers';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
@@ -24,7 +24,7 @@ import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 export interface TokenizedAsset {
   id: string;
   nodeId: string;
-  nodeName: string;
+  nodeLocation: NodeLocationData;
   assetClass: string;
   quantity: number;
   pricePerUnit: number;
@@ -76,7 +76,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
           pricePerUnit: priceInDollars,
           totalValue: priceInDollars * parseInt(asset.amount ?? '0'),
           nodeId: asset.nodeAddress ?? '',
-          nodeName: asset.nodeName ?? 'Unknown Node',
+          nodeLocation: asset.nodeLocation,
           assetClass: asset.name ?? 'Unknown Asset',
         };
       });

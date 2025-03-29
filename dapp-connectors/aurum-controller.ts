@@ -108,7 +108,7 @@ export const getAllNodeAssets = async (): Promise<TokenizedAsset[]> => {
         }
 
         // Use getNode to get node details
-        const node = await contract.getNode(nodeAddress);
+        const node: NodeStruct = await contract.getNode(nodeAddress);
 
         // Process node assets
         for (let i = 0; i < node.supportedAssets.length; i++) {
@@ -127,8 +127,8 @@ export const getAllNodeAssets = async (): Promise<TokenizedAsset[]> => {
             amount: tokenizedAmount.toString(), // Use tokenized amount instead of capacity
             name: getAssetName(assetId),
             status: 'Active',
-            nodeAddress,
-            nodeName: node.location.addressName || 'Unknown',
+            nodeAddress: nodeAddress,
+            nodeLocation: node.location,
             price: price,
             capacity: capacity, // Keep capacity as additional info if needed
           });
@@ -366,9 +366,9 @@ export interface TokenizedAsset {
   amount: string;
   name: string;
   status: string;
-  nodeAddress?: string;
-  nodeName?: string;
-  price?: string;
+  nodeAddress: string;
+  nodeLocation: NodeLocationData;
+  price: string;
   capacity: string;
 }
 

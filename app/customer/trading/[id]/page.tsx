@@ -201,7 +201,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             Trading
           </Link>
           <span className="text-gray-600">/</span>
-          <span className="text-gray-400">{asset.nodeName}</span>
+          <span className="text-gray-400">
+            {asset.nodeLocation.addressName}
+          </span>
           <span className="text-gray-600">/</span>
           <span className="text-gray-400 capitalize">{asset.assetClass}</span>
         </div>
@@ -226,7 +228,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">
-                  {asset.nodeName}
+                  {asset.nodeLocation.addressName}
                 </h1>
                 <p className="text-gray-400 text-sm sm:text-base">
                   {asset.assetClass.charAt(0).toUpperCase() +
@@ -352,7 +354,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                   <div className="space-y-3">
                     <div>
                       <div className="text-sm text-gray-400">Name</div>
-                      <div className="font-medium">{asset.nodeName}</div>
+                      <div className="font-medium">
+                        {asset.nodeLocation.addressName}
+                      </div>
                     </div>
                     <div>
                       <div className="text-sm text-gray-400">ID</div>
