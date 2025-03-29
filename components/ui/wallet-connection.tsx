@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { formatAddress } from '@/lib/utils';
@@ -15,6 +14,7 @@ import { ethers } from 'ethers';
 import { SUPPORTED_CHAINS, NETWORK_CONFIGS } from '@/config/network';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { initializeProvider } from '@/dapp-connectors/base-controller';
+import { usePrivy } from '@privy-io/react-auth';
 
 interface WalletInfo {
   balance: string;
@@ -23,6 +23,7 @@ interface WalletInfo {
 
 export function WalletConnection() {
   const { isWalletConnected, setIsWalletConnected } = useMainProvider();
+  const { authenticated, user, logout } = usePrivy();
   const [isOpen, setIsOpen] = useState(false);
   const [account, setAccount] = useState<string>('');
   const [chainId, setChainId] = useState<number>();
@@ -84,6 +85,13 @@ export function WalletConnection() {
     }
   }, [isOpen, account]);
 
+  useEffect(() => {
+    if (authenticated && user?.wallet?.address) {
+      setAccount(user.wallet.address);
+      fetchWalletInfo(user.wallet.address);
+    }
+  }, [authenticated, user]);
+
   const handleAccountsChanged = (accounts: string[]) => {
     if (accounts.length === 0) {
       // User disconnected
@@ -140,6 +148,21 @@ export function WalletConnection() {
         toast.error('Error connecting wallet');
       }
       setIsWalletConnected(false);
+    }
+  };
+
+  const disconnectWallet = async () => {
+    try {
+      if (authenticated) {
+        await logout();
+      }
+      setAccount('');
+      setIsWalletConnected(false);
+      setIsOpen(false);
+      toast.success('Wallet disconnected');
+    } catch (error) {
+      console.error('Error disconnecting wallet:', error);
+      toast.error('Error disconnecting wallet');
     }
   };
 
@@ -213,7 +236,7 @@ export function WalletConnection() {
 
   const handleButtonClick = async () => {
     console.log('Button clicked, account:', account);
-    if (account) {
+    if (account || (authenticated && user?.wallet?.address)) {
       console.log('Opening modal');
       setIsOpen(true);
     } else {
@@ -234,17 +257,36 @@ export function WalletConnection() {
     return `${NETWORK_CONFIGS[chainId].blockExplorer}/${path}`;
   };
 
+  // Get wallet type (Privy or Web3)
+  const getWalletType = () => {
+    if (authenticated && user?.wallet) {
+      return user.wallet.walletClientType || 'Privy';
+    }
+    return 'Web3';
+  };
+
+  // Get a shortened version of the wallet address
+  const getDisplayAddress = () => {
+    if (authenticated && user?.wallet?.address) {
+      return formatAddress(user.wallet.address);
+    }
+    if (account) {
+      return formatAddress(account);
+    }
+    return 'Connect Wallet';
+  };
+
   return (
     <div className="relative">
       <Button
         onClick={handleButtonClick}
         variant={!isCorrectNetwork && account ? 'destructive' : 'default'}
       >
-        {!account
+        {!account && !authenticated
           ? 'Connect Wallet'
           : !isCorrectNetwork
             ? 'Wrong Network'
-            : formatAddress(account)}
+            : getDisplayAddress()}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -256,7 +298,7 @@ export function WalletConnection() {
             <div className="flex justify-between items-center">
               <span>Account</span>
               <div className="text-right">
-                <span className="font-mono">{formatAddress(account)}</span>
+                <span className="font-mono">{getDisplayAddress()}</span>
                 {walletInfo.ens && (
                   <div className="text-sm text-gray-500">{walletInfo.ens}</div>
                 )}
@@ -264,68 +306,61 @@ export function WalletConnection() {
             </div>
 
             <div className="flex justify-between items-center">
+              <span>Wallet Type</span>
+              <span>{getWalletType()}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
               <span>Balance</span>
               <span>
                 {isLoading
                   ? 'Loading...'
-                  : `${Number(walletInfo.balance).toFixed(4)} ETH`}
+                  : `${parseFloat(walletInfo.balance).toFixed(4)} ETH`}
               </span>
             </div>
 
-            <div className="flex justify-between items-center">
-              <span>Network</span>
-              <div className="flex items-center gap-2">
+            {chainId && (
+              <div className="flex justify-between items-center">
+                <span>Network</span>
                 <span
                   className={
-                    !isCorrectNetwork ? 'text-red-500' : 'text-green-500'
+                    isCorrectNetwork ? 'text-green-500' : 'text-red-500'
                   }
                 >
-                  {chainId
-                    ? NETWORK_CONFIGS[chainId]?.name || `Chain ID: ${chainId}`
-                    : 'Not Connected'}
+                  {NETWORK_CONFIGS[chainId]?.name || `Unknown (${chainId})`}
                 </span>
-                {!isCorrectNetwork && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addNetwork(SUPPORTED_CHAINS[0])}
-                  >
-                    Add Network
-                  </Button>
-                )}
               </div>
-            </div>
+            )}
+
+            {!isCorrectNetwork && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={switchNetwork}
+              >
+                Switch to Supported Network
+              </Button>
+            )}
 
             {lastTx && (
-              <div className="pt-4 border-t">
-                <div className="text-sm text-gray-500">Last Transaction</div>
+              <div className="pt-2 border-t border-gray-700">
+                <div className="text-sm text-gray-400 mb-1">
+                  Last Transaction
+                </div>
                 <a
                   href={getExplorerUrl(chainId, `tx/${lastTx}`)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline text-sm"
+                  className="text-blue-400 hover:text-blue-300 text-sm break-all"
                 >
-                  View on Explorer
+                  {lastTx}
                 </a>
               </div>
             )}
 
-            <div className="flex gap-2">
-              <Button
-                onClick={() => navigator.clipboard.writeText(account)}
-                variant="outline"
-                className="flex-1"
-              >
-                Copy Address
-              </Button>
-              <Button
-                onClick={() =>
-                  window.open(getExplorerUrl(chainId, `address/${account}`))
-                }
-                variant="outline"
-                className="flex-1"
-              >
-                View on Explorer
+            <div className="pt-4 flex justify-end">
+              <Button variant="destructive" onClick={disconnectWallet}>
+                Disconnect Wallet
               </Button>
             </div>
           </div>

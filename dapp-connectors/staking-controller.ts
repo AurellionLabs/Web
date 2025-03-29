@@ -26,43 +26,36 @@ import {
   NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
 } from '@/chain-constants';
-import {
-  setProvider,
-  setSigner,
-  setWalletAddress,
-  getProvider,
-  getSigner,
-} from './base-controller';
 
-export interface StakeData {
-  token: AddressLike;
-  user: AddressLike;
-  operationId: BigNumberish;
-  amount: BigNumberish;
-  time: BigNumberish;
-}
-export interface GroupedStakes {
-  hourly: { [key: string]: number };
-  daily: { [key: string]: number };
-  weekly: { [key: string]: number };
-  monthly: { [key: string]: number };
-  yearly: { [key: string]: number };
-}
-export interface OperationData {
-  id: string;
-  name: string;
-  description: string;
-  token: string;
-  provider: string;
-  deadline: bigint;
-  startDate: bigint;
-  rwaName: string;
-  reward: bigint;
-  tokenTvl: bigint;
-  operationStatus: bigint;
-  fundingGoal: bigint;
-  assetPrice: bigint;
-}
+// Define local variables for provider and signer
+let provider: BrowserProvider | null = null;
+let signer: JsonRpcSigner | null = null;
+let walletAddress: string = '';
+
+// Function to set provider
+const setProvider = (newProvider: BrowserProvider) => {
+  provider = newProvider;
+};
+
+// Function to set signer
+const setSigner = (newSigner: JsonRpcSigner) => {
+  signer = newSigner;
+};
+
+// Function to set wallet address
+const setWalletAddress = (address: string) => {
+  walletAddress = address;
+};
+
+// Get ether balance
+export const getEtherBalance = async () => {
+  if (!provider || !walletAddress) {
+    throw new Error('Provider or wallet address not initialized');
+  }
+
+  const balance = await provider.getBalance(walletAddress);
+  return balance;
+};
 
 export const setWalletProvider = async () => {
   try {
@@ -95,6 +88,41 @@ export const setWalletProvider = async () => {
     return { success: false, error };
   }
 };
+
+// Export functions to get provider and signer
+export const getProvider = () => provider;
+export const getSigner = () => signer;
+export const getWalletAddress = () => walletAddress;
+
+export interface StakeData {
+  token: AddressLike;
+  user: AddressLike;
+  operationId: BigNumberish;
+  amount: BigNumberish;
+  time: BigNumberish;
+}
+export interface GroupedStakes {
+  hourly: { [key: string]: number };
+  daily: { [key: string]: number };
+  weekly: { [key: string]: number };
+  monthly: { [key: string]: number };
+  yearly: { [key: string]: number };
+}
+export interface OperationData {
+  id: string;
+  name: string;
+  description: string;
+  token: string;
+  provider: string;
+  deadline: bigint;
+  startDate: bigint;
+  rwaName: string;
+  reward: bigint;
+  tokenTvl: bigint;
+  operationStatus: bigint;
+  fundingGoal: bigint;
+  assetPrice: bigint;
+}
 
 const getAuStakeContract = async (): Promise<AuStake> =>
   new Promise(async (resolve, reject) => {
@@ -549,13 +577,4 @@ export const getTokenTvl = async (token: string): Promise<BigNumberish> => {
     console.error('Error getting token TVL:', error);
     throw error;
   }
-};
-export const getEtherBalance = async () => {
-  const currentProvider = getProvider();
-  const currentSigner = getSigner();
-  if (!currentProvider || !currentSigner) {
-    throw new Error('Provider or signer not initialized');
-  }
-  const address = await currentSigner.getAddress();
-  return await currentProvider.getBalance(address);
 };

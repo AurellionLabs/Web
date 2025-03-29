@@ -7,6 +7,8 @@ import { ClientLayout } from '@/components/layout/client-layout';
 import { TradeProvider } from './providers/trade.provider';
 import { CustomerProvider } from './providers/customer.provider';
 import { DriverProvider } from './providers/driver.provider';
+import { PrivyAppProvider } from '@/app/providers/privy-provider';
+import { PrivyHandler } from '@/components/PrivyHandler';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,17 +25,21 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <MainProvider>
-          <NodeProvider>
-            <CustomerProvider>
-              <DriverProvider>
-                <TradeProvider>
-                  <ClientLayout>{children}</ClientLayout>
-                </TradeProvider>
-              </DriverProvider>
-            </CustomerProvider>
-          </NodeProvider>
-        </MainProvider>
+        <PrivyAppProvider>
+          <MainProvider>
+            <NodeProvider>
+              <CustomerProvider>
+                <DriverProvider>
+                  <TradeProvider>
+                    <PrivyHandler>
+                      <ClientLayout>{children}</ClientLayout>
+                    </PrivyHandler>
+                  </TradeProvider>
+                </DriverProvider>
+              </CustomerProvider>
+            </NodeProvider>
+          </MainProvider>
+        </PrivyAppProvider>
       </body>
     </html>
   );

@@ -1,6 +1,8 @@
 import { BrowserProvider, JsonRpcSigner } from 'ethers';
 import { toast } from 'sonner';
 import { SUPPORTED_CHAINS } from '@/config/network';
+import { PrivyClientConfig, usePrivy, useWallets } from '@privy-io/react-auth';
+import { sepolia, base, baseSepolia, mainnet } from 'viem/chains';
 
 let provider: BrowserProvider | null = null;
 let signer: JsonRpcSigner | null = null;
@@ -12,87 +14,86 @@ let initializationPromise: Promise<{
   provider: BrowserProvider;
   signer: JsonRpcSigner;
 }> | null = null;
+const privyClientConfig: PrivyClientConfig = {
+  appearance: {
+    theme: 'light',
+    accentColor: '#676FFF',
+    logo: 'https://picsum.photos/200/300',
+  },
 
-export const setProvider = (newProvider: BrowserProvider) => {
-  provider = newProvider;
+  embeddedWallets: {
+    createOnLogin: 'users-without-wallets',
+  },
 };
-export const setSigner = (newSigner: JsonRpcSigner) => {
-  signer = newSigner;
+export const privyConfig = {
+  appId: process.env.PRIVY_APP_ID,
+  clientId: process.env.PRIVY_CLIENT_ID,
+  config: privyClientConfig,
+  defaultChain: sepolia,
+  supportedChains: [base, baseSepolia, mainnet, sepolia],
 };
-export const setWalletAddress = (address: string) => {
-  walletAddress = address;
-};
 
-// Export getters
-export const getProvider = () => provider;
-export const getSigner = () => signer;
-export const getWalletAddress = () => walletAddress;
+// Create a hook to get the current wallet provider and signer
+export function useEthersProvider() {
+  const { authenticated } = usePrivy();
+  const { wallets } = useWallets();
 
-export const initializeProvider = async (): Promise<{
-  provider: BrowserProvider;
-  signer: JsonRpcSigner;
-}> => {
-  if (initializationPromise) {
-    const result = await initializationPromise;
-    if (!result) throw new Error('Initialization failed');
-    return result;
-  }
-
-  initializationPromise = (async () => {
-    try {
-      if (typeof window === 'undefined' || !window.ethereum) {
-        throw new Error('Please install MetaMask');
-      }
-
-      provider = new BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-
-      if (!provider || !signer) throw new Error('Failed to initialize wallet');
-      return { provider, signer };
-    } finally {
-      initializationPromise = null;
+  const getProvider = async () => {
+    if (!authenticated || wallets.length === 0) {
+      throw new Error('No wallet connected');
     }
-  })();
 
-  const result = await initializationPromise;
-  if (!result) throw new Error('Initialization failed');
-  return result;
-};
+    const embeddedWallet = wallets.find(
+      (wallet) => wallet.walletClientType === 'privy',
+    );
 
-// Common error handling
-export interface ContractError extends Error {
-  code?: string;
-  reason?: string;
-  transaction?: any;
+    if (embeddedWallet) {
+      const ethereumProvider = await embeddedWallet.getEthereumProvider();
+      // Convert to ethers BrowserProvider
+      return new BrowserProvider(ethereumProvider);
+    }
+
+    throw new Error('No embedded wallet found');
+  };
+
+  const getSigner = async () => {
+    const provider = await getProvider();
+    return provider.getSigner();
+  };
+
+  return { getProvider, getSigner };
 }
 
-export const handleContractError = (error: any, context: string): never => {
-  const contractError: ContractError = error;
-  console.error(`Error in ${context}:`, {
-    message: contractError.message,
-    code: contractError.code,
-    reason: contractError.reason,
-    transaction: contractError.transaction,
-  });
+// Initialize provider and signer
+export const initializeProvider = async () => {
+  try {
+    // This function should be called within a component that uses the useEthersProvider hook
+    const { getProvider, getSigner } = useEthersProvider();
+    provider = await getProvider();
+    signer = await getSigner();
 
-  if (contractError.code === 'ACTION_REJECTED') {
-    throw new Error('Transaction was rejected by user');
+    if (signer) {
+      walletAddress = await signer.getAddress();
+    }
+
+    return { provider, signer };
+  } catch (error) {
+    console.error('Failed to initialize provider:', error);
+    throw error;
   }
-
-  if (contractError.reason) {
-    throw new Error(contractError.reason);
-  }
-
-  throw new Error(`Failed to ${context}: ${contractError.message}`);
 };
 
-// Instead, add a function to get the current wallet address
-export const getCurrentWalletAddress = async (): Promise<string> => {
-  if (!signer) {
-    throw new Error('Wallet not connected');
-  }
-  return await signer.getAddress();
+// Get wallet address
+export const getWalletAddress = () => {
+  return walletAddress;
 };
 
-// Export as aliases for backward compatibility
-export { provider as ethersProvider, signer };
+// Handle contract errors
+export const handleContractError = (error: any, message: string) => {
+  console.error(`Error in ${message}:`, error);
+  toast.error(`Error: ${error.message || message}`);
+  throw error;
+};
+
+// Export provider and signer
+export { provider, signer };
