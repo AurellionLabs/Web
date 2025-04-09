@@ -13,6 +13,7 @@ import {
   signer,
   getWalletAddress,
   handleContractError,
+  walletAddress,
 } from './base-controller';
 
 export enum Status {
@@ -23,12 +24,35 @@ export enum Status {
 }
 
 const getAusysContract = async (): Promise<LocationContract> => {
-  if (!ethersProvider || !signer) {
-    throw new Error('Wallet not connected. Please connect your wallet.');
-  }
   if (!NEXT_PUBLIC_AUSYS_ADDRESS) {
     throw new Error('NEXT_PUBLIC_AUSYS_ADDRESS is undefined');
   }
+
+  // Check if provider and signer are available
+  if (!ethersProvider || !signer) {
+    console.warn('Wallet not connected. Attempting to initialize provider...');
+    try {
+      // Try to initialize the provider
+      const { provider: newProvider, signer: newSigner } =
+        await initializeProvider();
+      if (!newProvider || !newSigner) {
+        throw new Error('Failed to initialize wallet connection');
+      }
+
+      // Provider and signer initialized successfully
+      console.log('Provider initialized successfully');
+      const contract = LocationContract__factory.connect(
+        NEXT_PUBLIC_AUSYS_ADDRESS,
+        newSigner,
+      );
+      return contract;
+    } catch (error) {
+      console.error('Failed to initialize wallet for contract call:', error);
+      throw new Error('Wallet not connected. Please connect your wallet.');
+    }
+  }
+
+  // Provider and signer already available
   try {
     const contract = LocationContract__factory.connect(
       NEXT_PUBLIC_AUSYS_ADDRESS,
@@ -130,15 +154,66 @@ export const fetchCustomerJobs = async () => {
   }
 };
 export const fetchAllJourneys = async () => {
-  const contract = await getAusysContract();
-  const journeyIds = await fetchAllJourneyIds();
-  const journeys = await Promise.all(
-    journeyIds.map(async (journeyId) => {
-      const journey = await contract.journeyIdToJourney(journeyId);
-      return journey;
-    }),
-  );
-  return journeys;
+  try {
+    const contract = await getAusysContract();
+
+    // Try first using the fetchAllJourneyIds approach
+    const journeyIds = await fetchAllJourneyIds();
+    console.log('Found journey IDs:', journeyIds);
+
+    if (journeyIds.length === 0) {
+      console.log(
+        'No journeys found via numberToJourneyID, trying to get from orders...',
+      );
+
+      // If no journeys found, try getting from orders
+      const orders = await getOrders();
+      console.log('Found orders:', orders);
+
+      // Collect all journeyIds from orders
+      const journeyIdsFromOrders: string[] = [];
+      for (const order of orders) {
+        if (order.journeyIds && order.journeyIds.length > 0) {
+          journeyIdsFromOrders.push(...order.journeyIds);
+        }
+      }
+
+      console.log('Journey IDs from orders:', journeyIdsFromOrders);
+
+      // Get journey details
+      const journeysFromOrders = await Promise.all(
+        journeyIdsFromOrders.map(async (journeyId) => {
+          try {
+            return await contract.journeyIdToJourney(journeyId);
+          } catch (err) {
+            console.error(`Error fetching journey ${journeyId}:`, err);
+            return null;
+          }
+        }),
+      );
+
+      // Filter out null journeys
+      return journeysFromOrders.filter((journey) => journey !== null);
+    }
+
+    // Get journey details using original approach
+    const journeys = await Promise.all(
+      journeyIds.map(async (journeyId) => {
+        try {
+          const journey = await contract.journeyIdToJourney(journeyId);
+          return journey;
+        } catch (err) {
+          console.error(`Error fetching journey ${journeyId}:`, err);
+          return null;
+        }
+      }),
+    );
+
+    return journeys.filter((journey) => journey !== null);
+  } catch (error) {
+    console.error('Error in fetchAllJourneys:', error);
+    return [];
+  }
 };
 
 export const fetchJourney = async (journeyId: string) => {
@@ -192,15 +267,51 @@ export const fetchAllJourneyIds = async () => {
   const contract = await getAusysContract();
   const journeyIds: string[] = [];
   try {
+    console.log('Fetching journey IDs from numberToJourneyID mapping...');
+
     let i = 0;
-    while (true) {
-      const journey = await contract.numberToJourneyID(i);
-      journeyIds.push(journey);
-      i++;
+    const MAX_ATTEMPTS = 50; // Reasonable limit to prevent infinite loops
+
+    while (i < MAX_ATTEMPTS) {
+      try {
+        console.log(`Trying to fetch journey ID at index ${i}...`);
+        const journeyId = await contract.numberToJourneyID(i);
+
+        // Check if we got a valid journey ID (not empty bytes32)
+        if (
+          journeyId &&
+          journeyId !==
+            '0x0000000000000000000000000000000000000000000000000000000000000000'
+        ) {
+          console.log(`Found valid journey ID at index ${i}: ${journeyId}`);
+          journeyIds.push(journeyId);
+        } else {
+          console.log(`Empty or zero journey ID at index ${i}, skipping`);
+        }
+
+        i++;
+      } catch (error: any) {
+        // Break if we hit an error (likely reached end of list)
+        console.log(
+          `Error at index ${i}, likely reached end of list: ${error.message}`,
+        );
+        break;
+      }
     }
+
+    if (i >= MAX_ATTEMPTS) {
+      console.warn(
+        `Reached maximum attempts (${MAX_ATTEMPTS}) when fetching journey IDs`,
+      );
+    }
+
+    console.log(
+      `Found ${journeyIds.length} journey IDs via numberToJourneyID mapping`,
+    );
   } catch (error) {
-    handleContractError(error, 'likely at end of list');
+    console.error('Error in fetchAllJourneyIds:', error);
   }
+
   return journeyIds;
 };
 
@@ -269,10 +380,55 @@ export const customerMakeOrder = async (
 ) => {
   const contract = await getAusysContract();
   try {
+    // Get the wallet address first
+    const currentWalletAddress = getWalletAddress();
+    if (!currentWalletAddress) {
+      throw new Error('Wallet not connected or address not available');
+    }
+
+    // Call orderCreation and get the transaction
+    const txResponse = await contract.orderCreation.staticCall(orderData);
+    console.log('Static call result (orderId):', txResponse);
+
+    // Now execute the actual transaction
     const tx = await contract.orderCreation(orderData);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    return receipt;
+    await tx.wait();
+
+    // Use the orderId we got from the static call
+    const orderId = txResponse;
+
+    console.log('creating first journey with orderId:', orderId);
+
+    // Check if nodes array exists and has at least one element
+    if (!orderData.nodes || orderData.nodes.length === 0) {
+      throw new Error('Order data must include at least one node');
+    }
+
+    // Make sure all parameters are valid
+    const nodeAddress = orderData.nodes[0];
+    if (!nodeAddress || nodeAddress === ethers.ZeroAddress) {
+      throw new Error('Invalid node address');
+    }
+
+    console.log('Node address:', nodeAddress);
+    console.log('Wallet address:', currentWalletAddress);
+    console.log('Location data:', orderData.locationData);
+    console.log('Token quantity:', orderData.tokenQuantity);
+
+    const tx2 = await contract.orderJourneyCreation(
+      orderId,
+      nodeAddress,
+      currentWalletAddress,
+      orderData.locationData,
+      1n,
+      10n,
+      orderData.tokenQuantity,
+    );
+    const receipt2 = (await tx2.wait()) as ContractTransactionReceipt;
+    console.log('executed second tx', receipt2);
+    return receipt2;
   } catch (error) {
+    console.error('Error details:', error);
     handleContractError(error, 'make customer order');
   }
 };

@@ -303,8 +303,37 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    refreshDeliveries();
+    // Only attempt to fetch journeys if wallet is connected
+    const walletAddress = getWalletAddress();
+    if (walletAddress) {
+      console.log(
+        'Wallet connected, fetching deliveries for driver:',
+        walletAddress,
+      );
+      refreshDeliveries();
+    } else {
+      console.log('Wallet not connected yet, skipping initial delivery fetch');
+      setIsLoading(false);
+    }
   }, []);
+
+  // Add a listener for wallet connection changes
+  useEffect(() => {
+    const checkWalletInterval = setInterval(() => {
+      const walletAddress = getWalletAddress();
+      if (
+        walletAddress &&
+        !isLoading &&
+        myDeliveries.length === 0 &&
+        availableDeliveries.length === 0
+      ) {
+        console.log('Wallet now connected, fetching deliveries');
+        refreshDeliveries();
+      }
+    }, 2000); // Check every 2 seconds
+
+    return () => clearInterval(checkWalletInterval);
+  }, [isLoading, myDeliveries.length, availableDeliveries.length]);
 
   return (
     <DriverContext.Provider
