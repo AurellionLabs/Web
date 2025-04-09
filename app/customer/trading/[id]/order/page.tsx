@@ -142,7 +142,10 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   const success = await placeOrder({
                     id: asset.id,
                     nodeId: asset.nodeId,
-                    nodeName: asset.nodeName,
+                    nodeLocation: {
+                      lat: asset.nodeLocation.location.lat,
+                      lng: asset.nodeLocation.location.lng,
+                    },
                     assetClass: asset.assetClass,
                     quantity: data.quantity,
                     pricePerUnit: asset.pricePerUnit,
