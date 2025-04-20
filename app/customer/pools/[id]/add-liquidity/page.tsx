@@ -15,7 +15,7 @@ import {
   requestTokenAllowance,
   stake,
 } from '@/dapp-connectors/staking-controller';
-import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 import { toast } from 'react-hot-toast';
 
@@ -118,14 +118,14 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
       // First approve the token spend
       const allowanceTx = await requestTokenAllowance(
-        NEXT_PUBLIC_AURA_ADDRESS,
+        NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
         amountBigNumberish,
       );
       await allowanceTx.wait();
 
       // Then stake
       const stakeTx = await stake(
-        NEXT_PUBLIC_AURA_ADDRESS,
+        NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
         params.id,
         amountBigNumberish,
       );

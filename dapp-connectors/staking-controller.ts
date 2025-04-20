@@ -32,6 +32,7 @@ import {
   setWalletAddress,
   getProvider,
   getSigner,
+  getWalletAddress,
 } from './base-controller';
 
 export interface StakeData {
@@ -150,7 +151,7 @@ const getAuraContract = async (): Promise<Aura> =>
         );
 
       const contract = Aura__factory.connect(
-        NEXT_PUBLIC_AURA_ADDRESS,
+        NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
         getSigner(),
       );
       resolve(contract);
@@ -399,7 +400,7 @@ export const stake = async (
 };
 
 export const unlockReward = async (
-  token = NEXT_PUBLIC_AURA_ADDRESS,
+  token = NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
   operation: OperationData,
 ) => {
   const contract = await getAuStakeContract();

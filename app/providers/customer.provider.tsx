@@ -55,7 +55,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       // Map contract orders to CustomerOrder format
       const mappedOrders: CustomerOrder[] = contractOrders.map((order) => ({
         id: order.id,
-        asset: order.token,
+        asset: order.tokenId.toString(),
         quantity: Number(order.tokenQuantity),
         value: order.price.toString(),
         status: getOrderStatus(order.currentStatus),

@@ -1,13 +1,14 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuStake.sol": {
-      "lastModificationDate": 1738753992048,
-      "contentHash": "5a0173aad351dfdefab5778a6d82bfd3",
+    "/Users/dineth/Developer/side-projects/Web/contracts/AuStake.sol": {
+      "lastModificationDate": 1741132206131,
+      "contentHash": "4b765b8994e489e4385e37de637d0e85",
       "sourceName": "contracts/AuStake.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -42,13 +43,14 @@
         "AuStake"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/contracts/Aura.sol": {
-      "lastModificationDate": 1738705720252,
+    "/Users/dineth/Developer/side-projects/Web/contracts/Aura.sol": {
+      "lastModificationDate": 1741132206131,
       "contentHash": "6954f83f6c1d638877bc4bb6d46b82f7",
       "sourceName": "contracts/Aura.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -82,13 +84,14 @@
         "Aura"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol": {
-      "lastModificationDate": 1736734220458,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol": {
+      "lastModificationDate": 1740613738533,
       "contentHash": "1535f8c0c68463f8c1b5239f7584e71f",
       "sourceName": "@openzeppelin/contracts/security/ReentrancyGuard.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -118,13 +121,14 @@
         "ReentrancyGuard"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/access/Ownable.sol": {
-      "lastModificationDate": 1736734220456,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/access/Ownable.sol": {
+      "lastModificationDate": 1740613738486,
       "contentHash": "5a20b2cad87ddb61c7a3a6af21289e28",
       "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -156,13 +160,14 @@
         "Ownable"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
-      "lastModificationDate": 1736734220451,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+      "lastModificationDate": 1740613738297,
       "contentHash": "df36f7051335cd1e748b1b6463b7fdd3",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -192,13 +197,14 @@
         "IERC20"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/Context.sol": {
-      "lastModificationDate": 1736734220432,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/utils/Context.sol": {
+      "lastModificationDate": 1740613737818,
       "contentHash": "5f2c5c4b6af2dd4551027144797bc8be",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -228,13 +234,14 @@
         "Context"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
-      "lastModificationDate": 1736734220451,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
+      "lastModificationDate": 1740613738308,
       "contentHash": "909ab67fc5c25033fe6cd364f8c056f9",
       "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -266,13 +273,14 @@
         "IERC20Metadata"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuraGoatRed.sol": {
-      "lastModificationDate": 1738753016008,
+    "/Users/dineth/Developer/side-projects/Web/contracts/AuraGoatRed.sol": {
+      "lastModificationDate": 1741132206131,
       "contentHash": "5d8a09dfbdaa34ef6c1fd1bc2e2a278f",
       "sourceName": "contracts/AuraGoatRed.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -306,13 +314,14 @@
         "AuraGoatRed"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol": {
-      "lastModificationDate": 1736734220436,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol": {
+      "lastModificationDate": 1740613737948,
       "contentHash": "65c9d9c87e2b4df70e723819774a0482",
       "sourceName": "@openzeppelin/contracts/token/ERC1155/ERC1155.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -349,13 +358,14 @@
         "ERC1155"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/Address.sol": {
-      "lastModificationDate": 1736734220106,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/utils/Address.sol": {
+      "lastModificationDate": 1740613737779,
       "contentHash": "211ffd288c1588ba8c10eae668ca3c66",
       "sourceName": "@openzeppelin/contracts/utils/Address.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -385,13 +395,14 @@
         "Address"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol": {
-      "lastModificationDate": 1736734220438,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol": {
+      "lastModificationDate": 1740613737995,
       "contentHash": "0e7db055ce108f9da7bb6686a00287c0",
       "sourceName": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -423,13 +434,14 @@
         "ERC165"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol": {
-      "lastModificationDate": 1736734220449,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol": {
+      "lastModificationDate": 1740613738249,
       "contentHash": "9f8822b72fe2702979e40160cb6d9636",
       "sourceName": "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -461,13 +473,14 @@
         "IERC1155Receiver"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol": {
-      "lastModificationDate": 1736734220449,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol": {
+      "lastModificationDate": 1740613738237,
       "contentHash": "93aa9af4f5d2d2095a71ccde917038bb",
       "sourceName": "@openzeppelin/contracts/token/ERC1155/IERC1155.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -499,13 +512,14 @@
         "IERC1155"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol": {
-      "lastModificationDate": 1736734220449,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol": {
+      "lastModificationDate": 1740613738243,
       "contentHash": "9148c2e10c4efb12c71a7f080da5559b",
       "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -537,13 +551,14 @@
         "IERC1155MetadataURI"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol": {
-      "lastModificationDate": 1736734220450,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol": {
+      "lastModificationDate": 1740613738275,
       "contentHash": "03e6768535ac4da0e9756f1d8a4a018a",
       "sourceName": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -573,13 +588,14 @@
         "IERC165"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol": {
-      "lastModificationDate": 1736734220437,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol": {
+      "lastModificationDate": 1740613737984,
       "contentHash": "6a99607f60a77d468b7ed41303ea4a6c",
       "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -611,13 +627,14 @@
         "ERC1155Supply"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuraGoat.sol": {
-      "lastModificationDate": 1738705546471,
-      "contentHash": "a6e9705b4963cbbec7a17cf8b1933374",
+    "/Users/dineth/Developer/side-projects/Web/contracts/AuraGoat.sol": {
+      "lastModificationDate": 1741132206131,
+      "contentHash": "82084a7a8b8396cd81b44ecc0a4f2339",
       "sourceName": "contracts/AuraGoat.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -653,13 +670,14 @@
         "AuraGoat"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/contracts/Aurum.sol": {
-      "lastModificationDate": 1738704309830,
-      "contentHash": "ccbada26426be79873e3f7999b327603",
+    "/Users/dineth/Developer/side-projects/Web/contracts/Aurum.sol": {
+      "lastModificationDate": 1743029048701,
+      "contentHash": "05cb31805144830f8fb71d3210d9f1c4",
       "sourceName": "contracts/Aurum.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -684,7 +702,8 @@
       "imports": [
         "./Aura.sol",
         "./AuSys.sol",
-        "./AuraGoat.sol"
+        "./AuraGoat.sol",
+        "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol"
       ],
       "versionPragmas": [
         "0.8.28"
@@ -694,13 +713,14 @@
         "aurumNode"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol": {
-      "lastModificationDate": 1736734220437,
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol": {
+      "lastModificationDate": 1740613737959,
       "contentHash": "319ae047a2324eed34ea1d673e586059",
       "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -732,13 +752,14 @@
         "ERC1155Burnable"
       ]
     },
-    "/home/aurellius/Documents/AurellionWeb/Web/contracts/AuSys.sol": {
-      "lastModificationDate": 1738704280774,
-      "contentHash": "9f358353fb81f51d0573c1ef8a9c0bb2",
+    "/Users/dineth/Developer/side-projects/Web/contracts/AuSys.sol": {
+      "lastModificationDate": 1743029048700,
+      "contentHash": "138009a866123da1e3d2dd7605df2144",
       "sourceName": "contracts/AuSys.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -770,6 +791,85 @@
       ],
       "artifacts": [
         "locationContract"
+      ]
+    },
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol": {
+      "lastModificationDate": 1740613737968,
+      "contentHash": "88079762e28b246888129028f757e047",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./ERC1155Receiver.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ERC1155Holder"
+      ]
+    },
+    "/Users/dineth/Developer/side-projects/Web/node_modules/@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol": {
+      "lastModificationDate": 1740613737980,
+      "contentHash": "55b180cf664783e9a2baac20e82683fb",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../IERC1155Receiver.sol",
+        "../../../utils/introspection/ERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ERC1155Receiver"
       ]
     }
   }

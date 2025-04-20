@@ -14,6 +14,7 @@ import {
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { AddressLike } from 'ethers';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { calculateETA } from '../utils/maps';
 
 export type Location = {
   lat: string;
@@ -40,6 +41,7 @@ export interface Delivery {
   customer: string;
   fee: number;
   ETA: number;
+  deliveryETA: number;
   currentStatus: DeliveryStatus;
   parcelData: ParcelData;
 }
@@ -57,6 +59,19 @@ export interface DriverContextType {
 
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
 
+const calculateDeliveryETA = async (delivery: Delivery): Promise<Delivery> => {
+  try {
+    const deliveryETA = await calculateETA(
+      delivery.parcelData.startLocation,
+      delivery.parcelData.endLocation,
+    );
+    return { ...delivery, deliveryETA: deliveryETA };
+  } catch (error) {
+    // If ETA calculation fails, return -1
+    return { ...delivery, deliveryETA: -1 };
+  }
+};
+
 export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>(
     [],
@@ -69,7 +84,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     available: Delivery[];
     assigned: Delivery[];
   }> => {
-    const jounreys = await fetchAllJourneys();
+    const journeys = await fetchAllJourneys();
     const assigned = (await Promise.all(
       jounreys.map(async (journey) => {
         if (!journey) return null;
@@ -83,6 +98,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
             customer: journey.sender,
             fee: Number(journey.bounty) || 0,
             ETA: Number(journey.ETA) || 0,
+            deliveryETA: Number(journey.ETA) || 0,
             parcelData: journey.parcelData,
           } as Delivery;
         }
@@ -103,6 +119,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
             customer: journey.sender,
             fee: Number(journey.bounty) || 0,
             ETA: Number(journey.ETA) || 0,
+            deliveryETA: Number(journey.ETA) || 0,
             parcelData: journey.parcelData,
           };
         }

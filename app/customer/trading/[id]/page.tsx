@@ -55,7 +55,7 @@ type TimePeriod = (typeof TIME_PERIODS)[number]['value'];
 
 const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const { setCurrentUserRole, isWalletConnected } = useMainProvider();
-  const { assets, fetchAssets, isLoading, placeOrder } = useTrade();
+  const { assets } = useTrade();
   const [quantity, setQuantity] = useState<number>(1);
   const [deliveryLocation, setDeliveryLocation] = useState<string>('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -63,7 +63,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const router = useRouter();
 
-  const asset = assets.find((a) => a.id === params.id);
+  const asset = assets.find((a) => a.nodeId === params.id);
 
   // Generate mock price history data based on selected period
   const generatePriceHistory = () => {
@@ -183,48 +183,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
   const totalPrice = quantity * asset.pricePerUnit;
 
-  const handlePlaceOrder = async () => {
-    if (quantity <= 0) {
-      setError('Quantity must be greater than 0');
-      return;
-    }
-    if (quantity > asset.quantity) {
-      setError('Quantity exceeds available amount');
-      return;
-    }
-    if (!deliveryLocation) {
-      setError('Please specify a delivery location');
-      return;
-    }
-
-    setIsPlacingOrder(true);
-    setError('');
-
-    try {
-      const success = await placeOrder({
-        id: asset.id,
-        nodeId: asset.nodeId,
-        nodeName: asset.nodeName,
-        assetClass: asset.assetClass,
-        quantity,
-        pricePerUnit: asset.pricePerUnit,
-        totalValue: totalPrice,
-        deliveryLocation,
-      });
-
-      if (success) {
-        // TODO: Show success message and redirect
-        console.log('Order placed successfully');
-      } else {
-        setError('Failed to place order');
-      }
-    } catch (error) {
-      setError('An error occurred while placing the order');
-    } finally {
-      setIsPlacingOrder(false);
-    }
-  };
-
   return (
     <div
       className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
@@ -243,7 +201,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             Trading
           </Link>
           <span className="text-gray-600">/</span>
-          <span className="text-gray-400">{asset.nodeName}</span>
+          <span className="text-gray-400">
+            {asset.nodeLocation.addressName}
+          </span>
           <span className="text-gray-600">/</span>
           <span className="text-gray-400 capitalize">{asset.assetClass}</span>
         </div>
@@ -268,7 +228,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">
-                  {asset.nodeName}
+                  {asset.nodeLocation.addressName}
                 </h1>
                 <p className="text-gray-400 text-sm sm:text-base">
                   {asset.assetClass.charAt(0).toUpperCase() +
@@ -394,7 +354,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                   <div className="space-y-3">
                     <div>
                       <div className="text-sm text-gray-400">Name</div>
-                      <div className="font-medium">{asset.nodeName}</div>
+                      <div className="font-medium">
+                        {asset.nodeLocation.addressName}
+                      </div>
                     </div>
                     <div>
                       <div className="text-sm text-gray-400">ID</div>

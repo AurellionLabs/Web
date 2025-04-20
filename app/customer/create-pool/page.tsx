@@ -29,7 +29,7 @@ import {
   requestTokenAllowance,
 } from '@/dapp-connectors/staking-controller';
 import { toast } from 'sonner';
-import { NEXT_PUBLIC_AURA_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 
 const formSchema = z.object({
   name: z.string().min(3, {
@@ -97,7 +97,7 @@ export default function CreateOperationPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await requestTokenAllowance(NEXT_PUBLIC_AURA_ADDRESS);
+      await requestTokenAllowance(NEXT_PUBLIC_AURA_TOKEN_ADDRESS);
 
       // Convert decimal values to wei (18 decimals)
       const fundingGoalWei = ethers.parseUnits(values.fundingGoal, 18);

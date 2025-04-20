@@ -15,7 +15,7 @@ import {
 import { LocationContract } from '@/typechain-types';
 import {
   getAllNodeAssets,
-  loadAvailableAssets,
+  NodeLocationData,
 } from '@/dapp-connectors/aurum-controller';
 import { ethers } from 'ethers';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
@@ -24,7 +24,7 @@ import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 export interface TokenizedAsset {
   id: string;
   nodeId: string;
-  nodeName: string;
+  nodeLocation: NodeLocationData;
   assetClass: string;
   quantity: number;
   pricePerUnit: number;
@@ -76,7 +76,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
           pricePerUnit: priceInDollars,
           totalValue: priceInDollars * parseInt(asset.amount ?? '0'),
           nodeId: asset.nodeAddress ?? '',
-          nodeName: asset.nodeName ?? 'Unknown Node',
+          nodeLocation: asset.nodeLocation,
           assetClass: asset.name ?? 'Unknown Asset',
         };
       });
@@ -97,8 +97,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [fetchAssets]);
 
   const getAssetById = useCallback(
-    (id: string) => {
-      return assets.find((asset) => asset.id === id);
+    (nodeId: string) => {
+      return assets.find((asset) => asset.nodeId === nodeId);
     },
     [assets],
   );
@@ -136,7 +136,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         journeyIds: [],
         nodes: [orderData.nodeId],
         locationData: {
-          startLocation: { lat: '34.0522', lng: '-118.2437' },
+          startLocation: orderData.nodeLocation,
           endLocation: orderData.deliveryCoordinates || {
             lat: '40.7128',
             lng: '-74.0060',

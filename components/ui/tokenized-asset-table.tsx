@@ -2,17 +2,7 @@ import { colors } from '@/lib/constants/colors';
 import { Button } from './button';
 import { ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useTrade } from '@/app/providers/trade.provider';
-
-interface TokenizedAsset {
-  id: string;
-  nodeId: string;
-  nodeName: string;
-  assetClass: string;
-  quantity: number;
-  pricePerUnit: number;
-  totalValue: number;
-}
+import { TokenizedAsset } from '@/app/providers/trade.provider';
 
 type SortConfig = {
   key: 'quantity' | 'pricePerUnit' | 'totalValue' | null;
@@ -82,8 +72,8 @@ export function TokenizedAssetTable({
           <tbody>
             {assets.map((asset) => (
               <tr
-                key={asset.id}
-                onClick={() => router.push(`/customer/trading/${asset.id}`)}
+                key={asset.nodeId}
+                onClick={() => router.push(`/customer/trading/${asset.nodeId}`)}
                 className="border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition-colors"
               >
                 <td className="py-4 px-4">
