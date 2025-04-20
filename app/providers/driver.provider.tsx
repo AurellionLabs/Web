@@ -72,6 +72,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     const jounreys = await fetchAllJourneys();
     const assigned = (await Promise.all(
       jounreys.map(async (journey) => {
+        if (!journey) return null;
         const isAssigned = await checkIfDriverAssignedToJobId(
           journey.journeyId,
         );
@@ -91,6 +92,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     const available = await Promise.all(
       jounreys.map(async (journey) => {
+        if (!journey) return null;
         const isAssigned = await checkIfDriverAssignedToJobId(
           journey.journeyId,
         );
@@ -108,8 +110,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }),
     );
     return {
-      available: available.filter((delivery) => delivery !== null),
-      assigned: assigned.filter((delivery) => delivery !== null),
+      available: available.filter(
+        (delivery) => delivery !== null,
+      ) as Delivery[],
+      assigned: assigned.filter((delivery) => delivery !== null) as Delivery[],
     };
   };
 
@@ -133,16 +137,27 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       // Process journeys into deliveries
       const processedDeliveries = await Promise.all(
         journeys.map(async (journey) => {
+          if (!journey) return null;
           try {
             const orderId = await fetchOrderIdFromJourney(journey.journeyId);
             const order = await getOrder(orderId);
+            const isAssigned = await checkIfDriverAssignedToJobId(
+              journey.journeyId,
+            );
+
+            // If the journey is assigned but still showing as PENDING, treat it as ACCEPTED
+            const effectiveStatus =
+              isAssigned &&
+              Number(journey.currentStatus) === DeliveryStatus.PENDING
+                ? DeliveryStatus.ACCEPTED
+                : Number(journey.currentStatus);
 
             return {
               jobId: journey.journeyId,
               customer: order?.customer || '',
               fee: Number(journey.bounty),
               ETA: Number(journey.ETA),
-              currentStatus: Number(journey.currentStatus),
+              currentStatus: effectiveStatus,
               parcelData: journey.parcelData,
             };
           } catch (err) {
@@ -203,18 +218,19 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const acceptDelivery = async (jobId: string) => {
     try {
       setError(null);
+      setIsLoading(true);
+
+      // Assign the driver on the blockchain
       await assignDriverToJobId(jobId);
+
+      // Find the delivery in available deliveries
       const deliveryToAccept = availableDeliveries.find(
         (d) => d.jobId === jobId,
       );
       if (!deliveryToAccept) throw new Error('Delivery not found');
 
-      // Remove from available deliveries
-      setAvailableDeliveries((prev) =>
-        prev.filter((delivery) => delivery.jobId !== jobId),
-      );
-
-      // Add to my deliveries
+      // Update local state first for immediate feedback
+      setAvailableDeliveries((prev) => prev.filter((d) => d.jobId !== jobId));
       setMyDeliveries((prev) => [
         ...prev,
         {
@@ -222,11 +238,16 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
           currentStatus: DeliveryStatus.ACCEPTED,
         },
       ]);
+
+      // Then refresh from blockchain to ensure everything is in sync
+      await refreshDeliveries();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to accept delivery',
       );
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 
