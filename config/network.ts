@@ -1,4 +1,4 @@
-export const SUPPORTED_CHAINS = [42161, 11155111]; // Arbitrum One and Sepolia
+export const SUPPORTED_CHAINS = [42161, 11155111, 84532, 8453]; // Arbitrum One, Sepolia, Base Sepolia, and Base
 
 interface NetworkConfig {
   chainId: number;
@@ -34,5 +34,27 @@ export const NETWORK_CONFIGS: { [chainId: number]: NetworkConfig } = {
       decimals: 18,
     },
     blockExplorer: 'https://sepolia.etherscan.io',
+  },
+  84532: {
+    chainId: 84532,
+    name: 'Base Sepolia',
+    rpcUrl: 'https://sepolia.base.org',
+    currency: {
+      name: 'Base Sepolia Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    },
+    blockExplorer: 'https://sepolia.basescan.org',
+  },
+  8453: {
+    chainId: 8453,
+    name: 'Base',
+    rpcUrl: 'https://mainnet.base.org',
+    currency: {
+      name: 'Base Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    },
+    blockExplorer: 'https://basescan.org',
   },
 };
