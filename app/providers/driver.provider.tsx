@@ -15,6 +15,7 @@ import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { AddressLike } from 'ethers';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { calculateETA } from '../utils/maps';
+import { LocationContract } from '@/typechain-types';
 
 export type Location = {
   lat: string;
@@ -85,52 +86,66 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     assigned: Delivery[];
   }> => {
     const journeys = await fetchAllJourneys();
-    const assigned = (await Promise.all(
-      jounreys.map(async (journey) => {
-        if (!journey) return null;
-        const isAssigned = await checkIfDriverAssignedToJobId(
-          journey.journeyId,
-        );
-        if (isAssigned) {
-          return {
-            jobId: journey.journeyId,
-            currentStatus: Number(journey.currentStatus),
-            customer: journey.sender,
-            fee: Number(journey.bounty) || 0,
-            ETA: Number(journey.ETA) || 0,
-            deliveryETA: Number(journey.ETA) || 0,
-            parcelData: journey.parcelData,
-          } as Delivery;
-        }
-        return null;
-      }),
-    )) as (Delivery | null)[];
+    const assigned = await Promise.all(
+      journeys.map(
+        async (journey: LocationContract.JourneyStructOutput | null) => {
+          if (!journey) return null;
+          const isAssigned = await checkIfDriverAssignedToJobId(
+            journey.journeyId,
+          );
+          if (isAssigned) {
+            const deliveryETA = await calculateETA(
+              journey.parcelData.startLocation,
+              journey.parcelData.endLocation,
+            );
+            return {
+              jobId: journey.journeyId,
+              currentStatus: Number(journey.currentStatus),
+              customer: journey.sender,
+              fee: Number(journey.bounty) || 0,
+              ETA: Number(journey.ETA) || 0,
+              deliveryETA: deliveryETA,
+              parcelData: journey.parcelData,
+            } as Delivery;
+          }
+          return null;
+        },
+      ),
+    );
 
     const available = await Promise.all(
-      jounreys.map(async (journey) => {
-        if (!journey) return null;
-        const isAssigned = await checkIfDriverAssignedToJobId(
-          journey.journeyId,
-        );
-        if (!isAssigned) {
-          return {
-            jobId: journey.journeyId,
-            currentStatus: Number(journey.currentStatus),
-            customer: journey.sender,
-            fee: Number(journey.bounty) || 0,
-            ETA: Number(journey.ETA) || 0,
-            deliveryETA: Number(journey.ETA) || 0,
-            parcelData: journey.parcelData,
-          };
-        }
-        return null;
-      }),
+      journeys.map(
+        async (journey: LocationContract.JourneyStructOutput | null) => {
+          if (!journey) return null;
+          const isAssigned = await checkIfDriverAssignedToJobId(
+            journey.journeyId,
+          );
+          if (!isAssigned) {
+            const deliveryETA = await calculateETA(
+              journey.parcelData.startLocation,
+              journey.parcelData.endLocation,
+            );
+            return {
+              jobId: journey.journeyId,
+              currentStatus: Number(journey.currentStatus),
+              customer: journey.sender,
+              fee: Number(journey.bounty) || 0,
+              ETA: Number(journey.ETA) || 0,
+              deliveryETA: deliveryETA,
+              parcelData: journey.parcelData,
+            } as Delivery;
+          }
+          return null;
+        },
+      ),
     );
     return {
       available: available.filter(
-        (delivery) => delivery !== null,
-      ) as Delivery[],
-      assigned: assigned.filter((delivery) => delivery !== null) as Delivery[],
+        (delivery): delivery is Delivery => delivery !== null,
+      ),
+      assigned: assigned.filter(
+        (delivery): delivery is Delivery => delivery !== null,
+      ),
     };
   };
 
@@ -169,14 +184,20 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
                 ? DeliveryStatus.ACCEPTED
                 : Number(journey.currentStatus);
 
+            const deliveryETA = await calculateETA(
+              journey.parcelData.startLocation,
+              journey.parcelData.endLocation,
+            );
+
             return {
               jobId: journey.journeyId,
               customer: order?.customer || '',
               fee: Number(journey.bounty),
               ETA: Number(journey.ETA),
               currentStatus: effectiveStatus,
+              deliveryETA: deliveryETA,
               parcelData: journey.parcelData,
-            };
+            } as Delivery;
           } catch (err) {
             console.error(
               `Error processing journey ${journey.journeyId}:`,

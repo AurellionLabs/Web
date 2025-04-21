@@ -23,7 +23,8 @@ export type Order = {
   asset: string;
   quantity: number;
   value: string;
-  status: 'active' | 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  journeyId: string;
 };
 
 type NodeContextType = {
@@ -35,6 +36,7 @@ type NodeContextType = {
   loadNodes: () => Promise<void>;
   selectNode: (nodeAddress: string) => void;
   currentNodeData: NodeData | null;
+  refreshOrders: () => Promise<void>;
 };
 
 type NodeData = {
@@ -101,21 +103,12 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         setSelectedNode(nodeAddress);
         setCurrentNodeData({
           ...nodeData,
-          address: nodeAddress, // Add the address to match NodeData type
+          address: nodeAddress,
         });
 
-        // Update orders for the selected node
+        // Update orders for the selected node with full details
         const nodeOrders = await getNodeOrders(nodeAddress);
-        setOrders(
-          nodeOrders.map((id) => ({
-            id: id.toString(),
-            customer: '-',
-            asset: 'Asset #' + id,
-            quantity: 0,
-            value: '0',
-            status: 'pending' as const,
-          })),
-        );
+        setOrders(nodeOrders);
 
         // Update node status
         const status = await getNodeStatus(nodeAddress);
@@ -133,6 +126,17 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     [router],
   );
 
+  const refreshOrders = useCallback(async () => {
+    if (selectedNode) {
+      try {
+        const nodeOrders = await getNodeOrders(selectedNode);
+        setOrders(nodeOrders);
+      } catch (error) {
+        console.error('Error refreshing orders:', error);
+      }
+    }
+  }, [selectedNode]);
+
   const value = {
     orders,
     isRegisteredNode,
@@ -142,6 +146,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     loadNodes,
     selectNode,
     currentNodeData,
+    refreshOrders,
   };
 
   return <NodeContext.Provider value={value}>{children}</NodeContext.Provider>;

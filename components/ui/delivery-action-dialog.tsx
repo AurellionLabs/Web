@@ -15,6 +15,8 @@ import {
   Clock,
   Package,
   Truck,
+  Loader2,
+  User,
 } from 'lucide-react';
 import { Delivery } from '@/app/providers/driver.provider';
 import { useState } from 'react';
@@ -23,6 +25,9 @@ interface DeliveryActionDialogProps {
   delivery: Delivery;
   onConfirm: (jobId: string) => Promise<void>;
   variant: 'accept' | 'pickup' | 'complete';
+  isLoading?: boolean;
+  isWaitingForSignature?: boolean;
+  waitingForRole?: 'driver' | 'customer';
 }
 
 interface ActionConfig {
@@ -35,6 +40,8 @@ interface ActionConfig {
   triggerText: string;
   confirmationMessage: string;
   accentColor: string;
+  waitingForDriverText: string;
+  waitingForCustomerText: string;
 }
 
 const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
@@ -49,6 +56,8 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     confirmationMessage:
       'By accepting this delivery, you commit to picking up and delivering the parcel according to the specified locations and timeline.',
     accentColor: 'text-amber-500',
+    waitingForDriverText: 'Waiting for driver to sign...',
+    waitingForCustomerText: 'Waiting for customer to sign...',
   },
   pickup: {
     title: 'Confirm Parcel Pickup',
@@ -62,6 +71,8 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     confirmationMessage:
       'By confirming pickup, you acknowledge that you have received the parcel and will deliver it to the specified destination.',
     accentColor: 'text-blue-500',
+    waitingForDriverText: 'Waiting for driver to sign...',
+    waitingForCustomerText: 'Waiting for customer to sign...',
   },
   complete: {
     title: 'Confirm Parcel Delivery',
@@ -75,6 +86,8 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     confirmationMessage:
       'By confirming delivery, you certify that you have successfully delivered the parcel to the specified destination.',
     accentColor: 'text-green-500',
+    waitingForDriverText: 'Waiting for driver to sign...',
+    waitingForCustomerText: 'Waiting for customer to sign...',
   },
 };
 
@@ -82,19 +95,55 @@ export function DeliveryActionDialog({
   delivery,
   onConfirm,
   variant,
+  isLoading = false,
+  isWaitingForSignature = false,
+  waitingForRole,
 }: DeliveryActionDialogProps) {
   const [open, setOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const config = ACTION_CONFIGS[variant];
 
   const handleConfirm = async () => {
-    await onConfirm(delivery.jobId);
-    setOpen(false);
+    try {
+      setIsConfirming(true);
+      await onConfirm(delivery.jobId);
+      setOpen(false);
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  // Determine the waiting message based on the role
+  const getWaitingMessage = () => {
+    if (waitingForRole === 'driver') {
+      return config.waitingForDriverText;
+    } else if (waitingForRole === 'customer') {
+      return config.waitingForCustomerText;
+    }
+    return 'Waiting for signature...';
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className={config.buttonStyle}>{config.triggerText}</Button>
+        <Button
+          className={config.buttonStyle}
+          disabled={isLoading || isWaitingForSignature}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : isWaitingForSignature ? (
+            <>
+              <User className="mr-2 h-4 w-4" />
+              {getWaitingMessage()}
+            </>
+          ) : (
+            config.triggerText
+          )}
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader className="space-y-3 pb-6">
@@ -181,6 +230,7 @@ export function DeliveryActionDialog({
             variant="ghost"
             className="w-full"
             onClick={() => setOpen(false)}
+            disabled={isConfirming || isWaitingForSignature}
           >
             {config.cancelText}
           </Button>
@@ -188,8 +238,21 @@ export function DeliveryActionDialog({
             type="submit"
             className={`w-full ${config.buttonStyle}`}
             onClick={handleConfirm}
+            disabled={isConfirming || isWaitingForSignature}
           >
-            {config.confirmText}
+            {isConfirming ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : isWaitingForSignature ? (
+              <>
+                <User className="mr-2 h-4 w-4" />
+                {getWaitingMessage()}
+              </>
+            ) : (
+              config.confirmText
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

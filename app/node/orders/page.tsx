@@ -24,6 +24,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ArrowUpDown,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNode, type Order } from '@/app/providers/node.provider';
@@ -52,20 +53,42 @@ type SortConfig = {
 
 export default function OrdersPage() {
   const { setCurrentUserRole } = useMainProvider();
-  const { orders } = useNode();
+  const { orders, refreshOrders } = useNode();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setCurrentUserRole('node');
   }, [setCurrentUserRole]);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshOrders();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <OrdersContent orders={orders} />
+      <OrdersContent
+        orders={orders}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+      />
     </Suspense>
   );
 }
 
-function OrdersContent({ orders }: { orders: Order[] }) {
+function OrdersContent({
+  orders,
+  onRefresh,
+  isRefreshing,
+}: {
+  orders: Order[];
+  onRefresh: () => Promise<void>;
+  isRefreshing: boolean;
+}) {
   const searchParams = useSearchParams();
   const [filteredOrders, setFilteredOrders] = useState<Order[]>(orders);
   const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
@@ -152,6 +175,19 @@ function OrdersContent({ orders }: { orders: Order[] }) {
     <div className="container mx-auto py-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-bold">Orders</h1>
+        <Button variant="outline" onClick={onRefresh} disabled={isRefreshing}>
+          {isRefreshing ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh Orders
+            </>
+          )}
+        </Button>
       </div>
 
       <Card>

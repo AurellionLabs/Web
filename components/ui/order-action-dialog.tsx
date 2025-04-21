@@ -8,14 +8,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { CheckCircle2, XCircle } from 'lucide-react';
-import { CustomerOrder } from '@/app/providers/customer.provider';
+import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
+import { CustomerOrder } from '@/types';
 import { useState } from 'react';
 
 interface OrderActionDialogProps {
   order: CustomerOrder;
   onConfirm: (orderId: string) => Promise<void>;
-  variant: 'cancel' | 'confirm';
+  variant: 'cancel' | 'confirm' | 'pickup';
+  isLoading?: boolean;
+  isWaitingForSignature?: boolean;
+  waitingForRole?: 'driver' | 'customer';
 }
 
 interface ActionConfig {
@@ -27,9 +30,11 @@ interface ActionConfig {
   buttonVariant: 'destructive' | 'default';
   buttonStyle: string;
   triggerText: string;
+  waitingForDriverText: string;
+  waitingForCustomerText: string;
 }
 
-const ACTION_CONFIGS: Record<'cancel' | 'confirm', ActionConfig> = {
+const ACTION_CONFIGS: Record<'cancel' | 'confirm' | 'pickup', ActionConfig> = {
   cancel: {
     title: 'Cancel Order',
     description: 'Please review the order details below before cancelling.',
@@ -39,6 +44,21 @@ const ACTION_CONFIGS: Record<'cancel' | 'confirm', ActionConfig> = {
     buttonVariant: 'destructive',
     buttonStyle: 'w-32',
     triggerText: 'Cancel Order',
+    waitingForDriverText: 'Waiting for driver to sign...',
+    waitingForCustomerText: 'Waiting for customer to sign...',
+  },
+  pickup: {
+    title: 'Confirm Package Pickup',
+    description:
+      'Please review and sign to confirm the driver can pick up your package.',
+    icon: <Package className="h-6 w-6 text-amber-500" />,
+    confirmText: 'Sign for Pickup',
+    cancelText: 'Cancel',
+    buttonVariant: 'default',
+    buttonStyle: 'w-32 bg-amber-500 hover:bg-amber-600',
+    triggerText: 'Sign for Pickup',
+    waitingForDriverText: 'Waiting for driver signature...',
+    waitingForCustomerText: 'Waiting for your signature...',
   },
   confirm: {
     title: 'Confirm Order Receipt',
@@ -50,6 +70,8 @@ const ACTION_CONFIGS: Record<'cancel' | 'confirm', ActionConfig> = {
     buttonVariant: 'default',
     buttonStyle: 'w-32 bg-green-500 hover:bg-green-600',
     triggerText: 'Confirm Receipt',
+    waitingForDriverText: 'Waiting for driver to sign...',
+    waitingForCustomerText: 'Waiting for customer to sign...',
   },
 };
 
@@ -57,17 +79,33 @@ export function OrderActionDialog({
   order,
   onConfirm,
   variant,
+  isLoading = false,
+  isWaitingForSignature = false,
+  waitingForRole,
 }: OrderActionDialogProps) {
   const [open, setOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const config = ACTION_CONFIGS[variant];
   const confirmationMessage =
     variant === 'cancel'
       ? 'Are you sure you want to cancel this order?'
       : 'By confirming receipt, you acknowledge that you have received the order in good condition.';
 
+  const getWaitingMessage = () => {
+    if (!waitingForRole) return '';
+    return waitingForRole === 'driver'
+      ? config.waitingForDriverText
+      : config.waitingForCustomerText;
+  };
+
   const handleConfirm = async () => {
-    await onConfirm(order.id);
-    setOpen(false);
+    setIsConfirming(true);
+    try {
+      await onConfirm(order.id);
+      setOpen(false);
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   return (
@@ -77,8 +115,21 @@ export function OrderActionDialog({
           variant={config.buttonVariant}
           size="sm"
           className={config.buttonStyle}
+          disabled={isLoading || isWaitingForSignature}
         >
-          {config.triggerText}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : isWaitingForSignature ? (
+            <>
+              <User className="mr-2 h-4 w-4" />
+              {getWaitingMessage()}
+            </>
+          ) : (
+            config.triggerText
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
@@ -138,6 +189,7 @@ export function OrderActionDialog({
             variant="ghost"
             className="w-full"
             onClick={() => setOpen(false)}
+            disabled={isConfirming || isWaitingForSignature}
           >
             {config.cancelText}
           </Button>
@@ -146,8 +198,21 @@ export function OrderActionDialog({
             variant={config.buttonVariant}
             className={`w-full ${variant === 'confirm' ? 'bg-green-500 hover:bg-green-600' : ''}`}
             onClick={handleConfirm}
+            disabled={isConfirming || isWaitingForSignature}
           >
-            {config.confirmText}
+            {isConfirming ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : isWaitingForSignature ? (
+              <>
+                <User className="mr-2 h-4 w-4" />
+                {getWaitingMessage()}
+              </>
+            ) : (
+              config.confirmText
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -20,7 +20,7 @@ export type CustomerOrder = {
   asset: string;
   quantity: number;
   value: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
   timestamp: number;
   deliveryLocation?: string;
 };
@@ -272,15 +272,17 @@ const mockOrders: CustomerOrder[] = [
 // Add this helper function
 function getOrderStatus(
   status: bigint,
-): 'pending' | 'in_progress' | 'completed' | 'cancelled' {
+): 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' {
   switch (Number(status)) {
-    case 0:
+    case 0: // PENDING
       return 'pending';
-    case 1:
+    case 1: // ACCEPTED
+      return 'accepted';
+    case 2: // PICKED_UP/IN_PROGRESS
       return 'in_progress';
-    case 2:
+    case 3: // COMPLETED
       return 'completed';
-    case 3:
+    case 4: // CANCELED
       return 'cancelled';
     default:
       return 'pending';

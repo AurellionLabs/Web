@@ -134,7 +134,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         txFee: BigInt(0),
         customer: walletAddress,
         journeyIds: [],
-        nodes: [orderData.nodeId],
+        nodes: [ethers.getAddress(orderData.nodeId)], // Ensure nodeId is a valid Ethereum address
         locationData: {
           startLocation: orderData.nodeLocation,
           endLocation: orderData.deliveryCoordinates || {

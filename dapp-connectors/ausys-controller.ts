@@ -13,7 +13,6 @@ import {
   signer,
   getWalletAddress,
   handleContractError,
-  walletAddress,
 } from './base-controller';
 
 export enum Status {
@@ -23,7 +22,7 @@ export enum Status {
   CANCELED = 3,
 }
 
-const getAusysContract = async (): Promise<LocationContract> => {
+export const getAusysContract = async (): Promise<LocationContract> => {
   if (!NEXT_PUBLIC_AUSYS_ADDRESS) {
     throw new Error('NEXT_PUBLIC_AUSYS_ADDRESS is undefined');
   }
@@ -91,9 +90,18 @@ export const customerPackageSign = async (journeyId: string) => {
   try {
     const contract = await getAusysContract();
     const journey = await contract.journeyIdToJourney(journeyId);
+
+    // Check if the current user is the receiver of the journey
+    const currentUser = getWalletAddress();
+    if (journey.receiver.toLowerCase() !== currentUser.toLowerCase()) {
+      throw new Error(
+        'Customer can only sign for the final leg of the journey',
+      );
+    }
+
     const tx = await contract.packageSign(
       journey.driver,
-      getWalletAddress(),
+      currentUser,
       journeyId,
     );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
@@ -109,7 +117,7 @@ export const driverPackageSign = async (journeyId: string) => {
     const journey = await contract.journeyIdToJourney(journeyId);
     const tx = await contract.packageSign(
       getWalletAddress(),
-      journey.receiver,
+      journey.sender,
       journeyId,
     );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
@@ -156,51 +164,36 @@ export const fetchCustomerJobs = async () => {
 export const fetchAllJourneys = async () => {
   try {
     const contract = await getAusysContract();
+    const orders = await getOrders();
+    console.log('Found orders:', orders);
 
-    // Try first using the fetchAllJourneyIds approach
-    const journeyIds = await fetchAllJourneyIds();
-    console.log('Found journey IDs:', journeyIds);
-
-    if (journeyIds.length === 0) {
-      console.log(
-        'No journeys found via numberToJourneyID, trying to get from orders...',
-      );
-
-      // If no journeys found, try getting from orders
-      const orders = await getOrders();
-      console.log('Found orders:', orders);
-
-      // Collect all journeyIds from orders
-      const journeyIdsFromOrders: string[] = [];
-      for (const order of orders) {
-        if (order.journeyIds && order.journeyIds.length > 0) {
-          journeyIdsFromOrders.push(...order.journeyIds);
-        }
+    // Get unique journey IDs from orders
+    const journeyIdsFromOrders = new Set<string>();
+    for (const order of orders) {
+      if (order.journeyIds && order.journeyIds.length > 0) {
+        order.journeyIds.forEach((id) => journeyIdsFromOrders.add(id));
       }
-
-      console.log('Journey IDs from orders:', journeyIdsFromOrders);
-
-      // Get journey details
-      const journeysFromOrders = await Promise.all(
-        journeyIdsFromOrders.map(async (journeyId) => {
-          try {
-            return await contract.journeyIdToJourney(journeyId);
-          } catch (err) {
-            console.error(`Error fetching journey ${journeyId}:`, err);
-            return null;
-          }
-        }),
-      );
-
-      // Filter out null journeys
-      return journeysFromOrders.filter((journey) => journey !== null);
     }
 
-    // Get journey details using original approach
+    console.log(
+      'Unique journey IDs from orders:',
+      Array.from(journeyIdsFromOrders),
+    );
+
+    // Get journey details
     const journeys = await Promise.all(
-      journeyIds.map(async (journeyId) => {
+      Array.from(journeyIdsFromOrders).map(async (journeyId) => {
         try {
           const journey = await contract.journeyIdToJourney(journeyId);
+          // Validate journey has required fields
+          if (
+            !journey ||
+            !journey.journeyId ||
+            journey.journeyId === ethers.ZeroAddress
+          ) {
+            console.log(`Invalid journey for ID ${journeyId}, skipping`);
+            return null;
+          }
           return journey;
         } catch (err) {
           console.error(`Error fetching journey ${journeyId}:`, err);
@@ -209,7 +202,27 @@ export const fetchAllJourneys = async () => {
       }),
     );
 
-    return journeys.filter((journey) => journey !== null);
+    // Filter out null journeys and validate required fields
+    const validJourneys = journeys.filter(
+      (journey): journey is LocationContract.JourneyStructOutput => {
+        if (!journey) return false;
+        const hasRequiredFields =
+          journey.journeyId &&
+          journey.parcelData &&
+          journey.parcelData.startLocation &&
+          journey.parcelData.endLocation;
+        if (!hasRequiredFields) {
+          console.log(
+            `Journey ${journey.journeyId} missing required fields, skipping`,
+          );
+          return false;
+        }
+        return true;
+      },
+    );
+
+    console.log(`Found ${validJourneys.length} valid journeys`);
+    return validJourneys;
   } catch (error) {
     console.error('Error in fetchAllJourneys:', error);
     return [];
@@ -375,63 +388,48 @@ export const packageHandOff = async (
   }
 };
 
-export const customerMakeOrder = async (
+export async function customerMakeOrder(
   orderData: LocationContract.OrderStruct,
-) => {
-  const contract = await getAusysContract();
+) {
   try {
-    // Get the wallet address first
-    const currentWalletAddress = getWalletAddress();
-    if (!currentWalletAddress) {
-      throw new Error('Wallet not connected or address not available');
-    }
+    const walletAddress = await getWalletAddress();
+    if (!walletAddress) throw new Error('Wallet not connected');
 
-    // Call orderCreation and get the transaction
-    const txResponse = await contract.orderCreation.staticCall(orderData);
-    console.log('Static call result (orderId):', txResponse);
-
-    // Now execute the actual transaction
-    const tx = await contract.orderCreation(orderData);
-    await tx.wait();
-
-    // Use the orderId we got from the static call
-    const orderId = txResponse;
-
-    console.log('creating first journey with orderId:', orderId);
-
-    // Check if nodes array exists and has at least one element
+    // Validate node address
     if (!orderData.nodes || orderData.nodes.length === 0) {
-      throw new Error('Order data must include at least one node');
+      throw new Error('No node address provided');
     }
 
-    // Make sure all parameters are valid
-    const nodeAddress = orderData.nodes[0];
-    if (!nodeAddress || nodeAddress === ethers.ZeroAddress) {
+    // Ensure node address is valid
+    const nodeAddress = ethers.getAddress(String(orderData.nodes[0]));
+    if (!nodeAddress) {
       throw new Error('Invalid node address');
     }
 
-    console.log('Node address:', nodeAddress);
-    console.log('Wallet address:', currentWalletAddress);
-    console.log('Location data:', orderData.locationData);
-    console.log('Token quantity:', orderData.tokenQuantity);
+    // Make static call to orderCreation
+    const contract = await getAusysContract();
+    const result = await contract.orderCreation.staticCall(orderData);
+    console.log('Order creation result:', result);
 
-    const tx2 = await contract.orderJourneyCreation(
-      orderId,
+    // Execute the transaction
+    const tx = await contract.orderJourneyCreation(
+      orderData.id,
+      walletAddress,
       nodeAddress,
-      currentWalletAddress,
       orderData.locationData,
-      1n,
-      10n,
+      orderData.price,
+      orderData.txFee,
       orderData.tokenQuantity,
     );
-    const receipt2 = (await tx2.wait()) as ContractTransactionReceipt;
-    console.log('executed second tx', receipt2);
-    return receipt2;
+    const receipt = await tx.wait();
+    console.log('Order creation transaction:', receipt);
+
+    return receipt;
   } catch (error) {
-    console.error('Error details:', error);
-    handleContractError(error, 'make customer order');
+    console.error('Error in customerMakeOrder:', error);
+    throw error;
   }
-};
+}
 
 export const addReceiver = async (
   orderId: BytesLike,

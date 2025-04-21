@@ -1,89 +1,91 @@
-import { ethers } from 'ethers';
-// import { getSigner } from './wallet-utils';
-// import { REACT_APP_AUSYS_CONTRACT_ADDRESS, REACT_APP_AURA_CONTRACT_ADDRESS } from '@env';
+import { BrowserProvider, Contract } from 'ethers';
+import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
+import { AUSYS_ABI } from '@/lib/constants/contracts';
+import { getWalletAddress } from './base-controller';
 
-const contractABI = require('./aurellion-abi.json');
-export async function listenForSignature(jobID: string): Promise<boolean> {
-  try {
-    const signer = await getSigner();
-    if (!signer) {
-      throw new Error('Signer is undefined');
-    }
-    const signerAddr = await signer.getAddress();
-    const contract = new ethers.Contract(
-      REACT_APP_AUSYS_CONTRACT_ADDRESS,
-      contractABI,
-      signer,
-    );
-    const journey = await contract.jobIdToJourney(jobID);
-    let driverSig;
-    let customerSig;
-    let recieverSig;
-    let sigCount = 0;
-    try {
-      customerSig = await contract.customerHandOff(journey.customer, jobID);
-      if (customerSig) sigCount += 1;
-    } catch (e) {
-      console.log(await customerSig);
-      console.log(journey.customer);
-      console.error('Error when trying to fetch customer hand off:', e);
-    }
-    try {
-      driverSig = await contract.driverHandOn(journey.driver, jobID);
-      if (driverSig) sigCount += 1;
-    } catch (e) {
-      console.log(driverSig);
-      console.log(journey.driver);
-      console.error('Error when trying to fetch driver hand on:', e);
-    }
-    if (driverSig && customerSig == true) {
-      return true;
-    } else {
-      // Wrapping the event listener in a Promise to allow awaiting on a specific condition/event.
-      return new Promise((resolve, reject) => {
-        console.log('Listening...');
-        console.log(sigCount);
-        var prevSig: string;
-        prevSig = signerAddr;
-        const filteredSigs = contract.filters.emitSig(null, jobID);
-        console.log('filteredSigs');
-        const timeout = setTimeout(() => {
-          contract.off(filteredSigs, handler); // Stop listening to prevent memory leaks
-          reject(
-            new Error(
-              'Timeout: No signature detected within the specified time.',
-            ),
-          );
-        }, 120000);
+export type SignatureListenerOptions = {
+  timeout?: number;
+  onSignature?: (user: string, id: string) => void;
+  onTimeout?: () => void;
+  onError?: (error: Error) => void;
+};
 
-        const handler = (address: string, id: string) => {
-          console.log(jobID);
-          console.log('id', id);
-          console.log('address', address);
-          if (id === jobID) {
-            console.log('job id matches', jobID);
-            console.log('prevSig', prevSig);
-            if (prevSig !== address) {
-              console.log(`Signature detected! From: ${address}, jobID: ${id}`);
-              sigCount += 1;
-              prevSig = address;
-              if (sigCount >= 2) {
-                // Define your condition to resolve
-                contract.off(filteredSigs, handler); // Remove listener once done
-                clearTimeout(timeout);
-                resolve(true);
-              }
-            }
-          } else {
-            console.log('No signature detected yet...');
-          }
-        };
-        contract.on(filteredSigs, handler);
-        console.log('Listening...');
-      });
-    }
-  } catch (e) {
-    console.log('Failed listening to events:', e);
-    return false;
+export async function setupSignatureListener(
+  options: SignatureListenerOptions = {},
+) {
+  const {
+    timeout = 5 * 60 * 1000, // 5 minutes default
+    onSignature,
+    onTimeout,
+    onError,
+  } = options;
+
+  if (typeof window === 'undefined' || !window.ethereum) {
+    throw new Error('Ethereum provider not found');
   }
+
+  try {
+    const provider = new BrowserProvider(window.ethereum as any);
+    const contract = new Contract(
+      NEXT_PUBLIC_AUSYS_ADDRESS,
+      AUSYS_ABI,
+      provider,
+    );
+    const filter = contract.filters.emitSig();
+
+    const handleSignatureEvent = async (user: string, id: string) => {
+      const customerAddress = getWalletAddress();
+      if (user.toLowerCase() !== customerAddress.toLowerCase()) {
+        onSignature?.(user, id);
+      }
+    };
+
+    contract.on(filter, handleSignatureEvent);
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      contract.off(filter, handleSignatureEvent);
+      onTimeout?.();
+    }, timeout);
+
+    // Return cleanup function
+    return () => {
+      contract.off(filter, handleSignatureEvent);
+      clearTimeout(timeoutId);
+    };
+  } catch (error) {
+    console.error('Error setting up event listener:', error);
+    onError?.(error instanceof Error ? error : new Error('Unknown error'));
+    throw error;
+  }
+}
+
+// Legacy function for backward compatibility
+export async function listenForSignature(jobID: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    let cleanup: (() => void) | undefined;
+
+    setupSignatureListener({
+      onSignature: (user, id) => {
+        if (id === jobID) {
+          cleanup?.();
+          resolve(true);
+        }
+      },
+      onTimeout: () => {
+        reject(
+          new Error(
+            'Timeout: No signature detected within the specified time.',
+          ),
+        );
+      },
+      onError: (error) => {
+        reject(error);
+      },
+    })
+      .then((cleanupFn) => {
+        cleanup = cleanupFn;
+      })
+      .catch(reject);
+  });
 }

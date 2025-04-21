@@ -40,6 +40,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeliveryActionDialog } from '@/components/ui/delivery-action-dialog';
+import { setupSignatureListener } from '@/dapp-connectors/dapp-listener';
 
 type TabType = 'available' | 'my-deliveries';
 
@@ -56,6 +57,12 @@ export default function DriverDashboard() {
     confirmPickup,
   } = useDriver();
   const [activeTab, setActiveTab] = useState<TabType>('available');
+  const [waitingForSignature, setWaitingForSignature] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [signatureCleanups, setSignatureCleanups] = useState<{
+    [key: string]: () => void;
+  }>({});
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -173,35 +180,96 @@ export default function DriverDashboard() {
 
   const handlePickupDelivery = async (jobId: string) => {
     try {
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
       await confirmPickup(jobId);
-      toast({
-        title: 'Pickup Confirmed',
-        description: 'You have confirmed picking up the parcel.',
+
+      const cleanup = await setupSignatureListener({
+        onSignature: async (user, id) => {
+          if (id === jobId) {
+            setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+            await refreshDeliveries();
+            toast({
+              title: 'Signature Received',
+              description: 'The customer has signed the pickup confirmation.',
+            });
+          }
+        },
+        onTimeout: () => {
+          setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+          toast({
+            title: 'Signature Timeout',
+            description:
+              'The customer did not sign within the time limit. Please try again.',
+            variant: 'destructive',
+          });
+        },
+        onError: (error) => {
+          console.error('Error in signature listener:', error);
+          setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+          toast({
+            title: 'Error',
+            description: 'Failed to confirm pickup. Please try again.',
+            variant: 'destructive',
+          });
+        },
       });
+
+      // Store cleanup function
+      setSignatureCleanups((prev) => ({
+        ...prev,
+        [jobId]: cleanup,
+      }));
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to confirm pickup. Please try again.',
-        variant: 'destructive',
-      });
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+      if (
+        err instanceof Error &&
+        err.message.includes('wait for customer to sign')
+      ) {
+        // Keep the waiting state active if we're waiting for customer signature
+        setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to confirm pickup. Please try again.',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
   const handleCompleteDelivery = async (jobId: string) => {
     try {
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
       await completeDelivery(jobId);
       toast({
         title: 'Delivery Confirmed',
         description: 'You have successfully delivered the parcel.',
       });
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to confirm delivery. Please try again.',
-        variant: 'destructive',
-      });
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+      if (
+        err instanceof Error &&
+        err.message.includes('wait for customer to sign')
+      ) {
+        // Keep the waiting state active if we're waiting for customer signature
+        setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to confirm delivery. Please try again.',
+          variant: 'destructive',
+        });
+      }
     }
   };
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      Object.values(signatureCleanups).forEach((cleanup) => cleanup());
+    };
+  }, [signatureCleanups]);
 
   if (isLoading) {
     return (
@@ -316,6 +384,7 @@ export default function DriverDashboard() {
                   delivery={delivery}
                   onConfirm={handleAcceptDelivery}
                   variant="accept"
+                  isLoading={isLoading}
                 />
               )}
               {delivery.currentStatus === DeliveryStatus.ACCEPTED && (
@@ -323,6 +392,9 @@ export default function DriverDashboard() {
                   delivery={delivery}
                   onConfirm={handlePickupDelivery}
                   variant="pickup"
+                  isLoading={isLoading}
+                  isWaitingForSignature={waitingForSignature[delivery.jobId]}
+                  waitingForRole="customer"
                 />
               )}
               {delivery.currentStatus === DeliveryStatus.PICKED_UP && (
@@ -330,13 +402,10 @@ export default function DriverDashboard() {
                   delivery={delivery}
                   onConfirm={handleCompleteDelivery}
                   variant="complete"
+                  isLoading={isLoading}
+                  isWaitingForSignature={waitingForSignature[delivery.jobId]}
+                  waitingForRole="customer"
                 />
-              )}
-              {delivery.currentStatus === DeliveryStatus.COMPLETED && (
-                <div className="flex items-center gap-2 text-green-500">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="text-sm">Completed</span>
-                </div>
               )}
             </>
           </div>
