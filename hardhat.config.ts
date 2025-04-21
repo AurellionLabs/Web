@@ -34,6 +34,12 @@ const config: HardhatUserConfig = {
         ? [process.env.ARB_PRIVATE_KEY]
         : [],
     },
+    baseTest: {
+      url: process.env.BASE_TEST_RPC_URL || '',
+      accounts: process.env.SEP_PRIVATE_KEY
+        ? [process.env.SEP_PRIVATE_KEY]
+        : [],
+    },
   },
 };
 
