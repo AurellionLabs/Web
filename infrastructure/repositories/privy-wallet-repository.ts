@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { useWallets, usePrivy } from '@privy-io/react-auth';
-import { IWalletRepository } from '@/domain/repositories/wallet-repository';
+import { IWalletRepository } from '@/domain/wallet';
 import { Wallet, WalletState } from '@/domain/models/wallet';
 import { handleContractError } from '@/utils/error-handler';
 
