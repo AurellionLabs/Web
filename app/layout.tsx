@@ -7,7 +7,7 @@ import { ClientLayout } from '@/app/components/layout/client-layout';
 import { TradeProvider } from './providers/trade.provider';
 import { CustomerProvider } from './providers/customer.provider';
 import { DriverProvider } from './providers/driver.provider';
-import { RepositoryProvider } from '@/components/providers/RepositoryProvider';
+import { RepositoryProvider } from './providers/RepositoryProvider';
 import { PrivyProviderWrapper } from './providers/privy.provider';
 
 const inter = Inter({ subsets: ['latin'] });

@@ -1,54 +1,56 @@
 'use client'; // This marks it as a Client Component
 
 import { colors } from '@/lib/constants/colors';
-import { setWalletProvider } from '@/dapp-connectors/staking-controller';
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { usePrivy } from '@privy-io/react-auth';
+import { useWallet } from '@/hooks/useWallet';
 
 export default function ConnectButton() {
-  const [connectedText, setConnectedText] = useState('Connect');
-  const { connected, setIsWalletConnected } = useMainProvider();
-  const { ready } = usePrivy();
-
-  useEffect(() => {
-    if (ready && connected) {
-      setConnectedText('Connected');
-    }
-  }, [ready, connected]);
+  const { connected: isMainProviderConnected, setIsWalletConnected } =
+    useMainProvider();
+  const { ready, authenticated } = usePrivy();
+  const {
+    connect: connectWallet,
+    isConnected: isWalletHookConnected,
+    isLoading,
+  } = useWallet();
 
   const handleConnect = async () => {
     if (!ready) {
       console.log('Privy is not ready yet');
       return;
     }
-
-    try {
-      const response = await setWalletProvider();
-      if (response.success) {
-        console.log('Connected with address:', response.address);
-        setIsWalletConnected(true);
-        setConnectedText('Connected');
-      } else {
-        console.error('Connection failed:', response.error);
+    if (!authenticated) {
+      try {
+        console.log('Calling connectWallet (privy.login)...');
+        await connectWallet();
+        console.log('connectWallet finished.');
+      } catch (error) {
+        console.error('Connection error:', error);
       }
-    } catch (error) {
-      console.error('Connection error:', error);
+    } else {
+      console.log('Already authenticated via Privy.');
     }
   };
 
-  if (!ready) {
-    return (
-      <Button variant={'default'} className="px-4 py-2" disabled>
-        Loading...
-      </Button>
-    );
-  }
+  const buttonText =
+    !ready || isLoading
+      ? 'Loading...'
+      : authenticated
+        ? 'Connected'
+        : 'Connect Wallet';
+  const isDisabled = !ready || isLoading;
 
   return (
-    <Button variant={'default'} onClick={handleConnect} className="px-4 py-2">
-      {connectedText}
+    <Button
+      variant={'default'}
+      onClick={handleConnect}
+      disabled={isDisabled}
+      className="px-4 py-2"
+    >
+      {buttonText}
     </Button>
   );
 }
