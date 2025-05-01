@@ -1,9 +1,11 @@
-import { NodeRepository } from '@/domain/node';
+import { NodeRepository } from '@/domain/node/node';
 import { BlockchainNodeRepository } from '../repositories/node-repository';
 import { AurumNodeManager, LocationContract } from '@/typechain-types';
 import { BrowserProvider, ethers } from 'ethers';
 import { OrderRepositoryInterface } from '@/domain/orders';
 import { OrderRepository } from '../repositories/orders-repository';
+import { DriverRepository } from '../repositories/driver-repository';
+import { DriverService } from '@/domain/driver/driver';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -12,6 +14,7 @@ export class RepositoryContext {
   private static instance: RepositoryContext;
   private nodeRepository: NodeRepository | null = null;
   private orderRepository: OrderRepository | null = null;
+  private driverRepository: DriverService | null = null;
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
 
@@ -44,6 +47,11 @@ export class RepositoryContext {
       signer,
     );
     this.orderRepository = new OrderRepository(ausysContract);
+    this.driverRepository = new DriverRepository(
+      ausysContract,
+      provider,
+      signer,
+    );
   }
 
   /**
@@ -59,12 +67,21 @@ export class RepositoryContext {
   }
 
   public getOrderRepository(): OrderRepository {
-    if (!this.nodeRepository) {
+    if (!this.orderRepository) {
       throw new Error(
         'RepositoryContext not initialized. Call initialize() first.',
       );
     }
     return this.orderRepository;
+  }
+
+  public getDriverRepository(): DriverService {
+    if (!this.driverRepository) {
+      throw new Error(
+        'RepositoryContext not initialized. Call initialize() first.',
+      );
+    }
+    return this.driverRepository;
   }
 
   /**

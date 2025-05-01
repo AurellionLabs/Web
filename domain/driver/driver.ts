@@ -30,7 +30,7 @@ export interface Delivery {
 
 export interface DriverService {
   getAvailableDeliveries(): Promise<Delivery[]>;
-  getMyDeliveries(driverId: string): Promise<Delivery[]>;
+  getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]>;
   acceptDelivery(jobId: string): Promise<void>;
   confirmPickup(jobId: string): Promise<void>;
   completeDelivery(jobId: string): Promise<void>;
