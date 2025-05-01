@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { parseUnits, formatUnits } from 'ethers';
 import { ArrowLeft, HelpCircle, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import { z } from 'zod';
 import {
   getBalance,

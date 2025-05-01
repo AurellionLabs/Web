@@ -6,15 +6,12 @@ import {
   ReactNode,
   useState,
   useCallback,
+  useEffect,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  getNodeOrders,
-  getNodeStatus,
-  getOwnedNodeAddressList,
-  getNode,
-} from '@/dapp-connectors/aurum-controller';
-import { BytesLike, BigNumberish, AddressLike } from 'ethers';
+import { Node } from '@/domain/node';
+import { useNodes } from '@/hooks/useNodes';
+import { useWallet } from '@/hooks/useWallet';
 
 // Update types to match blockchain data
 export type Order = {
@@ -23,8 +20,7 @@ export type Order = {
   asset: string;
   quantity: number;
   value: string;
-  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
-  journeyId: string;
+  status: 'active' | 'pending' | 'completed' | 'cancelled';
 };
 
 type NodeContextType = {
@@ -32,81 +28,95 @@ type NodeContextType = {
   isRegisteredNode: boolean;
   nodeStatus: string;
   selectedNode: string | null;
-  nodes: NodeData[];
+  nodes: Node[];
   loadNodes: () => Promise<void>;
   selectNode: (nodeAddress: string) => void;
-  currentNodeData: NodeData | null;
+  currentNodeData: Node | null;
   refreshOrders: () => Promise<void>;
-};
-
-type NodeData = {
-  address: string;
-  status: BytesLike;
-  location: {
-    addressName: string;
-    location: { lat: string; lng: string };
-  };
-  supportedAssets: BigNumberish[];
-  capacity: BigNumberish[];
-  assetPrices: BigNumberish[];
-  validNode: BytesLike;
-  owner: AddressLike;
+  loading: boolean;
+  error: Error | null;
 };
 
 const NodeContext = createContext<NodeContextType | undefined>(undefined);
 
+// Original provider code
 export const NodeProvider = ({ children }: { children: ReactNode }) => {
+  console.log('[NodeProvider] Provider rendering...');
   const [orders, setOrders] = useState<Order[]>([]);
   const [nodeStatus, setNodeStatus] = useState<string>('');
   const [isRegisteredNode, setIsRegisteredNode] = useState(false);
-  const [nodes, setNodes] = useState<NodeData[]>([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [currentNodeData, setCurrentNodeData] = useState<NodeData | null>(null);
+  const [currentNodeData, setCurrentNodeData] = useState<Node | null>(null);
   const router = useRouter();
+  const { address } = useWallet();
+  console.log(`[NodeProvider] Address from useWallet on render: ${address}`);
+  const {
+    nodes,
+    loading,
+    error,
+    loadNodes: loadNodesFromHook,
+    getNode,
+    getNodeStatus,
+    getNodeOrders,
+  } = useNodes();
 
+  // Define loadNodes function first
   const loadNodes = useCallback(async () => {
-    try {
-      const addresses = await getOwnedNodeAddressList();
-      const nodesData = await Promise.all(
-        addresses.map(async (address) => {
-          const data = await getNode(address);
-          return {
-            address,
-            ...data,
-          };
-        }),
-      );
-      setNodes(nodesData);
-
-      // Also update current node data if we have a selected node
-      if (selectedNode) {
-        const updatedNodeData = await getNode(selectedNode);
-        setCurrentNodeData({
-          ...updatedNodeData,
-          address: selectedNode,
-        });
-      }
-
-      // If we have nodes but none selected, select the first one
-      if (nodesData.length > 0 && !selectedNode) {
-        selectNode(nodesData[0].address);
-      }
-    } catch (error) {
-      console.error('Error loading nodes:', error);
+    console.log('[NodeProvider] loadNodes function START');
+    if (!address) {
+      console.log('[NodeProvider] loadNodes - No address available, exiting.');
+      return;
     }
-  }, [selectedNode]);
+    console.log(
+      `[NodeProvider] loadNodes - Address: ${address}. Calling loadNodesFromHook...`,
+    );
+    console.log('[NodeProvider] loadNodes - Nodes state BEFORE call:', nodes);
+    try {
+      await loadNodesFromHook(address);
+      console.log(
+        '[NodeProvider] loadNodes - loadNodesFromHook finished successfully.',
+      );
+    } catch (err) {
+      console.error(
+        '[NodeProvider] loadNodes - Error calling loadNodesFromHook:',
+        err,
+      );
+    }
+    console.log(
+      '[NodeProvider] loadNodes - Nodes state AFTER call (might not be updated yet):',
+      nodes,
+    );
+  }, [address, loadNodesFromHook, nodes]);
+
+  // Effect to load nodes when the address becomes available
+  useEffect(() => {
+    // Explicitly log the address value whenever this effect runs
+    console.log(
+      `[NodeProvider] Address Effect Triggered. Current address from useWallet: ${address}`,
+    );
+    if (address) {
+      console.log(
+        '[NodeProvider] Address Effect - Address is valid, calling loadNodes().',
+      );
+      loadNodes(); // Now calls the function defined above
+    } else {
+      console.log('[NodeProvider] Address Effect - Address is null/undefined.');
+      // Optionally clear nodes state if address becomes null (user disconnects)
+      // setNodes([]); // Uncomment if you want to clear nodes on disconnect
+    }
+    // ONLY depend on address. This effect should run *only* when the address itself changes.
+  }, [address]); // <--- REMOVED loadNodes from dependencies
 
   const selectNode = useCallback(
     async (nodeAddress: string) => {
       try {
-        const nodeData = await getNode(nodeAddress);
-        setSelectedNode(nodeAddress);
-        setCurrentNodeData({
-          ...nodeData,
-          address: nodeAddress,
-        });
+        const node = await getNode(nodeAddress);
+        if (!node) return;
 
-        // Update orders for the selected node with full details
+        setSelectedNode(nodeAddress);
+        setCurrentNodeData(node);
+
+        // Update orders for the selected node
         const nodeOrders = await getNodeOrders(nodeAddress);
         setOrders(nodeOrders);
 
@@ -115,7 +125,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         setIsRegisteredNode(!!status);
         setNodeStatus(status);
 
-        // Optionally update URL for deep linking
+        // Update URL for deep linking
         const params = new URLSearchParams(window.location.search);
         params.set('node', nodeAddress);
         router.push(`${window.location.pathname}?${params.toString()}`);
@@ -123,7 +133,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error selecting node:', error);
       }
     },
-    [router],
+    [router, getNode, getNodeOrders, getNodeStatus],
   );
 
   const refreshOrders = useCallback(async () => {
@@ -135,18 +145,20 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error refreshing orders:', error);
       }
     }
-  }, [selectedNode]);
+  }, [selectedNode, getNodeOrders]);
 
   const value = {
     orders,
     isRegisteredNode,
     nodeStatus,
     selectedNode,
-    nodes,
+    nodes, // This is the nodes state from useNodes hook
     loadNodes,
     selectNode,
     currentNodeData,
     refreshOrders,
+    loading,
+    error,
   };
 
   return <NodeContext.Provider value={value}>{children}</NodeContext.Provider>;

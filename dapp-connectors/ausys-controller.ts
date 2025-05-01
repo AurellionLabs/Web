@@ -393,6 +393,7 @@ export async function customerMakeOrder(
 ) {
   try {
     const walletAddress = await getWalletAddress();
+    console.log('got wallet address', walletAddress);
     if (!walletAddress) throw new Error('Wallet not connected');
 
     // Validate node address
@@ -408,10 +409,11 @@ export async function customerMakeOrder(
 
     // Make static call to orderCreation
     const contract = await getAusysContract();
-    const result = await contract.orderCreation.staticCall(orderData);
+    const result = await contract.orderCreation(orderData);
     console.log('Order creation result:', result);
 
     // Execute the transaction
+    console.log('executing order journey creation');
     const tx = await contract.orderJourneyCreation(
       orderData.id,
       walletAddress,
@@ -487,21 +489,37 @@ export const getOrders = async (): Promise<
   LocationContract.OrderStructOutput[]
 > => {
   const contract = await getAusysContract();
+  const walletAddress = await getWalletAddress();
+  console.log('Fetching orders for wallet:', walletAddress);
+
   let indexing = true;
   let orderCount = 0;
   const orderList: LocationContract.OrderStructOutput[] = [];
-
+  console.log('beginning of indexing');
   while (indexing) {
     try {
       const id = await contract.orderIds(orderCount);
+      console.log('Found order ID:', id);
       const order = await contract.getOrder(id);
-      orderList.push(order);
+      console.log('Order details:', {
+        id,
+        customer: order.customer,
+        currentWallet: walletAddress,
+        matches: order.customer.toLowerCase() === walletAddress.toLowerCase(),
+      });
+
+      // Only include orders where the current wallet is the customer
+      if (order.customer.toLowerCase() === walletAddress.toLowerCase()) {
+        orderList.push(order);
+      }
       orderCount++;
     } catch (e) {
-      console.log('likely at end of list', e);
+      console.log('End of order list reached at count:', orderCount);
       indexing = false;
     }
   }
+
+  console.log('Total orders found:', orderList.length);
   return orderList;
 };
 

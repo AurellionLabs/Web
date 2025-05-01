@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from './button';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from './dialog';
 import {
   CheckCircle2,
   MapPin,
@@ -131,7 +131,7 @@ export function DeliveryActionDialog({
                 <span
                   className={`text-base font-medium text-right ${config.accentColor}`}
                 >
-                  ${delivery.bounty.toFixed(2)}
+                  ${delivery.fee.toFixed(2)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">

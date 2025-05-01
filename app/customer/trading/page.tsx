@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useTrade } from '@/app/providers/trade.provider';
 import { colors } from '@/lib/constants/colors';
-import { TokenizedAssetTable } from '@/components/ui/tokenized-asset-table';
-import { AssetClassFilter } from '@/components/ui/asset-class-filter';
+import { TokenizedAssetTable } from '@/app/components/ui/tokenized-asset-table';
+import { AssetClassFilter } from '@/app/components/ui/asset-class-filter';
 
 type SortConfig = {
   key: 'quantity' | 'pricePerUnit' | 'totalValue' | null;

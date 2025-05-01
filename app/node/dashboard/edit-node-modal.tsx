@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/app/components/ui/dialog';
 import {
   updateNodeStatus,
   updateAssetCapacity,
@@ -17,8 +17,13 @@ import {
   updateSupportedAssets,
 } from '@/dapp-connectors/aurum-controller';
 import { toast } from 'react-hot-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/app/components/ui/tabs';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { BigNumberish, BytesLike } from 'ethers';
 
 interface EditNodeModalProps {

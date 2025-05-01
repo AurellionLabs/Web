@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from './button';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from './dialog';
 import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
 import { CustomerOrder } from '@/types';
 import { useState } from 'react';

@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { colors } from '@/lib/constants/colors';
-import { RoleSelector } from '@/components/ui/role-selector';
-import { WalletConnection } from '@/components/ui/wallet-connection';
-import ConnectButton from '@/components/ConnectButtont';
+import { RoleSelector } from '@/app/components/ui/role-selector';
+import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useNode } from '@/app/providers/node.provider';
 import { cn } from '@/lib/utils';
+import ConnectButton from '../ConnectButtont';
 
 export function ClientHeader() {
   const [mounted, setMounted] = useState(false);

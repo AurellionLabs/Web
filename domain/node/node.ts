@@ -15,7 +15,7 @@ export interface Node {
   validNode: string; // bytes1
   owner: string;
   supportedAssets: number[];
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'Active' | 'Inactive';
   capacity: number[];
   assetPrices: number[];
 }
@@ -81,10 +81,10 @@ export interface NodeRepository {
   registerNode(nodeData: Node): Promise<void>;
   updateNodeStatus(
     nodeAddress: string,
-    status: 'ACTIVE' | 'INACTIVE',
+    status: 'Active' | 'Inactive',
   ): Promise<void>;
   checkIfNodeExists(ownerAddress: string): Promise<boolean>;
-  getNodeStatus(nodeAddress: string): Promise<'ACTIVE' | 'INACTIVE'>;
+  getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'>;
   getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]>;
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
   getNodeOrders(nodeAddress: string): Promise<Order[]>;

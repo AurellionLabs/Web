@@ -22,11 +22,6 @@ import {
 } from '@/chain-constants';
 import { ethers } from 'ethers';
 import { AuraGoat__factory } from '@/typechain-types';
-import { CustomerOrder } from '@/types';
-import { getAusysContract, getOrders } from './ausys-controller';
-import { LocationContract } from '@/typechain-types';
-import { AurumNodeInterface } from '@/typechain-types/contracts/Aurum.sol/AurumNode';
-import { Order } from '@/app/providers/node.provider';
 
 export type ResourceData = {
   id: bigint;
@@ -360,17 +355,43 @@ export const getNodeStatus = async (nodeAddress: string) => {
   return node.status;
 };
 
+export const getNodeOrders = async (nodeAddress: string) => {
+  const contract = await getAurumContract();
+  try {
+    const orderIds = await contract.nodeToOrderIds(nodeAddress);
+    const orders = await Promise.all(
+      orderIds.map(async (orderId) => {
+        const order = await contract.getOrder(orderId);
+        return {
+          id: orderId.toString(),
+          customer: order.customer,
+          asset: order.tokenId.toString(),
+          quantity: Number(order.tokenQuantity),
+          value: order.price.toString(),
+          status: getOrderStatus(order.currentStatus),
+          timestamp: Date.now(), // You might want to use a real timestamp if available
+          deliveryLocation: order.locationData.endName,
+        };
+      }),
+    );
+    return orders;
+  } catch (error) {
+    console.error('Error getting node orders:', error);
+    return [];
+  }
+};
+
 // Helper function to convert contract status to string
 function getOrderStatus(
   status: bigint,
-): 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' {
+): 'active' | 'pending' | 'completed' | 'cancelled' {
   switch (Number(status)) {
     case 0: // PENDING
       return 'pending';
-    case 1: // ACCEPTED
-      return 'accepted';
+    case 1: // ACCEPTED/ACTIVE
+      return 'active';
     case 2: // IN_PROGRESS
-      return 'in_progress';
+      return 'active';
     case 3: // COMPLETED
       return 'completed';
     case 4: // CANCELED
@@ -379,56 +400,6 @@ function getOrderStatus(
       return 'pending';
   }
 }
-
-export const getNodeOrders = async (nodeAddress: string): Promise<Order[]> => {
-  const ausysContract = await getAusysContract();
-  try {
-    // Get the number of orders for this node
-    let counter = 0;
-    const orderIds: string[] = [];
-
-    // Keep trying to get order IDs until we hit an error (end of list)
-    while (true) {
-      try {
-        const orderId = await ausysContract.nodeToOrderIds(
-          nodeAddress,
-          counter,
-        );
-        if (!orderId) break; // Break if we get a zero or empty value
-        orderIds.push(orderId);
-        counter++;
-      } catch (e) {
-        // Break the loop when we hit the end of the list
-        break;
-      }
-    }
-
-    // Get full order details for each order ID
-    const orders = await Promise.all(
-      orderIds.map(async (orderId) => {
-        const order = await ausysContract.getOrder(orderId);
-        // Get the first journey ID from the order's journeyIds array
-        const journeyId =
-          order.journeyIds.length > 0 ? order.journeyIds[0] : '';
-        return {
-          id: orderId,
-          customer: order.customer,
-          journeyId: journeyId,
-          asset: order.tokenId.toString(),
-          quantity: Number(order.tokenQuantity),
-          value: order.price.toString(),
-          status: getOrderStatus(order.currentStatus),
-        } as Order;
-      }),
-    );
-
-    console.log('Found node orders:', orders);
-    return orders;
-  } catch (error) {
-    console.error('Error getting node orders:', error);
-    throw error;
-  }
-};
 
 export interface TokenizedAsset {
   id: number;
@@ -463,9 +434,7 @@ export const getNodeAssets = async (
           id: Number(assetId),
           amount: balance.toString(),
           name: getAssetName(Number(assetId)),
-          status: 'Active',
-          nodeAddress: nodeAddress,
-          nodeLocation: node.location,
+          status: node.status,
           price: prices[index]?.toString() || '0', // Add price information
           capacity: capacities[index]?.toString() || '0', // Add capacity
         };
@@ -647,189 +616,6 @@ export const updateAssetPrice = async (
     return receipt;
   } catch (error) {
     console.error('Error updating asset price:', error);
-    throw error;
-  }
-};
-
-export const nodePackageSign = async (
-  journeyId: string,
-  nodeAddress: string,
-) => {
-  const nodeContract = await getAurumNodeContract(nodeAddress);
-  try {
-    // First get the journey details
-    const journey = await getJourneyDetails(journeyId);
-    if (!journey) throw new Error('Journey not found');
-    if (!journey.driver) throw new Error('No driver assigned to journey');
-
-    // Execute the package sign through the node contract
-    // Note: driver address is passed first, then node address
-    const tx = await nodeContract.nodeSign(
-      journey.driver,
-      nodeAddress,
-      journeyId,
-    );
-    const receipt = await tx.wait();
-    if (!receipt) throw new Error('Failed to get transaction receipt');
-    console.log('Node signed package successfully:', receipt.hash);
-    return receipt;
-  } catch (error) {
-    console.error('Error in node package signing:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to sign package: ${error.message}`);
-    }
-    throw new Error('Failed to sign package: Unknown error');
-  }
-};
-
-export const nodePackageHandOff = async (
-  journeyId: string,
-  nodeAddress: string,
-) => {
-  const nodeContract = await getAurumNodeContract(nodeAddress);
-  try {
-    // First get the journey details
-    const journey = await getJourneyDetails(journeyId);
-    if (!journey) throw new Error('Journey not found');
-    if (!journey.driver) throw new Error('No driver assigned to journey');
-    if (!journey.receiver) throw new Error('No receiver specified for journey');
-
-    // Get the order details to get token information
-    const order = await getOrder(journeyId);
-    if (!order) throw new Error('Order not found');
-    if (!order.assetId) throw new Error('Order has no asset ID');
-    if (!order.quantity) throw new Error('Order has no quantity specified');
-
-    // Convert assetId to number array and ensure it's valid
-    const tokenIds = [Number(order.assetId)];
-    if (isNaN(tokenIds[0])) throw new Error('Invalid asset ID format');
-
-    // Convert quantity to number array and ensure it's valid
-    const quantities = [Number(order.quantity)];
-    if (isNaN(quantities[0])) throw new Error('Invalid quantity format');
-
-    // Execute the package hand off through the node contract
-    const tx = await nodeContract.nodeHandoff(
-      nodeAddress,
-      journey.driver,
-      journey.receiver,
-      journeyId,
-      tokenIds,
-      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-      quantities,
-      '0x', // empty bytes for data parameter
-    );
-    const receipt = await tx.wait();
-    if (!receipt) throw new Error('Failed to get transaction receipt');
-    console.log('Node handed off package successfully:', receipt.hash);
-    return receipt;
-  } catch (error) {
-    console.error('Error in node package hand off:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to hand off package: ${error.message}`);
-    }
-    throw new Error('Failed to hand off package: Unknown error');
-  }
-};
-
-export const nodePackageHandOn = async (
-  journeyId: string,
-  nodeAddress: string,
-) => {
-  const nodeContract = await getAurumNodeContract(nodeAddress);
-  try {
-    // First get the journey details
-    const journey = await getJourneyDetails(journeyId);
-    if (!journey) throw new Error('Journey not found');
-    if (!journey.driver) throw new Error('No driver assigned to journey');
-
-    // Execute the package hand on through the node contract
-    // Note: driver address is passed first, then node address
-    const tx = await nodeContract.nodeHandOn(
-      journey.driver,
-      nodeAddress,
-      journeyId,
-    );
-    const receipt = await tx.wait();
-    if (!receipt) throw new Error('Failed to get transaction receipt');
-    console.log('Node handed on package successfully:', receipt.hash);
-    return receipt;
-  } catch (error) {
-    console.error('Error in node package hand on:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to hand on package: ${error.message}`);
-    }
-    throw error;
-  }
-};
-
-// Helper function to get journey status
-export const getJourneyStatus = async (journeyId: string) => {
-  const ausysContract = await getAusysContract();
-  try {
-    const journey = await ausysContract.journeyIdToJourney(journeyId);
-    if (!journey) throw new Error('Journey not found');
-    return Number(journey.currentStatus);
-  } catch (error) {
-    console.error('Error getting journey status:', error);
-    throw error;
-  }
-};
-
-// Helper function to get journey details
-export const getJourneyDetails = async (journeyId: string) => {
-  const ausysContract = await getAusysContract();
-  try {
-    const journey = await ausysContract.journeyIdToJourney(journeyId);
-    if (!journey) throw new Error('Journey not found');
-    return {
-      sender: journey.sender,
-      driver: journey.driver,
-      receiver: journey.receiver,
-      status: Number(journey.currentStatus),
-      bounty: journey.bounty.toString(),
-      ETA: journey.ETA.toString(),
-      parcelData: journey.parcelData,
-    };
-  } catch (error) {
-    console.error('Error getting journey details:', error);
-    throw error;
-  }
-};
-
-export interface Journey {
-  sender: string;
-  driver: string;
-  receiver: string;
-  status: number;
-  bounty: string;
-  ETA: string;
-  parcelData: LocationContract.ParcelDataStructOutput;
-}
-
-export interface NodeOrder {
-  location: AurumNodeManager.NodeLocationDataStructOutput;
-  validNode: string;
-  owner: string;
-  status: string;
-  assetId: string;
-  quantity: string;
-}
-
-export const getOrder = async (orderId: string): Promise<NodeOrder> => {
-  const contract = await getAurumContract();
-  try {
-    const order = await contract.AllNodes(orderId);
-    return {
-      location: order[0],
-      validNode: order[1],
-      owner: order[2],
-      status: order[3],
-      assetId: order[4].toString(),
-      quantity: order[5].toString(),
-    };
-  } catch (error) {
-    console.error('Error getting order:', error);
     throw error;
   }
 };

@@ -1,6 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { Button } from '@/app/components/ui/button';
 
 export default function ClaimRewardsButton({ poolId }: { poolId: string }) {
   const handleClaim = () => {

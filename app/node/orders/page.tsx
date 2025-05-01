@@ -3,21 +3,21 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useSearchParams } from 'next/navigation';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/app/components/ui/select';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/app/components/ui/card';
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,7 +26,7 @@ import {
   ArrowUpDown,
   RefreshCw,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import { useNode, type Order } from '@/app/providers/node.provider';
 
 // This would typically come from an API or configuration
@@ -58,12 +58,14 @@ export default function OrdersPage() {
 
   useEffect(() => {
     setCurrentUserRole('node');
+    handleRefresh();
   }, [setCurrentUserRole]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await refreshOrders();
+      console.log('orders>>>>>>>>>', orders);
     } finally {
       setIsRefreshing(false);
     }

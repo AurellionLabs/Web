@@ -3,14 +3,14 @@
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/app/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+} from '@/app/components/ui/dialog';
+import { Input } from '@/app/components/ui/input';
 import {
   Form,
   FormControl,
@@ -28,18 +28,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
+} from '@/app/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/app/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { StatCard } from '@/components/ui/stat-card';
+import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useNode } from '@/app/providers/node.provider';
 import {
@@ -54,16 +54,11 @@ import {
   getTokenizedAmount,
   nodeMintAsset,
   updateAssetPrice,
-  nodePackageSign,
-  nodePackageHandOff,
-  nodePackageHandOn,
-  getJourneyDetails,
 } from '@/dapp-connectors/aurum-controller';
 import { toast } from 'react-hot-toast';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { MapView } from '@/components/ui/map-view';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
-import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 
 const tokenizeFormSchema = z.object({
   assetId: z.string({
@@ -89,12 +84,6 @@ interface EditingPrice {
   id: number;
   value: string;
 }
-
-// Add this type for order actions
-type OrderAction = {
-  id: string;
-  isLoading: boolean;
-};
 
 export default function NodeDashboardPage() {
   const { currentNodeData, selectedNode, orders, loadNodes } = useNode();
@@ -123,8 +112,6 @@ export default function NodeDashboardPage() {
       quantity: '',
     },
   });
-
-  const [actionLoading, setActionLoading] = useState<OrderAction | null>(null);
 
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
     if (!selectedNode) return;
@@ -180,11 +167,7 @@ export default function NodeDashboardPage() {
   const nodeAssets =
     currentNodeData?.supportedAssets?.map((assetId, index) => ({
       id: Number(assetId),
-      capacity: formatEthereumValue(currentNodeData.capacity[index], 18),
-      price:
-        currentNodeData.assetPrices && currentNodeData.assetPrices[index]
-          ? formatEthereumValue(currentNodeData.assetPrices[index], 18)
-          : '0',
+      capacity: Number(currentNodeData.capacity[index]),
     })) || [];
 
   // Fix the asset rows rendering with proper types
@@ -197,12 +180,10 @@ export default function NodeDashboardPage() {
         <tr key={id} className="border-b">
           <td className="p-4">{id}</td>
           <td className="p-4">{getAssetName(id)}</td>
-          <td className="p-4">
-            {formatEthereumValue(currentNodeData.capacity[index], 18)}
-          </td>
+          <td className="p-4">{Number(currentNodeData.capacity[index])}</td>
           <td className="p-4">
             {currentNodeData.assetPrices && currentNodeData.assetPrices[index]
-              ? formatEthereumValue(currentNodeData.assetPrices[index], 18)
+              ? Number(currentNodeData.assetPrices[index])
               : '0'}
           </td>
         </tr>
@@ -215,7 +196,7 @@ export default function NodeDashboardPage() {
 
     setIsUpdatingStatus(true);
     try {
-      const newStatus = currentNodeData.status === '0x01' ? '0x00' : '0x01';
+      const newStatus = currentNodeData.status;
       await updateNodeStatus(selectedNode, newStatus);
       const updatedData = await getNode(selectedNode);
       // Update node data through context
@@ -285,52 +266,6 @@ export default function NodeDashboardPage() {
     }
   };
 
-  // Add these handler functions
-  const handlePackageSign = async (orderId: string, journeyId: string) => {
-    setActionLoading({ id: orderId, isLoading: true });
-    try {
-      if (!selectedNode) throw new Error('No node selected');
-      await nodePackageSign(journeyId, selectedNode);
-      toast.success('Package signed successfully');
-      await loadNodes(); // Refresh the orders
-    } catch (error) {
-      console.error('Error signing package:', error);
-      toast.error('Failed to sign package');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handlePackageHandOff = async (orderId: string, journeyId: string) => {
-    setActionLoading({ id: orderId, isLoading: true });
-    try {
-      if (!selectedNode) throw new Error('No node selected');
-      await nodePackageHandOff(journeyId, selectedNode);
-      toast.success('Package handed off successfully');
-      await loadNodes(); // Refresh the orders
-    } catch (error) {
-      console.error('Error handing off package:', error);
-      toast.error('Failed to hand off package');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handlePackageHandOn = async (orderId: string, journeyId: string) => {
-    setActionLoading({ id: orderId, isLoading: true });
-    try {
-      if (!selectedNode) throw new Error('No node selected');
-      await nodePackageHandOn(journeyId, selectedNode);
-      toast.success('Package handed on successfully');
-      await loadNodes(); // Refresh the orders
-    } catch (error) {
-      console.error('Error handing on package:', error);
-      toast.error('Failed to hand on package');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   if (!currentNodeData) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -345,10 +280,7 @@ export default function NodeDashboardPage() {
         <div>
           <h1 className="text-4xl font-bold">Node Dashboard</h1>
           <div className="flex items-center gap-2">
-            <p className="text-gray-400">
-              Status:{' '}
-              {currentNodeData?.status === '0x01' ? 'Active' : 'Inactive'}
-            </p>
+            <p className="text-gray-400">Status: {currentNodeData?.status}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -511,12 +443,12 @@ export default function NodeDashboardPage() {
         />
         <StatCard
           title="Node Status"
-          value={currentNodeData?.status === '0x01' ? 'Active' : 'Inactive'}
+          value={currentNodeData?.status}
           description="Current operational status"
           icon={
             <div
               className={`h-8 w-8 ${
-                currentNodeData?.status === '0x01'
+                currentNodeData?.status === 'Active'
                   ? 'bg-green-500/20 text-green-500'
                   : 'bg-red-500/20 text-red-500'
               } flex items-center justify-center rounded-full`}
@@ -605,11 +537,34 @@ export default function NodeDashboardPage() {
 
       {/* Orders */}
       <Card>
-        <CardHeader>
-          <CardTitle>Orders</CardTitle>
-          <CardDescription>
-            Track your accepted orders and their status
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle>Orders</CardTitle>
+            <CardDescription>
+              Track your accepted orders and their status
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              setIsViewingOrders(true);
+              try {
+                await router.push('/node/orders');
+              } finally {
+                setIsViewingOrders(false);
+              }
+            }}
+            disabled={isViewingOrders}
+          >
+            {isViewingOrders ? (
+              <>
+                <LoadingSpinner />
+                Loading Orders...
+              </>
+            ) : (
+              'View All Orders'
+            )}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="relative w-full overflow-auto">
@@ -622,7 +577,6 @@ export default function NodeDashboardPage() {
                   <th className="h-12 px-4 text-left align-middle">Quantity</th>
                   <th className="h-12 px-4 text-left align-middle">Value</th>
                   <th className="h-12 px-4 text-left align-middle">Status</th>
-                  <th className="h-12 px-4 text-left align-middle">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -634,58 +588,6 @@ export default function NodeDashboardPage() {
                     <td className="p-4">{order.quantity}</td>
                     <td className="p-4">{order.value} USDT</td>
                     <td className="p-4 capitalize">{order.status}</td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        {order.status === 'pending' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handlePackageSign(order.id, order.journeyId)
-                            }
-                            disabled={actionLoading?.id === order.id}
-                          >
-                            {actionLoading?.id === order.id ? (
-                              <LoadingSpinner />
-                            ) : (
-                              'Sign'
-                            )}
-                          </Button>
-                        )}
-                        {order.status === 'accepted' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handlePackageHandOn(order.id, order.journeyId)
-                            }
-                            disabled={actionLoading?.id === order.id}
-                          >
-                            {actionLoading?.id === order.id ? (
-                              <LoadingSpinner />
-                            ) : (
-                              'Hand On'
-                            )}
-                          </Button>
-                        )}
-                        {order.status === 'in_progress' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handlePackageHandOff(order.id, order.journeyId)
-                            }
-                            disabled={actionLoading?.id === order.id}
-                          >
-                            {actionLoading?.id === order.id ? (
-                              <LoadingSpinner />
-                            ) : (
-                              'Hand Off'
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>

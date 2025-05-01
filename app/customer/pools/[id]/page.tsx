@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, RefreshCw, Share2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { StatCard } from '@/components/ui/stat-card';
-import { TransactionTable } from '@/components/ui/transaction-table';
-import { PoolBalance } from '@/components/ui/pool-balance';
-import { Progress } from '@/components/ui/progress';
+import { Button } from '@/app/components/ui/button';
+import { StatCard } from '@/app/components/ui/stat-card';
+import { TransactionTable } from '@/app/components/ui/transaction-table';
+import { PoolBalance } from '@/app/components/ui/pool-balance';
+import { Progress } from '@/app/components/ui/progress';
 import { colors } from '@/lib/constants/colors';
 import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
@@ -26,7 +26,7 @@ import { StakedEvent } from '@/typechain-types/contracts/AuStake';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { COMPLETE, PAID } from '@/constants';
 import { toast } from 'react-hot-toast';
-import { WalletConnection } from '@/components/ui/wallet-connection';
+import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { getCurrentWalletAddress as walletAddress } from '@/dapp-connectors/base-controller';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });

@@ -1,17 +1,12 @@
-export interface Order {
-  id: string;
-  customer: string;
-  asset: string;
-  quantity: number;
-  value: string;
-  status: OrderStatus;
-  timestamp: number;
-  deliveryLocation: string;
-}
+import { LocationContract } from '@/typechain-types';
 
 export enum OrderStatus {
   PENDING = 'pending',
   ACTIVE = 'active',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+}
+
+export interface OrderRepositoryInterface {
+  getNodeOrders(address: string): Promise<LocationContract.OrderStruct[]>;
 }

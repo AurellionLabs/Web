@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 import {
   Form,
   FormControl,
@@ -14,34 +14,36 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
+} from '@/app/components/ui/form';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/app/components/ui/card';
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
-} from '@/components/ui/command';
+} from '@/app/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
+} from '@/app/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { registerNode } from '@/dapp-connectors/aurum-controller';
 import { ethers } from 'ethers';
-import { getCurrentWalletAddress } from '@/dapp-connectors/base-controller';
+import {
+  getCurrentWalletAddress,
+  initializeProvider,
+} from '@/dapp-connectors/base-controller';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-import { initializeProvider } from '@/dapp-connectors/base-controller';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { toast } from 'react-hot-toast';
 import { AurumNodeManager } from '@/typechain-types/contracts/Aurum.sol/AurumNodeManager';
@@ -167,7 +169,7 @@ const LocationInput = ({
 export default function NodeRegistrationPage() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const { isWalletConnected } = useMainProvider();
+  const { connected } = useMainProvider();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -195,7 +197,7 @@ export default function NodeRegistrationPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     console.log('on Submit');
     try {
-      if (!isWalletConnected) {
+      if (!connected) {
         toast.error('Please connect your wallet first');
         return;
       }

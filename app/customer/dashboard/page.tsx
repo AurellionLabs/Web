@@ -10,8 +10,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+} from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
 import { useRouter } from 'next/navigation';
 import {
   Activity,
@@ -28,16 +28,16 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { toast } from '@/components/ui/use-toast';
-import { OrderActionDialog } from '@/components/ui/order-action-dialog';
+} from '@/app/components/ui/select';
+import { toast } from '@/app/components/ui/use-toast';
+import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import { CustomerOrder } from '@/types';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { ethers } from 'ethers';

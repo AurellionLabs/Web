@@ -3,19 +3,15 @@
 import * as React from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from './button';
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+} from './command';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useRouter } from 'next/navigation';
 import { checkIfNodeExists } from '@/dapp-connectors/aurum-controller';

@@ -80,6 +80,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
   const fetchDeliveriesFromBlockchain = async (): Promise<{
     available: Delivery[];
@@ -383,16 +384,31 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       if (
         walletAddress &&
         !isLoading &&
+        !hasAttemptedFetch &&
         myDeliveries.length === 0 &&
         availableDeliveries.length === 0
       ) {
         console.log('Wallet now connected, fetching deliveries');
         refreshDeliveries();
+        setHasAttemptedFetch(true);
       }
     }, 2000); // Check every 2 seconds
 
     return () => clearInterval(checkWalletInterval);
-  }, [isLoading, myDeliveries.length, availableDeliveries.length]);
+  }, [
+    isLoading,
+    myDeliveries.length,
+    availableDeliveries.length,
+    hasAttemptedFetch,
+  ]);
+
+  // Reset hasAttemptedFetch when wallet changes
+  useEffect(() => {
+    const walletAddress = getWalletAddress();
+    if (!walletAddress) {
+      setHasAttemptedFetch(false);
+    }
+  }, [getWalletAddress()]);
 
   return (
     <DriverContext.Provider

@@ -1,4 +1,10 @@
-export const SUPPORTED_CHAINS = [42161, 11155111, 84532, 8453]; // Arbitrum One, Sepolia, Base Sepolia, and Base
+// Keep chain IDs as numbers for simpler comparison
+export const SUPPORTED_CHAINS = [
+  42161, // Arbitrum One
+  11155111, // Sepolia
+  84532, // Base Sepolia
+  8453, // Base
+];
 
 interface NetworkConfig {
   chainId: number;
@@ -12,6 +18,7 @@ interface NetworkConfig {
   blockExplorer: string;
 }
 
+// Keep numeric keys for network configs since they're used for display/RPC
 export const NETWORK_CONFIGS: { [chainId: number]: NetworkConfig } = {
   42161: {
     chainId: 42161,

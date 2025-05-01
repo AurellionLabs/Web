@@ -14,8 +14,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+} from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
 import {
   Activity,
   Package,
@@ -29,17 +29,22 @@ import {
   Navigation,
   CheckCircle,
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { toast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DeliveryActionDialog } from '@/components/ui/delivery-action-dialog';
+} from '@/app/components/ui/select';
+import { toast } from '@/app/components/ui/use-toast';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/app/components/ui/tabs';
+import { DeliveryActionDialog } from '@/app/components/ui/delivery-action-dialog';
 import { setupSignatureListener } from '@/dapp-connectors/dapp-listener';
 
 type TabType = 'available' | 'my-deliveries';

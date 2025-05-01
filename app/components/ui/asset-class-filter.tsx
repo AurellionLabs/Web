@@ -4,7 +4,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from './select';
 
 interface AssetClassFilterProps {
   selectedAssetClass: string;

@@ -3,8 +3,8 @@
 import { FC, useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useTrade } from '@/app/providers/trade.provider';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 import { colors } from '@/lib/constants/colors';
 import { ArrowLeft, Share2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
