@@ -28,10 +28,10 @@ const ethereumChain = {
   },
   rpcUrls: {
     default: {
-      http: ['https://eth.llamarpc.com'],
+      http: ['https://eth.llamarpc.com/'],
     },
     privyWalletOverride: {
-      http: ['https://eth.llamarpc.com'],
+      http: ['https://eth.llamarpc.com/'],
     },
   },
 };

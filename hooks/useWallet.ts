@@ -13,6 +13,7 @@ export function useWallet() {
     null,
   );
   const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Initialize repository when Privy wallets are ready
   useEffect(() => {
@@ -39,20 +40,24 @@ export function useWallet() {
   // Simplified connect/disconnect just call Privy's login/logout
   const connect = useCallback(async () => {
     setError(null);
+    setIsLoading(true);
     try {
       console.log('[useWallet] Calling Privy login()...');
-      await privy.login(); // Use privy.login
+      privy.login(); // Use privy.login
       console.log('[useWallet] Privy login() finished.');
     } catch (err) {
       console.error('[useWallet] Error during login:', err);
       setError(
         err instanceof Error ? err : new Error('Failed to connect wallet'),
       );
+    } finally {
+      setIsLoading(false);
     }
   }, [privy]); // Depend on privy
 
   const disconnect = useCallback(async () => {
     setError(null);
+    setIsLoading(true);
     try {
       console.log('[useWallet] Calling Privy logout()...');
       await privy.logout(); // Use privy.logout
@@ -62,6 +67,8 @@ export function useWallet() {
       setError(
         err instanceof Error ? err : new Error('Failed to disconnect wallet'),
       );
+    } finally {
+      setIsLoading(false);
     }
   }, [privy]); // Depend on privy
 
@@ -74,6 +81,7 @@ export function useWallet() {
     connect,
     disconnect,
     repository, // Still return repository if needed elsewhere
+    isLoading,
     // Readiness flags based on Privy
     isInitialized: privy.ready && privyWallets.ready && !!repository, // Repository is initialized
     isReady: privy.ready && privyWallets.ready, // Privy itself is ready
