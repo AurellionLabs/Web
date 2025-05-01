@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
-import {
-  useDriver,
-  DeliveryStatus,
-  Delivery,
-} from '@/app/providers/driver.provider';
+import { useDriver } from '@/app/providers/driver.provider';
 import { colors } from '@/lib/constants/colors';
 import {
   Card,
@@ -46,6 +42,7 @@ import {
 } from '@/app/components/ui/tabs';
 import { DeliveryActionDialog } from '@/app/components/ui/delivery-action-dialog';
 import { setupSignatureListener } from '@/dapp-connectors/dapp-listener';
+import { Delivery, DeliveryStatus } from '@/domain/driver';
 
 type TabType = 'available' | 'my-deliveries';
 
