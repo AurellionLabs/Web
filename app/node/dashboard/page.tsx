@@ -86,7 +86,8 @@ interface EditingPrice {
 }
 
 export default function NodeDashboardPage() {
-  const { currentNodeData, selectedNode, orders, loadNodes } = useNode();
+  const { currentNodeData, selectedNode, orders, loadNodes, refreshNodes } =
+    useNode();
   const router = useRouter();
 
   // Form and dialog states
@@ -196,10 +197,10 @@ export default function NodeDashboardPage() {
 
     setIsUpdatingStatus(true);
     try {
-      const newStatus = currentNodeData.status;
+      const newStatus =
+        currentNodeData.status === 'Active' ? 'Inactive' : 'Active';
       await updateNodeStatus(selectedNode, newStatus);
-      const updatedData = await getNode(selectedNode);
-      // Update node data through context
+      await refreshNodes();
       toast.success('Node status updated successfully');
     } catch (error) {
       toast.error('Failed to update node status');
@@ -223,7 +224,7 @@ export default function NodeDashboardPage() {
       );
 
       // Update the node data in context
-      await loadNodes();
+      await refreshNodes();
 
       setEditingCapacity(null);
       toast.success('Capacity updated successfully');
@@ -256,7 +257,7 @@ export default function NodeDashboardPage() {
       );
 
       // Update the node data in context
-      await loadNodes();
+      await refreshNodes();
 
       setEditingPrice(null);
       toast.success('Price updated successfully');
@@ -279,22 +280,22 @@ export default function NodeDashboardPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold">Node Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <p className="text-gray-400">Status: {currentNodeData?.status}</p>
-          </div>
+          <p className="text-gray-500">Manage your node and its assets</p>
         </div>
         <div className="flex gap-2">
-          <EditNodeModal
-            nodeAddress={selectedNode || ''}
-            nodeData={currentNodeData}
-            assetNames={Object.fromEntries(
-              Array.from(currentNodeData.supportedAssets || []).map((id) => [
-                Number(id),
-                getAssetName(Number(id)),
-              ]),
-            )}
-            onNodeUpdated={loadNodes}
-          />
+          {currentNodeData && (
+            <EditNodeModal
+              nodeAddress={selectedNode!}
+              nodeData={currentNodeData}
+              assetNames={Object.fromEntries(
+                Array.from(currentNodeData.supportedAssets || []).map((id) => [
+                  Number(id),
+                  getAssetName(Number(id)),
+                ]),
+              )}
+              onNodeUpdated={refreshNodes}
+            />
+          )}
           <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
             <DialogTrigger asChild>
               <Button disabled={isTokenizing}>
