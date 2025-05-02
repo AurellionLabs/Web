@@ -1,5 +1,7 @@
 import { INodeAssetService } from '@/domain/node/node';
 import { NodeAssetService } from '@/infrastructure/services/node-asset.service';
+import { IDriverService } from '@/domain/driver/driver';
+import { DriverService } from '@/infrastructure/services/driver.service';
 import { RepositoryContext } from './repository-context';
 
 /**
@@ -11,6 +13,7 @@ export class ServiceContext {
 
   // Service instances
   private nodeAssetService: INodeAssetService | null = null;
+  private driverService: IDriverService | null = null;
   // Add other service instances here as needed
   // private orderService: OrderService | null = null;
 
@@ -57,6 +60,7 @@ export class ServiceContext {
     // Initialize services, passing required dependencies from RepositoryContext
     try {
       this.nodeAssetService = new NodeAssetService(this.repositoryContext);
+      this.driverService = new DriverService(this.repositoryContext);
       // Initialize other services here...
       // this.orderService = new ConcreteOrderService(this.repositoryContext.getOrderRepository());
 
@@ -80,6 +84,18 @@ export class ServiceContext {
       );
     }
     return this.nodeAssetService;
+  }
+
+  /**
+   * Get the Driver service instance.
+   */
+  public getDriverService(): IDriverService {
+    if (!this.isInitialized || !this.driverService) {
+      throw new Error(
+        'ServiceContext not initialized or DriverService failed to initialize.',
+      );
+    }
+    return this.driverService;
   }
 
   // Add getters for other services here...

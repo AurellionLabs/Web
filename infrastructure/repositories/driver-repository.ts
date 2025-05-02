@@ -1,275 +1,242 @@
-import type {
-  Node,
-  NodeRepository,
-  TokenizedAsset,
-  AggregateAssetAmount,
-  NodeLocation,
-  AssetType,
-} from '@/domain/node';
-import { Order } from '@/domain/orders';
-import { BrowserProvider, ethers } from 'ethers';
 import {
-  AurumNode,
-  AurumNode__factory,
-  AurumNodeManager,
-  AurumNodeManager__factory,
-  AuraGoat__factory,
+  type IDriverRepository,
+  type Delivery,
+  DeliveryStatus,
+  type ParcelData,
+  type Location,
+} from '@/domain/driver/driver';
+// Commenting out unused Node imports
+// import type {
+//   Node,
+//   NodeRepository,
+//   TokenizedAsset,
+//   AggregateAssetAmount,
+//   NodeLocation,
+//   AssetType,
+// } from '@/domain/node';
+// import { Order } from '@/domain/orders'; // Comment out Order import for now
+
+import { BrowserProvider, ethers, type Signer } from 'ethers'; // Added Signer
+import {
+  LocationContract, // Use LocationContract type
+  LocationContract__factory, // Keep factory if needed elsewhere, maybe not here
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
-import { IDriverRepository } from '@/domain/driver/driver';
+// Commenting out unused constants
+// import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
 /**
- * Infrastructure implementation of the NodeRepository interface
- * This implementation directly interacts with the Aurum blockchain contracts
+ * Infrastructure implementation of the IDriverRepository interface
+ * This implementation directly interacts with the Ausys (LocationContract) blockchain contracts
  */
-export class driverRepository implements IDriverRepository {
-  private aurumContract: AurumNodeManager;
-  private auraGoatContract: any | null = null;
-  private provider: BrowserProvider;
-  private signer: ethers.Signer;
+// Corrected class name to match export expectation potentially, and implements the right interface
+export class DriverRepository implements IDriverRepository {
+  private ausysContract: LocationContract;
+  private provider: BrowserProvider; // Keep if needed for specific provider calls
+  private signer: Signer; // Keep signer if needed
 
+  // Constructor accepting the initialized Ausys contract
   constructor(
-    aurumContract: AurumNodeManager,
-    provider: BrowserProvider,
-    signer: ethers.Signer,
+    ausysContract: LocationContract,
+    provider: BrowserProvider, // Keep provider/signer if potentially needed
+    signer: Signer,
   ) {
-    this.aurumContract = aurumContract;
+    if (!ausysContract) {
+      throw new Error('DriverRepository: Ausys contract instance is required.');
+    }
+    this.ausysContract = ausysContract;
     this.provider = provider;
     this.signer = signer;
   }
 
-  private async getAuraGoatContract(): Promise<any> {
-    if (this.auraGoatContract) {
-      return this.auraGoatContract;
-    }
-
-    const contract = AuraGoat__factory.connect(
-      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-      this.signer,
-    );
-
-    this.auraGoatContract = contract;
-    return contract;
-  }
-
-  private async getAurumNodeContract(address: string): Promise<AurumNode> {
-    return AurumNode__factory.connect(address, this.signer);
-  }
-
-  async getNode(nodeAddress: string): Promise<Node> {
-    try {
-      const nodeData = await this.aurumContract.getNode(nodeAddress);
-
-      const location: NodeLocation = {
-        addressName: nodeData.location.addressName,
-        location: {
-          lat: nodeData.location.location.lat,
-          lng: nodeData.location.location.lng,
-        },
-      };
-
-      return {
-        address: nodeAddress,
-        location,
-        validNode: nodeData.validNode,
-        owner: nodeData.owner,
-        supportedAssets: nodeData.supportedAssets.map((n) => Number(n)),
-        status: this.convertContractStatusToDomain(nodeData.status),
-        capacity: nodeData.capacity.map((n) => Number(n)),
-        assetPrices: nodeData.assetPrices.map((n) => Number(n)),
-      };
-    } catch (error) {
-      handleContractError(error, 'get node');
-      throw error;
+  // --- Helper to map contract Journey status to domain DeliveryStatus ---
+  private mapContractStatusToDomain(
+    contractStatus: bigint | number,
+  ): DeliveryStatus {
+    // Mapping based on LocationContract enum (Pending, InProgress, Completed, Canceled)
+    // and DeliveryStatus enum (PENDING, ACCEPTED, PICKED_UP, COMPLETED, CANCELED)
+    const statusNum = Number(contractStatus);
+    switch (statusNum) {
+      case 0: // Contract: Pending
+        return DeliveryStatus.PENDING;
+      case 1: // Contract: InProgress (Assuming this maps to Accepted/PickedUp - let's use ACCEPTED for now)
+        // TODO: Refine this mapping - how to differentiate ACCEPTED vs PICKED_UP?
+        // Does the contract have separate statuses or rely on other flags (e.g., handOn event)?
+        return DeliveryStatus.ACCEPTED;
+      case 2: // Contract: Completed
+        return DeliveryStatus.COMPLETED;
+      case 3: // Contract: Canceled
+        return DeliveryStatus.CANCELED;
+      default:
+        console.warn(`Unknown contract status received: ${statusNum}`);
+        return DeliveryStatus.PENDING; // Default fallback
     }
   }
 
-  async getOwnedNodes(ownerAddress: string): Promise<string[]> {
-    console.log(
-      `[NodeRepository] getOwnedNodes called for owner: ${ownerAddress}`,
-    );
-    try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      console.log(`[NodeRepository] Node count from contract: ${nodeCount}`);
-      const ownedNodes: string[] = [];
-
-      for (let i = 0; i < nodeCount; i++) {
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        const node = await contract.getNode(nodeAddress);
-        console.log(
-          `[NodeRepository] Checking node index ${i}: address=${nodeAddress}, owner=${node.owner}`,
-        );
-        if (node.owner.toLowerCase() === ownerAddress.toLowerCase()) {
-          console.log(
-            `[NodeRepository] Match found! Adding node: ${nodeAddress}`,
-          );
-          ownedNodes.push(nodeAddress);
-        }
-      }
-
-      console.log(`[NodeRepository] Returning owned nodes:`, ownedNodes);
-      return ownedNodes;
-    } catch (error) {
-      handleContractError(error, 'get owned nodes');
-      throw error;
-    }
-  }
-
-  async registerNode(nodeData: Node): Promise<void> {
-    try {
-      const contract = await this.aurumContract;
-      const nodeStruct: AurumNodeManager.NodeStruct = {
-        location: {
-          addressName: nodeData.location.addressName,
-          location: {
-            lat: nodeData.location.location.lat,
-            lng: nodeData.location.location.lng,
-          },
-        },
-        validNode: ethers.toUtf8Bytes(nodeData.validNode),
-        owner: nodeData.owner,
-        supportedAssets: nodeData.supportedAssets.map((n) => BigInt(n)),
-        status: ethers.toUtf8Bytes(nodeData.status === 'Active' ? '1' : '0'),
-        capacity: nodeData.capacity.map((n) => BigInt(n)),
-        assetPrices: nodeData.assetPrices.map((n) => BigInt(n)),
-      };
-
-      await contract.registerNode(nodeStruct);
-    } catch (error) {
-      handleContractError(error, 'register node');
-      throw error;
-    }
-  }
-
-  async updateNodeStatus(
-    nodeAddress: string,
-    status: 'Active' | 'Inactive',
-  ): Promise<void> {
-    try {
-      const contract = await this.aurumContract;
-      const statusBytes = ethers.toUtf8Bytes(status === 'Active' ? '1' : '0');
-      await contract.updateStatus(statusBytes, nodeAddress);
-    } catch (error) {
-      handleContractError(error, 'update node status');
-      throw error;
-    }
-  }
-
-  async checkIfNodeExists(address: string): Promise<boolean> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      return node.owner !== ethers.ZeroAddress;
-    } catch (error) {
-      handleContractError(error, 'check if node exists');
-      throw error;
-    }
-  }
-
-  async getNodeStatus(address: string): Promise<'Active' | 'Inactive'> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      return this.convertContractStatusToDomain(node.status);
-    } catch (error) {
-      handleContractError(error, 'get node status');
-      throw error;
-    }
-  }
-
-  async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-
-      return node.supportedAssets.map((assetId, index) => ({
-        id: Number(assetId),
-        amount: node.capacity[index].toString(),
-        name: this.getAssetName(Number(assetId)),
-        status: 'Active',
-        nodeAddress: address,
-        nodeLocation: node.location,
-        price: node.assetPrices[index].toString(),
-        capacity: node.capacity[index].toString(),
-      }));
-    } catch (error) {
-      handleContractError(error, 'get node assets');
-      throw error;
-    }
-  }
-
-  async getAllNodeAssets(): Promise<TokenizedAsset[]> {
-    try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      const allAssets: TokenizedAsset[] = [];
-
-      for (let i = 0; i < nodeCount; i++) {
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        const nodeAssets = await this.getNodeAssets(nodeAddress);
-        allAssets.push(...nodeAssets);
-      }
-
-      return allAssets;
-    } catch (error) {
-      handleContractError(error, 'get all node assets');
-      throw error;
-    }
-  }
-
-  async getNodeOrders(address: string): Promise<Order[]> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      return [];
-    } catch (error) {
-      handleContractError(error, 'get node orders');
-      throw error;
-    }
-  }
-
-  async loadAvailableAssets(): Promise<AggregateAssetAmount[]> {
-    try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      const assetMap = new Map<number, number>();
-
-      for (let i = 0; i < nodeCount; i++) {
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        const node = await contract.getNode(nodeAddress);
-
-        node.supportedAssets.forEach((assetId, index) => {
-          const id = Number(assetId);
-          const amount = Number(node.capacity[index]);
-          assetMap.set(id, (assetMap.get(id) || 0) + amount);
-        });
-      }
-
-      return Array.from(assetMap.entries()).map(([id, amount]) => ({
-        id,
-        amount,
-      }));
-    } catch (error) {
-      handleContractError(error, 'load available assets');
-      throw error;
-    }
-  }
-
-  private convertContractStatusToDomain(status: string): 'Inactive' | 'Active' {
-    console.log('status', status);
-    return status === '0x01' ? 'Active' : 'Inactive';
-  }
-
-  private getAssetName(id: number): string {
-    const assetNames: { [key: number]: string } = {
-      1: 'GOAT',
-      2: 'SHEEP',
-      3: 'COW',
-      4: 'CHICKEN',
-      5: 'DUCK',
+  // --- Helper to map contract Journey struct to domain Delivery model ---
+  private mapJourneyToDelivery(
+    journey: LocationContract.JourneyStructOutput, // Use the output struct type from TypeChain
+  ): Delivery {
+    const parcelData: ParcelData = {
+      startLocation: {
+        lat: journey.parcelData.startLocation.lat,
+        lng: journey.parcelData.startLocation.lng,
+      },
+      endLocation: {
+        lat: journey.parcelData.endLocation.lat,
+        lng: journey.parcelData.endLocation.lng,
+      },
+      startName: journey.parcelData.startName,
+      endName: journey.parcelData.endName,
     };
-    return assetNames[id] || 'UNKNOWN';
+
+    return {
+      jobId: journey.journeyId,
+      customer: journey.sender, // Assuming sender is the customer placing the delivery
+      fee: Number(ethers.formatEther(journey.bounty)), // Convert bounty (BigInt wei) to number (Ether)
+      ETA: Number(journey.ETA), // Convert BigInt timestamp to number
+      deliveryETA: Number(journey.ETA), // Using ETA as deliveryETA, clarify if different field exists
+      currentStatus: this.mapContractStatusToDomain(journey.currentStatus),
+      parcelData: parcelData,
+    };
   }
-}
+
+  // --- Implement IDriverRepository methods ---
+
+  async getAvailableDeliveries(): Promise<Delivery[]> {
+    console.log('[DriverRepository] Getting available deliveries...');
+    const availableDeliveries: Delivery[] = [];
+    let index = 0;
+    const MAX_ITERATIONS = 1000; // Safety break for loop
+
+    try {
+      while (index < MAX_ITERATIONS) {
+        let journeyId: string;
+        try {
+          // Use numberToJourneyID mapping like in ausys-controller#fetchAllJourneyIds
+          journeyId = await this.ausysContract.numberToJourneyID(index);
+          // Check for zero address or empty bytes32 indicating end of list
+          if (
+            !journeyId ||
+            journeyId === ethers.ZeroHash ||
+            journeyId === ethers.ZeroAddress
+          ) {
+            console.log(
+              `[DriverRepository] End of journey list reached at index ${index}.`,
+            );
+            break;
+          }
+        } catch (error: any) {
+          // Error fetching ID likely means end of list
+          console.log(
+            `[DriverRepository] Error fetching journey ID at index ${index} (likely end):`,
+            error.message,
+          );
+          break;
+        }
+
+        try {
+          const journey = await this.ausysContract.getjourney(journeyId);
+          // Filter for available: Pending status and no driver assigned
+          if (
+            Number(journey.currentStatus) === 0 && // Status.Pending
+            journey.driver === ethers.ZeroAddress
+          ) {
+            availableDeliveries.push(this.mapJourneyToDelivery(journey));
+          }
+        } catch (journeyError: any) {
+          // Log error fetching specific journey but continue iteration
+          console.error(
+            `[DriverRepository] Failed to fetch journey details for ID ${journeyId}:`,
+            journeyError.message,
+          );
+        }
+        index++;
+      }
+      if (index >= MAX_ITERATIONS) {
+        console.warn(
+          '[DriverRepository] Reached MAX_ITERATIONS limit while fetching available deliveries.',
+        );
+      }
+      console.log(
+        `[DriverRepository] Found ${availableDeliveries.length} available deliveries.`,
+      );
+      return availableDeliveries;
+    } catch (error) {
+      handleContractError(error, 'get available deliveries');
+      throw error; // Rethrow after handling
+    }
+  }
+
+  async getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]> {
+    console.log(
+      `[DriverRepository] Getting deliveries for driver: ${driverWalletAddress}`,
+    );
+    const myDeliveries: Delivery[] = [];
+    let index = 0;
+    const MAX_ITERATIONS = 1000; // Safety break
+
+    if (!driverWalletAddress) {
+      console.error(
+        '[DriverRepository] driverWalletAddress is required for getMyDeliveries',
+      );
+      return [];
+    }
+
+    try {
+      while (index < MAX_ITERATIONS) {
+        let journeyId: string;
+        try {
+          journeyId = await this.ausysContract.numberToJourneyID(index);
+          if (
+            !journeyId ||
+            journeyId === ethers.ZeroHash ||
+            journeyId === ethers.ZeroAddress
+          ) {
+            console.log(
+              `[DriverRepository] End of journey list reached at index ${index}.`,
+            );
+            break;
+          }
+        } catch (error: any) {
+          console.log(
+            `[DriverRepository] Error fetching journey ID at index ${index} (likely end):`,
+            error.message,
+          );
+          break;
+        }
+
+        try {
+          const journey = await this.ausysContract.getjourney(journeyId);
+          // Filter: Check if the driver address matches
+          if (
+            journey.driver.toLowerCase() === driverWalletAddress.toLowerCase()
+          ) {
+            myDeliveries.push(this.mapJourneyToDelivery(journey));
+          }
+        } catch (journeyError: any) {
+          console.error(
+            `[DriverRepository] Failed to fetch journey details for ID ${journeyId}:`,
+            journeyError.message,
+          );
+        }
+        index++;
+      }
+      if (index >= MAX_ITERATIONS) {
+        console.warn(
+          '[DriverRepository] Reached MAX_ITERATIONS limit while fetching driver deliveries.',
+        );
+      }
+      console.log(
+        `[DriverRepository] Found ${myDeliveries.length} deliveries for driver ${driverWalletAddress}.`,
+      );
+      return myDeliveries;
+    } catch (error) {
+      handleContractError(
+        error,
+        `get deliveries for driver ${driverWalletAddress}`,
+      );
+      throw error; // Rethrow after handling
+    }
+  }
+} // End of class DriverRepository

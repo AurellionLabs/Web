@@ -10,7 +10,7 @@ import { BrowserProvider, ethers } from 'ethers';
 import { OrderRepositoryInterface } from '@/domain/orders';
 import { OrderRepository } from '../repositories/orders-repository';
 import { DriverRepository } from '../repositories/driver-repository';
-import { DriverService } from '@/domain/driver/driver';
+import { IDriverRepository } from '@/domain/driver/driver';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -19,7 +19,7 @@ export class RepositoryContext {
   private static instance: RepositoryContext;
   private nodeRepository: NodeRepository | null = null;
   private orderRepository: OrderRepository | null = null;
-  private driverRepository: DriverService | null = null;
+  private driverRepository: IDriverRepository | null = null;
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
   private signer: ethers.Signer | null = null;
@@ -82,7 +82,10 @@ export class RepositoryContext {
     return this.orderRepository;
   }
 
-  public getDriverRepository(): DriverService {
+  /**
+   * Get the driver repository instance
+   */
+  public getDriverRepository(): IDriverRepository {
     if (!this.driverRepository) {
       throw new Error(
         'RepositoryContext not initialized. Call initialize() first.',
@@ -101,6 +104,28 @@ export class RepositoryContext {
       );
     }
     return this.aurumContract;
+  }
+
+  /**
+   * Get the Ausys (LocationContract) contract instance
+   */
+  public getAusysContract(): LocationContract {
+    if (!this.ausysContract) {
+      throw new Error(
+        'RepositoryContext not initialized. Call initialize() first.',
+      );
+    }
+    return this.ausysContract;
+  }
+
+  /**
+   * Get the connected Signer instance.
+   */
+  public getSigner(): ethers.Signer {
+    if (!this.signer) {
+      throw new Error('RepositoryContext not initialized with a signer.');
+    }
+    return this.signer;
   }
 
   /**
