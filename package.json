@@ -9,7 +9,12 @@
     "lint": "next lint",
     "prepare": "husky",
     "format": "prettier . --write",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "test:hardhat": "npx hardhat test",
+    "test:service:unit": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.test.ts'",
+    "test:service:integration": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.integration.test.ts'",
+    "test:service": "npm run test:service:unit && npm run test:service:integration",
+    "test": "npm run test:hardhat && npm run test:service"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json,css,md}": "npm run format"
@@ -112,6 +117,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typechain": "^8.3.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.1.2"
   }
 }
