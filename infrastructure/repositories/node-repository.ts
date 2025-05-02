@@ -247,20 +247,56 @@ export class BlockchainNodeRepository implements NodeRepository {
 
   async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
     try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
+      const managerContract = await this.aurumContract;
+      const goatContract = await this.getAuraGoatContract();
+      const node = await managerContract.getNode(address); // Get node registration data
 
-      return node.supportedAssets.map((assetId, index) => ({
-        id: Number(assetId),
-        amount: node.capacity[index].toString(),
-        name: this.getAssetName(Number(assetId)),
-        status: 'Active',
-        nodeAddress: address,
-        nodeLocation: node.location,
-        price: node.assetPrices[index].toString(),
-        capacity: node.capacity[index].toString(),
-      }));
+      // Create an array of promises for all balance checks
+      const balancePromises = node.supportedAssets.map((assetId) => {
+        const tokenId = BigInt(Number(assetId) * 10); // Calculate tokenId
+        return goatContract
+          .balanceOf(address, tokenId)
+          .then((balance) => ({
+            // Return object with id and balance
+            id: Number(assetId),
+            balance: balance,
+          }))
+          .catch((error) => {
+            // Handle errors fetching individual balances gracefully
+            console.warn(
+              `Error fetching balance for node ${address}, asset ${assetId} (tokenId ${tokenId}): ${error.message}`,
+            );
+            return { id: Number(assetId), balance: BigInt(0) }; // Return 0 balance on error
+          });
+      });
+
+      // Wait for all balance checks to complete
+      const balances = await Promise.all(balancePromises);
+
+      // Create a map for quick balance lookup
+      const balanceMap = new Map<number, bigint>();
+      balances.forEach((item) => balanceMap.set(item.id, item.balance));
+
+      // Map node data and fetched balances to TokenizedAsset
+      return node.supportedAssets.map((assetIdBigInt, index) => {
+        const assetId = Number(assetIdBigInt);
+        const currentBalance = balanceMap.get(assetId) ?? BigInt(0); // Get balance from map, default to 0
+
+        return {
+          id: assetId,
+          amount: currentBalance.toString(), // Use actual balance
+          name: this.getAssetName(assetId),
+          // Consider using actual node status?
+          status: this.convertContractStatusToDomain(node.status),
+          nodeAddress: address,
+          nodeLocation: node.location,
+          price: node.assetPrices[index].toString(), // From registration data
+          capacity: node.capacity[index].toString(), // Keep capacity from registration data
+        };
+      });
     } catch (error) {
+      // Handle errors getting node data itself or other setup issues
+      console.error(`Error in getNodeAssets for address ${address}:`, error);
       handleContractError(error, 'get node assets');
       throw error;
     }
