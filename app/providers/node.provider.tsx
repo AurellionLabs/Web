@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { Node, TokenizedAsset } from '@/domain/node';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { ServiceContext } from '@/infrastructure/contexts/service-context';
 
 // Update types to match blockchain data
 export type Order = {
@@ -50,6 +51,32 @@ type NodeContextType = {
   // Asset operations
   getNodeAssets: (nodeAddress: string) => Promise<TokenizedAsset[]>;
   getAllNodeAssets: () => Promise<TokenizedAsset[]>;
+  mintAsset: (
+    nodeAddress: string,
+    assetId: number,
+    amount: number,
+  ) => Promise<void>;
+  updateAssetCapacity: (
+    nodeAddress: string,
+    assetId: number,
+    newCapacity: number,
+    supportedAssets: number[],
+    capacities: number[],
+    assetPrices: number[],
+  ) => Promise<void>;
+  updateAssetPrice: (
+    nodeAddress: string,
+    assetId: number,
+    newPrice: number,
+    supportedAssets: number[],
+    assetPrices: number[],
+  ) => Promise<void>;
+  updateSupportedAssets: (
+    nodeAddress: string,
+    quantities: number[],
+    assets: number[],
+    prices: number[],
+  ) => Promise<void>;
 
   // Utility
   refreshNodes: () => Promise<void>;
@@ -77,6 +104,10 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
 
   const nodeRepository = RepositoryContext.getInstance().getNodeRepository();
   const orderRepository = RepositoryContext.getInstance().getOrderRepository();
+  const serviceContext = ServiceContext.getInstance(
+    RepositoryContext.getInstance(),
+  );
+  const nodeAssetService = serviceContext.getNodeAssetService();
 
   // Load all nodes for a wallet address
   const loadNodes = useCallback(
@@ -318,6 +349,147 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [address, loadNodes]);
 
+  // Asset service methods
+  const mintAsset = useCallback(
+    async (
+      nodeAddress: string,
+      assetId: number,
+      amount: number,
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.mintAsset(nodeAddress, assetId, amount);
+        // Refresh node assets after minting
+        if (selectedNode === nodeAddress) {
+          const assets = await getNodeAssets(nodeAddress);
+          // You might want to add a state for node assets and update it here
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err : new Error('Failed to mint asset'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNodeAssets],
+  );
+
+  const updateAssetCapacity = useCallback(
+    async (
+      nodeAddress: string,
+      assetId: number,
+      newCapacity: number,
+      supportedAssets: number[],
+      capacities: number[],
+      assetPrices: number[],
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.updateAssetCapacity(
+          nodeAddress,
+          assetId,
+          newCapacity,
+          supportedAssets,
+          capacities,
+          assetPrices,
+        );
+        // Refresh node data after updating capacity
+        if (selectedNode === nodeAddress) {
+          const node = await getNode(nodeAddress);
+          if (node) {
+            setCurrentNodeData(node);
+          }
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to update asset capacity'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNode],
+  );
+
+  const updateAssetPrice = useCallback(
+    async (
+      nodeAddress: string,
+      assetId: number,
+      newPrice: number,
+      supportedAssets: number[],
+      assetPrices: number[],
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.updateAssetPrice(
+          nodeAddress,
+          assetId,
+          newPrice,
+          supportedAssets,
+          assetPrices,
+        );
+        // Refresh node data after updating price
+        if (selectedNode === nodeAddress) {
+          const node = await getNode(nodeAddress);
+          if (node) {
+            setCurrentNodeData(node);
+          }
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to update asset price'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNode],
+  );
+
+  const updateSupportedAssets = useCallback(
+    async (
+      nodeAddress: string,
+      quantities: number[],
+      assets: number[],
+      prices: number[],
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.updateSupportedAssets(
+          nodeAddress,
+          quantities,
+          assets,
+          prices,
+        );
+        // Refresh node data after updating supported assets
+        if (selectedNode === nodeAddress) {
+          const node = await getNode(nodeAddress);
+          if (node) {
+            setCurrentNodeData(node);
+          }
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to update supported assets'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNode],
+  );
+
   const value = {
     // State
     orders,
@@ -342,6 +514,10 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     // Asset operations
     getNodeAssets,
     getAllNodeAssets,
+    mintAsset,
+    updateAssetCapacity,
+    updateAssetPrice,
+    updateSupportedAssets,
 
     // Utility
     refreshNodes,
