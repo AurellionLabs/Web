@@ -6,7 +6,6 @@ import type {
   NodeLocation,
   AssetType,
 } from '@/domain/node';
-import { Order } from '@/domain/orders';
 import { BrowserProvider, ethers } from 'ethers';
 import {
   AurumNode,
@@ -14,9 +13,9 @@ import {
   AurumNodeManager,
   AurumNodeManager__factory,
   AuraGoat__factory,
+  AuraGoat,
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
 /**
  * Infrastructure implementation of the NodeRepository interface
@@ -24,31 +23,34 @@ import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
  */
 export class BlockchainNodeRepository implements NodeRepository {
   private aurumContract: AurumNodeManager;
-  private auraGoatContract: any | null = null;
   private provider: BrowserProvider;
   private signer: ethers.Signer;
+  private auraGoatAddress: string;
+  private auraGoatContractInstance: AuraGoat | null = null;
 
   constructor(
     aurumContract: AurumNodeManager,
     provider: BrowserProvider,
     signer: ethers.Signer,
+    auraGoatAddress: string,
   ) {
     this.aurumContract = aurumContract;
     this.provider = provider;
     this.signer = signer;
+    this.auraGoatAddress = auraGoatAddress;
   }
 
-  private async getAuraGoatContract(): Promise<any> {
-    if (this.auraGoatContract) {
-      return this.auraGoatContract;
+  private async getAuraGoatContract(): Promise<AuraGoat> {
+    if (this.auraGoatContractInstance) {
+      return this.auraGoatContractInstance;
     }
 
     const contract = AuraGoat__factory.connect(
-      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+      this.auraGoatAddress,
       this.signer,
     );
 
-    this.auraGoatContract = contract;
+    this.auraGoatContractInstance = contract;
     return contract;
   }
 
@@ -56,9 +58,13 @@ export class BlockchainNodeRepository implements NodeRepository {
     return AurumNode__factory.connect(address, this.signer);
   }
 
-  async getNode(nodeAddress: string): Promise<Node> {
+  async getNode(nodeAddress: string): Promise<Node | null> {
     try {
       const nodeData = await this.aurumContract.getNode(nodeAddress);
+
+      if (nodeData.owner === ethers.ZeroAddress) {
+        throw new Error('Node not found');
+      }
 
       const location: NodeLocation = {
         addressName: nodeData.location.addressName,
@@ -79,6 +85,9 @@ export class BlockchainNodeRepository implements NodeRepository {
         assetPrices: nodeData.assetPrices.map((n) => Number(n)),
       };
     } catch (error) {
+      if (error instanceof Error && error.message === 'Node not found') {
+        throw error;
+      }
       handleContractError(error, 'get node');
       throw error;
     }
@@ -116,7 +125,7 @@ export class BlockchainNodeRepository implements NodeRepository {
     }
   }
 
-  async registerNode(nodeData: Node): Promise<void> {
+  async registerNode(nodeData: Node): Promise<string> {
     try {
       const contract = await this.aurumContract;
       const nodeStruct: AurumNodeManager.NodeStruct = {
@@ -127,17 +136,73 @@ export class BlockchainNodeRepository implements NodeRepository {
             lng: nodeData.location.location.lng,
           },
         },
-        validNode: ethers.toUtf8Bytes(nodeData.validNode),
+        validNode: nodeData.validNode as ethers.BytesLike,
         owner: nodeData.owner,
         supportedAssets: nodeData.supportedAssets.map((n) => BigInt(n)),
-        status: ethers.toUtf8Bytes(nodeData.status === 'Active' ? '1' : '0'),
+        status: (nodeData.status === 'Active'
+          ? '0x01'
+          : '0x00') as ethers.BytesLike,
         capacity: nodeData.capacity.map((n) => BigInt(n)),
         assetPrices: nodeData.assetPrices.map((n) => BigInt(n)),
       };
 
-      await contract.registerNode(nodeStruct);
+      console.log('Calling contract.registerNode with struct:', nodeStruct);
+
+      const tx = await contract.registerNode(nodeStruct);
+      console.log('Transaction sent, waiting for receipt...');
+      const receipt = await tx.wait();
+      console.log('Transaction receipt received');
+
+      if (!receipt) {
+        throw new Error('Transaction failed: No receipt received.');
+      }
+      if (receipt.status === 0) {
+        console.error('Transaction reverted. Receipt:', receipt);
+        throw new Error(
+          `Node registration transaction failed (reverted). Hash: ${receipt.hash}`,
+        );
+      }
+
+      const eventFragment = contract.interface.getEvent('NodeRegistered');
+      if (!eventFragment) {
+        throw new Error(
+          'NodeRegistered event fragment not found in contract ABI.',
+        );
+      }
+
+      let newNodeAddress: string | undefined;
+      for (const log of receipt.logs) {
+        try {
+          const parsedLog = contract.interface.parseLog(
+            log as unknown as { topics: string[]; data: string },
+          );
+          if (parsedLog && parsedLog.name === 'NodeRegistered') {
+            newNodeAddress = parsedLog.args.nodeAddress;
+            console.log(
+              `NodeRegistered event found. New node address: ${newNodeAddress}`,
+            );
+            break;
+          }
+        } catch (e) {
+          // Ignore logs that don't match the NodeRegistered signature
+        }
+      }
+
+      if (!newNodeAddress) {
+        console.error('RECEIPT LOGS:', JSON.stringify(receipt.logs, null, 2));
+        throw new Error(
+          "NodeRegistered event not found or couldn't be parsed in transaction logs.",
+        );
+      }
+
+      return newNodeAddress;
     } catch (error) {
-      handleContractError(error, 'register node');
+      console.error('Detailed error in registerNode:', error);
+      if (
+        !(error instanceof Error && error.message.startsWith('Contract error'))
+      ) {
+        handleContractError(error, 'register node');
+      }
       throw error;
     }
   }
@@ -148,7 +213,9 @@ export class BlockchainNodeRepository implements NodeRepository {
   ): Promise<void> {
     try {
       const contract = await this.aurumContract;
-      const statusBytes = ethers.toUtf8Bytes(status === 'Active' ? '1' : '0');
+      const statusBytes = (
+        status === 'Active' ? '0x01' : '0x00'
+      ) as ethers.BytesLike;
       await contract.updateStatus(statusBytes, nodeAddress);
     } catch (error) {
       handleContractError(error, 'update node status');
@@ -218,11 +285,13 @@ export class BlockchainNodeRepository implements NodeRepository {
     }
   }
 
-  async getNodeOrders(address: string): Promise<Order[]> {
+  async getNodeOrders(address: string): Promise<any[]> {
     try {
       const contract = await this.aurumContract;
       const node = await contract.getNode(address);
-      return [];
+      // TODO: Implement actual logic to fetch orders related to the node
+      // This might involve interacting with AuSys contract or another mechanism
+      return []; // Currently returns an empty array
     } catch (error) {
       handleContractError(error, 'get node orders');
       throw error;
@@ -262,15 +331,26 @@ export class BlockchainNodeRepository implements NodeRepository {
   ): Promise<number> {
     try {
       const goatContract = await this.getAuraGoatContract();
-      const balance = await goatContract.balanceOf(
-        ownerAddress,
-        BigInt(assetId),
-      );
+      const tokenId = BigInt(assetId * 10);
+
+      const balance = await goatContract.balanceOf(ownerAddress, tokenId);
       console.log(
-        `[NodeRepository] Balance for owner ${ownerAddress}, asset ${assetId}: ${balance}`,
+        `[NodeRepository] Balance check for owner ${ownerAddress}, asset ${assetId} (tokenId ${tokenId}): ${balance}`,
       );
       return Number(balance);
-    } catch (error) {
+    } catch (error: any) {
+      if (
+        error.code === 'BAD_DATA' ||
+        (error.info?.error?.code === 'CALL_EXCEPTION' &&
+          error.info?.error?.reason?.includes('ERC1155: invalid token ID')) ||
+        (error.message &&
+          error.message.includes('could not decode result data'))
+      ) {
+        console.warn(
+          `[NodeRepository] Handled error fetching balance for owner ${ownerAddress}, asset ${assetId} (likely non-existent). Returning 0. Error: ${error.message}`,
+        );
+        return 0;
+      }
       handleContractError(
         error,
         `get asset balance for ${ownerAddress}, asset ${assetId}`,

@@ -5,7 +5,8 @@
  * These interfaces define the core domain models and their relationships.
  */
 
-import { Order } from '../orders';
+import { LocationContract } from '@/typechain-types';
+
 /**
  * Core node entity
  */
@@ -78,7 +79,7 @@ export interface TokenizedAsset {
 export interface NodeRepository {
   getNode(nodeAddress: string): Promise<Node | null>;
   getOwnedNodes(ownerAddress: string): Promise<string[]>;
-  registerNode(nodeData: Node): Promise<void>;
+  registerNode(nodeData: Node): Promise<string>;
   updateNodeStatus(
     nodeAddress: string,
     status: 'Active' | 'Inactive',
@@ -87,7 +88,7 @@ export interface NodeRepository {
   getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'>;
   getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]>;
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
-  getNodeOrders(nodeAddress: string): Promise<Order[]>;
+  getNodeOrders(nodeAddress: string): Promise<LocationContract.OrderStruct[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
   getAssetBalance(ownerAddress: string, assetId: number): Promise<number>;
 }
