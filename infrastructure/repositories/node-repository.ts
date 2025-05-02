@@ -251,6 +251,10 @@ export class BlockchainNodeRepository implements NodeRepository {
       const goatContract = await this.getAuraGoatContract();
       const node = await managerContract.getNode(address); // Get node registration data
 
+      if (node.owner === ethers.ZeroAddress) {
+        throw new Error('Node not found');
+      }
+
       // Create an array of promises for all balance checks
       const balancePromises = node.supportedAssets.map((assetId) => {
         const tokenId = BigInt(Number(assetId) * 10); // Calculate tokenId
@@ -295,7 +299,10 @@ export class BlockchainNodeRepository implements NodeRepository {
         };
       });
     } catch (error) {
-      // Handle errors getting node data itself or other setup issues
+      // If it's already the "Node not found" error, just rethrow it
+      if (error instanceof Error && error.message === 'Node not found') {
+        throw error;
+      }
       console.error(`Error in getNodeAssets for address ${address}:`, error);
       handleContractError(error, 'get node assets');
       throw error;
