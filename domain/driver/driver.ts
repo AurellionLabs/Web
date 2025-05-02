@@ -28,10 +28,13 @@ export interface Delivery {
   parcelData: ParcelData;
 }
 
-export interface DriverService {
+export interface IDriverRepository {
   getAvailableDeliveries(): Promise<Delivery[]>;
   getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]>;
-  acceptDelivery(jobId: string): Promise<void>;
-  confirmPickup(jobId: string): Promise<void>;
-  completeDelivery(jobId: string): Promise<void>;
+}
+export interface IDriverService {
+  acceptDelivery(journeyId: string): Promise<void>;
+  confirmPickup(journeyId: string): Promise<void>;
+  packageSign(journeyId: string): Promise<void>;
+  completeDelivery(journeyId: string): Promise<void>;
 }

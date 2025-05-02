@@ -17,12 +17,13 @@ import {
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import { IDriverRepository } from '@/domain/driver/driver';
 
 /**
  * Infrastructure implementation of the NodeRepository interface
  * This implementation directly interacts with the Aurum blockchain contracts
  */
-export class driverRepository implements NodeRepository {
+export class driverRepository implements IDriverRepository {
   private aurumContract: AurumNodeManager;
   private auraGoatContract: any | null = null;
   private provider: BrowserProvider;
