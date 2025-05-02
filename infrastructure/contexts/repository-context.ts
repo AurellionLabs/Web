@@ -17,6 +17,7 @@ import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
+import { listenForSignature } from '../services/signature-listener.service';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -172,5 +173,30 @@ export class RepositoryContext {
       );
       throw new Error(`Failed to connect to AurumNode contract at ${address}`);
     }
+  }
+
+  /**
+   * Waits for the Multi-Party Signature Confirmation (two distinct signatures)
+   * for a specific job ID on the Ausys/Location contract.
+   * Resolves true if two distinct parties sign within the timeout, otherwise rejects.
+   *
+   * @param jobID The string ID of the job requiring signature confirmation.
+   * @param timeoutMs Optional timeout override (defaults to ~2 minutes).
+   * @returns Promise<boolean>
+   * @throws Error if RepositoryContext is not initialized or ausysContract is missing.
+   */
+  public async waitForSignaturesForJob(
+    jobID: string,
+    timeoutMs?: number,
+  ): Promise<boolean> {
+    if (!this.ausysContract) {
+      throw new Error(
+        'RepositoryContext not initialized or Ausys contract not available.',
+      );
+    }
+    // The ausysContract instance here is already connected to the user's signer
+    // Call the underlying infrastructure service function
+    console.log('[RepositoryContext] Initiating waitForSignaturesForJob...');
+    return listenForSignature(this.ausysContract, jobID, timeoutMs);
   }
 }
