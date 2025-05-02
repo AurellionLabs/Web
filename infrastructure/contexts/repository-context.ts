@@ -1,6 +1,11 @@
 import { NodeRepository } from '@/domain/node/node';
 import { BlockchainNodeRepository } from '../repositories/node-repository';
-import { AurumNodeManager, LocationContract } from '@/typechain-types';
+import {
+  AurumNodeManager,
+  LocationContract,
+  AurumNode,
+  AurumNode__factory,
+} from '@/typechain-types';
 import { BrowserProvider, ethers } from 'ethers';
 import { OrderRepositoryInterface } from '@/domain/orders';
 import { OrderRepository } from '../repositories/orders-repository';
@@ -17,6 +22,7 @@ export class RepositoryContext {
   private driverRepository: DriverService | null = null;
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
+  private signer: ethers.Signer | null = null;
 
   private constructor() {}
 
@@ -41,6 +47,7 @@ export class RepositoryContext {
   ) {
     this.ausysContract = ausysContract;
     this.aurumContract = aurumContract;
+    this.signer = signer;
     this.nodeRepository = new BlockchainNodeRepository(
       aurumContract,
       provider,
@@ -94,5 +101,27 @@ export class RepositoryContext {
       );
     }
     return this.aurumContract;
+  }
+
+  /**
+   * Get an AurumNode contract instance connected to a specific address.
+   * Requires the context to be initialized with a signer.
+   */
+  public getAurumNodeContract(address: string): AurumNode {
+    if (!this.signer) {
+      throw new Error(
+        'RepositoryContext not initialized with a signer. Cannot get AurumNode contract.',
+      );
+    }
+    try {
+      // Use the factory to connect to the specific node address with the stored signer
+      return AurumNode__factory.connect(address, this.signer);
+    } catch (error) {
+      console.error(
+        `Error connecting to AurumNode contract at ${address}:`,
+        error,
+      );
+      throw new Error(`Failed to connect to AurumNode contract at ${address}`);
+    }
   }
 }

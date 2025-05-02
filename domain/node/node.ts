@@ -76,7 +76,7 @@ export interface TokenizedAsset {
  * Node repository interface
  */
 export interface NodeRepository {
-  getNode(nodeAddress: string): Promise<Node>;
+  getNode(nodeAddress: string): Promise<Node | null>;
   getOwnedNodes(ownerAddress: string): Promise<string[]>;
   registerNode(nodeData: Node): Promise<void>;
   updateNodeStatus(
@@ -89,19 +89,18 @@ export interface NodeRepository {
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
   getNodeOrders(nodeAddress: string): Promise<Order[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
+  getAssetBalance(ownerAddress: string, assetId: number): Promise<number>;
 }
 
 /**
  * Node asset service interface
  */
-export interface NodeAssetService {
+export interface INodeAssetService {
   mintAsset(
     nodeAddress: string,
     assetId: number,
     amount: number,
   ): Promise<void>;
-  getTokenizedAmount(nodeAddress: string, assetId: number): Promise<number>;
-  getAssetName(id: number): string;
   updateAssetCapacity(
     nodeAddress: string,
     assetId: number,

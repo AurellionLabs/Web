@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useWallet } from '@/hooks/useWallet';
 import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
@@ -23,6 +24,7 @@ interface RepositoryProviderProps {
 export function RepositoryProvider({ children }: RepositoryProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const privy = usePrivy();
   const privyWallets = useWallets();
   const {
@@ -31,6 +33,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
     isReady,
     isInitialized: isWalletInitialized,
   } = useWallet();
+
   const initializeRepository = useCallback(async () => {
     try {
       if (isReady && !privy.authenticated && !isConnected) {
@@ -62,10 +65,17 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         signer,
       );
 
-      const context = RepositoryContext.getInstance();
-      context.initialize(ausysContract, aurumContract, provider, signer);
+      const repoContext = RepositoryContext.getInstance();
+      repoContext.initialize(ausysContract, aurumContract, provider, signer);
+      console.log('[RepositoryProvider] RepositoryContext initialized.');
+
+      const serviceContext = ServiceContext.getInstance(repoContext);
+      serviceContext.initialize();
+      console.log('[RepositoryProvider] ServiceContext initialized.');
 
       setIsInitialized(true);
+      setError(null);
+      setRetryCount(0);
     } catch (err) {
       console.error('Repository initialization error:', err);
       setError(
@@ -80,7 +90,6 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
     privy.authenticated,
     privyWallets.wallets,
     isReady,
-    privy.authenticated,
     isConnected,
   ]);
 

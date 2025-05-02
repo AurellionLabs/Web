@@ -256,6 +256,29 @@ export class BlockchainNodeRepository implements NodeRepository {
     }
   }
 
+  async getAssetBalance(
+    ownerAddress: string,
+    assetId: number,
+  ): Promise<number> {
+    try {
+      const goatContract = await this.getAuraGoatContract();
+      const balance = await goatContract.balanceOf(
+        ownerAddress,
+        BigInt(assetId),
+      );
+      console.log(
+        `[NodeRepository] Balance for owner ${ownerAddress}, asset ${assetId}: ${balance}`,
+      );
+      return Number(balance);
+    } catch (error) {
+      handleContractError(
+        error,
+        `get asset balance for ${ownerAddress}, asset ${assetId}`,
+      );
+      throw error;
+    }
+  }
+
   private convertContractStatusToDomain(status: string): 'Inactive' | 'Active' {
     console.log('status', status);
     return status === '0x01' ? 'Active' : 'Inactive';
