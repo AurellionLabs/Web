@@ -9,11 +9,6 @@ import '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
 
 contract AuraGoat is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   //@param _uri NFT metadata URI
-  uint a5 = 5;
-  uint a4 = 4;
-  uint a3 = 3;
-  uint a2 = 2;
-  uint a1 = 1;
   AurumNodeManager NodeManager;
 
   constructor(
@@ -55,52 +50,29 @@ contract AuraGoat is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
   }
 
+  // Attributes in Alphabetical Alphabetical Order
   function nodeMint(
     address account,
-    uint weight,
+    string memory assetName,
+    string[] memory attributes,
     uint256 amount,
     bytes memory data
   ) external validNode(account) {
-    uint tokenID;
-    if (weight >= a5) {
-      tokenID = 50;
-      _mint(account, tokenID, amount, data);
-    }
-    if (weight >= a4) {
-      tokenID = 40;
-      _mint(account, tokenID, amount, data);
-    }
-    if (weight >= a3) {
-      tokenID = 30;
-      _mint(account, tokenID, amount, data);
-    }
-    if (weight >= a2) {
-      tokenID = 20;
-      _mint(account, tokenID, amount, data);
-    }
-    if (weight >= a1) {
-      tokenID = 10;
-      _mint(account, tokenID, amount, data);
-    }
+    uint256 tokenID = uint256(
+      keccak256(abi.encode(assetName, attributes))
+    );
+    _mint(account, tokenID, amount, data);
   }
 
-  function updateGradeReq(uint tier, uint weight) public onlyOwner {
-    string memory A5 = 'A5';
-    if (tier == 5) {
-      a5 = weight;
-    }
-    if (tier == 4) {
-      a4 = weight;
-    }
-    if (tier == 3) {
-      a3 = weight;
-    }
-    if (tier == 2) {
-      a2 = weight;
-    }
-    if (tier == 1) {
-      a1 = weight;
-    }
+  // Attributes in Alphabetical Alphabetical Order
+  function lookupHash(
+    string memory assetName,
+    string[] memory attributes
+  ) public pure  returns(uint256) {
+    uint256 tokenID = uint256(
+      keccak256(abi.encode(assetName, attributes))
+    );
+    return (tokenID);
   }
 
   /**
@@ -119,4 +91,3 @@ contract AuraGoat is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     _mintBatch(to, ids, amounts, data);
   }
 }
-

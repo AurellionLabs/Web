@@ -12,6 +12,14 @@ export enum OrderStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }
+export type Attribute = {
+  name: string;
+  value: string;
+};
+export type Asset = {
+  assetName: string;
+  attributes: Attribute[];
+};
 
 /**
  * Interface defining the data access methods for orders and journeys.
@@ -80,6 +88,13 @@ export interface IOrderRepository {
    * @returns A promise resolving to the order structure output.
    */
   getOrderById(orderId: BytesLike): Promise<LocationContract.OrderStructOutput>;
+
+  /**
+   * Retrieves supported attributes and their value for a specific hash
+   * @param assetName the name of the asset to be retrieved
+   * @returns a an assets attributes and its values
+   */
+  getAssetAttributes(assetName: string): Promise<Asset>;
 }
 
 /**
