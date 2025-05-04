@@ -86,17 +86,6 @@ export function ClientHeader() {
                   >
                     Overview
                   </Link>
-                  {selectedNode && (
-                    <Link
-                      href="/node/dashboard"
-                      className={cn(
-                        'text-gray-400 hover:text-white',
-                        pathname === '/node/dashboard' && 'text-white',
-                      )}
-                    >
-                      Dashboard
-                    </Link>
-                  )}
                 </>
               )}
               {currentUserRole === 'driver' && (
