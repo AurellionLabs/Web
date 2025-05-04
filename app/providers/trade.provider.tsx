@@ -8,15 +8,12 @@ import React, {
   ReactNode,
   useEffect,
 } from 'react';
+import { useNode } from '@/app/providers/node.provider';
 import {
   customerMakeOrder,
   getOrders,
 } from '@/dapp-connectors/ausys-controller';
 import { LocationContract } from '@/typechain-types';
-import {
-  getAllNodeAssets,
-  NodeLocationData,
-} from '@/dapp-connectors/aurum-controller';
 import { ethers } from 'ethers';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
@@ -24,7 +21,13 @@ import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 export interface TokenizedAsset {
   id: string;
   nodeId: string;
-  nodeLocation: NodeLocationData;
+  nodeLocation: {
+    addressName: string;
+    location: {
+      lat: string;
+      lng: string;
+    };
+  };
   assetClass: string;
   quantity: number;
   pricePerUnit: number;
@@ -49,6 +52,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<LocationContract.OrderStruct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { getAllNodeAssets } = useNode();
 
   const fetchAssets = useCallback(async () => {
     console.log('fetchAssets called');
@@ -89,7 +93,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [getAllNodeAssets]);
 
   // Call fetchAssets on mount
   useEffect(() => {
@@ -152,7 +156,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
 
       // Check if provider is properly configured
       try {
-        // Attempt to make the order
+        // Attempt to make the order using direct import
         await customerMakeOrder(blockchainOrder);
         console.log('Order placed successfully');
         return true;
@@ -183,8 +187,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const loadOrders = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Use direct import
       const fetchedOrders = await getOrders();
-      // Map to match local Order type
       setOrders(fetchedOrders);
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -213,8 +217,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
 
 export function useTrade() {
   const context = useContext(TradeContext);
-  if (!context) {
-    throw new Error('useTrade must be used within TradeProvider');
+  if (context === undefined) {
+    throw new Error('useTrade must be used within a TradeProvider');
   }
   return context;
 }

@@ -8,10 +8,12 @@ import {
   useCallback,
   useEffect,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Node, TokenizedAsset } from '@/domain/node';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { ServiceContext } from '@/infrastructure/contexts/service-context';
+import { LocationContract } from '@/typechain-types';
 
 // Update types to match blockchain data
 export type Order = {
@@ -50,6 +52,32 @@ type NodeContextType = {
   // Asset operations
   getNodeAssets: (nodeAddress: string) => Promise<TokenizedAsset[]>;
   getAllNodeAssets: () => Promise<TokenizedAsset[]>;
+  mintAsset: (
+    nodeAddress: string,
+    assetId: number,
+    amount: number,
+  ) => Promise<void>;
+  updateAssetCapacity: (
+    nodeAddress: string,
+    assetId: number,
+    newCapacity: number,
+    supportedAssets: number[],
+    capacities: number[],
+    assetPrices: number[],
+  ) => Promise<void>;
+  updateAssetPrice: (
+    nodeAddress: string,
+    assetId: number,
+    newPrice: number,
+    supportedAssets: number[],
+    assetPrices: number[],
+  ) => Promise<void>;
+  updateSupportedAssets: (
+    nodeAddress: string,
+    quantities: number[],
+    assets: number[],
+    prices: number[],
+  ) => Promise<void>;
 
   // Utility
   refreshNodes: () => Promise<void>;
@@ -72,11 +100,16 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   >(null);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { address } = useWallet();
   console.log(`[NodeProvider] Address from useWallet on render: ${address}`);
 
   const nodeRepository = RepositoryContext.getInstance().getNodeRepository();
   const orderRepository = RepositoryContext.getInstance().getOrderRepository();
+  const serviceContext = ServiceContext.getInstance(
+    RepositoryContext.getInstance(),
+  );
+  const nodeAssetService = serviceContext.getNodeAssetService();
 
   // Load all nodes for a wallet address
   const loadNodes = useCallback(
@@ -106,8 +139,18 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
             nodeRepository.getNode(address),
           );
           const loadedNodes = await Promise.all(nodePromises);
-          console.log('[NodeProvider] Fetched full node data:', loadedNodes);
-          setNodes(loadedNodes);
+          console.log(
+            '[NodeProvider] Fetched node data (pre-filter):',
+            loadedNodes,
+          );
+
+          // Filter out any null results before setting state
+          const validNodes = loadedNodes.filter(
+            (node): node is Node => node !== null,
+          );
+          console.log('[NodeProvider] Filtered valid nodes:', validNodes);
+
+          setNodes(validNodes); // Set state with only valid Node objects
         }
       } catch (err) {
         console.error('[NodeProvider] Error in loadNodes:', err);
@@ -172,23 +215,32 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         await nodeRepository.updateNodeStatus(nodeAddress, status);
-        // Update the node in our local state
+        // Update the node in our local list state
         setNodes((currentNodes) =>
           currentNodes.map((node) =>
             node.address === nodeAddress ? { ...node, status } : node,
           ),
         );
+        // Also update the currently viewed node data if it matches
+        if (currentNodeData?.address === nodeAddress) {
+          setCurrentNodeData(
+            (prevData) => (prevData ? { ...prevData, status } : null), // Ensure prevData is not null
+          );
+        }
       } catch (err) {
         setError(
           err instanceof Error
             ? err
             : new Error('Failed to update node status'),
         );
+        // Re-throw the error so the UI layer can potentially handle it (e.g., show toast)
+        throw err;
       } finally {
         setLoading(false);
       }
     },
-    [nodeRepository],
+    // Added currentNodeData and setCurrentNodeData to dependencies
+    [nodeRepository, currentNodeData, setCurrentNodeData],
   );
 
   // Get assets for a specific node
@@ -280,16 +332,11 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         const status = await getNodeStatus(nodeAddress);
         setIsRegisteredNode(!!status);
         setNodeStatus(status);
-
-        // Update URL for deep linking
-        const params = new URLSearchParams(window.location.search);
-        params.set('node', nodeAddress);
-        router.push(`${window.location.pathname}?${params.toString()}`);
       } catch (error) {
         console.error('Error selecting node:', error);
       }
     },
-    [router, getNode, getNodeOrders, getNodeStatus],
+    [getNode, getNodeOrders, getNodeStatus],
   );
 
   const refreshOrders = useCallback(async () => {
@@ -306,7 +353,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   // Effect to load nodes when the address becomes available
   useEffect(() => {
     console.log(
-      `[NodeProvider] Address Effect Triggered. Current address from useWallet: ${address}`,
+      `[NodeProvider] Address Effect Triggered. Current address: ${address}`,
     );
     if (address) {
       console.log(
@@ -315,8 +362,187 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
       loadNodes(address);
     } else {
       console.log('[NodeProvider] Address Effect - Address is null/undefined.');
+      // Clear nodes if address disconnects?
+      setNodes([]);
+      setSelectedNode(null);
+      setCurrentNodeData(null);
+      setOrders([]);
     }
   }, [address, loadNodes]);
+
+  // Effect to select node based on URL parameter after nodes are loaded
+  useEffect(() => {
+    const nodeAddressFromUrl = searchParams.get('node');
+    console.log(
+      `[NodeProvider] URL Param Effect - Param: ${nodeAddressFromUrl}, Nodes Loaded: ${nodes.length}, Current Selected: ${selectedNode}`,
+    );
+
+    if (
+      nodeAddressFromUrl && // Check if param exists
+      nodes.length > 0 && // Check if nodes are loaded
+      nodeAddressFromUrl !== selectedNode // Check if not already selected
+    ) {
+      // Check if the node from URL is actually owned by the user (present in the loaded nodes list)
+      const nodeExistsInList = nodes.some(
+        (node) => node.address === nodeAddressFromUrl,
+      );
+
+      if (nodeExistsInList) {
+        console.log(
+          `[NodeProvider] URL Param Effect - Selecting node from URL: ${nodeAddressFromUrl}`,
+        );
+        selectNode(nodeAddressFromUrl);
+      } else {
+        console.warn(
+          `[NodeProvider] URL Param Effect - Node ${nodeAddressFromUrl} not found in user's owned nodes.`,
+        );
+        // Optionally, redirect or clear selection if URL node isn't owned
+        // router.push('/node/overview'); // Example redirect
+      }
+    }
+    // Add nodes and searchParams as dependencies
+  }, [nodes, searchParams, selectNode, selectedNode]);
+
+  // Asset service methods
+  const mintAsset = useCallback(
+    async (
+      nodeAddress: string,
+      assetId: number,
+      amount: number,
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.mintAsset(nodeAddress, assetId, amount);
+        // Refresh node assets after minting
+        if (selectedNode === nodeAddress) {
+          const assets = await getNodeAssets(nodeAddress);
+          // You might want to add a state for node assets and update it here
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err : new Error('Failed to mint asset'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNodeAssets],
+  );
+
+  const updateAssetCapacity = useCallback(
+    async (
+      nodeAddress: string,
+      assetId: number,
+      newCapacity: number,
+      supportedAssets: number[],
+      capacities: number[],
+      assetPrices: number[],
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.updateAssetCapacity(
+          nodeAddress,
+          assetId,
+          newCapacity,
+          supportedAssets,
+          capacities,
+          assetPrices,
+        );
+        // Refresh node data after updating capacity
+        if (selectedNode === nodeAddress) {
+          const node = await getNode(nodeAddress);
+          if (node) {
+            setCurrentNodeData(node);
+          }
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to update asset capacity'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNode],
+  );
+
+  const updateAssetPrice = useCallback(
+    async (
+      nodeAddress: string,
+      assetId: number,
+      newPrice: number,
+      supportedAssets: number[],
+      assetPrices: number[],
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.updateAssetPrice(
+          nodeAddress,
+          assetId,
+          newPrice,
+          supportedAssets,
+          assetPrices,
+        );
+        // Refresh node data after updating price
+        if (selectedNode === nodeAddress) {
+          const node = await getNode(nodeAddress);
+          if (node) {
+            setCurrentNodeData(node);
+          }
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to update asset price'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNode],
+  );
+
+  const updateSupportedAssets = useCallback(
+    async (
+      nodeAddress: string,
+      quantities: number[],
+      assets: number[],
+      prices: number[],
+    ): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await nodeAssetService.updateSupportedAssets(
+          nodeAddress,
+          quantities,
+          assets,
+          prices,
+        );
+        // Refresh node data after updating supported assets
+        if (selectedNode === nodeAddress) {
+          const node = await getNode(nodeAddress);
+          if (node) {
+            setCurrentNodeData(node);
+          }
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to update supported assets'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nodeAssetService, selectedNode, getNode],
+  );
 
   const value = {
     // State
@@ -342,6 +568,10 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     // Asset operations
     getNodeAssets,
     getAllNodeAssets,
+    mintAsset,
+    updateAssetCapacity,
+    updateAssetPrice,
+    updateSupportedAssets,
 
     // Utility
     refreshNodes,
