@@ -57,6 +57,7 @@ export default function DriverDashboard() {
     acceptDelivery,
     completeDelivery,
     confirmPickup,
+    packageSign,
   } = useDriver();
   const [activeTab, setActiveTab] = useState<TabType>('available');
   const [waitingForSignature, setWaitingForSignature] = useState<{
@@ -183,7 +184,7 @@ export default function DriverDashboard() {
   const handlePickupDelivery = async (jobId: string) => {
     try {
       setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
-
+      await packageSign(jobId);
       // 1. Call confirmPickup first (attempts to initiate signature process on contract)
       await confirmPickup(jobId);
 
@@ -242,6 +243,7 @@ export default function DriverDashboard() {
   const handleCompleteDelivery = async (jobId: string) => {
     try {
       setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
+      await packageSign(jobId);
       await completeDelivery(jobId);
       toast({
         title: 'Delivery Confirmed',
