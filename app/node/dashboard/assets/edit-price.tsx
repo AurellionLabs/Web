@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/app/components/ui/dialog';
-import { updateAssetPrice } from '@/dapp-connectors/aurum-controller';
+import { useNode } from '@/app/providers/node.provider';
 import { toast } from 'react-hot-toast';
 
 interface EditPriceProps {
@@ -34,6 +34,7 @@ export function EditPrice({
   const [isOpen, setIsOpen] = useState(false);
   const [newPrice, setNewPrice] = useState(currentPrice);
   const [isUpdating, setIsUpdating] = useState(false);
+  const { updateAssetPrice } = useNode();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +44,9 @@ export function EditPrice({
       await updateAssetPrice(
         nodeAddress,
         assetId,
-        BigInt(newPrice),
-        supportedAssets,
-        assetPrices,
+        Number(newPrice),
+        supportedAssets.map(Number),
+        assetPrices.map(Number),
       );
 
       toast.success('Asset price updated successfully');

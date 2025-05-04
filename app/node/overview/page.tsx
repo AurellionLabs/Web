@@ -5,10 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useNode } from '@/app/providers/node.provider';
 import {
-  getOwnedNodeAddressList,
-  getNode,
-} from '@/dapp-connectors/aurum-controller';
-import {
   Card,
   CardContent,
   CardDescription,
@@ -35,7 +31,7 @@ type NodeOverview = {
 export default function NodeOverviewPage() {
   console.log('[NodeOverviewPage] Rendering...');
   const { setCurrentUserRole } = useMainProvider();
-  const { nodes, loadNodes, selectNode } = useNode();
+  const { nodes, loadNodes, selectNode, getNode } = useNode();
   const router = useRouter();
 
   console.log('[NodeOverviewPage] Nodes from useNode:', nodes);

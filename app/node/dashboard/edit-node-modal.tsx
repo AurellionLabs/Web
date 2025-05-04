@@ -10,12 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/app/components/ui/dialog';
-import {
-  updateNodeStatus,
-  updateAssetCapacity,
-  updateAssetPrice,
-  updateSupportedAssets,
-} from '@/dapp-connectors/aurum-controller';
+import { useNode } from '@/app/providers/node.provider';
 import { toast } from 'react-hot-toast';
 import {
   Tabs,
@@ -24,16 +19,15 @@ import {
   TabsTrigger,
 } from '@/app/components/ui/tabs';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
-import { BigNumberish, BytesLike } from 'ethers';
+import { BigNumberish } from 'ethers';
+import { Node } from '@/domain/node';
 
 interface EditNodeModalProps {
   nodeAddress: string;
-  nodeData: {
-    status: BytesLike;
-    supportedAssets: BigNumberish[];
-    capacity: BigNumberish[];
-    assetPrices: BigNumberish[];
-  };
+  nodeData: Pick<
+    Node,
+    'status' | 'supportedAssets' | 'capacity' | 'assetPrices'
+  >;
   assetNames: Record<number, string>;
   onNodeUpdated: () => Promise<void>;
 }
@@ -47,6 +41,7 @@ export function EditNodeModal({
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('assets');
+  const { updateNodeStatus, updateSupportedAssets } = useNode();
 
   // Asset capacity and price states
   const [capacities, setCapacities] = useState<Record<number, string>>({});
@@ -59,10 +54,15 @@ export function EditNodeModal({
       const initialCapacities: Record<number, string> = {};
       const initialPrices: Record<number, string> = {};
 
-      nodeData.supportedAssets.forEach((assetId, index) => {
+      // Ensure properties exist before iterating
+      const supportedAssets = nodeData.supportedAssets || [];
+      const capacityData = nodeData.capacity || [];
+      const priceData = nodeData.assetPrices || [];
+
+      supportedAssets.forEach((assetId, index) => {
         const id = Number(assetId);
-        initialCapacities[id] = nodeData.capacity[index]?.toString() || '0';
-        initialPrices[id] = nodeData.assetPrices[index]?.toString() || '0';
+        initialCapacities[id] = capacityData[index]?.toString() || '0';
+        initialPrices[id] = priceData[index]?.toString() || '0';
       });
 
       setCapacities(initialCapacities);
@@ -89,9 +89,10 @@ export function EditNodeModal({
   const handleStatusUpdate = async () => {
     setIsUpdating(true);
     try {
-      const newStatus = nodeData.status === '0x01' ? '0x00' : '0x01';
+      // Check against the string 'Active' now
+      const newStatus = nodeData.status === 'Active' ? 'Inactive' : 'Active';
       await updateNodeStatus(nodeAddress, newStatus);
-      await onNodeUpdated();
+      await onNodeUpdated(); // This should trigger a refresh via NodeProvider
       toast.success('Node status updated successfully');
     } catch (error) {
       console.error('Error updating node status:', error);
@@ -104,31 +105,29 @@ export function EditNodeModal({
   const handleSaveAssets = async () => {
     setIsUpdating(true);
     try {
-      // Convert to arrays for the contract function
-      const supportedAssetsBigInt = Array.from(nodeData.supportedAssets).map(
-        (asset) => BigInt(asset.toString()),
+      // Convert to arrays for the provider function (expects numbers)
+      const supportedAssetsNum = Array.from(nodeData.supportedAssets || []).map(
+        (asset) => Number(asset.toString()),
       );
 
-      // Create new capacity and price arrays
-      const newCapacities = supportedAssetsBigInt.map((assetId) => {
-        const id = Number(assetId);
-        return BigInt(capacities[id] || '0');
+      // Create new capacity and price arrays using component state
+      const newCapacities = supportedAssetsNum.map((assetId) => {
+        return Number(capacities[assetId] || '0');
       });
 
-      const newPrices = supportedAssetsBigInt.map((assetId) => {
-        const id = Number(assetId);
-        return BigInt(prices[id] || '0');
+      const newPrices = supportedAssetsNum.map((assetId) => {
+        return Number(prices[assetId] || '0');
       });
 
-      // Update capacities and prices in one transaction
+      // Call the context function
       await updateSupportedAssets(
         nodeAddress,
-        newCapacities,
-        supportedAssetsBigInt,
+        newCapacities, // Should match the 'quantities' param? Check provider
+        supportedAssetsNum,
         newPrices,
       );
 
-      await onNodeUpdated();
+      await onNodeUpdated(); // Refresh node data
       toast.success('Node assets updated successfully');
       setIsOpen(false);
     } catch (error) {
@@ -160,8 +159,7 @@ export function EditNodeModal({
               <div>
                 <h3 className="text-lg font-medium">Node Status</h3>
                 <p className="text-sm text-gray-500">
-                  Current status:{' '}
-                  {nodeData.status === '0x01' ? 'Active' : 'Inactive'}
+                  Current status: {nodeData.status}
                 </p>
               </div>
               <Button onClick={handleStatusUpdate} disabled={isUpdating}>
@@ -170,7 +168,7 @@ export function EditNodeModal({
                     <LoadingSpinner />
                     <span className="ml-2">Updating...</span>
                   </>
-                ) : nodeData.status === '0x01' ? (
+                ) : nodeData.status === 'Active' ? (
                   'Deactivate Node'
                 ) : (
                   'Activate Node'
@@ -192,40 +190,38 @@ export function EditNodeModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.from(nodeData.supportedAssets).map(
-                      (assetId, index) => {
-                        const id = Number(assetId);
-                        return (
-                          <tr key={id} className="border-b">
-                            <td className="py-3">
-                              {assetNames[id] || `Asset #${id}`}
-                            </td>
-                            <td className="py-3">
-                              <Input
-                                type="number"
-                                value={capacities[id] || ''}
-                                onChange={(e) =>
-                                  handleCapacityChange(id, e.target.value)
-                                }
-                                className="w-full"
-                                placeholder="Enter capacity"
-                              />
-                            </td>
-                            <td className="py-3">
-                              <Input
-                                type="number"
-                                value={prices[id] || ''}
-                                onChange={(e) =>
-                                  handlePriceChange(id, e.target.value)
-                                }
-                                className="w-full"
-                                placeholder="Enter price"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      },
-                    )}
+                    {(nodeData.supportedAssets || []).map((assetId) => {
+                      const id = Number(assetId);
+                      return (
+                        <tr key={id} className="border-b">
+                          <td className="py-3">
+                            {assetNames[id] || `Asset #${id}`}
+                          </td>
+                          <td className="py-3">
+                            <Input
+                              type="number"
+                              value={capacities[id] || ''}
+                              onChange={(e) =>
+                                handleCapacityChange(id, e.target.value)
+                              }
+                              className="w-full"
+                              placeholder="Enter capacity"
+                            />
+                          </td>
+                          <td className="py-3">
+                            <Input
+                              type="number"
+                              value={prices[id] || ''}
+                              onChange={(e) =>
+                                handlePriceChange(id, e.target.value)
+                              }
+                              className="w-full"
+                              placeholder="Enter price"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

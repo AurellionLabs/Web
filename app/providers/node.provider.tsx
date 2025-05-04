@@ -13,6 +13,7 @@ import { Node, TokenizedAsset } from '@/domain/node';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
+import { LocationContract } from '@/typechain-types';
 
 // Update types to match blockchain data
 export type Order = {
@@ -77,6 +78,10 @@ type NodeContextType = {
     assets: number[],
     prices: number[],
   ) => Promise<void>;
+
+  // Order operations
+  customerMakeOrder: (orderData: LocationContract.OrderStruct) => Promise<void>;
+  getOrders: () => Promise<LocationContract.OrderStruct[]>;
 
   // Utility
   refreshNodes: () => Promise<void>;
@@ -203,23 +208,32 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         await nodeRepository.updateNodeStatus(nodeAddress, status);
-        // Update the node in our local state
+        // Update the node in our local list state
         setNodes((currentNodes) =>
           currentNodes.map((node) =>
             node.address === nodeAddress ? { ...node, status } : node,
           ),
         );
+        // Also update the currently viewed node data if it matches
+        if (currentNodeData?.address === nodeAddress) {
+          setCurrentNodeData(
+            (prevData) => (prevData ? { ...prevData, status } : null), // Ensure prevData is not null
+          );
+        }
       } catch (err) {
         setError(
           err instanceof Error
             ? err
             : new Error('Failed to update node status'),
         );
+        // Re-throw the error so the UI layer can potentially handle it (e.g., show toast)
+        throw err;
       } finally {
         setLoading(false);
       }
     },
-    [nodeRepository],
+    // Added currentNodeData and setCurrentNodeData to dependencies
+    [nodeRepository, currentNodeData, setCurrentNodeData],
   );
 
   // Get assets for a specific node
@@ -490,6 +504,44 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     [nodeAssetService, selectedNode, getNode],
   );
 
+  // Customer make order
+  const customerMakeOrder = useCallback(
+    async (orderData: LocationContract.OrderStruct): Promise<void> => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        await orderRepository.customerMakeOrder(orderData);
+        await refreshOrders();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err : new Error('Failed to make order'),
+        );
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [orderRepository, refreshOrders],
+  );
+
+  // Get orders
+  const getOrders = useCallback(async (): Promise<
+    LocationContract.OrderStruct[]
+  > => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      return await orderRepository.getOrders();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to get orders'));
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [orderRepository]);
+
   const value = {
     // State
     orders,
@@ -518,6 +570,10 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     updateAssetCapacity,
     updateAssetPrice,
     updateSupportedAssets,
+
+    // Order operations
+    customerMakeOrder,
+    getOrders,
 
     // Utility
     refreshNodes,
