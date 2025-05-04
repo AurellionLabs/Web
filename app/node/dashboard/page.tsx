@@ -99,6 +99,7 @@ export default function NodeDashboardPage() {
   const [newAssetId, setNewAssetId] = useState('');
   const [isViewingOrders, setIsViewingOrders] = useState(false);
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
+  const [capacityError, setCapacityError] = useState<string | null>(null);
 
   // Status and capacity states
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -117,8 +118,9 @@ export default function NodeDashboardPage() {
   });
 
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
-    if (!selectedNode) return;
+    if (!selectedNode || !currentNodeData) return;
 
+    setCapacityError(null);
     setIsTokenizing(true);
     try {
       const assetId = isAddingNewAsset
@@ -126,8 +128,38 @@ export default function NodeDashboardPage() {
         : Number(values.assetId);
       const quantity = Number(values.quantity);
 
+      // --- Capacity Check Start ---
+      const assetIndex = currentNodeData.supportedAssets.findIndex(
+        (id) => Number(id) === assetId,
+      );
+
+      if (assetIndex === -1) {
+        setCapacityError('Selected asset is not supported by this node.');
+        setIsTokenizing(false);
+        return;
+      }
+
+      const totalCapacity = Number(currentNodeData.capacity[assetIndex]);
+      const currentTokenizedAsset = assets.find(
+        (a) => Number(a.id) === assetId,
+      );
+      const currentAmount = currentTokenizedAsset
+        ? Number(currentTokenizedAsset.amount)
+        : 0;
+      const remainingCapacity = totalCapacity - currentAmount;
+
+      if (quantity > remainingCapacity) {
+        setCapacityError(
+          `You are exceeding capacity for ${getAssetName(assetId)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
+        );
+        setIsTokenizing(false);
+        return;
+      }
+      // --- Capacity Check End ---
+
       await mintAsset(selectedNode, assetId, quantity);
 
+      // Refresh assets immediately after minting
       const nodeAssets = await getNodeAssets(selectedNode);
       setAssets(nodeAssets);
 
@@ -135,9 +167,10 @@ export default function NodeDashboardPage() {
       setIsAddAssetOpen(false);
       form.reset();
       setIsAddingNewAsset(false);
+      setCapacityError(null);
     } catch (error) {
       console.error('Error tokenizing asset:', error);
-      toast.error('Failed to tokenize asset');
+      setCapacityError('Failed to tokenize asset. Please try again.');
     } finally {
       setIsTokenizing(false);
     }
@@ -389,6 +422,11 @@ export default function NodeDashboardPage() {
                       </FormItem>
                     )}
                   />
+                  {capacityError && (
+                    <p className="text-sm font-medium text-red-500 dark:text-red-400">
+                      {capacityError}
+                    </p>
+                  )}
                   <Button
                     type="submit"
                     className="w-full"

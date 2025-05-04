@@ -79,10 +79,6 @@ type NodeContextType = {
     prices: number[],
   ) => Promise<void>;
 
-  // Order operations
-  customerMakeOrder: (orderData: LocationContract.OrderStruct) => Promise<void>;
-  getOrders: () => Promise<LocationContract.OrderStruct[]>;
-
   // Utility
   refreshNodes: () => Promise<void>;
 };
@@ -142,8 +138,18 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
             nodeRepository.getNode(address),
           );
           const loadedNodes = await Promise.all(nodePromises);
-          console.log('[NodeProvider] Fetched full node data:', loadedNodes);
-          setNodes(loadedNodes);
+          console.log(
+            '[NodeProvider] Fetched node data (pre-filter):',
+            loadedNodes,
+          );
+
+          // Filter out any null results before setting state
+          const validNodes = loadedNodes.filter(
+            (node): node is Node => node !== null,
+          );
+          console.log('[NodeProvider] Filtered valid nodes:', validNodes);
+
+          setNodes(validNodes); // Set state with only valid Node objects
         }
       } catch (err) {
         console.error('[NodeProvider] Error in loadNodes:', err);
@@ -504,44 +510,6 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     [nodeAssetService, selectedNode, getNode],
   );
 
-  // Customer make order
-  const customerMakeOrder = useCallback(
-    async (orderData: LocationContract.OrderStruct): Promise<void> => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        await orderRepository.customerMakeOrder(orderData);
-        await refreshOrders();
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to make order'),
-        );
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [orderRepository, refreshOrders],
-  );
-
-  // Get orders
-  const getOrders = useCallback(async (): Promise<
-    LocationContract.OrderStruct[]
-  > => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      return await orderRepository.getOrders();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to get orders'));
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [orderRepository]);
-
   const value = {
     // State
     orders,
@@ -570,10 +538,6 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     updateAssetCapacity,
     updateAssetPrice,
     updateSupportedAssets,
-
-    // Order operations
-    customerMakeOrder,
-    getOrders,
 
     // Utility
     refreshNodes,
