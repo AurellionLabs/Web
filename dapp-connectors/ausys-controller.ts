@@ -5,6 +5,7 @@ import {
   ContractTransactionReceipt,
   Signer,
   ethers,
+  Overrides,
 } from 'ethers';
 import { LocationContract, LocationContract__factory } from '@/typechain-types';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
@@ -66,17 +67,22 @@ export const getAusysContract = async (): Promise<LocationContract> => {
 };
 
 export const jobCreation = async (
-  locationData: LocationContract.ParcelDataStruct,
+  senderAddress: string,
   recipientWalletAddress: string,
+  locationData: LocationContract.ParcelDataStruct,
+  bounty: BigNumberish,
+  eta: BigNumberish,
+  overrides?: Overrides,
 ) => {
   try {
     const contract = await getAusysContract();
     const tx = await contract.journeyCreation(
-      getWalletAddress(),
+      senderAddress,
       recipientWalletAddress,
       locationData,
-      1,
-      10,
+      bounty,
+      eta,
+      { ...overrides },
     );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
     console.log('Job Creation Transaction Hash:', receipt.hash);
@@ -86,7 +92,10 @@ export const jobCreation = async (
   }
 };
 
-export const customerPackageSign = async (journeyId: string) => {
+export const customerPackageSign = async (
+  journeyId: string,
+  overrides?: Overrides,
+) => {
   try {
     const contract = await getAusysContract();
     const journey = await contract.journeyIdToJourney(journeyId);
@@ -103,6 +112,7 @@ export const customerPackageSign = async (journeyId: string) => {
       journey.driver,
       currentUser,
       journeyId,
+      { ...overrides },
     );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
     return receipt;
@@ -437,10 +447,13 @@ export const addReceiver = async (
   orderId: BytesLike,
   receiver: string,
   sender: string,
+  overrides?: Overrides,
 ) => {
   const contract = await getAusysContract();
   try {
-    const tx = await contract.addReceiver(orderId, receiver, sender);
+    const tx = await contract.addReceiver(orderId, receiver, sender, {
+      ...overrides,
+    });
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
     return receipt;
   } catch (error) {
@@ -530,5 +543,26 @@ export const getOrder = async (orderId: BytesLike) => {
     return order;
   } catch (error) {
     handleContractError(error, 'failed to get order');
+  }
+};
+
+// New function to specifically execute the orderCreation transaction
+export const contractCreateOrderTransaction = async (
+  orderData: LocationContract.OrderStruct,
+  overrides?: Overrides,
+): Promise<ContractTransactionReceipt | undefined> => {
+  try {
+    const contract = await getAusysContract();
+    console.log('Executing orderCreation transaction...');
+    const tx = await contract.orderCreation(orderData, { ...overrides });
+    const receipt = await tx.wait(); // Initial wait
+    // Add another wait just in case state propagation is slow (unlikely but worth trying)
+    if (receipt) {
+      await tx.wait(1); // Wait for 1 confirmation block
+    }
+    console.log('orderCreation transaction successful:', receipt?.hash);
+    return receipt as ContractTransactionReceipt;
+  } catch (error) {
+    handleContractError(error, 'order creation transaction');
   }
 };
