@@ -52,12 +52,14 @@ export function RoleSelector() {
     setOpen(false);
 
     if (currentValue === 'node') {
-      const isRegisteredNode = await checkNodeRegistration();
-      if (isRegisteredNode) {
-        router.push('/node/overview');
-      } else {
-        router.push('/node/register');
-      }
+      // Always redirect Node role selections to overview first
+      router.push('/node/overview');
+      // const isRegisteredNode = await checkNodeRegistration();
+      // if (isRegisteredNode) {
+      //   router.push('/node/overview');
+      // } else {
+      //   router.push('/node/register');
+      // }
     } else if (currentValue === 'customer') {
       router.push('/customer/dashboard');
     } else if (currentValue === 'driver') {

@@ -44,7 +44,6 @@ import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
-import { setupSignatureListener } from '@/dapp-connectors/dapp-listener';
 import { customerPackageSign } from '@/dapp-connectors/ausys-controller';
 
 type SortConfig = {
