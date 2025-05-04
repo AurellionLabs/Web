@@ -92,7 +92,7 @@ export function EditNodeModal({
       // Check against the string 'Active' now
       const newStatus = nodeData.status === 'Active' ? 'Inactive' : 'Active';
       await updateNodeStatus(nodeAddress, newStatus);
-      await onNodeUpdated(); // This should trigger a refresh via NodeProvider
+      // await onNodeUpdated(); // Remove this immediate refresh
       toast.success('Node status updated successfully');
     } catch (error) {
       console.error('Error updating node status:', error);

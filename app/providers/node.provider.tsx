@@ -14,6 +14,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { LocationContract } from '@/typechain-types';
+import { useMainProvider } from './main.provider';
 
 // Update types to match blockchain data
 export type Order = {
@@ -102,6 +103,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { address } = useWallet();
+  const { currentUserRole } = useMainProvider();
   console.log(`[NodeProvider] Address from useWallet on render: ${address}`);
 
   const nodeRepository = RepositoryContext.getInstance().getNodeRepository();
@@ -350,58 +352,85 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [selectedNode, getNodeOrders]);
 
-  // Effect to load nodes when the address becomes available
+  // Effect to load nodes based on address AND role
   useEffect(() => {
     console.log(
-      `[NodeProvider] Address Effect Triggered. Current address: ${address}`,
+      `[NodeProvider] Address/Role Effect Triggered. Role: ${currentUserRole}, Address: ${address}`,
     );
-    if (address) {
+    // Only load nodes if address is present AND role is node
+    if (address && currentUserRole === 'node') {
       console.log(
-        '[NodeProvider] Address Effect - Address is valid, calling loadNodes().',
+        '[NodeProvider] Address/Role Effect - Address and Role valid, calling loadNodes().',
       );
       loadNodes(address);
     } else {
-      console.log('[NodeProvider] Address Effect - Address is null/undefined.');
-      // Clear nodes if address disconnects?
+      // Clear node state if address disconnects OR role is not node
+      console.log(
+        '[NodeProvider] Address/Role Effect - Clearing Node State (No address or role !== node).',
+      );
       setNodes([]);
       setSelectedNode(null);
       setCurrentNodeData(null);
       setOrders([]);
+      setCurrentWalletAddress(null);
+      // Don't set loading to false here, as loadNodes wasn't called
     }
-  }, [address, loadNodes]);
+    // Add currentUserRole to dependency array
+  }, [address, currentUserRole, loadNodes]);
 
-  // Effect to select node based on URL parameter after nodes are loaded
+  // Effect to select node based on URL parameter OR clear selection if param removed
   useEffect(() => {
     const nodeAddressFromUrl = searchParams.get('node');
     console.log(
       `[NodeProvider] URL Param Effect - Param: ${nodeAddressFromUrl}, Nodes Loaded: ${nodes.length}, Current Selected: ${selectedNode}`,
     );
 
-    if (
-      nodeAddressFromUrl && // Check if param exists
-      nodes.length > 0 && // Check if nodes are loaded
-      nodeAddressFromUrl !== selectedNode // Check if not already selected
-    ) {
-      // Check if the node from URL is actually owned by the user (present in the loaded nodes list)
-      const nodeExistsInList = nodes.some(
-        (node) => node.address === nodeAddressFromUrl,
-      );
+    if (nodeAddressFromUrl) {
+      // Case 1: URL has a node parameter
+      if (
+        nodes.length > 0 && // Check if nodes are loaded
+        nodeAddressFromUrl !== selectedNode // Check if not already selected
+      ) {
+        // Check if the node from URL is actually owned by the user
+        const nodeExistsInList = nodes.some(
+          (node) => node.address === nodeAddressFromUrl,
+        );
 
-      if (nodeExistsInList) {
+        if (nodeExistsInList) {
+          console.log(
+            `[NodeProvider] URL Param Effect - Selecting node from URL: ${nodeAddressFromUrl}`,
+          );
+          selectNode(nodeAddressFromUrl);
+        } else {
+          console.warn(
+            `[NodeProvider] URL Param Effect - Node ${nodeAddressFromUrl} not found in user's owned nodes. Clearing selection.`,
+          );
+          // Clear selection if URL node isn't valid or owned
+          setSelectedNode(null);
+          setCurrentNodeData(null);
+          setOrders([]); // Clear orders too
+        }
+      }
+    } else {
+      // Case 2: URL does NOT have a node parameter
+      if (selectedNode !== null) {
         console.log(
-          `[NodeProvider] URL Param Effect - Selecting node from URL: ${nodeAddressFromUrl}`,
+          '[NodeProvider] URL Param Effect - No node in URL, clearing selection.',
         );
-        selectNode(nodeAddressFromUrl);
-      } else {
-        console.warn(
-          `[NodeProvider] URL Param Effect - Node ${nodeAddressFromUrl} not found in user's owned nodes.`,
-        );
-        // Optionally, redirect or clear selection if URL node isn't owned
-        // router.push('/node/overview'); // Example redirect
+        setSelectedNode(null);
+        setCurrentNodeData(null);
+        setOrders([]); // Clear orders too
       }
     }
-    // Add nodes and searchParams as dependencies
-  }, [nodes, searchParams, selectNode, selectedNode]);
+    // Ensure all dependencies used in the logic are included
+  }, [
+    nodes,
+    searchParams,
+    selectNode,
+    selectedNode,
+    setSelectedNode,
+    setCurrentNodeData,
+  ]);
 
   // Asset service methods
   const mintAsset = useCallback(
