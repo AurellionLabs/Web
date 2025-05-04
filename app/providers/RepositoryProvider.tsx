@@ -1,5 +1,4 @@
 'use client';
-
 import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
@@ -36,16 +35,37 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
 
   const initializeRepository = useCallback(async () => {
     try {
-      if (isReady && !privy.authenticated && !isConnected) {
+      console.log('Is privy ready', isReady);
+      console.log('Is privy connected', isConnected);
+      console.log('Is privy authenticated', privy.authenticated);
+      if (isReady && !privy.authenticated) {
+        console.log('calling connect');
         await connect();
-        if (isReady && !privy.authenticated) {
+        if (!privy.authenticated) {
           throw new Error('Authentication failed after connect attempt.');
         }
       }
 
       const connectedWallet = privyWallets.wallets?.[0];
-      if (!connectedWallet) {
-        throw new Error('Privy wallet not available after connection.');
+      console.log(
+        '[RepositoryProvider] Checking wallets. Privy Auth State:',
+        privy.authenticated,
+      );
+      console.log(
+        '[RepositoryProvider] Privy Wallets State:',
+        JSON.stringify(privyWallets, null, 2),
+      );
+
+      if (!connectedWallet && privy.authenticated) {
+        console.error(
+          'Authenticated but no wallet found. User might need to link a wallet.',
+          privyWallets,
+        );
+        throw new Error(
+          `Privy wallet not available even though user is authenticated.`,
+        );
+      } else if (!connectedWallet) {
+        throw new Error(`Privy wallet not available after connection attempt.`);
       }
 
       const ethereumProvider = await connectedWallet.getEthereumProvider();
@@ -96,7 +116,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
   useEffect(() => {
     let mounted = true;
 
-    if (!privy.ready || !privyWallets.ready || isInitialized) {
+    if (!isReady || !privy.ready || !privyWallets.ready || isInitialized) {
       return;
     }
 
@@ -116,6 +136,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       mounted = false;
     };
   }, [
+    isReady,
     privy.ready,
     privyWallets.ready,
     isInitialized,

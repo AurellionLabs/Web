@@ -9,7 +9,12 @@
     "lint": "next lint",
     "prepare": "husky",
     "format": "prettier . --write",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "test:hardhat": "npx hardhat test",
+    "test:service:unit": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.test.ts'",
+    "test:service:integration": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.integration.test.ts'",
+    "test:service": "npm run test:service:unit && npm run test:service:integration",
+    "test": "npm run test:hardhat && npm run test:service"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json,css,md}": "npm run format"
@@ -53,6 +58,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "embla-carousel-react": "8.5.1",
+    "framer-motion": "^12.9.4",
     "input-otp": "1.4.1",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.454.0",
@@ -88,13 +94,17 @@
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.3.20",
+    "@types/chai-as-promised": "^8.0.2",
     "@types/google-map-react": "^2.1.10",
     "@types/google.maps": "^3.58.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/sinon": "^17.0.4",
     "chai": "^4.5.0",
+    "chai-as-promised": "^8.0.1",
+    "cypress": "^14.3.2",
     "dotenv": "^16.4.7",
     "ethers": "^6.13.5",
     "hardhat": "^2.22.17",
@@ -103,10 +113,13 @@
     "lint-staged": "^15.4.2",
     "postcss": "^8",
     "prettier": "3.4.2",
+    "sinon": "^20.0.0",
     "solidity-coverage": "^0.8.14",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typechain": "^8.3.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.1.2"
   }
 }

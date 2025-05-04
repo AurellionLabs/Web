@@ -45,6 +45,10 @@ export function useWallet() {
       console.log('[useWallet] Calling Privy login()...');
       privy.login(); // Use privy.login
       console.log('[useWallet] Privy login() finished.');
+      if (!privyWallets.wallets[0]) {
+        console.error('no wallet exists for user');
+        console.error(privyWallets);
+      }
     } catch (err) {
       console.error('[useWallet] Error during login:', err);
       setError(

@@ -2,11 +2,12 @@ import { HardhatUserConfig } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
 import '@typechain/hardhat';
 import 'dotenv/config';
+import 'tsconfig-paths/register';
 
 const config: HardhatUserConfig = {
   paths: {
     sources: './contracts',
-    tests: './test',
+    tests: './test/repositories',
     cache: './cache',
     artifacts: './artifacts',
   },

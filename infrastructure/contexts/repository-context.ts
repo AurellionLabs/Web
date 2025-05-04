@@ -5,12 +5,19 @@ import {
   LocationContract,
   AurumNode,
   AurumNode__factory,
+  AuraGoat,
+  AuraGoat__factory,
 } from '@/typechain-types';
 import { BrowserProvider, ethers } from 'ethers';
 import { OrderRepositoryInterface } from '@/domain/orders';
 import { OrderRepository } from '../repositories/orders-repository';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
+import {
+  NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
+  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+} from '@/chain-constants';
+import { listenForSignature } from '../services/signature-listener.service';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -23,8 +30,11 @@ export class RepositoryContext {
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
   private signer: ethers.Signer | null = null;
+  private auraGoatContract: AuraGoat | null = null;
 
-  private constructor() {}
+  private constructor(
+    private readonly auraGoatAddress: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  ) {}
 
   /**
    * Get the singleton instance of RepositoryContext
@@ -52,11 +62,16 @@ export class RepositoryContext {
       aurumContract,
       provider,
       signer,
+      this.auraGoatAddress,
     );
     this.orderRepository = new OrderRepository(ausysContract);
     this.driverRepository = new DriverRepository(
       ausysContract,
       provider,
+      signer,
+    );
+    this.auraGoatContract = AuraGoat__factory.connect(
+      this.auraGoatAddress,
       signer,
     );
   }
@@ -129,6 +144,16 @@ export class RepositoryContext {
   }
 
   /**
+   * Get the AuraGoat contract instance
+   */
+  public async getAuraGoatContract(): Promise<AuraGoat> {
+    if (!this.auraGoatContract) {
+      throw new Error('AuraGoat contract not initialized.');
+    }
+    return this.auraGoatContract;
+  }
+
+  /**
    * Get an AurumNode contract instance connected to a specific address.
    * Requires the context to be initialized with a signer.
    */
@@ -148,5 +173,30 @@ export class RepositoryContext {
       );
       throw new Error(`Failed to connect to AurumNode contract at ${address}`);
     }
+  }
+
+  /**
+   * Waits for the Multi-Party Signature Confirmation (two distinct signatures)
+   * for a specific job ID on the Ausys/Location contract.
+   * Resolves true if two distinct parties sign within the timeout, otherwise rejects.
+   *
+   * @param jobID The string ID of the job requiring signature confirmation.
+   * @param timeoutMs Optional timeout override (defaults to ~2 minutes).
+   * @returns Promise<boolean>
+   * @throws Error if RepositoryContext is not initialized or ausysContract is missing.
+   */
+  public async waitForSignaturesForJob(
+    jobID: string,
+    timeoutMs?: number,
+  ): Promise<boolean> {
+    if (!this.ausysContract) {
+      throw new Error(
+        'RepositoryContext not initialized or Ausys contract not available.',
+      );
+    }
+    // The ausysContract instance here is already connected to the user's signer
+    // Call the underlying infrastructure service function
+    console.log('[RepositoryContext] Initiating waitForSignaturesForJob...');
+    return listenForSignature(this.ausysContract, jobID, timeoutMs);
   }
 }
