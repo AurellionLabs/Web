@@ -3,6 +3,8 @@ import { NodeAssetService } from '@/infrastructure/services/node-asset.service';
 import { IDriverService } from '@/domain/driver/driver';
 import { DriverService } from '@/infrastructure/services/driver.service';
 import { RepositoryContext } from './repository-context';
+import { IOrderService } from '@/domain/orders/order';
+import { OrderService } from '../services/order-service';
 
 /**
  * Context responsible for initializing and providing access to application services.
@@ -14,8 +16,7 @@ export class ServiceContext {
   // Service instances
   private nodeAssetService: INodeAssetService | null = null;
   private driverService: IDriverService | null = null;
-  // Add other service instances here as needed
-  // private orderService: OrderService | null = null;
+  private orderService: IOrderService | null = null;
 
   private isInitialized = false;
 
@@ -61,8 +62,11 @@ export class ServiceContext {
     try {
       this.nodeAssetService = new NodeAssetService(this.repositoryContext);
       this.driverService = new DriverService(this.repositoryContext);
-      // Initialize other services here...
-      // this.orderService = new ConcreteOrderService(this.repositoryContext.getOrderRepository());
+      // Initialize OrderService using dependencies from RepositoryContext
+      this.orderService = new OrderService(
+        this.repositoryContext.getAusysContract(),
+        this.repositoryContext.getSigner(),
+      );
 
       this.isInitialized = true;
       console.log('[ServiceContext] Initialized successfully.');
@@ -98,6 +102,15 @@ export class ServiceContext {
     return this.driverService;
   }
 
-  // Add getters for other services here...
-  // public getOrderService(): OrderService { ... }
+  /**
+   * Get the Order service instance.
+   */
+  public getOrderService(): IOrderService {
+    if (!this.isInitialized || !this.orderService) {
+      throw new Error(
+        'ServiceContext not initialized or OrderService failed to initialize.',
+      );
+    }
+    return this.orderService;
+  }
 }

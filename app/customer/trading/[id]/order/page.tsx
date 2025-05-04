@@ -144,8 +144,11 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                     id: asset.id,
                     nodeId: asset.nodeId,
                     nodeLocation: {
-                      lat: asset.nodeLocation.location.lat,
-                      lng: asset.nodeLocation.location.lng,
+                      addressName: asset.nodeLocation.addressName,
+                      location: {
+                        lat: asset.nodeLocation.location.lat,
+                        lng: asset.nodeLocation.location.lng,
+                      },
                     },
                     assetClass: asset.assetClass,
                     quantity: data.quantity,

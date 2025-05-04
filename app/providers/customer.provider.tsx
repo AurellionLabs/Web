@@ -13,16 +13,21 @@ import {
   useEffect,
   useCallback,
 } from 'react';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { ServiceContext } from '@/infrastructure/contexts/service-context';
+import { handleContractError } from '@/utils/error-handler';
+import { ethers } from 'ethers';
 
 // Types
 export type CustomerOrder = {
   id: string;
+  journeyId: string | null;
   asset: string;
   quantity: number;
   value: string;
   status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
   timestamp: number;
-  deliveryLocation?: string;
+  deliveryLocation: string | null;
 };
 
 type CustomerContextType = {
@@ -44,33 +49,42 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const orderRepository = RepositoryContext.getInstance().getOrderRepository();
+  const orderService = ServiceContext.getInstance().getOrderService();
 
-  // This function will be replaced with actual blockchain integration later
   const loadCustomerOrders = useCallback(async () => {
+    if (!orderRepository) {
+      setError('Order Repository not available.');
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
-      const contractOrders = await getOrders();
+      const contractOrders = await orderRepository.getCustomerOrders();
 
-      // Map contract orders to CustomerOrder format
-      const mappedOrders: CustomerOrder[] = contractOrders.map((order) => ({
-        id: order.id,
-        asset: order.tokenId.toString(),
-        quantity: Number(order.tokenQuantity),
-        value: order.price.toString(),
-        status: getOrderStatus(order.currentStatus),
-        timestamp: Date.now(), // You might want to use a real timestamp if available
-        deliveryLocation: order.locationData.endName,
-      }));
+      const mappedOrders: CustomerOrder[] = contractOrders.map(
+        (order: LocationContract.OrderStructOutput) => ({
+          id: order.id,
+          journeyId: order.journeyIds.length > 0 ? order.journeyIds[0] : null,
+          asset: order.tokenId.toString(),
+          quantity: Number(order.tokenQuantity),
+          value: order.price.toString(),
+          status: getOrderStatus(order.currentStatus),
+          timestamp: Date.now(),
+          deliveryLocation: order.locationData.endName ?? null,
+        }),
+      );
 
       setOrders(mappedOrders);
     } catch (err) {
-      console.error('Error loading orders:', err);
-      setError('Failed to load orders');
+      console.error('Error loading customer orders:', err);
+      setError('Failed to load customer orders');
+      handleContractError(err, 'load customer orders');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [orderRepository]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -93,24 +107,49 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const confirmReceipt = useCallback(async (orderId: string) => {
-    try {
-      setIsLoading(true);
-      await customerPackageSign(orderId);
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: 'completed' as const }
-            : order,
-        ),
-      );
-    } catch (err) {
-      console.error('Error confirming receipt:', err);
-      throw new Error('Failed to confirm receipt');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const confirmReceipt = useCallback(
+    async (orderId: string) => {
+      if (!orderService) {
+        setError('Order Service not available.');
+        return;
+      }
+      const orderToConfirm = orders.find((o) => o.id === orderId);
+
+      if (!orderToConfirm) {
+        setError(`Order with ID ${orderId} not found.`);
+        return;
+      }
+
+      if (!orderToConfirm.journeyId) {
+        setError(`Order ${orderId} has no associated journey to sign.`);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const receipt = await orderService.customerSignPackage(
+          orderToConfirm.journeyId,
+        );
+        console.log('Confirmation Receipt:', receipt);
+
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: 'completed' as const }
+              : order,
+          ),
+        );
+      } catch (err) {
+        console.error('Error confirming receipt:', err);
+        setError('Failed to confirm receipt');
+        handleContractError(err, 'confirm receipt');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [orderService, orders, loadCustomerOrders],
+  );
 
   const refreshOrders = useCallback(async () => {
     await loadCustomerOrders();
@@ -140,20 +179,22 @@ function getOrderStatus(
   status: bigint,
 ): 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' {
   switch (Number(status)) {
-    case 0: // PENDING
+    case 0:
       return 'pending';
-    case 1: // ACCEPTED
+    case 1:
       return 'accepted';
-    case 2: // PICKED_UP/IN_PROGRESS
+    case 2:
       return 'in_progress';
-    case 3: // COMPLETED
+    case 3:
       return 'completed';
-    case 4: // CANCELED
+    case 4:
       return 'cancelled';
     default:
+      console.warn(`Unknown order status: ${status}`);
       return 'pending';
   }
 }
+
 // Hook for using the customer context
 export function useCustomer() {
   const context = useContext(CustomerContext);
@@ -162,5 +203,3 @@ export function useCustomer() {
   }
   return context;
 }
-
-// Add this helper function

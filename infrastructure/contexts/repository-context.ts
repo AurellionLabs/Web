@@ -64,7 +64,7 @@ export class RepositoryContext {
       signer,
       this.auraGoatAddress,
     );
-    this.orderRepository = new OrderRepository(ausysContract);
+    this.orderRepository = new OrderRepository(ausysContract, provider, signer);
     this.driverRepository = new DriverRepository(
       ausysContract,
       provider,

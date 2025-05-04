@@ -316,9 +316,22 @@ export class BlockchainNodeRepository implements NodeRepository {
       const allAssets: TokenizedAsset[] = [];
 
       for (let i = 0; i < nodeCount; i++) {
+        // Add a small delay to avoid hitting RPC rate limits
+        await sleep(150); // Delay for 150 milliseconds (adjust as needed)
+
         const nodeAddress = await contract.nodeList(BigInt(i));
-        const nodeAssets = await this.getNodeAssets(nodeAddress);
-        allAssets.push(...nodeAssets);
+        // Wrap getNodeAssets in a try-catch to handle potential errors for a single node
+        // without stopping the entire process, unless the error is critical.
+        try {
+          const nodeAssets = await this.getNodeAssets(nodeAddress);
+          allAssets.push(...nodeAssets);
+        } catch (error) {
+          console.error(
+            `Error in getAllNodeAssets for node ${nodeAddress}:`,
+            error,
+          );
+          // If the error is not critical, continue with the next node
+        }
       }
 
       return allAssets;
@@ -417,4 +430,9 @@ export class BlockchainNodeRepository implements NodeRepository {
     };
     return assetNames[id] || 'UNKNOWN';
   }
+}
+
+// Helper function for delay
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
