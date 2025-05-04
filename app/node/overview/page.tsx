@@ -44,7 +44,7 @@ export default function NodeOverviewPage() {
 
   const handleNodeSelect = async (nodeAddress: string) => {
     await selectNode(nodeAddress);
-    router.push('/node/dashboard');
+    router.push(`/node/dashboard?node=${nodeAddress}`);
   };
 
   if (loading) {

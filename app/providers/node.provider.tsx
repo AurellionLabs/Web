@@ -8,7 +8,7 @@ import {
   useCallback,
   useEffect,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Node, TokenizedAsset } from '@/domain/node';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
@@ -100,6 +100,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   >(null);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { address } = useWallet();
   console.log(`[NodeProvider] Address from useWallet on render: ${address}`);
 
@@ -331,16 +332,11 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         const status = await getNodeStatus(nodeAddress);
         setIsRegisteredNode(!!status);
         setNodeStatus(status);
-
-        // Update URL for deep linking
-        const params = new URLSearchParams(window.location.search);
-        params.set('node', nodeAddress);
-        router.push(`${window.location.pathname}?${params.toString()}`);
       } catch (error) {
         console.error('Error selecting node:', error);
       }
     },
-    [router, getNode, getNodeOrders, getNodeStatus],
+    [getNode, getNodeOrders, getNodeStatus],
   );
 
   const refreshOrders = useCallback(async () => {
@@ -357,7 +353,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   // Effect to load nodes when the address becomes available
   useEffect(() => {
     console.log(
-      `[NodeProvider] Address Effect Triggered. Current address from useWallet: ${address}`,
+      `[NodeProvider] Address Effect Triggered. Current address: ${address}`,
     );
     if (address) {
       console.log(
@@ -366,8 +362,46 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
       loadNodes(address);
     } else {
       console.log('[NodeProvider] Address Effect - Address is null/undefined.');
+      // Clear nodes if address disconnects?
+      setNodes([]);
+      setSelectedNode(null);
+      setCurrentNodeData(null);
+      setOrders([]);
     }
   }, [address, loadNodes]);
+
+  // Effect to select node based on URL parameter after nodes are loaded
+  useEffect(() => {
+    const nodeAddressFromUrl = searchParams.get('node');
+    console.log(
+      `[NodeProvider] URL Param Effect - Param: ${nodeAddressFromUrl}, Nodes Loaded: ${nodes.length}, Current Selected: ${selectedNode}`,
+    );
+
+    if (
+      nodeAddressFromUrl && // Check if param exists
+      nodes.length > 0 && // Check if nodes are loaded
+      nodeAddressFromUrl !== selectedNode // Check if not already selected
+    ) {
+      // Check if the node from URL is actually owned by the user (present in the loaded nodes list)
+      const nodeExistsInList = nodes.some(
+        (node) => node.address === nodeAddressFromUrl,
+      );
+
+      if (nodeExistsInList) {
+        console.log(
+          `[NodeProvider] URL Param Effect - Selecting node from URL: ${nodeAddressFromUrl}`,
+        );
+        selectNode(nodeAddressFromUrl);
+      } else {
+        console.warn(
+          `[NodeProvider] URL Param Effect - Node ${nodeAddressFromUrl} not found in user's owned nodes.`,
+        );
+        // Optionally, redirect or clear selection if URL node isn't owned
+        // router.push('/node/overview'); // Example redirect
+      }
+    }
+    // Add nodes and searchParams as dependencies
+  }, [nodes, searchParams, selectNode, selectedNode]);
 
   // Asset service methods
   const mintAsset = useCallback(
