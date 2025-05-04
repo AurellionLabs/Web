@@ -5,6 +5,7 @@ import { Delivery, DeliveryStatus } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { calculateETA } from '../utils/maps';
+import { ServiceContext } from '@/infrastructure/contexts/service-context';
 
 export interface DriverContextType {
   availableDeliveries: Delivery[];
@@ -15,6 +16,7 @@ export interface DriverContextType {
   acceptDelivery: (jobId: string) => Promise<void>;
   confirmPickup: (jobId: string) => Promise<void>;
   completeDelivery: (jobId: string) => Promise<void>;
+  packageSign: (jobId: string) => Promise<void>;
 }
 
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
@@ -40,6 +42,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { address: driverWalletAddress } = useWallet();
   const repository = RepositoryContext.getInstance().getDriverRepository();
+  const service = ServiceContext.getInstance().getDriverService();
 
   const refreshDeliveries = async () => {
     if (!driverWalletAddress) {
@@ -83,7 +86,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      await repository.acceptDelivery(jobId);
+      await service.acceptDelivery(jobId);
       await refreshDeliveries();
     } catch (err) {
       setError(
@@ -105,7 +108,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      await repository.confirmPickup(jobId);
+      await service.confirmPickup(jobId);
       await refreshDeliveries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to confirm pickup');
@@ -125,12 +128,32 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      await repository.completeDelivery(jobId);
+      await service.completeDelivery(jobId);
       await refreshDeliveries();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to complete delivery',
       );
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const packageSign = async (jobId: string) => {
+    if (!driverWalletAddress) {
+      setError('Wallet not connected');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await service.packageSign(jobId);
+      await refreshDeliveries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign package');
       throw err;
     } finally {
       setIsLoading(false);
@@ -154,6 +177,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         acceptDelivery,
         confirmPickup,
         completeDelivery,
+        packageSign,
       }}
     >
       {children}
