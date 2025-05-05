@@ -114,18 +114,20 @@ export default function DriverDashboard() {
 
       if (
         filters.pickupLocation &&
-        !delivery.parcelData.startName
-          .toLowerCase()
-          .includes(filters.pickupLocation.toLowerCase())
+        (!delivery.parcelData?.startName ||
+          !delivery.parcelData.startName
+            .toLowerCase()
+            .includes(filters.pickupLocation.toLowerCase()))
       ) {
         return false;
       }
 
       if (
         filters.dropOffLocation &&
-        !delivery.parcelData.endName
-          .toLowerCase()
-          .includes(filters.dropOffLocation.toLowerCase())
+        (!delivery.parcelData?.endName ||
+          !delivery.parcelData.endName
+            .toLowerCase()
+            .includes(filters.dropOffLocation.toLowerCase()))
       ) {
         return false;
       }
@@ -133,6 +135,11 @@ export default function DriverDashboard() {
       return true;
     },
   );
+
+  // Add logging
+  console.log('Raw availableDeliveries:', availableDeliveries);
+  console.log('Current filters:', filters);
+  console.log('Filtered availableDeliveries:', filteredAvailableDeliveries);
 
   // Calculate statistics
   const availableCount = availableDeliveries.length;

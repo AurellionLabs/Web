@@ -45,6 +45,7 @@ import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { customerPackageSign } from '@/dapp-connectors/ausys-controller';
+import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 type SortConfig = {
   key: 'quantity' | 'value' | null;
@@ -61,10 +62,10 @@ const ORDER_STATUSES = [
 
 const ASSETS = [
   { value: 'all', label: 'All Assets' },
-  { value: 'cow', label: 'Cow' },
-  { value: 'goat', label: 'Goat' },
-  { value: 'sheep', label: 'Sheep' },
-  { value: 'chicken', label: 'Chicken' },
+  { value: '3', label: 'Cow' },
+  { value: '1', label: 'Goat' },
+  { value: '2', label: 'Sheep' },
+  { value: '4', label: 'Chicken' },
 ] as const;
 
 export default function CustomerDashboard() {
@@ -411,7 +412,7 @@ export default function CustomerDashboard() {
               <div className="space-y-2">
                 <div className="text-sm font-medium">Asset</div>
                 <div className="text-sm text-gray-400 capitalize">
-                  {order.asset}
+                  {getAssetName(Number(order.asset))}
                 </div>
               </div>
               <div className="space-y-2">
@@ -658,7 +659,9 @@ export default function CustomerDashboard() {
                   {currentOrders.map((order) => (
                     <tr key={order.id} className="border-b border-gray-800">
                       <td className="p-4">{order.id}</td>
-                      <td className="p-4 capitalize">{order.asset}</td>
+                      <td className="p-4 capitalize">
+                        {getAssetName(Number(order.asset))}
+                      </td>
                       <td className="p-4">{order.quantity}</td>
                       <td className="p-4">{order.value} USDT</td>
                       <td className="p-4">

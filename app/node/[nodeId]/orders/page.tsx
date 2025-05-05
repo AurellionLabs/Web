@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useParams } from 'next/navigation';
 import { Input } from '@/app/components/ui/input';
 import {
   Select,
@@ -28,14 +28,15 @@ import {
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { useNode, type Order } from '@/app/providers/node.provider';
+import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
-// This would typically come from an API or configuration
+// Update values to be asset IDs (as strings)
 const supportedAssets = [
-  { value: 'goat', label: 'Goat' },
-  { value: 'sheep', label: 'Sheep' },
-  { value: 'cow', label: 'Cow' },
-  { value: 'chicken', label: 'Chicken' },
-  { value: 'duck', label: 'Duck' },
+  { value: '1', label: 'Goat' }, // Assuming Goat ID is 1
+  { value: '2', label: 'Sheep' }, // Assuming Sheep ID is 2
+  { value: '3', label: 'Cow' }, // Assuming Cow ID is 3
+  { value: '4', label: 'Chicken' }, // Assuming Chicken ID is 4
+  { value: '5', label: 'Duck' }, // Assuming Duck ID is 5
 ] as const;
 
 const orderStatuses = [
@@ -55,17 +56,19 @@ export default function OrdersPage() {
   const { setCurrentUserRole } = useMainProvider();
   const { orders, refreshOrders } = useNode();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const params = useParams();
+  const nodeId = params.nodeId as string;
 
   useEffect(() => {
     setCurrentUserRole('node');
-    handleRefresh();
-  }, [setCurrentUserRole]);
+    handleRefresh(nodeId);
+  }, [setCurrentUserRole, nodeId]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = async (currentNodeId: string) => {
     setIsRefreshing(true);
     try {
-      await refreshOrders();
-      console.log('orders>>>>>>>>>', orders);
+      await refreshOrders(currentNodeId);
+      console.log('orders for node', currentNodeId, '>>>>>>>>>', orders);
     } finally {
       setIsRefreshing(false);
     }
@@ -74,8 +77,9 @@ export default function OrdersPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <OrdersContent
+        nodeId={nodeId}
         orders={orders}
-        onRefresh={handleRefresh}
+        onRefresh={() => handleRefresh(nodeId)}
         isRefreshing={isRefreshing}
       />
     </Suspense>
@@ -83,10 +87,12 @@ export default function OrdersPage() {
 }
 
 function OrdersContent({
+  nodeId,
   orders,
   onRefresh,
   isRefreshing,
 }: {
+  nodeId: string;
   orders: Order[];
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
@@ -312,7 +318,7 @@ function OrdersContent({
                   <tr key={order.id} className="border-b">
                     <td className="p-4">{order.id}</td>
                     <td className="p-4">{order.customer}</td>
-                    <td className="p-4 capitalize">{order.asset}</td>
+                    <td className="p-4">{getAssetName(Number(order.asset))}</td>
                     <td className="p-4">{order.quantity}</td>
                     <td className="p-4">{order.value} USDT</td>
                     <td className="p-4 capitalize">{order.status}</td>

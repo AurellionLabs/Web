@@ -11,6 +11,7 @@ import {
 import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
 import { CustomerOrder } from '@/types';
 import { useState } from 'react';
+import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 interface OrderActionDialogProps {
   order: CustomerOrder;
@@ -159,7 +160,7 @@ export function OrderActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Asset</span>
                 <span className="text-base font-medium text-right capitalize">
-                  {order.asset}
+                  {getAssetName(Number(order.asset))}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">

@@ -578,7 +578,11 @@ export default function NodeDashboardPage() {
             onClick={async () => {
               setIsViewingOrders(true);
               try {
-                await router.push('/node/orders');
+                if (!selectedNode) {
+                  toast.error('No node selected to view orders.');
+                  return;
+                }
+                await router.push(`/node/${selectedNode}/orders`);
               } finally {
                 setIsViewingOrders(false);
               }
@@ -613,7 +617,9 @@ export default function NodeDashboardPage() {
                   <tr key={order.id} className="border-b">
                     <td className="p-4">{order.id}</td>
                     <td className="p-4">{order.customer}</td>
-                    <td className="p-4 capitalize">{order.asset}</td>
+                    <td className="p-4 capitalize">
+                      {getAssetName(Number(order.asset))}
+                    </td>
                     <td className="p-4">{order.quantity}</td>
                     <td className="p-4">{order.value} USDT</td>
                     <td className="p-4 capitalize">{order.status}</td>

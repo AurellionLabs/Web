@@ -45,7 +45,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const service = ServiceContext.getInstance().getDriverService();
 
   const refreshDeliveries = async () => {
+    console.log('[DriverProvider] Entering refreshDeliveries function...');
+
     if (!driverWalletAddress) {
+      console.log(
+        '[DriverProvider] refreshDeliveries aborted: driverWalletAddress is missing.',
+      );
       setError('Wallet not connected');
       return;
     }
@@ -58,6 +63,15 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         repository.getAvailableDeliveries(),
         repository.getMyDeliveries(driverWalletAddress),
       ]);
+
+      console.log(
+        '[DriverProvider] Raw data from repository.getAvailableDeliveries():',
+        available,
+      );
+      console.log(
+        '[DriverProvider] Raw data from repository.getMyDeliveries():',
+        mine,
+      );
 
       // Calculate ETAs for all deliveries
       const availableWithETA = await Promise.all(
@@ -161,8 +175,19 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    console.log(
+      '[DriverProvider] useEffect triggered. driverWalletAddress:',
+      driverWalletAddress,
+    );
     if (driverWalletAddress) {
+      console.log(
+        '[DriverProvider] Wallet address found, calling refreshDeliveries...',
+      );
       refreshDeliveries();
+    } else {
+      console.log(
+        '[DriverProvider] Wallet address NOT found, refreshDeliveries not called.',
+      );
     }
   }, [driverWalletAddress]);
 

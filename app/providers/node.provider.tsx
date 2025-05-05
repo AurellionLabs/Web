@@ -48,7 +48,7 @@ type NodeContextType = {
   getNodeStatus: (nodeAddress: string) => Promise<'Active' | 'Inactive'>;
   getNodeOrders: (nodeAddress: string) => Promise<Order[]>;
   selectNode: (nodeAddress: string) => void;
-  refreshOrders: () => Promise<void>;
+  refreshOrders: (nodeId: string) => Promise<void>;
 
   // Asset operations
   getNodeAssets: (nodeAddress: string) => Promise<TokenizedAsset[]>;
@@ -344,16 +344,39 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     [getNode, getNodeOrders, getNodeStatus],
   );
 
-  const refreshOrders = useCallback(async () => {
-    if (selectedNode) {
+  const refreshOrders = useCallback(
+    async (nodeId: string) => {
+      console.log(`[NodeProvider] refreshOrders called for nodeId: ${nodeId}`);
+      setLoading(true);
+      setError(null);
       try {
-        const nodeOrders = await getNodeOrders(selectedNode);
-        setOrders(nodeOrders);
-      } catch (error) {
-        console.error('Error refreshing orders:', error);
+        // Use the existing getNodeOrders function from this provider
+        const fetchedOrders = await getNodeOrders(nodeId);
+        setOrders(fetchedOrders);
+        console.log(
+          `[NodeProvider] Orders fetched for node ${nodeId}:`,
+          fetchedOrders,
+        );
+      } catch (err) {
+        console.error(
+          `[NodeProvider] Error fetching orders for node ${nodeId}:`,
+          err,
+        );
+        setError(
+          err instanceof Error
+            ? err
+            : new Error(`Failed to fetch orders for node ${nodeId}`),
+        );
+        setOrders([]); // Clear orders on error
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [selectedNode, getNodeOrders]);
+    },
+    // Add getNodeOrders to dependencies if it's not already implicitly included
+    // by being defined in the same scope, or if it relies on external state.
+    // For simplicity and safety, let's add it.
+    [getNodeOrders], // <--- Use getNodeOrders from provider context
+  );
 
   // Effect to load nodes based on address AND role
   useEffect(() => {

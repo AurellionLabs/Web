@@ -137,6 +137,17 @@ export class DriverRepository implements IDriverRepository {
 
         try {
           const journey = await this.ausysContract.getjourney(journeyId);
+
+          console.log(
+            `[DriverRepository] Processing Journey ID: ${journeyId}`,
+            {
+              status: Number(journey.currentStatus),
+              driver: journey.driver,
+              isPending: Number(journey.currentStatus) === 0,
+              isDriverZero: journey.driver === ethers.ZeroAddress,
+            },
+          );
+
           // Filter for available: Pending status and no driver assigned
           if (
             Number(journey.currentStatus) === 0 && // Status.Pending
