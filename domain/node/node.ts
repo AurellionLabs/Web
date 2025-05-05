@@ -90,7 +90,12 @@ export interface NodeRepository {
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
   getNodeOrders(nodeAddress: string): Promise<LocationContract.OrderStruct[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
-  getAssetBalance(ownerAddress: string, assetId: number): Promise<number>;
+  getAssetBalance(
+    ownerAddress: string,
+    assetId: number,
+    assetName: string,
+    attributes: string[],
+  ): Promise<number>;
 }
 
 /**

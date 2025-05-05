@@ -23,8 +23,37 @@ import { IOrderRepository } from '../../domain/orders/order'; // Adjust path
 import { Node } from '../../domain/node'; // Import Node domain type
 import { BlockchainNodeRepository } from '../../infrastructure/repositories/node-repository';
 import { OrderRepository } from '@/infrastructure/repositories/orders-repository';
+import chai, { expect as chaiExpect } from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+import sinon, { SinonStubbedInstance } from 'sinon';
+
+// Configure Chai
+chai.use(chaiAsPromised);
 
 describe('OrderRepository', () => {
+  // --- Constants moved to top level for shared access ---
+  const sampleParcelData: LocationContract.ParcelDataStruct = {
+    startLocation: { lat: '1.0', lng: '1.1' },
+    endLocation: { lat: '2.0', lng: '2.1' },
+    startName: 'Start Location A',
+    endName: 'End Location B',
+  };
+
+  const sampleNode1Data: Node = {
+    address: '', // Will be set after deployment/registration
+    location: {
+      addressName: 'Test Node 1 Location',
+      location: { lat: '10.0', lng: '10.1' },
+    },
+    validNode: '0x01',
+    owner: '', // Will be set later
+    supportedAssets: [1, 2], // GOAT, SHEEP
+    status: 'Active',
+    capacity: [100, 200],
+    assetPrices: [10, 20],
+  };
+  // --- End Constants ---
+
   // --- Test Setup ---
   let owner: HardhatEthersSigner;
   let customer1: HardhatEthersSigner;
@@ -45,29 +74,46 @@ describe('OrderRepository', () => {
 
   let registeredNode1Address: string; // Actual address of node1 after registration
 
-  // --- Sample Data Structures ---
-  const sampleParcelData: LocationContract.ParcelDataStruct = {
-    startLocation: { lat: '1.0', lng: '1.1' },
-    endLocation: { lat: '2.0', lng: '2.1' },
-    startName: 'Start Location A',
-    endName: 'End Location B',
-  };
+  // --- Unit Test Setup ---
+  let mockLocationContract: SinonStubbedInstance<LocationContract>;
+  let mockProvider: SinonStubbedInstance<BrowserProvider>;
+  let mockSigner: SinonStubbedInstance<HardhatEthersSigner>;
+  let unitTestOrderRepository: OrderRepository;
+  let getNodeOrderIdByIndexStub: sinon.SinonStub;
+  let getOrderStub: sinon.SinonStub;
 
-  const sampleNode1Data: Node = {
-    address: '', // Will be set after deployment/registration
-    location: {
-      addressName: 'Test Node 1 Location',
-      location: { lat: '10.0', lng: '10.1' },
+  const testNodeAddress = '0xNodeAddress1234567890123456789012345';
+  const testOrderId1 = ethers.id('order1');
+  const testOrderId2 = ethers.id('order2');
+  const zeroHash = ethers.ZeroHash;
+
+  // Sample valid order data for mocking getOrder
+  const mockOrder1: LocationContract.OrderStructOutput = {
+    id: testOrderId1,
+    token: '0xTokenAddress1',
+    tokenId: BigInt(1),
+    tokenQuantity: BigInt(10),
+    requestedTokenQuantity: BigInt(10),
+    price: ethers.parseEther('1'),
+    txFee: BigInt(100),
+    customer: '0xCustomerAddress1',
+    journeyIds: [ethers.id('journey1')],
+    nodes: [testNodeAddress],
+    locationData: {
+      // Add required nested structure
+      startLocation: { lat: '0', lng: '0' },
+      endLocation: { lat: '1', lng: '1' },
+      startName: 'Start',
+      endName: 'End',
     },
-    validNode: '0x01',
-    owner: '', // Will be set to nodeSigner1.address
-    supportedAssets: [1, 2], // GOAT, SHEEP
-    status: 'Active',
-    capacity: [100, 200],
-    assetPrices: [10, 20],
-  };
+    currentStatus: 0, // Pending
+    contracatualAgreement: ethers.ZeroHash,
+    // Ensure all fields expected by OrderStructOutput are present
+    // Add dummy values or ensure type compatibility for any missing fields
+  } as unknown as LocationContract.OrderStructOutput; // Cast if necessary
 
-  // --- Helper Function to Create a Journey ---
+  // --- Helper Functions (Moved to be accessible by Integration Tests) ---
+  // NOTE: These rely on variables defined in the INTEGRATION beforeEach (e.g., owner, locationContract, auraToken)
   async function createTestJourney(
     sender: HardhatEthersSigner,
     receiver: HardhatEthersSigner,
@@ -79,19 +125,17 @@ describe('OrderRepository', () => {
   }> {
     const bountyWei = ethers.parseEther(bountyEther);
     const etaTimestamp = Math.floor(Date.now() / 1000) + etaOffsetSeconds;
-
+    // This assumes auraToken and locationContract are initialized in the integration test scope
     await auraToken
       .connect(sender)
       .approve(await locationContract.getAddress(), bountyWei);
-    const tx = await locationContract
-      .connect(sender)
-      .journeyCreation(
-        sender.address,
-        receiver.address,
-        sampleParcelData,
-        bountyWei,
-        BigInt(etaTimestamp),
-      );
+    const tx = await locationContract.connect(sender).journeyCreation(
+      sender.address,
+      receiver.address,
+      sampleParcelData, // Uses constant
+      bountyWei,
+      BigInt(etaTimestamp),
+    );
     const receipt = await tx.wait();
     let journeyId: BytesLike = ethers.ZeroHash;
     const eventFragment = locationContract.interface.getEvent('JourneyCreated');
@@ -118,11 +162,9 @@ describe('OrderRepository', () => {
     return { journeyId, receipt };
   }
 
-  // --- Helper Function to Create an Order ---
-  // Returns the order ID captured from the transactio n
   async function createTestOrder(
     customer: HardhatEthersSigner,
-    nodeAddress: AddressLike, // The *registered* node address
+    nodeAddress: AddressLike,
     tokenAddress: AddressLike,
     tokenId: number,
     tokenQuantity: number,
@@ -138,16 +180,14 @@ describe('OrderRepository', () => {
       requestedTokenQuantity: BigInt(tokenQuantity),
       tokenQuantity: BigInt(0),
       price: ethers.parseEther(priceEther),
-      txFee: BigInt(0), // Contract calculates this
+      txFee: BigInt(0),
       customer: customer.address,
       journeyIds: [],
       nodes: [nodeAddress],
-      locationData: sampleParcelData,
-      currentStatus: 0, // Pending
+      locationData: sampleParcelData, // Uses constant
+      currentStatus: 0,
       contracatualAgreement: ethers.ZeroHash,
     };
-
-    // Call orderCreation - it returns the created order ID (bytes32)
     const orderId = await locationContract
       .connect(customer)
       .orderCreation.staticCall(orderData);
@@ -155,18 +195,15 @@ describe('OrderRepository', () => {
       .connect(customer)
       .orderCreation(orderData);
     const creationReceipt = await creationTx.wait();
-
     if (!orderId || orderId === ethers.ZeroHash) {
       console.warn(
         'orderCreation static call did not return a valid ID, or tx failed',
       );
       return { orderId: ethers.ZeroHash, receipt: creationReceipt };
     }
-
     return { orderId, receipt: creationReceipt };
   }
 
-  // --- Helper to create the order's journey (links order to node) ---
   async function createOrderJourney(
     orderId: BytesLike,
     senderNodeAddress: AddressLike,
@@ -180,27 +217,20 @@ describe('OrderRepository', () => {
   }> {
     const bountyWei = ethers.parseEther(bountyEther);
     const etaTimestamp = Math.floor(Date.now() / 1000) + etaOffsetSeconds;
-
-    // Simulate node owner calling this (adjust if needed)
-    const nodeOwnerSigner = owner; // Assuming owner deployed node manager
-
-    // Approve contract to spend bounty (if applicable, maybe node pays? Check contract logic)
-    // await auraToken.connect(nodeOwnerSigner).approve(await locationContract.getAddress(), bountyWei); // Might not be needed
-
+    // This assumes 'owner' is the signer who can call orderJourneyCreation
+    const nodeOwnerSigner = owner;
     const tx = await locationContract
       .connect(nodeOwnerSigner)
       .orderJourneyCreation(
         orderId,
         senderNodeAddress,
         receiverAddress,
-        sampleParcelData,
+        sampleParcelData, // Uses constant
         bountyWei,
         BigInt(etaTimestamp),
         BigInt(tokenQuantity),
       );
     const receipt = await tx.wait();
-
-    // Parse JourneyCreated event to get the journeyId
     let journeyId: BytesLike = ethers.ZeroHash;
     const eventFragment = locationContract.interface.getEvent('JourneyCreated');
     if (receipt?.logs && eventFragment) {
@@ -223,9 +253,9 @@ describe('OrderRepository', () => {
         'Could not find JourneyCreated event in transaction logs for orderJourney creation.',
       );
     }
-
     return { journeyId, receipt };
   }
+  // --- End Helper Functions ---
 
   beforeEach(async () => {
     // Get signers
@@ -300,9 +330,11 @@ describe('OrderRepository', () => {
       auraGoatAddress,
     );
 
+    // Set owner for sampleNode1Data used in integration tests
+    sampleNode1Data.owner = nodeSigner1.address;
+
     // Register Node 1 owned by nodeSigner1
-    const node1SetupData = { ...sampleNode1Data, owner: nodeSigner1.address };
-    registeredNode1Address = await nodeRepository.registerNode(node1SetupData);
+    registeredNode1Address = await nodeRepository.registerNode(sampleNode1Data);
     console.log(`Registered Node 1 at address: ${registeredNode1Address}`);
 
     // Instantiate OrderRepository
@@ -324,8 +356,6 @@ describe('OrderRepository', () => {
     await createTestJourney(customer1, customer2);
     await createTestJourney(customer2, customer1, '0.5');
   });
-
-  // --- Test Cases ---
 
   describe('getNodeOrders', () => {
     it('should return orders associated with a specific node after orderJourneyCreation', async () => {
@@ -366,6 +396,59 @@ describe('OrderRepository', () => {
       );
       expect(orders).to.be.an('array').that.is.empty;
     });
+
+    // --- Added Test Case for Isolation ---
+    it('should allow direct fetching of order ID from nodeToOrderIds mapping after linking', async () => {
+      // 1. Create an order request
+      const { orderId: createdOrderId } = await createTestOrder(
+        customer1,
+        registeredNode1Address,
+        auraGoatAddress,
+        1, // GOAT
+        15, // quantity
+      );
+      expect(createdOrderId).to.not.equal(ethers.ZeroHash);
+
+      // 2. Create the journey linking the order to the node
+      const { journeyId } = await createOrderJourney(
+        createdOrderId,
+        registeredNode1Address, // Sender node
+        customer1.address, // Receiver
+        '0.01', // Bounty
+        3600, // ETA offset
+        15, // Token quantity for journey
+      );
+      expect(journeyId).to.not.equal(ethers.ZeroHash);
+
+      // 3. Directly access the contract mapping VIA EXPLICIT GETTER
+      let fetchedOrderId: BytesLike = ethers.ZeroHash;
+      await expect(
+        (async () => {
+          // Use the new explicit getter function
+          fetchedOrderId = await locationContract.getNodeOrderIdByIndex(
+            registeredNode1Address,
+            0, // Expecting the first order linked to this node
+          );
+        })(),
+      ).to.not.be.reverted; // Expect the getter call itself not to revert
+
+      // 4. Assert the fetched ID matches the created order ID
+      expect(fetchedOrderId).to.equal(createdOrderId);
+
+      // 5. Check that accessing an index beyond the linked orders returns ZeroHash VIA EXPLICIT GETTER
+      let outOfBoundsOrderId: BytesLike = ethers.ZeroHash;
+      await expect(
+        (async () => {
+          // Use the new explicit getter function
+          outOfBoundsOrderId = await locationContract.getNodeOrderIdByIndex(
+            registeredNode1Address,
+            1, // Index 1 should not exist yet
+          );
+        })(),
+      ).to.not.be.reverted; // The getter handles bounds check now
+      expect(outOfBoundsOrderId).to.equal(ethers.ZeroHash);
+    });
+    // --- End Added Test Case ---
   });
 
   describe('getCustomerJourneys', () => {
@@ -610,6 +693,155 @@ describe('OrderRepository', () => {
       await expect(orderRepository.getOrderById(invalidId)).to.be.rejectedWith(
         /Order with ID .* not found/,
       );
+    });
+  });
+
+  describe('getNodeOrders [Unit Tests]', () => {
+    beforeEach('Unit Test Setup', () => {
+      // --- Mock specific methods needed, not the whole contract instance ---
+      getNodeOrderIdByIndexStub = sinon.stub();
+      getOrderStub = sinon.stub();
+      const mockLocationContractObj = {
+        getNodeOrderIdByIndex: getNodeOrderIdByIndexStub,
+        getOrder: getOrderStub,
+        // Add dummy getAddress if needed by constructor/other methods
+        getAddress: sinon.stub().resolves(ethers.ZeroAddress),
+      };
+
+      // --- Keep stubs for Provider/Signer if used ---
+      mockProvider = sinon.createStubInstance(BrowserProvider);
+      mockSigner = sinon.createStubInstance(HardhatEthersSigner);
+
+      // Default provider/signer address if needed by repo constructor/methods
+      // mockSigner.getAddress.resolves('0xDefaultSignerAddress');
+
+      unitTestOrderRepository = new OrderRepository(
+        mockLocationContractObj as unknown as LocationContract, // Cast the mock object
+        mockProvider, // Use stubbed provider
+        mockSigner as unknown as Signer, // Use stubbed signer
+      );
+    });
+
+    afterEach('Unit Test Teardown', () => {
+      // --- ADDED Unit Test Teardown ---
+      sinon.restore();
+    });
+
+    it('should return orders when getNodeOrderIdByIndex and getOrder succeed', async () => {
+      getNodeOrderIdByIndexStub
+        .withArgs(testNodeAddress, 0)
+        .resolves(testOrderId1);
+      getNodeOrderIdByIndexStub.withArgs(testNodeAddress, 1).resolves(zeroHash);
+      getOrderStub.withArgs(testOrderId1).resolves(mockOrder1);
+
+      const orders =
+        await unitTestOrderRepository.getNodeOrders(testNodeAddress);
+
+      expect(orders).to.be.an('array').with.lengthOf(1);
+      expect(orders[0].id).to.equal(testOrderId1);
+      expect(getNodeOrderIdByIndexStub.calledTwice).to.be.true;
+      expect(getOrderStub.calledOnceWithExactly(testOrderId1)).to.be.true;
+    });
+
+    it('should return an empty array if getNodeOrderIdByIndex returns ZeroHash immediately', async () => {
+      getNodeOrderIdByIndexStub.withArgs(testNodeAddress, 0).resolves(zeroHash);
+
+      const orders =
+        await unitTestOrderRepository.getNodeOrders(testNodeAddress);
+
+      expect(orders).to.be.an('array').that.is.empty;
+      expect(
+        getNodeOrderIdByIndexStub.calledOnceWithExactly(testNodeAddress, 0),
+      ).to.be.true;
+      expect(getOrderStub.called).to.be.false;
+    });
+
+    it('should skip an order if getOrder returns an invalid order (id is ZeroHash)', async () => {
+      const invalidOrder = { ...mockOrder1, id: zeroHash };
+      getNodeOrderIdByIndexStub
+        .withArgs(testNodeAddress, 0)
+        .resolves(testOrderId1);
+      getNodeOrderIdByIndexStub.withArgs(testNodeAddress, 1).resolves(zeroHash);
+      getOrderStub.withArgs(testOrderId1).resolves(invalidOrder as any);
+
+      // Act
+      const orders =
+        await unitTestOrderRepository.getNodeOrders(testNodeAddress);
+
+      // Assert
+      expect(orders).to.be.an('array').that.is.empty; // Should be skipped
+      expect(getOrderStub.calledOnceWithExactly(testOrderId1)).to.be.true;
+    });
+
+    it('should handle errors during getOrder call and continue if possible (or break based on impl.)', async () => {
+      // Arrange: First ID valid, second ID causes getOrder error, third ID is end
+      getNodeOrderIdByIndexStub
+        .withArgs(testNodeAddress, 0)
+        .resolves(testOrderId1);
+      getNodeOrderIdByIndexStub
+        .withArgs(testNodeAddress, 1)
+        .resolves(testOrderId2); // Add a second ID
+      getNodeOrderIdByIndexStub.withArgs(testNodeAddress, 2).resolves(zeroHash); // End of list
+
+      getOrderStub.withArgs(testOrderId1).resolves(mockOrder1); // First order is valid
+      getOrderStub
+        .withArgs(testOrderId2)
+        .rejects(new Error('Failed to fetch order')); // Second order fails
+
+      // Act
+      const orders =
+        await unitTestOrderRepository.getNodeOrders(testNodeAddress);
+
+      // Assert: Current implementation logs error and continues, so expects 1 order
+      expect(orders).to.be.an('array').with.lengthOf(1);
+      expect(orders[0].id).to.equal(testOrderId1);
+      expect(getOrderStub.calledTwice).to.be.true; // Called for order1 and order2
+      expect(getOrderStub.getCall(0).args[0]).to.equal(testOrderId1);
+      expect(getOrderStub.getCall(1).args[0]).to.equal(testOrderId2);
+    });
+
+    it('should break loop if getNodeOrderIdByIndex throws an error', async () => {
+      // Arrange
+      getNodeOrderIdByIndexStub
+        .withArgs(testNodeAddress, 0)
+        .rejects(new Error('Contract Read Error'));
+
+      // Act
+      const orders =
+        await unitTestOrderRepository.getNodeOrders(testNodeAddress);
+
+      // Assert: Current implementation catches, logs, and breaks, returning empty
+      expect(orders).to.be.an('array').that.is.empty;
+      expect(getNodeOrderIdByIndexStub.calledOnce).to.be.true;
+      expect(getOrderStub.called).to.be.false;
+    });
+
+    it('should handle MAX_NODE_ORDERS limit', async () => {
+      // Arrange: Simulate reaching the limit
+      const MAX_NODE_ORDERS = 100; // Match the constant in the repo
+      for (let i = 0; i < MAX_NODE_ORDERS; i++) {
+        const loopOrderId = ethers.id(`orderLoop${i}`);
+        getNodeOrderIdByIndexStub
+          .withArgs(testNodeAddress, i)
+          .resolves(loopOrderId);
+        // Mock getOrder to return a basic valid order for each ID
+        getOrderStub
+          .withArgs(loopOrderId)
+          .resolves({ ...mockOrder1, id: loopOrderId } as any);
+      }
+      // Mock the call *after* the limit to return ZeroHash (though loop should break before)
+      getNodeOrderIdByIndexStub
+        .withArgs(testNodeAddress, MAX_NODE_ORDERS)
+        .resolves(zeroHash);
+
+      // Act
+      const orders =
+        await unitTestOrderRepository.getNodeOrders(testNodeAddress);
+
+      // Assert
+      expect(orders).to.be.an('array').with.lengthOf(MAX_NODE_ORDERS);
+      expect(getNodeOrderIdByIndexStub.callCount).to.equal(MAX_NODE_ORDERS); // Loop should run exactly MAX times
+      expect(getOrderStub.callCount).to.equal(MAX_NODE_ORDERS);
     });
   });
 });

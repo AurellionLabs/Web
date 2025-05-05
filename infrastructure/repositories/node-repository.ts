@@ -256,23 +256,32 @@ export class BlockchainNodeRepository implements NodeRepository {
       }
 
       // Create an array of promises for all balance checks
-      const balancePromises = node.supportedAssets.map((assetId) => {
-        const tokenId = BigInt(Number(assetId) * 10); // Calculate tokenId
-        return goatContract
-          .balanceOf(address, tokenId)
-          .then((balance) => ({
-            // Return object with id and balance
-            id: Number(assetId),
-            balance: balance,
-          }))
-          .catch((error) => {
-            // Handle errors fetching individual balances gracefully
-            console.warn(
-              `Error fetching balance for node ${address}, asset ${assetId} (tokenId ${tokenId}): ${error.message}`,
+      const balancePromises = node.supportedAssets.map(
+        async (assetIdBigInt) => {
+          const assetId = Number(assetIdBigInt);
+          // Use lookupHash consistent with minting and getAssetBalance
+          const assetNameForHash = this.getAssetName(assetId); // Get canonical name
+          const attributesForHash: string[] = []; // Assume empty attributes
+
+          try {
+            const tokenId = await goatContract.lookupHash(
+              assetNameForHash,
+              attributesForHash,
             );
-            return { id: Number(assetId), balance: BigInt(0) }; // Return 0 balance on error
-          });
-      });
+            const balance = await goatContract.balanceOf(address, tokenId);
+            return {
+              id: assetId,
+              balance: balance,
+            };
+          } catch (error) {
+            // Handle errors fetching individual balances/lookupHash gracefully
+            console.warn(
+              `Error processing balance for node ${address}, asset ${assetId} (name ${assetNameForHash}): ${error instanceof Error ? error.message : error}`,
+            );
+            return { id: assetId, balance: BigInt(0) }; // Return 0 balance on error
+          }
+        },
+      );
 
       // Wait for all balance checks to complete
       const balances = await Promise.all(balancePromises);
@@ -321,6 +330,7 @@ export class BlockchainNodeRepository implements NodeRepository {
 
         const nodeAddress = await contract.nodeList(BigInt(i));
         // Wrap getNodeAssets in a try-catch to handle potential errors for a single node
+
         // without stopping the entire process, unless the error is critical.
         try {
           const nodeAssets = await this.getNodeAssets(nodeAddress);
@@ -342,6 +352,9 @@ export class BlockchainNodeRepository implements NodeRepository {
   }
 
   async getNodeOrders(address: string): Promise<any[]> {
+    console.log(
+      `[NodeRepository] Getting orders for node ywannngngnngng: ${address}`,
+    );
     try {
       const contract = await this.aurumContract;
       const node = await contract.getNode(address);
@@ -384,11 +397,15 @@ export class BlockchainNodeRepository implements NodeRepository {
   async getAssetBalance(
     ownerAddress: string,
     assetId: number,
+    assetName: string,
+    attributes: string[],
   ): Promise<number> {
     try {
       const goatContract = await this.getAuraGoatContract();
-      const tokenId = BigInt(assetId * 10);
+      // Use lookupHash to match the contract's ID generation
+      const tokenId = await goatContract.lookupHash(assetName, attributes);
 
+      // Call balanceOf with the correct tokenId
       const balance = await goatContract.balanceOf(ownerAddress, tokenId);
       console.log(
         `[NodeRepository] Balance check for owner ${ownerAddress}, asset ${assetId} (tokenId ${tokenId}): ${balance}`,

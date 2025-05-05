@@ -106,8 +106,10 @@ describe('NodeAssetService', () => {
       expect(addItemArgs[1], 'arg: id (padded)').to.equal(expectedPaddedId);
       expect(addItemArgs[2], 'arg: weight').to.equal(expectedBigIntAssetId);
       expect(addItemArgs[3], 'arg: amount').to.equal(expectedBigIntAmount);
-      // We still can't easily verify NEXT_PUBLIC_AURA_GOAT_ADDRESS here without mocking the import
-      expect(addItemArgs[5], 'arg: data').to.equal('0x');
+      // We still can't easily verify NEXT_PUBLIC_AURA_GOAT_ADDRESS (arg 4) here without mocking the import
+      expect(addItemArgs[5], 'arg: assetName').to.equal('GOAT'); // Use correct name for assetId 1
+      expect(addItemArgs[6], 'arg: attributes').to.deep.equal([]); // Check attributes is empty array
+      expect(addItemArgs[7], 'arg: data').to.equal('0x'); // Check data is 0x
 
       // Assert: Verify transaction wait was called
       expect(mockTxResponse.wait.calledOnce).to.be.true;

@@ -220,16 +220,44 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         };
 
         console.log(
+          '[TradeProvider] Constructed blockchainOrder:',
+          JSON.stringify(blockchainOrder, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value,
+          ),
+        );
+        console.log(
+          `[TradeProvider] blockchainOrder.id used for creation: ${blockchainOrder.id}`,
+        );
+
+        console.log(
           '[TradeProvider] Placing order with data:',
           JSON.stringify(blockchainOrder, (key, value) =>
             typeof value === 'bigint' ? value.toString() : value,
           ),
         );
 
-        const receipt = await orderService.createOrder(blockchainOrder);
+        const actualOrderId = await orderService.createOrder(blockchainOrder);
+        console.log(
+          `[TradeProvider] Actual Order ID from service: ${actualOrderId}`,
+        );
+
+        console.log(
+          `[TradeProvider] Calling createOrderJourney with orderId: ${actualOrderId}, nodeId: ${nodeId}, assetId: ${assetId}`,
+        );
+
+        const receipt2 = await orderService.createOrderJourney(
+          actualOrderId,
+          nodeId,
+          walletAddress,
+          blockchainOrder.locationData,
+          BigInt(0),
+          BigInt(10000000000000),
+          BigInt(quantity),
+          assetId,
+        );
         console.log(
           '[TradeProvider] Order placed successfully, tx receipt:',
-          receipt,
+          receipt2,
         );
         await loadOrders();
         setIsLoading(false);

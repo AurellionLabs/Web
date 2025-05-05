@@ -115,10 +115,12 @@ describe('NodeAssetService [Integration]', () => {
   describe('mintAsset', () => {
     const assetId = 1;
     const amountToMint = 50;
-    const expectedTokenId = BigInt(assetId * 10);
 
     // Test now calls the service with the address returned by the manager
     it('should successfully mint assets via the service for the registered node address', async () => {
+      // Arrange: Calculate the correct tokenId using lookupHash
+      const expectedTokenId = await auraGoat.lookupHash('GOAT', []);
+
       // Arrange: Check initial balance for the registered node address
       const initialBalance = await auraGoat.balanceOf(
         registeredNodeAddress,

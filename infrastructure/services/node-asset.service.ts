@@ -79,12 +79,17 @@ export class NodeAssetService implements INodeAssetService {
       );
 
       // Adjust parameters based on the actual AurumNode.addItem signature
+      const assetName = this.getAssetName(assetId);
+      const attributes: string[] = []; // Empty attributes array
+
       const tx = await nodeContract.addItem(
         nodeAddress, // itemOwner
         paddedId, // id (BytesLike)
         bigIntAssetId, // weight (using assetId as weight like controller)
         bigIntAmount, // amount
         NEXT_PUBLIC_AURA_GOAT_ADDRESS, // item (token contract)
+        assetName, // assetName
+        attributes, // attributes
         '0x', // data
         // Overrides (optional) can be added here if needed e.g. { gasLimit: ... }
       );
@@ -243,5 +248,17 @@ export class NodeAssetService implements INodeAssetService {
       handleContractError(error, `update supported assets for ${nodeAddress}`);
       throw error;
     }
+  }
+
+  // Add helper function copied from BlockchainNodeRepository
+  private getAssetName(id: number): string {
+    const assetNames: { [key: number]: string } = {
+      1: 'GOAT',
+      2: 'SHEEP',
+      3: 'COW',
+      4: 'CHICKEN',
+      5: 'DUCK',
+    };
+    return assetNames[id] || 'UNKNOWN';
   }
 }

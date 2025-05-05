@@ -5,6 +5,7 @@ import {
   Overrides,
   BigNumberish,
 } from 'ethers';
+import { NodeLocation, AssetType } from '@/domain/node';
 
 export enum OrderStatus {
   PENDING = 'pending',
@@ -137,12 +138,12 @@ export interface IOrderService {
    * Creates a new order based on the provided order data.
    * @param orderData The structure containing all details for the new order.
    * @param overrides Optional transaction overrides (e.g., gasLimit).
-   * @returns A promise resolving to the contract transaction receipt upon successful order creation.
+   * @returns A promise resolving to the unique ID (bytes32) of the created order.
    */
   createOrder(
     orderData: LocationContract.OrderStruct,
     overrides?: Overrides,
-  ): Promise<ContractTransactionReceipt>;
+  ): Promise<BytesLike>;
 
   /**
    * Adds or updates the receiver for a specific order.
@@ -159,4 +160,30 @@ export interface IOrderService {
     sender?: string,
     overrides?: Overrides,
   ): Promise<ContractTransactionReceipt>;
+
+  /**
+   * Creates a journey specifically linked to an existing order.
+   *
+   * @param orderId - The ID of the order to link the journey to.
+   * @param senderNodeAddress - The address of the node sending the parcel for this leg.
+   * @param receiverAddress - The address receiving the parcel (can be another node or the final customer).
+   * @param parcelData - Geographic and naming details for the journey leg.
+   * @param bountyWei - The reward for the driver completing this journey leg (in Wei).
+   * @param etaTimestamp - The expected arrival timestamp (Unix timestamp).
+   * @param tokenQuantity - The quantity of the specific token being moved in this leg.
+   * @param assetId - The ID of the asset being moved in this leg.
+   * @param overrides Optional transaction overrides (e.g., gasLimit).
+   * @returns The unique ID (bytes32) of the created journey leg.
+   */
+  createOrderJourney(
+    orderId: BytesLike,
+    senderNodeAddress: string,
+    receiverAddress: string,
+    parcelData: LocationContract.ParcelDataStruct,
+    bountyWei: bigint,
+    etaTimestamp: bigint,
+    tokenQuantity: bigint,
+    assetId: number,
+    overrides?: Overrides,
+  ): Promise<BytesLike>;
 }

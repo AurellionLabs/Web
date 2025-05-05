@@ -62,7 +62,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
       const contractOrders = await orderRepository.getCustomerOrders();
-
+      console.log(`[CustomerProvider] Contract orders: ${contractOrders}`);
       const mappedOrders: CustomerOrder[] = contractOrders.map(
         (order: LocationContract.OrderStructOutput) => ({
           id: order.id,

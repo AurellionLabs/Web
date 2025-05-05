@@ -299,6 +299,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     async (nodeAddress: string): Promise<Order[]> => {
       try {
         const contractOrders = await orderRepository.getNodeOrders(nodeAddress);
+        console.log('[NodeProvider] Contract orders>>>>>:', contractOrders);
         return contractOrders.map((order) => ({
           id: order.id.toString(),
           customer: order.customer.toString(),
@@ -320,6 +321,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   const selectNode = useCallback(
     async (nodeAddress: string) => {
       try {
+        console.log(`[NodeProvider] Selecting node: ${nodeAddress}`);
         const node = await getNode(nodeAddress);
         if (!node) return;
 
@@ -328,6 +330,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
 
         // Update orders for the selected node
         const nodeOrders = await getNodeOrders(nodeAddress);
+        console.log('[NodeProvider] Node orders>>>>>:', nodeOrders);
         setOrders(nodeOrders);
 
         // Update node status
@@ -371,7 +374,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
       setNodes([]);
       setSelectedNode(null);
       setCurrentNodeData(null);
-      setOrders([]);
+      // setOrders([]);
       setCurrentWalletAddress(null);
       // Don't set loading to false here, as loadNodes wasn't called
     }
@@ -408,7 +411,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
           // Clear selection if URL node isn't valid or owned
           setSelectedNode(null);
           setCurrentNodeData(null);
-          setOrders([]); // Clear orders too
+          // setOrders([]); // Clear orders too
         }
       }
     } else {
@@ -419,7 +422,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         );
         setSelectedNode(null);
         setCurrentNodeData(null);
-        setOrders([]); // Clear orders too
+        // setOrders([]); // Clear orders too
       }
     }
     // Ensure all dependencies used in the logic are included

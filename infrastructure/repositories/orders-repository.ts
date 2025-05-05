@@ -1,6 +1,8 @@
 import {
   type IOrderRepository,
   // type OrderStatus, // Keep commented if not used for mapping
+  type Asset, // Import Asset type
+  type Attribute, // Import Attribute type
 } from '@/domain/orders/order';
 import {
   LocationContract,
@@ -65,19 +67,26 @@ export class OrderRepository implements IOrderRepository {
       while (index < MAX_NODE_ORDERS) {
         let orderId: BytesLike;
         try {
-          // Assuming nodeToOrderIds mapping exists and is populated correctly
-          orderId = await this.contract.nodeToOrderIds(address, index);
+          // Use the explicit getter instead of direct mapping access
+          orderId = await this.contract.getNodeOrderIdByIndex(address, index);
+          console.log(`[OrderRepository] Order ID>>: ${orderId}`);
           if (!orderId || orderId === ethers.ZeroHash) {
-            // console.log(`[OrderRepository] End of order list for node ${address} at index ${index}`);
-            break; // Assume end of list if ZeroHash or error
+            console.log(
+              `[OrderRepository] End of order list for node ${address} at index ${index}`,
+            );
+            break; // Assume end of list if ZeroHash
           }
         } catch (error: any) {
-          // console.log(`[OrderRepository] Error fetching order ID for node ${address} at index ${index} (likely end):`, error.message);
+          console.log(
+            `[OrderRepository] Error fetching order ID for node ${address} at index ${index} (likely end):`,
+            error.message,
+          );
           break; // Assume end of list on error
         }
 
         try {
           const order = await this.contract.getOrder(orderId);
+          console.log('[OrderRepository] Order>>>>>:', order);
           // Ensure order has a valid ID before adding
           if (order && order.id !== ethers.ZeroHash) {
             orders.push(order);
@@ -226,7 +235,7 @@ export class OrderRepository implements IOrderRepository {
     console.log(`[OrderRepository] Fetching all journeys...`);
     const allJourneys: LocationContract.JourneyStructOutput[] = [];
     try {
-      let index = 0;
+      let index = 1;
       const MAX_JOURNEYS = 1000; // Safety break
       while (index < MAX_JOURNEYS) {
         let journeyId: BytesLike;
@@ -412,4 +421,42 @@ export class OrderRepository implements IOrderRepository {
       throw error; // Ensure other errors are thrown after handling
     }
   }
+
+  /**
+   * Retrieves supported attributes and their value for a specific hash
+   * @param assetName the name of the asset to be retrieved
+   * @returns a an assets attributes and its values
+   */
+  async getAssetAttributes(assetName: string): Promise<Asset> {
+    console.log(`[OrderRepository] Getting attributes for asset: ${assetName}`);
+    try {
+      // Assuming the contract has a method to get attributes by name.
+      // The actual contract method name might differ (e.g., getAsset, assetNameToData, etc.)
+      // We also need to map the contract's return type to the Asset/Attribute structure.
+      // This is a placeholder structure.
+
+      // Placeholder: Use keccak256 like in NodeRepository to potentially get an ID if needed
+      const attributesForHash: string[] = []; // Assuming empty attributes for now
+      const tokenId = ethers.solidityPackedKeccak256(
+        ['string', 'string[]'],
+        [assetName, attributesForHash],
+      );
+      console.log(
+        `[OrderRepository] Calculated tokenId for ${assetName}: ${tokenId}`,
+      );
+
+      // Placeholder: Return empty attributes as LocationContract doesn't seem to hold this data
+      const attributes: Attribute[] = [];
+
+      return {
+        assetName: assetName,
+        attributes: attributes,
+      };
+    } catch (error) {
+      handleContractError(error, `get attributes for asset ${assetName}`);
+      throw error;
+    }
+  }
+
+  // --- End Implementation ---
 }
