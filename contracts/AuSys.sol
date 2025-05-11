@@ -95,6 +95,7 @@ contract locationContract {
   mapping(address => uint) customerToTokenAmount;
   Journey[] public subJourneys;
   uint public journeyIdCounter = 0;
+  uint public orderIdCounter = 0;
   AuraContract.Aura auraToken;
   AurumNodeManager nodeManager;
 
@@ -157,6 +158,9 @@ contract locationContract {
     return keccak256(abi.encode(journeyIdCounter += 1));
   }
 
+  function getHashedOrderId() private returns (bytes32) {
+    return keccak256(abi.encode(orderIdCounter += 1));
+  }
   event emitSig(address indexed user, bytes32 indexed id);
 
   function getjourney(bytes32 id) public view returns (Journey memory) {
@@ -476,7 +480,7 @@ contract locationContract {
   }
 
   function orderCreation(Order memory order) public returns (bytes32) {
-    bytes32 id = getHashedJourneyId();
+    bytes32 id = getHashedOrderId();
     idToOrder[id] = order;
     idToOrder[id].currentStatus = Status.Pending;
     idToOrder[id].id = id;

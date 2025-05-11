@@ -106,7 +106,7 @@ export class DriverRepository implements IDriverRepository {
   async getAvailableDeliveries(): Promise<Delivery[]> {
     console.log('[DriverRepository] Getting available deliveries...');
     const availableDeliveries: Delivery[] = [];
-    let index = 0;
+    let index = 1;
     const MAX_ITERATIONS = 1000; // Safety break for loop
 
     try {
