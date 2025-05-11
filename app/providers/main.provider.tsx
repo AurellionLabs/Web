@@ -6,6 +6,8 @@ import React, {
   type ReactNode,
 } from 'react';
 import { PrivyProvider } from '@privy-io/react-auth';
+import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 
 type UserRole = 'customer' | 'node' | 'driver' | 'guest';
 
@@ -37,8 +39,23 @@ const ethereumChain = {
 };
 
 export function MainProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('customer');
   const [connected, setIsWalletConnected] = useState(false);
+
+  useEffect(() => {
+    // Get the first segment of the path (e.g., /driver -> driver)
+    const pathSegment = pathname.split('/')[1];
+
+    // Only update if the path segment is one of our valid roles
+    if (
+      pathSegment === 'driver' ||
+      pathSegment === 'customer' ||
+      pathSegment === 'node'
+    ) {
+      setCurrentUserRole(pathSegment as UserRole);
+    }
+  }, [pathname]);
 
   const value = {
     currentUserRole,
