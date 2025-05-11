@@ -57,13 +57,17 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       );
 
       if (!connectedWallet && privy.authenticated) {
-        console.error(
-          'Authenticated but no wallet found. User might need to link a wallet.',
-          privyWallets,
-        );
-        throw new Error(
-          `Privy wallet not available even though user is authenticated.`,
-        );
+        await privy.logout();
+        await privy.login();
+        if (!connectedWallet && privy.authenticated) {
+          console.error(
+            'Authenticated but no wallet found. User might need to link a wallet.',
+            privyWallets,
+          );
+          throw new Error(
+            `Privy wallet not available even though user is authenticated.`,
+          );
+        }
       } else if (!connectedWallet) {
         throw new Error(`Privy wallet not available after connection attempt.`);
       }
