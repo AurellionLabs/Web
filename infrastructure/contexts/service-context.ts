@@ -5,6 +5,8 @@ import { DriverService } from '@/infrastructure/services/driver.service';
 import { RepositoryContext } from './repository-context';
 import { IOrderService } from '@/domain/orders/order';
 import { OrderService } from '../services/order-service';
+import { IAuStakeService } from '@/domain/austake';
+import { AuStakeService } from '../services/austake.service';
 
 /**
  * Context responsible for initializing and providing access to application services.
@@ -17,6 +19,7 @@ export class ServiceContext {
   private nodeAssetService: INodeAssetService | null = null;
   private driverService: IDriverService | null = null;
   private orderService: IOrderService | null = null;
+  private auStakeService: IAuStakeService | null = null;
 
   private isInitialized = false;
 
@@ -67,6 +70,11 @@ export class ServiceContext {
         this.repositoryContext.getAusysContract(),
         this.repositoryContext.getSigner(),
       );
+      // Initialize AuStakeService with its repository dependency
+      this.auStakeService = new AuStakeService(
+        this.repositoryContext.getAuStakeRepository(), // Get IAuStakeRepository from RepositoryContext
+        this.repositoryContext, // Pass the full RepositoryContext
+      );
 
       this.isInitialized = true;
       console.log('[ServiceContext] Initialized successfully.');
@@ -112,5 +120,17 @@ export class ServiceContext {
       );
     }
     return this.orderService;
+  }
+
+  /**
+   * Get the AuStake service instance.
+   */
+  public getAuStakeService(): IAuStakeService {
+    if (!this.isInitialized || !this.auStakeService) {
+      throw new Error(
+        'ServiceContext not initialized or AuStakeService failed to initialize.',
+      );
+    }
+    return this.auStakeService;
   }
 }

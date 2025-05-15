@@ -20,6 +20,8 @@ import {
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
 import { listenForSignature } from '../services/signature-listener.service';
+import { IAuStakeRepository } from '@/domain/austake';
+import { BlockchainAuStakeRepository } from '../repositories/austake.repository';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -29,6 +31,7 @@ export class RepositoryContext {
   private nodeRepository: NodeRepository | null = null;
   private orderRepository: OrderRepository | null = null;
   private driverRepository: IDriverRepository | null = null;
+  private auStakeRepository: IAuStakeRepository | null = null;
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
   private signer: ethers.Signer | null = null;
@@ -60,6 +63,7 @@ export class RepositoryContext {
     this.ausysContract = ausysContract;
     this.aurumContract = aurumContract;
     this.signer = signer;
+    this.auStakeRepository = new BlockchainAuStakeRepository(provider, signer);
     this.nodeRepository = new BlockchainNodeRepository(
       aurumContract,
       provider,
@@ -109,6 +113,18 @@ export class RepositoryContext {
       );
     }
     return this.driverRepository;
+  }
+
+  /**
+   * Get the AuStake repository instance
+   */
+  public getAuStakeRepository(): IAuStakeRepository {
+    if (!this.auStakeRepository) {
+      throw new Error(
+        'RepositoryContext not initialized or AuStakeRepository failed to initialize.',
+      );
+    }
+    return this.auStakeRepository;
   }
 
   /**
