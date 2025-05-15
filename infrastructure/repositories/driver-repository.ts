@@ -184,7 +184,7 @@ export class DriverRepository implements IDriverRepository {
       `[DriverRepository] Getting deliveries for driver: ${driverWalletAddress}`,
     );
     const myDeliveries: Delivery[] = [];
-    let index = 0;
+    let index = 1;
     const MAX_ITERATIONS = 1000; // Safety break
 
     if (!driverWalletAddress) {
