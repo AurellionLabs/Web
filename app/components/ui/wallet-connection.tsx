@@ -9,43 +9,62 @@ import { ethers } from 'ethers';
 import { SUPPORTED_CHAINS, NETWORK_CONFIGS } from '@/config/network';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useWallet } from '@/hooks/useWallet';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import {
+  usePrivy,
+  useWallets,
+  useFundWallet,
+  FundWalletConfig,
+  MoonpayConfig,
+  MoonpayCurrencyCode,
+} from '@privy-io/react-auth';
 
-interface WalletInfo {
-  balance: string;
-  ens: string | null;
-}
+// Copied from FundWalletButton.tsx
+const erc20Abi = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+];
+
+// Use viem/chains for IDs
+import {
+  base,
+  mainnet as ethMainnet,
+  arbitrum as arbMainnet,
+  baseSepolia as bSepolia,
+} from 'viem/chains';
+
+const usdcContractAddresses: Record<number, string | undefined> = {
+  [ethMainnet.id]: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  [base.id]: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  [arbMainnet.id]: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+  [bSepolia.id]: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+};
 
 export function WalletConnection() {
   const { setIsWalletConnected } = useMainProvider();
   const { ready, authenticated } = usePrivy();
-  const { wallets } = useWallets();
+  const { fundWallet } = useFundWallet();
+  const { wallets, ready: walletsReady } = useWallets();
   const { connect, disconnect, address, error, repository, isInitialized } =
     useWallet();
   const [isOpen, setIsOpen] = useState(false);
-  const [chainId, setChainId] = useState<number>();
+  const [currentChainId, setCurrentChainId] = useState<number>();
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
-  const [walletInfo, setWalletInfo] = useState<WalletInfo>({
-    balance: '0',
-    ens: null,
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Keep for general loading
   const [lastTx, setLastTx] = useState<string | null>(null);
+
+  // State for new balances
+  const [ethBalance, setEthBalance] = useState<string | null>(null);
+  const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
+  const [isFetchingBalances, setIsFetchingBalances] = useState(false);
 
   // Initial setup and synchronization effect
   useEffect(() => {
-    // Update global wallet connection state based on Privy
     if (ready) {
       setIsWalletConnected(authenticated);
-
-      // If authenticated via Privy, but useWallet hasn't provided an address yet,
-      // and the hook is initialized, try connecting the wallet explicitly.
-      // This handles cases where the user is already logged in via Privy on page load.
       if (authenticated && !address && isInitialized) {
         connect();
       }
     }
-    // Check network connection status if authenticated and wallets are available
     if (authenticated && wallets?.length > 0) {
       checkConnection();
     }
@@ -57,44 +76,94 @@ export function WalletConnection() {
     connect,
     setIsWalletConnected,
     wallets,
-  ]); // Added wallets dependency
+  ]);
 
   const checkConnection = async () => {
     if (!ready || !authenticated) return;
-
     const wallet = wallets?.[0];
     if (!wallet) return;
 
-    // Extract numeric chain ID from eip155:chainId format
     const numericChainId = parseInt(wallet.chainId.split(':')[1]);
-    setChainId(numericChainId);
-
+    setCurrentChainId(numericChainId);
     setIsCorrectNetwork(SUPPORTED_CHAINS.includes(numericChainId));
   };
 
-  // Check network when wallets change
   useEffect(() => {
     if (authenticated && wallets?.length > 0) {
       checkConnection();
     }
   }, [authenticated, wallets]);
 
-  // Check network when authenticated changes
+  // Combined useEffect for fetching balances when modal opens or dependencies change
   useEffect(() => {
-    if (authenticated && wallets?.length > 0) {
-      checkConnection();
+    const fetchAllBalances = async () => {
+      if (!isOpen || !address || !walletsReady || !wallets[0]) {
+        setEthBalance(null);
+        setUsdcBalance(null);
+        return;
+      }
+
+      setIsFetchingBalances(true);
+      try {
+        const privyWallet = wallets[0];
+        if (!privyWallet.getEthereumProvider) {
+          console.warn(
+            'getEthereumProvider is not available on the wallet object.',
+          );
+          setEthBalance(null);
+          setUsdcBalance(null);
+          return;
+        }
+
+        const eip1193Provider = await privyWallet.getEthereumProvider();
+        const provider = new ethers.BrowserProvider(eip1193Provider);
+
+        // Use currentChainId from state, which should be set by checkConnection
+        const numericChainId = currentChainId;
+        if (numericChainId === undefined) {
+          console.warn('Chain ID not available for fetching balances.');
+          setEthBalance(null);
+          setUsdcBalance(null);
+          return;
+        }
+
+        // Fetch ETH balance
+        const rawEthBalance = await provider.getBalance(address);
+        setEthBalance(ethers.formatEther(rawEthBalance));
+
+        // Fetch USDC balance
+        const usdcAddress = usdcContractAddresses[numericChainId];
+        if (usdcAddress) {
+          const usdcContract = new ethers.Contract(
+            usdcAddress,
+            erc20Abi,
+            provider,
+          );
+          const rawUsdcBalance = await usdcContract.balanceOf(address);
+          const usdcDecimals = await usdcContract.decimals();
+          setUsdcBalance(ethers.formatUnits(rawUsdcBalance, usdcDecimals));
+        } else {
+          setUsdcBalance(null);
+        }
+      } catch (error) {
+        console.error('Error fetching balances:', error);
+        setEthBalance(null);
+        setUsdcBalance(null);
+      } finally {
+        setIsFetchingBalances(false);
+      }
+    };
+
+    if (isOpen) {
+      // Only fetch when modal is open
+      fetchAllBalances();
     }
-  }, [authenticated, wallets]);
+  }, [isOpen, address, walletsReady, wallets, currentChainId]); // Added currentChainId
 
-  useEffect(() => {
-    if (!isOpen || !address || !repository) return;
-    const provider = repository.getProvider();
-    if (!provider) return;
-
-    fetchWalletInfo(address);
-  }, [isOpen, address, repository]);
+  // Removed old fetchWalletInfo as its logic is now in fetchAllBalances or separate
 
   const handleAccountsChanged = async () => {
+    // ... (existing logic)
     if (!repository) return;
     const provider = repository.getProvider();
     if (!provider) return;
@@ -102,12 +171,11 @@ export function WalletConnection() {
     try {
       const accounts = await provider.listAccounts();
       if (accounts.length === 0) {
-        // User disconnected
         toast.error('Wallet disconnected');
       } else {
-        // Account changed
-        const address = await accounts[0].getAddress();
-        toast.success(`Switched to account ${formatAddress(address)}`);
+        const newAddress = await accounts[0].getAddress();
+        toast.success(`Switched to account ${formatAddress(newAddress)}`);
+        // Potentially re-fetch balances or rely on address change to trigger useEffect
       }
     } catch (error) {
       console.error('Error handling account change:', error);
@@ -115,31 +183,21 @@ export function WalletConnection() {
   };
 
   const handleChainChanged = async () => {
-    if (!repository) return;
-    const provider = repository.getProvider();
-    if (!provider) return;
-
-    try {
-      const network = await provider.getNetwork();
-      const numericChainId = Number(network.chainId);
-      setChainId(numericChainId);
-      setIsCorrectNetwork(SUPPORTED_CHAINS.includes(numericChainId));
-
-      if (!SUPPORTED_CHAINS.includes(numericChainId)) {
-        toast.error('Please switch to a supported network');
-      } else {
-        toast.success('Network switched successfully');
-      }
-    } catch (error) {
-      console.error('Error handling chain change:', error);
-    }
+    // ... (existing logic)
+    if (!repository) return; // Keep this if repository is still used for other things
+    // For chain changes detected via Privy's wallet object, checkConnection will handle it.
+    // This handler might be for provider-emitted events if using ethers directly for listeners.
+    // Let's assume checkConnection via wallets dependency is the primary way.
+    checkConnection();
+    // toast.success('Network switched successfully'); // This might be optimistic, checkConnection sets state
   };
 
   const connectWallet = async () => {
+    // ... (existing logic)
     try {
       await connect();
       setIsWalletConnected(true);
-      setIsOpen(true);
+      setIsOpen(true); // Open modal on successful connection
     } catch (error: any) {
       console.error('Wallet connection error:', error);
       if (error.code === 4001) {
@@ -152,88 +210,166 @@ export function WalletConnection() {
   };
 
   const switchNetwork = async () => {
-    if (!repository) return;
-    const provider = repository.getProvider();
-    if (!provider) return;
-
+    // ... (existing logic, ensure it uses the correct chain ID format for Privy if applicable)
+    const wallet = wallets?.[0];
+    if (!wallet) {
+      toast.error('No wallet connected to switch network.');
+      return;
+    }
     try {
-      await provider.send('wallet_switchEthereumChain', [
-        { chainId: `0x${SUPPORTED_CHAINS[0].toString(16)}` },
-      ]);
+      // Switch to the first supported chain as an example
+      const targetChainId = SUPPORTED_CHAINS[0];
+      const chainIdHex = `0x${targetChainId.toString(16)}` as `0x${string}`;
+      await wallet.switchChain(chainIdHex);
+      // checkConnection will be called due to wallets dependency update
     } catch (error: any) {
-      if (error.code === 4902) {
-        // Chain not added, prompt to add it
-        toast.error('Please add the network to your wallet');
-      } else {
-        toast.error('Error switching network');
-      }
+      // ... (error handling)
+      toast.error('Error switching network');
     }
   };
 
-  const fetchWalletInfo = async (address: string) => {
-    if (!repository) return;
-    const provider = repository.getProvider();
-    if (!provider) return;
-
-    setIsLoading(true);
-    try {
-      const balance = await provider.getBalance(address);
-      const formattedBalance = ethers.formatEther(balance);
-
-      // Try to get ENS name if on mainnet
-      let ens = null;
-      if (chainId === 1) {
-        ens = await provider.lookupAddress(address);
-      }
-
-      setWalletInfo({ balance: formattedBalance, ens });
-    } catch (error) {
-      console.error('Error fetching wallet info:', error);
-    } finally {
-      setIsLoading(false);
+  const addNetwork = async (chainIdToAdd: number) => {
+    // Renamed param to avoid conflict
+    // ... (existing logic)
+    const wallet = wallets?.[0];
+    if (!wallet) {
+      toast.error('No wallet connected to add network.');
+      return;
     }
-  };
-
-  const addNetwork = async (chainId: number) => {
     try {
-      const config = NETWORK_CONFIGS[chainId];
+      const config = NETWORK_CONFIGS[chainIdToAdd];
       if (!config) {
         throw new Error(
-          `No network configuration found for chain ID ${chainId}`,
+          `No network configuration found for chain ID ${chainIdToAdd}`,
         );
       }
-
-      const wallet = wallets?.[0];
-      if (!wallet) {
-        throw new Error('No wallet available');
-      }
-
-      // Convert to hex string for Privy's switchChain
-      const chainIdHex = `0x${chainId.toString(16)}` as `0x${string}`;
-      await wallet.switchChain(chainIdHex);
-      toast.success('Network switched successfully');
-      checkConnection();
+      const chainIdHex = `0x${chainIdToAdd.toString(16)}` as `0x${string}`;
+      await wallet.switchChain(chainIdHex); // switchChain can also add the chain if not present
+      toast.success('Network action completed.'); // More generic message
+      // checkConnection will update network status
     } catch (error) {
-      console.error('Error switching network:', error);
-      toast.error('Failed to switch network');
+      console.error('Error adding/switching network:', error);
+      toast.error('Failed to add/switch network');
     }
   };
 
   const handleButtonClick = async () => {
-    if (address) {
+    if (address && wallets[0]) {
+      // Check for privy wallet presence too
       setIsOpen(true);
     } else {
-      await connectWallet();
+      await connectWallet(); // This will set isOpen(true) on success
     }
   };
 
-  // Update getExplorerUrl to work with numeric chainId
-  const getExplorerUrl = (chainId: number | undefined, path: string) => {
-    if (!chainId || !NETWORK_CONFIGS[chainId]) {
-      return '#'; // Return fallback URL if chain not supported
+  const getExplorerUrl = (chainIdParam: number | undefined, path: string) => {
+    // Renamed param
+    if (!chainIdParam || !NETWORK_CONFIGS[chainIdParam]) {
+      return '#';
     }
-    return `${NETWORK_CONFIGS[chainId].blockExplorer}/${path}`;
+    return `${NETWORK_CONFIGS[chainIdParam].blockExplorer}/${path}`;
   };
+
+  // Copied and adapted from FundWalletButton.tsx
+  const handleFundAsset = async (assetType: 'native-currency' | 'USDC') => {
+    if (!address) {
+      // address from useWallet()
+      console.warn('Cannot fund wallet: No address available.');
+      return;
+    }
+
+    let fundingChainIdForMoonpay: number;
+    const connectedWallet = wallets?.[0];
+
+    if (connectedWallet && connectedWallet.chainId) {
+      const chainIdParts = connectedWallet.chainId.split(':');
+      fundingChainIdForMoonpay = parseInt(
+        chainIdParts[1] || base.id.toString(),
+      );
+    } else {
+      fundingChainIdForMoonpay = base.id; // Default to Base Mainnet for MoonPay
+    }
+
+    let currencyCode: MoonpayCurrencyCode | undefined = undefined;
+
+    switch (assetType) {
+      case 'native-currency':
+        if (fundingChainIdForMoonpay === base.id) currencyCode = 'ETH_BASE';
+        else if (fundingChainIdForMoonpay === bSepolia.id)
+          currencyCode = 'ETH_ETHEREUM';
+        else if (fundingChainIdForMoonpay === ethMainnet.id)
+          currencyCode = 'ETH_ETHEREUM';
+        else if (fundingChainIdForMoonpay === arbMainnet.id)
+          currencyCode = 'ETH_ARBITRUM';
+        break;
+      case 'USDC':
+        if (fundingChainIdForMoonpay === base.id) currencyCode = 'USDC_BASE';
+        else if (fundingChainIdForMoonpay === bSepolia.id)
+          currencyCode = 'USDC_BASE';
+        else if (fundingChainIdForMoonpay === ethMainnet.id)
+          currencyCode = 'USDC_ETHEREUM';
+        else if (fundingChainIdForMoonpay === arbMainnet.id)
+          currencyCode = 'USDC_ARBITRUM';
+        break;
+    }
+
+    if (!currencyCode) {
+      console.error(
+        `Moonpay funding not configured for ${assetType} on chain ID ${fundingChainIdForMoonpay}.`,
+      );
+      toast.error(`Funding not available for ${assetType} on this network.`);
+      return;
+    }
+
+    const moonpayConfigDetails: MoonpayConfig = {
+      currencyCode,
+      quoteCurrencyAmount: 10,
+    };
+    const config: FundWalletConfig = {
+      provider: 'moonpay',
+      config: moonpayConfigDetails,
+    };
+
+    try {
+      await fundWallet(address, config); // fundWallet from usePrivy
+    } catch (e) {
+      console.error(
+        `Error initiating MoonPay for ${currencyCode} to ${address}:`,
+        e,
+      );
+      toast.error('Could not start funding process.');
+    }
+  };
+
+  const renderBalanceRow = (
+    assetName: string,
+    balance: string | null,
+    assetType: 'native-currency' | 'USDC',
+    isFundable: boolean,
+    isLoading: boolean,
+  ) => (
+    <div className="flex items-center justify-between py-2">
+      <div>
+        <p className="text-sm text-gray-400">{assetName}</p>
+        <p className="text-lg font-semibold">
+          {isLoading
+            ? 'Loading...'
+            : balance !== null
+              ? parseFloat(balance).toFixed(4)
+              : 'Error'}
+        </p>
+      </div>
+      {isFundable && (
+        <button
+          onClick={() => handleFundAsset(assetType)}
+          className="text-sm font-medium text-yellow-500 hover:text-yellow-400 disabled:text-gray-500 disabled:cursor-not-allowed"
+          disabled={isLoading || balance === null || !walletsReady || !address}
+        >
+          Fund
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="relative">
@@ -241,107 +377,113 @@ export function WalletConnection() {
         onClick={handleButtonClick}
         variant={!isCorrectNetwork && address ? 'destructive' : 'default'}
       >
-        {!authenticated
-          ? 'Connect Wallet'
-          : !isCorrectNetwork
-            ? 'Wrong Network'
-            : address
-              ? formatAddress(address)
-              : 'Connect Wallet'}
+        {
+          !authenticated
+            ? 'Connect Wallet'
+            : !isCorrectNetwork
+              ? 'Wrong Network'
+              : address
+                ? formatAddress(address)
+                : 'Connect Wallet' // Fallback if address is somehow null despite auth
+        }
       </Button>
-
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Wallet Details</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span>Account</span>
-              <div className="text-right">
-                {address && (
-                  <>
-                    <span className="font-mono">{formatAddress(address)}</span>
-                    {walletInfo.ens && (
-                      <div className="text-sm text-gray-500">
-                        {walletInfo.ens}
-                      </div>
-                    )}
-                  </>
-                )}
+          {(isLoading || isFetchingBalances) && !address ? ( // Show main loading if no address and fetching
+            <p className="text-center py-4">Loading wallet details...</p>
+          ) : address ? (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground text-center pb-2">
+                {/* Simplified ENS display - just show formatted address for now */}
+                {formatAddress(address)}
               </div>
-            </div>
 
-            <div className="flex justify-between items-center">
-              <span>Balance</span>
-              <span>
-                {isLoading
-                  ? 'Loading...'
-                  : `${Number(walletInfo.balance).toFixed(4)} ETH`}
-              </span>
-            </div>
+              {renderBalanceRow(
+                'Ethereum',
+                ethBalance,
+                'native-currency',
+                true,
+                isFetchingBalances,
+              )}
+              {renderBalanceRow(
+                'USDC',
+                usdcBalance,
+                'USDC',
+                !!usdcContractAddresses[currentChainId || 0],
+                isFetchingBalances,
+              )}
 
-            <div className="flex justify-between items-center">
-              <span>Network</span>
-              <div className="flex items-center gap-2">
-                <span
-                  className={
-                    !isCorrectNetwork ? 'text-red-500' : 'text-green-500'
-                  }
+              {currentChainId !== undefined &&
+                !usdcContractAddresses[currentChainId] && (
+                  <p className="text-xs text-center text-yellow-500 pt-1">
+                    USDC is not available on the current network.
+                  </p>
+                )}
+
+              <div className="pt-3 space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(address);
+                    toast.success('Address copied to clipboard');
+                  }}
+                  className="w-full"
                 >
-                  {chainId
-                    ? NETWORK_CONFIGS[chainId]?.name || chainId
-                    : 'Not Connected'}
-                </span>
-                {!isCorrectNetwork && chainId && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addNetwork(chainId)}
-                  >
-                    Add Network
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {lastTx && (
-              <div className="pt-4 border-t">
-                <div className="text-sm text-gray-500">Last Transaction</div>
-                <a
-                  href={getExplorerUrl(chainId, `tx/${lastTx}`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline text-sm"
+                  Copy Address
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    window.open(
+                      getExplorerUrl(currentChainId, `address/${address}`),
+                      '_blank',
+                    )
+                  }
+                  className="w-full"
+                  disabled={!currentChainId || !NETWORK_CONFIGS[currentChainId]}
                 >
                   View on Explorer
-                </a>
+                </Button>
               </div>
-            )}
 
-            <div className="flex gap-2">
-              {address && (
-                <>
-                  <Button
-                    onClick={() => navigator.clipboard.writeText(address)}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Copy Address
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      window.open(getExplorerUrl(chainId, `address/${address}`))
-                    }
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    View on Explorer
-                  </Button>
-                </>
+              {!isCorrectNetwork && currentChainId && (
+                <Button onClick={switchNetwork} className="w-full mt-2">
+                  Switch to a Supported Network
+                </Button>
               )}
+              {/* Example: Add Base Sepolia button if not connected to it */}
+              {isCorrectNetwork &&
+                currentChainId !== bSepolia.id &&
+                SUPPORTED_CHAINS.includes(bSepolia.id) && (
+                  <Button
+                    onClick={() => addNetwork(bSepolia.id)}
+                    variant="secondary"
+                    className="w-full mt-2"
+                  >
+                    Switch to Base Sepolia
+                  </Button>
+                )}
+
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  await disconnect();
+                  setIsOpen(false);
+                  setIsWalletConnected(false); // Explicitly set connection state
+                }}
+                className="w-full mt-2"
+              >
+                Disconnect
+              </Button>
             </div>
-          </div>
+          ) : (
+            <p className="text-center py-4">Please connect your wallet.</p> // Fallback if no address
+          )}
         </DialogContent>
       </Dialog>
     </div>

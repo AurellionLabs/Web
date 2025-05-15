@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import { PrivyProvider } from '@privy-io/react-auth';
-import { arbitrum, sepolia, base, baseSepolia } from 'viem/chains';
+import { arbitrum, sepolia, base, baseSepolia, mainnet } from 'viem/chains';
 
 interface PrivyProviderWrapperProps {
   children: ReactNode;
@@ -23,7 +23,12 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
           walletChainType: 'ethereum-only',
         },
         defaultChain: arbitrum,
-        supportedChains: [arbitrum, sepolia, base, baseSepolia],
+        supportedChains: [arbitrum, sepolia, base, baseSepolia, mainnet],
+        fundingMethodConfig: {
+          moonpay: {
+            useSandbox: true,
+          },
+        },
       }}
     >
       {children}
