@@ -26,28 +26,29 @@ export default function PoolsPage() {
     if (connected) {
       const fetchOperations = async () => {
         try {
-          const ids = await getOperationList();
-          if (ids) {
-            const operationsData = await Promise.all(
-              ids.map(async (id) => {
-                try {
-                  return await getOperation(id);
-                } catch (error) {
-                  console.error(`Error fetching operation ${id}:`, error);
-                  return null;
-                }
-              }),
-            );
-            setOperations(operationsData.filter((op) => op !== null));
+          const currentWalletAddress = await walletAddress();
+          if (currentWalletAddress) {
+            const ids = await getOperationList();
+            if (ids) {
+              const operationsData = await Promise.all(
+                ids.map(async (id) => {
+                  try {
+                    return await getOperation(id);
+                  } catch (error) {
+                    console.error(`Error fetching operation ${id}:`, error);
+                    return null;
+                  }
+                }),
+              );
+              setOperations(operationsData.filter((op) => op !== null));
+            }
           }
         } catch (error) {
           console.error('Failed to fetch operations:', error);
           // Add user feedback here - toast notification
         }
       };
-      if (walletAddress) {
-        fetchOperations();
-      }
+      fetchOperations();
     } else {
       console.log('Wallet not connected');
     }
@@ -65,7 +66,7 @@ export default function PoolsPage() {
               asChild
               className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
             >
-              <Link href="/customer/create-pool">
+              <Link href="/customer/pools/create-pool">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Pool
               </Link>
