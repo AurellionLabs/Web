@@ -21,7 +21,7 @@ import {
 } from '@/chain-constants';
 import { listenForSignature } from '../services/signature-listener.service';
 import { IAuStakeRepository } from '@/domain/austake';
-import { BlockchainAuStakeRepository } from '../repositories/austake.repository';
+import { AuStakeRepository } from '../repositories/austake-repository';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -63,7 +63,7 @@ export class RepositoryContext {
     this.ausysContract = ausysContract;
     this.aurumContract = aurumContract;
     this.signer = signer;
-    this.auStakeRepository = new BlockchainAuStakeRepository(provider, signer);
+    this.auStakeRepository = new AuStakeRepository(provider, signer);
     this.nodeRepository = new BlockchainNodeRepository(
       aurumContract,
       provider,

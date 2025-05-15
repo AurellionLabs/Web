@@ -40,21 +40,6 @@ export interface IAuStakeService {
   ): Promise<ContractTransactionReceipt | undefined>;
 
   /**
-   * Persists a user's stake to the blockchain for a given operation.
-   * (Corresponds to calling the stake transaction on the smart contract)
-   *
-   * @param tokenAddress The address of the token to stake.
-   * @param operationId The ID of the staking operation.
-   * @param amount The amount of tokens to stake.
-   * @returns A promise that resolves to the transaction receipt.
-   */
-  addStake(
-    tokenAddress: string,
-    operationId: BytesLike,
-    amount: BigNumberish,
-  ): Promise<ContractTransactionReceipt | undefined>;
-
-  /**
    * Processes a reward claim on the blockchain.
    * (Corresponds to calling the claimReward transaction on the smart contract)
    *

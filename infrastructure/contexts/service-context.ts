@@ -71,10 +71,10 @@ export class ServiceContext {
         this.repositoryContext.getSigner(),
       );
       // Initialize AuStakeService with its repository dependency
-      this.auStakeService = new AuStakeService(
-        this.repositoryContext.getAuStakeRepository(), // Get IAuStakeRepository from RepositoryContext
-        this.repositoryContext, // Pass the full RepositoryContext
-      );
+      //  this.auStakeService = new AuStakeService(
+      //    this.repositoryContext.getAuStakeRepository(), // Get IAuStakeRepository from RepositoryContext
+      //    this.repositoryContext, // Pass the full RepositoryContext
+      //  );
 
       this.isInitialized = true;
       console.log('[ServiceContext] Initialized successfully.');
