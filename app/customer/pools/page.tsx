@@ -8,8 +8,8 @@ import {
   getOperation,
   getOperationList,
   OperationData,
-  walletAddress,
 } from '@/dapp-connectors/staking-controller';
+import { getCurrentWalletAddress as walletAddress } from '@/dapp-connectors/base-controller';
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 
