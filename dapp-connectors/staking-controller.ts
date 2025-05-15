@@ -8,7 +8,13 @@ import {
   Signer,
   ethers,
 } from 'ethers';
-import { AuraGoat, AuraGoat__factory, AuStake } from '@/typechain-types';
+import {
+  Aura,
+  Aura__factory,
+  AuraGoat,
+  AuraGoat__factory,
+  AuStake,
+} from '@/typechain-types';
 import { AuStake__factory } from '@/typechain-types';
 import { Wallet } from './wallet-helper';
 import {
@@ -17,9 +23,17 @@ import {
 } from '@/typechain-types/contracts/AuStake';
 import { formatEthereumValue } from './ethereum-utils';
 import {
-  NEXT_PUBLIC_AURA_ADDRESS,
+  NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
 } from '@/chain-constants';
+import {
+  setProvider,
+  setSigner,
+  setWalletAddress,
+  getProvider,
+  getSigner,
+  getWalletAddress,
+} from './base-controller';
 
 export interface StakeData {
   token: AddressLike;
@@ -51,26 +65,25 @@ export interface OperationData {
   assetPrice: bigint;
 }
 
-export var ethersProvider: BrowserProvider | null;
-export var walletAddress: string;
-
-export var signer: JsonRpcSigner;
 export const setWalletProvider = async () => {
   try {
     const wallet = new Wallet();
     const response = await wallet.connectWallet();
 
     if (response.success) {
-      ethersProvider = wallet.getProvider();
-      if (ethersProvider) {
-        // Use this provider for your contract interactions
-        signer = await ethersProvider.getSigner();
-        walletAddress = await signer.getAddress();
+      const provider = wallet.getProvider();
+      if (provider) {
+        setProvider(provider);
+        const newSigner = await provider.getSigner();
+        setSigner(newSigner);
+        const address = await newSigner.getAddress();
+        setWalletAddress(address);
         try {
           console.log(await getEtherBalance());
           console.log('success');
+          return { success: true, provider: provider, address: address };
         } catch (e) {
-          throw new Error('connection not established ${e}');
+          throw new Error(`connection not established ${e}`);
         }
       } else {
         throw new Error('Provider not initialized');
@@ -78,19 +91,18 @@ export const setWalletProvider = async () => {
     } else {
       throw new Error(response.error || 'Failed to connect wallet');
     }
-    return response;
   } catch (error) {
     console.error('Error setting wallet provider:', error);
-    throw error;
+    return { success: false, error };
   }
 };
 
 const getAuStakeContract = async (): Promise<AuStake> =>
   new Promise(async (resolve, reject) => {
     try {
-      if (ethersProvider) {
+      if (getProvider()) {
         try {
-          signer = await ethersProvider.getSigner();
+          const signer = getSigner();
         } catch (e) {
           throw new Error('getSigner failed with ' + e);
         }
@@ -100,7 +112,7 @@ const getAuStakeContract = async (): Promise<AuStake> =>
         await setWalletProvider();
       }
 
-      if (!signer) throw new Error('Signer is undefined');
+      if (!getSigner()) throw new Error('Signer is undefined');
       if (!NEXT_PUBLIC_AUSTAKE_ADDRESS)
         throw new Error(
           `NEXT_PUBLIC_AUSTAKE_ADDRESS is undefined ${NEXT_PUBLIC_AUSTAKE_ADDRESS}`,
@@ -108,7 +120,7 @@ const getAuStakeContract = async (): Promise<AuStake> =>
 
       const contract = AuStake__factory.connect(
         NEXT_PUBLIC_AUSTAKE_ADDRESS,
-        signer,
+        getSigner(),
       );
       resolve(contract);
     } catch (error) {
@@ -117,12 +129,12 @@ const getAuStakeContract = async (): Promise<AuStake> =>
     }
   });
 
-const getAuraContract = async (): Promise<AuraGoat> =>
+const getAuraContract = async (): Promise<Aura> =>
   new Promise(async (resolve, reject) => {
     try {
-      if (ethersProvider) {
+      if (getProvider()) {
         try {
-          signer = await ethersProvider.getSigner();
+          const signer = getSigner();
         } catch (e) {
           throw new Error('getSigner failed with ' + e);
         }
@@ -132,15 +144,15 @@ const getAuraContract = async (): Promise<AuraGoat> =>
         await setWalletProvider();
       }
 
-      if (!signer) throw new Error('Signer is undefined');
+      if (!getSigner()) throw new Error('Signer is undefined');
       if (!NEXT_PUBLIC_AUSTAKE_ADDRESS)
         throw new Error(
           `NEXT_PUBLIC_AUSTAKE_ADDRESS is undefined ${NEXT_PUBLIC_AUSTAKE_ADDRESS}`,
         );
 
-      const contract = AuraGoat__factory.connect(
-        NEXT_PUBLIC_AURA_ADDRESS,
-        signer,
+      const contract = Aura__factory.connect(
+        NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
+        getSigner(),
       );
       resolve(contract);
     } catch (error) {
@@ -227,40 +239,42 @@ export const requestTokenAllowance = async (
   token: AddressLike,
   amount: BigNumberish = ethers.parseUnits('1000000000000', 18),
 ) => {
-  const contract = await getAuraContract();
-  const allowance = await contract.allowance(
-    walletAddress,
-    NEXT_PUBLIC_AUSTAKE_ADDRESS,
-  );
-  console.log('allowance', allowance);
-  console.log('amount', amount);
-  var tx;
   try {
-    if (allowance < BigInt(amount)) {
-      const totalSupply = await contract.totalSupply();
-      console.log('totalSupply', totalSupply);
-      if (totalSupply > BigInt(amount)) {
-        tx = await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, totalSupply);
-      } else {
-        tx = await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, amount);
-      }
-    }
-  } catch (e) {
-    console.error(
-      `Allowance failed to be increased, amount: ${amount} with error: ${e} `,
+    const contract = await getAuraContract();
+
+    // Make sure we have the correct addresses
+    console.log('Token address:', token);
+    console.log('Spender address:', NEXT_PUBLIC_AUSTAKE_ADDRESS);
+    console.log('Wallet address:', getWalletAddress());
+
+    // Check allowance with proper parameters
+    const allowance = await contract.allowance(
+      getWalletAddress(),
+      NEXT_PUBLIC_AUSTAKE_ADDRESS,
     );
+
+    if (allowance < BigInt(amount)) {
+      // Approve exact amount needed
+      const tx = await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, amount);
+      await tx.wait();
+      console.log('Allowance approved for amount:', amount.toString());
+    } else {
+      console.log('Sufficient allowance exists:', allowance.toString());
+    }
+  } catch (error) {
+    console.error('Allowance error:', error);
+    throw error;
   }
-  if (tx) await tx.wait();
 };
 export const getBalance = async () => {
   const contract = await getAuraContract();
   const allowance = await contract.allowance(
-    walletAddress,
+    getWalletAddress(),
     NEXT_PUBLIC_AUSTAKE_ADDRESS,
   );
   var tx;
   try {
-    return await contract.balanceOf(walletAddress);
+    return await contract.balanceOf(getWalletAddress());
   } catch (e) {
     throw new Error(`Failed to fetch balance with error:${e} `);
   }
@@ -269,7 +283,7 @@ export const getBalance = async () => {
 export const getDecimal = async () => {
   const contract = await getAuraContract();
   try {
-    return await contract.decimals()
+    return await contract.decimals();
   } catch (e) {
     throw new Error(`Failed to fetch balance with error:${e} `);
   }
@@ -306,33 +320,46 @@ export const groupStakesByInterval = async (
     yearly: {},
   };
 
-  const decimals = await getDecimal()
-  stakes.forEach((stake) => {
-    const date = new Date(Number(stake.time) * 1000);
-    const amount = Number(formatEthereumValue(stake.amount,Number(decimals)));
+  const decimals = await getDecimal();
 
-    // Hourly - we'll use ISO string and keep the hour part
-    const hourlyKey = date.toISOString().slice(0, 13); // Format: "2024-02-03T15"
-    grouped.hourly[hourlyKey] = (grouped.hourly[hourlyKey] || 0) + amount;
+  // Sort stakes by timestamp
+  const sortedStakes = [...stakes].sort(
+    (a, b) => Number(a.time) - Number(b.time),
+  );
 
-    // Daily
-    const dailyKey = date.toISOString().split('T')[0];
-    grouped.daily[dailyKey] = (grouped.daily[dailyKey] || 0) + amount;
+  let runningTotal = 0;
 
-    // Weekly
-    const weekStart = new Date(date);
-    weekStart.setDate(date.getDate() - date.getDay());
-    const weeklyKey = weekStart.toISOString().split('T')[0];
-    grouped.weekly[weeklyKey] = (grouped.weekly[weeklyKey] || 0) + amount;
+  // Get min and max timestamps
+  const timestamps = sortedStakes.map((stake) => Number(stake.time) * 1000);
+  const minTime = Math.min(...timestamps);
+  const maxTime = Math.max(...timestamps, Date.now());
 
-    // Monthly
-    const monthlyKey = date.toISOString().substring(0, 7);
-    grouped.monthly[monthlyKey] = (grouped.monthly[monthlyKey] || 0) + amount;
+  // Fill in all time intervals with previous total
+  for (let t = minTime; t <= maxTime; t += 3600000) {
+    // Add 1 hour in ms
+    const hourlyKey = new Date(t).toISOString().slice(0, 13);
 
-    // Yearly
-    const yearlyKey = date.toISOString().substring(0, 4);
-    grouped.yearly[yearlyKey] = (grouped.yearly[yearlyKey] || 0) + amount;
-  });
+    // Find all stakes that happened before or at this time
+    const stakesUpToNow = sortedStakes.filter(
+      (stake) => Number(stake.time) * 1000 <= t,
+    );
+
+    // Calculate cumulative total
+    runningTotal = stakesUpToNow.reduce(
+      (total, stake) =>
+        total + Number(formatEthereumValue(stake.amount, Number(decimals))),
+      0,
+    );
+
+    grouped.hourly[hourlyKey] = runningTotal;
+  }
+
+  // Similar logic for daily/weekly intervals...
+  // Convert the grouped data to array format for the chart
+  const chartData = Object.entries(grouped.hourly).map(([time, amount]) => ({
+    time: new Date(time).getTime(),
+    amount,
+  }));
 
   return grouped;
 };
@@ -373,7 +400,7 @@ export const stake = async (
 };
 
 export const unlockReward = async (
-  token = NEXT_PUBLIC_AURA_ADDRESS,
+  token = NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
   operation: OperationData,
 ) => {
   const contract = await getAuStakeContract();
@@ -394,7 +421,11 @@ export const unlockReward = async (
 export const triggerReward = async (token: string, operationId: BytesLike) => {
   const contract = await getAuStakeContract();
   try {
-    const tx = await contract.claimReward(token, operationId, walletAddress);
+    const tx = await contract.claimReward(
+      token,
+      operationId,
+      getWalletAddress(),
+    );
     await tx.wait();
   } catch (error) {
     console.error('Error triggering reward:', error);
@@ -521,10 +552,11 @@ export const getTokenTvl = async (token: string): Promise<BigNumberish> => {
   }
 };
 export const getEtherBalance = async () => {
-  if (ethersProvider) {
-    console.log('signers address', await signer.getAddress());
-    return await ethersProvider.getBalance(await signer.getAddress());
-  } else {
-    console.log('no ethersProvider');
+  const currentProvider = getProvider();
+  const currentSigner = getSigner();
+  if (!currentProvider || !currentSigner) {
+    throw new Error('Provider or signer not initialized');
   }
+  const address = await currentSigner.getAddress();
+  return await currentProvider.getBalance(address);
 };

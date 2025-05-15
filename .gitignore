@@ -1,7 +1,11 @@
 node_modules/
+artifacts/
+cache/
+typechain-types/
 .next/
 .swc/
 .*.env
 .env
 artifacts/build-info/
-cache/
+cache/*
+.env

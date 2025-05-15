@@ -33,7 +33,8 @@
     "./blockchain/test",
     "./blockchain/typechain-types",
     "./blockchain/types",
-    "./blockchain/hardhat.config.ts"
+    "./blockchain/hardhat.config.ts",
+    "./typechain-types/**/*.ts"
   ],
   "exclude": ["node_modules"],
   "files": ["./blockchain/hardhat.config.ts"]
