@@ -211,7 +211,10 @@ contract AuStake is ReentrancyGuard, Ownable {
     userStake.isActive = false;
 
     IERC20 tokenContract = IERC20(token);
-    require(tokenContract.transfer(projectWallet, amount), 'Failed to transfer tokens');
+    require(
+      tokenContract.transfer(projectWallet, amount),
+      'Failed to transfer tokens'
+    );
 
     tokenTvl[token] -= amount;
     idToOperation[operationId].tokenTvl -= amount;
@@ -232,7 +235,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     Operation storage operation = idToOperation[operationId];
 
     // Calculate total rewards using basis points
-    uint256 totalRewardsNeeded = (operation.tokenTvl * operation.reward) / REWARD_PRECISION;
+    uint256 totalRewardsNeeded = (operation.tokenTvl * operation.reward) /
+      REWARD_PRECISION;
 
     operation.operationStatus = OperationStatus.COMPLETE;
 
@@ -263,7 +267,8 @@ contract AuStake is ReentrancyGuard, Ownable {
     Operation storage operation = idToOperation[operationId];
 
     // Calculate reward using basis points
-    uint256 rewardAmount = (userStake.amount * operation.reward) / REWARD_PRECISION;
+    uint256 rewardAmount = (userStake.amount * operation.reward) /
+      REWARD_PRECISION;
     uint256 totalReturn = userStake.amount + rewardAmount;
 
     userStake.isActive = false; // Prevent double claims
@@ -282,7 +287,9 @@ contract AuStake is ReentrancyGuard, Ownable {
       }
 
       if (swapFound) {
-        activeOperations[activeOperations.length - 1] = activeOperations[swapIndex];
+        activeOperations[activeOperations.length - 1] = activeOperations[
+          swapIndex
+        ];
         activeOperations.pop();
         operation.operationStatus = OperationStatus.PAID;
       }
@@ -322,40 +329,8 @@ contract AuStake is ReentrancyGuard, Ownable {
    */
   function getOperation(
     bytes32 id
-  )
-    external
-    view
-    returns (
-      bytes32 returnId,
-      string memory name,
-      string memory description,
-      address token,
-      address provider,
-      uint256 deadline,
-      uint256 startDate,
-      string memory rwaName,
-      uint256 reward,
-      uint256 tokenTvl,
-      OperationStatus operationStatus,
-      uint256 fundingGoal,
-      uint256 assetPrice
-    )
-  {
-    Operation storage operation = idToOperation[id];
-    return (
-      operation.id,
-      operation.name,
-      operation.description,
-      operation.token,
-      operation.provider,
-      operation.deadline,
-      operation.startDate,
-      operation.rwaName,
-      operation.reward,
-      operation.tokenTvl,
-      operation.operationStatus,
-      operation.fundingGoal,
-      operation.assetPrice
-    );
+  ) external view returns (Operation memory operation) {
+    operation = idToOperation[id];
+    return (operation);
   }
 }
