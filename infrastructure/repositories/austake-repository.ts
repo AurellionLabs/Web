@@ -1,10 +1,6 @@
+import { IAuStakeRepository, StakingOperationStatus } from '@/domain/austake';
 import {
-  IAuStakeRepository,
-  StakingOperation,
-  StakingOperationStatus,
-} from '@/domain/austake';
-import {
-  AuStake,
+  AuStake as AuStakeContract,
   AuStake__factory,
   AuraGoat, // For token approval in addStake
   AuraGoat__factory, // For token approval in addStake
@@ -38,8 +34,8 @@ const handleRepositoryError = (error: any, methodName: string) => {
   );
 };
 
-export class BlockchainAuStakeRepository implements IAuStakeRepository {
-  private contract: AuStake;
+export class AuStakeRepository implements IAuStakeRepository {
+  private contract: AuStakeContract;
   private signer: Signer;
   private provider: Provider; // Or BrowserProvider
 
@@ -61,45 +57,34 @@ export class BlockchainAuStakeRepository implements IAuStakeRepository {
     );
   }
 
-  async findOperationById(
+  async getOperation(
     operationId: BytesLike,
-  ): Promise<StakingOperation | undefined> {
-    const methodName = 'findOperationById';
+  ): Promise<AuStakeContract.OperationStructOutput | undefined> {
+    const methodName = 'getOperationById';
     try {
-      const op = await this.contract.getOperation(operationId);
-      // If operationId is zero or some other indicator of not found, handle appropriately
-      // Use op.returnId which is the id from the struct, and op.token to ensure it's a populated struct.
+      // The type AuStakeContract.OperationStructOutput is an *assumption* of TypeChain's output.
+      // You MUST verify this exact type name in your generated typechain-types/contracts/AuStake.ts file.
+      const op: AuStakeContract.OperationStructOutput =
+        await this.contract.getOperation(operationId);
+
+      // Check if the operation is valid (e.g., id is not zero hash and token is not zero address)
+      // Solidity struct members are accessed directly by their name from the TypeChain output struct.
       if (
-        op.returnId === ethers.ZeroHash ||
-        op.returnId === '0x' ||
+        !op ||
+        op.id === ethers.ZeroHash ||
+        op.id === '0x' ||
         op.token === ethers.ZeroAddress
       ) {
+        console.error('couldnt find an operation');
         return undefined;
       }
-      return {
-        id: op.returnId, // Note: struct in solidity has 'id', typechain generated op.returnId
-        name: op.name,
-        description: op.description,
-        token: op.token,
-        provider: op.provider,
-        deadline: op.deadline, // BigInt(op.deadline.toString()),
-        startDate: op.startDate, // BigInt(op.startDate.toString()),
-        rwaName: op.rwaName,
-        reward: op.reward, // BigInt(op.reward.toString()),
-        tokenTvl: op.tokenTvl, // BigInt(op.tokenTvl.toString()),
-        operationStatus:
-          op.operationStatus as unknown as StakingOperationStatus,
-        fundingGoal: op.fundingGoal, // BigInt(op.fundingGoal.toString()),
-        assetPrice: op.assetPrice, // BigInt(op.assetPrice.toString()),
-      };
+
+      return op;
     } catch (error) {
-      // If error is due to "not found" (e.g. revert), return undefined
-      // This depends on how the contract behaves for non-existent IDs
       console.warn(
-        `[${methodName}] Potentially operation not found or error:`,
+        `[${methodName}] Error fetching operation or operation not found:`,
         error,
       );
-      // handleRepositoryError(error, methodName); // Or let service decide if to throw
       return undefined;
     }
   }
@@ -155,7 +140,7 @@ export class BlockchainAuStakeRepository implements IAuStakeRepository {
       // or by calling a view function that was populated by the transaction.
       // Let's try to find it in the events first as it is more robust.
 
-      let operationId: BytesLike | undefined = undefined;
+      let operationIdFromEvent: BytesLike | undefined = undefined;
       if (txReceipt.logs) {
         const eventSignature =
           this.contract.interface.getEvent('OperationCreated').topicHash;
@@ -165,12 +150,12 @@ export class BlockchainAuStakeRepository implements IAuStakeRepository {
         if (eventLog) {
           const parsedLog = this.contract.interface.parseLog(eventLog as any); // Type assertion
           if (parsedLog && parsedLog.args.operationId) {
-            operationId = parsedLog.args.operationId;
+            operationIdFromEvent = parsedLog.args.operationId;
           }
         }
       }
 
-      if (!operationId) {
+      if (!operationIdFromEvent) {
         // Fallback or if TypeChain/Ethers directly provide return values from non-view functions
         // This part is tricky with Ethers. For `returns (bytes32)` in a state-changing function,
         // the value isn't usually directly on `txReceipt`. One might need to call a getter or rely on events.
@@ -183,7 +168,7 @@ export class BlockchainAuStakeRepository implements IAuStakeRepository {
 
       return {
         txReceipt: txReceipt as ContractTransactionReceipt,
-        operationId,
+        operationId: operationIdFromEvent,
       };
     } catch (error) {
       handleRepositoryError(error, methodName);
