@@ -95,6 +95,7 @@ contract locationContract {
   mapping(address => uint) customerToTokenAmount;
   Journey[] public subJourneys;
   uint public journeyIdCounter = 0;
+  uint public orderIdCounter = 0;
   AuraContract.Aura auraToken;
   AurumNodeManager nodeManager;
 
@@ -157,6 +158,9 @@ contract locationContract {
     return keccak256(abi.encode(journeyIdCounter += 1));
   }
 
+  function getHashedOrderId() private returns (bytes32) {
+    return keccak256(abi.encode(orderIdCounter += 1));
+  }
   event emitSig(address indexed user, bytes32 indexed id);
 
   function getjourney(bytes32 id) public view returns (Journey memory) {
@@ -319,7 +323,7 @@ contract locationContract {
         );
         uint nodeReward = order.txFee / order.nodes.length;
 
-        for (uint i = 0; i > order.nodes.length; i++)
+        for (uint i = 0; i < order.nodes.length; i++)
           auraToken.transfer(order.nodes[i], nodeReward);
       }
       return true;
@@ -341,7 +345,7 @@ contract locationContract {
   // journeys[journey][subJourneyCount[journey] += 1] = subJourney;
 
   // subJourneyCount[journeyKeyHashing(journey)]+=1;
-  // journeys[journeyKeyHashing(journey)][subJourneyCount[journeyKeyHashing(journey)]] = subJourney;
+  // journeys[journeyKeyHashing(journey)][subJourneyCount(journeyKeyHashing(journey))+=1] = subJourney;
   // SubJourney memory xyz = journeys[journeyKeyHashing(journey)][subJourneyCount(journeyKeyHashing(journey))+=1];
   // }
   function journeyCreation(
@@ -351,13 +355,13 @@ contract locationContract {
     uint bounty,
     uint ETA
   ) public {
-    require(sender != address(0), "Invalid sender");
-    require(receiver != address(0), "Invalid receiver");
-    require(bounty > 0, "Invalid bounty");
-    require(ETA > block.timestamp, "Invalid ETA");
-    
+    require(sender != address(0), 'Invalid sender');
+    require(receiver != address(0), 'Invalid receiver');
+    require(bounty > 0, 'Invalid bounty');
+    require(ETA > block.timestamp, 'Invalid ETA');
+
     // TO DO transfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
-    auraToken.transferFrom(sender, address(this), bounty * 10 ** 18);
+    auraToken.transferFrom(sender, address(this), bounty);
     customerToTokenAmount[sender] += bounty;
     Journey memory journey = Journey({
       parcelData: _data,
@@ -385,8 +389,21 @@ contract locationContract {
     emit JourneyCreated(journey.journeyId, sender, receiver);
   }
 
-  event JourneyCreated(bytes32 indexed journeyId, address indexed sender, address indexed receiver);
+  event JourneyCreated(
+    bytes32 indexed journeyId,
+    address indexed sender,
+    address indexed receiver
+  );
   event JourneyStatusUpdated(bytes32 indexed journeyId, Status newStatus);
+  event OrderCreated(bytes32 indexed orderId, address indexed customer);
+
+  // Debug event
+  event DebugNodeData(
+    address indexed nodeAddress,
+    uint assetsLength,
+    uint capacityLength,
+    uint pricesLength
+  );
 
   // TODO: node Acceptance function as this is just forced creation of order by a node, algo runs acceptance and then creation is pushed through
   //made flexible by adding nullish value to any param
@@ -414,7 +431,8 @@ contract locationContract {
     ParcelData memory _data,
     uint bounty,
     uint ETA,
-    uint tokenQuantity
+    uint tokenQuantity,
+    uint assetId
   ) public {
     // TODO: transfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
     //    auraToken.transferFrom(sender, address(this), bounty * 10 ** 18);
@@ -448,33 +466,50 @@ contract locationContract {
 
     nodeToOrderIds[sender].push(orderId);
 
-    AurumNodeManager.Node memory _node = nodeManager.getNode(sender);
-    for (uint i; i < _node.supportedAssets.length; i++) {
-      if (idToOrder[orderId].tokenId == _node.supportedAssets[i])
-        if (_node.capacity[i] >= tokenQuantity) {
-          idToOrder[orderId].tokenQuantity += tokenQuantity;
-          _node.capacity[i] -= tokenQuantity;
-          nodeManager.updateSupportedAssets(
-            sender,
-            _node.capacity,
-            _node.supportedAssets,
-            _node.assetPrices
-          );
-        }
-    }
+    // +++ Call the new function on nodeManager +++
+    nodeManager.reduceCapacityForOrder(
+      sender, // The node address
+      assetId, // +++ New way: Using the passed simple assetId +++
+      tokenQuantity // The quantity requested for this journey leg
+    );
+    // Also update the order's tracked token quantity
+    // This assumes the reduceCapacityForOrder call above did not revert
+    idToOrder[orderId].tokenQuantity += tokenQuantity;
+
+    emit JourneyCreated(journey.journeyId, sender, receiver);
   }
 
-  function orderCreation(Order memory order) public {
-    bytes32 id = getHashedJourneyId();
+  function orderCreation(Order memory order) public returns (bytes32) {
+    bytes32 id = getHashedOrderId();
     idToOrder[id] = order;
     idToOrder[id].currentStatus = Status.Pending;
     idToOrder[id].id = id;
     idToOrder[id].txFee = (order.price * 2) / 100;
     customerToOrderIds[order.customer].push(id);
     orderIds.push(id);
+    emit OrderCreated(id, order.customer);
+    return id;
   }
 
   function getOrder(bytes32 id) public view returns (Order memory) {
     return idToOrder[id];
+  }
+
+  /**
+   * @notice Explicit getter function for nodeToOrderIds mapping.
+   * @dev Bypasses the implicit public getter which might have issues.
+   * @param nodeAddress The address of the node.
+   * @param index The index in the node's order ID array.
+   * @return The order ID (bytes32) at the specified index, or ZeroHash if out of bounds.
+   */
+  function getNodeOrderIdByIndex(
+    address nodeAddress,
+    uint index
+  ) public view returns (bytes32) {
+    // Check bounds to prevent revert on out-of-bounds access
+    if (index >= nodeToOrderIds[nodeAddress].length) {
+      return bytes32(0); // Return ZeroHash if index is out of bounds
+    }
+    return nodeToOrderIds[nodeAddress][index];
   }
 }

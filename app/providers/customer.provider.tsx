@@ -13,16 +13,21 @@ import {
   useEffect,
   useCallback,
 } from 'react';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { ServiceContext } from '@/infrastructure/contexts/service-context';
+import { handleContractError } from '@/utils/error-handler';
+import { ethers } from 'ethers';
 
 // Types
 export type CustomerOrder = {
   id: string;
+  journeyId: string | null;
   asset: string;
   quantity: number;
   value: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
   timestamp: number;
-  deliveryLocation?: string;
+  deliveryLocation: string | null;
 };
 
 type CustomerContextType = {
@@ -44,33 +49,42 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const orderRepository = RepositoryContext.getInstance().getOrderRepository();
+  const orderService = ServiceContext.getInstance().getOrderService();
 
-  // This function will be replaced with actual blockchain integration later
   const loadCustomerOrders = useCallback(async () => {
+    if (!orderRepository) {
+      setError('Order Repository not available.');
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
-      const contractOrders = await getOrders();
-
-      // Map contract orders to CustomerOrder format
-      const mappedOrders: CustomerOrder[] = contractOrders.map((order) => ({
-        id: order.id,
-        asset: order.tokenId.toString(),
-        quantity: Number(order.tokenQuantity),
-        value: order.price.toString(),
-        status: getOrderStatus(order.currentStatus),
-        timestamp: Date.now(), // You might want to use a real timestamp if available
-        deliveryLocation: order.locationData.endName,
-      }));
+      const contractOrders = await orderRepository.getCustomerOrders();
+      console.log(`[CustomerProvider] Contract orders: ${contractOrders}`);
+      const mappedOrders: CustomerOrder[] = contractOrders.map(
+        (order: LocationContract.OrderStructOutput) => ({
+          id: order.id,
+          journeyId: order.journeyIds.length > 0 ? order.journeyIds[0] : null,
+          asset: order.tokenId.toString(),
+          quantity: Number(order.tokenQuantity),
+          value: order.price.toString(),
+          status: getOrderStatus(order.currentStatus),
+          timestamp: Date.now(),
+          deliveryLocation: order.locationData.endName ?? null,
+        }),
+      );
 
       setOrders(mappedOrders);
     } catch (err) {
-      console.error('Error loading orders:', err);
-      setError('Failed to load orders');
+      console.error('Error loading customer orders:', err);
+      setError('Failed to load customer orders');
+      handleContractError(err, 'load customer orders');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [orderRepository]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -93,24 +107,49 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const confirmReceipt = useCallback(async (orderId: string) => {
-    try {
-      setIsLoading(true);
-      await customerPackageSign(orderId);
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: 'completed' as const }
-            : order,
-        ),
-      );
-    } catch (err) {
-      console.error('Error confirming receipt:', err);
-      throw new Error('Failed to confirm receipt');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const confirmReceipt = useCallback(
+    async (orderId: string) => {
+      if (!orderService) {
+        setError('Order Service not available.');
+        return;
+      }
+      const orderToConfirm = orders.find((o) => o.id === orderId);
+
+      if (!orderToConfirm) {
+        setError(`Order with ID ${orderId} not found.`);
+        return;
+      }
+
+      if (!orderToConfirm.journeyId) {
+        setError(`Order ${orderId} has no associated journey to sign.`);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const receipt = await orderService.customerSignPackage(
+          orderToConfirm.journeyId,
+        );
+        console.log('Confirmation Receipt:', receipt);
+
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: 'completed' as const }
+              : order,
+          ),
+        );
+      } catch (err) {
+        console.error('Error confirming receipt:', err);
+        setError('Failed to confirm receipt');
+        handleContractError(err, 'confirm receipt');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [orderService, orders, loadCustomerOrders],
+  );
 
   const refreshOrders = useCallback(async () => {
     await loadCustomerOrders();
@@ -136,6 +175,26 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   );
 }
 
+function getOrderStatus(
+  status: bigint,
+): 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' {
+  switch (Number(status)) {
+    case 0:
+      return 'pending';
+    case 1:
+      return 'accepted';
+    case 2:
+      return 'in_progress';
+    case 3:
+      return 'completed';
+    case 4:
+      return 'cancelled';
+    default:
+      console.warn(`Unknown order status: ${status}`);
+      return 'pending';
+  }
+}
+
 // Hook for using the customer context
 export function useCustomer() {
   const context = useContext(CustomerContext);
@@ -143,146 +202,4 @@ export function useCustomer() {
     throw new Error('useCustomer must be used within a CustomerProvider');
   }
   return context;
-}
-
-// Mock data for development
-const mockOrders: CustomerOrder[] = [
-  {
-    id: 'ORD001',
-    asset: 'goat',
-    quantity: 2,
-    value: '2000',
-    status: 'in_progress',
-    timestamp: Date.now() - 86400000, // 1 day ago
-  },
-  {
-    id: 'ORD002',
-    asset: 'sheep',
-    quantity: 1,
-    value: '1000',
-    status: 'completed',
-    timestamp: Date.now() - 172800000, // 2 days ago
-  },
-  {
-    id: 'ORD003',
-    asset: 'cow',
-    quantity: 1,
-    value: '3000',
-    status: 'pending',
-    timestamp: Date.now() - 259200000, // 3 days ago
-  },
-  {
-    id: 'ORD004',
-    asset: 'chicken',
-    quantity: 5,
-    value: '500',
-    status: 'cancelled',
-    timestamp: Date.now() - 345600000, // 4 days ago
-  },
-  {
-    id: 'ORD005',
-    asset: 'cow',
-    quantity: 3,
-    value: '9000',
-    status: 'completed',
-    timestamp: Date.now() - 432000000, // 5 days ago
-  },
-  {
-    id: 'ORD006',
-    asset: 'goat',
-    quantity: 4,
-    value: '4000',
-    status: 'in_progress',
-    timestamp: Date.now() - 518400000, // 6 days ago
-  },
-  {
-    id: 'ORD007',
-    asset: 'sheep',
-    quantity: 2,
-    value: '2000',
-    status: 'pending',
-    timestamp: Date.now() - 604800000, // 7 days ago
-  },
-  {
-    id: 'ORD008',
-    asset: 'chicken',
-    quantity: 10,
-    value: '1000',
-    status: 'completed',
-    timestamp: Date.now() - 691200000, // 8 days ago
-  },
-  {
-    id: 'ORD009',
-    asset: 'cow',
-    quantity: 2,
-    value: '6000',
-    status: 'cancelled',
-    timestamp: Date.now() - 777600000, // 9 days ago
-  },
-  {
-    id: 'ORD010',
-    asset: 'goat',
-    quantity: 3,
-    value: '3000',
-    status: 'in_progress',
-    timestamp: Date.now() - 864000000, // 10 days ago
-  },
-  {
-    id: 'ORD011',
-    asset: 'sheep',
-    quantity: 5,
-    value: '5000',
-    status: 'completed',
-    timestamp: Date.now() - 950400000, // 11 days ago
-  },
-  {
-    id: 'ORD012',
-    asset: 'chicken',
-    quantity: 8,
-    value: '800',
-    status: 'pending',
-    timestamp: Date.now() - 1036800000, // 12 days ago
-  },
-  {
-    id: 'ORD013',
-    asset: 'cow',
-    quantity: 1,
-    value: '3000',
-    status: 'in_progress',
-    timestamp: Date.now() - 1123200000, // 13 days ago
-  },
-  {
-    id: 'ORD014',
-    asset: 'goat',
-    quantity: 6,
-    value: '6000',
-    status: 'completed',
-    timestamp: Date.now() - 1209600000, // 14 days ago
-  },
-  {
-    id: 'ORD015',
-    asset: 'sheep',
-    quantity: 3,
-    value: '3000',
-    status: 'cancelled',
-    timestamp: Date.now() - 1296000000, // 15 days ago
-  },
-];
-
-// Add this helper function
-function getOrderStatus(
-  status: bigint,
-): 'pending' | 'in_progress' | 'completed' | 'cancelled' {
-  switch (Number(status)) {
-    case 0:
-      return 'pending';
-    case 1:
-      return 'in_progress';
-    case 2:
-      return 'completed';
-    case 3:
-      return 'cancelled';
-    default:
-      return 'pending';
-  }
 }

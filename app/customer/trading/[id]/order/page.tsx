@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
 import { useTrade } from '@/app/providers/trade.provider';
 import { colors } from '@/lib/constants/colors';
 import Link from 'next/link';
@@ -14,12 +14,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
   Form,
+  FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-} from '@/components/ui/form';
+} from '@/app/components/ui/form';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 
 // Replace with your actual Google Maps API key
@@ -143,8 +144,11 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                     id: asset.id,
                     nodeId: asset.nodeId,
                     nodeLocation: {
-                      lat: asset.nodeLocation.location.lat,
-                      lng: asset.nodeLocation.location.lng,
+                      addressName: asset.nodeLocation.addressName,
+                      location: {
+                        lat: asset.nodeLocation.location.lat,
+                        lng: asset.nodeLocation.location.lng,
+                      },
                     },
                     assetClass: asset.assetClass,
                     quantity: data.quantity,

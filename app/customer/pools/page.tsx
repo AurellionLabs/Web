@@ -1,8 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { ArrowUpRight, Plus } from 'lucide-react';
-import { PoolTable } from '@/components/ui/pool-table';
-import { Button } from '@/components/ui/button';
+import { PoolTable } from '@/app/components/ui/pool-table';
+import { Button } from '@/app/components/ui/button';
 import { colors } from '@/lib/constants/colors';
 import {
   getOperation,

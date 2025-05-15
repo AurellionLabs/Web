@@ -357,9 +357,49 @@ export const getNodeStatus = async (nodeAddress: string) => {
 
 export const getNodeOrders = async (nodeAddress: string) => {
   const contract = await getAurumContract();
-  const node = await contract.getNode(nodeAddress);
-  return node.supportedAssets;
+  try {
+    const orderIds = await contract.nodeToOrderIds(nodeAddress);
+    const orders = await Promise.all(
+      orderIds.map(async (orderId) => {
+        const order = await contract.getOrder(orderId);
+        return {
+          id: orderId.toString(),
+          customer: order.customer,
+          asset: order.tokenId.toString(),
+          quantity: Number(order.tokenQuantity),
+          value: order.price.toString(),
+          status: getOrderStatus(order.currentStatus),
+          timestamp: Date.now(), // You might want to use a real timestamp if available
+          deliveryLocation: order.locationData.endName,
+        };
+      }),
+    );
+    return orders;
+  } catch (error) {
+    console.error('Error getting node orders:', error);
+    return [];
+  }
 };
+
+// Helper function to convert contract status to string
+function getOrderStatus(
+  status: bigint,
+): 'active' | 'pending' | 'completed' | 'cancelled' {
+  switch (Number(status)) {
+    case 0: // PENDING
+      return 'pending';
+    case 1: // ACCEPTED/ACTIVE
+      return 'active';
+    case 2: // IN_PROGRESS
+      return 'active';
+    case 3: // COMPLETED
+      return 'completed';
+    case 4: // CANCELED
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}
 
 export interface TokenizedAsset {
   id: number;
@@ -394,7 +434,7 @@ export const getNodeAssets = async (
           id: Number(assetId),
           amount: balance.toString(),
           name: getAssetName(Number(assetId)),
-          status: 'Active',
+          status: node.status,
           price: prices[index]?.toString() || '0', // Add price information
           capacity: capacities[index]?.toString() || '0', // Add capacity
         };

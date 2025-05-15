@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
-import {
-  useDriver,
-  DeliveryStatus,
-  Delivery,
-} from '@/app/providers/driver.provider';
+import { useDriver } from '@/app/providers/driver.provider';
 import { colors } from '@/lib/constants/colors';
 import {
   Card,
@@ -14,8 +10,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+} from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
 import {
   Activity,
   Package,
@@ -29,17 +25,24 @@ import {
   Navigation,
   CheckCircle,
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { toast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DeliveryActionDialog } from '@/components/ui/delivery-action-dialog';
+} from '@/app/components/ui/select';
+import { toast } from '@/app/components/ui/use-toast';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/app/components/ui/tabs';
+import { DeliveryActionDialog } from '@/app/components/ui/delivery-action-dialog';
+import { listenForSignature as setupSignatureListener } from '@/infrastructure/services/signature-listener.service';
+import { Delivery, DeliveryStatus } from '@/domain/driver';
 
 type TabType = 'available' | 'my-deliveries';
 
@@ -54,8 +57,15 @@ export default function DriverDashboard() {
     acceptDelivery,
     completeDelivery,
     confirmPickup,
+    packageSign,
   } = useDriver();
   const [activeTab, setActiveTab] = useState<TabType>('available');
+  const [waitingForSignature, setWaitingForSignature] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [signatureCleanups, setSignatureCleanups] = useState<{
+    [key: string]: () => void;
+  }>({});
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -104,18 +114,20 @@ export default function DriverDashboard() {
 
       if (
         filters.pickupLocation &&
-        !delivery.parcelData.startName
-          .toLowerCase()
-          .includes(filters.pickupLocation.toLowerCase())
+        (!delivery.parcelData?.startName ||
+          !delivery.parcelData.startName
+            .toLowerCase()
+            .includes(filters.pickupLocation.toLowerCase()))
       ) {
         return false;
       }
 
       if (
         filters.dropOffLocation &&
-        !delivery.parcelData.endName
-          .toLowerCase()
-          .includes(filters.dropOffLocation.toLowerCase())
+        (!delivery.parcelData?.endName ||
+          !delivery.parcelData.endName
+            .toLowerCase()
+            .includes(filters.dropOffLocation.toLowerCase()))
       ) {
         return false;
       }
@@ -123,6 +135,11 @@ export default function DriverDashboard() {
       return true;
     },
   );
+
+  // Add logging
+  console.log('Raw availableDeliveries:', availableDeliveries);
+  console.log('Current filters:', filters);
+  console.log('Filtered availableDeliveries:', filteredAvailableDeliveries);
 
   // Calculate statistics
   const availableCount = availableDeliveries.length;
@@ -173,35 +190,97 @@ export default function DriverDashboard() {
 
   const handlePickupDelivery = async (jobId: string) => {
     try {
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
+      await packageSign(jobId);
+      // 1. Call confirmPickup first (attempts to initiate signature process on contract)
       await confirmPickup(jobId);
+
+      // 2. If confirmPickup succeeds without error indicating immediate signature,
+      //    start listening for the confirmation event.
+      //    We need the contract instance here.
+      //    TODO: Need a way to get the LocationContract instance (maybe from useDriver?)
+      //    Placeholder: Assume we have a `getContract` function or similar.
+      // const contract = await getContract(); // Replace with actual contract retrieval
+
+      console.log(`Starting signature listener for job ID: ${jobId}`);
+
+      // const signatureReceived = await setupSignatureListener(
+      //   contract, // Pass the contract instance
+      //   jobId, // Pass the job ID string
+      //   120000, // Optional timeout
+      // );
+
+      // --- TEMPORARY FIX: Remove listener call due to missing contract instance ---
+      // --- and unclear async flow ---
+      // --- Replace with a simple success toast for now ---
+      console.warn(
+        'Signature listener call temporarily removed. Need contract instance.',
+      );
       toast({
-        title: 'Pickup Confirmed',
-        description: 'You have confirmed picking up the parcel.',
+        title: 'Pickup Initiated',
+        description: 'Pickup confirmed. Waiting for system update.',
       });
+      // --- End Temporary Fix ---
+
+      // if (signatureReceived) { // Original logic would be here
+      //   console.log(`Signature received for ${jobId}`);
+      //   setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+      //   await refreshDeliveries();
+      //   toast({
+      //     title: 'Signature Received',
+      //     description: 'The customer has signed the pickup confirmation.',
+      //   });
+      // }
     } catch (err) {
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+      console.error('Error during pickup confirmation or listening:', err);
       toast({
         title: 'Error',
-        description: 'Failed to confirm pickup. Please try again.',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Failed to confirm pickup. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      // No explicit finally action needed here anymore
     }
   };
 
   const handleCompleteDelivery = async (jobId: string) => {
     try {
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
+      await packageSign(jobId);
       await completeDelivery(jobId);
       toast({
         title: 'Delivery Confirmed',
         description: 'You have successfully delivered the parcel.',
       });
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to confirm delivery. Please try again.',
-        variant: 'destructive',
-      });
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
+      if (
+        err instanceof Error &&
+        err.message.includes('wait for customer to sign')
+      ) {
+        // Keep the waiting state active if we're waiting for customer signature
+        setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to confirm delivery. Please try again.',
+          variant: 'destructive',
+        });
+      }
     }
   };
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      Object.values(signatureCleanups).forEach((cleanup) => cleanup());
+    };
+  }, [signatureCleanups]);
 
   if (isLoading) {
     return (
@@ -316,6 +395,7 @@ export default function DriverDashboard() {
                   delivery={delivery}
                   onConfirm={handleAcceptDelivery}
                   variant="accept"
+                  isLoading={isLoading}
                 />
               )}
               {delivery.currentStatus === DeliveryStatus.ACCEPTED && (
@@ -323,6 +403,9 @@ export default function DriverDashboard() {
                   delivery={delivery}
                   onConfirm={handlePickupDelivery}
                   variant="pickup"
+                  isLoading={isLoading}
+                  isWaitingForSignature={waitingForSignature[delivery.jobId]}
+                  waitingForRole="customer"
                 />
               )}
               {delivery.currentStatus === DeliveryStatus.PICKED_UP && (
@@ -330,13 +413,10 @@ export default function DriverDashboard() {
                   delivery={delivery}
                   onConfirm={handleCompleteDelivery}
                   variant="complete"
+                  isLoading={isLoading}
+                  isWaitingForSignature={waitingForSignature[delivery.jobId]}
+                  waitingForRole="customer"
                 />
-              )}
-              {delivery.currentStatus === DeliveryStatus.COMPLETED && (
-                <div className="flex items-center gap-2 text-green-500">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="text-sm">Completed</span>
-                </div>
               )}
             </>
           </div>

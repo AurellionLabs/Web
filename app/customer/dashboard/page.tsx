@@ -10,8 +10,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+} from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
 import { useRouter } from 'next/navigation';
 import {
   Activity,
@@ -28,16 +28,24 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { toast } from '@/components/ui/use-toast';
-import { OrderActionDialog } from '@/components/ui/order-action-dialog';
+} from '@/app/components/ui/select';
+import { toast } from '@/app/components/ui/use-toast';
+import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
+import { CustomerOrder } from '@/types';
+import { getWalletAddress } from '@/dapp-connectors/base-controller';
+import { ethers } from 'ethers';
+import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
+import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers';
+import { AUSYS_ABI } from '@/lib/constants/contracts';
+import { customerPackageSign } from '@/dapp-connectors/ausys-controller';
+import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 type SortConfig = {
   key: 'quantity' | 'value' | null;
@@ -45,8 +53,8 @@ type SortConfig = {
 };
 
 const ORDER_STATUSES = [
-  { value: 'all', label: 'All Statuses' },
   { value: 'pending', label: 'Pending' },
+  { value: 'accepted', label: 'Accepted' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
@@ -54,10 +62,10 @@ const ORDER_STATUSES = [
 
 const ASSETS = [
   { value: 'all', label: 'All Assets' },
-  { value: 'cow', label: 'Cow' },
-  { value: 'goat', label: 'Goat' },
-  { value: 'sheep', label: 'Sheep' },
-  { value: 'chicken', label: 'Chicken' },
+  { value: '3', label: 'Cow' },
+  { value: '1', label: 'Goat' },
+  { value: '2', label: 'Sheep' },
+  { value: '4', label: 'Chicken' },
 ] as const;
 
 export default function CustomerDashboard() {
@@ -88,6 +96,13 @@ export default function CustomerDashboard() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 5;
+  const [waitingForSignature, setWaitingForSignature] = useState<
+    Record<string, boolean>
+  >({});
+  const [loading, setLoading] = useState(false);
+  const [signatureCleanups, setSignatureCleanups] = useState<
+    Record<string, () => void>
+  >({});
 
   useEffect(() => {
     setCurrentUserRole('customer');
@@ -188,21 +203,142 @@ export default function CustomerDashboard() {
     }
   };
 
+  const handleSignatureTimeout = (orderId: string) => {
+    setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
+    toast({
+      title: 'Signature Timeout',
+      description:
+        'The driver did not sign within the time limit. Please try again.',
+      variant: 'destructive',
+    });
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.ethereum) {
+      console.error('Ethereum provider not found');
+      return;
+    }
+
+    const setupEventListener = async () => {
+      try {
+        const provider = new BrowserProvider(window.ethereum as any);
+        const contract = new Contract(
+          NEXT_PUBLIC_AUSYS_ADDRESS,
+          AUSYS_ABI,
+          provider,
+        );
+
+        const filter = contract.filters.emitSig();
+
+        const handleSignatureEvent = async (user: string, id: string) => {
+          if (waitingForSignature[id]) {
+            if (signatureCleanups[id]) {
+              signatureCleanups[id]();
+              setSignatureCleanups((prev) => {
+                const newCleanups = { ...prev };
+                delete newCleanups[id];
+                return newCleanups;
+              });
+            }
+
+            const customerAddress = getWalletAddress();
+            if (user.toLowerCase() !== customerAddress.toLowerCase()) {
+              setWaitingForSignature((prev) => ({ ...prev, [id]: false }));
+              await refreshOrders();
+              toast({
+                title: 'Signature Received',
+                description: 'The driver has signed the receipt confirmation.',
+              });
+            }
+          }
+        };
+
+        contract.on(filter, handleSignatureEvent);
+
+        return () => {
+          contract.off(filter, handleSignatureEvent);
+          Object.values(signatureCleanups).forEach((cleanup) => cleanup());
+        };
+      } catch (error) {
+        console.error('Error setting up event listener:', error);
+      }
+    };
+
+    setupEventListener();
+  }, [waitingForSignature, signatureCleanups, refreshOrders]);
+
   const handleConfirmReceipt = async (orderId: string) => {
     try {
+      setLoading(true);
       await confirmReceipt(orderId);
-      toast({
-        title: 'Receipt Confirmed',
-        description: 'Thank you for confirming receipt of your order.',
+      setWaitingForSignature((prev) => ({ ...prev, [orderId]: true }));
+
+      const cleanup = await setupSignatureListener({
+        onSignature: async (user, id) => {
+          if (id === orderId) {
+            setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
+            await refreshOrders();
+            toast({
+              title: 'Signature Received',
+              description: 'The driver has signed the receipt confirmation.',
+            });
+          }
+        },
+        onTimeout: () => {
+          setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
+          toast({
+            title: 'Signature Timeout',
+            description:
+              'The driver did not sign within the time limit. Please try again.',
+            variant: 'destructive',
+          });
+        },
+        onError: (error) => {
+          console.error('Error in signature listener:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to confirm receipt. Please try again.',
+            variant: 'destructive',
+          });
+        },
       });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to confirm receipt. Please try again.',
-        variant: 'destructive',
-      });
+
+      // Store cleanup function
+      setSignatureCleanups((prev) => ({
+        ...prev,
+        [orderId]: cleanup,
+      }));
+    } catch (error) {
+      console.error('Error confirming receipt:', error);
+      if (error instanceof Error) {
+        if (
+          error.message.includes('Customer can only sign for the final leg')
+        ) {
+          toast({
+            title: 'Cannot Sign Yet',
+            description:
+              'You can only sign for the final leg of the journey when the package arrives at your location.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Failed to confirm receipt. Please try again.',
+            variant: 'destructive',
+          });
+        }
+      }
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Cleanup signature listeners on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(signatureCleanups).forEach((cleanup) => cleanup());
+    };
+  }, [signatureCleanups]);
 
   if (isLoading) {
     return (
@@ -240,6 +376,93 @@ export default function CustomerDashboard() {
       </div>
     );
   }
+
+  const renderOrderCard = (order: CustomerOrder) => (
+    <Card key={order.id} className="bg-[#1a1f2d] border-0">
+      <CardContent className="pt-6">
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">Order ID:</span>
+              <span className="font-medium">{order.id}</span>
+              <span className="ml-4">
+                {order.status === 'pending' && (
+                  <span className="bg-blue-500/10 text-blue-500 text-xs px-2 py-1 rounded-full">
+                    Pending
+                  </span>
+                )}
+                {order.status === 'in_progress' && (
+                  <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
+                    In Progress
+                  </span>
+                )}
+                {order.status === 'completed' && (
+                  <span className="bg-green-500/10 text-green-500 text-xs px-2 py-1 rounded-full">
+                    Completed
+                  </span>
+                )}
+                {order.status === 'cancelled' && (
+                  <span className="bg-red-500/10 text-red-500 text-xs px-2 py-1 rounded-full">
+                    Cancelled
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Asset</div>
+                <div className="text-sm text-gray-400 capitalize">
+                  {getAssetName(Number(order.asset))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Quantity</div>
+                <div className="text-sm text-gray-400">{order.quantity}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-400" />
+                <span className="text-sm">
+                  {new Date(order.timestamp).toLocaleDateString()}
+                </span>
+              </div>
+              {order.deliveryLocation && (
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm">{order.deliveryLocation}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col justify-between items-end">
+            <div className="text-2xl font-bold text-amber-500">
+              ${parseFloat(order.value).toFixed(2)}
+            </div>
+            <div className="flex justify-end space-x-4">
+              {order.status === 'pending' && (
+                <OrderActionDialog
+                  order={order}
+                  onConfirm={handleCancelOrder}
+                  variant="cancel"
+                />
+              )}
+              {order.status === 'in_progress' && (
+                <OrderActionDialog
+                  order={order}
+                  onConfirm={handleConfirmReceipt}
+                  variant="confirm"
+                  isLoading={loading}
+                  isWaitingForSignature={waitingForSignature[order.id]}
+                  waitingForRole="driver"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div
@@ -436,7 +659,9 @@ export default function CustomerDashboard() {
                   {currentOrders.map((order) => (
                     <tr key={order.id} className="border-b border-gray-800">
                       <td className="p-4">{order.id}</td>
-                      <td className="p-4 capitalize">{order.asset}</td>
+                      <td className="p-4 capitalize">
+                        {getAssetName(Number(order.asset))}
+                      </td>
                       <td className="p-4">{order.quantity}</td>
                       <td className="p-4">{order.value} USDT</td>
                       <td className="p-4">
@@ -472,6 +697,11 @@ export default function CustomerDashboard() {
                               order={order}
                               onConfirm={handleConfirmReceipt}
                               variant="confirm"
+                              isLoading={loading}
+                              isWaitingForSignature={
+                                waitingForSignature[order.id]
+                              }
+                              waitingForRole="driver"
                             />
                           )}
                         </div>

@@ -75,6 +75,10 @@ async function main() {
     await aurumNodeManager.addToken(await auraGoat.getAddress());
     console.log('AuraGoat token added to AurumNodeManager');
 
+    // Set NodeManager in AuSys contract
+    await auSys.setNodeManager(aurumNodeManagerAddress);
+    console.log('NodeManager set in AuSys contract');
+
     // Write deployment addresses to file
     console.log(
       '\nWriting constants to:',

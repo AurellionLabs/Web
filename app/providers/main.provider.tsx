@@ -4,37 +4,64 @@ import React, {
   useContext,
   useState,
   type ReactNode,
-  useEffect,
 } from 'react';
-import { initializeProvider } from '@/dapp-connectors/base-controller';
-import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
-import { getCurrentWalletAddress } from '@/dapp-connectors/base-controller';
-import { checkIfNodeExists } from '@/dapp-connectors/aurum-controller';
-import { getOwnedNodeAddressList } from '@/dapp-connectors/aurum-controller';
+import { PrivyProvider } from '@privy-io/react-auth';
+import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 
 type UserRole = 'customer' | 'node' | 'driver' | 'guest';
 
 interface MainContextType {
   currentUserRole: UserRole;
   setCurrentUserRole: (role: UserRole) => void;
-  isWalletConnected: boolean;
-  setIsWalletConnected: React.Dispatch<React.SetStateAction<boolean>>;
   connected: boolean;
+  setIsWalletConnected: (isConnected: boolean) => void;
 }
 
 const MainContext = createContext<MainContextType | undefined>(undefined);
 
+const ethereumChain = {
+  id: 1,
+  name: 'Ethereum',
+  nativeCurrency: {
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://eth.llamarpc.com/'],
+    },
+    privyWalletOverride: {
+      http: ['https://eth.llamarpc.com/'],
+    },
+  },
+};
+
 export function MainProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('customer');
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [connected, setIsWalletConnected] = useState(false);
+
+  useEffect(() => {
+    // Get the first segment of the path (e.g., /driver -> driver)
+    const pathSegment = pathname.split('/')[1];
+
+    // Only update if the path segment is one of our valid roles
+    if (
+      pathSegment === 'driver' ||
+      pathSegment === 'customer' ||
+      pathSegment === 'node'
+    ) {
+      setCurrentUserRole(pathSegment as UserRole);
+    }
+  }, [pathname]);
 
   const value = {
     currentUserRole,
     setCurrentUserRole,
-    isWalletConnected,
+    connected,
     setIsWalletConnected,
-    connected: isWalletConnected,
   };
 
   return <MainContext.Provider value={value}>{children}</MainContext.Provider>;

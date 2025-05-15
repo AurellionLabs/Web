@@ -2,11 +2,12 @@ import { HardhatUserConfig } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
 import '@typechain/hardhat';
 import 'dotenv/config';
+import 'tsconfig-paths/register';
 
 const config: HardhatUserConfig = {
   paths: {
     sources: './contracts',
-    tests: './test',
+    tests: './test/repositories',
     cache: './cache',
     artifacts: './artifacts',
   },
@@ -32,6 +33,12 @@ const config: HardhatUserConfig = {
       url: process.env.ARB_RPC_URL || '',
       accounts: process.env.ARB_PRIVATE_KEY
         ? [process.env.ARB_PRIVATE_KEY]
+        : [],
+    },
+    baseTest: {
+      url: process.env.BASE_TEST_RPC_URL || '',
+      accounts: process.env.SEP_PRIVATE_KEY
+        ? [process.env.SEP_PRIVATE_KEY]
         : [],
     },
   },

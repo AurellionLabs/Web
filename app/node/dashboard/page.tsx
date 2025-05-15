@@ -3,14 +3,14 @@
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/app/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+} from '@/app/components/ui/dialog';
+import { Input } from '@/app/components/ui/input';
 import {
   Form,
   FormControl,
@@ -28,36 +28,27 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
+} from '@/app/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/app/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { StatCard } from '@/components/ui/stat-card';
+import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useNode } from '@/app/providers/node.provider';
 import {
-  getNode,
-  getOwnedNodeAddressList,
-  updateNodeStatus,
-  updateSupportedAssets,
   TokenizedAsset,
-  getNodeAssets,
   getAssetName,
-  updateAssetCapacity,
-  getTokenizedAmount,
-  nodeMintAsset,
-  updateAssetPrice,
 } from '@/dapp-connectors/aurum-controller';
 import { toast } from 'react-hot-toast';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { MapView } from '@/components/ui/map-view';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
 
 const tokenizeFormSchema = z.object({
@@ -86,7 +77,19 @@ interface EditingPrice {
 }
 
 export default function NodeDashboardPage() {
-  const { currentNodeData, selectedNode, orders, loadNodes } = useNode();
+  const {
+    currentNodeData,
+    selectedNode,
+    orders,
+    loadNodes,
+    refreshNodes,
+    mintAsset,
+    getNodeAssets,
+    updateNodeStatus,
+    updateAssetCapacity,
+    updateAssetPrice,
+    updateSupportedAssets,
+  } = useNode();
   const router = useRouter();
 
   // Form and dialog states
@@ -96,6 +99,7 @@ export default function NodeDashboardPage() {
   const [newAssetId, setNewAssetId] = useState('');
   const [isViewingOrders, setIsViewingOrders] = useState(false);
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
+  const [capacityError, setCapacityError] = useState<string | null>(null);
 
   // Status and capacity states
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -114,8 +118,9 @@ export default function NodeDashboardPage() {
   });
 
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
-    if (!selectedNode) return;
+    if (!selectedNode || !currentNodeData) return;
 
+    setCapacityError(null);
     setIsTokenizing(true);
     try {
       const assetId = isAddingNewAsset
@@ -123,8 +128,38 @@ export default function NodeDashboardPage() {
         : Number(values.assetId);
       const quantity = Number(values.quantity);
 
-      await nodeMintAsset(selectedNode, assetId, quantity);
+      // --- Capacity Check Start ---
+      const assetIndex = currentNodeData.supportedAssets.findIndex(
+        (id) => Number(id) === assetId,
+      );
 
+      if (assetIndex === -1) {
+        setCapacityError('Selected asset is not supported by this node.');
+        setIsTokenizing(false);
+        return;
+      }
+
+      const totalCapacity = Number(currentNodeData.capacity[assetIndex]);
+      const currentTokenizedAsset = assets.find(
+        (a) => Number(a.id) === assetId,
+      );
+      const currentAmount = currentTokenizedAsset
+        ? Number(currentTokenizedAsset.amount)
+        : 0;
+      const remainingCapacity = totalCapacity - currentAmount;
+
+      if (quantity > remainingCapacity) {
+        setCapacityError(
+          `You are exceeding capacity for ${getAssetName(assetId)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
+        );
+        setIsTokenizing(false);
+        return;
+      }
+      // --- Capacity Check End ---
+
+      await mintAsset(selectedNode, assetId, quantity);
+
+      // Refresh assets immediately after minting
       const nodeAssets = await getNodeAssets(selectedNode);
       setAssets(nodeAssets);
 
@@ -132,9 +167,10 @@ export default function NodeDashboardPage() {
       setIsAddAssetOpen(false);
       form.reset();
       setIsAddingNewAsset(false);
+      setCapacityError(null);
     } catch (error) {
       console.error('Error tokenizing asset:', error);
-      toast.error('Failed to tokenize asset');
+      setCapacityError('Failed to tokenize asset. Please try again.');
     } finally {
       setIsTokenizing(false);
     }
@@ -196,10 +232,10 @@ export default function NodeDashboardPage() {
 
     setIsUpdatingStatus(true);
     try {
-      const newStatus = currentNodeData.status === '0x01' ? '0x00' : '0x01';
+      const newStatus =
+        currentNodeData.status === 'Active' ? 'Inactive' : 'Active';
       await updateNodeStatus(selectedNode, newStatus);
-      const updatedData = await getNode(selectedNode);
-      // Update node data through context
+      await refreshNodes();
       toast.success('Node status updated successfully');
     } catch (error) {
       toast.error('Failed to update node status');
@@ -222,9 +258,7 @@ export default function NodeDashboardPage() {
         currentNodeData.assetPrices || [],
       );
 
-      // Update the node data in context
-      await loadNodes();
-
+      await refreshNodes();
       setEditingCapacity(null);
       toast.success('Capacity updated successfully');
     } catch (error) {
@@ -239,25 +273,15 @@ export default function NodeDashboardPage() {
     if (!currentNodeData || !selectedNode) return;
 
     try {
-      // Convert BigNumberish arrays to bigint arrays
-      const supportedAssetsBigInt = Array.from(
-        currentNodeData.supportedAssets,
-      ).map((asset) => BigInt(asset.toString()));
-      const assetPricesBigInt = Array.from(
-        currentNodeData.assetPrices || [],
-      ).map((price) => BigInt(price.toString()));
-
       await updateAssetPrice(
         selectedNode,
         assetId,
-        BigInt(newValue),
-        supportedAssetsBigInt,
-        assetPricesBigInt,
+        Number(newValue),
+        currentNodeData.supportedAssets,
+        currentNodeData.assetPrices || [],
       );
 
-      // Update the node data in context
-      await loadNodes();
-
+      await refreshNodes();
       setEditingPrice(null);
       toast.success('Price updated successfully');
     } catch (error) {
@@ -279,25 +303,22 @@ export default function NodeDashboardPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold">Node Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <p className="text-gray-400">
-              Status:{' '}
-              {currentNodeData?.status === '0x01' ? 'Active' : 'Inactive'}
-            </p>
-          </div>
+          <p className="text-gray-500">Manage your node and its assets</p>
         </div>
         <div className="flex gap-2">
-          <EditNodeModal
-            nodeAddress={selectedNode || ''}
-            nodeData={currentNodeData}
-            assetNames={Object.fromEntries(
-              Array.from(currentNodeData.supportedAssets || []).map((id) => [
-                Number(id),
-                getAssetName(Number(id)),
-              ]),
-            )}
-            onNodeUpdated={loadNodes}
-          />
+          {currentNodeData && (
+            <EditNodeModal
+              nodeAddress={selectedNode!}
+              nodeData={currentNodeData}
+              assetNames={Object.fromEntries(
+                Array.from(currentNodeData.supportedAssets || []).map((id) => [
+                  Number(id),
+                  getAssetName(Number(id)),
+                ]),
+              )}
+              onNodeUpdated={refreshNodes}
+            />
+          )}
           <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
             <DialogTrigger asChild>
               <Button disabled={isTokenizing}>
@@ -401,6 +422,11 @@ export default function NodeDashboardPage() {
                       </FormItem>
                     )}
                   />
+                  {capacityError && (
+                    <p className="text-sm font-medium text-red-500 dark:text-red-400">
+                      {capacityError}
+                    </p>
+                  )}
                   <Button
                     type="submit"
                     className="w-full"
@@ -446,12 +472,12 @@ export default function NodeDashboardPage() {
         />
         <StatCard
           title="Node Status"
-          value={currentNodeData?.status === '0x01' ? 'Active' : 'Inactive'}
+          value={currentNodeData?.status}
           description="Current operational status"
           icon={
             <div
               className={`h-8 w-8 ${
-                currentNodeData?.status === '0x01'
+                currentNodeData?.status === 'Active'
                   ? 'bg-green-500/20 text-green-500'
                   : 'bg-red-500/20 text-red-500'
               } flex items-center justify-center rounded-full`}
@@ -552,7 +578,11 @@ export default function NodeDashboardPage() {
             onClick={async () => {
               setIsViewingOrders(true);
               try {
-                await router.push('/node/orders');
+                if (!selectedNode) {
+                  toast.error('No node selected to view orders.');
+                  return;
+                }
+                await router.push(`/node/${selectedNode}/orders`);
               } finally {
                 setIsViewingOrders(false);
               }
@@ -587,7 +617,9 @@ export default function NodeDashboardPage() {
                   <tr key={order.id} className="border-b">
                     <td className="p-4">{order.id}</td>
                     <td className="p-4">{order.customer}</td>
-                    <td className="p-4 capitalize">{order.asset}</td>
+                    <td className="p-4 capitalize">
+                      {getAssetName(Number(order.asset))}
+                    </td>
                     <td className="p-4">{order.quantity}</td>
                     <td className="p-4">{order.value} USDT</td>
                     <td className="p-4 capitalize">{order.status}</td>
