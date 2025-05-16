@@ -1,477 +1,531 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, RefreshCw, Share2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { StatCard } from '@/app/components/ui/stat-card';
 import { TransactionTable } from '@/app/components/ui/transaction-table';
-import { PoolBalance } from '@/app/components/ui/pool-balance';
 import { Progress } from '@/app/components/ui/progress';
 import { colors } from '@/lib/constants/colors';
 import dynamic from 'next/dynamic';
-import { usePoolsProvider } from '@/app/providers/pools.provider';
+import {
+  usePools,
+  StakingOperationStatus,
+  StakingOperation,
+} from '@/app/providers/pools.provider';
+import { useWallet } from '@/hooks/useWallet';
 import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 import {
-  getDecimal,
-  getOperation,
   getStakeHistory,
   GroupedStakes,
   groupStakesByInterval,
-  StakeData,
-  triggerReward,
-  unlockReward,
 } from '@/dapp-connectors/staking-controller';
 import { StakedEvent } from '@/typechain-types/contracts/AuStake';
-import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
-import { COMPLETE, PAID } from '@/constants';
-import { toast } from 'react-hot-toast';
-import { WalletConnection } from '@/app/components/ui/wallet-connection';
-import { getCurrentWalletAddress as walletAddress } from '@/dapp-connectors/base-controller';
+import { toast } from 'sonner';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
+const getDecimal = async (tokenAddress?: string): Promise<number> => {
+  console.warn(
+    '[PoolDetailsPage] getDecimal utility used as placeholder. Implement actual decimal fetching.',
+    tokenAddress,
+  );
+  return 18;
+};
+
 export default function PoolDetails({ params }: { params: { id: string } }) {
-  const { setSelectedPool, selectedPool } = usePoolsProvider();
-  const [timeRange, setTimeRange] = useState('1D');
+  const {
+    selectedPoolDetails,
+    fetchPoolDetails,
+    loadingSelectedPool,
+    error: providerError,
+    claimRewards,
+    unlockOperationRewards,
+    loadingClaimAction,
+    loadingUnlockRewards,
+  } = usePools();
+  const { address: walletAddress, connected: isWalletConnected } = useWallet();
+
   const [remainingTime, setRemainingTime] = useState(0);
   const [operationProgress, setOperationProgress] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
-  const [decimals, setDecimals] = useState(0);
-  const [isPaid, setIsPaid] = useState(false);
-  const [status, setStatus] = useState('');
-  const [isOperationComplete, setIsOperationComplete] = useState(false);
+  const [decimals, setDecimals] = useState(18);
   const [isProvider, setIsProvider] = useState(false);
   const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>();
   const [stakeHistory, setStakeHistory] = useState<
     StakedEvent.OutputObject[] | undefined
   >();
   const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
-  const [isClaimingReward, setIsClaimingReward] = useState(false);
+
+  const operationId = params.id;
+  const tokenAddress = selectedPoolDetails?.token;
+
+  const currentPoolStatus = selectedPoolDetails?.status;
+  const operationIsInactive =
+    currentPoolStatus === StakingOperationStatus.INACTIVE;
+  const operationIsActive = currentPoolStatus === StakingOperationStatus.ACTIVE;
+  const operationIsComplete =
+    currentPoolStatus === StakingOperationStatus.COMPLETE;
+  const operationIsPaid = currentPoolStatus === StakingOperationStatus.PAID;
+
+  const loadPoolData = useCallback(async () => {
+    if (operationId) {
+      console.log('[PoolDetailsPage] Fetching pool details for:', operationId);
+      await fetchPoolDetails(operationId);
+    }
+  }, [operationId, fetchPoolDetails]);
 
   useEffect(() => {
-    const _getDecimal = async () => {
-      setDecimals(Number(await getDecimal()));
+    loadPoolData();
+  }, [loadPoolData]);
+
+  useEffect(() => {
+    if (selectedPoolDetails && walletAddress) {
+      setIsProvider(selectedPoolDetails.provider === walletAddress);
+    } else {
+      setIsProvider(false);
+    }
+  }, [selectedPoolDetails, walletAddress]);
+
+  useEffect(() => {
+    const fetchTokenDecimals = async () => {
+      if (selectedPoolDetails?.token) {
+        try {
+          const fetchedDecimals = await getDecimal(selectedPoolDetails.token);
+          setDecimals(fetchedDecimals);
+        } catch (err) {
+          console.error('Error fetching token decimals:', err);
+          setDecimals(18);
+        }
+      }
     };
-    _getDecimal();
-  }, []);
-  const calculateDateValues = async () => {
-    const history = await getStakeHistory(params.id);
-    if (history) {
-      setStakeHistory(history);
-    } else console.log('no history');
-    const groupedStaked = await groupStakesByInterval(history);
-    return groupedStaked;
+    if (selectedPoolDetails) {
+      fetchTokenDecimals();
+    }
+  }, [selectedPoolDetails]);
+
+  const calculateDateValues = useCallback(async () => {
+    if (!operationId) return;
+    try {
+      const history = await getStakeHistory(operationId);
+      if (history) {
+        setStakeHistory(history);
+        const grouped = await groupStakesByInterval(history);
+        setGroupedStake(grouped);
+        return grouped;
+      }
+    } catch (error) {
+      console.error('Error in calculateDateValues:', error);
+    }
+    return undefined;
+  }, [operationId]);
+
+  useEffect(() => {
+    if (selectedPoolDetails) {
+      calculateDateValues();
+    }
+  }, [selectedPoolDetails, calculateDateValues]);
+
+  const handleRefresh = () => {
+    console.log('[PoolDetailsPage] Refreshing data...');
+    loadPoolData();
+    calculateDateValues();
   };
-  const getTotalDailyVolume = (groupedStake?: GroupedStakes) => {
-    if (!groupedStake?.daily) return '0.00';
+
+  const handleRewardAction = async () => {
+    if (
+      !isWalletConnected ||
+      !walletAddress ||
+      !selectedPoolDetails ||
+      !tokenAddress
+    ) {
+      toast.error('Wallet not connected or missing required pool information.');
+      return;
+    }
+
+    if (operationIsPaid) {
+      toast.info('Rewards for this operation have already been paid.');
+      return;
+    }
+
+    try {
+      let txReceipt;
+      if (isProvider && (operationIsActive || operationIsInactive)) {
+        toast.info('Attempting to unlock rewards as provider...');
+        txReceipt = await unlockOperationRewards(operationId, tokenAddress);
+        if (txReceipt) {
+          toast.success(
+            'Rewards unlocked successfully! Pool state may take a moment to update.',
+          );
+        }
+      } else if (operationIsComplete) {
+        toast.info('Attempting to claim rewards...');
+        txReceipt = await claimRewards(operationId, tokenAddress);
+        if (txReceipt) {
+          toast.success(
+            'Rewards claimed successfully! Your balance will update after confirmation.',
+          );
+        }
+      } else {
+        toast.warning(
+          'Pool is not in a state for reward claiming or unlocking currently.',
+        );
+        return;
+      }
+
+      if (txReceipt) {
+        setTimeout(() => {
+          loadPoolData();
+          calculateDateValues();
+        }, 2000);
+      } else if (!loadingClaimAction && !loadingUnlockRewards) {
+        toast.error('Reward action failed. Please check console or try again.');
+      }
+    } catch (error: any) {
+      console.error('Error during reward action:', error);
+      toast.error(
+        error.message || 'An error occurred during the reward action.',
+      );
+    }
+  };
+
+  useEffect(() => {
+    const getCurrentTimings = () => {
+      if (!selectedPoolDetails?.startDate || !selectedPoolDetails?.deadline) {
+        return { progress: 0, remainingTime: 0 };
+      }
+      const currentTime = Math.floor(Date.now() / 1000);
+      const startTime = Number(selectedPoolDetails.startDate);
+      const endTime = Number(selectedPoolDetails.deadline);
+
+      if (startTime === 0 || endTime === 0 || startTime >= endTime) {
+        setOperationProgress(currentTime >= endTime ? 100 : 0);
+        setRemainingTime(0);
+        return;
+      }
+
+      const durationInSeconds = endTime - startTime;
+      let progress = 0;
+      if (currentTime < startTime) {
+        progress = 0;
+      } else if (currentTime >= endTime) {
+        progress = 100;
+      } else {
+        const elapsed = currentTime - startTime;
+        progress = (elapsed * 100) / durationInSeconds;
+      }
+      const newProgress = Math.min(100, Math.max(0, progress));
+      const newRemainingTime = Math.max(0, endTime - currentTime) * 1000;
+
+      setOperationProgress(newProgress);
+      setRemainingTime(newRemainingTime);
+    };
+
+    if (!selectedPoolDetails?.startDate || !selectedPoolDetails?.deadline) {
+      setOperationProgress(0);
+      setRemainingTime(0);
+      return;
+    }
+
+    getCurrentTimings();
+
+    const interval = setInterval(getCurrentTimings, 1000);
+    return () => clearInterval(interval);
+  }, [selectedPoolDetails]);
+
+  const formatTime = (milliseconds: number) => {
+    if (milliseconds <= 0) return '00d 00h 00m 00s';
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const days = Math.floor(totalSeconds / (24 * 60 * 60));
+    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+  };
+
+  const getCompletionPercentage = (
+    tvlWei: bigint | undefined,
+    goalWei: bigint | undefined,
+  ): string => {
+    if (!tvlWei || !goalWei || goalWei === BigInt(0)) return '0.00%';
+    try {
+      const percentage = (tvlWei * BigInt(10000)) / goalWei;
+      return `${(Number(percentage) / 100).toFixed(2)}%`;
+    } catch (error) {
+      console.error('Error calculating completion percentage:', error);
+      return '0.00%';
+    }
+  };
+
+  const getTotalDailyVolume = (groupedStakes?: GroupedStakes) => {
+    if (!groupedStakes?.daily) return '0.00';
     const today = new Date().toISOString().split('T')[0];
-    const value = Number(groupedStake.daily[today] || 0);
+    const dailyVolumeInWei = groupedStakes.daily[today] || BigInt(0);
+    const value = Number(groupedStakes.daily[today] || 0);
     return value.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   };
-  const handleRewardClaim = async () => {
-    setIsClaimingReward(true);
-    try {
-      await getPool();
 
-      if (Number(selectedPool?.operationStatus) === PAID) {
-        setIsPaid(true);
-        setStatus('Paid');
-        return;
+  const poolData = selectedPoolDetails
+    ? {
+        name: selectedPoolDetails.name || 'Pool Name N/A',
+        description: selectedPoolDetails.description || 'No description.',
+        tvl: `$${formatEthereumValue(selectedPoolDetails.currentFunding || BigInt(0), decimals, 2)}`,
+        completionPercentage: getCompletionPercentage(
+          selectedPoolDetails.currentFunding,
+          selectedPoolDetails.fundingGoal,
+        ),
+        fundingGoal: `$${formatEthereumValue(selectedPoolDetails.fundingGoal || BigInt(0), decimals, 2)}`,
+        volume24h: `$${getTotalDailyVolume(groupedStake)}`,
+        volumeChange: dailyPercentageChange,
+        fees24h: '$0.00',
+        rwaName: selectedPoolDetails.rwaName || 'RWA Name N/A',
+        lockupPeriod: remainingTime,
+        rewardAPY: selectedPoolDetails.reward
+          ? `${(Number(selectedPoolDetails.reward) / 100).toFixed(2)}%`
+          : '0.00%',
+        transactions:
+          stakeHistory?.slice(0, 5).map((event: StakedEvent.OutputObject) => ({
+            time: new Date(Number(event.timestamp) * 1000).toLocaleString(),
+            type:
+              event.user === selectedPoolDetails.provider
+                ? 'Provide (Initial?)'
+                : 'Stake',
+            usdValue: 'N/A',
+            token0Amount: formatEthereumValue(
+              event.amount,
+              decimals,
+              Math.min(decimals, 6),
+            ),
+            token1Amount:
+              event.user.substring(0, 6) +
+              '...' +
+              event.user.substring(event.user.length - 4),
+          })) || [],
+        statusText: operationIsPaid
+          ? 'Paid'
+          : operationIsComplete
+            ? 'Complete'
+            : operationIsActive
+              ? 'Active'
+              : operationIsInactive
+                ? 'Inactive'
+                : 'Unknown',
+        tokenAddress: selectedPoolDetails.token,
+        providerAddress: selectedPoolDetails.provider,
+        startDate: selectedPoolDetails.startDate
+          ? new Date(
+              Number(selectedPoolDetails.startDate) * 1000,
+            ).toLocaleString()
+          : 'N/A',
+        deadlineDate: selectedPoolDetails.deadline
+          ? new Date(
+              Number(selectedPoolDetails.deadline) * 1000,
+            ).toLocaleString()
+          : 'N/A',
+        currentFundingNum: selectedPoolDetails.currentFunding || BigInt(0),
+        fundingGoalNum: selectedPoolDetails.fundingGoal || BigInt(0),
       }
+    : null;
 
-      if (Number(selectedPool?.operationStatus) === COMPLETE) {
-        setIsComplete(true);
-        setStatus('Complete');
-        await triggerReward(NEXT_PUBLIC_AURA_TOKEN_ADDRESS, params.id);
-        toast.success('Reward claimed successfully');
-        return;
-      }
+  if (loadingSelectedPool && !selectedPoolDetails) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        Loading pool details...
+      </div>
+    );
+  }
 
-      if (
-        selectedPool &&
-        isProvider &&
-        Number(selectedPool?.operationStatus) !== COMPLETE &&
-        Number(selectedPool?.operationStatus) !== PAID
-      ) {
-        await unlockReward(NEXT_PUBLIC_AURA_TOKEN_ADDRESS, selectedPool);
-        setIsComplete(true);
-        setStatus('Complete');
-        toast.success('Reward unlocked successfully');
-      }
-    } catch (error: any) {
-      console.error('Error claiming reward:', error);
-      toast.error(error.message || 'Failed to claim reward');
-    } finally {
-      setIsClaimingReward(false);
-    }
-  };
-  const getCompletionPercentage = (tvl: bigint, goal: bigint): string => {
-    if (!goal) return '0';
-    try {
-      // Multiply by 10000 for 2 decimal precision without floating point
-      const percentage = (tvl * BigInt(10000)) / goal;
-      return `${(Number(percentage) / 100).toFixed(2)}%`;
-    } catch (error) {
-      console.error('Error calculating completion percentage:', error);
-      return '0%';
-    }
-  };
-  const poolData = {
-    name: selectedPool?.name || '',
-    description: selectedPool?.description || '',
-    tvl: `$${selectedPool ? formatEthereumValue(selectedPool.tokenTvl, decimals, 2) : '0'}`,
-    completionPercentage:
-      selectedPool?.tokenTvl && selectedPool?.fundingGoal
-        ? getCompletionPercentage(
-            BigInt(selectedPool.tokenTvl),
-            BigInt(selectedPool.fundingGoal),
-          )
-        : '0%',
-    fundingGoal: selectedPool?.fundingGoal
-      ? `$${formatEthereumValue(selectedPool.fundingGoal, 18, 2)}`
-      : '0',
-    volume24h: `$${getTotalDailyVolume(groupedStake)}`,
-    volumeChange: dailyPercentageChange,
-    fees24h: '$87.3K',
-    token0Balance: `${selectedPool?.rwaName}`,
-    token1Balance: 'Funding',
-    lockupPeriod: Number(selectedPool?.deadline) * 24 * 60 * 60 * 1000,
-    reward: selectedPool?.reward
-      ? `${(Number(selectedPool.reward) / 100).toFixed(2)}%`
-      : '0%',
-    transactions: [
-      {
-        time: '2m ago',
-        type: 'Remove',
-        usdValue: '$6,832.74',
-        token0Amount: '0.04274',
-        token1Amount: '2,800.14',
-      },
-      {
-        time: '33m ago',
-        type: 'Buy WBTC',
-        usdValue: '$456.33',
-        token0Amount: '0.00484',
-        token1Amount: '456.663',
-      },
-    ],
-  };
+  if (providerError && !selectedPoolDetails) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen">
+        <p>Error loading pool: {providerError.message}</p>
+        <Button onClick={handleRefresh} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    const getCurrentTimings = () => {
-      // First check if we have the required data
-      if (!selectedPool?.startDate || !selectedPool?.deadline) {
-        console.log('Timing data:', {
-          startDate: selectedPool?.startDate,
-          deadline: selectedPool?.deadline,
-        });
-        return {
-          progress: 0,
-          remainingTime: 0,
-        };
-      }
-
-      // Get current time in seconds
-      const currentTime = Math.floor(Date.now() / 1000);
-
-      // Get start time from the contract
-      const startTime = Number(selectedPool.startDate);
-
-      // Convert the deadline (days) to seconds
-      // We multiply by 24 hours * 60 minutes * 60 seconds to get total seconds
-      const durationInSeconds = Number(selectedPool.deadline) * 24 * 60 * 60;
-
-      // Calculate when the operation ends
-      const endTime = startTime + durationInSeconds;
-
-      // Calculate how much time is left (in seconds)
-      const remainingTime = Math.max(0, endTime - currentTime);
-
-      // Calculate the progress percentage
-      let progress = 0;
-      if (currentTime < startTime) {
-        // Operation hasn't started yet
-        progress = 0;
-      } else if (currentTime >= endTime) {
-        // Operation is complete
-        if (Number(selectedPool.operationStatus) === COMPLETE) {
-          setIsOperationComplete(true);
-        }
-        progress = 100;
-      } else {
-        // Operation is in progress
-        const elapsed = currentTime - startTime;
-        progress = (elapsed * 100) / durationInSeconds;
-      }
-
-      return {
-        progress: Math.min(100, Math.max(0, progress)),
-        // Convert remaining seconds to milliseconds for formatTime function
-        remainingTime: remainingTime * 1000,
-      };
-    };
-
-    // Only start the interval if we have the required data
-    if (!selectedPool?.startDate || !selectedPool?.deadline) {
-      console.error(
-        `no deadline ${selectedPool?.deadline} or startdate ${selectedPool?.startDate}`,
-      );
-      return;
-    }
-
-    // Calculate initial values
-    const initial = getCurrentTimings();
-    setOperationProgress(initial.progress);
-    setRemainingTime(initial.remainingTime);
-
-    // Update values every second
-    const interval = setInterval(() => {
-      const current = getCurrentTimings();
-      setOperationProgress(current.progress);
-      setRemainingTime(current.remainingTime);
-
-      if (current.progress >= 100) {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    // Clean up interval when component unmounts
-    return () => clearInterval(interval);
-  }, [selectedPool]); // We depend on selectedPool changes
-
-  const getPool = async () => {
-    const data = await calculateDateValues();
-    setGroupedStake(data);
-    setSelectedPool(await getOperation(params.id));
-    // calculate daily percentage change
-    const today = new Date();
-    const todayKey = today.toISOString().split('T')[0];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = yesterday.toISOString().split('T')[0];
-
-    const todayValue = data?.daily?.[todayKey] ?? 0;
-    const yesterdayValue = data?.daily?.[yesterdayKey] ?? 0;
-
-    let percentageChange = 0;
-    if (yesterdayValue !== 0) {
-      const difference = todayValue - yesterdayValue;
-      percentageChange = (difference / yesterdayValue) * 100;
-    }
-    const percentageChangeStr =
-      percentageChange > 0
-        ? `+${percentageChange.toFixed(2)}%`
-        : percentageChange < 0
-          ? `${percentageChange.toFixed(2)}%`
-          : `${percentageChange.toFixed(2)}%`;
-    setDailyPercentageChange(percentageChangeStr);
-  };
-  useEffect(() => {
-    getPool();
-  }, [selectedPool, status]);
-
-  useEffect(() => {
-    if (selectedPool) {
-      if (Number(selectedPool.operationStatus) == COMPLETE) {
-        setIsOperationComplete(true);
-        console.log('set status to complete');
-        setIsComplete(true);
-        setStatus('Complete');
-      }
-
-      if (Number(selectedPool.operationStatus) == PAID) {
-        setIsPaid(true);
-        setStatus('Paid');
-      }
-    }
-  }, [selectedPool]);
-
-  useEffect(() => {
-    const checkProvider = async () => {
-      const address = await walletAddress();
-      setIsProvider(address === selectedPool?.provider);
-    };
-    checkProvider();
-  }, [selectedPool]);
-
-  const formatTime = (milliseconds: number) => {
-    const seconds = Math.floor(milliseconds / 1000);
-    const days = Math.floor(seconds / (3600 * 24));
-    const hours = Math.floor((seconds % (3600 * 24)) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${days}d ${hours}h ${minutes}m`;
-  };
+  if (!selectedPoolDetails || !poolData) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        Pool <code>{operationId}</code> not found or data is currently
+        unavailable. Please try refreshing.
+      </div>
+    );
+  }
 
   return (
     <div
       className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
     >
       <div className="max-w-7xl mx-auto">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap">
-          <Link href="/explore" className="text-gray-400 hover:text-white">
-            Explore
-          </Link>
-          <span className="text-gray-600">/</span>
+        <div className="mb-6">
           <Link
             href="/customer/pools"
-            className="text-gray-400 hover:text-white"
+            className="inline-flex items-center text-sm text-amber-500 hover:text-amber-600"
           >
-            Pools
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Pools
           </Link>
-          <span className="text-gray-600">/</span>
-          <span className="text-gray-400">{poolData.name}</span>
         </div>
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start mb-6 sm:mb-8 gap-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="hidden sm:flex"
-            >
-              <Link href="/customer/pools">
-                <ArrowLeft className="h-6 w-6" />
-              </Link>
-            </Button>
-            <div className="flex items-center gap-2">
-              <div className="flex -space-x-1">
-                <div className="w-8 h-8 rounded-full bg-amber-500 border-2 border-gray-900" />
-                <div className="w-8 h-8 rounded-full bg-red-700 border-2 border-gray-900" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold">
-                  {poolData.name}
-                </h1>
-              </div>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-1">{poolData.name}</h1>
+            <p className="text-gray-400 max-w-2xl">{poolData.description}</p>
+            <div className="mt-2">
+              <span
+                className={`px-2 py-1 text-xs font-medium rounded-full ${operationIsActive ? 'bg-green-500/20 text-green-400' : operationIsComplete ? 'bg-blue-500/20 text-blue-400' : operationIsPaid ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'}`}
+              >
+                Status: {poolData.statusText}
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button variant="ghost" size="icon" className="sm:hidden">
-              <ArrowLeft className="h-6 w-6" />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              aria-label="Refresh data"
+              disabled={loadingSelectedPool}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loadingSelectedPool ? 'animate-spin' : ''}`}
+              />
             </Button>
-            <Button variant="ghost" size="icon">
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="outline" size="icon" aria-label="Share pool">
               <Share2 className="h-4 w-4" />
             </Button>
-            <Button
-              className={`bg-[${colors.primary[500]}] hover:bg-[${colors.primary[600]}] flex-grow sm:flex-grow-0`}
-            >
-              Swap
-            </Button>
-            <Button variant="default" asChild>
-              <Link href={`/customer/pools/${params.id}/add-liquidity`}>
-                Add liquidity
-              </Link>
-            </Button>
+            {operationIsActive && (
+              <Button
+                asChild
+                className={`bg-amber-500 hover:bg-[${colors.primary[600]}]`}
+              >
+                <Link href={`/customer/pools/${operationId}/add-liquidity`}>
+                  Add Liquidity
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Main content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Price and chart */}
-            <div
-              className={`bg-[${colors.background.secondary}] rounded-2xl border border-[${colors.neutral[800]}] p-4 sm:p-6`}
-            >
-              <div className="mb-6">
-                <div className="text-2xl sm:text-3xl font-bold mb-1">
-                  {poolData.tvl}
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard title="Total Value Locked (TVL)" value={poolData.tvl} />
+          <StatCard
+            title="Funding Goal"
+            value={poolData.fundingGoal}
+            percentage={poolData.completionPercentage}
+          />
+          <StatCard
+            title="24h Volume"
+            value={poolData.volume24h}
+            change={poolData.volumeChange}
+          />
+          <StatCard title="Reward APY" value={poolData.rewardAPY} />
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-2">Pool Duration</h3>
+          <Progress
+            value={operationProgress}
+            className="w-full bg-gray-700"
+            indicatorClassName="bg-amber-500"
+          />
+          <div className="flex justify-between text-sm text-gray-400 mt-1">
+            <span>Start: {poolData.startDate}</span>
+            <span>Ends: {poolData.deadlineDate}</span>
+          </div>
+          <p className="text-sm text-center mt-1 text-gray-300">
+            Time Remaining: {formatTime(remainingTime)}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Pool Activity Chart</h2>
               </div>
-              <div className="h-[200px] sm:h-[300px]">
-                <Chart groupedStakes={groupedStake} timeRange={timeRange} />
-              </div>
-              <div className="flex items-center gap-2 mt-4 overflow-x-auto">
-                {['1H', '1D', '1W', '1M', '1Y'].map((range) => (
-                  <Button
-                    key={range}
-                    variant={timeRange === range ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setTimeRange(range)}
-                    className="text-sm"
-                  >
-                    {range}
-                  </Button>
-                ))}
+              <div className="h-64 bg-gray-800 rounded-lg flex items-center justify-center border border-gray-700">
+                <p className="text-gray-500">
+                  Chart Placeholder (Integration needed)
+                </p>
               </div>
             </div>
-
-            {/* Operation Time */}
-            <div
-              className={`bg-[${colors.background.secondary}] rounded-2xl border border-[${colors.neutral[800]}] p-4 sm:p-6`}
-            >
-              <h2 className="text-lg font-semibold mb-4">Operation Time</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Progress</span>
-                  <span>{operationProgress.toFixed(2)}%</span>
-                </div>
-                <Progress value={operationProgress} className="w-full" />
-                <div className="flex justify-between text-sm text-gray-400">
-                  <span>Time remaining</span>
-                  <span>
-                    {remainingTime ? formatTime(remainingTime) : 'Loading...'}
-                  </span>
-                </div>
-              </div>
-              <Button
-                onClick={handleRewardClaim}
-                className="w-full mt-4"
-                disabled={(!isComplete && !isProvider) || isPaid}
-              >
-                {isProvider
-                  ? isComplete
-                    ? status
-                    : 'Unlock'
-                  : isComplete
-                    ? 'Withdraw'
-                    : 'Withdraw (Locked)'}
-              </Button>
+            <div>
+              <h2 className="text-xl font-semibold mb-4">
+                Recent Staking Transactions
+              </h2>
+              {poolData.transactions.length > 0 ? (
+                <TransactionTable transactions={poolData.transactions} />
+              ) : (
+                <p className="text-gray-500">
+                  No staking transactions recorded yet.
+                </p>
+              )}
             </div>
-
-            {/* Transactions */}
-            <TransactionTable transactions={stakeHistory} />
           </div>
 
-          {/* Stats */}
-          <div className="space-y-6">
-            <div
-              className={`bg-[${colors.background.secondary}] rounded-2xl border border-[${colors.neutral[800]}] p-4 sm:p-6`}
-            >
-              <h2 className="text-lg font-semibold mb-4">Stats</h2>
-              <div className="space-y-6">
-                {poolData.description && (
-                  <div className="border-b border-[#2D3139] pb-4">
-                    <h3 className="text-sm font-medium text-gray-400 mb-2">
-                      Description
-                    </h3>
-                    <p className="text-sm text-gray-200">
-                      {poolData.description}
-                    </p>
-                  </div>
-                )}
-                <StatCard title="Funding Goal" value={poolData.fundingGoal} />
-                <StatCard title="Total TVL" value={poolData.tvl} />
-                <PoolBalance
-                  poolName={poolData.name}
-                  completionPercentage={poolData.completionPercentage}
-                />
-                <StatCard
-                  title="24h volume"
-                  value={poolData.volume24h}
-                  change={poolData.volumeChange}
-                />
+          <div className="lg:col-span-1 space-y-6">
+            <div className="p-6 bg-gray-800 rounded-lg border border-gray-700">
+              <h3 className="text-xl font-semibold mb-4 text-white">
+                Your Position
+              </h3>
+              <div className="space-y-2 text-gray-300">
+                <p>
+                  Staked Amount:{' '}
+                  <span className="font-medium text-white">
+                    {poolData.rwaName}
+                  </span>{' '}
+                  {poolData.rwaName}
+                </p>
+                <p>
+                  Claimable Rewards:{' '}
+                  <span className="font-medium text-white">
+                    {poolData.rwaName}
+                  </span>{' '}
+                  {poolData.rwaName}
+                </p>
               </div>
+              {!isWalletConnected && (
+                <p className="text-sm text-amber-400 mt-3">
+                  Connect your wallet to see your position.
+                </p>
+              )}
             </div>
+
+            {isWalletConnected &&
+              (operationIsComplete ||
+                (isProvider && (operationIsActive || operationIsInactive))) &&
+              !operationIsPaid && (
+                <Button
+                  onClick={handleRewardAction}
+                  disabled={loadingClaimAction || loadingUnlockRewards}
+                  className={`w-full ${isProvider && (operationIsActive || operationIsInactive) ? 'bg-blue-500 hover:bg-blue-600' : 'bg-green-500 hover:bg-green-600'}`}
+                >
+                  {isProvider && (operationIsActive || operationIsInactive)
+                    ? loadingUnlockRewards
+                      ? 'Unlocking Rewards...'
+                      : 'Unlock Rewards (Provider)'
+                    : loadingClaimAction
+                      ? 'Claiming Rewards...'
+                      : 'Claim Rewards'}
+                </Button>
+              )}
+            {operationIsPaid && (
+              <Button disabled className="w-full bg-gray-600">
+                Rewards Already Paid
+              </Button>
+            )}
+            {!isWalletConnected && operationIsActive && (
+              <p className="text-sm text-center text-amber-400">
+                Connect wallet to interact with the pool.
+              </p>
+            )}
           </div>
         </div>
       </div>

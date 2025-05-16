@@ -4,19 +4,25 @@ import { ArrowUpRight, Plus } from 'lucide-react';
 import { PoolTable } from '@/app/components/ui/pool-table';
 import { Button } from '@/app/components/ui/button';
 import { colors } from '@/lib/constants/colors';
-import {
-  getOperation,
-  getOperationList,
-  OperationData,
-} from '@/dapp-connectors/staking-controller';
-import { getCurrentWalletAddress as walletAddress } from '@/dapp-connectors/base-controller';
-import { useEffect, useState } from 'react';
+// import {
+//   getOperation,
+//   getOperationList,
+//   OperationData,
+// } from '@/dapp-connectors/staking-controller';
+// import { getCurrentWalletAddress as walletAddress } from '@/dapp-connectors/base-controller';
+import { useEffect } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
+import { usePools } from '@/app/providers/pools.provider';
 
 export default function PoolsPage() {
-  const { setCurrentUserRole } = useMainProvider();
-  const [operations, setOperations] = useState<OperationData[]>();
-  const { connected } = useMainProvider();
+  const { setCurrentUserRole, connected } = useMainProvider();
+  // const [operations, setOperations] = useState<OperationData[]>(); // Replaced by context
+  const {
+    allPools,
+    fetchAllPools,
+    loadingPools,
+    error: poolsError,
+  } = usePools(); // Use the new hook
 
   useEffect(() => {
     setCurrentUserRole('customer');
@@ -24,35 +30,38 @@ export default function PoolsPage() {
 
   useEffect(() => {
     if (connected) {
-      const fetchOperations = async () => {
-        try {
-          const currentWalletAddress = await walletAddress();
-          if (currentWalletAddress) {
-            const ids = await getOperationList();
-            if (ids) {
-              const operationsData = await Promise.all(
-                ids.map(async (id) => {
-                  try {
-                    return await getOperation(id);
-                  } catch (error) {
-                    console.error(`Error fetching operation ${id}:`, error);
-                    return null;
-                  }
-                }),
-              );
-              setOperations(operationsData.filter((op) => op !== null));
-            }
-          }
-        } catch (error) {
-          console.error('Failed to fetch operations:', error);
-          // Add user feedback here - toast notification
-        }
-      };
-      fetchOperations();
-    } else {
-      console.log('Wallet not connected');
+      fetchAllPools();
     }
-  }, [connected]);
+    // else {
+    // operations will be empty or previous state, loading will be false.
+    // console.log('Wallet not connected, not fetching pools.');
+    // setAllPools([]); // Or clear pools from context if desired
+    // }
+  }, [connected, fetchAllPools]);
+
+  // Display loading and error states
+  if (loadingPools) {
+    return (
+      <div
+        className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6 flex justify-center items-center`}
+      >
+        Loading pools...
+      </div>
+    );
+  }
+
+  if (poolsError) {
+    return (
+      <div
+        className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6 flex flex-col justify-center items-center`}
+      >
+        <p>Error fetching pools: {poolsError.message}</p>
+        <Button onClick={() => fetchAllPools()} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -95,11 +104,13 @@ export default function PoolsPage() {
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Top pools by TVL</h2>
         </div>
-        {operations && (
+        {allPools && allPools.length > 0 ? (
           <>
-            <PoolTable operations={operations} />
+            <PoolTable operations={allPools} />
           </>
-        )}{' '}
+        ) : (
+          !loadingPools && <p>No pools available or wallet not connected.</p>
+        )}
         <div className="mt-8">
           <div
             className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}]`}

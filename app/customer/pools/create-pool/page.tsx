@@ -24,12 +24,11 @@ import {
   CardTitle,
 } from '@/app/components/ui/card';
 import { ethers } from 'ethers';
-import {
-  createOperation,
-  requestTokenAllowance,
-} from '@/dapp-connectors/staking-controller';
+import { usePools } from '@/app/providers/pools.provider';
 import { toast } from 'sonner';
-import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useWallet } from '@/hooks/useWallet';
 
 const formSchema = z.object({
   name: z.string().min(3, {
@@ -37,9 +36,6 @@ const formSchema = z.object({
   }),
   token: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
     message: 'Please enter a valid token address.',
-  }),
-  provider: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
-    message: 'Please enter a valid provider address.',
   }),
   lengthInDays: z
     .string()
@@ -49,30 +45,30 @@ const formSchema = z.object({
         Number.isInteger(Number(val)) &&
         parseInt(val) > 0,
       {
-        message: 'Please enter a valid whole number greater than 0.',
+        message: 'Please enter a valid whole number greater than 0 for days.',
       },
     ),
   reward: z.string().refine(
     (val) => {
       const num = parseFloat(val);
-      return !isNaN(num) && num >= 1 && num <= 100;
+      return !isNaN(num) && num >= 0.01 && num <= 100;
     },
     {
-      message: 'Reward amount must be between 1 and 100.',
+      message: 'Reward percentage must be between 0.01 and 100.',
     },
   ),
   asset: z.string().min(1, {
-    message: 'Please enter the pools asset .',
+    message: "Please enter the asset's name (e.g., RWA name).",
   }),
   fundingGoal: z
     .string()
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
-      message: 'Please enter a valid number greater than 0.',
+      message: 'Funding goal must be a positive number.',
     }),
   assetPrice: z
     .string()
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
-      message: 'Please enter a valid number greater than 0.',
+      message: 'Asset price must be a positive number.',
     }),
   description: z.string().min(10, {
     message: 'Description must be at least 10 characters.',
@@ -80,14 +76,21 @@ const formSchema = z.object({
 });
 
 export default function CreateOperationPage() {
+  const router = useRouter();
+  const { address: walletAddress } = useWallet();
+  const {
+    createOperation: createPoolOperation,
+    loadingCreateOperation,
+    errorCreateOperation,
+  } = usePools();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       token: '',
-      provider: '',
-      lengthInDays: '',
-      reward: '',
+      lengthInDays: '30',
+      reward: '5',
       asset: '',
       fundingGoal: '',
       assetPrice: '',
@@ -95,36 +98,56 @@ export default function CreateOperationPage() {
     },
   });
 
+  useEffect(() => {
+    if (errorCreateOperation) {
+      toast.error(
+        errorCreateOperation.message ||
+          'Failed to create pool. Please try again.',
+      );
+    }
+  }, [errorCreateOperation]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await requestTokenAllowance(NEXT_PUBLIC_AURA_TOKEN_ADDRESS);
-
-      // Convert decimal values to wei (18 decimals)
       const fundingGoalWei = ethers.parseUnits(values.fundingGoal, 18);
       const assetPriceWei = ethers.parseUnits(values.assetPrice, 18);
-
-      // Convert reward to basis points (multiply by 100 for percentage)
       const rewardBasisPoints = BigInt(
         Math.floor(parseFloat(values.reward) * 100),
       );
+      const deadlineInSeconds = BigInt(
+        Math.floor(Date.now() / 1000) +
+          parseInt(values.lengthInDays) * 24 * 60 * 60,
+      );
 
-      await createOperation(
+      const txReceipt = await createPoolOperation(
         values.name,
         values.description,
         values.token,
-        values.provider,
-        parseInt(values.lengthInDays),
+        deadlineInSeconds,
         rewardBasisPoints,
         values.asset,
         fundingGoalWei,
         assetPriceWei,
       );
-      toast.success('Operation created successfully!');
+
+      if (txReceipt) {
+        toast.success('Pool created successfully!');
+        form.reset();
+        router.push('/customer/pools');
+      } else if (!loadingCreateOperation && !errorCreateOperation) {
+        toast.error(
+          'Pool creation may have failed. Please check transactions.',
+        );
+      }
     } catch (error: any) {
-      toast.error(
-        error.message || 'Failed to create operation. Please try again.',
+      console.error(
+        'Error in onSubmit (data preparation) for creating pool:',
+        error,
       );
-      console.error('Error creating operation:', error);
+      toast.error(
+        error.message ||
+          'An unexpected error occurred during submission process.',
+      );
     }
   }
 
@@ -191,12 +214,16 @@ export default function CreateOperationPage() {
                 name="asset"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Asset</FormLabel>
+                    <FormLabel>Asset Name (RWA Name)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Goat" {...field} />
+                      <Input
+                        placeholder="e.g., Carbon Credit Batch A"
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
-                      Enter the assset that will be used in an operation.
+                      Enter the name of the Real World Asset or underlying
+                      asset.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -210,51 +237,52 @@ export default function CreateOperationPage() {
                   <FormItem>
                     <FormLabel>Token Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="0x..." {...field} />
+                      <Input
+                        placeholder="0x... (ERC20 token to be staked)"
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
-                      Enter the Ethereum address of the token contract.
+                      Address of the ERC20 token users will stake.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="provider"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Provider Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="0x..." {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the Ethereum address of the provider.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Provider Address (Creator)</FormLabel>
+                <FormControl>
+                  <Input
+                    value={walletAddress || 'Connect wallet to see address'}
+                    readOnly
+                    disabled
+                  />
+                </FormControl>
+                <FormDescription>
+                  The pool will be created using your currently connected wallet
+                  address.
+                </FormDescription>
+              </FormItem>
 
               <FormField
                 control={form.control}
                 name="lengthInDays"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Length (Days)</FormLabel>
+                    <FormLabel>Duration (Days)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="1"
                         step="1"
-                        placeholder="Enter number of days"
+                        placeholder="e.g., 30"
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Specify the duration of the operation in days (whole
-                      numbers only).
+                      Duration for which the pool will be active and accept
+                      stakes.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -266,78 +294,89 @@ export default function CreateOperationPage() {
                 name="reward"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>APY</FormLabel>
+                    <FormLabel>Reward APY (%)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        step="any"
-                        min="1"
+                        step="0.01"
+                        min="0.01"
                         max="100"
-                        placeholder="0.00"
+                        placeholder="e.g., 5.5 for 5.5%"
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Enter the APY (as a percentage between 1 and 100)
+                      Annual Percentage Yield for stakers (e.g., 5 for 5%).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="fundingGoal"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Funding Goal</FormLabel>
+                    <FormLabel>Funding Goal (in Tokens)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="any"
                         min="0"
-                        placeholder="0.00"
+                        placeholder="e.g., 10000"
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Enter the funding goal in tokens (decimals allowed).
+                      Total amount of tokens aimed to be staked in this pool.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="assetPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Asset Price</FormLabel>
+                    <FormLabel>Asset Price (per Token)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="any"
                         min="0"
-                        placeholder="0.00"
+                        placeholder="e.g., 0.1"
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Enter the asset price in tokens (decimals allowed).
+                      This typically represents the price of the RWA unit
+                      relative to the staking token, or vice-versa. Example: If
+                      1 RWA unit costs 10 staking tokens, this value could be
+                      0.1 (staking tokens per RWA unit) or 10 (RWA units per
+                      staking token) depending on contract interpretation.
+                      Clarify based on how `assetPrice` is used by the smart
+                      contract.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <Button
                 type="submit"
-                variant={'default'}
-                className="w-full text-stone-900"
-                disabled={form.formState.isSubmitting}
+                className="w-full"
+                disabled={loadingCreateOperation || !walletAddress}
               >
-                {form.formState.isSubmitting
-                  ? 'Creating...'
-                  : 'Create Operation'}
+                {loadingCreateOperation ? 'Creating Pool...' : 'Create Pool'}
               </Button>
+              {!walletAddress && (
+                <p className="text-sm text-red-500 text-center mt-2">
+                  Please connect your wallet to create a pool.
+                </p>
+              )}
             </form>
           </Form>
         </CardContent>
