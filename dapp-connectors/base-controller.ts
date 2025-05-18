@@ -13,10 +13,10 @@ let initializationPromise: Promise<{
   signer: JsonRpcSigner;
 }> | null = null;
 
-export const setProvider = (newProvider: BrowserProvider) => {
+export const setProvider = (newProvider: BrowserProvider | null) => {
   provider = newProvider;
 };
-export const setSigner = (newSigner: JsonRpcSigner) => {
+export const setSigner = (newSigner: JsonRpcSigner | null) => {
   signer = newSigner;
 };
 export const setWalletAddress = (address: string) => {
