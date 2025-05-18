@@ -96,7 +96,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       const serviceContext = ServiceContext.getInstance(repoContext);
       serviceContext.initialize();
       console.log('[RepositoryProvider] ServiceContext initialized.');
-
+      // TODO: Add a check to see if the user is connected to the correct chain
       setIsInitialized(true);
       setError(null);
       setRetryCount(0);
