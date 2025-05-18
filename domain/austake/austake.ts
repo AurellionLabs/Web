@@ -2,6 +2,7 @@ import { AuStake, AuStake__factory } from '@/typechain-types';
 import { BigNumberish, BytesLike, ContractTransactionReceipt } from 'ethers';
 
 // From AuStake.sol: OperationStatus
+// //
 export enum StakingOperationStatus {
   INACTIVE,
   ACTIVE,
