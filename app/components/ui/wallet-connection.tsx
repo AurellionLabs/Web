@@ -282,12 +282,39 @@ export function WalletConnection() {
     const connectedWallet = wallets?.[0];
 
     if (connectedWallet && connectedWallet.chainId) {
-      const chainIdParts = connectedWallet.chainId.split(':');
-      fundingChainIdForMoonpay = parseInt(
-        chainIdParts[1] || base.id.toString(),
-      );
+      const chainIdParts = connectedWallet.chainId.split(':'); // e.g., "eip155:42161"
+      const parsedChainId = parseInt(chainIdParts[1]);
+
+      // Check if parsedChainId is one of the chains we have specific MoonPay currency codes for
+      if (
+        parsedChainId &&
+        (parsedChainId === base.id || // Base Mainnet
+          parsedChainId === bSepolia.id || // Base Sepolia
+          parsedChainId === ethMainnet.id || // Ethereum Mainnet
+          parsedChainId === arbMainnet.id) // Arbitrum Mainnet
+        // Add any other chains here for which you have explicit Moonpay currency codes
+      ) {
+        fundingChainIdForMoonpay = parsedChainId;
+      } else {
+        // If connected to a chain not explicitly handled by Moonpay config,
+        // default the MoonPay configuration logic to Arbitrum.
+        fundingChainIdForMoonpay = arbMainnet.id;
+        if (parsedChainId) {
+          console.warn(
+            `[WalletConnection] Wallet connected to unhandled chain ${parsedChainId} for MoonPay. Defaulting MoonPay config to Arbitrum.`,
+          );
+        } else {
+          console.warn(
+            `[WalletConnection] Wallet chainId could not be parsed. Defaulting MoonPay config to Arbitrum.`,
+          );
+        }
+      }
     } else {
-      fundingChainIdForMoonpay = base.id; // Default to Base Mainnet for MoonPay
+      // No wallet connected, or chainId is not present, default MoonPay configuration logic to Arbitrum.
+      fundingChainIdForMoonpay = arbMainnet.id;
+      console.log(
+        '[WalletConnection] No connected wallet or chainId for MoonPay. Defaulting MoonPay config to Arbitrum.',
+      );
     }
 
     let currencyCode: MoonpayCurrencyCode | undefined = undefined;
@@ -296,7 +323,7 @@ export function WalletConnection() {
       case 'native-currency':
         if (fundingChainIdForMoonpay === base.id) currencyCode = 'ETH_BASE';
         else if (fundingChainIdForMoonpay === bSepolia.id)
-          currencyCode = 'ETH_ETHEREUM';
+          currencyCode = 'ETH_ARBITRUM';
         else if (fundingChainIdForMoonpay === ethMainnet.id)
           currencyCode = 'ETH_ETHEREUM';
         else if (fundingChainIdForMoonpay === arbMainnet.id)
@@ -305,7 +332,7 @@ export function WalletConnection() {
       case 'USDC':
         if (fundingChainIdForMoonpay === base.id) currencyCode = 'USDC_BASE';
         else if (fundingChainIdForMoonpay === bSepolia.id)
-          currencyCode = 'USDC_BASE';
+          currencyCode = 'USDC_ARBITRUM';
         else if (fundingChainIdForMoonpay === ethMainnet.id)
           currencyCode = 'USDC_ETHEREUM';
         else if (fundingChainIdForMoonpay === arbMainnet.id)
@@ -456,18 +483,6 @@ export function WalletConnection() {
                   Switch to a Supported Network
                 </Button>
               )}
-              {/* Example: Add Base Sepolia button if not connected to it */}
-              {isCorrectNetwork &&
-                currentChainId !== bSepolia.id &&
-                SUPPORTED_CHAINS.includes(bSepolia.id) && (
-                  <Button
-                    onClick={() => addNetwork(bSepolia.id)}
-                    variant="secondary"
-                    className="w-full mt-2"
-                  >
-                    Switch to Base Sepolia
-                  </Button>
-                )}
 
               <Button
                 variant="destructive"

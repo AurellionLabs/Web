@@ -25,6 +25,14 @@ import { handleContractError } from '@/utils/error-handler';
 // Commenting out unused constants
 // import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
+// Define the delay constant at the top of the file
+const JOURNEY_FETCH_DELAY_MS = 350;
+
+// Helper function for delay (can be defined here or in a utils file)
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Infrastructure implementation of the IDriverRepository interface
  * This implementation directly interacts with the Ausys (LocationContract) blockchain contracts
@@ -162,6 +170,7 @@ export class DriverRepository implements IDriverRepository {
             journeyError.message,
           );
         }
+        await sleep(JOURNEY_FETCH_DELAY_MS); // Use the constant for delay
         index++;
       }
       if (index >= MAX_ITERATIONS) {
@@ -231,6 +240,7 @@ export class DriverRepository implements IDriverRepository {
             journeyError.message,
           );
         }
+        await sleep(JOURNEY_FETCH_DELAY_MS); // Use the constant for delay
         index++;
       }
       if (index >= MAX_ITERATIONS) {

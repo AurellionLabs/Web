@@ -1,7 +1,11 @@
 'use client';
 //
 import { ReactNode, useEffect } from 'react';
-import { PrivyProvider, useWallets } from '@privy-io/react-auth';
+import {
+  addRpcUrlOverrideToChain,
+  PrivyProvider,
+  useWallets,
+} from '@privy-io/react-auth';
 import { arbitrum, sepolia, base, baseSepolia, mainnet } from 'viem/chains';
 import {
   setProvider,
@@ -16,6 +20,14 @@ interface PrivyProviderWrapperProps {
 
 export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
   const { wallets } = useWallets();
+  const arbitrumOverride = addRpcUrlOverrideToChain(
+    arbitrum,
+    'https://arbitrum-mainnet.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
+  );
+  const baseSepoliaOverride = addRpcUrlOverrideToChain(
+    baseSepolia,
+    'https://base-sepolia.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
+  );
   useEffect(() => {
     const setupProvider = async () => {
       if (wallets && wallets.length > 0 && wallets[0]) {
@@ -50,24 +62,29 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
         setWalletAddress('');
       }
     };
-
     setupProvider();
   }, [wallets]);
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
       config={{
-        loginMethods: ['wallet', 'email', 'google', 'twitter'],
+        loginMethods: ['sms', 'wallet', 'email', 'google', 'twitter'],
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
         appearance: {
-          theme: 'light',
+          theme: 'dark',
           accentColor: '#676FFF',
           walletChainType: 'ethereum-only',
         },
         defaultChain: arbitrum,
-        supportedChains: [arbitrum, sepolia, base, baseSepolia, mainnet],
+        supportedChains: [
+          arbitrumOverride,
+          sepolia,
+          base,
+          baseSepoliaOverride,
+          mainnet,
+        ],
         fundingMethodConfig: {
           moonpay: {
             useSandbox: true,

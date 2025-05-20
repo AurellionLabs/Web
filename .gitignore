@@ -9,3 +9,4 @@ typechain-types/
 artifacts/build-info/
 cache/*
 .env
+.vercel
