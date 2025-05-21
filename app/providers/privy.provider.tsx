@@ -14,20 +14,10 @@ import {
 } from '@/dapp-connectors/base-controller';
 import { BrowserProvider } from 'ethers';
 
-interface PrivyProviderWrapperProps {
-  children: ReactNode;
-}
+// New component to handle wallet-dependent effects
+function PrivyWalletSetupEffect() {
+  const { wallets } = useWallets(); // useWallets is now correctly scoped
 
-export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
-  const { wallets } = useWallets();
-  const arbitrumOverride = addRpcUrlOverrideToChain(
-    arbitrum,
-    'https://arbitrum-mainnet.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
-  );
-  const baseSepoliaOverride = addRpcUrlOverrideToChain(
-    baseSepolia,
-    'https://base-sepolia.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
-  );
   useEffect(() => {
     const setupProvider = async () => {
       if (wallets && wallets.length > 0 && wallets[0]) {
@@ -64,11 +54,29 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
     };
     setupProvider();
   }, [wallets]);
+
+  return null; // This component does not render anything itself
+}
+
+interface PrivyProviderWrapperProps {
+  children: ReactNode;
+}
+
+export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
+  const arbitrumOverride = addRpcUrlOverrideToChain(
+    arbitrum,
+    'https://arbitrum-mainnet.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
+  );
+  const baseSepoliaOverride = addRpcUrlOverrideToChain(
+    baseSepolia,
+    'https://base-sepolia.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
+  );
+
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
       config={{
-        loginMethods: ['sms', 'wallet', 'email', 'google', 'twitter'],
+        loginMethods: ['wallet', 'email', 'google', 'twitter'],
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
@@ -86,12 +94,11 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
           mainnet,
         ],
         fundingMethodConfig: {
-          moonpay: {
-            useSandbox: true,
-          },
+          moonpay: {},
         },
       }}
     >
+      <PrivyWalletSetupEffect />
       {children}
     </PrivyProvider>
   );
