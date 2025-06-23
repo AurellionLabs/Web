@@ -17,6 +17,13 @@ import {
   FormMessage,
 } from '@/app/components/ui/form';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
+import {
   Card,
   CardContent,
   CardDescription,
@@ -30,16 +37,23 @@ import {
 } from '@/dapp-connectors/staking-controller';
 import { toast } from 'sonner';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
+import { useWallet } from '@/hooks/useWallet';
+
+// Supported assets configuration
+const SUPPORTED_ASSETS = [
+  { id: 1, name: 'GOAT', label: 'Goat' },
+  { id: 2, name: 'SHEEP', label: 'Sheep' },
+  { id: 3, name: 'COW', label: 'Cow' },
+  { id: 4, name: 'CHICKEN', label: 'Chicken' },
+  { id: 5, name: 'DUCK', label: 'Duck' },
+] as const;
 
 const formSchema = z.object({
   name: z.string().min(3, {
     message: 'Operation name must be at least 3 characters.',
   }),
-  token: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
-    message: 'Please enter a valid token address.',
-  }),
-  provider: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
-    message: 'Please enter a valid provider address.',
+  asset: z.string().min(1, {
+    message: 'Please select an asset.',
   }),
   lengthInDays: z
     .string()
@@ -61,9 +75,6 @@ const formSchema = z.object({
       message: 'Reward amount must be between 1 and 100.',
     },
   ),
-  asset: z.string().min(1, {
-    message: 'Please enter the pools asset .',
-  }),
   fundingGoal: z
     .string()
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -80,15 +91,15 @@ const formSchema = z.object({
 });
 
 export default function CreateOperationPage() {
+  const { address } = useWallet();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      token: '',
-      provider: '',
+      asset: '',
       lengthInDays: '',
       reward: '',
-      asset: '',
       fundingGoal: '',
       assetPrice: '',
       description: '',
@@ -97,6 +108,12 @@ export default function CreateOperationPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      // Check if wallet is connected
+      if (!address) {
+        toast.error('Please connect your wallet first.');
+        return;
+      }
+
       await requestTokenAllowance(NEXT_PUBLIC_AURA_TOKEN_ADDRESS);
 
       // Convert decimal values to wei (18 decimals)
@@ -108,14 +125,20 @@ export default function CreateOperationPage() {
         Math.floor(parseFloat(values.reward) * 100),
       );
 
+      // Find the selected asset details
+      const selectedAsset = SUPPORTED_ASSETS.find(
+        (asset) => asset.name === values.asset,
+      );
+      const assetName = selectedAsset?.label || values.asset;
+
       await createOperation(
         values.name,
         values.description,
-        values.token,
-        values.provider,
+        NEXT_PUBLIC_AURA_TOKEN_ADDRESS, // Use the default token address
+        address, // Use current wallet address as provider
         parseInt(values.lengthInDays),
         rewardBasisPoints,
-        values.asset,
+        assetName,
         fundingGoalWei,
         assetPriceWei,
       );
@@ -192,45 +215,25 @@ export default function CreateOperationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asset</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Goat" {...field} />
-                    </FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an asset" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SUPPORTED_ASSETS.map((asset) => (
+                          <SelectItem key={asset.id} value={asset.name}>
+                            {asset.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormDescription>
-                      Enter the assset that will be used in an operation.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="token"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Token Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="0x..." {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the Ethereum address of the token contract.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="provider"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Provider Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="0x..." {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the Ethereum address of the provider.
+                      Select the asset that will be used in the operation.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

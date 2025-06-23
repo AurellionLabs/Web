@@ -60,7 +60,7 @@ export default function PoolsPage() {
     >
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-semibold">Pools</h1>
+          <h1 className="text-2xl font-semibold">Real World Asset Pools</h1>
           <div className="flex items-center gap-4">
             <Button
               asChild

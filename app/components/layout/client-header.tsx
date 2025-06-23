@@ -62,7 +62,7 @@ export function ClientHeader() {
                       pathname === '/customer/pools' && 'text-white',
                     )}
                   >
-                    Pools
+                    Yield
                   </Link>
                   <Link
                     href="/customer/trading"
