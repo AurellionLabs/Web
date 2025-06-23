@@ -107,15 +107,7 @@ export interface IPoolRepository {
    * @param id The unique ID of the pool (operation ID from the contract).
    * @returns A Promise resolving to the Pool object or null if not found.
    */
-  getPoolById(id: string): Promise<Pool | null>;
-
-  /**
-   * Retrieves a list of all Pool IDs.
-   * Corresponds to functions like `getOperationList`.
-   * Often more efficient than fetching all pool data if only IDs are needed.
-   * @returns A Promise resolving to an array of pool IDs (strings).
-   */
-  getAllPoolIds(): Promise<string[]>;
+  getPoolById(id: string): Promise<Pool>;
 
   /**
    * Retrieves the history of staking events for a specific pool.
@@ -128,10 +120,10 @@ export interface IPoolRepository {
   /**
    * Retrieves pools associated with a specific staker address.
    * Useful for "My Positions" views.
-   * @param stakerAddress The address of the staker.
+   * @param investorAddress The address of the investor.
    * @returns A Promise resolving to an array of Pools the user has staked in.
    */
-  findPoolsByStaker(stakerAddress: Address): Promise<Pool[]>;
+  findPoolsByInvestor(investorAddress: Address): Promise<Pool[]>;
 
   /**
    * Retrieves pools managed by a specific provider address.
@@ -141,14 +133,6 @@ export interface IPoolRepository {
    */
   findPoolsByProvider(providerAddress: Address): Promise<Pool[]>;
 
-  /**
-   * Retrieves the number of decimals for a given ERC20 token.
-   * Corresponds to functions like `getDecimal`. Used for formatting values.
-   * @param tokenAddress The address of the ERC20 token contract.
-   * @returns A Promise resolving to the number of decimals.
-   */
-  getTokenDecimals(tokenAddress: Address): Promise<number>;
-
   // Note: getAllPools() might be redundant if the common pattern is getAllPoolIds() -> getPoolById() loop.
   // Keep it for now, but could be removed if unused.
   /**
@@ -156,56 +140,6 @@ export interface IPoolRepository {
    * @returns A Promise resolving to an array of Pool objects.
    */
   getAllPools(): Promise<Pool[]>;
-}
-
-/**
- * Defines the contract for business logic operations related to Pools.
- * Implementations will orchestrate interactions with repositories, smart contracts,
- * and potentially other services.
- */
-export interface IPoolService {
-  /**
-   * Creates a new Pool via the smart contract.
-   * Corresponds to functions like `createOperation`.
-   * @param data Data required to create the pool.
-   * @param creatorAddress The address initiating the creation (often msg.sender).
-   * @returns A Promise resolving to the new Pool's ID or transaction hash upon successful initiation.
-   */
-  createPool(
-    data: PoolCreationData,
-    creatorAddress: Address,
-  ): Promise<{ poolId: string; transactionHash: string } | string>; // Return ID or txHash
-
-  /**
-   * Performs a staking action on a specific pool via the smart contract.
-   * @param poolId The ID of the pool to stake in.
-   * @param amount The amount of tokens to stake (as a string for BigNumber).
-   * @param stakerAddress The address performing the stake.
-   * @returns A Promise resolving to the transaction hash upon successful initiation.
-   */
-  stake(
-    poolId: string,
-    amount: BigNumberString,
-    stakerAddress: Address,
-  ): Promise<string>; // Return txHash
-
-  /**
-   * Initiates the reward claim process for a completed pool (for stakers) via the smart contract.
-   * Corresponds to functions like `triggerReward`.
-   * @param poolId The ID of the pool.
-   * @param claimantAddress The address claiming the reward.
-   * @returns A Promise resolving to the transaction hash upon successful initiation.
-   */
-  claimReward(poolId: string, claimantAddress: Address): Promise<string>; // Return txHash
-
-  /**
-   * Initiates the reward unlocking process for a completed pool (for the provider) via the smart contract.
-   * Corresponds to functions like `unlockReward`.
-   * @param poolId The ID of the pool.
-   * @param providerAddress The address of the provider unlocking the reward.
-   * @returns A Promise resolving to the transaction hash upon successful initiation.
-   */
-  unlockReward(poolId: string, providerAddress: Address): Promise<string>; // Return txHash
 
   /**
    * Retrieves a single pool by ID, including calculated dynamic data for display.
@@ -264,4 +198,62 @@ export interface IPoolService {
     pool: Pool,
     stakeHistory?: StakeEvent[],
   ): Promise<PoolDynamicData>;
+}
+
+/**
+ * Defines the contract for business logic operations related to Pools.
+ * Implementations will orchestrate interactions with repositories, smart contracts,
+ * and potentially other services.
+ */
+export interface IPoolService {
+  /**
+   * Creates a new Pool via the smart contract.
+   * Corresponds to functions like `createOperation`.
+   * @param data Data required to create the pool.
+   * @param creatorAddress The address initiating the creation (often msg.sender).
+   * @returns A Promise resolving to the new Pool's ID or transaction hash upon successful initiation.
+   */
+  createPool(
+    data: PoolCreationData,
+    creatorAddress: Address,
+  ): Promise<{ poolId: string; transactionHash: string }>; // Return ID or txHash
+
+  /**
+   * Closes a pool via the smart contract. Can only be called by the pool provider.
+   * @param poolId The ID of the pool to close.
+   * @param providerAddress The address of the provider closing the pool.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  closePool(poolId: string, providerAddress: Address): Promise<string>; // Return txHash
+
+  /**
+   * Performs a staking action on a specific pool via the smart contract.
+   * @param poolId The ID of the pool to stake in.
+   * @param amount The amount of tokens to stake (as a string for BigNumber).
+   * @param investorAddress The address performing the stake.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  stake(
+    poolId: string,
+    amount: BigNumberString,
+    investorAddress: Address,
+  ): Promise<string>; // Return txHash
+
+  /**
+   * Initiates the reward claim process for a completed pool (for stakers) via the smart contract.
+   * Corresponds to functions like `triggerReward`.
+   * @param poolId The ID of the pool.
+   * @param aimantA The address claiming the reward.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  claimReward(poolId: string, address: Address): Promise<string>; // Return txHash
+
+  /**
+   * Initiates the reward unlocking process for a completed pool (for the provider) via the smart contract.
+   * Corresponds to functions like `unlockReward`.
+   * @param poolId The ID of the pool.
+   * @param providerAddress The address of the provider unlocking the reward.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  unlockReward(poolId: string, providerAddress: Address): Promise<string>; // Return txHash
 }
