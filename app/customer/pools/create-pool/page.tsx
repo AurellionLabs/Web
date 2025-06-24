@@ -17,31 +17,46 @@ import {
   FormMessage,
 } from '@/app/components/ui/form';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
+import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/app/components/ui/card';
-import { ethers } from 'ethers';
-import {
-  createOperation,
-  requestTokenAllowance,
-} from '@/dapp-connectors/staking-controller';
 import { toast } from 'sonner';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
+import { useWallet } from '@/hooks/useWallet';
+import { usePoolsProvider } from '@/app/providers/pools.provider';
+import { PoolCreationData } from '@/domain/pool';
+import { useRouter } from 'next/navigation';
+
+// Supported assets configuration
+const SUPPORTED_ASSETS = [
+  { id: 1, name: 'GOAT', label: 'Goat' },
+  { id: 2, name: 'SHEEP', label: 'Sheep' },
+  { id: 3, name: 'COW', label: 'Cow' },
+  { id: 4, name: 'CHICKEN', label: 'Chicken' },
+  { id: 5, name: 'DUCK', label: 'Duck' },
+] as const;
 
 const formSchema = z.object({
   name: z.string().min(3, {
-    message: 'Operation name must be at least 3 characters.',
+    message: 'Pool name must be at least 3 characters.',
   }),
-  token: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
-    message: 'Please enter a valid token address.',
+  description: z.string().min(10, {
+    message: 'Description must be at least 10 characters.',
   }),
-  provider: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
-    message: 'Please enter a valid provider address.',
+  assetName: z.string().min(1, {
+    message: 'Please select an asset.',
   }),
-  lengthInDays: z
+  durationDays: z
     .string()
     .refine(
       (val) =>
@@ -52,18 +67,15 @@ const formSchema = z.object({
         message: 'Please enter a valid whole number greater than 0.',
       },
     ),
-  reward: z.string().refine(
+  rewardRate: z.string().refine(
     (val) => {
       const num = parseFloat(val);
       return !isNaN(num) && num >= 1 && num <= 100;
     },
     {
-      message: 'Reward amount must be between 1 and 100.',
+      message: 'Reward rate must be between 1 and 100.',
     },
   ),
-  asset: z.string().min(1, {
-    message: 'Please enter the pools asset .',
-  }),
   fundingGoal: z
     .string()
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -74,57 +86,60 @@ const formSchema = z.object({
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: 'Please enter a valid number greater than 0.',
     }),
-  description: z.string().min(10, {
-    message: 'Description must be at least 10 characters.',
-  }),
 });
 
-export default function CreateOperationPage() {
+export default function CreatePoolPage() {
+  const { address } = useWallet();
+  const { createPool, loading } = usePoolsProvider();
+  const router = useRouter();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      token: '',
-      provider: '',
-      lengthInDays: '',
-      reward: '',
-      asset: '',
+      description: '',
+      assetName: '',
+      durationDays: '',
+      rewardRate: '',
       fundingGoal: '',
       assetPrice: '',
-      description: '',
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await requestTokenAllowance(NEXT_PUBLIC_AURA_TOKEN_ADDRESS);
+      // Check if wallet is connected
+      if (!address) {
+        toast.error('Please connect your wallet first.');
+        return;
+      }
 
-      // Convert decimal values to wei (18 decimals)
-      const fundingGoalWei = ethers.parseUnits(values.fundingGoal, 18);
-      const assetPriceWei = ethers.parseUnits(values.assetPrice, 18);
-
-      // Convert reward to basis points (multiply by 100 for percentage)
-      const rewardBasisPoints = BigInt(
-        Math.floor(parseFloat(values.reward) * 100),
+      // Find the selected asset details
+      const selectedAsset = SUPPORTED_ASSETS.find(
+        (asset) => asset.name === values.assetName,
       );
+      const assetDisplayName = selectedAsset?.label || values.assetName;
 
-      await createOperation(
-        values.name,
-        values.description,
-        values.token,
-        values.provider,
-        parseInt(values.lengthInDays),
-        rewardBasisPoints,
-        values.asset,
-        fundingGoalWei,
-        assetPriceWei,
-      );
-      toast.success('Operation created successfully!');
+      // Prepare pool creation data according to domain interface
+      const poolCreationData: PoolCreationData = {
+        name: values.name,
+        description: values.description,
+        assetName: assetDisplayName,
+        tokenAddress: NEXT_PUBLIC_AURA_TOKEN_ADDRESS as `0x${string}`,
+        fundingGoal: values.fundingGoal,
+        durationDays: parseInt(values.durationDays),
+        rewardRate: parseFloat(values.rewardRate) * 100, // Convert to basis points
+        assetPrice: values.assetPrice,
+      };
+
+      const result = await createPool(poolCreationData);
+      toast.success('Pool created successfully!');
+
+      // Redirect to the new pool
+      router.push(`/customer/pools/${result.poolId}`);
     } catch (error: any) {
-      toast.error(
-        error.message || 'Failed to create operation. Please try again.',
-      );
-      console.error('Error creating operation:', error);
+      toast.error(error.message || 'Failed to create pool. Please try again.');
+      console.error('Error creating pool:', error);
     }
   }
 
@@ -188,15 +203,29 @@ export default function CreateOperationPage() {
 
               <FormField
                 control={form.control}
-                name="asset"
+                name="assetName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asset</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Goat" {...field} />
-                    </FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an asset" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SUPPORTED_ASSETS.map((asset) => (
+                          <SelectItem key={asset.id} value={asset.name}>
+                            {asset.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormDescription>
-                      Enter the assset that will be used in an operation.
+                      Select the asset that will be used in the pool.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -205,44 +234,10 @@ export default function CreateOperationPage() {
 
               <FormField
                 control={form.control}
-                name="token"
+                name="durationDays"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Token Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="0x..." {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the Ethereum address of the token contract.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="provider"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Provider Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="0x..." {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the Ethereum address of the provider.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="lengthInDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Length (Days)</FormLabel>
+                    <FormLabel>Duration (Days)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -253,8 +248,8 @@ export default function CreateOperationPage() {
                       />
                     </FormControl>
                     <FormDescription>
-                      Specify the duration of the operation in days (whole
-                      numbers only).
+                      Specify the duration of the pool in days (whole numbers
+                      only).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -263,10 +258,10 @@ export default function CreateOperationPage() {
 
               <FormField
                 control={form.control}
-                name="reward"
+                name="rewardRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>APY</FormLabel>
+                    <FormLabel>APY (%)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -284,6 +279,7 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="fundingGoal"
@@ -306,6 +302,7 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="assetPrice"
@@ -328,15 +325,16 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
+
               <Button
                 type="submit"
                 variant={'default'}
                 className="w-full text-stone-900"
-                disabled={form.formState.isSubmitting}
+                disabled={form.formState.isSubmitting || loading}
               >
-                {form.formState.isSubmitting
+                {form.formState.isSubmitting || loading
                   ? 'Creating...'
-                  : 'Create Operation'}
+                  : 'Create Pool'}
               </Button>
             </form>
           </Form>

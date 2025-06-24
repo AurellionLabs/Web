@@ -4,18 +4,14 @@ import { ArrowUpRight, Plus } from 'lucide-react';
 import { PoolTable } from '@/app/components/ui/pool-table';
 import { Button } from '@/app/components/ui/button';
 import { colors } from '@/lib/constants/colors';
-import {
-  getOperation,
-  getOperationList,
-  OperationData,
-} from '@/dapp-connectors/staking-controller';
-import { getCurrentWalletAddress as walletAddress } from '@/dapp-connectors/base-controller';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
+import { usePoolsProvider } from '@/app/providers/pools.provider';
+import { Pool } from '@/domain/pool';
 
 export default function PoolsPage() {
   const { setCurrentUserRole } = useMainProvider();
-  const [operations, setOperations] = useState<OperationData[]>();
+  const { pools, loading, error, loadAllPools } = usePoolsProvider();
   const { connected } = useMainProvider();
 
   useEffect(() => {
@@ -24,35 +20,11 @@ export default function PoolsPage() {
 
   useEffect(() => {
     if (connected) {
-      const fetchOperations = async () => {
-        try {
-          const currentWalletAddress = await walletAddress();
-          if (currentWalletAddress) {
-            const ids = await getOperationList();
-            if (ids) {
-              const operationsData = await Promise.all(
-                ids.map(async (id) => {
-                  try {
-                    return await getOperation(id);
-                  } catch (error) {
-                    console.error(`Error fetching operation ${id}:`, error);
-                    return null;
-                  }
-                }),
-              );
-              setOperations(operationsData.filter((op) => op !== null));
-            }
-          }
-        } catch (error) {
-          console.error('Failed to fetch operations:', error);
-          // Add user feedback here - toast notification
-        }
-      };
-      fetchOperations();
+      loadAllPools();
     } else {
       console.log('Wallet not connected');
     }
-  }, [connected]);
+  }, [connected, loadAllPools]);
 
   return (
     <div
@@ -60,7 +32,7 @@ export default function PoolsPage() {
     >
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-semibold">Pools</h1>
+          <h1 className="text-2xl font-semibold">Real World Asset Pools</h1>
           <div className="flex items-center gap-4">
             <Button
               asChild
@@ -73,33 +45,36 @@ export default function PoolsPage() {
             </Button>
           </div>
         </div>
-        {/* <div
-          className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}] mb-8`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-8 h-8 bg-[${colors.primary[500]}]/20 rounded-full flex items-center justify-center`}
-            >
-              <div
-                className={`w-4 h-4 bg-[${colors.primary[500]}] rounded-full`}
-              />
-            </div>
-            <div>
-              <h3 className="font-medium">Welcome to your positions</h3>
-              <p className="text-sm text-gray-400">
-                Connect your wallet to view your current positions.
-              </p>
-            </div>
-          </div>
-        </div> */}
+
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Top pools by TVL</h2>
         </div>
-        {operations && (
-          <>
-            <PoolTable operations={operations} />
-          </>
-        )}{' '}
+
+        {loading && (
+          <div className="flex justify-center items-center py-8">
+            <div className="text-gray-400">Loading pools...</div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex justify-center items-center py-8">
+            <div className="text-red-400">
+              Error loading pools: {error.message}
+            </div>
+          </div>
+        )}
+
+        {pools && pools.length > 0 ? (
+          <PoolTable pools={pools} />
+        ) : (
+          !loading &&
+          !error && (
+            <div className="flex justify-center items-center py-8">
+              <div className="text-gray-400">No pools available</div>
+            </div>
+          )
+        )}
+
         <div className="mt-8">
           <div
             className={`bg-[${colors.background.secondary}] rounded-2xl p-4 sm:p-6 border border-[${colors.neutral[800]}]`}
