@@ -7,6 +7,8 @@ import { IOrderService } from '@/domain/orders/order';
 import { OrderService } from '../services/order-service';
 import { IAuStakeService } from '@/domain/austake';
 import { AuStakeService } from '../services/austake.service';
+import { IPoolService } from '@/domain/pool';
+import { PoolService } from '../services/pool.service';
 
 /**
  * Context responsible for initializing and providing access to application services.
@@ -20,6 +22,7 @@ export class ServiceContext {
   private driverService: IDriverService | null = null;
   private orderService: IOrderService | null = null;
   private auStakeService: IAuStakeService | null = null;
+  private poolService: IPoolService | null = null;
 
   private isInitialized = false;
 
@@ -75,6 +78,12 @@ export class ServiceContext {
       //    this.repositoryContext.getAuStakeRepository(), // Get IAuStakeRepository from RepositoryContext
       //    this.repositoryContext, // Pass the full RepositoryContext
       //  );
+
+      // Initialize PoolService with its repository dependency
+      this.poolService = new PoolService(
+        this.repositoryContext.getPoolRepository(),
+        this.repositoryContext,
+      );
 
       this.isInitialized = true;
       console.log('[ServiceContext] Initialized successfully.');
@@ -132,5 +141,17 @@ export class ServiceContext {
       );
     }
     return this.auStakeService;
+  }
+
+  /**
+   * Get the Pool service instance.
+   */
+  public getPoolService(): IPoolService {
+    if (!this.isInitialized || !this.poolService) {
+      throw new Error(
+        'ServiceContext not initialized or PoolService failed to initialize.',
+      );
+    }
+    return this.poolService;
   }
 }

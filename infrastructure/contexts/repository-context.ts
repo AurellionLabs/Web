@@ -22,6 +22,8 @@ import {
 import { listenForSignature } from '../services/signature-listener.service';
 import { IAuStakeRepository } from '@/domain/austake';
 import { AuStakeRepository } from '../repositories/austake-repository';
+import { IPoolRepository } from '@/domain/pool';
+import { PoolRepository } from '../repositories/pool-repository';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -32,6 +34,7 @@ export class RepositoryContext {
   private orderRepository: OrderRepository | null = null;
   private driverRepository: IDriverRepository | null = null;
   private auStakeRepository: IAuStakeRepository | null = null;
+  private poolRepository: IPoolRepository | null = null;
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
   private signer: ethers.Signer | null = null;
@@ -64,6 +67,7 @@ export class RepositoryContext {
     this.aurumContract = aurumContract;
     this.signer = signer;
     this.auStakeRepository = new AuStakeRepository(provider, signer);
+    this.poolRepository = new PoolRepository(provider, signer);
     this.nodeRepository = new BlockchainNodeRepository(
       aurumContract,
       provider,
@@ -125,6 +129,18 @@ export class RepositoryContext {
       );
     }
     return this.auStakeRepository;
+  }
+
+  /**
+   * Get the Pool repository instance
+   */
+  public getPoolRepository(): IPoolRepository {
+    if (!this.poolRepository) {
+      throw new Error(
+        'RepositoryContext not initialized or PoolRepository failed to initialize.',
+      );
+    }
+    return this.poolRepository;
   }
 
   /**
