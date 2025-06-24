@@ -1,49 +1,56 @@
 'use client';
 import Link from 'next/link';
 import { colors } from '@/lib/constants/colors';
-import {
-  getDecimal,
-  OperationData,
-} from '@/dapp-connectors/staking-controller';
+import { Pool } from '@/domain/pool';
 import { useState, useEffect } from 'react';
-import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 
 interface PoolRowProps {
-  operation: OperationData;
+  pool: Pool;
   index: number;
 }
-const formatDaysLeft = (deadline: number) => {
+
+const formatDaysLeft = (startDate: number, durationDays: number) => {
   const now = Math.floor(Date.now() / 1000);
-  const daysLeft = Math.max(0, Math.floor((deadline - now) / 86400));
+  const endDate = startDate + durationDays * 24 * 60 * 60;
+  const daysLeft = Math.max(0, Math.floor((endDate - now) / 86400));
   return daysLeft.toString();
 };
-export function PoolRow({ operation, index }: PoolRowProps) {
-  const { setSelectedPool } = usePoolsProvider();
-  const [decimals, setDecimals] = useState(0);
+
+const formatTVL = (tvl: string) => {
+  try {
+    const value = parseFloat(tvl);
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(2)}M`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(2)}K`;
+    } else {
+      return `$${value.toFixed(2)}`;
+    }
+  } catch (error) {
+    return '$0';
+  }
+};
+
+export function PoolRow({ pool, index }: PoolRowProps) {
+  const { selectPool } = usePoolsProvider();
   const [formattedValues, setFormattedValues] = useState({
-    tokenTvl: '0',
+    tvl: '0',
     reward: '0',
-    lengthInDays: '0',
+    daysLeft: '0',
   });
 
   const handleClick = () => {
-    setSelectedPool(operation);
+    selectPool(pool);
   };
 
   useEffect(() => {
-    const _getDecimal = async () => {
-      setDecimals(Number(await getDecimal()));
-    };
-    _getDecimal();
-  }, []);
-  useEffect(() => {
     setFormattedValues({
-      tokenTvl: formatEthereumValue(operation.tokenTvl, decimals),
-      reward: (Number(operation.reward) / 100).toFixed(2),
-      lengthInDays: formatDaysLeft(Number(operation.deadline)) || '0',
+      tvl: formatTVL(pool.totalValueLocked),
+      reward: (pool.rewardRate / 100).toFixed(2),
+      daysLeft: formatDaysLeft(pool.startDate, pool.durationDays),
     });
-  }, [operation, decimals]);
+  }, [pool]);
 
   return (
     <tr
@@ -52,7 +59,7 @@ export function PoolRow({ operation, index }: PoolRowProps) {
       <td className={`py-4 px-4 text-[${colors.text.secondary}]`}>{index}</td>
       <td className="py-4 px-4">
         <Link
-          href={`/customer/pools/${operation.id}`}
+          href={`/customer/pools/${pool.id}`}
           className={`flex items-center gap-2 hover:text-[${colors.primary[500]}]`}
           onClick={handleClick}
         >
@@ -60,17 +67,17 @@ export function PoolRow({ operation, index }: PoolRowProps) {
             <div className="w-6 h-6 rounded-full bg-amber-600 border-2 border-gray-900" />
             <div className="w-6 h-6 rounded-full bg-red-700 border-2 border-gray-900" />
           </div>
-          <span>{operation.name}</span>
+          <span>{pool.name}</span>
           <span className="text-green-500 text-sm">
             {formattedValues.reward}%
           </span>
         </Link>
       </td>
-      <td className="py-4 px-4 text-right">{formattedValues.tokenTvl}</td>
+      <td className="py-4 px-4 text-right">{formattedValues.tvl}</td>
       <td className="py-4 px-4 text-right text-green-500">
         {formattedValues.reward}%
       </td>
-      <td className="py-4 px-4 text-right">{formattedValues.tokenTvl}</td>
+      <td className="py-4 px-4 text-right">{formattedValues.tvl}</td>
     </tr>
   );
 }

@@ -30,14 +30,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/app/components/ui/card';
-import { ethers } from 'ethers';
-import {
-  createOperation,
-  requestTokenAllowance,
-} from '@/dapp-connectors/staking-controller';
 import { toast } from 'sonner';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { useWallet } from '@/hooks/useWallet';
+import { usePoolsProvider } from '@/app/providers/pools.provider';
+import { PoolCreationData } from '@/domain/pool';
+import { useRouter } from 'next/navigation';
 
 // Supported assets configuration
 const SUPPORTED_ASSETS = [
@@ -50,12 +48,15 @@ const SUPPORTED_ASSETS = [
 
 const formSchema = z.object({
   name: z.string().min(3, {
-    message: 'Operation name must be at least 3 characters.',
+    message: 'Pool name must be at least 3 characters.',
   }),
-  asset: z.string().min(1, {
+  description: z.string().min(10, {
+    message: 'Description must be at least 10 characters.',
+  }),
+  assetName: z.string().min(1, {
     message: 'Please select an asset.',
   }),
-  lengthInDays: z
+  durationDays: z
     .string()
     .refine(
       (val) =>
@@ -66,13 +67,13 @@ const formSchema = z.object({
         message: 'Please enter a valid whole number greater than 0.',
       },
     ),
-  reward: z.string().refine(
+  rewardRate: z.string().refine(
     (val) => {
       const num = parseFloat(val);
       return !isNaN(num) && num >= 1 && num <= 100;
     },
     {
-      message: 'Reward amount must be between 1 and 100.',
+      message: 'Reward rate must be between 1 and 100.',
     },
   ),
   fundingGoal: z
@@ -85,24 +86,23 @@ const formSchema = z.object({
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: 'Please enter a valid number greater than 0.',
     }),
-  description: z.string().min(10, {
-    message: 'Description must be at least 10 characters.',
-  }),
 });
 
-export default function CreateOperationPage() {
+export default function CreatePoolPage() {
   const { address } = useWallet();
+  const { createPool, loading } = usePoolsProvider();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      asset: '',
-      lengthInDays: '',
-      reward: '',
+      description: '',
+      assetName: '',
+      durationDays: '',
+      rewardRate: '',
       fundingGoal: '',
       assetPrice: '',
-      description: '',
     },
   });
 
@@ -114,40 +114,32 @@ export default function CreateOperationPage() {
         return;
       }
 
-      await requestTokenAllowance(NEXT_PUBLIC_AURA_TOKEN_ADDRESS);
-
-      // Convert decimal values to wei (18 decimals)
-      const fundingGoalWei = ethers.parseUnits(values.fundingGoal, 18);
-      const assetPriceWei = ethers.parseUnits(values.assetPrice, 18);
-
-      // Convert reward to basis points (multiply by 100 for percentage)
-      const rewardBasisPoints = BigInt(
-        Math.floor(parseFloat(values.reward) * 100),
-      );
-
       // Find the selected asset details
       const selectedAsset = SUPPORTED_ASSETS.find(
-        (asset) => asset.name === values.asset,
+        (asset) => asset.name === values.assetName,
       );
-      const assetName = selectedAsset?.label || values.asset;
+      const assetDisplayName = selectedAsset?.label || values.assetName;
 
-      await createOperation(
-        values.name,
-        values.description,
-        NEXT_PUBLIC_AURA_TOKEN_ADDRESS, // Use the default token address
-        address, // Use current wallet address as provider
-        parseInt(values.lengthInDays),
-        rewardBasisPoints,
-        assetName,
-        fundingGoalWei,
-        assetPriceWei,
-      );
-      toast.success('Operation created successfully!');
+      // Prepare pool creation data according to domain interface
+      const poolCreationData: PoolCreationData = {
+        name: values.name,
+        description: values.description,
+        assetName: assetDisplayName,
+        tokenAddress: NEXT_PUBLIC_AURA_TOKEN_ADDRESS as `0x${string}`,
+        fundingGoal: values.fundingGoal,
+        durationDays: parseInt(values.durationDays),
+        rewardRate: parseFloat(values.rewardRate) * 100, // Convert to basis points
+        assetPrice: values.assetPrice,
+      };
+
+      const result = await createPool(poolCreationData);
+      toast.success('Pool created successfully!');
+
+      // Redirect to the new pool
+      router.push(`/customer/pools/${result.poolId}`);
     } catch (error: any) {
-      toast.error(
-        error.message || 'Failed to create operation. Please try again.',
-      );
-      console.error('Error creating operation:', error);
+      toast.error(error.message || 'Failed to create pool. Please try again.');
+      console.error('Error creating pool:', error);
     }
   }
 
@@ -211,7 +203,7 @@ export default function CreateOperationPage() {
 
               <FormField
                 control={form.control}
-                name="asset"
+                name="assetName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asset</FormLabel>
@@ -233,7 +225,7 @@ export default function CreateOperationPage() {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Select the asset that will be used in the operation.
+                      Select the asset that will be used in the pool.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -242,10 +234,10 @@ export default function CreateOperationPage() {
 
               <FormField
                 control={form.control}
-                name="lengthInDays"
+                name="durationDays"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Length (Days)</FormLabel>
+                    <FormLabel>Duration (Days)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -256,8 +248,8 @@ export default function CreateOperationPage() {
                       />
                     </FormControl>
                     <FormDescription>
-                      Specify the duration of the operation in days (whole
-                      numbers only).
+                      Specify the duration of the pool in days (whole numbers
+                      only).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -266,10 +258,10 @@ export default function CreateOperationPage() {
 
               <FormField
                 control={form.control}
-                name="reward"
+                name="rewardRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>APY</FormLabel>
+                    <FormLabel>APY (%)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -287,6 +279,7 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="fundingGoal"
@@ -309,6 +302,7 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="assetPrice"
@@ -331,15 +325,16 @@ export default function CreateOperationPage() {
                   </FormItem>
                 )}
               />
+
               <Button
                 type="submit"
                 variant={'default'}
                 className="w-full text-stone-900"
-                disabled={form.formState.isSubmitting}
+                disabled={form.formState.isSubmitting || loading}
               >
-                {form.formState.isSubmitting
+                {form.formState.isSubmitting || loading
                   ? 'Creating...'
-                  : 'Create Operation'}
+                  : 'Create Pool'}
               </Button>
             </form>
           </Form>
