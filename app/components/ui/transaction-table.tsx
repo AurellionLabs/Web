@@ -1,35 +1,80 @@
 'use client';
-import { formatEthereumValue } from '@/dapp-connectors/ethereum-utils';
-import { getDecimal } from '@/dapp-connectors/staking-controller';
-import { StakedEvent } from '@/typechain-types/contracts/AuStake';
-import { useEffect, useState } from 'react';
 
-interface Transaction {
-  time: string;
-  type: string;
-  usdValue: string;
-  token0Amount: string;
-  token1Amount: string;
-}
-const formatDaysLeft = (deadline: number) => {
-  const now = new Date(deadline * 1000);
-  return now.toISOString().split('T')[0];
+import { StakeEvent } from '@/domain/pool';
+import { usePoolsProvider } from '@/app/providers/pools.provider';
+import { useEffect } from 'react';
+
+const formatDateTime = (timestamp: number) => {
+  if (!timestamp || isNaN(timestamp)) {
+    return 'Invalid Date';
+  }
+
+  try {
+    const date = new Date(timestamp * 1000);
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    return date.toLocaleString();
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
 };
+
+const formatAmount = (amount: string) => {
+  if (!amount || amount === '0') return '0';
+
+  try {
+    const num = parseFloat(amount);
+    if (isNaN(num)) return '0';
+
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(2)}M`;
+    } else if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K`;
+    } else {
+      return num.toFixed(2);
+    }
+  } catch (error) {
+    console.error('Error formatting amount:', error);
+    return '0';
+  }
+};
+
+const formatAddress = (address: string | undefined) => {
+  if (!address || typeof address !== 'string' || address.length < 10) {
+    return 'Unknown';
+  }
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
+const formatTransactionHash = (hash: string | undefined) => {
+  if (!hash || typeof hash !== 'string' || hash.length < 8) {
+    return null;
+  }
+  return hash.slice(0, 8);
+};
+
 interface TransactionTableProps {
-  transactions: StakedEvent.OutputObject[] | undefined;
+  poolId?: string;
+  transactions?: StakeEvent[];
 }
 
-export function TransactionTable({ transactions }: TransactionTableProps) {
-  const [decimals, setDecimals] = useState(0);
+export function TransactionTable({
+  poolId,
+  transactions,
+}: TransactionTableProps) {
+  const { stakeHistory, loadStakeHistory } = usePoolsProvider();
+
+  // Use provided transactions or load from provider
+  const displayTransactions = transactions || stakeHistory;
+
   useEffect(() => {
-    console.log('Transactions object', transactions);
-  }, []);
-  useEffect(() => {
-    const _getDecimal = async () => {
-      setDecimals(Number(await getDecimal()));
-    };
-    _getDecimal();
-  }, []);
+    if (poolId && !transactions) {
+      loadStakeHistory(poolId);
+    }
+  }, [poolId, transactions, loadStakeHistory]);
+
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800">
       <div className="p-4 border-b border-gray-800">
@@ -41,42 +86,49 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
             <tr className="text-sm text-gray-400">
               <th className="py-3 px-4 text-left">Time</th>
               <th className="py-3 px-4 text-left">Type</th>
-              <th className="py-3 px-4 text-right">USD Value</th>
-              <th className="py-3 px-4 text-right">Token Amount</th>
+              <th className="py-3 px-4 text-left">Staker</th>
+              <th className="py-3 px-4 text-right">Amount</th>
+              <th className="py-3 px-4 text-right">Transaction</th>
             </tr>
           </thead>
           <tbody>
-            {transactions ? (
-              transactions.map((tx, index) => (
+            {displayTransactions && displayTransactions.length > 0 ? (
+              displayTransactions.map((tx, index) => (
                 <tr
-                  key={index}
+                  key={`${tx.poolId}-${tx.timestamp}-${index}`}
                   className="border-t border-gray-800 hover:bg-gray-800/50 transition-colors"
                 >
                   <td className="py-4 px-4 text-gray-400">
-                    {formatDaysLeft(Number(tx.time))}
+                    {formatDateTime(tx.timestamp)}
                   </td>
-                  <td
-                    className={`py-4 px-4 ${
-                      tx.eType === 'Unstaked'
-                        ? 'text-red-500'
-                        : tx.eType === 'Staked'
-                          ? 'text-green-500'
-                          : 'text-gray-400'
-                    }`}
-                  >
-                    {tx.eType}
+                  <td className="py-4 px-4 text-green-500">Staked</td>
+                  <td className="py-4 px-4 text-gray-300 font-mono text-sm">
+                    {formatAddress(tx.stakerAddress)}
+                  </td>
+                  <td className="py-4 px-4 text-right font-semibold">
+                    ${formatAmount(tx.amount)}
                   </td>
                   <td className="py-4 px-4 text-right">
-                    {formatEthereumValue(tx.amount, 6)}
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    {formatEthereumValue(tx.amount, 6)}
+                    {formatTransactionHash(tx.transactionHash) ? (
+                      <a
+                        href={`https://etherscan.io/tx/${tx.transactionHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 font-mono text-sm"
+                      >
+                        {formatTransactionHash(tx.transactionHash)}...
+                      </a>
+                    ) : (
+                      <span className="text-gray-500">-</span>
+                    )}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td className="p-4">No Transactions yet</td>
+                <td colSpan={5} className="p-8 text-center text-gray-500">
+                  No transactions yet
+                </td>
               </tr>
             )}
           </tbody>

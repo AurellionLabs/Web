@@ -53,6 +53,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             tvlFormatted,
             fundingGoalFormatted,
             rewardFormatted,
+            volume24h,
+            volumeChangePercentage,
             ...poolData
           } = poolWithDynamics;
           setPool(poolData);
@@ -62,7 +64,10 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             tvlFormatted,
             fundingGoalFormatted,
             rewardFormatted,
+            volume24h,
+            volumeChangePercentage,
           });
+          setDailyPercentageChange(volumeChangePercentage || '0%');
           selectPool(poolData);
         }
       } catch (error) {
@@ -89,14 +94,21 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     loadHistory();
   }, [params.id, loadStakeHistory, getGroupedStakeHistory]);
 
-  const getTotalDailyVolume = (groupedStake?: any) => {
-    if (!groupedStake?.daily) return '0.00';
-    const today = new Date().toISOString().split('T')[0];
-    const value = Number(groupedStake.daily[today] || 0);
-    return value.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const getTotalDailyVolume = () => {
+    if (!poolDynamics?.volume24h) return '0.00';
+    const value = parseFloat(poolDynamics.volume24h);
+    if (isNaN(value)) return '0.00';
+
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(2)}M`;
+    } else if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    } else {
+      return value.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
   };
 
   const handleRewardClaim = async () => {
@@ -108,7 +120,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     setIsClaimingReward(true);
     try {
       if (pool.status === PoolStatus.PAID) {
-        toast.info('Rewards have already been paid out');
+        toast('Rewards have already been paid out');
         return;
       }
 
@@ -126,7 +138,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         await unlockReward(pool.id);
         toast.success('Reward unlocked successfully');
       } else {
-        toast.info('Pool is not ready for reward claiming');
+        toast('Pool is not ready for reward claiming');
       }
     } catch (error: any) {
       console.error('Error claiming reward:', error);
@@ -167,31 +179,15 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     tvl: poolDynamics?.tvlFormatted || '$0',
     completionPercentage: `${poolDynamics?.progressPercentage || 0}%`,
     fundingGoal: poolDynamics?.fundingGoalFormatted || '$0',
-    volume24h: `$${getTotalDailyVolume(groupedStake)}`,
+    volume24h: `$${getTotalDailyVolume()}`,
     volumeChange: dailyPercentageChange,
-    fees24h: '$87.3K',
+    fees24h: '$87.3K', // TODO: Calculate from actual data
     token0Balance: pool?.assetName || '',
     token1Balance: 'Funding',
     lockupPeriod: pool ? pool.startDate + pool.durationDays * 24 * 60 * 60 : 0,
     reward: poolDynamics?.rewardFormatted || '0%',
     timeRemaining: poolDynamics?.timeRemainingSeconds || 0,
     status: pool ? getStatusText(pool.status) : 'Unknown',
-    transactions: [
-      {
-        time: '2m ago',
-        type: 'Remove',
-        usdValue: '$6,832.74',
-        token0Amount: '0.04274',
-        token1Amount: '2,800.14',
-      },
-      {
-        time: '33m ago',
-        type: 'Buy WBTC',
-        usdValue: '$456.33',
-        token0Amount: '0.00484',
-        token1Amount: '456.663',
-      },
-    ],
   };
 
   if (loading || !pool) {
@@ -210,7 +206,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     <div className="min-h-screen bg-zinc-950 text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/customer/pools">
@@ -218,8 +214,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
               </Link>
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">{poolData.name}</h1>
-              <p className="text-gray-400">{poolData.description}</p>
+              <h1 className="text-3xl font-bold">{poolData.name}</h1>
+              <p className="text-gray-400 mt-1">{poolData.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -232,30 +228,31 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Value Locked"
-            value={poolData.tvl}
-            change={poolData.volumeChange}
-          />
-          <StatCard
-            title="Volume (24h)"
-            value={poolData.volume24h}
-            change={poolData.volumeChange}
-          />
-          <StatCard title="Fees (24h)" value={poolData.fees24h} />
-          <StatCard
-            title="APR"
-            value={poolData.reward}
-            subtitle="Current reward rate"
-          />
-        </div>
+        {/* Main Layout */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Left Content - Takes 3 columns */}
+          <div className="xl:col-span-3 space-y-8">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard
+                title="Total Value Locked"
+                value={poolData.tvl}
+                change={poolData.volumeChange}
+              />
+              <StatCard
+                title="Volume (24h)"
+                value={poolData.volume24h}
+                change={poolData.volumeChange}
+              />
+              <StatCard title="Fees (24h)" value={poolData.fees24h} />
+              <StatCard
+                title="APR"
+                value={poolData.reward}
+                description="Current reward rate"
+              />
+            </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Chart */}
-          <div className="lg:col-span-2">
+            {/* Chart */}
             <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Pool Activity</h2>
@@ -277,31 +274,109 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
               </div>
               <Chart timeRange={timeRange} />
             </div>
+
+            {/* Transactions */}
+            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+              <h2 className="text-xl font-semibold mb-6">
+                Recent Transactions
+              </h2>
+              <TransactionTable poolId={params.id} />
+            </div>
           </div>
 
-          {/* Pool Balance */}
-          <div>
-            <PoolBalance
-              token0={poolData.token0Balance}
-              token1={poolData.token1Balance}
-              completionPercentage={poolData.completionPercentage}
-              fundingGoal={poolData.fundingGoal}
-              tvl={poolData.tvl}
-              timeRemaining={formatTime(poolData.timeRemaining)}
-              status={poolData.status}
-              onAddLiquidity={() => {
-                window.location.href = `/customer/pools/${params.id}/add-liquidity`;
-              }}
-              onClaimReward={handleRewardClaim}
-              isClaimingReward={isClaimingReward}
-            />
-          </div>
-        </div>
+          {/* Right Sidebar - Takes 1 column */}
+          <div className="xl:col-span-1 space-y-6">
+            {/* Completion Progress */}
+            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+              <h3 className="text-lg font-semibold mb-4">
+                Completion Progress
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Progress</span>
+                  <span className="text-green-500 font-semibold">
+                    {poolData.completionPercentage}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-3">
+                  <div
+                    className="bg-gradient-to-r from-amber-600 to-red-700 h-3 rounded-full transition-all duration-300"
+                    style={{ width: poolData.completionPercentage }}
+                  />
+                </div>
+                <div className="text-sm text-gray-400 text-center">
+                  {poolData.tvl} of {poolData.fundingGoal} raised
+                </div>
+              </div>
+            </div>
 
-        {/* Transactions */}
-        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
-          <h2 className="text-xl font-semibold mb-6">Recent Transactions</h2>
-          <TransactionTable transactions={poolData.transactions} />
+            {/* Pool Details */}
+            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+              <h3 className="text-lg font-semibold mb-4">Pool Details</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                  <span className="text-gray-400">Asset</span>
+                  <span className="font-medium">{poolData.token0Balance}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                  <span className="text-gray-400">Funding Goal</span>
+                  <span className="font-medium">{poolData.fundingGoal}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                  <span className="text-gray-400">Current TVL</span>
+                  <span className="font-medium">{poolData.tvl}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                  <span className="text-gray-400">Time Remaining</span>
+                  <span className="font-medium">
+                    {formatTime(poolData.timeRemaining)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-gray-400">Status</span>
+                  <span
+                    className={`font-medium px-3 py-1 text-xs rounded-full ${
+                      poolData.status === 'Active'
+                        ? 'bg-green-500/20 text-green-400'
+                        : poolData.status === 'Complete'
+                          ? 'bg-blue-500/20 text-blue-400'
+                          : poolData.status === 'Paid'
+                            ? 'bg-purple-500/20 text-purple-400'
+                            : 'bg-yellow-500/20 text-yellow-400'
+                    }`}
+                  >
+                    {poolData.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              {pool?.status === PoolStatus.ACTIVE && (
+                <Button
+                  className="w-full h-12 text-base font-semibold bg-amber-600 hover:bg-amber-700"
+                  onClick={() => {
+                    window.location.href = `/customer/pools/${params.id}/add-liquidity`;
+                  }}
+                >
+                  Add Liquidity
+                </Button>
+              )}
+
+              {(pool?.status === PoolStatus.COMPLETE ||
+                pool?.status === PoolStatus.ACTIVE) && (
+                <Button
+                  variant="outline"
+                  className="w-full h-12 text-base font-semibold border-zinc-700 hover:bg-zinc-800"
+                  onClick={handleRewardClaim}
+                  disabled={isClaimingReward}
+                >
+                  {isClaimingReward ? 'Processing...' : 'Claim Reward'}
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

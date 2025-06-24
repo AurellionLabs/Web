@@ -50,9 +50,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
   const poolData = {
     name: pool?.name || '',
-    assetPrice: pool
-      ? `1 ${pool.assetName} = $${parseFloat(pool.totalValueLocked) / 1000}`
-      : '0',
+    assetPrice: pool ? `1 ${pool.assetName} = $750` : '1 Asset = $750', // Fixed price for demo
     supplyAPY: pool ? `${(pool.rewardRate / 100).toFixed(2)}%` : '0%',
   };
 
@@ -74,9 +72,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (assetAmount && pool) {
       try {
-        // Simple calculation - in a real implementation, this would use the actual asset price
-        const calculatedTokens = parseFloat(assetAmount) * 100; // Placeholder calculation
-        setTokenAmount(calculatedTokens.toString());
+        // Convert asset amount to USD, then to tokens (assuming 1 token = $1 for demo)
+        const assetValue = parseFloat(assetAmount) * 750; // $750 per asset
+        setTokenAmount(assetValue.toString());
       } catch (error) {
         console.error('Error calculating token amount:', error);
         setTokenAmount('');
@@ -123,7 +121,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
   const handleSetMax = () => {
     // In a real implementation, this would get the user's actual token balance
-    setAssetAmount('1000'); // Placeholder max amount
+    setAssetAmount('100'); // Realistic max amount for demo
   };
 
   const isAmountValid = () => {
@@ -134,12 +132,22 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     }
   };
 
+  const formatAmount = (amount: string) => {
+    if (!amount) return '0.00';
+    const num = parseFloat(amount);
+    if (isNaN(num)) return '0.00';
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   if (loading || !pool) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white p-6">
-        <div className="max-w-xl mx-auto">
-          <div className="flex justify-center items-center py-8">
-            <div className="text-gray-400">Loading pool data...</div>
+        <div className="max-w-2xl mx-auto">
+          <div className="flex justify-center items-center py-12">
+            <div className="text-gray-400 text-lg">Loading pool data...</div>
           </div>
         </div>
       </div>
@@ -148,15 +156,19 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
               <Link href={`/customer/pools/${params.id}`}>
                 <ArrowLeft className="h-6 w-6" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold">Supply {pool.name}</h1>
+            <div>
+              <h1 className="text-3xl font-bold">Add Liquidity</h1>
+              <p className="text-gray-400 mt-1">{pool.name}</p>
+            </div>
           </div>
           <Button variant="ghost" size="icon" asChild>
             <Link href={`/customer/pools/${params.id}`}>
@@ -165,24 +177,27 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
           </Button>
         </div>
 
-        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 mb-6">
-          <div className="space-y-4">
+        {/* Pool Information */}
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 mb-8">
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Pool Information</h2>
-              <div className="flex items-center gap-1 text-sm text-gray-400">
+              <h2 className="text-xl font-semibold">Pool Information</h2>
+              <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
                 <HelpCircle className="w-4 h-4" />
                 <span>APY: {poolData.supplyAPY}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-400">Asset Price:</span>
-                <div className="font-medium">{poolData.assetPrice}</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <span className="text-gray-400 text-sm">Asset Price</span>
+                <div className="text-lg font-semibold">
+                  {poolData.assetPrice}
+                </div>
               </div>
-              <div>
-                <span className="text-gray-400">Supply APY:</span>
-                <div className="font-medium text-green-500">
+              <div className="space-y-2 md:text-right">
+                <span className="text-gray-400 text-sm">Supply APY</span>
+                <div className="text-lg font-semibold text-green-400">
                   {poolData.supplyAPY}
                 </div>
               </div>
@@ -191,77 +206,106 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Amount Input */}
           <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Amount to Supply</label>
+                <label className="text-lg font-semibold">
+                  Amount to Supply
+                </label>
                 <button
                   type="button"
                   onClick={handleSetMax}
-                  className="text-sm text-amber-500 hover:text-amber-400"
+                  className="px-3 py-1 text-sm bg-amber-500/20 text-amber-400 rounded-md hover:bg-amber-500/30 transition-colors"
                 >
                   MAX
                 </button>
               </div>
 
               <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">
+                      {pool.assetName.slice(0, 1)}
+                    </span>
+                  </div>
+                  <span className="font-semibold text-lg">
+                    {pool.assetName}
+                  </span>
+                </div>
                 <input
                   type="text"
                   value={assetAmount}
                   onChange={handleInputChange}
                   placeholder="0.00"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-right text-lg font-medium focus:outline-none focus:border-amber-500"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-6 py-4 pr-20 text-right text-2xl font-medium focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
                 />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-amber-600" />
-                  <span className="font-medium">{pool.assetName}</span>
-                </div>
               </div>
 
               {validationError && (
-                <p className="text-red-500 text-sm">{validationError}</p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-red-400 text-sm">{validationError}</p>
+                </div>
               )}
             </div>
           </div>
 
+          {/* Calculated Token Amount */}
           {tokenAmount && (
             <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
               <div className="space-y-4">
-                <label className="text-sm font-medium">You will stake</label>
+                <label className="text-lg font-semibold">You will stake</label>
 
                 <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">A</span>
+                    </div>
+                    <span className="font-semibold text-lg">AURA</span>
+                  </div>
                   <input
                     type="text"
-                    value={tokenAmount}
+                    value={formatAmount(tokenAmount)}
                     readOnly
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-right text-lg font-medium"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-6 py-4 pr-20 text-right text-2xl font-medium cursor-not-allowed"
                   />
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-600" />
-                    <span className="font-medium">AURA</span>
-                  </div>
+                </div>
+
+                <div className="text-sm text-gray-400 text-center">
+                  Conversion rate: 1 {pool.assetName} = $
+                  {formatAmount(tokenAmount)} AURA
                 </div>
               </div>
             </div>
           )}
 
+          {/* Error Display */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-              <p className="text-red-400 text-sm">{error}</p>
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+              <p className="text-red-400">{error}</p>
             </div>
           )}
 
+          {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-medium py-3"
+            className="w-full h-14 text-lg font-semibold bg-amber-600 hover:bg-amber-700 text-black rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!isAmountValid() || stakeLoading || loading}
           >
-            {stakeLoading ? 'Adding Liquidity...' : 'Add Liquidity'}
+            {stakeLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                Adding Liquidity...
+              </div>
+            ) : (
+              'Add Liquidity'
+            )}
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-400">
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-gray-400">
             By adding liquidity, you agree to the pool terms and conditions.
           </p>
         </div>
