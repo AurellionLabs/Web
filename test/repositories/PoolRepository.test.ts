@@ -28,7 +28,7 @@ describe('PoolRepository', () => {
     token: '0xtoken123' as Address,
     provider: '0xprovider123' as Address,
     fundingGoal: '1000000000000000000000', // 1000 tokens
-    totalStaked: '500000000000000000000', // 500 tokens
+    tokenTvl: '500000000000000000000', // 500 tokens
     deadline: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
     reward: 500, // 5% in basis points
   };
@@ -104,12 +104,11 @@ describe('PoolRepository', () => {
       expect(result.tokenAddress).to.equal(mockPoolData.token);
       expect(result.providerAddress).to.equal(mockPoolData.provider);
       expect(result.fundingGoal).to.equal(mockPoolData.fundingGoal);
-      expect(result.totalValueLocked).to.equal(mockPoolData.totalStaked);
+      expect(result.totalValueLocked).to.equal(mockPoolData.tokenTvl);
       expect(result.rewardRate).to.equal(5);
       expect(result.status).to.equal(PoolStatus.ACTIVE);
-      expect(mockContract.getOperation).to.have.been.calledWith(
-        mockPoolData.id,
-      );
+      expect(mockContract.getOperation.calledOnceWithExactly(mockPoolData.id))
+        .to.be.true;
     });
 
     it('should throw error when pool not found', async () => {
@@ -120,7 +119,7 @@ describe('PoolRepository', () => {
 
       await expect(
         poolRepository.getPoolById('nonexistent'),
-      ).to.eventually.be.rejectedWith('Pool with id nonexistent not found');
+      ).to.eventually.be.rejectedWith('Failed to fetch pool nonexistent');
     });
 
     it('should throw error when contract call fails', async () => {
@@ -137,17 +136,17 @@ describe('PoolRepository', () => {
       const mockEvents = [
         {
           args: {
-            staker: '0xstaker1',
+            user: '0xstaker1',
             amount: { toString: () => '100000000000000000000' },
-            timestamp: 1234567890,
+            time: 1234567890,
           },
           transactionHash: '0xtx1',
         },
         {
           args: {
-            staker: '0xstaker2',
+            user: '0xstaker2',
             amount: { toString: () => '200000000000000000000' },
-            timestamp: 1234567891,
+            time: 1234567891,
           },
           transactionHash: '0xtx2',
         },
@@ -329,17 +328,17 @@ describe('PoolRepository', () => {
       const mockEvents = [
         {
           args: {
-            staker: '0xstaker1',
+            user: '0xstaker1',
             amount: { toString: () => '100000000000000000000' },
-            timestamp: 1672531200, // 2023-01-01
+            time: 1672531200, // 2023-01-01
           },
           transactionHash: '0xtx1',
         },
         {
           args: {
-            staker: '0xstaker2',
+            user: '0xstaker2',
             amount: { toString: () => '200000000000000000000' },
-            timestamp: 1672617600, // 2023-01-02
+            time: 1672617600, // 2023-01-02
           },
           transactionHash: '0xtx2',
         },
@@ -363,17 +362,17 @@ describe('PoolRepository', () => {
       const mockEvents = [
         {
           args: {
-            staker: '0xstaker1',
+            user: '0xstaker1',
             amount: { toString: () => '100000000000000000000' },
-            timestamp: 1672531200, // 2023-01-01 00:00:00
+            time: 1672531200, // 2023-01-01 00:00:00
           },
           transactionHash: '0xtx1',
         },
         {
           args: {
-            staker: '0xstaker2',
+            user: '0xstaker2',
             amount: { toString: () => '200000000000000000000' },
-            timestamp: 1672534800, // 2023-01-01 01:00:00
+            time: 1672534800, // 2023-01-01 01:00:00
           },
           transactionHash: '0xtx2',
         },

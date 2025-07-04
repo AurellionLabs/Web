@@ -63,15 +63,22 @@ export class PoolRepository implements IPoolRepository {
 
   async getPoolStakeHistory(poolId: string): Promise<StakeEvent[]> {
     try {
-      // Get stake events from contract logs
-      const filter = this.contract.filters.Staked(null, poolId, null);
+      // Get stake events from contract logs - Staked(token, user, amount, operationId, eType, time)
+      const filter = this.contract.filters.Staked(
+        undefined,
+        undefined,
+        undefined,
+        poolId,
+        undefined,
+        undefined,
+      );
       const events = await this.contract.queryFilter(filter);
 
       return events.map((event: any) => ({
         poolId,
-        stakerAddress: event.args?.staker as Address,
+        stakerAddress: event.args?.user as Address,
         amount: event.args?.amount?.toString() || '0',
-        timestamp: event.args?.timestamp ? Number(event.args.timestamp) : 0,
+        timestamp: event.args?.time ? Number(event.args.time) : 0,
         transactionHash: event.transactionHash,
       }));
     } catch (error) {
@@ -87,8 +94,15 @@ export class PoolRepository implements IPoolRepository {
 
   async findPoolsByInvestor(investorAddress: Address): Promise<Pool[]> {
     try {
-      // Get all Staked events for this investor
-      const filter = this.contract.filters.Staked(investorAddress, null, null);
+      // Get all Staked events for this investor - Staked(token, user, amount, operationId, eType, time)
+      const filter = this.contract.filters.Staked(
+        undefined,
+        investorAddress,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
       const events = await this.contract.queryFilter(filter);
 
       // Get unique pool IDs
@@ -119,20 +133,23 @@ export class PoolRepository implements IPoolRepository {
 
   async findPoolsByProvider(providerAddress: Address): Promise<Pool[]> {
     try {
-      // Get all OperationCreated events for this provider
+      // Get all OperationCreated events - OperationCreated(operationId, name, token)
       const filter = this.contract.filters.OperationCreated(
-        null,
-        null,
-        providerAddress,
+        undefined,
+        undefined,
+        undefined,
       );
       const events = await this.contract.queryFilter(filter);
 
-      // Fetch all pools
+      // Fetch all pools and filter by provider address
       const pools = await Promise.all(
         events.map((event: any) => this.getPoolById(event.args?.operationId)),
       );
 
-      return pools.filter((pool: any) => pool !== null);
+      return pools.filter(
+        (pool: any) =>
+          pool !== null && pool.providerAddress === providerAddress,
+      );
     } catch (error) {
       console.error(
         `[PoolRepository.findPoolsByProvider] Error fetching pools for provider ${providerAddress}:`,
@@ -147,7 +164,11 @@ export class PoolRepository implements IPoolRepository {
   async getAllPools(): Promise<Pool[]> {
     try {
       // Get all OperationCreated events
-      const filter = this.contract.filters.OperationCreated(null, null, null);
+      const filter = this.contract.filters.OperationCreated(
+        undefined,
+        undefined,
+        undefined,
+      );
       const events = await this.contract.queryFilter(filter);
 
       // Fetch all pools
@@ -425,7 +446,7 @@ export class PoolRepository implements IPoolRepository {
       tokenAddress: operation.token as Address,
       providerAddress: operation.provider as Address,
       fundingGoal: operation.fundingGoal.toString(),
-      totalValueLocked: operation.totalStaked?.toString() || '0',
+      totalValueLocked: operation.tokenTvl?.toString() || '0',
       startDate: currentTime, // Contract doesn't store start date, using current time
       durationDays: Math.ceil((deadline - currentTime) / (24 * 60 * 60)),
       rewardRate: Number(operation.reward) / 100, // Assuming reward is in basis points
