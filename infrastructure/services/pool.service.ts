@@ -48,20 +48,23 @@ export class PoolService implements IPoolService {
       this.validatePoolCreationData(data);
 
       // Convert duration to deadline timestamp
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + (data.durationDays * 24 * 60 * 60));
+      const deadline = BigInt(
+        Math.floor(Date.now() / 1000) + data.durationDays * 24 * 60 * 60,
+      );
 
       // Create operation on smart contract
-      const txResponse: ContractTransactionResponse = await this.contract.createOperation(
-        data.name,
-        data.description,
-        data.tokenAddress,
-        creatorAddress, // provider
-        deadline,
-        BigInt(data.rewardRate * 100), // Convert to basis points
-        data.assetName,
-        BigInt(data.fundingGoal),
-        BigInt(data.assetPrice),
-      );
+      const txResponse: ContractTransactionResponse =
+        await this.contract.createOperation(
+          data.name,
+          data.description,
+          data.tokenAddress,
+          creatorAddress, // provider
+          deadline,
+          BigInt(data.rewardRate * 100), // Convert to basis points
+          data.assetName,
+          BigInt(data.fundingGoal),
+          BigInt(data.assetPrice),
+        );
 
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -77,7 +80,9 @@ export class PoolService implements IPoolService {
       };
     } catch (error) {
       console.error('[PoolService.createPool] Error creating pool:', error);
-      throw new Error(`Failed to create pool: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create pool: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -105,7 +110,9 @@ export class PoolService implements IPoolService {
       return txReceipt.hash;
     } catch (error) {
       console.error('[PoolService.closePool] Error closing pool:', error);
-      throw new Error(`Failed to close pool: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to close pool: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -138,7 +145,11 @@ export class PoolService implements IPoolService {
       await this.handleTokenApproval(tokenAddress, amount);
 
       // Execute stake transaction
-      const txResponse = await this.contract.stake(tokenAddress, poolId, BigInt(amount));
+      const txResponse = await this.contract.stake(
+        tokenAddress,
+        poolId,
+        BigInt(amount),
+      );
 
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -148,7 +159,9 @@ export class PoolService implements IPoolService {
       return txReceipt.hash;
     } catch (error) {
       console.error('[PoolService.stake] Error staking:', error);
-      throw new Error(`Failed to stake: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to stake: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -169,7 +182,11 @@ export class PoolService implements IPoolService {
       const tokenAddress = operation.token;
 
       // Execute claim reward transaction
-      const txResponse = await this.contract.claimReward(tokenAddress, poolId, address);
+      const txResponse = await this.contract.claimReward(
+        tokenAddress,
+        poolId,
+        address,
+      );
 
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -179,11 +196,16 @@ export class PoolService implements IPoolService {
       return txReceipt.hash;
     } catch (error) {
       console.error('[PoolService.claimReward] Error claiming reward:', error);
-      throw new Error(`Failed to claim reward: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to claim reward: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
-  async unlockReward(poolId: string, providerAddress: Address): Promise<string> {
+  async unlockReward(
+    poolId: string,
+    providerAddress: Address,
+  ): Promise<string> {
     try {
       // Validate that the caller is the provider
       const signerAddress = await this.signer.getAddress();
@@ -209,8 +231,13 @@ export class PoolService implements IPoolService {
 
       return txReceipt.hash;
     } catch (error) {
-      console.error('[PoolService.unlockReward] Error unlocking reward:', error);
-      throw new Error(`Failed to unlock reward: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        '[PoolService.unlockReward] Error unlocking reward:',
+        error,
+      );
+      throw new Error(
+        `Failed to unlock reward: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -241,14 +268,21 @@ export class PoolService implements IPoolService {
     }
   }
 
-  private async handleTokenApproval(tokenAddress: string, amount: BigNumberString): Promise<void> {
+  private async handleTokenApproval(
+    tokenAddress: string,
+    amount: BigNumberString,
+  ): Promise<void> {
     try {
       // Create ERC20 contract instance
       const erc20Abi = [
         'function allowance(address owner, address spender) view returns (uint256)',
         'function approve(address spender, uint256 amount) nonpayable returns (bool)',
       ];
-      const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.signer);
+      const tokenContract = new ethers.Contract(
+        tokenAddress,
+        erc20Abi,
+        this.signer,
+      );
 
       // Check current allowance
       const currentAllowance = await tokenContract.allowance(
@@ -265,28 +299,41 @@ export class PoolService implements IPoolService {
         await approveTx.wait();
       }
     } catch (error) {
-      console.error('[PoolService.handleTokenApproval] Error handling token approval:', error);
-      throw new Error(`Failed to approve token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        '[PoolService.handleTokenApproval] Error handling token approval:',
+        error,
+      );
+      throw new Error(
+        `Failed to approve token: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
   private async extractPoolIdFromReceipt(txReceipt: any): Promise<string> {
     try {
       // Look for OperationCreated event
-      const eventSignature = this.contract.interface.getEvent('OperationCreated').topicHash;
-      const eventLog = txReceipt.logs?.find((log: any) => log.topics[0] === eventSignature);
-      
+      const eventSignature =
+        this.contract.interface.getEvent('OperationCreated').topicHash;
+      const eventLog = txReceipt.logs?.find(
+        (log: any) => log.topics[0] === eventSignature,
+      );
+
       if (eventLog) {
         const parsedLog = this.contract.interface.parseLog(eventLog);
         if (parsedLog && parsedLog.args.operationId) {
           return parsedLog.args.operationId;
         }
       }
-      
+
       throw new Error('Could not extract pool ID from transaction receipt');
     } catch (error) {
-      console.error('[PoolService.extractPoolIdFromReceipt] Error extracting pool ID:', error);
-      throw new Error(`Failed to extract pool ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        '[PoolService.extractPoolIdFromReceipt] Error extracting pool ID:',
+        error,
+      );
+      throw new Error(
+        `Failed to extract pool ID: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 }

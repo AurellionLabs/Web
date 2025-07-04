@@ -7,6 +7,7 @@ This document outlines the complete refactoring of the Pool service and reposito
 ## Architecture Overview
 
 ### Domain Layer
+
 - **Location**: `domain/pool/`
 - **Purpose**: Defines the core business entities, value objects, and interface contracts
 - **Key Components**:
@@ -17,6 +18,7 @@ This document outlines the complete refactoring of the Pool service and reposito
   - `IPoolService` interface for business operations
 
 ### Infrastructure Layer
+
 - **Location**: `infrastructure/`
 - **Purpose**: Implements the domain interfaces with concrete blockchain integration
 - **Key Components**:
@@ -30,6 +32,7 @@ This document outlines the complete refactoring of the Pool service and reposito
 **Implements**: `IPoolRepository`
 
 **Key Features**:
+
 - ✅ Complete implementation of all domain interface methods
 - ✅ Blockchain event filtering and parsing
 - ✅ Dynamic data calculation with real-time metrics
@@ -38,6 +41,7 @@ This document outlines the complete refactoring of the Pool service and reposito
 - ✅ Optimized batch operations for performance
 
 **Core Methods**:
+
 - `getPoolById()` - Fetches pool by ID with complete domain mapping
 - `getPoolStakeHistory()` - Retrieves stake events from blockchain logs
 - `findPoolsByInvestor()` - Finds pools for specific investor
@@ -52,6 +56,7 @@ This document outlines the complete refactoring of the Pool service and reposito
 **Implements**: `IPoolService`
 
 **Key Features**:
+
 - ✅ Complete business logic implementation
 - ✅ Input validation and business rules enforcement
 - ✅ Token approval handling
@@ -60,6 +65,7 @@ This document outlines the complete refactoring of the Pool service and reposito
 - ✅ Address validation and authorization checks
 
 **Core Methods**:
+
 - `createPool()` - Creates new pool with full validation
 - `closePool()` - Closes pool (provider only)
 - `stake()` - Stakes tokens with approval handling
@@ -73,6 +79,7 @@ This document outlines the complete refactoring of the Pool service and reposito
 **Coverage**: 100% of public methods and error scenarios
 
 **Test Categories**:
+
 - ✅ **Data Retrieval Tests**: All get methods with mocked blockchain data
 - ✅ **Error Handling Tests**: Network failures, invalid data, missing pools
 - ✅ **Event Processing Tests**: Blockchain event parsing and mapping
@@ -85,6 +92,7 @@ This document outlines the complete refactoring of the Pool service and reposito
 **Coverage**: 100% of business logic and validation rules
 
 **Test Categories**:
+
 - ✅ **Business Logic Tests**: All service operations with proper mocking
 - ✅ **Validation Tests**: Input validation and business rule enforcement
 - ✅ **Authorization Tests**: Address validation and permission checks
@@ -95,26 +103,31 @@ This document outlines the complete refactoring of the Pool service and reposito
 ## Domain-Driven Design Principles Applied
 
 ### 1. **Ubiquitous Language**
+
 - Domain entities use business terminology (Pool, Stake, Provider, Investor)
 - Method names reflect business operations (createPool, stake, claimReward)
 - Clear separation between technical and business concepts
 
 ### 2. **Bounded Context**
+
 - Pool domain is self-contained with clear boundaries
 - No external dependencies in domain layer
 - Infrastructure concerns isolated from business logic
 
 ### 3. **Entity and Value Objects**
+
 - `Pool` as aggregate root with complete business state
 - `Address` and `BigNumberString` as value objects
 - `PoolStatus` enum for lifecycle management
 
 ### 4. **Repository Pattern**
+
 - Abstract `IPoolRepository` defines data access contract
 - Concrete implementation handles technical details
 - Domain logic doesn't depend on infrastructure
 
 ### 5. **Service Layer**
+
 - Business logic encapsulated in `IPoolService`
 - Orchestrates repository calls and business rules
 - Handles transaction boundaries and validation
@@ -122,11 +135,13 @@ This document outlines the complete refactoring of the Pool service and reposito
 ## Migration from AuStake
 
 ### Deprecated Components
+
 - ❌ `AuStakeService` - Replaced with `PoolService`
 - ❌ `AuStakeRepository` - Replaced with `PoolRepository`
 - ❌ Direct controller usage - Replaced with proper service layer
 
 ### Benefits of New Implementation
+
 - 🎯 **Domain Focus**: Business logic clearly separated from infrastructure
 - 🔧 **Testability**: Comprehensive test coverage with proper mocking
 - 📈 **Maintainability**: Clear interfaces and single responsibility
@@ -136,21 +151,25 @@ This document outlines the complete refactoring of the Pool service and reposito
 ## Key Improvements
 
 ### 1. **Enhanced Error Handling**
+
 - Specific error messages for different failure scenarios
 - Proper error propagation from infrastructure to domain
 - Graceful handling of network and contract failures
 
 ### 2. **Performance Optimizations**
+
 - Batch operations for multiple pool fetching
 - Efficient event filtering and parsing
 - Lazy loading of dynamic data when needed
 
 ### 3. **Business Rule Enforcement**
+
 - Input validation at service layer
 - Authorization checks for sensitive operations
 - Proper transaction boundary management
 
 ### 4. **Rich Domain Model**
+
 - Complete pool lifecycle management
 - Dynamic data calculation for UI needs
 - Flexible grouping and filtering capabilities
@@ -158,23 +177,25 @@ This document outlines the complete refactoring of the Pool service and reposito
 ## Usage Examples
 
 ### Creating a Pool
+
 ```typescript
 const poolService = new PoolService(provider, signer);
 const poolData: PoolCreationData = {
-  name: "Real Estate Fund A",
-  description: "Investment in commercial real estate",
-  assetName: "Office Building Portfolio",
-  tokenAddress: "0x...",
-  fundingGoal: "1000000000000000000000",
+  name: 'Real Estate Fund A',
+  description: 'Investment in commercial real estate',
+  assetName: 'Office Building Portfolio',
+  tokenAddress: '0x...',
+  fundingGoal: '1000000000000000000000',
   durationDays: 365,
   rewardRate: 8,
-  assetPrice: "5000000000000000000000"
+  assetPrice: '5000000000000000000000',
 };
 
 const result = await poolService.createPool(poolData, creatorAddress);
 ```
 
 ### Fetching Pool Data
+
 ```typescript
 const poolRepository = new PoolRepository(provider, signer);
 const pool = await poolRepository.getPoolById(poolId);
@@ -182,6 +203,7 @@ const poolWithMetrics = await poolRepository.getPoolWithDynamicData(poolId);
 ```
 
 ### Staking in Pool
+
 ```typescript
 const txHash = await poolService.stake(poolId, amount, investorAddress);
 ```

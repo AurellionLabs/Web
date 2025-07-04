@@ -6,9 +6,12 @@ import { ethers } from 'ethers';
 // Mock dependencies
 vi.mock('ethers', () => ({
   ethers: {
-    ZeroHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    ZeroHash:
+      '0x0000000000000000000000000000000000000000000000000000000000000000',
     ZeroAddress: '0x0000000000000000000000000000000000000000',
-    isAddress: vi.fn((address: string) => address.startsWith('0x') && address.length === 42),
+    isAddress: vi.fn(
+      (address: string) => address.startsWith('0x') && address.length === 42,
+    ),
     Contract: vi.fn(),
   },
 }));
@@ -72,7 +75,9 @@ describe('PoolService', () => {
     };
 
     // Mock contract factory
-    require('@/typechain-types').AuStake__factory.connect.mockReturnValue(mockContract);
+    require('@/typechain-types').AuStake__factory.connect.mockReturnValue(
+      mockContract,
+    );
 
     // Create service instance
     poolService = new PoolService(mockProvider, mockSigner);
@@ -100,7 +105,10 @@ describe('PoolService', () => {
       mockContract.createOperation.mockResolvedValue(mockTxResponse);
       mockContract.interface.parseLog.mockReturnValue(mockParsedLog);
 
-      const result = await poolService.createPool(mockPoolCreationData, mockCreatorAddress);
+      const result = await poolService.createPool(
+        mockPoolCreationData,
+        mockCreatorAddress,
+      );
 
       expect(result).toEqual({
         poolId: '0xpool123',
@@ -126,9 +134,9 @@ describe('PoolService', () => {
         name: '',
       };
 
-      await expect(poolService.createPool(invalidData, mockCreatorAddress))
-        .rejects
-        .toThrow('Pool name is required');
+      await expect(
+        poolService.createPool(invalidData, mockCreatorAddress),
+      ).rejects.toThrow('Pool name is required');
     });
 
     it('should validate token address', async () => {
@@ -139,9 +147,9 @@ describe('PoolService', () => {
 
       (ethers.isAddress as any).mockReturnValue(false);
 
-      await expect(poolService.createPool(invalidData, mockCreatorAddress))
-        .rejects
-        .toThrow('Valid token address is required');
+      await expect(
+        poolService.createPool(invalidData, mockCreatorAddress),
+      ).rejects.toThrow('Valid token address is required');
     });
 
     it('should validate funding goal', async () => {
@@ -150,9 +158,9 @@ describe('PoolService', () => {
         fundingGoal: '0',
       };
 
-      await expect(poolService.createPool(invalidData, mockCreatorAddress))
-        .rejects
-        .toThrow('Funding goal must be greater than 0');
+      await expect(
+        poolService.createPool(invalidData, mockCreatorAddress),
+      ).rejects.toThrow('Funding goal must be greater than 0');
     });
 
     it('should validate duration', async () => {
@@ -161,9 +169,9 @@ describe('PoolService', () => {
         durationDays: 0,
       };
 
-      await expect(poolService.createPool(invalidData, mockCreatorAddress))
-        .rejects
-        .toThrow('Duration must be greater than 0 days');
+      await expect(
+        poolService.createPool(invalidData, mockCreatorAddress),
+      ).rejects.toThrow('Duration must be greater than 0 days');
     });
 
     it('should validate reward rate', async () => {
@@ -172,17 +180,19 @@ describe('PoolService', () => {
         rewardRate: -1,
       };
 
-      await expect(poolService.createPool(invalidData, mockCreatorAddress))
-        .rejects
-        .toThrow('Reward rate cannot be negative');
+      await expect(
+        poolService.createPool(invalidData, mockCreatorAddress),
+      ).rejects.toThrow('Reward rate cannot be negative');
     });
 
     it('should handle contract errors', async () => {
-      mockContract.createOperation.mockRejectedValue(new Error('Contract error'));
+      mockContract.createOperation.mockRejectedValue(
+        new Error('Contract error'),
+      );
 
-      await expect(poolService.createPool(mockPoolCreationData, mockCreatorAddress))
-        .rejects
-        .toThrow('Failed to create pool');
+      await expect(
+        poolService.createPool(mockPoolCreationData, mockCreatorAddress),
+      ).rejects.toThrow('Failed to create pool');
     });
 
     it('should handle missing transaction receipt', async () => {
@@ -192,9 +202,9 @@ describe('PoolService', () => {
 
       mockContract.createOperation.mockResolvedValue(mockTxResponse);
 
-      await expect(poolService.createPool(mockPoolCreationData, mockCreatorAddress))
-        .rejects
-        .toThrow('Transaction receipt not found for pool creation');
+      await expect(
+        poolService.createPool(mockPoolCreationData, mockCreatorAddress),
+      ).rejects.toThrow('Transaction receipt not found for pool creation');
     });
   });
 
@@ -225,18 +235,18 @@ describe('PoolService', () => {
     it('should validate provider address', async () => {
       mockSigner.getAddress.mockResolvedValue('0xother123');
 
-      await expect(poolService.closePool(poolId, providerAddress))
-        .rejects
-        .toThrow('Only the pool provider can close the pool');
+      await expect(
+        poolService.closePool(poolId, providerAddress),
+      ).rejects.toThrow('Only the pool provider can close the pool');
     });
 
     it('should handle contract errors', async () => {
       mockSigner.getAddress.mockResolvedValue(providerAddress);
       mockContract.unlockReward.mockRejectedValue(new Error('Contract error'));
 
-      await expect(poolService.closePool(poolId, providerAddress))
-        .rejects
-        .toThrow('Failed to close pool');
+      await expect(
+        poolService.closePool(poolId, providerAddress),
+      ).rejects.toThrow('Failed to close pool');
     });
   });
 
@@ -283,17 +293,17 @@ describe('PoolService', () => {
     });
 
     it('should validate stake amount', async () => {
-      await expect(poolService.stake(poolId, '0', investorAddress))
-        .rejects
-        .toThrow('Invalid stake amount');
+      await expect(
+        poolService.stake(poolId, '0', investorAddress),
+      ).rejects.toThrow('Invalid stake amount');
     });
 
     it('should validate investor address', async () => {
       mockSigner.getAddress.mockResolvedValue('0xother123');
 
-      await expect(poolService.stake(poolId, amount, investorAddress))
-        .rejects
-        .toThrow('Signer must match investor address');
+      await expect(
+        poolService.stake(poolId, amount, investorAddress),
+      ).rejects.toThrow('Signer must match investor address');
     });
 
     it('should validate pool exists', async () => {
@@ -301,17 +311,17 @@ describe('PoolService', () => {
         id: ethers.ZeroHash,
       });
 
-      await expect(poolService.stake(poolId, amount, investorAddress))
-        .rejects
-        .toThrow('Pool not found');
+      await expect(
+        poolService.stake(poolId, amount, investorAddress),
+      ).rejects.toThrow('Pool not found');
     });
 
     it('should handle contract errors', async () => {
       mockContract.getOperation.mockRejectedValue(new Error('Contract error'));
 
-      await expect(poolService.stake(poolId, amount, investorAddress))
-        .rejects
-        .toThrow('Failed to stake');
+      await expect(
+        poolService.stake(poolId, amount, investorAddress),
+      ).rejects.toThrow('Failed to stake');
     });
   });
 
@@ -351,9 +361,9 @@ describe('PoolService', () => {
     it('should validate claimant address', async () => {
       mockSigner.getAddress.mockResolvedValue('0xother123');
 
-      await expect(poolService.claimReward(poolId, claimantAddress))
-        .rejects
-        .toThrow('Signer must match claimant address');
+      await expect(
+        poolService.claimReward(poolId, claimantAddress),
+      ).rejects.toThrow('Signer must match claimant address');
     });
 
     it('should validate pool exists', async () => {
@@ -361,17 +371,17 @@ describe('PoolService', () => {
         id: ethers.ZeroHash,
       });
 
-      await expect(poolService.claimReward(poolId, claimantAddress))
-        .rejects
-        .toThrow('Pool not found');
+      await expect(
+        poolService.claimReward(poolId, claimantAddress),
+      ).rejects.toThrow('Pool not found');
     });
 
     it('should handle contract errors', async () => {
       mockContract.getOperation.mockRejectedValue(new Error('Contract error'));
 
-      await expect(poolService.claimReward(poolId, claimantAddress))
-        .rejects
-        .toThrow('Failed to claim reward');
+      await expect(
+        poolService.claimReward(poolId, claimantAddress),
+      ).rejects.toThrow('Failed to claim reward');
     });
   });
 
@@ -410,9 +420,9 @@ describe('PoolService', () => {
     it('should validate provider address', async () => {
       mockSigner.getAddress.mockResolvedValue('0xother123');
 
-      await expect(poolService.unlockReward(poolId, providerAddress))
-        .rejects
-        .toThrow('Only the pool provider can unlock rewards');
+      await expect(
+        poolService.unlockReward(poolId, providerAddress),
+      ).rejects.toThrow('Only the pool provider can unlock rewards');
     });
 
     it('should validate pool exists', async () => {
@@ -420,30 +430,35 @@ describe('PoolService', () => {
         id: ethers.ZeroHash,
       });
 
-      await expect(poolService.unlockReward(poolId, providerAddress))
-        .rejects
-        .toThrow('Pool not found');
+      await expect(
+        poolService.unlockReward(poolId, providerAddress),
+      ).rejects.toThrow('Pool not found');
     });
 
     it('should handle contract errors', async () => {
       mockContract.getOperation.mockRejectedValue(new Error('Contract error'));
 
-      await expect(poolService.unlockReward(poolId, providerAddress))
-        .rejects
-        .toThrow('Failed to unlock reward');
+      await expect(
+        poolService.unlockReward(poolId, providerAddress),
+      ).rejects.toThrow('Failed to unlock reward');
     });
   });
 
   describe('constructor', () => {
     it('should throw error when contract address is undefined', () => {
-      expect(() => new PoolService(mockProvider, mockSigner, ''))
-        .toThrow('[PoolService] Pool contract address is undefined');
+      expect(() => new PoolService(mockProvider, mockSigner, '')).toThrow(
+        '[PoolService] Pool contract address is undefined',
+      );
     });
 
     it('should use default contract address when not provided', () => {
       const service = new PoolService(mockProvider, mockSigner);
-      expect(require('@/typechain-types').AuStake__factory.connect)
-        .toHaveBeenCalledWith('0x1234567890123456789012345678901234567890', mockSigner);
+      expect(
+        require('@/typechain-types').AuStake__factory.connect,
+      ).toHaveBeenCalledWith(
+        '0x1234567890123456789012345678901234567890',
+        mockSigner,
+      );
     });
   });
 
@@ -451,12 +466,32 @@ describe('PoolService', () => {
     it('should validate all required fields', async () => {
       const testCases = [
         { field: 'name', value: '', error: 'Pool name is required' },
-        { field: 'description', value: '', error: 'Pool description is required' },
+        {
+          field: 'description',
+          value: '',
+          error: 'Pool description is required',
+        },
         { field: 'assetName', value: '', error: 'Asset name is required' },
-        { field: 'fundingGoal', value: '0', error: 'Funding goal must be greater than 0' },
-        { field: 'assetPrice', value: '0', error: 'Asset price must be greater than 0' },
-        { field: 'durationDays', value: 0, error: 'Duration must be greater than 0 days' },
-        { field: 'rewardRate', value: -1, error: 'Reward rate cannot be negative' },
+        {
+          field: 'fundingGoal',
+          value: '0',
+          error: 'Funding goal must be greater than 0',
+        },
+        {
+          field: 'assetPrice',
+          value: '0',
+          error: 'Asset price must be greater than 0',
+        },
+        {
+          field: 'durationDays',
+          value: 0,
+          error: 'Duration must be greater than 0 days',
+        },
+        {
+          field: 'rewardRate',
+          value: -1,
+          error: 'Reward rate cannot be negative',
+        },
       ];
 
       for (const testCase of testCases) {
@@ -465,9 +500,9 @@ describe('PoolService', () => {
           [testCase.field]: testCase.value,
         };
 
-        await expect(poolService.createPool(invalidData, mockCreatorAddress))
-          .rejects
-          .toThrow(testCase.error);
+        await expect(
+          poolService.createPool(invalidData, mockCreatorAddress),
+        ).rejects.toThrow(testCase.error);
       }
     });
   });
