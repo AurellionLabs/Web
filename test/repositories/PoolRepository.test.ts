@@ -117,17 +117,25 @@ describe('PoolRepository', () => {
         token: ethers.ZeroAddress,
       });
 
-      await expect(
-        poolRepository.getPoolById('nonexistent'),
-      ).to.eventually.be.rejectedWith('Failed to fetch pool nonexistent');
+      try {
+        await poolRepository.getPoolById('nonexistent');
+        expect.fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error).to.be.an('error');
+        expect(error.message).to.include('Pool with id nonexistent not found');
+      }
     });
 
     it('should throw error when contract call fails', async () => {
       mockContract.getOperation.rejects(new Error('Contract error'));
 
-      await expect(
-        poolRepository.getPoolById(mockPoolData.id),
-      ).to.eventually.be.rejectedWith('Failed to fetch pool');
+      try {
+        await poolRepository.getPoolById(mockPoolData.id);
+        expect.fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error).to.be.an('error');
+        expect(error.message).to.include('Contract error');
+      }
     });
   });
 
