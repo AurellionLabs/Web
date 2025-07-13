@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, Share2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  RefreshCw,
+  Share2,
+  FileText,
+  Download,
+  ExternalLink,
+} from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { StatCard } from '@/app/components/ui/stat-card';
 import { TransactionTable } from '@/app/components/ui/transaction-table';
@@ -176,6 +183,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const poolData = {
     name: pool?.name || '',
     description: pool?.description || '',
+    supportingDocuments: pool?.supportingDocuments || [],
     tvl: poolDynamics?.tvlFormatted || '$0',
     completionPercentage: `${poolDynamics?.progressPercentage || 0}%`,
     fundingGoal: poolDynamics?.fundingGoalFormatted || '$0',
@@ -313,40 +321,108 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             {/* Pool Details */}
             <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
               <h3 className="text-lg font-semibold mb-4">Pool Details</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                  <span className="text-gray-400">Asset</span>
-                  <span className="font-medium">{poolData.token0Balance}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                  <span className="text-gray-400">Funding Goal</span>
-                  <span className="font-medium">{poolData.fundingGoal}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                  <span className="text-gray-400">Current TVL</span>
-                  <span className="font-medium">{poolData.tvl}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                  <span className="text-gray-400">Time Remaining</span>
-                  <span className="font-medium">
-                    {formatTime(poolData.timeRemaining)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-gray-400">Status</span>
-                  <span
-                    className={`font-medium px-3 py-1 text-xs rounded-full ${
-                      poolData.status === 'Active'
-                        ? 'bg-green-500/20 text-green-400'
-                        : poolData.status === 'Complete'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : poolData.status === 'Paid'
-                            ? 'bg-purple-500/20 text-purple-400'
-                            : 'bg-yellow-500/20 text-yellow-400'
-                    }`}
-                  >
-                    {poolData.status}
-                  </span>
+              <div className="space-y-4">
+                {/* Description */}
+                {poolData.description && (
+                  <div className="pb-4 border-b border-zinc-800">
+                    <span className="text-gray-400 text-sm block mb-2">
+                      Description
+                    </span>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      {poolData.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Supporting Documents */}
+                {poolData.supportingDocuments.length > 0 && (
+                  <div className="pb-4 border-b border-zinc-800">
+                    <span className="text-gray-400 text-sm block mb-3">
+                      Supporting Documents
+                    </span>
+                    <div className="space-y-2">
+                      {poolData.supportingDocuments.map((doc, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-2 bg-zinc-800 rounded-lg"
+                        >
+                          <div className="flex-shrink-0">
+                            <div className="p-1.5 bg-zinc-700 rounded-md">
+                              <FileText className="w-3 h-3 text-gray-400" />
+                            </div>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="text-sm font-medium text-gray-300 truncate"
+                              title={doc.name}
+                            >
+                              {doc.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {doc.ipfsHash ? 'Available' : 'Processing...'}
+                            </p>
+                          </div>
+                          {doc.ipfsHash && (
+                            <div className="flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-gray-400 hover:text-white"
+                                onClick={() => {
+                                  // TODO: Open IPFS document
+                                  window.open(
+                                    `https://ipfs.io/ipfs/${doc.ipfsHash}`,
+                                    '_blank',
+                                  );
+                                }}
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                    <span className="text-gray-400">Asset</span>
+                    <span className="font-medium">
+                      {poolData.token0Balance}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                    <span className="text-gray-400">Funding Goal</span>
+                    <span className="font-medium">{poolData.fundingGoal}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                    <span className="text-gray-400">Current TVL</span>
+                    <span className="font-medium">{poolData.tvl}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
+                    <span className="text-gray-400">Time Remaining</span>
+                    <span className="font-medium">
+                      {formatTime(poolData.timeRemaining)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-400">Status</span>
+                    <span
+                      className={`font-medium px-3 py-1 text-xs rounded-full ${
+                        poolData.status === 'Active'
+                          ? 'bg-green-500/20 text-green-400'
+                          : poolData.status === 'Complete'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : poolData.status === 'Paid'
+                              ? 'bg-purple-500/20 text-purple-400'
+                              : 'bg-yellow-500/20 text-yellow-400'
+                      }`}
+                    >
+                      {poolData.status}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

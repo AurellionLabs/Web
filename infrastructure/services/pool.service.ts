@@ -63,7 +63,7 @@ export class PoolService implements IPoolService {
           data.tokenAddress,
           creatorAddress, // provider
           deadline,
-          BigInt(data.rewardRate * 100), // Convert to basis points
+          BigInt(data.rewardRate),
           data.assetName,
           BigInt(data.fundingGoal),
           BigInt(data.assetPrice),
