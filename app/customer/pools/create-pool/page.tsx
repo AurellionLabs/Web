@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload, X, FileText, Image, FileCheck } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -34,7 +34,7 @@ import { toast } from 'sonner';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { useWallet } from '@/hooks/useWallet';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
-import { PoolCreationData } from '@/domain/pool';
+import { PoolCreationData, SupportingDocument } from '@/domain/pool';
 import { useRouter } from 'next/navigation';
 
 // Supported assets configuration
@@ -45,6 +45,50 @@ const SUPPORTED_ASSETS = [
   { id: 4, name: 'CHICKEN', label: 'Chicken' },
   { id: 5, name: 'DUCK', label: 'Duck' },
 ] as const;
+
+// Supported document types
+const SUPPORTED_DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+];
+
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+const MAX_FILES_ALLOWED = 3;
+
+// Helper function to get file type icon and color
+const getFileIcon = (fileType: string) => {
+  if (fileType.startsWith('image/')) {
+    return {
+      icon: Image,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    };
+  } else if (fileType === 'application/pdf') {
+    return {
+      icon: FileText,
+      color: 'text-red-500',
+      bgColor: 'bg-red-50 dark:bg-red-900/20',
+    };
+  } else if (fileType.includes('word') || fileType.includes('document')) {
+    return {
+      icon: FileCheck,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    };
+  } else {
+    return {
+      icon: FileText,
+      color: 'text-gray-500',
+      bgColor: 'bg-gray-50 dark:bg-gray-900/20',
+    };
+  }
+};
 
 const formSchema = z.object({
   name: z.string().min(3, {
@@ -86,6 +130,39 @@ const formSchema = z.object({
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: 'Please enter a valid number greater than 0.',
     }),
+  supportingDocuments: z
+    .array(z.instanceof(File))
+    .optional()
+    .refine(
+      (files) => {
+        if (!files || files.length === 0) return true;
+        return files.length <= MAX_FILES_ALLOWED;
+      },
+      {
+        message: `You can upload a maximum of ${MAX_FILES_ALLOWED} files.`,
+      },
+    )
+    .refine(
+      (files) => {
+        if (!files || files.length === 0) return true;
+        return files.every((file) => file.size <= MAX_FILE_SIZE);
+      },
+      {
+        message: 'Each file must be smaller than 4MB.',
+      },
+    )
+    .refine(
+      (files) => {
+        if (!files || files.length === 0) return true;
+        return files.every((file) =>
+          SUPPORTED_DOCUMENT_TYPES.includes(file.type),
+        );
+      },
+      {
+        message:
+          'Unsupported file type. Please upload PDF, Word documents, or images.',
+      },
+    ),
 });
 
 export default function CreatePoolPage() {
@@ -103,6 +180,7 @@ export default function CreatePoolPage() {
       rewardRate: '',
       fundingGoal: '',
       assetPrice: '',
+      supportingDocuments: [],
     },
   });
 
@@ -120,6 +198,17 @@ export default function CreatePoolPage() {
       );
       const assetDisplayName = selectedAsset?.label || values.assetName;
 
+      // Prepare supporting documents
+      const supportingDocuments: SupportingDocument[] =
+        values.supportingDocuments
+          ? values.supportingDocuments.map((file) => ({
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              file: file,
+            }))
+          : [];
+
       // Prepare pool creation data according to domain interface
       const poolCreationData: PoolCreationData = {
         name: values.name,
@@ -130,6 +219,8 @@ export default function CreatePoolPage() {
         durationDays: parseInt(values.durationDays),
         rewardRate: parseFloat(values.rewardRate) * 100, // Convert to basis points
         assetPrice: values.assetPrice,
+        supportingDocuments:
+          supportingDocuments.length > 0 ? supportingDocuments : undefined,
       };
 
       const result = await createPool(poolCreationData);
@@ -320,6 +411,162 @@ export default function CreatePoolPage() {
                     </FormControl>
                     <FormDescription>
                       Enter the asset price in tokens (decimals allowed).
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="supportingDocuments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Supporting Documents (Optional)</FormLabel>
+                    <FormControl>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-center w-full">
+                          <label
+                            htmlFor="file-upload"
+                            className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors ${
+                              (field.value?.length || 0) >= MAX_FILES_ALLOWED
+                                ? 'border-gray-200 bg-gray-50 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800'
+                                : 'border-gray-300 cursor-pointer bg-gray-50 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500'
+                            }`}
+                          >
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Upload
+                                className={`w-8 h-8 mb-4 ${
+                                  (field.value?.length || 0) >=
+                                  MAX_FILES_ALLOWED
+                                    ? 'text-gray-300 dark:text-gray-600'
+                                    : 'text-gray-500 dark:text-gray-400'
+                                }`}
+                              />
+                              {(field.value?.length || 0) >=
+                              MAX_FILES_ALLOWED ? (
+                                <>
+                                  <p className="mb-2 text-sm text-gray-400 dark:text-gray-600">
+                                    Maximum {MAX_FILES_ALLOWED} files reached
+                                  </p>
+                                  <p className="text-xs text-gray-400 dark:text-gray-600">
+                                    Remove a file to upload more
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                                    <span className="font-semibold">
+                                      Click to upload
+                                    </span>{' '}
+                                    or drag and drop
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    PDF, Word documents, or images (MAX. 4MB
+                                    each)
+                                  </p>
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                    {field.value?.length || 0} of{' '}
+                                    {MAX_FILES_ALLOWED} files
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                            <Input
+                              id="file-upload"
+                              type="file"
+                              multiple
+                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                              className="hidden"
+                              disabled={
+                                (field.value?.length || 0) >= MAX_FILES_ALLOWED
+                              }
+                              onChange={(e) => {
+                                const newFiles = Array.from(
+                                  e.target.files || [],
+                                );
+                                const existingFiles = field.value || [];
+                                const remainingSlots =
+                                  MAX_FILES_ALLOWED - existingFiles.length;
+                                const filesToAdd = newFiles.slice(
+                                  0,
+                                  remainingSlots,
+                                );
+                                const allFiles = [
+                                  ...existingFiles,
+                                  ...filesToAdd,
+                                ];
+                                field.onChange(allFiles);
+                                // Reset the input so the same file can be selected again if needed
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        {field.value && field.value.length > 0 && (
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {field.value.length} file
+                              {field.value.length > 1 ? 's' : ''} selected
+                            </p>
+                            <div className="grid gap-2">
+                              {field.value.map((file, index) => {
+                                const {
+                                  icon: Icon,
+                                  color,
+                                  bgColor,
+                                } = getFileIcon(file.type);
+                                return (
+                                  <div
+                                    key={index}
+                                    className={`flex items-center justify-between p-3 rounded-lg border ${bgColor} border-gray-200 dark:border-gray-700 transition-colors`}
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <div
+                                        className={`p-2 rounded-lg ${bgColor}`}
+                                      >
+                                        <Icon className={`w-4 h-4 ${color}`} />
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                          {file.name}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          {(file.size / (1024 * 1024)).toFixed(
+                                            2,
+                                          )}{' '}
+                                          MB
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                      onClick={() => {
+                                        const newFiles =
+                                          field.value?.filter(
+                                            (_, i) => i !== index,
+                                          ) || [];
+                                        field.onChange(newFiles);
+                                      }}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      Upload up to {MAX_FILES_ALLOWED} supporting documents such
+                      as PDFs, Word documents, or images to provide additional
+                      context for your pool.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

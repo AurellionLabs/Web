@@ -40,6 +40,18 @@ export interface Pool {
    */
   rewardRate: number;
   status: PoolStatus;
+  supportingDocuments?: SupportingDocument[]; // Supporting documents uploaded to IPFS
+}
+
+/**
+ * Represents a supporting document that will be uploaded to IPFS.
+ */
+export interface SupportingDocument {
+  name: string; // Original filename
+  type: string; // MIME type (e.g., "application/pdf", "image/jpeg")
+  size: number; // File size in bytes
+  ipfsHash?: string; // IPFS hash after upload (optional during creation)
+  file?: File; // The actual file object (for upload, not persisted)
 }
 
 /**
@@ -55,6 +67,7 @@ export interface PoolCreationData {
   durationDays: number;
   rewardRate: number;
   assetPrice: BigNumberString; // Price of the underlying asset at creation
+  supportingDocuments?: SupportingDocument[]; // Optional supporting documents
 }
 
 /**

@@ -75,6 +75,206 @@ type PoolContextType = {
 
 const PoolContext = createContext<PoolContextType | undefined>(undefined);
 
+// Dummy data for testing
+const DUMMY_POOLS: Pool[] = [
+  {
+    id: 'pool-1',
+    name: 'Premium Livestock Fund',
+    description:
+      'High-yield livestock investment pool focusing on premium cattle and sheep',
+    assetName: 'Cattle',
+    tokenAddress: '0x1234567890123456789012345678901234567890' as Address,
+    providerAddress: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd' as Address,
+    fundingGoal: '1000000',
+    totalValueLocked: '750000',
+    startDate: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60, // 30 days ago
+    durationDays: 90,
+    rewardRate: 1200, // 12%
+    status: PoolStatus.ACTIVE,
+    supportingDocuments: [
+      {
+        name: 'Livestock_Investment_Prospectus.pdf',
+        type: 'application/pdf',
+        size: 2048576, // 2MB
+        ipfsHash: 'QmTzQ2JRKQqgcKVHLxhGNwLxhGNwLxhGNwLxhGNwLxhGNwLx',
+      },
+      {
+        name: 'Cattle_Farm_Photos.jpg',
+        type: 'image/jpeg',
+        size: 1536000, // 1.5MB
+        ipfsHash: 'QmRzQ2JRKQqgcKVHLxhGNwLxhGNwLxhGNwLxhGNwLxhGNwLy',
+      },
+      {
+        name: 'Financial_Projections.docx',
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        size: 512000, // 500KB
+        ipfsHash: 'QmSzQ2JRKQqgcKVHLxhGNwLxhGNwLxhGNwLxhGNwLxhGNwLz',
+      },
+    ],
+  },
+  {
+    id: 'pool-2',
+    name: 'Sustainable Agriculture Pool',
+    description:
+      'Investment in sustainable farming practices and organic produce',
+    assetName: 'Organic Crops',
+    tokenAddress: '0x2234567890123456789012345678901234567891' as Address,
+    providerAddress: '0xbcdefabcdefabcdefabcdefabcdefabcdefabcde' as Address,
+    fundingGoal: '500000',
+    totalValueLocked: '500000',
+    startDate: Math.floor(Date.now() / 1000) - 90 * 24 * 60 * 60, // 90 days ago
+    durationDays: 90,
+    rewardRate: 800, // 8%
+    status: PoolStatus.COMPLETE,
+    supportingDocuments: [
+      {
+        name: 'Organic_Certification.pdf',
+        type: 'application/pdf',
+        size: 1024000, // 1MB
+        ipfsHash: 'QmUzQ2JRKQqgcKVHLxhGNwLxhGNwLxhGNwLxhGNwLxhGNwLa',
+      },
+      {
+        name: 'Crop_Yield_Analysis.png',
+        type: 'image/png',
+        size: 2048000, // 2MB
+        ipfsHash: 'QmVzQ2JRKQqgcKVHLxhGNwLxhGNwLxhGNwLxhGNwLxhGNwLb',
+      },
+    ],
+  },
+  {
+    id: 'pool-3',
+    name: 'Poultry Excellence Fund',
+    description:
+      'Premium poultry farming with focus on free-range chickens and ducks',
+    assetName: 'Poultry',
+    tokenAddress: '0x3334567890123456789012345678901234567892' as Address,
+    providerAddress: '0xcdefabcdefabcdefabcdefabcdefabcdefabcdef' as Address,
+    fundingGoal: '2000000',
+    totalValueLocked: '450000',
+    startDate: Math.floor(Date.now() / 1000) - 10 * 24 * 60 * 60, // 10 days ago
+    durationDays: 120,
+    rewardRate: 1500, // 15%
+    status: PoolStatus.ACTIVE,
+    supportingDocuments: [
+      {
+        name: 'Poultry_Farm_Business_Plan.pdf',
+        type: 'application/pdf',
+        size: 3072000, // 3MB
+        ipfsHash: 'QmWzQ2JRKQqgcKVHLxhGNwLxhGNwLxhGNwLxhGNwLxhGNwLc',
+      },
+      {
+        name: 'Farm_License_Document.doc',
+        type: 'application/msword',
+        size: 256000, // 256KB
+        ipfsHash: 'QmXzQ2JRKQqgcKVHLxhGNwLxhGNwLxhGNwLxhGNwLxhGNwLd',
+      },
+      {
+        name: 'Recent_Upload_Processing.gif',
+        type: 'image/gif',
+        size: 1024000, // 1MB
+        // No ipfsHash to test "Processing..." state
+      },
+    ],
+  },
+  {
+    id: 'pool-4',
+    name: 'Goat Farming Initiative',
+    description:
+      'Traditional goat farming with modern techniques for maximum yield',
+    assetName: 'Goats',
+    tokenAddress: '0x4434567890123456789012345678901234567893' as Address,
+    providerAddress: '0xdefabcdefabcdefabcdefabcdefabcdefabcdef0' as Address,
+    fundingGoal: '800000',
+    totalValueLocked: '200000',
+    startDate: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days from now
+    durationDays: 60,
+    rewardRate: 1000, // 10%
+    status: PoolStatus.PENDING,
+  },
+  {
+    id: 'pool-5',
+    name: 'Sheep Wool Production',
+    description: 'Premium wool production from high-quality sheep breeds',
+    assetName: 'Sheep',
+    tokenAddress: '0x5534567890123456789012345678901234567894' as Address,
+    providerAddress: '0xefabcdefabcdefabcdefabcdefabcdefabcdef01' as Address,
+    fundingGoal: '1500000',
+    totalValueLocked: '1500000',
+    startDate: Math.floor(Date.now() / 1000) - 120 * 24 * 60 * 60, // 120 days ago
+    durationDays: 120,
+    rewardRate: 900, // 9%
+    status: PoolStatus.PAID,
+  },
+];
+
+const DUMMY_STAKE_EVENTS: StakeEvent[] = [
+  {
+    poolId: 'pool-1',
+    stakerAddress: '0x1111111111111111111111111111111111111111' as Address,
+    amount: '50000',
+    timestamp: Math.floor(Date.now() / 1000) - 24 * 60 * 60, // 1 day ago
+    transactionHash: '0xabc123def456789012345678901234567890abcd',
+  },
+  {
+    poolId: 'pool-1',
+    stakerAddress: '0x2222222222222222222222222222222222222222' as Address,
+    amount: '100000',
+    timestamp: Math.floor(Date.now() / 1000) - 12 * 60 * 60, // 12 hours ago
+    transactionHash: '0xdef456789012345678901234567890abcdef12',
+  },
+  {
+    poolId: 'pool-2',
+    stakerAddress: '0x3333333333333333333333333333333333333333' as Address,
+    amount: '75000',
+    timestamp: Math.floor(Date.now() / 1000) - 48 * 60 * 60, // 2 days ago
+    transactionHash: '0x789012345678901234567890abcdef123456',
+  },
+  // Add transactions for pool-3 (Poultry Excellence Fund)
+  {
+    poolId: 'pool-3',
+    stakerAddress: '0x4444444444444444444444444444444444444444' as Address,
+    amount: '25000',
+    timestamp: Math.floor(Date.now() / 1000) - 3 * 60 * 60, // 3 hours ago
+    transactionHash: '0x111222333444555666777888999aaabbbcccdd',
+  },
+  {
+    poolId: 'pool-3',
+    stakerAddress: '0x5555555555555555555555555555555555555555' as Address,
+    amount: '150000',
+    timestamp: Math.floor(Date.now() / 1000) - 6 * 60 * 60, // 6 hours ago
+    transactionHash: '0x222333444555666777888999aaabbbcccdddee',
+  },
+  {
+    poolId: 'pool-3',
+    stakerAddress: '0x6666666666666666666666666666666666666666' as Address,
+    amount: '80000',
+    timestamp: Math.floor(Date.now() / 1000) - 18 * 60 * 60, // 18 hours ago
+    transactionHash: '0x333444555666777888999aaabbbcccdddeeff1',
+  },
+  {
+    poolId: 'pool-3',
+    stakerAddress: '0x7777777777777777777777777777777777777777' as Address,
+    amount: '200000',
+    timestamp: Math.floor(Date.now() / 1000) - 36 * 60 * 60, // 36 hours ago
+    transactionHash: '0x444555666777888999aaabbbcccdddeeff1122',
+  },
+  // Add some transactions for pool-4 and pool-5 as well
+  {
+    poolId: 'pool-4',
+    stakerAddress: '0x8888888888888888888888888888888888888888' as Address,
+    amount: '120000',
+    timestamp: Math.floor(Date.now() / 1000) - 8 * 60 * 60, // 8 hours ago
+    transactionHash: '0x555666777888999aaabbbcccdddeeff112233',
+  },
+  {
+    poolId: 'pool-5',
+    stakerAddress: '0x9999999999999999999999999999999999999999' as Address,
+    amount: '300000',
+    timestamp: Math.floor(Date.now() / 1000) - 72 * 60 * 60, // 3 days ago
+    transactionHash: '0x666777888999aaabbbcccdddeeff11223344',
+  },
+];
+
 export const PoolsProvider = ({ children }: { children: ReactNode }) => {
   // State
   const [pools, setPools] = useState<Pool[]>([]);
@@ -96,31 +296,41 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
   const { address } = useWallet();
   const { currentUserRole } = useMainProvider();
 
-  // Get service instances
-  const getPoolService = useCallback((): IPoolService => {
-    try {
-      const repositoryContext = RepositoryContext.getInstance();
-      const serviceContext = ServiceContext.getInstance(repositoryContext);
-      return serviceContext.getPoolService();
-    } catch (err) {
-      console.error('[PoolsProvider] Error getting pool service:', err);
-      throw new Error(
-        'Pool service not available. Please check your wallet connection.',
-      );
-    }
-  }, []);
+  // Helper function to calculate pool dynamics
+  const calculatePoolDynamicsInternal = (pool: Pool): PoolDynamicData => {
+    const now = Math.floor(Date.now() / 1000);
+    const endTime = pool.startDate + pool.durationDays * 24 * 60 * 60;
+    const timeRemainingSeconds = Math.max(0, endTime - now);
 
-  const getPoolRepository = useCallback((): IPoolRepository => {
-    try {
-      const repositoryContext = RepositoryContext.getInstance();
-      return repositoryContext.getPoolRepository();
-    } catch (err) {
-      console.error('[PoolsProvider] Error getting pool repository:', err);
-      throw new Error(
-        'Pool repository not available. Please check your wallet connection.',
-      );
-    }
-  }, []);
+    const tvlNum = parseFloat(pool.totalValueLocked);
+    const goalNum = parseFloat(pool.fundingGoal);
+    const progressPercentage = Math.min(100, (tvlNum / goalNum) * 100);
+
+    const formatCurrency = (amount: number) => {
+      if (amount >= 1000000) {
+        return `$${(amount / 1000000).toFixed(2)}M`;
+      } else if (amount >= 1000) {
+        return `$${(amount / 1000).toFixed(1)}K`;
+      } else {
+        return `$${amount.toFixed(2)}`;
+      }
+    };
+
+    // Generate random volume data for demo purposes
+    const volume24h = (Math.random() * 100000).toString();
+    const volumeChangePercentage = `${(Math.random() * 20 - 10).toFixed(2)}%`;
+
+    return {
+      progressPercentage,
+      timeRemainingSeconds,
+      volume24h,
+      volumeChangePercentage,
+      apy: pool.rewardRate / 100,
+      tvlFormatted: formatCurrency(tvlNum),
+      fundingGoalFormatted: formatCurrency(goalNum),
+      rewardFormatted: `${(pool.rewardRate / 100).toFixed(2)}%`,
+    };
+  };
 
   // Load all pools
   const loadAllPools = useCallback(async () => {
@@ -129,10 +339,9 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const poolRepository = getPoolRepository();
-      const poolsWithDynamicData =
-        await poolRepository.getAllPoolsWithDynamicData();
-      setPools(poolsWithDynamicData);
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setPools(DUMMY_POOLS);
     } catch (err) {
       console.error('[PoolsProvider] Error in loadAllPools:', err);
       setError(err instanceof Error ? err : new Error('Failed to load pools'));
@@ -140,7 +349,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [getPoolRepository]);
+  }, []);
 
   // Load user pools (pools where user has staked)
   const loadUserPools = useCallback(
@@ -158,11 +367,9 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolRepository = getPoolRepository();
-        const userPoolsWithDynamicData =
-          await poolRepository.getUserPoolsWithDynamicData(
-            targetAddress as Address,
-          );
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const userPoolsWithDynamicData = DUMMY_POOLS.slice(0, 2); // Return first 2 pools for demo
         setUserPools(userPoolsWithDynamicData);
       } catch (err) {
         console.error('[PoolsProvider] Error in loadUserPools:', err);
@@ -174,7 +381,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [address, getPoolRepository],
+    [address],
   );
 
   // Load provider pools (pools created by the provider)
@@ -195,11 +402,12 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolRepository = getPoolRepository();
-        const providerPoolsWithDynamicData =
-          await poolRepository.getProviderPoolsWithDynamicData(
-            targetAddress as Address,
-          );
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const providerPoolsWithDynamicData = DUMMY_POOLS.filter(
+          (pool) =>
+            pool.providerAddress.toLowerCase() === targetAddress.toLowerCase(),
+        );
         setProviderPools(providerPoolsWithDynamicData);
       } catch (err) {
         console.error('[PoolsProvider] Error in loadProviderPools:', err);
@@ -213,33 +421,35 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [address, getPoolRepository],
+    [address],
   );
 
   // Get pool by ID
-  const getPoolById = useCallback(
-    async (id: string): Promise<Pool | null> => {
-      try {
-        const poolRepository = getPoolRepository();
-        const pool = await poolRepository.getPoolById(id);
-        return pool;
-      } catch (err) {
-        console.error('[PoolsProvider] Error in getPoolById:', err);
-        setError(err instanceof Error ? err : new Error('Failed to get pool'));
-        return null;
-      }
-    },
-    [getPoolRepository],
-  );
+  const getPoolById = useCallback(async (id: string): Promise<Pool | null> => {
+    try {
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const pool = DUMMY_POOLS.find((p) => p.id === id);
+      return pool || null;
+    } catch (err) {
+      console.error('[PoolsProvider] Error in getPoolById:', err);
+      setError(err instanceof Error ? err : new Error('Failed to get pool'));
+      return null;
+    }
+  }, []);
 
   // Get pool with dynamic data
   const getPoolWithDynamicData = useCallback(
     async (id: string): Promise<(Pool & PoolDynamicData) | null> => {
       try {
-        const poolRepository = getPoolRepository();
-        const poolWithDynamicData =
-          await poolRepository.getPoolWithDynamicData(id);
-        return poolWithDynamicData;
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const pool = DUMMY_POOLS.find((p) => p.id === id);
+        if (pool) {
+          const dynamics = calculatePoolDynamicsInternal(pool);
+          return { ...pool, ...dynamics };
+        }
+        return null;
       } catch (err) {
         console.error('[PoolsProvider] Error in getPoolWithDynamicData:', err);
         setError(
@@ -250,7 +460,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         return null;
       }
     },
-    [getPoolRepository],
+    [],
   );
 
   // Select pool
@@ -279,14 +489,33 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolService = getPoolService();
-        const result = await poolService.createPool(data, address as Address);
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const newPoolId = `dummy-pool-${Date.now()}`;
+        const transactionHash = `0x${Math.random().toString(16).slice(2, 10)}`;
+
+        const newPool: Pool = {
+          id: newPoolId,
+          name: data.name,
+          description: data.description,
+          assetName: data.assetName,
+          tokenAddress: data.tokenAddress,
+          providerAddress: address as Address,
+          fundingGoal: data.fundingGoal,
+          totalValueLocked: '0',
+          startDate: Math.floor(Date.now() / 1000),
+          durationDays: data.durationDays,
+          rewardRate: data.rewardRate,
+          status: PoolStatus.ACTIVE,
+        };
+
+        DUMMY_POOLS.push(newPool);
 
         // Refresh pools after creation
         await loadAllPools();
         await loadProviderPools();
 
-        return result;
+        return { poolId: newPoolId, transactionHash };
       } catch (err) {
         console.error('[PoolsProvider] Error in createPool:', err);
         setError(
@@ -297,7 +526,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [address, getPoolService, loadAllPools, loadProviderPools],
+    [address, loadAllPools, loadProviderPools],
   );
 
   // Close pool
@@ -312,17 +541,19 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolService = getPoolService();
-        const transactionHash = await poolService.closePool(
-          poolId,
-          address as Address,
-        );
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const index = DUMMY_POOLS.findIndex((p) => p.id === poolId);
+        if (index === -1) {
+          throw new Error(`Pool with ID ${poolId} not found`);
+        }
+        DUMMY_POOLS[index].status = PoolStatus.COMPLETE;
 
         // Refresh pools after closing
         await loadAllPools();
         await loadProviderPools();
 
-        return transactionHash;
+        return '0x0'; // Simulate transaction hash
       } catch (err) {
         console.error('[PoolsProvider] Error in closePool:', err);
         setError(
@@ -333,7 +564,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [address, getPoolService, loadAllPools, loadProviderPools],
+    [address, loadAllPools, loadProviderPools],
   );
 
   // Stake in pool
@@ -348,18 +579,32 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolService = getPoolService();
-        const transactionHash = await poolService.stake(
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const index = DUMMY_POOLS.findIndex((p) => p.id === poolId);
+        if (index === -1) {
+          throw new Error(`Pool with ID ${poolId} not found`);
+        }
+        const currentTvl = parseFloat(DUMMY_POOLS[index].totalValueLocked);
+        DUMMY_POOLS[index].totalValueLocked = (
+          currentTvl + parseFloat(amount)
+        ).toString();
+
+        // Add stake event
+        const newStakeEvent: StakeEvent = {
           poolId,
+          stakerAddress: address as Address,
           amount,
-          address as Address,
-        );
+          timestamp: Math.floor(Date.now() / 1000),
+          transactionHash: '0x' + Math.random().toString(16).substr(2, 8),
+        };
+        DUMMY_STAKE_EVENTS.push(newStakeEvent);
 
         // Refresh pools and user pools after staking
         await loadAllPools();
         await loadUserPools();
 
-        return transactionHash;
+        return newStakeEvent.transactionHash!;
       } catch (err) {
         console.error('[PoolsProvider] Error in stake:', err);
         setError(err instanceof Error ? err : new Error('Failed to stake'));
@@ -368,7 +613,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [address, getPoolService, loadAllPools, loadUserPools],
+    [address, loadAllPools, loadUserPools],
   );
 
   // Claim reward
@@ -383,16 +628,10 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolService = getPoolService();
-        const transactionHash = await poolService.claimReward(
-          poolId,
-          address as Address,
-        );
-
-        // Refresh user pools after claiming reward
-        await loadUserPools();
-
-        return transactionHash;
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log(`[PoolsProvider] Claiming reward for pool: ${poolId}`);
+        return '0x' + Math.random().toString(16).substr(2, 8);
       } catch (err) {
         console.error('[PoolsProvider] Error in claimReward:', err);
         setError(
@@ -403,7 +642,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [address, getPoolService, loadUserPools],
+    [address],
   );
 
   // Unlock reward (for providers)
@@ -418,16 +657,18 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolService = getPoolService();
-        const transactionHash = await poolService.unlockReward(
-          poolId,
-          address as Address,
-        );
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        console.log(`[PoolsProvider] Unlocking reward for pool: ${poolId}`);
 
-        // Refresh provider pools after unlocking reward
-        await loadProviderPools();
+        // Update pool status to COMPLETE
+        const poolIndex = DUMMY_POOLS.findIndex((p) => p.id === poolId);
+        if (poolIndex !== -1) {
+          DUMMY_POOLS[poolIndex].status = PoolStatus.COMPLETE;
+          setPools([...DUMMY_POOLS]);
+        }
 
-        return transactionHash;
+        return '0x' + Math.random().toString(16).substr(2, 8);
       } catch (err) {
         console.error('[PoolsProvider] Error in unlockReward:', err);
         setError(
@@ -438,7 +679,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [address, getPoolService, loadProviderPools],
+    [address, loadProviderPools],
   );
 
   // Load stake history for a pool
@@ -458,8 +699,11 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
 
       try {
-        const poolRepository = getPoolRepository();
-        const history = await poolRepository.getPoolStakeHistory(poolId);
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const history = DUMMY_STAKE_EVENTS.filter(
+          (event) => event.poolId === poolId,
+        );
         setStakeHistory(history);
       } catch (err) {
         console.error('[PoolsProvider] Error loading stake history:', err);
@@ -474,19 +718,35 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         setLoadingStakeHistoryFor(null);
       }
     },
-    [getPoolRepository, stakeHistoryLoading, loadingStakeHistoryFor],
+    [stakeHistoryLoading, loadingStakeHistoryFor],
   );
 
   // Get grouped stake history
   const getGroupedStakeHistory = useCallback(
     async (poolId: string, interval: '1H' | '1D' | '1W' | '1M' | '1Y') => {
       try {
-        const poolRepository = getPoolRepository();
-        const groupedHistory = await poolRepository.getGroupedStakeHistory(
-          poolId,
-          interval,
-        );
-        return groupedHistory;
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        // Generate dummy grouped data
+        const today = new Date();
+        const groupedData: any = {
+          daily: {},
+          hourly: {},
+          weekly: {},
+          monthly: {},
+          yearly: {},
+        };
+
+        // Generate last 30 days of data
+        for (let i = 0; i < 30; i++) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+          const dateKey = date.toISOString().split('T')[0];
+          groupedData.daily[dateKey] = Math.random() * 50000;
+        }
+
+        return groupedData;
       } catch (err) {
         console.error(
           '[PoolsProvider] Error getting grouped stake history:',
@@ -500,16 +760,16 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         return {};
       }
     },
-    [getPoolRepository],
+    [],
   );
 
   // Calculate pool dynamics
   const calculatePoolDynamics = useCallback(
     async (pool: Pool): Promise<PoolDynamicData> => {
       try {
-        const poolRepository = getPoolRepository();
-        const dynamicData = await poolRepository.calculatePoolDynamicData(pool);
-        return dynamicData;
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return calculatePoolDynamicsInternal(pool);
       } catch (err) {
         console.error('[PoolsProvider] Error calculating pool dynamics:', err);
         setError(
@@ -520,7 +780,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         throw err;
       }
     },
-    [getPoolRepository],
+    [],
   );
 
   // Refresh all pools
