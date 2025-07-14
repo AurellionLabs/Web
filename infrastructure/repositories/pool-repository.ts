@@ -14,32 +14,79 @@ import {
 } from '@/typechain-types';
 import { BigNumberish, BytesLike, ethers, Provider, Signer } from 'ethers';
 import { NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
+import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
+import { readContract } from 'viem/actions';
 
 /**
  * Blockchain-based implementation of IPoolRepository.
  * Handles all data persistence and retrieval operations for Pools via smart contract interaction.
+ * Uses dedicated RPC for read operations and user's signer for write operations.
  */
 export class PoolRepository implements IPoolRepository {
-  private contract: AuStakeContract;
+  private readContract: AuStakeContract;
+  private writeContract: AuStakeContract;
   private signer: Signer;
-  private provider: Provider;
+  private readProvider: Provider;
+  private userProvider: Provider;
+  private contractAddress: string;
+  private isInitialized = false;
 
   constructor(
-    provider: Provider,
+    userProvider: Provider,
     signer: Signer,
     contractAddress: string = NEXT_PUBLIC_AUSTAKE_ADDRESS,
   ) {
     if (!contractAddress) {
       throw new Error('[PoolRepository] Pool contract address is undefined');
     }
-    this.provider = provider;
+    this.userProvider = userProvider;
     this.signer = signer;
-    this.contract = AuStake__factory.connect(contractAddress, signer);
+    this.contractAddress = contractAddress;
+
+    // Initialize with user provider as fallback
+    this.readProvider = userProvider;
+    this.readContract = AuStake__factory.connect(contractAddress, userProvider);
+    this.writeContract = AuStake__factory.connect(contractAddress, signer);
+
+    // Asynchronously initialize read provider using dedicated RPC
+    this.initializeReadProvider();
+  }
+
+  private async initializeReadProvider(): Promise<void> {
+    try {
+      const chainId = await RpcProviderFactory.getChainId(this.userProvider);
+      this.readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
+
+      // Read contract uses dedicated RPC provider
+      this.readContract = AuStake__factory.connect(
+        this.contractAddress,
+        this.readProvider,
+      );
+      this.isInitialized = true;
+
+      console.log(
+        `[PoolRepository] Initialized with dedicated RPC for chain ${chainId}`,
+      );
+    } catch (error) {
+      console.warn(
+        '[PoolRepository] Failed to initialize read provider, using user provider:',
+        error,
+      );
+      // Already initialized with user provider as fallback
+      this.isInitialized = true;
+    }
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initializeReadProvider();
+    }
   }
 
   async getPoolById(id: string): Promise<Pool> {
     try {
-      const operation = await this.contract.getOperation(id);
+      await this.ensureInitialized();
+      const operation = await this.readContract.getOperation(id);
 
       if (
         !operation ||
@@ -63,8 +110,9 @@ export class PoolRepository implements IPoolRepository {
 
   async getPoolStakeHistory(poolId: string): Promise<StakeEvent[]> {
     try {
+      await this.ensureInitialized();
       // Get stake events from contract logs - Staked(token, user, amount, operationId, eType, time)
-      const filter = this.contract.filters.Staked(
+      const filter = this.readContract.filters.Staked(
         undefined,
         undefined,
         undefined,
@@ -72,7 +120,10 @@ export class PoolRepository implements IPoolRepository {
         undefined,
         undefined,
       );
-      const events = await this.contract.queryFilter(filter);
+      const end = await this.readProvider.getBlockNumber();
+
+      const start = end - 228800;
+      const events = await this.readContract.queryFilter(filter, start, end);
 
       return events.map((event: any) => ({
         poolId,
@@ -94,8 +145,9 @@ export class PoolRepository implements IPoolRepository {
 
   async findPoolsByInvestor(investorAddress: Address): Promise<Pool[]> {
     try {
+      await this.ensureInitialized();
       // Get all Staked events for this investor - Staked(token, user, amount, operationId, eType, time)
-      const filter = this.contract.filters.Staked(
+      const filter = this.readContract.filters.Staked(
         undefined,
         investorAddress,
         undefined,
@@ -103,7 +155,7 @@ export class PoolRepository implements IPoolRepository {
         undefined,
         undefined,
       );
-      const events = await this.contract.queryFilter(filter);
+      const events = await this.readContract.queryFilter(filter);
 
       // Get unique pool IDs
       const poolIds = [
@@ -133,13 +185,14 @@ export class PoolRepository implements IPoolRepository {
 
   async findPoolsByProvider(providerAddress: Address): Promise<Pool[]> {
     try {
+      await this.ensureInitialized();
       // Get all OperationCreated events - OperationCreated(operationId, name, token)
-      const filter = this.contract.filters.OperationCreated(
+      const filter = this.readContract.filters.OperationCreated(
         undefined,
         undefined,
         undefined,
       );
-      const events = await this.contract.queryFilter(filter);
+      const events = await this.readContract.queryFilter(filter);
 
       // Fetch all pools and filter by provider address
       const pools = await Promise.all(
@@ -163,13 +216,14 @@ export class PoolRepository implements IPoolRepository {
 
   async getAllPools(): Promise<Pool[]> {
     try {
+      await this.ensureInitialized();
       // Get all OperationCreated events
-      const filter = this.contract.filters.OperationCreated(
+      const filter = this.readContract.filters.OperationCreated(
         undefined,
         undefined,
         undefined,
       );
-      const events = await this.contract.queryFilter(filter);
+      const events = await this.readContract.queryFilter(filter);
 
       // Fetch all pools
       const pools = await Promise.all(
@@ -467,13 +521,14 @@ export class PoolRepository implements IPoolRepository {
   // Additional methods required by IPoolRepository interface
   async getAllPoolIds(): Promise<string[]> {
     try {
+      await this.ensureInitialized();
       // Get all OperationCreated events
-      const filter = this.contract.filters.OperationCreated(
+      const filter = this.readContract.filters.OperationCreated(
         undefined,
         undefined,
         undefined,
       );
-      const events = await this.contract.queryFilter(filter);
+      const events = await this.readContract.queryFilter(filter);
 
       return events
         .map((event: any) => event.args?.operationId)
@@ -500,7 +555,7 @@ export class PoolRepository implements IPoolRepository {
       const tokenContract = new ethers.Contract(
         tokenAddress,
         erc20Abi,
-        this.provider,
+        this.readProvider,
       );
 
       const decimals = await tokenContract.decimals();

@@ -90,7 +90,12 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       );
 
       const repoContext = RepositoryContext.getInstance();
-      repoContext.initialize(ausysContract, aurumContract, provider, signer);
+      await repoContext.initialize(
+        ausysContract,
+        aurumContract,
+        provider,
+        signer,
+      );
       console.log('[RepositoryProvider] RepositoryContext initialized.');
 
       const serviceContext = ServiceContext.getInstance(repoContext);

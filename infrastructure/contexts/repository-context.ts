@@ -22,6 +22,7 @@ import {
 import { listenForSignature } from '../services/signature-listener.service';
 import { IPoolRepository } from '@/domain/pool';
 import { PoolRepository } from '../repositories/pool-repository';
+import { RepositoryFactory } from '../factories/repository-factory';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -54,7 +55,7 @@ export class RepositoryContext {
   /**
    * Initialize the context with required contracts and signer
    */
-  public initialize(
+  public async initialize(
     ausysContract: LocationContract,
     aurumContract: AurumNodeManager,
     provider: BrowserProvider,
@@ -63,19 +64,52 @@ export class RepositoryContext {
     this.ausysContract = ausysContract;
     this.aurumContract = aurumContract;
     this.signer = signer;
-    this.poolRepository = new PoolRepository(provider, signer);
-    this.nodeRepository = new BlockchainNodeRepository(
-      aurumContract,
-      provider,
-      signer,
-      this.auraGoatAddress,
-    );
-    this.orderRepository = new OrderRepository(ausysContract, provider, signer);
-    this.driverRepository = new DriverRepository(
-      ausysContract,
-      provider,
-      signer,
-    );
+
+    // Use the factory to create repositories with RPC separation
+    const repositoryFactory = RepositoryFactory.getInstance();
+
+    try {
+      const repositories = await repositoryFactory.createAllRepositories(
+        provider,
+        signer,
+        aurumContract,
+        ausysContract,
+      );
+
+      this.poolRepository = repositories.poolRepository;
+      this.nodeRepository = repositories.nodeRepository;
+      this.orderRepository = repositories.orderRepository;
+      this.driverRepository = repositories.driverRepository;
+
+      console.log(
+        '[RepositoryContext] Successfully created repositories with RPC separation',
+      );
+    } catch (error) {
+      console.error(
+        '[RepositoryContext] Failed to create repositories with factory, falling back to direct creation:',
+        error,
+      );
+
+      // Fallback to direct creation if factory fails
+      this.poolRepository = new PoolRepository(provider, signer);
+      this.nodeRepository = new BlockchainNodeRepository(
+        aurumContract,
+        provider,
+        signer,
+        this.auraGoatAddress,
+      );
+      this.orderRepository = new OrderRepository(
+        ausysContract,
+        provider,
+        signer,
+      );
+      this.driverRepository = new DriverRepository(
+        ausysContract,
+        provider,
+        signer,
+      );
+    }
+
     this.auraGoatContract = AuraGoat__factory.connect(
       this.auraGoatAddress,
       signer,

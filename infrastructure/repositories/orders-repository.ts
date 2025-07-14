@@ -4,32 +4,36 @@ import {
   type Asset, // Import Asset type
   type Attribute, // Import Attribute type
 } from '@/domain/orders/order';
-import {
-  LocationContract,
-  // LocationContract__factory, // Likely not needed in implementation
-} from '@/typechain-types';
+import { LocationContract, LocationContract__factory } from '@/typechain-types';
 import {
   type BrowserProvider,
   type Signer,
   ethers,
   type BytesLike,
+  Provider,
   // type ContractTransactionReceipt, // Not needed in repo
   // type AddressLike, // Already inferred for addresses
 } from 'ethers';
 import { handleContractError } from '@/utils/error-handler'; // Adjust path if necessary
+import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 
 /**
  * Infrastructure implementation of the IOrderRepository interface.
  * Interacts with the LocationContract (AuSys) blockchain contract.
+ * Uses dedicated RPC for read operations and user's signer for write operations.
  */
 export class OrderRepository implements IOrderRepository {
-  private contract: LocationContract;
-  private provider: BrowserProvider;
+  private readContract: LocationContract;
+  private writeContract: LocationContract;
+  private userProvider: BrowserProvider;
+  private readProvider: Provider;
   private signer: Signer;
+  private contractAddress: string;
+  private isInitialized = false;
 
   constructor(
     contract: LocationContract,
-    provider: BrowserProvider,
+    userProvider: BrowserProvider,
     signer: Signer,
   ) {
     if (!contract) {
@@ -37,9 +41,48 @@ export class OrderRepository implements IOrderRepository {
         'OrderRepository: LocationContract instance is required.',
       );
     }
-    this.contract = contract;
-    this.provider = provider;
+    this.writeContract = contract;
+    this.userProvider = userProvider;
     this.signer = signer;
+    this.contractAddress = contract.target as string;
+
+    // Initialize with user provider as fallback
+    this.readProvider = userProvider;
+    this.readContract = contract;
+
+    // Asynchronously initialize read provider using dedicated RPC
+    this.initializeReadProvider();
+  }
+
+  private async initializeReadProvider(): Promise<void> {
+    try {
+      const chainId = await RpcProviderFactory.getChainId(this.userProvider);
+      this.readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
+
+      // Read contract uses dedicated RPC provider
+      this.readContract = LocationContract__factory.connect(
+        this.contractAddress,
+        this.readProvider,
+      );
+      this.isInitialized = true;
+
+      console.log(
+        `[OrderRepository] Initialized with dedicated RPC for chain ${chainId}`,
+      );
+    } catch (error) {
+      console.warn(
+        '[OrderRepository] Failed to initialize read provider, using user provider:',
+        error,
+      );
+      // Already initialized with user provider as fallback
+      this.isInitialized = true;
+    }
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initializeReadProvider();
+    }
   }
 
   /**
