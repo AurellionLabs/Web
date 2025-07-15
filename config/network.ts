@@ -54,10 +54,7 @@ export const NETWORK_CONFIGS: { [chainId: number]: NetworkConfig } = {
   84532: {
     chainId: 84532,
     name: 'Base Sepolia',
-    rpcUrl: getRpcUrl(
-      84532,
-      'https://base-sepolia.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
-    ),
+    rpcUrl: getRpcUrl(84532, 'https://sepolia.base.org'),
     currency: {
       name: 'Base Sepolia Ether',
       symbol: 'ETH',
@@ -68,10 +65,7 @@ export const NETWORK_CONFIGS: { [chainId: number]: NetworkConfig } = {
   8453: {
     chainId: 8453,
     name: 'Base',
-    rpcUrl: getRpcUrl(
-      8453,
-      'https://base-mainnet.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
-    ),
+    rpcUrl: getRpcUrl(8453, 'https://mainnet.base.org'),
     currency: {
       name: 'Base Ether',
       symbol: 'ETH',

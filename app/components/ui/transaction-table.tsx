@@ -25,8 +25,11 @@ const formatAmount = (amount: string) => {
   if (!amount || amount === '0') return '0';
 
   try {
-    const num = parseFloat(amount);
-    if (isNaN(num)) return '0';
+    // Convert from wei to tokens (divide by 10^18)
+    const amountInWei = parseFloat(amount);
+    if (isNaN(amountInWei)) return '0';
+
+    const num = amountInWei / 1e18;
 
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(2)}M`;
@@ -111,7 +114,7 @@ export function TransactionTable({
                   <td className="py-4 px-4 text-right">
                     {formatTransactionHash(tx.transactionHash) ? (
                       <a
-                        href={`https://etherscan.io/tx/${tx.transactionHash}`}
+                        href={`https://sepolia.basescan.org/tx/${tx.transactionHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-400 hover:text-blue-300 font-mono text-sm"

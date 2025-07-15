@@ -63,7 +63,7 @@ export class PoolService implements IPoolService {
           data.tokenAddress,
           creatorAddress, // provider
           deadline,
-          BigInt(data.rewardRate),
+          BigInt(data.rewardRate * 100), // Convert to basis points
           data.assetName,
           BigInt(data.fundingGoal),
           BigInt(data.assetPrice),
@@ -280,10 +280,10 @@ export class PoolService implements IPoolService {
     stakerAddress: Address,
   ): Promise<(Pool & PoolDynamicData)[]> {
     const poolRepository = this.repositoryContext.getPoolRepository();
-    const pools = await poolRepository.findPoolsByStaker(stakerAddress);
+    const pools = await poolRepository.findPoolsByInvestor(stakerAddress);
 
     const poolsWithDynamicData = await Promise.all(
-      pools.map(async (pool) => {
+      pools.map(async (pool: Pool) => {
         const stakeHistory = await poolRepository.getPoolStakeHistory(pool.id);
         const dynamicData = await this.calculatePoolDynamicData(
           pool,
@@ -465,7 +465,7 @@ export class PoolService implements IPoolService {
       // Create ERC20 contract instance
       const erc20Abi = [
         'function allowance(address owner, address spender) view returns (uint256)',
-        'function approve(address spender, uint256 amount) nonpayable returns (bool)',
+        'function approve(address spender, uint256 amount) returns (bool)',
       ];
       const tokenContract = new ethers.Contract(
         tokenAddress,

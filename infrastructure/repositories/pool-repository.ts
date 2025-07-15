@@ -16,6 +16,13 @@ import { BigNumberish, BytesLike, ethers, Provider, Signer } from 'ethers';
 import { NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 import { readContract } from 'viem/actions';
+import { gql, request } from 'graphql-request';
+import {
+  STAKED_EVENTS_QUERY,
+  STAKED_EVENTS_BY_USER_QUERY,
+  OPERATION_CREATED_QUERY,
+  OPERATION_CREATED_BY_TOKEN_QUERY,
+} from '@/constants';
 
 /**
  * Blockchain-based implementation of IPoolRepository.
@@ -30,6 +37,8 @@ export class PoolRepository implements IPoolRepository {
   private userProvider: Provider;
   private contractAddress: string;
   private isInitialized = false;
+  private graphqlEndpoint =
+    'https://api.studio.thegraph.com/query/112596/aurellion/version/latest';
 
   constructor(
     userProvider: Provider,
@@ -83,10 +92,53 @@ export class PoolRepository implements IPoolRepository {
     }
   }
 
+  private async graphqlRequest<T>(query: string, variables?: any): Promise<T> {
+    const headers = {
+      Authorization: `Bearer ${process.env.NEXT_PUBLIC_THEGRAPH_API_KEY}`,
+    };
+    return await request(this.graphqlEndpoint, query, variables, headers);
+  }
+
+  private async retryOnRateLimit<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    maxRetries: number = 3,
+    baseDelay: number = 1000,
+  ): Promise<T> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        const isRateLimit =
+          error?.code === 'BAD_DATA' &&
+          error?.info?.payload?.method === 'eth_call' &&
+          error?.value?.some?.((err: any) => err.code === -32005);
+
+        if (isRateLimit && attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          console.warn(
+            `[PoolRepository] Rate limit hit for ${operationName}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw new Error(`Max retries exceeded for ${operationName}`);
+  }
+
   async getPoolById(id: string): Promise<Pool> {
     try {
       await this.ensureInitialized();
-      const operation = await this.readContract.getOperation(id);
+
+      // Retry logic for rate limiting
+      const operation = await this.retryOnRateLimit(
+        () => this.readContract.getOperation(id),
+        `getOperation for pool ${id}`,
+      );
 
       if (
         !operation ||
@@ -110,61 +162,39 @@ export class PoolRepository implements IPoolRepository {
 
   async getPoolStakeHistory(poolId: string): Promise<StakeEvent[]> {
     try {
-      await this.ensureInitialized();
-      // Get stake events from contract logs - Staked(token, user, amount, operationId, eType, time)
-      const filter = this.readContract.filters.Staked(
-        undefined,
-        undefined,
-        undefined,
-        poolId,
-        undefined,
-        undefined,
+      const response: { stakeds: any[] } = await this.graphqlRequest(
+        STAKED_EVENTS_QUERY,
+        { operationId: poolId },
       );
-      const end = await this.readProvider.getBlockNumber();
 
-      const start = end - 228800;
-      const events = await this.readContract.queryFilter(filter, start, end);
-
-      return events.map((event: any) => ({
+      return response.stakeds.map((event) => ({
         poolId,
-        stakerAddress: event.args?.user as Address,
-        amount: event.args?.amount?.toString() || '0',
-        timestamp: event.args?.time ? Number(event.args.time) : 0,
+        stakerAddress: event.user as Address,
+        amount: event.amount,
+        timestamp: Number(event.time),
         transactionHash: event.transactionHash,
       }));
     } catch (error) {
       console.error(
-        `[PoolRepository.getPoolStakeHistory] Error fetching stake history for pool ${poolId}:`,
+        `[PoolRepository.getPoolStakeHistory] Error fetching staked events for pool ${poolId}:`,
         error,
       );
-      throw new Error(
-        `Failed to fetch stake history for pool ${poolId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      return [];
     }
   }
 
   async findPoolsByInvestor(investorAddress: Address): Promise<Pool[]> {
     try {
-      await this.ensureInitialized();
-      // Get all Staked events for this investor - Staked(token, user, amount, operationId, eType, time)
-      const filter = this.readContract.filters.Staked(
-        undefined,
-        investorAddress,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
+      // Use GraphQL to get staked events by user
+      const response: { stakeds: any[] } = await this.graphqlRequest(
+        STAKED_EVENTS_BY_USER_QUERY,
+        { user: investorAddress },
       );
-      const events = await this.readContract.queryFilter(filter);
 
       // Get unique pool IDs
       const poolIds = [
-        ...new Set(
-          events
-            .map((event: any) => event.args?.operationId)
-            .filter((id) => id),
-        ),
-      ] as string[];
+        ...new Set(response.stakeds.map((event) => event.operationId)),
+      ].filter((id) => id);
 
       // Fetch all pools
       const pools = await Promise.all(
@@ -185,18 +215,16 @@ export class PoolRepository implements IPoolRepository {
 
   async findPoolsByProvider(providerAddress: Address): Promise<Pool[]> {
     try {
-      await this.ensureInitialized();
-      // Get all OperationCreated events - OperationCreated(operationId, name, token)
-      const filter = this.readContract.filters.OperationCreated(
-        undefined,
-        undefined,
-        undefined,
+      // Use GraphQL to get operation created events
+      const response: { operationCreateds: any[] } = await this.graphqlRequest(
+        OPERATION_CREATED_QUERY,
       );
-      const events = await this.readContract.queryFilter(filter);
 
-      // Fetch all pools and filter by provider address
+      // Fetch all pools and filter by provider
       const pools = await Promise.all(
-        events.map((event: any) => this.getPoolById(event.args?.operationId)),
+        response.operationCreateds.map((event) =>
+          this.getPoolById(event.operationId),
+        ),
       );
 
       return pools.filter(
@@ -216,18 +244,16 @@ export class PoolRepository implements IPoolRepository {
 
   async getAllPools(): Promise<Pool[]> {
     try {
-      await this.ensureInitialized();
-      // Get all OperationCreated events
-      const filter = this.readContract.filters.OperationCreated(
-        undefined,
-        undefined,
-        undefined,
+      // Use GraphQL to get all operation created events
+      const response: { operationCreateds: any[] } = await this.graphqlRequest(
+        OPERATION_CREATED_QUERY,
       );
-      const events = await this.readContract.queryFilter(filter);
 
       // Fetch all pools
       const pools = await Promise.all(
-        events.map((event: any) => this.getPoolById(event.args?.operationId)),
+        response.operationCreateds.map((event) =>
+          this.getPoolById(event.operationId),
+        ),
       );
 
       return pools.filter((pool: any) => pool !== null);
@@ -509,7 +535,7 @@ export class PoolRepository implements IPoolRepository {
   }
 
   private formatCurrency(value: BigNumberString): string {
-    const num = Number(ethers.formatEther(value));
+    const num = parseFloat(ethers.formatEther(value));
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -521,17 +547,13 @@ export class PoolRepository implements IPoolRepository {
   // Additional methods required by IPoolRepository interface
   async getAllPoolIds(): Promise<string[]> {
     try {
-      await this.ensureInitialized();
-      // Get all OperationCreated events
-      const filter = this.readContract.filters.OperationCreated(
-        undefined,
-        undefined,
-        undefined,
+      // Use GraphQL to get all operation created events
+      const response: { operationCreateds: any[] } = await this.graphqlRequest(
+        OPERATION_CREATED_QUERY,
       );
-      const events = await this.readContract.queryFilter(filter);
 
-      return events
-        .map((event: any) => event.args?.operationId)
+      return response.operationCreateds
+        .map((event) => event.operationId)
         .filter((id) => id) as string[];
     } catch (error) {
       console.error(
@@ -550,6 +572,7 @@ export class PoolRepository implements IPoolRepository {
 
   async getTokenDecimals(tokenAddress: Address): Promise<number> {
     try {
+      await this.ensureInitialized();
       // Create ERC20 contract instance
       const erc20Abi = ['function decimals() view returns (uint8)'];
       const tokenContract = new ethers.Contract(

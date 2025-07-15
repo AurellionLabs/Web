@@ -22,12 +22,9 @@ export function PoolTable({ pools }: PoolTableProps) {
             </tr>
           </thead>
           <tbody>
-            <>
-              {console.log('this is what we are mapping', pools)}
-              {pools.map((pool, index) => (
-                <PoolRow key={pool.id} index={index + 1} pool={pool} />
-              ))}
-            </>
+            {pools.map((pool, index) => (
+              <PoolRow key={pool.id} index={index + 1} pool={pool} />
+            ))}
           </tbody>
         </table>
       </div>

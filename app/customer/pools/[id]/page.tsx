@@ -74,7 +74,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             volume24h,
             volumeChangePercentage,
           });
-          setDailyPercentageChange(volumeChangePercentage || '0%');
+          setDailyPercentageChange(volumeChangePercentage || '+0.0%');
           selectPool(poolData);
         }
       } catch (error) {
@@ -91,7 +91,11 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     const loadHistory = async () => {
       try {
         await loadStakeHistory(params.id);
-        const grouped = await getGroupedStakeHistory(params.id, '1D');
+        const grouped = await getGroupedStakeHistory(
+          params.id,
+          timeRange as '1H' | '1D' | '1W' | '1M' | '1Y',
+        );
+
         setGroupedStake(grouped);
       } catch (error) {
         console.error('Error loading stake history:', error);
@@ -99,7 +103,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     };
 
     loadHistory();
-  }, [params.id, loadStakeHistory, getGroupedStakeHistory]);
+  }, [params.id, loadStakeHistory, getGroupedStakeHistory, timeRange]);
 
   const getTotalDailyVolume = () => {
     if (!poolDynamics?.volume24h) return '0.00';
@@ -115,6 +119,27 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
+    }
+  };
+
+  const calculateFees24h = () => {
+    if (!poolDynamics?.volume24h) return '$0.00';
+    const volume = parseFloat(poolDynamics.volume24h);
+    if (isNaN(volume)) return '$0.00';
+
+    // Assuming 0.3% fee rate (adjust as needed)
+    const feeRate = 0.003;
+    const fees = volume * feeRate;
+
+    if (fees >= 1000000) {
+      return `$${(fees / 1000000).toFixed(2)}M`;
+    } else if (fees >= 1000) {
+      return `$${(fees / 1000).toFixed(1)}K`;
+    } else {
+      return `$${fees.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
     }
   };
 
@@ -189,7 +214,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     fundingGoal: poolDynamics?.fundingGoalFormatted || '$0',
     volume24h: `$${getTotalDailyVolume()}`,
     volumeChange: dailyPercentageChange,
-    fees24h: '$87.3K', // TODO: Calculate from actual data
+    fees24h: calculateFees24h(),
     token0Balance: pool?.assetName || '',
     token1Balance: 'Funding',
     lockupPeriod: pool ? pool.startDate + pool.durationDays * 24 * 60 * 60 : 0,
@@ -280,7 +305,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                   ))}
                 </div>
               </div>
-              <Chart timeRange={timeRange} />
+              <Chart timeRange={timeRange} groupedStakes={groupedStake} />
             </div>
 
             {/* Transactions */}

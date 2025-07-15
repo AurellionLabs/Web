@@ -39,7 +39,14 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
         intersect: false,
         callbacks: {
           label: (context: any) => {
-            return `Volume: ${context.parsed.y.toFixed(2)}`;
+            const value = context.parsed.y;
+            if (value >= 1000000) {
+              return `Volume: ${(value / 1000000).toFixed(2)}M tokens`;
+            } else if (value >= 1000) {
+              return `Volume: ${(value / 1000).toFixed(2)}K tokens`;
+            } else {
+              return `Volume: ${value.toFixed(2)} tokens`;
+            }
           },
         },
       },
@@ -74,22 +81,22 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
     let dataPoints: { [key: string]: number } = {};
     switch (timeRange) {
       case '1H':
-        dataPoints = groupedStakes.hourly;
+        dataPoints = groupedStakes.hourly || {};
         break;
       case '1D':
-        dataPoints = groupedStakes.daily;
+        dataPoints = groupedStakes.daily || {};
         break;
       case '1W':
-        dataPoints = groupedStakes.weekly;
+        dataPoints = groupedStakes.weekly || {};
         break;
       case '1M':
-        dataPoints = groupedStakes.monthly;
+        dataPoints = groupedStakes.monthly || {};
         break;
       case '1Y':
-        dataPoints = groupedStakes.yearly;
+        dataPoints = groupedStakes.yearly || {};
         break;
       default:
-        dataPoints = groupedStakes.daily;
+        dataPoints = groupedStakes.daily || {};
     }
 
     // Sort keys by converting strings to dates first for proper chronological ordering
@@ -108,7 +115,15 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
       return dateA.getTime() - dateB.getTime();
     });
 
-    const values = sortedKeys.map((key) => dataPoints[key]);
+    const values = sortedKeys.map((key) => {
+      const value = dataPoints[key];
+      // Convert string values to numbers (handles BigInt string conversion)
+      if (typeof value === 'string') {
+        // Convert from wei to token amount (divide by 10^18)
+        return parseFloat(value) / 1e18;
+      }
+      return value;
+    });
 
     // Format labels based on time range
     const formattedLabels = sortedKeys.map((key) => {
@@ -153,13 +168,17 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
   };
   const { labels, values } = getDataByTimeRange();
 
+  // Add fallback data if no data is available
+  const finalLabels = labels.length > 0 ? labels : ['No data'];
+  const finalValues = values.length > 0 ? values : [0];
+
   const data = {
-    labels,
+    labels: finalLabels,
     datasets: [
       {
         fill: true,
         label: 'Volume',
-        data: values,
+        data: finalValues,
         borderColor: 'rgb(245, 158, 11)',
         backgroundColor: 'rgba(245, 158, 11, 0.1)',
         tension: 0.4,
@@ -170,7 +189,7 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', padding: '20px' }}>
+    <div style={{ width: '100%', height: '400px', padding: '20px' }}>
       <Line options={options} data={data} />
     </div>
   );
