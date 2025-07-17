@@ -277,7 +277,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 value={poolData.volume24h}
                 change={poolData.volumeChange}
               />
-              <StatCard title="Fees (24h)" value={poolData.fees24h} />
+              <StatCard title="Total Rewards" value={'$ToDo'} />
               <StatCard
                 title="APR"
                 value={poolData.reward}
