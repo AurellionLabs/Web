@@ -51,7 +51,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const poolData = {
     name: pool?.name || '',
     assetPrice: pool ? `1 ${pool.assetName} = $750` : '1 Asset = $750', // Fixed price for demo
-    supplyAPY: pool ? `${(pool.rewardRate / 100).toFixed(2)}%` : '0%',
+    supplyAPY: pool ? `${pool.rewardRate.toFixed(2)}%` : '0%',
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

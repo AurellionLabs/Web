@@ -47,7 +47,7 @@ export function PoolRow({ pool, index }: PoolRowProps) {
   useEffect(() => {
     setFormattedValues({
       tvl: formatTVL(pool.totalValueLocked),
-      reward: (pool.rewardRate / 100).toFixed(2),
+      reward: pool.rewardRate.toFixed(2),
       daysLeft: formatDaysLeft(pool.startDate, pool.durationDays),
     });
   }, [pool]);
