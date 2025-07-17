@@ -64,6 +64,28 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
         },
+        ticks: {
+          callback: function (value: any) {
+            const numValue = Number(value);
+            if (numValue === 0) return '0';
+
+            // Handle very small numbers
+            if (numValue < 0.001) {
+              return numValue.toExponential(2);
+            }
+
+            // Handle normal formatting
+            if (numValue >= 1000000) {
+              return `${(numValue / 1000000).toFixed(2)}M`;
+            } else if (numValue >= 1000) {
+              return `${(numValue / 1000).toFixed(2)}K`;
+            } else if (numValue >= 1) {
+              return numValue.toFixed(2);
+            } else {
+              return numValue.toFixed(4);
+            }
+          },
+        },
       },
     },
     interaction: {
@@ -119,8 +141,14 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
       const value = dataPoints[key];
       // Convert string values to numbers (handles BigInt string conversion)
       if (typeof value === 'string') {
+        const rawValue = parseFloat(value);
+        const convertedValue = rawValue / 1e18;
+
+        // Debug logging to help identify the issue
+        console.log(`Raw value: ${rawValue}, Converted: ${convertedValue}`);
+
         // Convert from wei to token amount (divide by 10^18)
-        return parseFloat(value) / 1e18;
+        return convertedValue;
       }
       return value;
     });
