@@ -22,6 +22,7 @@ import { Pool, PoolDynamicData, PoolStatus } from '@/domain/pool';
 import { toast } from 'react-hot-toast';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useWallet } from '@/hooks/useWallet';
+import { formatWeiToCurrency, formatWeiToEther } from '@/lib/utils';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
@@ -107,7 +108,9 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
 
   const getTotalDailyVolume = () => {
     if (!poolDynamics?.volume24h) return '0.00';
-    const value = parseFloat(poolDynamics.volume24h);
+    // Convert wei to ether, then format
+    const etherValue = formatWeiToEther(poolDynamics.volume24h);
+    const value = parseFloat(etherValue);
     if (isNaN(value)) return '0.00';
 
     if (value >= 1000000) {
@@ -119,27 +122,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
-    }
-  };
-
-  const calculateFees24h = () => {
-    if (!poolDynamics?.volume24h) return '$0.00';
-    const volume = parseFloat(poolDynamics.volume24h);
-    if (isNaN(volume)) return '$0.00';
-
-    // Assuming 0.3% fee rate (adjust as needed)
-    const feeRate = 0.003;
-    const fees = volume * feeRate;
-
-    if (fees >= 1000000) {
-      return `$${(fees / 1000000).toFixed(2)}M`;
-    } else if (fees >= 1000) {
-      return `$${(fees / 1000).toFixed(1)}K`;
-    } else {
-      return `$${fees.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`;
     }
   };
 
@@ -214,7 +196,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     fundingGoal: poolDynamics?.fundingGoalFormatted || '$0',
     volume24h: `$${getTotalDailyVolume()}`,
     volumeChange: dailyPercentageChange,
-    fees24h: calculateFees24h(),
     token0Balance: pool?.assetName || '',
     token1Balance: 'Funding',
     lockupPeriod: pool ? pool.startDate + pool.durationDays * 24 * 60 * 60 : 0,
@@ -277,7 +258,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 value={poolData.volume24h}
                 change={poolData.volumeChange}
               />
-              <StatCard title="Fees (24h)" value={poolData.fees24h} />
+              <StatCard title="Total Rewards" value={'$ToDo'} />
               <StatCard
                 title="APR"
                 value={poolData.reward}

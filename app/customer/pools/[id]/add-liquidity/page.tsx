@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, HelpCircle, X } from 'lucide-react';
+import { ArrowLeft, HelpCircle, X, Info } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
@@ -21,6 +21,9 @@ const assetSchema = z.object({
   ),
 });
 
+// Platform fee configuration
+const PLATFORM_FEE_PERCENTAGE = 1; // 1%
+
 export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { address } = useWallet();
@@ -28,6 +31,8 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
   const [assetAmount, setAssetAmount] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
+  const [platformFee, setPlatformFee] = useState('');
+  const [totalAmount, setTotalAmount] = useState('');
   const [error, setError] = useState('');
   const [validationError, setValidationError] = useState('');
   const [stakeLoading, setStakeLoading] = useState(false);
@@ -50,10 +55,11 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
 
   const poolData = {
     name: pool?.name || '',
-    assetPrice: pool ? `1 ${pool.assetName} = $750` : '1 Asset = $750', // Fixed price for demo
-    supplyAPY: pool ? `${(pool.rewardRate / 100).toFixed(2)}%` : '0%',
+    assetPrice: pool
+      ? `1 ${pool.assetName} = $${parseFloat(pool.assetPrice).toLocaleString()}`
+      : '1 Asset = $0',
+    supplyAPY: pool ? `${pool.rewardRate.toFixed(2)}%` : '0%',
   };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setValidationError('');
@@ -68,19 +74,28 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     }
   };
 
-  // Calculate token amount when asset amount changes
+  // Calculate amounts when asset amount changes
   useEffect(() => {
     if (assetAmount && pool) {
       try {
-        // Convert asset amount to USD, then to tokens (assuming 1 token = $1 for demo)
-        const assetValue = parseFloat(assetAmount) * 750; // $750 per asset
+        const assetPrice = parseFloat(pool.assetPrice);
+        const assetValue = parseFloat(assetAmount) * assetPrice;
+        const feeAmount = assetValue * (PLATFORM_FEE_PERCENTAGE / 100);
+        const total = assetValue + feeAmount;
+
         setTokenAmount(assetValue.toString());
+        setPlatformFee(feeAmount.toString());
+        setTotalAmount(total.toString());
       } catch (error) {
-        console.error('Error calculating token amount:', error);
+        console.error('Error calculating amounts:', error);
         setTokenAmount('');
+        setPlatformFee('');
+        setTotalAmount('');
       }
     } else {
       setTokenAmount('');
+      setPlatformFee('');
+      setTotalAmount('');
     }
   }, [assetAmount, pool]);
 
@@ -97,14 +112,15 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
       return;
     }
 
-    if (!tokenAmount || parseFloat(tokenAmount) <= 0) {
+    if (!totalAmount || parseFloat(totalAmount) <= 0) {
       toast.error('Please enter a valid amount.');
       return;
     }
 
     setStakeLoading(true);
     try {
-      await stake(pool.id, tokenAmount);
+      // Use total amount (including fee) for the transaction
+      await stake(pool.id, totalAmount);
       toast.success('Successfully added liquidity');
       router.push(`/customer/pools/${params.id}`);
     } catch (error: any) {
@@ -119,14 +135,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleSetMax = () => {
-    // In a real implementation, this would get the user's actual token balance
-    setAssetAmount('100'); // Realistic max amount for demo
-  };
-
   const isAmountValid = () => {
     try {
-      return tokenAmount && parseFloat(tokenAmount) > 0;
+      return totalAmount && parseFloat(totalAmount) > 0;
     } catch (error) {
       return false;
     }
@@ -213,13 +224,6 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                 <label className="text-lg font-semibold">
                   Amount to Supply
                 </label>
-                <button
-                  type="button"
-                  onClick={handleSetMax}
-                  className="px-3 py-1 text-sm bg-amber-500/20 text-amber-400 rounded-md hover:bg-amber-500/30 transition-colors"
-                >
-                  MAX
-                </button>
               </div>
 
               <div className="relative">
@@ -250,30 +254,46 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {/* Calculated Token Amount */}
+          {/* Fee Breakdown */}
           {tokenAmount && (
             <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
               <div className="space-y-4">
-                <label className="text-lg font-semibold">You will stake</label>
-
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                      <span className="text-white text-sm font-bold">A</span>
-                    </div>
-                    <span className="font-semibold text-lg">AURA</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={formatAmount(tokenAmount)}
-                    readOnly
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-6 py-4 pr-20 text-right text-2xl font-medium cursor-not-allowed"
-                  />
+                <div className="flex items-center gap-2">
+                  <Info className="w-5 h-5 text-blue-400" />
+                  <label className="text-lg font-semibold">
+                    Transaction Summary
+                  </label>
                 </div>
 
-                <div className="text-sm text-gray-400 text-center">
-                  Conversion rate: 1 {pool.assetName} = $
-                  {formatAmount(tokenAmount)} AURA
+                <div className="space-y-3">
+                  {/* Liquidity Amount */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Liquidity Amount</span>
+                    <span className="font-medium">
+                      ${formatAmount(tokenAmount)} AURA
+                    </span>
+                  </div>
+
+                  {/* Platform Fee */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">
+                      Platform Fee ({PLATFORM_FEE_PERCENTAGE}%)
+                    </span>
+                    <span className="font-medium text-amber-400">
+                      ${formatAmount(platformFee)} AURA
+                    </span>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-zinc-700"></div>
+
+                  {/* Total */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold">Total Amount</span>
+                    <span className="text-lg font-semibold text-white">
+                      ${formatAmount(totalAmount)} AURA
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -298,7 +318,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                 Adding Liquidity...
               </div>
             ) : (
-              'Add Liquidity'
+              `Add Liquidity - $${formatAmount(totalAmount)} AURA`
             )}
           </Button>
         </form>
@@ -307,6 +327,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
         <div className="mt-8 text-center">
           <p className="text-gray-400">
             By adding liquidity, you agree to the pool terms and conditions.
+          </p>
+          <p className="text-gray-500 text-sm mt-2">
+            Platform fee: {PLATFORM_FEE_PERCENTAGE}% • Total includes all fees
           </p>
         </div>
       </div>

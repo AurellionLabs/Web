@@ -63,7 +63,7 @@ export class PoolService implements IPoolService {
           data.tokenAddress,
           creatorAddress, // provider
           deadline,
-          BigInt(data.rewardRate * 100), // Convert to basis points
+          BigInt(data.rewardRate), // Already converted to basis points in frontend
           data.assetName,
           BigInt(data.fundingGoal),
           BigInt(data.assetPrice),
@@ -125,8 +125,9 @@ export class PoolService implements IPoolService {
     investorAddress: Address,
   ): Promise<string> {
     try {
-      // Validate input
-      if (!amount || BigInt(amount) <= 0) {
+      // Convert decimal amount to wei and validate
+      const amountInWei = ethers.parseEther(amount);
+      if (!amount || amountInWei <= 0) {
         throw new Error('Invalid stake amount');
       }
 
@@ -145,13 +146,13 @@ export class PoolService implements IPoolService {
       const tokenAddress = operation.token;
 
       // Handle ERC20 approval
-      await this.handleTokenApproval(tokenAddress, amount);
+      await this.handleTokenApproval(tokenAddress, amountInWei.toString());
 
       // Execute stake transaction
       const txResponse = await this.contract.stake(
         tokenAddress,
         poolId,
-        BigInt(amount),
+        amountInWei,
       );
 
       const txReceipt = await txResponse.wait();
@@ -452,8 +453,10 @@ export class PoolService implements IPoolService {
     if (!data.durationDays || data.durationDays <= 0) {
       throw new Error('Duration must be greater than 0 days');
     }
-    if (data.rewardRate < 0) {
-      throw new Error('Reward rate cannot be negative');
+    if (data.rewardRate < 0 || data.rewardRate > 10000) {
+      throw new Error(
+        'Reward rate must be between 0 and 10000 basis points (0-100%)',
+      );
     }
   }
 
