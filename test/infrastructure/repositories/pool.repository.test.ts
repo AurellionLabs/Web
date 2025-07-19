@@ -413,6 +413,7 @@ describe('PoolRepository', () => {
         startDate: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
         durationDays: 30,
         rewardRate: 5,
+        assetPrice: '750000000000000000000', // $750 in wei (18 decimals)
         status: PoolStatus.ACTIVE,
       };
 
@@ -452,6 +453,7 @@ describe('PoolRepository', () => {
         startDate: Math.floor(Date.now() / 1000),
         durationDays: 30,
         rewardRate: 5,
+        assetPrice: '750000000000000000000', // $750 in wei (18 decimals)
         status: PoolStatus.ACTIVE,
       };
 

@@ -39,6 +39,7 @@ export interface Pool {
    * The exact interpretation (permille, basis points, etc.) depends on the contract implementation.
    */
   rewardRate: number;
+  assetPrice: BigNumberString; // Price of the underlying asset (set during creation)
   status: PoolStatus;
   supportingDocuments?: SupportingDocument[]; // Supporting documents uploaded to IPFS
 }

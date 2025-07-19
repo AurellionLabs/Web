@@ -530,6 +530,7 @@ export class PoolRepository implements IPoolRepository {
       startDate: currentTime, // Contract doesn't store start date, using current time
       durationDays: Math.ceil((deadline - currentTime) / (24 * 60 * 60)),
       rewardRate: Number(operation.reward) / 100, // Assuming reward is in basis points
+      assetPrice: operation.assetPrice.toString(), // Asset price from contract
       status,
     };
   }
