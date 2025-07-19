@@ -23,6 +23,7 @@ import {
   OPERATION_CREATED_QUERY,
   OPERATION_CREATED_BY_TOKEN_QUERY,
 } from '@/constants';
+import { formatWeiToCurrency } from '@/lib/utils';
 
 /**
  * Blockchain-based implementation of IPoolRepository.
@@ -479,8 +480,8 @@ export class PoolRepository implements IPoolRepository {
       const apy = pool.rewardRate; // Assuming rewardRate is already in percentage
 
       // Format values
-      const tvlFormatted = this.formatCurrency(pool.totalValueLocked);
-      const fundingGoalFormatted = this.formatCurrency(pool.fundingGoal);
+      const tvlFormatted = formatWeiToCurrency(pool.totalValueLocked);
+      const fundingGoalFormatted = formatWeiToCurrency(pool.fundingGoal);
       const rewardFormatted = `${pool.rewardRate}%`;
 
       return {
@@ -533,16 +534,6 @@ export class PoolRepository implements IPoolRepository {
       assetPrice: operation.assetPrice.toString(), // Asset price from contract
       status,
     };
-  }
-
-  private formatCurrency(value: BigNumberString): string {
-    const num = parseFloat(ethers.formatEther(value));
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
   }
 
   // Additional methods required by IPoolRepository interface

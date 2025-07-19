@@ -17,20 +17,7 @@ const formatDaysLeft = (startDate: number, durationDays: number) => {
   return daysLeft.toString();
 };
 
-const formatTVL = (tvl: string) => {
-  try {
-    const value = parseFloat(tvl);
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(2)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(2)}K`;
-    } else {
-      return `$${value.toFixed(2)}`;
-    }
-  } catch (error) {
-    return '$0';
-  }
-};
+import { formatWeiToCurrency } from '@/lib/utils';
 
 export function PoolRow({ pool, index }: PoolRowProps) {
   const { selectPool } = usePoolsProvider();
@@ -46,7 +33,7 @@ export function PoolRow({ pool, index }: PoolRowProps) {
 
   useEffect(() => {
     setFormattedValues({
-      tvl: formatTVL(pool.totalValueLocked),
+      tvl: formatWeiToCurrency(pool.totalValueLocked),
       reward: pool.rewardRate.toFixed(2),
       daysLeft: formatDaysLeft(pool.startDate, pool.durationDays),
     });

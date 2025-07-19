@@ -22,6 +22,7 @@ import { Pool, PoolDynamicData, PoolStatus } from '@/domain/pool';
 import { toast } from 'react-hot-toast';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useWallet } from '@/hooks/useWallet';
+import { formatWeiToCurrency, formatWeiToEther } from '@/lib/utils';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
@@ -107,7 +108,9 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
 
   const getTotalDailyVolume = () => {
     if (!poolDynamics?.volume24h) return '0.00';
-    const value = parseFloat(poolDynamics.volume24h);
+    // Convert wei to ether, then format
+    const etherValue = formatWeiToEther(poolDynamics.volume24h);
+    const value = parseFloat(etherValue);
     if (isNaN(value)) return '0.00';
 
     if (value >= 1000000) {
