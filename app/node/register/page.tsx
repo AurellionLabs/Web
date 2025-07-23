@@ -46,15 +46,7 @@ import {
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { toast } from 'react-hot-toast';
-
-// This would typically come from an API or configuration
-const supportedAssets = [
-  { value: 1, label: 'Goat' },
-  { value: 2, label: 'Sheep' },
-  { value: 3, label: 'Cow' },
-  { value: 4, label: 'Chicken' },
-  { value: 5, label: 'Duck' },
-] as const;
+import { Asset } from '@/domain/node';
 
 const formSchema = z.object({
   addressName: z.string().min(3, {
@@ -82,38 +74,55 @@ const CapacityAndPriceInput = ({
   priceValue,
   onCapacityChange,
   onPriceChange,
+  selectedAssets,
+  supportedAssets,
 }: {
   capacityValue: number[];
   priceValue: number[];
   onCapacityChange: (value: number[]) => void;
   onPriceChange: (value: number[]) => void;
+  selectedAssets: number[];
+  supportedAssets: Asset[];
 }) => {
   return (
     <div className="space-y-4">
-      {capacityValue.map((cap, index) => (
-        <div key={index} className="grid grid-cols-2 gap-4">
-          <Input
-            type="number"
-            value={cap}
-            onChange={(e) => {
-              const newValue = [...capacityValue];
-              newValue[index] = parseInt(e.target.value);
-              onCapacityChange(newValue);
-            }}
-            placeholder={`Capacity for asset ${index + 1}`}
-          />
-          <Input
-            type="number"
-            value={priceValue[index]}
-            onChange={(e) => {
-              const newValue = [...priceValue];
-              newValue[index] = parseInt(e.target.value);
-              onPriceChange(newValue);
-            }}
-            placeholder={`Price for asset ${index + 1}`}
-          />
-        </div>
-      ))}
+      {capacityValue.map((cap, index) => {
+        const assetId = selectedAssets[index];
+        const asset = supportedAssets.find((a) => a.id === assetId);
+        const assetLabel = asset?.label || `Asset ${index + 1}`;
+
+        return (
+          <div key={index} className="space-y-2">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {assetLabel}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                type="number"
+                value={cap}
+                onChange={(e) => {
+                  const newValue = [...capacityValue];
+                  newValue[index] = parseInt(e.target.value) || 0;
+                  onCapacityChange(newValue);
+                }}
+                placeholder={`Capacity for ${assetLabel}`}
+                min="0"
+              />
+              <Input
+                type="number"
+                value={priceValue[index] || 0}
+                onChange={(e) => {
+                  const newValue = [...priceValue];
+                  newValue[index] = parseInt(e.target.value) || 0;
+                  onPriceChange(newValue);
+                }}
+                placeholder={`Price for ${assetLabel}`}
+                min="0"
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -168,8 +177,10 @@ const LocationInput = ({
 export default function NodeRegistrationPage() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [supportedAssets, setSupportedAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
   const { connected } = useMainProvider();
-  const { registerNode } = useNode();
+  const { registerNode, getSupportedAssets } = useNode();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -193,6 +204,22 @@ export default function NodeRegistrationPage() {
     };
     init();
   }, []);
+
+  useEffect(() => {
+    const loadAssets = async () => {
+      try {
+        setLoading(true);
+        const assets = await getSupportedAssets();
+        setSupportedAssets(assets);
+      } catch (error) {
+        console.error('Failed to load supported assets:', error);
+        toast.error('Failed to load supported assets');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadAssets();
+  }, [getSupportedAssets]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     console.log('on Submit');
@@ -294,38 +321,49 @@ export default function NodeRegistrationPage() {
                         <PopoverContent className="w-full p-0">
                           <Command>
                             <CommandInput placeholder="Search assets..." />
-                            <CommandEmpty>No assets found.</CommandEmpty>
-                            <CommandGroup>
-                              {supportedAssets.map((asset) => (
-                                <CommandItem
-                                  key={asset.value}
-                                  onSelect={() => {
-                                    const currentValue = new Set(field.value);
-                                    if (currentValue.has(asset.value)) {
-                                      currentValue.delete(asset.value);
-                                    } else {
-                                      currentValue.add(asset.value);
-                                    }
-                                    const newValue = Array.from(currentValue);
-                                    field.onChange(newValue);
-                                    form.setValue(
-                                      'capacity',
-                                      new Array(newValue.length).fill(0),
-                                    );
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      'mr-2 h-4 w-4',
-                                      field.value.includes(asset.value)
-                                        ? 'opacity-100'
-                                        : 'opacity-0',
-                                    )}
-                                  />
-                                  {asset.label}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
+                            {loading ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground">
+                                Loading assets...
+                              </div>
+                            ) : (
+                              <>
+                                <CommandEmpty>No assets found.</CommandEmpty>
+                                <CommandGroup>
+                                  {supportedAssets.map((asset) => (
+                                    <CommandItem
+                                      key={asset.id}
+                                      onSelect={() => {
+                                        const currentValue = new Set(
+                                          field.value,
+                                        );
+                                        if (currentValue.has(asset.id)) {
+                                          currentValue.delete(asset.id);
+                                        } else {
+                                          currentValue.add(asset.id);
+                                        }
+                                        const newValue =
+                                          Array.from(currentValue);
+                                        field.onChange(newValue);
+                                        form.setValue(
+                                          'capacity',
+                                          new Array(newValue.length).fill(0),
+                                        );
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          'mr-2 h-4 w-4',
+                                          field.value.includes(asset.id)
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                        )}
+                                      />
+                                      {asset.label}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </>
+                            )}
                           </Command>
                         </PopoverContent>
                       </Popover>
@@ -352,6 +390,8 @@ export default function NodeRegistrationPage() {
                         onPriceChange={(value) =>
                           form.setValue('prices', value)
                         }
+                        selectedAssets={form.watch('supportedAssets')}
+                        supportedAssets={supportedAssets}
                       />
                     </FormControl>
                     <FormDescription>
@@ -366,11 +406,13 @@ export default function NodeRegistrationPage() {
                 type="submit"
                 variant="default"
                 className="w-full"
-                disabled={form.formState.isSubmitting}
+                disabled={form.formState.isSubmitting || loading}
               >
                 {form.formState.isSubmitting
                   ? 'Registering...'
-                  : 'Register as Node'}
+                  : loading
+                    ? 'Loading assets...'
+                    : 'Register as Node'}
               </Button>
             </form>
           </Form>

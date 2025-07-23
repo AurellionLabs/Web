@@ -8,6 +8,27 @@
 import { LocationContract } from '@/typechain-types';
 
 /**
+ * Asset with attributes
+ */
+export interface Asset {
+  id: number;
+  label: string;
+  defaultAttributes: AssetAttribute[];
+}
+
+/**
+ * Asset attribute definition
+ */
+export interface AssetAttribute {
+  name: string;
+  type: 'number' | 'string' | 'boolean';
+  defaultValue: any;
+  required: boolean;
+  unit?: string;
+  description?: string;
+}
+
+/**
  * Core node entity
  */
 export interface Node {
@@ -90,6 +111,7 @@ export interface NodeRepository {
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
   getNodeOrders(nodeAddress: string): Promise<LocationContract.OrderStruct[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
+  getSupportedAssets(): Promise<Asset[]>;
   getAssetBalance(
     ownerAddress: string,
     assetId: number,

@@ -5,6 +5,8 @@ import type {
   AggregateAssetAmount,
   NodeLocation,
   AssetType,
+  Asset,
+  AssetAttribute,
 } from '@/domain/node';
 import { BrowserProvider, ethers } from 'ethers';
 import {
@@ -392,6 +394,159 @@ export class BlockchainNodeRepository implements NodeRepository {
       handleContractError(error, 'load available assets');
       throw error;
     }
+  }
+
+  async getSupportedAssets(): Promise<Asset[]> {
+    // TODO: Return predefined assets with their default attributes
+    const assets: Asset[] = [
+      {
+        id: 1,
+        label: 'Goat',
+        defaultAttributes: [
+          {
+            name: 'weight',
+            type: 'number',
+            defaultValue: 50,
+            required: true,
+            unit: 'kg',
+            description: 'Weight of the goat in kilograms',
+          },
+          {
+            name: 'breed',
+            type: 'string',
+            defaultValue: 'Mixed',
+            required: false,
+            description: 'Breed of the goat',
+          },
+          {
+            name: 'age',
+            type: 'number',
+            defaultValue: 12,
+            required: false,
+            unit: 'months',
+            description: 'Age of the goat in months',
+          },
+        ],
+      },
+      {
+        id: 2,
+        label: 'Sheep',
+        defaultAttributes: [
+          {
+            name: 'weight',
+            type: 'number',
+            defaultValue: 70,
+            required: true,
+            unit: 'kg',
+            description: 'Weight of the sheep in kilograms',
+          },
+          {
+            name: 'wool_quality',
+            type: 'string',
+            defaultValue: 'Standard',
+            required: false,
+            description: 'Quality of wool',
+          },
+          {
+            name: 'age',
+            type: 'number',
+            defaultValue: 18,
+            required: false,
+            unit: 'months',
+            description: 'Age of the sheep in months',
+          },
+        ],
+      },
+      {
+        id: 3,
+        label: 'Cow',
+        defaultAttributes: [
+          {
+            name: 'weight',
+            type: 'number',
+            defaultValue: 500,
+            required: true,
+            unit: 'kg',
+            description: 'Weight of the cow in kilograms',
+          },
+          {
+            name: 'milk_production',
+            type: 'number',
+            defaultValue: 25,
+            required: false,
+            unit: 'liters/day',
+            description: 'Daily milk production',
+          },
+          {
+            name: 'breed',
+            type: 'string',
+            defaultValue: 'Holstein',
+            required: false,
+            description: 'Breed of the cow',
+          },
+        ],
+      },
+      {
+        id: 4,
+        label: 'Chicken',
+        defaultAttributes: [
+          {
+            name: 'weight',
+            type: 'number',
+            defaultValue: 2,
+            required: true,
+            unit: 'kg',
+            description: 'Weight of the chicken in kilograms',
+          },
+          {
+            name: 'egg_production',
+            type: 'number',
+            defaultValue: 5,
+            required: false,
+            unit: 'eggs/week',
+            description: 'Weekly egg production',
+          },
+          {
+            name: 'breed',
+            type: 'string',
+            defaultValue: 'Rhode Island Red',
+            required: false,
+            description: 'Breed of the chicken',
+          },
+        ],
+      },
+      {
+        id: 5,
+        label: 'Duck',
+        defaultAttributes: [
+          {
+            name: 'weight',
+            type: 'number',
+            defaultValue: 3,
+            required: true,
+            unit: 'kg',
+            description: 'Weight of the duck in kilograms',
+          },
+          {
+            name: 'egg_production',
+            type: 'number',
+            defaultValue: 3,
+            required: false,
+            unit: 'eggs/week',
+            description: 'Weekly egg production',
+          },
+          {
+            name: 'breed',
+            type: 'string',
+            defaultValue: 'Pekin',
+            required: false,
+            description: 'Breed of the duck',
+          },
+        ],
+      },
+    ];
+
+    return assets;
   }
 
   async getAssetBalance(
