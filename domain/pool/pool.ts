@@ -38,7 +38,6 @@ export interface Pool {
    * Reward rate, potentially stored in basis points (e.g., 500 for 5.00%).
    * The exact interpretation (permille, basis points, etc.) depends on the contract implementation.
    */
-  rewardRate: number;
   assetPrice: BigNumberString; // Price of the underlying asset (set during creation)
   status: PoolStatus;
   supportingDocuments?: SupportingDocument[]; // Supporting documents uploaded to IPFS
@@ -66,7 +65,6 @@ export interface PoolCreationData {
   // providerAddress might be implicit (msg.sender in contract)
   fundingGoal: BigNumberString;
   durationDays: number;
-  rewardRate: number;
   assetPrice: BigNumberString; // Price of the underlying asset at creation
   supportingDocuments?: SupportingDocument[]; // Optional supporting documents
 }
@@ -92,9 +90,9 @@ export interface PoolDynamicData {
   volume24h?: BigNumberString; // Trading or staking volume in the last 24 hours
   volumeChangePercentage?: string; // e.g., "+5.2%" or "-1.0%"
   apy?: number; // Calculated Annual Percentage Yield (if applicable)
-  tvlFormatted: string; // Total Value Locked, formatted as currency string
-  fundingGoalFormatted: string; // Funding Goal, formatted as currency string
-  rewardFormatted: string; // Reward Rate, formatted as percentage string
+  tvl: string; // Total Value Locked, formatted as currency string
+  fundingGoal: string; // Funding Goal, formatted as currency string
+  reward: number; // Reward Rate, formatted as percentage string
 }
 
 /**

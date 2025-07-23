@@ -68,7 +68,6 @@ export class PoolService implements IPoolService {
           BigInt(data.fundingGoal),
           BigInt(data.assetPrice),
         );
-
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
         throw new Error('Transaction receipt not found for pool creation');
@@ -387,9 +386,17 @@ export class PoolService implements IPoolService {
     const currentTime = Math.floor(Date.now() / 1000);
     const poolEndTime = pool.startDate + pool.durationDays * 24 * 60 * 60;
 
-    // Calculate progress percentage
-    const fundingProgress =
-      (BigInt(pool.totalValueLocked) * BigInt(100)) / BigInt(pool.fundingGoal);
+    // Calculate progress percentage with division by zero protection
+    let fundingProgress = 0;
+    if (BigInt(pool.fundingGoal) > 0) {
+      const progress =
+        (BigInt(pool.totalValueLocked) * BigInt(10000)) /
+        BigInt(pool.fundingGoal);
+      fundingProgress = Number(progress) / 100; // Convert back from basis points for better precision
+      console.log('funding goal is not zero', pool.fundingGoal);
+    } else {
+      console.error('funding goal is zero');
+    }
 
     // Calculate time remaining
     const timeRemainingSeconds = Math.max(0, poolEndTime - currentTime);
@@ -401,23 +408,36 @@ export class PoolService implements IPoolService {
       .reduce((sum, stake) => sum + BigInt(stake.amount), BigInt(0))
       .toString();
 
-    // Calculate APY (simplified calculation)
-    const apy = pool.rewardRate;
+    // Calculate 48h volume for comparison (if we have enough history)
+    const twoDaysAgo = currentTime - 48 * 60 * 60;
+    const volume48h = history
+      .filter(
+        (stake) => stake.timestamp >= twoDaysAgo && stake.timestamp < oneDayAgo,
+      )
+      .reduce((sum, stake) => sum + BigInt(stake.amount), BigInt(0));
 
-    // Format values
-    const tvlFormatted = this.formatCurrency(pool.totalValueLocked);
-    const fundingGoalFormatted = this.formatCurrency(pool.fundingGoal);
-    const rewardFormatted = `${pool.rewardRate}%`;
+    // Calculate volume change percentage
+    let volumeChangePercentage = '+0.0%';
+    if (volume48h > 0) {
+      const change =
+        ((BigInt(volume24h) - volume48h) * BigInt(10000)) / volume48h;
+      const changePercent = Number(change) / 100;
+      volumeChangePercentage =
+        changePercent >= 0
+          ? `+${changePercent.toFixed(1)}%`
+          : `${changePercent.toFixed(1)}%`;
+    }
+
+    // Calculate APY (simplified calculation)
 
     return {
-      progressPercentage: Math.min(100, Number(fundingProgress)),
+      progressPercentage: Math.min(100, fundingProgress),
       timeRemainingSeconds,
       volume24h,
-      volumeChangePercentage: '+0.0%', // Would need historical data to calculate
-      apy,
-      tvlFormatted,
-      fundingGoalFormatted,
-      rewardFormatted,
+      volumeChangePercentage,
+      rewardRate: pool.rewardRate,
+      tvl: pool.totalValueLocked,
+      fundingGoal: pool.fundingGoal,
     };
   }
 

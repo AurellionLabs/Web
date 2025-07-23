@@ -24,6 +24,7 @@ import {
   OPERATION_CREATED_BY_TOKEN_QUERY,
 } from '@/constants';
 import { formatWeiToCurrency } from '@/lib/utils';
+import NodeCache from 'node-cache';
 
 /**
  * Blockchain-based implementation of IPoolRepository.
@@ -40,6 +41,17 @@ export class PoolRepository implements IPoolRepository {
   private isInitialized = false;
   private graphqlEndpoint =
     'https://api.studio.thegraph.com/query/112596/aurellion/version/latest';
+
+  // NodeCache for GraphQL responses (30 second TTL)
+  private cache = new NodeCache({
+    stdTTL: 30, // 30 seconds default TTL
+    checkperiod: 10, // Check for expired keys every 10 seconds
+    useClones: false, // Don't clone objects for better performance
+  });
+
+  // Rate limiting protection
+  private lastRequestTime = 0;
+  private minRequestInterval = 1000; // 1 second minimum between requests
 
   constructor(
     userProvider: Provider,
@@ -93,11 +105,106 @@ export class PoolRepository implements IPoolRepository {
     }
   }
 
-  private async graphqlRequest<T>(query: string, variables?: any): Promise<T> {
-    const headers = {
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_THEGRAPH_API_KEY}`,
+  private getCacheKey(query: string, variables?: any): string {
+    return JSON.stringify({ query, variables });
+  }
+
+  private getFromCache<T>(key: string): T | null {
+    const cachedData = this.cache.get<T>(key);
+    if (cachedData) {
+      console.log(
+        '[PoolRepository] Cache HIT for:',
+        key.substring(0, 50) + '...',
+      );
+      return cachedData;
+    }
+    return null;
+  }
+
+  private setCache<T>(key: string, data: T): void {
+    this.cache.set(key, data);
+    console.log(
+      '[PoolRepository] Cached response, total cache entries:',
+      this.cache.keys().length,
+    );
+  }
+
+  // Debug methods for cache management
+  public clearCache(): void {
+    this.cache.flushAll();
+    console.log('[PoolRepository] Cache cleared');
+  }
+
+  public getCacheStats(): { size: number; keys: string[] } {
+    const keys = this.cache.keys();
+    return {
+      size: keys.length,
+      keys: keys.map(
+        (key) => key.substring(0, 100) + (key.length > 100 ? '...' : ''),
+      ),
     };
-    return await request(this.graphqlEndpoint, query, variables, headers);
+  }
+
+  private async graphqlRequest<T>(query: string, variables?: any): Promise<T> {
+    const cacheKey = this.getCacheKey(query, variables);
+
+    // Try to get from cache first
+    const cached = this.getFromCache<T>(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
+    console.log('[PoolRepository] Cache MISS, making GraphQL request...');
+
+    // Rate limiting protection - ensure minimum interval between requests
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      console.log(
+        `[PoolRepository] Rate limiting: waiting ${waitTime}ms before request`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_THEGRAPH_API_KEY;
+    console.log('[PoolRepository] API Key Debug:', {
+      hasApiKey: !!apiKey,
+      keyLength: apiKey?.length || 0,
+      keyPrefix: apiKey?.substring(0, 10) + '...',
+      endpoint: this.graphqlEndpoint,
+    });
+
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+    };
+
+    try {
+      this.lastRequestTime = Date.now();
+      const result = await request<T>(
+        this.graphqlEndpoint,
+        query,
+        variables,
+        headers,
+      );
+
+      // Cache the successful result
+      this.setCache<T>(cacheKey, result);
+      console.log('[PoolRepository] ✅ Successfully cached GraphQL response');
+
+      return result;
+    } catch (error) {
+      console.error('[PoolRepository] ❌ GraphQL request failed:', error);
+
+      // Log specific error details for 429 errors
+      if (error instanceof Error && error.message.includes('429')) {
+        console.error(
+          '[PoolRepository] Rate limit error - API key might be invalid or quota exceeded',
+        );
+      }
+
+      throw error;
+    }
   }
 
   private async retryOnRateLimit<T>(
@@ -453,10 +560,19 @@ export class PoolRepository implements IPoolRepository {
       const currentTime = Math.floor(Date.now() / 1000);
       const poolEndTime = pool.startDate + pool.durationDays * 24 * 60 * 60;
 
-      // Calculate progress percentage
-      const fundingProgress =
-        (BigInt(pool.totalValueLocked) * BigInt(100)) /
-        BigInt(pool.fundingGoal);
+      // Calculate progress percentage with division by zero protection
+      let fundingProgress = 0;
+      if (BigInt(pool.fundingGoal) > 0) {
+        const progress =
+          (BigInt(pool.totalValueLocked) * BigInt(10000)) /
+          BigInt(pool.fundingGoal);
+        fundingProgress = Number(progress) / 100; // Convert back from basis points for better precision
+        console.log('funding goal is not zero', pool.fundingGoal);
+      } else {
+        console.error('warning funding goal is zero');
+      }
+
+      // Calculate time progress (now actually used)
       const timeProgress = Math.min(
         100,
         Math.max(
@@ -471,28 +587,56 @@ export class PoolRepository implements IPoolRepository {
 
       // Calculate 24h volume
       const oneDayAgo = currentTime - 24 * 60 * 60;
-      const volume24h = history
-        .filter((stake) => stake.timestamp >= oneDayAgo)
-        .reduce((sum, stake) => sum + BigInt(stake.amount), BigInt(0))
-        .toString();
+      let volume24h: string = '0';
+      try {
+        volume24h = history
+          .filter((stake) => stake.timestamp >= oneDayAgo)
+          .reduce((sum, stake) => sum + BigInt(stake.amount), BigInt(0))
+          .toString();
+      } catch (e) {
+        console.error('unable to calcate 24h volume');
+      }
+
+      // Calculate 48h volume for comparison (if we have enough history)
+      const twoDaysAgo = currentTime - 48 * 60 * 60;
+
+      let volume48h: bigint = BigInt(0);
+      try {
+        volume48h = history
+          .filter(
+            (stake) =>
+              stake.timestamp >= twoDaysAgo && stake.timestamp < oneDayAgo,
+          )
+          .reduce((sum, stake) => sum + BigInt(stake.amount), BigInt(0));
+      } catch (e) {
+        console.error('unable to calcate 48h volume');
+      }
+
+      // Calculate volume change percentage
+      let volumeChangePercentage = '+0.0%';
+      if (volume48h > 0 && BigInt(volume24h) > 0) {
+        const change =
+          ((BigInt(volume24h) - volume48h) * BigInt(10000)) / volume48h;
+        const changePercent = Number(change) / 100;
+        volumeChangePercentage =
+          changePercent >= 0
+            ? `+${changePercent.toFixed(1)}%`
+            : `${changePercent.toFixed(1)}%`;
+      }
 
       // Calculate APY (simplified calculation)
       const apy = pool.rewardRate; // Assuming rewardRate is already in percentage
 
       // Format values
-      const tvlFormatted = formatWeiToCurrency(pool.totalValueLocked);
-      const fundingGoalFormatted = formatWeiToCurrency(pool.fundingGoal);
-      const rewardFormatted = `${pool.rewardRate}%`;
 
       return {
-        progressPercentage: Math.min(100, Number(fundingProgress)),
+        progressPercentage: Math.min(100, fundingProgress),
         timeRemainingSeconds,
         volume24h,
-        volumeChangePercentage: '+0.0%', // Would need historical data to calculate
-        apy,
-        tvlFormatted,
-        fundingGoalFormatted,
-        rewardFormatted,
+        volumeChangePercentage,
+        rewardRate: pool.rewardRate,
+        tvl: pool.totalValueLocked,
+        fundingGoal: pool.fundingGoal,
       };
     } catch (error) {
       console.error(
@@ -510,6 +654,7 @@ export class PoolRepository implements IPoolRepository {
   ): Pool {
     const currentTime = Math.floor(Date.now() / 1000);
     const deadline = Number(operation.deadline);
+    const actualStartDate = Number(operation.startDate);
 
     // Determine status based on deadline and completion
     let status: PoolStatus;
@@ -528,8 +673,8 @@ export class PoolRepository implements IPoolRepository {
       providerAddress: operation.provider as Address,
       fundingGoal: operation.fundingGoal.toString(),
       totalValueLocked: operation.tokenTvl?.toString() || '0',
-      startDate: currentTime, // Contract doesn't store start date, using current time
-      durationDays: Math.ceil((deadline - currentTime) / (24 * 60 * 60)),
+      startDate: actualStartDate, // Use actual start date from contract
+      durationDays: Math.ceil((deadline - actualStartDate) / (24 * 60 * 60)), // Calculate original duration
       rewardRate: Number(operation.reward) / 100, // Assuming reward is in basis points
       assetPrice: operation.assetPrice.toString(), // Asset price from contract
       status,
