@@ -48,6 +48,20 @@ import { useMainProvider } from '@/app/providers/main.provider';
 import { toast } from 'react-hot-toast';
 import { Asset } from '@/domain/node';
 
+// Utility function to format snake_case to Title Case
+const formatAttributeName = (name: string): string => {
+  return name
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+type CustomAttribute = {
+  name: string;
+  type: 'string' | 'number';
+  value?: any;
+};
+
 const formSchema = z.object({
   addressName: z.string().min(3, {
     message: 'Location name must be at least 3 characters.',
@@ -67,7 +81,206 @@ const formSchema = z.object({
   prices: z.array(z.number()).min(1, {
     message: 'Please specify price for each asset.',
   }),
+  assetAttributes: z
+    .record(z.string(), z.record(z.string(), z.any()))
+    .optional(),
+  customAttributes: z
+    .record(
+      z.string(),
+      z.array(
+        z.object({
+          name: z.string(),
+          type: z.enum(['string', 'number']),
+          value: z.any().default(''),
+        }),
+      ),
+    )
+    .optional(),
 });
+
+const AssetAttributeInput = ({
+  asset,
+  attributeValues,
+  customAttributes,
+  onAttributeChange,
+  onCustomAttributeChange,
+}: {
+  asset: Asset;
+  attributeValues: Record<string, any>;
+  customAttributes: CustomAttribute[];
+  onAttributeChange: (
+    assetId: number,
+    attributeName: string,
+    value: any,
+  ) => void;
+  onCustomAttributeChange: (
+    assetId: number,
+    attributes: CustomAttribute[],
+  ) => void;
+}) => {
+  const addCustomAttribute = () => {
+    const newAttribute: CustomAttribute = {
+      name: '',
+      type: 'string',
+      value: '',
+    };
+    onCustomAttributeChange(asset.id, [...customAttributes, newAttribute]);
+  };
+
+  const updateCustomAttribute = (
+    index: number,
+    field: keyof CustomAttribute,
+    value: any,
+  ) => {
+    const updated = [...customAttributes];
+
+    if (field === 'value') {
+      // Auto-detect type based on value
+      const isNumber =
+        value !== '' && !isNaN(Number(value)) && isFinite(Number(value));
+      updated[index] = {
+        ...updated[index],
+        value: isNumber ? Number(value) : value,
+        type: isNumber ? 'number' : 'string',
+      };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+
+    onCustomAttributeChange(asset.id, updated);
+  };
+
+  const removeCustomAttribute = (index: number) => {
+    const updated = customAttributes.filter((_, i) => i !== index);
+    onCustomAttributeChange(asset.id, updated);
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Attributes
+        </h5>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addCustomAttribute}
+          className="text-xs text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+        >
+          + Add Custom
+        </Button>
+      </div>
+
+      {/* Default Attributes */}
+      {asset.defaultAttributes.map((attribute) => {
+        const currentValue =
+          attributeValues[attribute.name] ?? attribute.defaultValue;
+
+        return (
+          <div
+            key={attribute.name}
+            className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+          >
+            <div className="col-span-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {formatAttributeName(attribute.name)}
+                {attribute.required && (
+                  <span className="text-red-500 ml-1">*</span>
+                )}
+                {attribute.unit && (
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({attribute.unit})
+                  </span>
+                )}
+              </label>
+            </div>
+
+            <div className="col-span-3">
+              {attribute.type === 'number' ? (
+                <Input
+                  type="number"
+                  value={currentValue}
+                  onChange={(e) => {
+                    const value =
+                      e.target.value === '' ? '' : Number(e.target.value);
+                    onAttributeChange(asset.id, attribute.name, value);
+                  }}
+                  placeholder={
+                    attribute.description ||
+                    `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
+                  }
+                  required={attribute.required}
+                  min="0"
+                  className="w-full h-9"
+                />
+              ) : (
+                <Input
+                  type="text"
+                  value={currentValue || ''}
+                  onChange={(e) => {
+                    onAttributeChange(asset.id, attribute.name, e.target.value);
+                  }}
+                  placeholder={
+                    attribute.description ||
+                    `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
+                  }
+                  required={attribute.required}
+                  className="w-full h-9"
+                />
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Custom Attributes */}
+      {customAttributes.map((attr, index) => (
+        <div
+          key={index}
+          className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+        >
+          <div className="col-span-2">
+            <Input
+              type="text"
+              value={attr.name}
+              onChange={(e) =>
+                updateCustomAttribute(index, 'name', e.target.value)
+              }
+              placeholder="Attribute name"
+              className="w-full h-9 text-sm"
+            />
+          </div>
+
+          <div className="col-span-2">
+            <Input
+              type="text"
+              value={attr.value}
+              onChange={(e) => {
+                updateCustomAttribute(index, 'value', e.target.value);
+              }}
+              placeholder="Enter value"
+              className="w-full h-9"
+            />
+          </div>
+
+          <div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => removeCustomAttribute(index)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 w-8 p-0"
+            >
+              ×
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const CapacityAndPriceInput = ({
   capacityValue,
@@ -76,6 +289,10 @@ const CapacityAndPriceInput = ({
   onPriceChange,
   selectedAssets,
   supportedAssets,
+  assetAttributes,
+  customAttributes,
+  onAssetAttributeChange,
+  onCustomAttributeChange,
 }: {
   capacityValue: number[];
   priceValue: number[];
@@ -83,43 +300,94 @@ const CapacityAndPriceInput = ({
   onPriceChange: (value: number[]) => void;
   selectedAssets: number[];
   supportedAssets: Asset[];
+  assetAttributes: Record<string, Record<string, any>>;
+  customAttributes: Record<string, CustomAttribute[]>;
+  onAssetAttributeChange: (
+    assetId: number,
+    attributeName: string,
+    value: any,
+  ) => void;
+  onCustomAttributeChange: (
+    assetId: number,
+    attributes: CustomAttribute[],
+  ) => void;
 }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {capacityValue.map((cap, index) => {
         const assetId = selectedAssets[index];
         const asset = supportedAssets.find((a) => a.id === assetId);
         const assetLabel = asset?.label || `Asset ${index + 1}`;
 
+        if (!asset) return null;
+
         return (
-          <div key={index} className="space-y-2">
-            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {assetLabel}
+          <div
+            key={index}
+            className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-900"
+          >
+            {/* Asset Header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-2 h-8 bg-blue-500 rounded-full"></div>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                {assetLabel}
+              </h3>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                type="number"
-                value={cap}
-                onChange={(e) => {
-                  const newValue = [...capacityValue];
-                  newValue[index] = parseInt(e.target.value) || 0;
-                  onCapacityChange(newValue);
-                }}
-                placeholder={`Capacity for ${assetLabel}`}
-                min="0"
-              />
-              <Input
-                type="number"
-                value={priceValue[index] || 0}
-                onChange={(e) => {
-                  const newValue = [...priceValue];
-                  newValue[index] = parseInt(e.target.value) || 0;
-                  onPriceChange(newValue);
-                }}
-                placeholder={`Price for ${assetLabel}`}
-                min="0"
-              />
+
+            {/* Capacity Row */}
+            <div className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700">
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Capacity <span className="text-red-500">*</span>
+                </label>
+              </div>
+              <div className="col-span-3">
+                <Input
+                  type="number"
+                  value={cap}
+                  onChange={(e) => {
+                    const newValue = [...capacityValue];
+                    newValue[index] = parseInt(e.target.value) || 0;
+                    onCapacityChange(newValue);
+                  }}
+                  placeholder="Maximum capacity"
+                  min="0"
+                  className="w-full h-9"
+                />
+              </div>
             </div>
+
+            {/* Price Row */}
+            <div className="grid grid-cols-5 gap-4 items-center py-3 mb-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Price <span className="text-red-500">*</span>
+                </label>
+              </div>
+              <div className="col-span-3">
+                <Input
+                  type="number"
+                  value={priceValue[index] || 0}
+                  onChange={(e) => {
+                    const newValue = [...priceValue];
+                    newValue[index] = parseInt(e.target.value) || 0;
+                    onPriceChange(newValue);
+                  }}
+                  placeholder="Price per unit"
+                  min="0"
+                  className="w-full h-9"
+                />
+              </div>
+            </div>
+
+            {/* Asset Attributes */}
+            <AssetAttributeInput
+              asset={asset}
+              attributeValues={assetAttributes[assetId.toString()] || {}}
+              customAttributes={customAttributes[assetId.toString()] || []}
+              onAttributeChange={onAssetAttributeChange}
+              onCustomAttributeChange={onCustomAttributeChange}
+            />
           </div>
         );
       })}
@@ -191,6 +459,8 @@ export default function NodeRegistrationPage() {
       supportedAssets: [],
       capacity: [],
       prices: [],
+      assetAttributes: {},
+      customAttributes: {},
     },
   });
 
@@ -221,8 +491,39 @@ export default function NodeRegistrationPage() {
     loadAssets();
   }, [getSupportedAssets]);
 
+  const handleAssetAttributeChange = (
+    assetId: number,
+    attributeName: string,
+    value: any,
+  ) => {
+    const currentAttributes = form.getValues('assetAttributes') || {};
+    const assetAttributes = currentAttributes[assetId.toString()] || {};
+
+    form.setValue('assetAttributes', {
+      ...currentAttributes,
+      [assetId.toString()]: {
+        ...assetAttributes,
+        [attributeName]: value,
+      },
+    });
+  };
+
+  const handleCustomAttributeChange = (
+    assetId: number,
+    attributes: CustomAttribute[],
+  ) => {
+    const currentCustomAttributes = form.getValues('customAttributes') || {};
+
+    form.setValue('customAttributes', {
+      ...currentCustomAttributes,
+      [assetId.toString()]: attributes,
+    });
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     console.log('on Submit');
+    console.log('Asset Attributes:', values.assetAttributes);
+    console.log('Custom Attributes:', values.customAttributes);
     try {
       if (!connected) {
         toast.error('Please connect your wallet first');
@@ -250,6 +551,8 @@ export default function NodeRegistrationPage() {
         supportedAssets: values.supportedAssets,
         capacity: values.capacity,
         assetPrices: values.prices,
+        // Asset attributes can be stored for future use
+        assetAttributes: values.assetAttributes,
       };
 
       await registerNode(nodeData);
@@ -274,7 +577,7 @@ export default function NodeRegistrationPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <FormField
                 control={form.control}
                 name="addressName"
@@ -348,6 +651,37 @@ export default function NodeRegistrationPage() {
                                           'capacity',
                                           new Array(newValue.length).fill(0),
                                         );
+                                        form.setValue(
+                                          'prices',
+                                          new Array(newValue.length).fill(0),
+                                        );
+
+                                        // Clear attributes for deselected assets
+                                        const currentAttributes =
+                                          form.getValues('assetAttributes') ||
+                                          {};
+                                        const updatedAttributes: Record<
+                                          string,
+                                          Record<string, any>
+                                        > = {};
+                                        newValue.forEach((assetId) => {
+                                          if (
+                                            currentAttributes[
+                                              assetId.toString()
+                                            ]
+                                          ) {
+                                            updatedAttributes[
+                                              assetId.toString()
+                                            ] =
+                                              currentAttributes[
+                                                assetId.toString()
+                                              ];
+                                          }
+                                        });
+                                        form.setValue(
+                                          'assetAttributes',
+                                          updatedAttributes,
+                                        );
                                       }}
                                     >
                                       <Check
@@ -392,6 +726,10 @@ export default function NodeRegistrationPage() {
                         }
                         selectedAssets={form.watch('supportedAssets')}
                         supportedAssets={supportedAssets}
+                        assetAttributes={form.watch('assetAttributes') || {}}
+                        customAttributes={form.watch('customAttributes') || {}}
+                        onAssetAttributeChange={handleAssetAttributeChange}
+                        onCustomAttributeChange={handleCustomAttributeChange}
                       />
                     </FormControl>
                     <FormDescription>
