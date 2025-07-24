@@ -324,11 +324,11 @@ const CapacityAndPriceInput = ({
         return (
           <div
             key={index}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-900"
+            className="border border-gray-200 dark:border-gray-700 rounded-lg p-6"
           >
             {/* Asset Header */}
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-8 bg-blue-500 rounded-full"></div>
+              <div className="w-2 h-8 bg-gray-800 rounded-full"></div>
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                 {assetLabel}
               </h3>
