@@ -2,6 +2,7 @@ import React from 'react';
 import { Input } from '@/app/components/ui/input';
 import AssetAttributeInput from './AssetAttributeInput';
 import { Asset } from '@/domain/node';
+import { FormLabel } from '@/app/components/ui/form';
 
 type CustomAttribute = {
   name: string;
@@ -60,48 +61,40 @@ const AssetSection: React.FC<Props> = ({
         </h3>
       </div>
       {/* Capacity Row */}
-      <div className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700">
-        <div className="col-span-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Capacity <span className="text-red-500">*</span>
-          </label>
-        </div>
-        <div className="col-span-3">
-          <Input
-            type="number"
-            value={cap}
-            onChange={(e) => {
-              const newValue = [...capacityValue];
-              newValue[index] = parseInt(e.target.value) || 0;
-              onCapacityChange(newValue);
-            }}
-            placeholder="Maximum capacity"
-            min="0"
-            className="w-full h-9"
-          />
-        </div>
+      <div className="mb-6">
+        <FormLabel className="block font-semibold text-sm mb-2 text-white">
+          Capacity
+        </FormLabel>
+        <Input
+          type="number"
+          value={cap}
+          onChange={(e) => {
+            const newValue = [...capacityValue];
+            newValue[index] = parseInt(e.target.value) || 0;
+            onCapacityChange(newValue);
+          }}
+          placeholder="Maximum capacity"
+          min="0"
+          className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
+        />
       </div>
       {/* Price Row */}
-      <div className="grid grid-cols-5 gap-4 items-center py-3 mb-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="col-span-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Price <span className="text-red-500">*</span>
-          </label>
-        </div>
-        <div className="col-span-3">
-          <Input
-            type="number"
-            value={price}
-            onChange={(e) => {
-              const newValue = [...priceValue];
-              newValue[index] = parseInt(e.target.value) || 0;
-              onPriceChange(newValue);
-            }}
-            placeholder="Price per unit"
-            min="0"
-            className="w-full h-9"
-          />
-        </div>
+      <div className="mb-6">
+        <FormLabel className="block font-semibold text-sm mb-2 text-white">
+          Price
+        </FormLabel>
+        <Input
+          type="number"
+          value={price}
+          onChange={(e) => {
+            const newValue = [...priceValue];
+            newValue[index] = parseInt(e.target.value) || 0;
+            onPriceChange(newValue);
+          }}
+          placeholder="Price per unit"
+          min="0"
+          className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
+        />
       </div>
       {/* Asset Attributes */}
       <AssetAttributeInput

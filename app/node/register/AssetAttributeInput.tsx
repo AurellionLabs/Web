@@ -2,6 +2,7 @@ import { Input } from '@/app/components/ui/input';
 import { Button } from '@/app/components/ui/button';
 import { Asset } from '@/domain/node';
 import React from 'react';
+import { FormLabel } from '@/app/components/ui/form';
 
 // Utility function to format snake_case to Title Case
 const formatAttributeName = (name: string): string => {
@@ -95,57 +96,35 @@ const AssetAttributeInput: React.FC<Props> = ({
         const currentValue =
           attributeValues[attribute.name] ?? attribute.defaultValue;
         return (
-          <div
-            key={attribute.name}
-            className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-          >
-            <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {formatAttributeName(attribute.name)}
-                {attribute.required && (
-                  <span className="text-red-500 ml-1">*</span>
-                )}
-                {attribute.unit && (
-                  <span className="text-xs text-gray-500 ml-1">
-                    ({attribute.unit})
-                  </span>
-                )}
-              </label>
-            </div>
-            <div className="col-span-3">
-              {attribute.type === 'number' ? (
-                <Input
-                  type="number"
-                  value={currentValue}
-                  onChange={(e) => {
-                    const value =
-                      e.target.value === '' ? '' : Number(e.target.value);
-                    onAttributeChange(asset.id, attribute.name, value);
-                  }}
-                  placeholder={
-                    attribute.description ||
-                    `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
-                  }
-                  required={attribute.required}
-                  min="0"
-                  className="w-full h-9"
-                />
-              ) : (
-                <Input
-                  type="text"
-                  value={currentValue || ''}
-                  onChange={(e) => {
-                    onAttributeChange(asset.id, attribute.name, e.target.value);
-                  }}
-                  placeholder={
-                    attribute.description ||
-                    `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
-                  }
-                  required={attribute.required}
-                  className="w-full h-9"
-                />
+          <div key={attribute.name} className="mb-6">
+            <FormLabel className="block font-semibold text-sm mb-2 text-white">
+              {formatAttributeName(attribute.name)}
+              {attribute.unit && (
+                <span className="text-xs text-gray-400 ml-1">
+                  ({attribute.unit})
+                </span>
               )}
-            </div>
+            </FormLabel>
+            <Input
+              type={attribute.type === 'number' ? 'number' : 'text'}
+              value={currentValue || ''}
+              onChange={(e) => {
+                const value =
+                  attribute.type === 'number'
+                    ? e.target.value === ''
+                      ? ''
+                      : Number(e.target.value)
+                    : e.target.value;
+                onAttributeChange(asset.id, attribute.name, value);
+              }}
+              placeholder={
+                attribute.description ||
+                `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
+              }
+              required={attribute.required}
+              min={attribute.type === 'number' ? '0' : undefined}
+              className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
+            />
           </div>
         );
       })}
