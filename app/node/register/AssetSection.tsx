@@ -55,7 +55,7 @@ const AssetSection: React.FC<Props> = ({
     <div>
       {/* Asset Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-2 h-8 bg-amber-300 rounded-full"></div>
+        <div className="w-2 h-8 bg-amber-500 rounded-full"></div>
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
           {assetLabel}
         </h3>

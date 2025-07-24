@@ -86,7 +86,7 @@ const AssetAttributeInput: React.FC<Props> = ({
           variant="outline"
           size="sm"
           onClick={addCustomAttribute}
-          className="text-xs text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          className="text-xs text-amber-500 border-amber-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
         >
           + Add Custom
         </Button>
