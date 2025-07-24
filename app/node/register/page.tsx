@@ -322,73 +322,75 @@ const CapacityAndPriceInput = ({
         if (!asset) return null;
 
         return (
-          <div
-            key={index}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg p-6"
-          >
-            {/* Asset Header */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-8 bg-gray-800 rounded-full"></div>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                {assetLabel}
-              </h3>
-            </div>
+          <>
+            {index > 0 && (
+              <hr className="my-8 border-t border-gray-700 dark:border-gray-600" />
+            )}
+            <div key={index}>
+              {/* Asset Header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-2 h-8 bg-amber-300 rounded-full"></div>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                  {assetLabel}
+                </h3>
+              </div>
 
-            {/* Capacity Row */}
-            <div className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700">
-              <div className="col-span-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Capacity <span className="text-red-500">*</span>
-                </label>
+              {/* Capacity Row */}
+              <div className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Capacity <span className="text-red-500">*</span>
+                  </label>
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    type="number"
+                    value={cap}
+                    onChange={(e) => {
+                      const newValue = [...capacityValue];
+                      newValue[index] = parseInt(e.target.value) || 0;
+                      onCapacityChange(newValue);
+                    }}
+                    placeholder="Maximum capacity"
+                    min="0"
+                    className="w-full h-9"
+                  />
+                </div>
               </div>
-              <div className="col-span-3">
-                <Input
-                  type="number"
-                  value={cap}
-                  onChange={(e) => {
-                    const newValue = [...capacityValue];
-                    newValue[index] = parseInt(e.target.value) || 0;
-                    onCapacityChange(newValue);
-                  }}
-                  placeholder="Maximum capacity"
-                  min="0"
-                  className="w-full h-9"
-                />
-              </div>
-            </div>
 
-            {/* Price Row */}
-            <div className="grid grid-cols-5 gap-4 items-center py-3 mb-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="col-span-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Price <span className="text-red-500">*</span>
-                </label>
+              {/* Price Row */}
+              <div className="grid grid-cols-5 gap-4 items-center py-3 mb-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Price <span className="text-red-500">*</span>
+                  </label>
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    type="number"
+                    value={priceValue[index] || 0}
+                    onChange={(e) => {
+                      const newValue = [...priceValue];
+                      newValue[index] = parseInt(e.target.value) || 0;
+                      onPriceChange(newValue);
+                    }}
+                    placeholder="Price per unit"
+                    min="0"
+                    className="w-full h-9"
+                  />
+                </div>
               </div>
-              <div className="col-span-3">
-                <Input
-                  type="number"
-                  value={priceValue[index] || 0}
-                  onChange={(e) => {
-                    const newValue = [...priceValue];
-                    newValue[index] = parseInt(e.target.value) || 0;
-                    onPriceChange(newValue);
-                  }}
-                  placeholder="Price per unit"
-                  min="0"
-                  className="w-full h-9"
-                />
-              </div>
-            </div>
 
-            {/* Asset Attributes */}
-            <AssetAttributeInput
-              asset={asset}
-              attributeValues={assetAttributes[assetId.toString()] || {}}
-              customAttributes={customAttributes[assetId.toString()] || []}
-              onAttributeChange={onAssetAttributeChange}
-              onCustomAttributeChange={onCustomAttributeChange}
-            />
-          </div>
+              {/* Asset Attributes */}
+              <AssetAttributeInput
+                asset={asset}
+                attributeValues={assetAttributes[assetId.toString()] || {}}
+                customAttributes={customAttributes[assetId.toString()] || []}
+                onAttributeChange={onAssetAttributeChange}
+                onCustomAttributeChange={onCustomAttributeChange}
+              />
+            </div>
+          </>
         );
       })}
     </div>
@@ -715,7 +717,6 @@ export default function NodeRegistrationPage() {
                 name="capacity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Capacity and Prices</FormLabel>
                     <FormControl>
                       <CapacityAndPriceInput
                         capacityValue={field.value}
