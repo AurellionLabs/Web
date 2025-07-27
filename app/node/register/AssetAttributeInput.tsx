@@ -106,23 +106,27 @@ const AssetAttributeInput: React.FC<Props> = ({
               )}
             </FormLabel>
             <Input
-              type={attribute.type === 'number' ? 'number' : 'text'}
-              value={currentValue || ''}
+              type="text"
+              value={
+                currentValue === 0 || currentValue === '' ? '' : currentValue
+              }
               onChange={(e) => {
-                const value =
-                  attribute.type === 'number'
-                    ? e.target.value === ''
-                      ? ''
-                      : Number(e.target.value)
-                    : e.target.value;
-                onAttributeChange(asset.id, attribute.name, value);
+                const value = e.target.value;
+                if (attribute.type === 'number') {
+                  // Allow empty string, numbers, and backspace for number attributes
+                  if (value === '' || /^\d*$/.test(value)) {
+                    const numValue = value === '' ? 0 : Number(value);
+                    onAttributeChange(asset.id, attribute.name, numValue);
+                  }
+                } else {
+                  onAttributeChange(asset.id, attribute.name, value);
+                }
               }}
               placeholder={
                 attribute.description ||
                 `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
               }
               required={attribute.required}
-              min={attribute.type === 'number' ? '0' : undefined}
               className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
             />
           </div>

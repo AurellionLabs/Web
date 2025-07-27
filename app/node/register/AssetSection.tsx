@@ -66,15 +66,18 @@ const AssetSection: React.FC<Props> = ({
           Capacity
         </FormLabel>
         <Input
-          type="number"
-          value={cap}
+          type="text"
+          value={cap === 0 ? '' : cap}
           onChange={(e) => {
-            const newValue = [...capacityValue];
-            newValue[index] = parseInt(e.target.value) || 0;
-            onCapacityChange(newValue);
+            const value = e.target.value;
+            // Allow empty string, numbers, and backspace
+            if (value === '' || /^\d*$/.test(value)) {
+              const newValue = [...capacityValue];
+              newValue[index] = value === '' ? 0 : parseInt(value) || 0;
+              onCapacityChange(newValue);
+            }
           }}
           placeholder="Maximum capacity"
-          min="0"
           className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
         />
       </div>
@@ -84,15 +87,18 @@ const AssetSection: React.FC<Props> = ({
           Price
         </FormLabel>
         <Input
-          type="number"
-          value={price}
+          type="text"
+          value={price === 0 ? '' : price}
           onChange={(e) => {
-            const newValue = [...priceValue];
-            newValue[index] = parseInt(e.target.value) || 0;
-            onPriceChange(newValue);
+            const value = e.target.value;
+            // Allow empty string, numbers, and backspace
+            if (value === '' || /^\d*$/.test(value)) {
+              const newValue = [...priceValue];
+              newValue[index] = value === '' ? 0 : parseInt(value) || 0;
+              onPriceChange(newValue);
+            }
           }}
           placeholder="Price per unit"
-          min="0"
           className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
         />
       </div>
