@@ -46,10 +46,12 @@ import {
   TokenizedAsset,
   getAssetName,
 } from '@/dapp-connectors/aurum-controller';
+import { Asset } from '@/domain/platform';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
+import AssetSelectionForm from './asset-selection-form';
 
 const tokenizeFormSchema = z.object({
   assetId: z.string({
@@ -64,6 +66,21 @@ const tokenizeFormSchema = z.object({
       message: 'Please enter a valid quantity greater than 0.',
     },
   ),
+  assetAttributes: z
+    .record(z.string(), z.record(z.string(), z.any()))
+    .optional(),
+  customAttributes: z
+    .record(
+      z.string(),
+      z.array(
+        z.object({
+          name: z.string(),
+          type: z.enum(['string', 'number']),
+          value: z.any().default(''),
+        }),
+      ),
+    )
+    .optional(),
 });
 
 interface EditingCapacity {
@@ -76,30 +93,39 @@ interface EditingPrice {
   value: string;
 }
 
+type CustomAttribute = {
+  name: string;
+  type: 'string' | 'number';
+  value?: any;
+};
+
 export default function NodeDashboardPage() {
   const {
     currentNodeData,
     selectedNode,
     orders,
-    loadNodes,
     refreshNodes,
     mintAsset,
     getNodeAssets,
     updateNodeStatus,
     updateAssetCapacity,
     updateAssetPrice,
-    updateSupportedAssets,
   } = useNode();
   const router = useRouter();
 
   // Form and dialog states
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
-  const [isAddingNewAsset, setIsAddingNewAsset] = useState(false);
-  const [newAssetId, setNewAssetId] = useState('');
   const [isViewingOrders, setIsViewingOrders] = useState(false);
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
   const [capacityError, setCapacityError] = useState<string | null>(null);
+  const [availableAssets, setAvailableAssets] = useState<Asset[]>([]);
+  const [assetAttributes, setAssetAttributes] = useState<
+    Record<string, Record<string, any>>
+  >({});
+  const [customAttributes, setCustomAttributes] = useState<
+    Record<string, CustomAttribute[]>
+  >({});
 
   // Status and capacity states
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -114,6 +140,8 @@ export default function NodeDashboardPage() {
     defaultValues: {
       assetId: '',
       quantity: '',
+      assetAttributes: {},
+      customAttributes: {},
     },
   });
 
@@ -123,9 +151,7 @@ export default function NodeDashboardPage() {
     setCapacityError(null);
     setIsTokenizing(true);
     try {
-      const assetId = isAddingNewAsset
-        ? Number(newAssetId)
-        : Number(values.assetId);
+      const assetId = Number(values.assetId);
       const quantity = Number(values.quantity);
 
       // --- Capacity Check Start ---
@@ -157,6 +183,10 @@ export default function NodeDashboardPage() {
       }
       // --- Capacity Check End ---
 
+      // Log the attributes for debugging
+      console.log('Asset Attributes:', assetAttributes);
+      console.log('Custom Attributes:', customAttributes);
+
       await mintAsset(selectedNode, assetId, quantity);
 
       // Refresh assets immediately after minting
@@ -166,8 +196,11 @@ export default function NodeDashboardPage() {
       toast.success('Asset tokenized successfully');
       setIsAddAssetOpen(false);
       form.reset();
-      setIsAddingNewAsset(false);
       setCapacityError(null);
+
+      // Clear attributes after successful tokenization
+      setAssetAttributes({});
+      setCustomAttributes({});
     } catch (error) {
       console.error('Error tokenizing asset:', error);
       setCapacityError('Failed to tokenize asset. Please try again.');
@@ -198,6 +231,90 @@ export default function NodeDashboardPage() {
     };
     loadAssets();
   }, [selectedNode]);
+
+  // Load node assets and merge with supported assets for the dialog
+  useEffect(() => {
+    const loadNodeAssets = async () => {
+      if (!selectedNode) return;
+
+      try {
+        // Get the node's actual assets
+        const nodeAssets = await getNodeAssets(selectedNode);
+
+        // Get the supported assets with their default attributes
+        const supportedAssets = await getSupportedAssets();
+
+        // Create a map of supported assets by ID for quick lookup
+        const supportedAssetsMap = new Map(
+          supportedAssets.map((asset) => [asset.id, asset]),
+        );
+
+        // Check for mismatches between node assets and supported assets
+        const mismatchedAssets: number[] = [];
+        const mergedAssets: Asset[] = [];
+
+        for (const tokenizedAsset of nodeAssets) {
+          const supportedAsset = supportedAssetsMap.get(tokenizedAsset.id);
+
+          if (supportedAsset) {
+            // Use the supported asset data (which includes defaultAttributes)
+            // but update the label to show it's from this node
+            mergedAssets.push({
+              ...supportedAsset,
+              label: supportedAsset.label,
+            });
+          } else {
+            // This is a mismatch - node has an asset that's not in supported assets
+            mismatchedAssets.push(tokenizedAsset.id);
+          }
+        }
+
+        // If there are mismatched assets, show an error
+        if (mismatchedAssets.length > 0) {
+          const errorMessage = `Node contains unsupported assets: ${mismatchedAssets.join(', ')}. Please contact support.`;
+          console.error(errorMessage);
+          toast.error(errorMessage);
+          setAvailableAssets([]);
+          return;
+        }
+
+        setAvailableAssets(mergedAssets);
+      } catch (error) {
+        console.error('Failed to load node assets:', error);
+        toast.error('Failed to load node assets');
+        setAvailableAssets([]);
+      }
+    };
+
+    loadNodeAssets();
+  }, [selectedNode, getNodeAssets]);
+
+  // Handle asset attribute changes
+  const handleAssetAttributeChange = (
+    assetId: number,
+    attributeName: string,
+    value: any,
+  ) => {
+    const currentAttributes = assetAttributes[assetId.toString()] || {};
+    setAssetAttributes({
+      ...assetAttributes,
+      [assetId.toString()]: {
+        ...currentAttributes,
+        [attributeName]: value,
+      },
+    });
+  };
+
+  // Handle custom attribute changes
+  const handleCustomAttributeChange = (
+    assetId: number,
+    attributes: CustomAttribute[],
+  ) => {
+    setCustomAttributes({
+      ...customAttributes,
+      [assetId.toString()]: attributes,
+    });
+  };
 
   // Map BigNumberish values to numbers for display
   const nodeAssets =
@@ -319,7 +436,68 @@ export default function NodeDashboardPage() {
               onNodeUpdated={refreshNodes}
             />
           )}
-          <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
+          <Dialog
+            open={isAddAssetOpen}
+            onOpenChange={(open) => {
+              setIsAddAssetOpen(open);
+              if (open) {
+                // Refresh available assets when dialog opens
+                const refreshAssets = async () => {
+                  if (selectedNode) {
+                    try {
+                      const nodeAssets = await getNodeAssets(selectedNode);
+                      const supportedAssets = await getSupportedAssets();
+
+                      const supportedAssetsMap = new Map(
+                        supportedAssets.map((asset) => [asset.id, asset]),
+                      );
+
+                      // Check for mismatches between node assets and supported assets
+                      const mismatchedAssets: number[] = [];
+                      const mergedAssets: Asset[] = [];
+
+                      for (const tokenizedAsset of nodeAssets) {
+                        const supportedAsset = supportedAssetsMap.get(
+                          tokenizedAsset.id,
+                        );
+
+                        if (supportedAsset) {
+                          mergedAssets.push({
+                            ...supportedAsset,
+                            label: supportedAsset.label,
+                          });
+                        } else {
+                          // This is a mismatch - node has an asset that's not in supported assets
+                          mismatchedAssets.push(tokenizedAsset.id);
+                        }
+                      }
+
+                      // If there are mismatched assets, show an error
+                      if (mismatchedAssets.length > 0) {
+                        const errorMessage = `Node contains unsupported assets: ${mismatchedAssets.join(', ')}. Please contact support.`;
+                        console.error(errorMessage);
+                        toast.error(errorMessage);
+                        setAvailableAssets([]);
+                        return;
+                      }
+
+                      setAvailableAssets(mergedAssets);
+                    } catch (error) {
+                      console.error('Failed to refresh node assets:', error);
+                      setAvailableAssets([]);
+                    }
+                  }
+                };
+                refreshAssets();
+              } else {
+                // Reset form and attributes when dialog is closed
+                form.reset();
+                setAssetAttributes({});
+                setCustomAttributes({});
+                setCapacityError(null);
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button disabled={isTokenizing}>
                 {isTokenizing ? (
@@ -347,80 +525,20 @@ export default function NodeDashboardPage() {
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6"
                 >
-                  <FormField
-                    control={form.control}
-                    name="assetId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Asset</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            if (value === 'new') {
-                              setIsAddingNewAsset(true);
-                            } else {
-                              field.onChange(value);
-                              setIsAddingNewAsset(false);
-                            }
-                          }}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select an asset" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {nodeAssets.map((asset) => (
-                              <SelectItem
-                                key={asset.id}
-                                value={asset.id.toString()}
-                              >
-                                Asset #{asset.id} (Capacity: {asset.capacity})
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="new">+ Add New Asset</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {isAddingNewAsset && (
-                          <div className="mt-2">
-                            <FormLabel>New Asset ID</FormLabel>
-                            <Input
-                              type="number"
-                              placeholder="Enter new asset ID"
-                              value={newAssetId}
-                              onChange={(e) => {
-                                setNewAssetId(e.target.value);
-                                field.onChange(e.target.value);
-                              }}
-                            />
-                            <FormDescription>
-                              Enter a unique ID for the new asset
-                            </FormDescription>
-                          </div>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="quantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quantity</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Enter quantity"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter the number of assets to tokenize.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                  <AssetSelectionForm
+                    selectedAssetId={form.watch('assetId')}
+                    quantity={form.watch('quantity')}
+                    supportedAssets={availableAssets}
+                    onAssetIdChange={(value) => {
+                      form.setValue('assetId', value);
+                    }}
+                    onQuantityChange={(value) =>
+                      form.setValue('quantity', value)
+                    }
+                    assetAttributes={assetAttributes}
+                    customAttributes={customAttributes}
+                    onAssetAttributeChange={handleAssetAttributeChange}
+                    onCustomAttributeChange={handleCustomAttributeChange}
                   />
                   {capacityError && (
                     <p className="text-sm font-medium text-red-500 dark:text-red-400">

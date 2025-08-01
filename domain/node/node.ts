@@ -6,27 +6,7 @@
  */
 
 import { LocationContract } from '@/typechain-types';
-
-/**
- * Asset with attributes
- */
-export interface Asset {
-  id: number;
-  label: string;
-  defaultAttributes: AssetAttribute[];
-}
-
-/**
- * Asset attribute definition
- */
-export interface AssetAttribute {
-  name: string;
-  type: 'number' | 'string' | 'boolean';
-  defaultValue: any;
-  required: boolean;
-  unit?: string;
-  description?: string;
-}
+import { Asset } from '@/domain/platform';
 
 /**
  * Core node entity

@@ -9,11 +9,10 @@ import {
   useEffect,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Node, TokenizedAsset, Asset } from '@/domain/node';
+import { Node, TokenizedAsset } from '@/domain/node';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
-import { LocationContract } from '@/typechain-types';
 import { useMainProvider } from './main.provider';
 
 // Update types to match blockchain data
@@ -51,7 +50,6 @@ type NodeContextType = {
   refreshOrders: (nodeId: string) => Promise<void>;
 
   // Asset operations
-  getSupportedAssets: () => Promise<Asset[]>;
   getNodeAssets: (nodeAddress: string) => Promise<TokenizedAsset[]>;
   getAllNodeAssets: () => Promise<TokenizedAsset[]>;
   mintAsset: (
@@ -460,18 +458,6 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   ]);
 
   // Asset service methods
-  const getSupportedAssets = useCallback(async (): Promise<Asset[]> => {
-    try {
-      return await nodeRepository.getSupportedAssets();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err
-          : new Error('Failed to get supported assets'),
-      );
-      return [];
-    }
-  }, [nodeRepository]);
 
   const mintAsset = useCallback(
     async (
@@ -635,7 +621,6 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     refreshOrders,
 
     // Asset operations
-    getSupportedAssets,
     getNodeAssets,
     getAllNodeAssets,
     mintAsset,
