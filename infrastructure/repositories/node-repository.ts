@@ -4,7 +4,6 @@ import type {
   TokenizedAsset,
   AggregateAssetAmount,
   NodeLocation,
-  AssetType,
 } from '@/domain/node';
 import { BrowserProvider, ethers } from 'ethers';
 import {

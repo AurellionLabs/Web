@@ -13,7 +13,6 @@ import { Node, TokenizedAsset } from '@/domain/node';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
-import { LocationContract } from '@/typechain-types';
 import { useMainProvider } from './main.provider';
 
 // Update types to match blockchain data
@@ -459,6 +458,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   ]);
 
   // Asset service methods
+
   const mintAsset = useCallback(
     async (
       nodeAddress: string,
