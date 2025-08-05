@@ -1,5 +1,5 @@
 export interface Asset {
-  id: number;
+  id: bigint;
   name: string;
   attributes: AssetAttribute[];
 }

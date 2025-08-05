@@ -6,6 +6,7 @@
  */
 
 import { LocationContract } from '@/typechain-types';
+import { Asset } from '../orders';
 
 /**
  * Core node entity
@@ -97,11 +98,7 @@ export interface NodeRepository {
  * Node asset service interface
  */
 export interface INodeAssetService {
-  mintAsset(
-    nodeAddress: string,
-    assetId: number,
-    amount: number,
-  ): Promise<void>;
+  mintAsset(nodeAddress: string, asset: Asset, amount: number): Promise<void>;
   updateAssetCapacity(
     nodeAddress: string,
     assetId: number,

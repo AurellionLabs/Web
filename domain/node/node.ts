@@ -6,7 +6,7 @@
  */
 
 import { LocationContract } from '@/typechain-types';
-import { Asset } from '@/domain/platform';
+import { Asset, AssetAttribute } from '@/domain/platform';
 
 /**
  * Core node entity
@@ -36,13 +36,6 @@ export interface NodeLocation {
 /**
  * Asset types supported by nodes
  */
-export enum AssetType {
-  GOAT = 1,
-  SHEEP = 2,
-  COW = 3,
-  CHICKEN = 4,
-  DUCK = 5,
-}
 
 /**
  * Order status types
@@ -63,11 +56,18 @@ export interface TokenizedAsset {
   id: number;
   amount: string;
   name: string;
+  fileHash: string;
   status: string;
   nodeAddress: string;
   nodeLocation: NodeLocation;
   price: string;
   capacity: string;
+}
+
+export interface TokenizedAssetAttribute {
+  name: string;
+  value: string;
+  description: string;
 }
 
 /**
@@ -98,17 +98,14 @@ export interface NodeRepository {
     assetName: string,
     attributes: string[],
   ): Promise<number>;
+  getAssetAttributes(fileHash: string): Promise<TokenizedAssetAttribute[]>;
 }
 
 /**
  * Node asset service interface
  */
 export interface INodeAssetService {
-  mintAsset(
-    nodeAddress: string,
-    assetId: number,
-    amount: number,
-  ): Promise<void>;
+  mintAsset(nodeAddress: string, asset: Asset, amount: number): Promise<void>;
   updateAssetCapacity(
     nodeAddress: string,
     assetId: number,

@@ -1,4 +1,4 @@
-import { LocationContract } from '@/typechain-types';
+import { AuraAsset__factory, LocationContract } from '@/typechain-types';
 import {
   BytesLike,
   ContractTransactionReceipt,
