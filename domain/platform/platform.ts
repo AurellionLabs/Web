@@ -1,5 +1,5 @@
 export interface Asset {
-  id: bigint;
+  tokenID: bigint;
   name: string;
   attributes: AssetAttribute[];
 }
@@ -15,4 +15,5 @@ export interface AssetAttribute {
 
 export interface PlatformRepository {
   getSupportedAssets(): Promise<Asset[]>;
+  getSupportedAssetClasses(): Promise<string[]>;
 }
