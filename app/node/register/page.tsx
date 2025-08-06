@@ -45,23 +45,9 @@ import {
 } from '@/dapp-connectors/base-controller';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { useMainProvider } from '@/app/providers/main.provider';
+import { usePlatform } from '@/app/providers/platform.provider';
 import { toast } from 'react-hot-toast';
-import { Asset } from '@/domain/node';
 import CapacityAndPriceInput from './CapacityAndPriceInput';
-
-// Utility function to format snake_case to Title Case
-const formatAttributeName = (name: string): string => {
-  return name
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
-
-type CustomAttribute = {
-  name: string;
-  type: 'string' | 'number';
-  value?: any;
-};
 
 const formSchema = z.object({
   addressName: z.string().min(3, {
@@ -73,7 +59,7 @@ const formSchema = z.object({
   lng: z.string().regex(/^-?\d+\.\d+$/, {
     message: 'Please enter a valid longitude',
   }),
-  supportedAssets: z.array(z.number()).min(1, {
+  supportedAssets: z.array(z.string()).min(1, {
     message: 'Please select at least one supported asset.',
   }),
   capacity: z.array(z.number()).min(1, {
@@ -149,10 +135,9 @@ const LocationInput = ({
 export default function NodeRegistrationPage() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [supportedAssets, setSupportedAssets] = useState<Asset[]>([]);
-  const [loading, setLoading] = useState(true);
   const { connected } = useMainProvider();
-  const { registerNode, getSupportedAssets } = useNode();
+  const { registerNode } = useNode();
+  const { supportedAssetClasses, isLoading } = usePlatform();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -179,55 +164,8 @@ export default function NodeRegistrationPage() {
     init();
   }, []);
 
-  useEffect(() => {
-    const loadAssets = async () => {
-      try {
-        setLoading(true);
-        const assets = await getSupportedAssets();
-        setSupportedAssets(assets);
-      } catch (error) {
-        console.error('Failed to load supported assets:', error);
-        toast.error('Failed to load supported assets');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadAssets();
-  }, [getSupportedAssets]);
-
-  const handleAssetAttributeChange = (
-    assetId: number,
-    attributeName: string,
-    value: any,
-  ) => {
-    const currentAttributes = form.getValues('assetAttributes') || {};
-    const assetAttributes = currentAttributes[assetId.toString()] || {};
-
-    form.setValue('assetAttributes', {
-      ...currentAttributes,
-      [assetId.toString()]: {
-        ...assetAttributes,
-        [attributeName]: value,
-      },
-    });
-  };
-
-  const handleCustomAttributeChange = (
-    assetId: number,
-    attributes: CustomAttribute[],
-  ) => {
-    const currentCustomAttributes = form.getValues('customAttributes') || {};
-
-    form.setValue('customAttributes', {
-      ...currentCustomAttributes,
-      [assetId.toString()]: attributes,
-    });
-  };
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     console.log('on Submit');
-    console.log('Asset Attributes:', values.assetAttributes);
-    console.log('Custom Attributes:', values.customAttributes);
     try {
       if (!connected) {
         toast.error('Please connect your wallet first');
@@ -255,8 +193,6 @@ export default function NodeRegistrationPage() {
         supportedAssets: values.supportedAssets,
         capacity: values.capacity,
         assetPrices: values.prices,
-        // Asset attributes can be stored for future use
-        assetAttributes: values.assetAttributes,
       };
 
       await registerNode(nodeData);
@@ -309,7 +245,7 @@ export default function NodeRegistrationPage() {
                 name="supportedAssets"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Supported Assets</FormLabel>
+                    <FormLabel>Supported Asset Classes</FormLabel>
                     <FormControl>
                       <Popover open={open} onOpenChange={setOpen}>
                         <PopoverTrigger asChild>
@@ -328,7 +264,7 @@ export default function NodeRegistrationPage() {
                         <PopoverContent className="w-full p-0">
                           <Command>
                             <CommandInput placeholder="Search assets..." />
-                            {loading ? (
+                            {isLoading ? (
                               <div className="p-4 text-center text-sm text-muted-foreground">
                                 Loading assets...
                               </div>
@@ -336,17 +272,17 @@ export default function NodeRegistrationPage() {
                               <>
                                 <CommandEmpty>No assets found.</CommandEmpty>
                                 <CommandGroup>
-                                  {supportedAssets.map((asset) => (
+                                  {supportedAssetClasses.map((assetClass) => (
                                     <CommandItem
-                                      key={asset.id}
+                                      key={assetClass}
                                       onSelect={() => {
                                         const currentValue = new Set(
                                           field.value,
                                         );
-                                        if (currentValue.has(asset.id)) {
-                                          currentValue.delete(asset.id);
+                                        if (currentValue.has(assetClass)) {
+                                          currentValue.delete(assetClass);
                                         } else {
-                                          currentValue.add(asset.id);
+                                          currentValue.add(assetClass);
                                         }
                                         const newValue =
                                           Array.from(currentValue);
@@ -369,17 +305,9 @@ export default function NodeRegistrationPage() {
                                           Record<string, any>
                                         > = {};
                                         newValue.forEach((assetId) => {
-                                          if (
-                                            currentAttributes[
-                                              assetId.toString()
-                                            ]
-                                          ) {
-                                            updatedAttributes[
-                                              assetId.toString()
-                                            ] =
-                                              currentAttributes[
-                                                assetId.toString()
-                                              ];
+                                          if (currentAttributes[assetId]) {
+                                            updatedAttributes[assetId] =
+                                              currentAttributes[assetId];
                                           }
                                         });
                                         form.setValue(
@@ -391,12 +319,12 @@ export default function NodeRegistrationPage() {
                                       <Check
                                         className={cn(
                                           'mr-2 h-4 w-4',
-                                          field.value.includes(asset.id)
+                                          field.value.includes(assetClass)
                                             ? 'opacity-100'
                                             : 'opacity-0',
                                         )}
                                       />
-                                      {asset.label}
+                                      {assetClass}
                                     </CommandItem>
                                   ))}
                                 </CommandGroup>
@@ -428,11 +356,6 @@ export default function NodeRegistrationPage() {
                           form.setValue('prices', value)
                         }
                         selectedAssets={form.watch('supportedAssets')}
-                        supportedAssets={supportedAssets}
-                        assetAttributes={form.watch('assetAttributes') || {}}
-                        customAttributes={form.watch('customAttributes') || {}}
-                        onAssetAttributeChange={handleAssetAttributeChange}
-                        onCustomAttributeChange={handleCustomAttributeChange}
                       />
                     </FormControl>
                     <FormDescription>
@@ -447,11 +370,11 @@ export default function NodeRegistrationPage() {
                 type="submit"
                 variant="default"
                 className="w-full"
-                disabled={form.formState.isSubmitting || loading}
+                disabled={form.formState.isSubmitting || isLoading}
               >
                 {form.formState.isSubmitting
                   ? 'Registering...'
-                  : loading
+                  : isLoading
                     ? 'Loading assets...'
                     : 'Register as Node'}
               </Button>

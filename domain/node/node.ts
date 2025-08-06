@@ -16,7 +16,7 @@ export interface Node {
   location: NodeLocation;
   validNode: string; // bytes1
   owner: string;
-  supportedAssets: number[];
+  supportedAssets: string[];
   status: 'Active' | 'Inactive';
   capacity: number[];
   assetPrices: number[];

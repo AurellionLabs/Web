@@ -13,7 +13,7 @@ export interface AssetAttribute {
   description: string;
 }
 
-export interface PlatformRepository {
+export interface IPlatformRepository {
   getSupportedAssets(): Promise<Asset[]>;
   getSupportedAssetClasses(): Promise<string[]>;
 }
