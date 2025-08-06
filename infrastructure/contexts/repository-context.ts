@@ -23,6 +23,8 @@ import { listenForSignature } from '../services/signature-listener.service';
 import { IPoolRepository } from '@/domain/pool';
 import { PoolRepository } from '../repositories/pool-repository';
 import { RepositoryFactory } from '../factories/repository-factory';
+import { IPlatformRepository } from '@/domain/platform';
+import { PlatformRepository } from '../repositories/platform-repository';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -33,6 +35,7 @@ export class RepositoryContext {
   private orderRepository: OrderRepository | null = null;
   private driverRepository: IDriverRepository | null = null;
   private poolRepository: IPoolRepository | null = null;
+  private platformRepository: IPlatformRepository | null = null;
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
   private signer: ethers.Signer | null = null;
@@ -80,6 +83,7 @@ export class RepositoryContext {
       this.nodeRepository = repositories.nodeRepository;
       this.orderRepository = repositories.orderRepository;
       this.driverRepository = repositories.driverRepository;
+      this.platformRepository = new PlatformRepository();
 
       console.log(
         '[RepositoryContext] Successfully created repositories with RPC separation',
@@ -108,6 +112,7 @@ export class RepositoryContext {
         provider,
         signer,
       );
+      this.platformRepository = new PlatformRepository();
     }
 
     this.auraGoatContract = AuraGoat__factory.connect(
@@ -159,6 +164,18 @@ export class RepositoryContext {
       );
     }
     return this.poolRepository;
+  }
+
+  /**
+   * Get the Platform repository instance
+   */
+  public getPlatformRepository(): IPlatformRepository {
+    if (!this.platformRepository) {
+      throw new Error(
+        'RepositoryContext not initialized or PlatformRepository failed to initialize.',
+      );
+    }
+    return this.platformRepository;
   }
 
   /**

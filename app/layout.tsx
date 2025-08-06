@@ -7,6 +7,7 @@ import { ClientLayout } from '@/app/components/layout/client-layout';
 import { TradeProvider } from './providers/trade.provider';
 import { CustomerProvider } from './providers/customer.provider';
 import { DriverProvider } from './providers/driver.provider';
+import { PlatformProvider } from './providers/platform.provider';
 import { RepositoryProvider } from './providers/RepositoryProvider';
 import { PrivyProviderWrapper } from './providers/privy.provider';
 
@@ -28,15 +29,17 @@ export default function RootLayout({
         <PrivyProviderWrapper>
           <MainProvider>
             <RepositoryProvider>
-              <NodeProvider>
-                <CustomerProvider>
-                  <DriverProvider>
-                    <TradeProvider>
-                      <ClientLayout>{children}</ClientLayout>
-                    </TradeProvider>
-                  </DriverProvider>
-                </CustomerProvider>
-              </NodeProvider>
+              <PlatformProvider>
+                <NodeProvider>
+                  <CustomerProvider>
+                    <DriverProvider>
+                      <TradeProvider>
+                        <ClientLayout>{children}</ClientLayout>
+                      </TradeProvider>
+                    </DriverProvider>
+                  </CustomerProvider>
+                </NodeProvider>
+              </PlatformProvider>
             </RepositoryProvider>
           </MainProvider>
         </PrivyProviderWrapper>

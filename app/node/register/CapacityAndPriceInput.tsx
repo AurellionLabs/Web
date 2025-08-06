@@ -1,5 +1,4 @@
 import React from 'react';
-import { Asset } from '@/domain/node';
 import AssetSection from './AssetSection';
 
 type CustomAttribute = {
@@ -13,19 +12,7 @@ type Props = {
   priceValue: number[];
   onCapacityChange: (value: number[]) => void;
   onPriceChange: (value: number[]) => void;
-  selectedAssets: number[];
-  supportedAssets: Asset[];
-  assetAttributes: Record<string, Record<string, any>>;
-  customAttributes: Record<string, CustomAttribute[]>;
-  onAssetAttributeChange: (
-    assetId: number,
-    attributeName: string,
-    value: any,
-  ) => void;
-  onCustomAttributeChange: (
-    assetId: number,
-    attributes: CustomAttribute[],
-  ) => void;
+  selectedAssets: string[];
 };
 
 const CapacityAndPriceInput: React.FC<Props> = ({
@@ -34,23 +21,15 @@ const CapacityAndPriceInput: React.FC<Props> = ({
   onCapacityChange,
   onPriceChange,
   selectedAssets,
-  supportedAssets,
-  assetAttributes,
-  customAttributes,
-  onAssetAttributeChange,
-  onCustomAttributeChange,
 }) => (
   <div className="space-y-6">
     {capacityValue.map((cap, index) => {
-      const assetId = selectedAssets[index];
-      const asset = supportedAssets.find((a) => a.id === assetId);
-      const assetLabel = asset?.label || `Asset ${index + 1}`;
-      if (!asset) return null;
+      const assetClass = selectedAssets[index];
+      if (!assetClass) return null;
       return (
         <AssetSection
           key={index}
-          asset={asset}
-          assetLabel={assetLabel}
+          assetLabel={assetClass}
           cap={cap}
           price={priceValue[index] || 0}
           index={index}
@@ -58,10 +37,6 @@ const CapacityAndPriceInput: React.FC<Props> = ({
           priceValue={priceValue}
           onCapacityChange={onCapacityChange}
           onPriceChange={onPriceChange}
-          attributeValues={assetAttributes[assetId.toString()] || {}}
-          customAttributes={customAttributes[assetId.toString()] || []}
-          onAssetAttributeChange={onAssetAttributeChange}
-          onCustomAttributeChange={onCustomAttributeChange}
         />
       );
     })}

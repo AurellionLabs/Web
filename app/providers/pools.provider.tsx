@@ -14,11 +14,8 @@ import {
   PoolCreationData,
   PoolDynamicData,
   StakeEvent,
-  PoolStatus,
   Address,
   BigNumberString,
-  IPoolRepository,
-  IPoolService,
 } from '@/domain/pool';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
