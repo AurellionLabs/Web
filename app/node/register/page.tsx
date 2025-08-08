@@ -47,7 +47,7 @@ import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { toast } from 'react-hot-toast';
-import CapacityAndPriceInput from './CapacityAndPriceInput';
+import CapacityInput from './CapacityInput';
 
 const formSchema = z.object({
   addressName: z.string().min(3, {
@@ -62,27 +62,15 @@ const formSchema = z.object({
   supportedAssets: z.array(z.string()).min(1, {
     message: 'Please select at least one supported asset.',
   }),
-  capacity: z.array(z.number()).min(1, {
-    message: 'Please specify capacity for each asset.',
-  }),
-  prices: z.array(z.number()).min(1, {
-    message: 'Please specify price for each asset.',
-  }),
-  assetAttributes: z
-    .record(z.string(), z.record(z.string(), z.any()))
-    .optional(),
-  customAttributes: z
-    .record(
-      z.string(),
-      z.array(
-        z.object({
-          name: z.string(),
-          type: z.enum(['string', 'number']),
-          value: z.any().default(''),
-        }),
-      ),
-    )
-    .optional(),
+  capacity: z
+    .array(z.string())
+    .min(1, { message: 'Please specify capacity for each asset.' })
+    .refine((arr) => arr.every((v) => v !== ''), {
+      message: 'Capacity is required for each selected asset.',
+    })
+    .refine((arr) => arr.every((v) => /^\d+$/.test(v)), {
+      message: 'Capacity must be a whole number.',
+    }),
 });
 
 // At the top of the file, outside any component
@@ -147,11 +135,22 @@ export default function NodeRegistrationPage() {
       lng: '',
       supportedAssets: [],
       capacity: [],
-      prices: [],
-      assetAttributes: {},
-      customAttributes: {},
     },
   });
+
+  // Keep capacity array aligned to selected assets; preserve existing values by asset label
+  // Simple sync: ensure capacity length matches selected assets; no defaults
+  useEffect(() => {
+    const assets = form.watch('supportedAssets');
+    const capacities = form.getValues('capacity');
+    if (capacities.length !== assets.length) {
+      form.setValue(
+        'capacity',
+        Array.from({ length: assets.length }, (_, i) => capacities[i] ?? ''),
+        { shouldDirty: true },
+      );
+    }
+  }, [form.watch('supportedAssets')]);
 
   useEffect(() => {
     const init = async () => {
@@ -191,8 +190,7 @@ export default function NodeRegistrationPage() {
         validNode: '0x01',
         status: 'Active' as const,
         supportedAssets: values.supportedAssets,
-        capacity: values.capacity,
-        assetPrices: values.prices,
+        capacity: values.capacity.map((v) => parseInt(v, 10)),
       };
 
       await registerNode(nodeData);
@@ -287,33 +285,6 @@ export default function NodeRegistrationPage() {
                                         const newValue =
                                           Array.from(currentValue);
                                         field.onChange(newValue);
-                                        form.setValue(
-                                          'capacity',
-                                          new Array(newValue.length).fill(0),
-                                        );
-                                        form.setValue(
-                                          'prices',
-                                          new Array(newValue.length).fill(0),
-                                        );
-
-                                        // Clear attributes for deselected assets
-                                        const currentAttributes =
-                                          form.getValues('assetAttributes') ||
-                                          {};
-                                        const updatedAttributes: Record<
-                                          string,
-                                          Record<string, any>
-                                        > = {};
-                                        newValue.forEach((assetId) => {
-                                          if (currentAttributes[assetId]) {
-                                            updatedAttributes[assetId] =
-                                              currentAttributes[assetId];
-                                          }
-                                        });
-                                        form.setValue(
-                                          'assetAttributes',
-                                          updatedAttributes,
-                                        );
                                       }}
                                     >
                                       <Check
@@ -348,18 +319,14 @@ export default function NodeRegistrationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <CapacityAndPriceInput
-                        capacityValue={field.value}
-                        priceValue={form.watch('prices')}
+                      <CapacityInput
+                        capacities={field.value}
                         onCapacityChange={field.onChange}
-                        onPriceChange={(value) =>
-                          form.setValue('prices', value)
-                        }
                         selectedAssets={form.watch('supportedAssets')}
                       />
                     </FormControl>
                     <FormDescription>
-                      Enter the capacity and price for each selected asset.
+                      Enter the capacity for each selected asset.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

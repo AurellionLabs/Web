@@ -10,6 +10,7 @@ export interface PlatformContextType {
   isLoading: boolean;
   error: string | null;
   refreshPlatformData: () => Promise<void>;
+  getClassAssets: (assetClass: string) => Promise<Asset[]>;
 }
 
 const PlatformContext = createContext<PlatformContextType | undefined>(
@@ -57,6 +58,19 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const getClassAssets = async (assetClass: string): Promise<Asset[]> => {
+    const key = assetClass.trim();
+    if (!key) return [];
+    try {
+      return await repository.getClassAssets(key);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to load class assets';
+      setError(message);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     console.log(
       '[PlatformProvider] useEffect triggered, calling refreshPlatformData...',
@@ -72,6 +86,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         error,
         refreshPlatformData,
+        getClassAssets,
       }}
     >
       {children}

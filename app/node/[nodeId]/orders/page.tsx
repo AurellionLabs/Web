@@ -30,15 +30,6 @@ import { Button } from '@/app/components/ui/button';
 import { useNode, type Order } from '@/app/providers/node.provider';
 import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
-// Update values to be asset IDs (as strings)
-const supportedAssets = [
-  { value: '1', label: 'Goat' }, // Assuming Goat ID is 1
-  { value: '2', label: 'Sheep' }, // Assuming Sheep ID is 2
-  { value: '3', label: 'Cow' }, // Assuming Cow ID is 3
-  { value: '4', label: 'Chicken' }, // Assuming Chicken ID is 4
-  { value: '5', label: 'Duck' }, // Assuming Duck ID is 5
-] as const;
-
 const orderStatuses = [
   { value: 'all', label: 'All Statuses' },
   { value: 'active', label: 'Active' },

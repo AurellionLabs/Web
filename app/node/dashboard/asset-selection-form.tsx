@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Asset } from '@/domain/node';
+import { Asset } from '@/domain/platform';
 import { Input } from '@/app/components/ui/input';
 import { FormLabel } from '@/app/components/ui/form';
 import AssetAttributeInput from './asset-attribute-input';
@@ -10,68 +10,105 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-
-type CustomAttribute = {
-  name: string;
-  type: 'string' | 'number';
-  value?: any;
-};
-
+import { usePlatform } from '@/app/providers/platform.provider';
 type Props = {
+  selectedAssetClass: string;
   selectedAssetId: string;
   quantity: string;
-  supportedAssets: Asset[];
+  price: string;
+  supportedAssetClasses: string[];
+  onAssetClassChange: (value: string) => void;
   onAssetIdChange: (value: string) => void;
   onQuantityChange: (value: string) => void;
+  onPriceChange: (value: string) => void;
   assetAttributes: Record<string, Record<string, any>>;
-  customAttributes: Record<string, CustomAttribute[]>;
   onAssetAttributeChange: (
     assetId: number,
     attributeName: string,
     value: any,
   ) => void;
-  onCustomAttributeChange: (
-    assetId: number,
-    attributes: CustomAttribute[],
-  ) => void;
 };
 
 const AssetSelectionForm: React.FC<Props> = ({
+  selectedAssetClass,
   selectedAssetId,
   quantity,
-  supportedAssets,
+  price,
+  supportedAssetClasses,
+  onAssetClassChange,
   onAssetIdChange,
   onQuantityChange,
+  onPriceChange,
   assetAttributes,
-  customAttributes,
   onAssetAttributeChange,
-  onCustomAttributeChange,
 }) => {
+  const { getClassAssets } = usePlatform();
+  const [classAssets, setClassAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+
+  // Load assets when asset class changes
+  useEffect(() => {
+    const loadAssetsForClass = async () => {
+      setSelectedAsset(null);
+      setClassAssets([]);
+      if (!selectedAssetClass) return;
+      setLoadingAssets(true);
+      try {
+        const assets = await getClassAssets(selectedAssetClass);
+        setClassAssets(assets);
+      } finally {
+        setLoadingAssets(false);
+      }
+    };
+    loadAssetsForClass();
+  }, [selectedAssetClass, getClassAssets]);
 
   // Update selected asset when assetId changes
   useEffect(() => {
     if (selectedAssetId) {
-      const asset = supportedAssets.find(
-        (a) => a.id.toString() === selectedAssetId,
+      const asset = classAssets.find(
+        (a) => a.tokenID.toString() === selectedAssetId,
       );
       setSelectedAsset(asset || null);
     } else {
       setSelectedAsset(null);
     }
-  }, [selectedAssetId, supportedAssets]);
+  }, [selectedAssetId, classAssets]);
 
   return (
     <div className="space-y-6">
-      {/* Asset Selection */}
+      {/* Asset Class Selection */}
+      <div>
+        <FormLabel>Asset Class</FormLabel>
+        <Select
+          value={selectedAssetClass}
+          onValueChange={(value) => {
+            onAssetClassChange(value);
+            onAssetIdChange('');
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select asset class" />
+          </SelectTrigger>
+          <SelectContent>
+            {supportedAssetClasses.map((assetClass) => (
+              <SelectItem key={assetClass} value={assetClass}>
+                {assetClass}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Asset Selection within class */}
       <div>
         <FormLabel>Asset</FormLabel>
-        {supportedAssets.length === 0 ? (
+        {loadingAssets ? (
+          <div className="p-4 text-sm text-gray-500">Loading assets...</div>
+        ) : classAssets.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <p>No assets available for this node.</p>
-            <p className="text-sm mt-1">
-              Please check if the node has any supported assets.
-            </p>
+            <p>No assets found for this class.</p>
           </div>
         ) : (
           <Select
@@ -84,9 +121,12 @@ const AssetSelectionForm: React.FC<Props> = ({
               <SelectValue placeholder="Select an asset" />
             </SelectTrigger>
             <SelectContent>
-              {supportedAssets.map((asset) => (
-                <SelectItem key={asset.id} value={asset.id.toString()}>
-                  {asset.label}
+              {classAssets.map((asset) => (
+                <SelectItem
+                  key={asset.tokenID.toString()}
+                  value={asset.tokenID.toString()}
+                >
+                  {asset.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -114,20 +154,37 @@ const AssetSelectionForm: React.FC<Props> = ({
         </p>
       </div>
 
+      {/* Price Input */}
+      <div>
+        <FormLabel>Price (wei)</FormLabel>
+        <Input
+          type="text"
+          placeholder="Enter price"
+          value={price}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === '' || /^\d+$/.test(value)) {
+              onPriceChange(value);
+            }
+          }}
+        />
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Price per unit in wei.
+        </p>
+      </div>
+
       {/* Asset Attributes */}
       {selectedAsset && (
         <div className="border-t pt-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-            {selectedAsset.label} Attributes
+            {selectedAsset.name} Attributes
           </h3>
           <AssetAttributeInput
             asset={selectedAsset}
-            attributeValues={assetAttributes[selectedAsset.id.toString()] || {}}
-            customAttributes={
-              customAttributes[selectedAsset.id.toString()] || []
+            attributeValues={
+              assetAttributes[selectedAsset.tokenID.toString()] || {}
             }
             onAttributeChange={onAssetAttributeChange}
-            onCustomAttributeChange={onCustomAttributeChange}
           />
         </div>
       )}

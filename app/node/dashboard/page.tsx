@@ -20,33 +20,17 @@ import {
   DialogTrigger,
 } from '@/app/components/ui/dialog';
 import { Input } from '@/app/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/app/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+import { Form } from '@/app/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { StatCard } from '@/app/components/ui/stat-card';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useNode } from '@/app/providers/node.provider';
 import {
   TokenizedAsset,
   getAssetName,
 } from '@/dapp-connectors/aurum-controller';
-import { Asset } from '@/domain/platform';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { MapView } from '@/app/components/ui/map-view';
@@ -54,6 +38,7 @@ import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 
 const tokenizeFormSchema = z.object({
+  assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
   assetId: z.string({
     required_error: 'Please select an asset.',
   }),
@@ -66,21 +51,10 @@ const tokenizeFormSchema = z.object({
       message: 'Please enter a valid quantity greater than 0.',
     },
   ),
-  assetAttributes: z
-    .record(z.string(), z.record(z.string(), z.any()))
-    .optional(),
-  customAttributes: z
-    .record(
-      z.string(),
-      z.array(
-        z.object({
-          name: z.string(),
-          type: z.enum(['string', 'number']),
-          value: z.any().default(''),
-        }),
-      ),
-    )
-    .optional(),
+  price: z
+    .string()
+    .regex(/^\d+$/, { message: 'Price must be a whole number (wei).' }),
+  assetAttributes: z.record(z.string(), z.record(z.string(), z.any())),
 });
 
 interface EditingCapacity {
@@ -92,12 +66,6 @@ interface EditingPrice {
   id: number;
   value: string;
 }
-
-type CustomAttribute = {
-  name: string;
-  type: 'string' | 'number';
-  value?: any;
-};
 
 export default function NodeDashboardPage() {
   const {
@@ -119,12 +87,9 @@ export default function NodeDashboardPage() {
   const [isViewingOrders, setIsViewingOrders] = useState(false);
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
   const [capacityError, setCapacityError] = useState<string | null>(null);
-  const [availableAssets, setAvailableAssets] = useState<Asset[]>([]);
+  // Available assets state removed; assets now loaded per selected class inside the form
   const [assetAttributes, setAssetAttributes] = useState<
     Record<string, Record<string, any>>
-  >({});
-  const [customAttributes, setCustomAttributes] = useState<
-    Record<string, CustomAttribute[]>
   >({});
 
   // Status and capacity states
@@ -138,10 +103,11 @@ export default function NodeDashboardPage() {
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
     defaultValues: {
+      assetClass: '',
       assetId: '',
       quantity: '',
+      price: '',
       assetAttributes: {},
-      customAttributes: {},
     },
   });
 
@@ -185,7 +151,6 @@ export default function NodeDashboardPage() {
 
       // Log the attributes for debugging
       console.log('Asset Attributes:', assetAttributes);
-      console.log('Custom Attributes:', customAttributes);
 
       await mintAsset(selectedNode, assetId, quantity);
 
@@ -200,7 +165,6 @@ export default function NodeDashboardPage() {
 
       // Clear attributes after successful tokenization
       setAssetAttributes({});
-      setCustomAttributes({});
     } catch (error) {
       console.error('Error tokenizing asset:', error);
       setCapacityError('Failed to tokenize asset. Please try again.');
@@ -232,62 +196,7 @@ export default function NodeDashboardPage() {
     loadAssets();
   }, [selectedNode]);
 
-  // Load node assets and merge with supported assets for the dialog
-  useEffect(() => {
-    const loadNodeAssets = async () => {
-      if (!selectedNode) return;
-
-      try {
-        // Get the node's actual assets
-        const nodeAssets = await getNodeAssets(selectedNode);
-
-        // Get the supported assets with their default attributes
-        const supportedAssets = await getSupportedAssets();
-
-        // Create a map of supported assets by ID for quick lookup
-        const supportedAssetsMap = new Map(
-          supportedAssets.map((asset) => [asset.id, asset]),
-        );
-
-        // Check for mismatches between node assets and supported assets
-        const mismatchedAssets: number[] = [];
-        const mergedAssets: Asset[] = [];
-
-        for (const tokenizedAsset of nodeAssets) {
-          const supportedAsset = supportedAssetsMap.get(tokenizedAsset.id);
-
-          if (supportedAsset) {
-            // Use the supported asset data (which includes defaultAttributes)
-            // but update the label to show it's from this node
-            mergedAssets.push({
-              ...supportedAsset,
-              label: supportedAsset.label,
-            });
-          } else {
-            // This is a mismatch - node has an asset that's not in supported assets
-            mismatchedAssets.push(tokenizedAsset.id);
-          }
-        }
-
-        // If there are mismatched assets, show an error
-        if (mismatchedAssets.length > 0) {
-          const errorMessage = `Node contains unsupported assets: ${mismatchedAssets.join(', ')}. Please contact support.`;
-          console.error(errorMessage);
-          toast.error(errorMessage);
-          setAvailableAssets([]);
-          return;
-        }
-
-        setAvailableAssets(mergedAssets);
-      } catch (error) {
-        console.error('Failed to load node assets:', error);
-        toast.error('Failed to load node assets');
-        setAvailableAssets([]);
-      }
-    };
-
-    loadNodeAssets();
-  }, [selectedNode, getNodeAssets]);
+  // Removed: legacy merging of supported assets; selection now uses platform provider
 
   // Handle asset attribute changes
   const handleAssetAttributeChange = (
@@ -305,24 +214,6 @@ export default function NodeDashboardPage() {
     });
   };
 
-  // Handle custom attribute changes
-  const handleCustomAttributeChange = (
-    assetId: number,
-    attributes: CustomAttribute[],
-  ) => {
-    setCustomAttributes({
-      ...customAttributes,
-      [assetId.toString()]: attributes,
-    });
-  };
-
-  // Map BigNumberish values to numbers for display
-  const nodeAssets =
-    currentNodeData?.supportedAssets?.map((assetId, index) => ({
-      id: Number(assetId),
-      capacity: Number(currentNodeData.capacity[index]),
-    })) || [];
-
   // Fix the asset rows rendering with proper types
   const renderAssetRows = () => {
     if (!currentNodeData?.supportedAssets) return null;
@@ -334,11 +225,6 @@ export default function NodeDashboardPage() {
           <td className="p-4">{id}</td>
           <td className="p-4">{getAssetName(id)}</td>
           <td className="p-4">{Number(currentNodeData.capacity[index])}</td>
-          <td className="p-4">
-            {currentNodeData.assetPrices && currentNodeData.assetPrices[index]
-              ? Number(currentNodeData.assetPrices[index])
-              : '0'}
-          </td>
         </tr>
       );
     });
@@ -370,9 +256,9 @@ export default function NodeDashboardPage() {
         selectedNode,
         assetId,
         parseInt(newValue),
-        currentNodeData.supportedAssets,
+        Array.from(currentNodeData.supportedAssets).map((v) => Number(v)),
         currentNodeData.capacity,
-        currentNodeData.assetPrices || [],
+        new Array(currentNodeData.capacity.length).fill(0),
       );
 
       await refreshNodes();
@@ -394,8 +280,8 @@ export default function NodeDashboardPage() {
         selectedNode,
         assetId,
         Number(newValue),
-        currentNodeData.supportedAssets,
-        currentNodeData.assetPrices || [],
+        Array.from(currentNodeData.supportedAssets).map((v) => Number(v)),
+        new Array(currentNodeData.capacity.length).fill(0),
       );
 
       await refreshNodes();
@@ -440,60 +326,10 @@ export default function NodeDashboardPage() {
             open={isAddAssetOpen}
             onOpenChange={(open) => {
               setIsAddAssetOpen(open);
-              if (open) {
-                // Refresh available assets when dialog opens
-                const refreshAssets = async () => {
-                  if (selectedNode) {
-                    try {
-                      const nodeAssets = await getNodeAssets(selectedNode);
-                      const supportedAssets = await getSupportedAssets();
-
-                      const supportedAssetsMap = new Map(
-                        supportedAssets.map((asset) => [asset.id, asset]),
-                      );
-
-                      // Check for mismatches between node assets and supported assets
-                      const mismatchedAssets: number[] = [];
-                      const mergedAssets: Asset[] = [];
-
-                      for (const tokenizedAsset of nodeAssets) {
-                        const supportedAsset = supportedAssetsMap.get(
-                          tokenizedAsset.id,
-                        );
-
-                        if (supportedAsset) {
-                          mergedAssets.push({
-                            ...supportedAsset,
-                            label: supportedAsset.label,
-                          });
-                        } else {
-                          // This is a mismatch - node has an asset that's not in supported assets
-                          mismatchedAssets.push(tokenizedAsset.id);
-                        }
-                      }
-
-                      // If there are mismatched assets, show an error
-                      if (mismatchedAssets.length > 0) {
-                        const errorMessage = `Node contains unsupported assets: ${mismatchedAssets.join(', ')}. Please contact support.`;
-                        console.error(errorMessage);
-                        toast.error(errorMessage);
-                        setAvailableAssets([]);
-                        return;
-                      }
-
-                      setAvailableAssets(mergedAssets);
-                    } catch (error) {
-                      console.error('Failed to refresh node assets:', error);
-                      setAvailableAssets([]);
-                    }
-                  }
-                };
-                refreshAssets();
-              } else {
+              if (!open) {
                 // Reset form and attributes when dialog is closed
                 form.reset();
                 setAssetAttributes({});
-                setCustomAttributes({});
                 setCapacityError(null);
               }
             }}
@@ -526,19 +362,25 @@ export default function NodeDashboardPage() {
                   className="space-y-6"
                 >
                   <AssetSelectionForm
+                    selectedAssetClass={form.watch('assetClass')}
                     selectedAssetId={form.watch('assetId')}
                     quantity={form.watch('quantity')}
-                    supportedAssets={availableAssets}
+                    price={form.watch('price')}
+                    supportedAssetClasses={Array.from(
+                      currentNodeData.supportedAssets || [],
+                    )}
+                    onAssetClassChange={(value) => {
+                      form.setValue('assetClass', value);
+                    }}
                     onAssetIdChange={(value) => {
                       form.setValue('assetId', value);
                     }}
                     onQuantityChange={(value) =>
                       form.setValue('quantity', value)
                     }
+                    onPriceChange={(value) => form.setValue('price', value)}
                     assetAttributes={assetAttributes}
-                    customAttributes={customAttributes}
                     onAssetAttributeChange={handleAssetAttributeChange}
-                    onCustomAttributeChange={handleCustomAttributeChange}
                   />
                   {capacityError && (
                     <p className="text-sm font-medium text-red-500 dark:text-red-400">
@@ -673,7 +515,7 @@ export default function NodeDashboardPage() {
                   <th className="h-12 px-4 text-left align-middle">ID</th>
                   <th className="h-12 px-4 text-left align-middle">Name</th>
                   <th className="h-12 px-4 text-left align-middle">Capacity</th>
-                  <th className="h-12 px-4 text-left align-middle">Price $</th>
+                  {/* Removed Price column as Node domain does not include assetPrices */}
                 </tr>
               </thead>
               <tbody>{renderAssetRows()}</tbody>

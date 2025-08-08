@@ -6,7 +6,7 @@
  */
 
 import { LocationContract } from '@/typechain-types';
-import { Asset, AssetAttribute } from '@/domain/platform';
+import { Asset } from '@/domain/platform';
 
 /**
  * Core node entity
@@ -19,7 +19,6 @@ export interface Node {
   supportedAssets: string[];
   status: 'Active' | 'Inactive';
   capacity: number[];
-  assetPrices: number[];
 }
 
 /**
@@ -91,7 +90,6 @@ export interface NodeRepository {
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
   getNodeOrders(nodeAddress: string): Promise<LocationContract.OrderStruct[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
-  getSupportedAssets(): Promise<Asset[]>;
   getAssetBalance(
     ownerAddress: string,
     assetId: number,
