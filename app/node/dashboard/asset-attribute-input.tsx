@@ -1,8 +1,14 @@
 import { Input } from '@/app/components/ui/input';
-import { Button } from '@/app/components/ui/button';
-import { Asset } from '@/domain/node';
+import { Asset } from '@/domain/platform';
 import React from 'react';
 import { FormLabel } from '@/app/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 
 // Utility function to format snake_case to Title Case
 const formatAttributeName = (name: string): string => {
@@ -12,167 +18,84 @@ const formatAttributeName = (name: string): string => {
     .join(' ');
 };
 
-type CustomAttribute = {
-  name: string;
-  type: 'string' | 'number';
-  value?: any;
-};
-
 type Props = {
   asset: Asset;
   attributeValues: Record<string, any>;
-  customAttributes: CustomAttribute[];
   onAttributeChange: (
     assetId: number,
     attributeName: string,
     value: any,
-  ) => void;
-  onCustomAttributeChange: (
-    assetId: number,
-    attributes: CustomAttribute[],
   ) => void;
 };
 
 const AssetAttributeInput: React.FC<Props> = ({
   asset,
   attributeValues,
-  customAttributes,
   onAttributeChange,
-  onCustomAttributeChange,
 }) => {
-  const addCustomAttribute = () => {
-    const newAttribute: CustomAttribute = {
-      name: '',
-      type: 'string',
-      value: '',
-    };
-    onCustomAttributeChange(asset.id, [...customAttributes, newAttribute]);
-  };
-
-  const updateCustomAttribute = (
-    index: number,
-    field: keyof CustomAttribute,
-    value: any,
-  ) => {
-    const updated = [...customAttributes];
-    if (field === 'value') {
-      const isNumber =
-        value !== '' && !isNaN(Number(value)) && isFinite(Number(value));
-      updated[index] = {
-        ...updated[index],
-        value: isNumber ? Number(value) : value,
-        type: isNumber ? 'number' : 'string',
-      };
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
-    }
-    onCustomAttributeChange(asset.id, updated);
-  };
-
-  const removeCustomAttribute = (index: number) => {
-    const updated = customAttributes.filter((_, i) => i !== index);
-    onCustomAttributeChange(asset.id, updated);
-  };
-
   return (
     <div className="space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Attributes
         </h5>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addCustomAttribute}
-          className="text-xs text-amber-500 border-amber-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-        >
-          + Add Custom
-        </Button>
       </div>
-      {/* Default Attributes */}
-      {asset.defaultAttributes.map((attribute) => {
-        const currentValue =
-          attributeValues[attribute.name] ?? attribute.defaultValue;
+      {asset.attributes.map((attribute) => {
+        const currentValue = attributeValues[attribute.name] ?? '';
+        const hasOptions =
+          Array.isArray(attribute.values) && attribute.values.length > 0;
         return (
           <div key={attribute.name} className="mb-4">
             <FormLabel className="block font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">
               {formatAttributeName(attribute.name)}
-              {attribute.unit && (
-                <span className="text-xs text-gray-400 ml-1">
-                  ({attribute.unit})
-                </span>
-              )}
             </FormLabel>
-            <Input
-              type="text"
-              value={
-                currentValue === 0 || currentValue === '' ? '' : currentValue
-              }
-              onChange={(e) => {
-                const value = e.target.value;
-                if (attribute.type === 'number') {
-                  // Allow empty string, numbers, and backspace for number attributes
-                  if (value === '' || /^\d*$/.test(value)) {
-                    const numValue = value === '' ? 0 : Number(value);
-                    onAttributeChange(asset.id, attribute.name, numValue);
-                  }
-                } else {
-                  onAttributeChange(asset.id, attribute.name, value);
+            {hasOptions ? (
+              <Select
+                value={currentValue?.toString() ?? ''}
+                onValueChange={(value) =>
+                  onAttributeChange(
+                    Number(asset.tokenID),
+                    attribute.name,
+                    value,
+                  )
                 }
-              }}
-              placeholder={
-                attribute.description ||
-                `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
-              }
-              required={attribute.required}
-              className="w-full"
-            />
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={`Select ${formatAttributeName(attribute.name)}`}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {attribute.values.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                type="text"
+                value={
+                  currentValue === 0 || currentValue === '' ? '' : currentValue
+                }
+                onChange={(e) =>
+                  onAttributeChange(
+                    Number(asset.tokenID),
+                    attribute.name,
+                    e.target.value,
+                  )
+                }
+                placeholder={
+                  attribute.description ||
+                  `Enter ${formatAttributeName(attribute.name).toLowerCase()}`
+                }
+                className="w-full"
+              />
+            )}
           </div>
         );
       })}
-      {/* Custom Attributes */}
-      {customAttributes.map((attr, index) => (
-        <div
-          key={index}
-          className="grid grid-cols-5 gap-4 items-center py-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-        >
-          <div className="col-span-2">
-            <Input
-              type="text"
-              value={attr.name}
-              onChange={(e) =>
-                updateCustomAttribute(index, 'name', e.target.value)
-              }
-              placeholder="Attribute name"
-              className="w-full h-9 text-sm"
-            />
-          </div>
-          <div className="col-span-2">
-            <Input
-              type="text"
-              value={attr.value}
-              onChange={(e) => {
-                updateCustomAttribute(index, 'value', e.target.value);
-              }}
-              placeholder="Enter value"
-              className="w-full h-9"
-            />
-          </div>
-          <div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => removeCustomAttribute(index)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 w-8 p-0"
-            >
-              ×
-            </Button>
-          </div>
-        </div>
-      ))}
     </div>
   );
 };

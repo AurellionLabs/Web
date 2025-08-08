@@ -24,10 +24,7 @@ import { Node } from '@/domain/node';
 
 interface EditNodeModalProps {
   nodeAddress: string;
-  nodeData: Pick<
-    Node,
-    'status' | 'supportedAssets' | 'capacity' | 'assetPrices'
-  >;
+  nodeData: Pick<Node, 'status' | 'supportedAssets' | 'capacity'>;
   assetNames: Record<number, string>;
   onNodeUpdated: () => Promise<void>;
 }
@@ -57,7 +54,7 @@ export function EditNodeModal({
       // Ensure properties exist before iterating
       const supportedAssets = nodeData.supportedAssets || [];
       const capacityData = nodeData.capacity || [];
-      const priceData = nodeData.assetPrices || [];
+      const priceData: string[] = [];
 
       supportedAssets.forEach((assetId, index) => {
         const id = Number(assetId);
@@ -186,7 +183,7 @@ export function EditNodeModal({
                     <tr className="border-b">
                       <th className="text-left py-2">Asset</th>
                       <th className="text-left py-2">Capacity</th>
-                      <th className="text-left py-2">Price (wei)</th>
+                      {/* Price column removed as Node domain doesn't include assetPrices */}
                     </tr>
                   </thead>
                   <tbody>
@@ -208,17 +205,7 @@ export function EditNodeModal({
                               placeholder="Enter capacity"
                             />
                           </td>
-                          <td className="py-3">
-                            <Input
-                              type="number"
-                              value={prices[id] || ''}
-                              onChange={(e) =>
-                                handlePriceChange(id, e.target.value)
-                              }
-                              className="w-full"
-                              placeholder="Enter price"
-                            />
-                          </td>
+                          {/* Price input removed */}
                         </tr>
                       );
                     })}
