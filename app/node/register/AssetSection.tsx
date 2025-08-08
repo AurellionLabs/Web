@@ -4,24 +4,18 @@ import { FormLabel } from '@/app/components/ui/form';
 
 type Props = {
   assetLabel: string;
-  cap: number;
-  price: number;
+  capacity: string;
   index: number;
-  capacityValue: number[];
-  priceValue: number[];
-  onCapacityChange: (value: number[]) => void;
-  onPriceChange: (value: number[]) => void;
+  capacities: string[];
+  onCapacityChange: (value: string[]) => void;
 };
 
 const AssetSection: React.FC<Props> = ({
   assetLabel,
-  cap,
-  price,
+  capacity,
   index,
-  capacityValue,
-  priceValue,
+  capacities,
   onCapacityChange,
-  onPriceChange,
 }) => (
   <>
     {index > 0 && (
@@ -42,38 +36,16 @@ const AssetSection: React.FC<Props> = ({
         </FormLabel>
         <Input
           type="text"
-          value={cap === 0 ? '' : cap}
+          value={capacity}
           onChange={(e) => {
             const value = e.target.value;
-            // Allow empty string, numbers, and backspace
             if (value === '' || /^\d*$/.test(value)) {
-              const newValue = [...capacityValue];
-              newValue[index] = value === '' ? 0 : parseInt(value) || 0;
-              onCapacityChange(newValue);
+              const next = [...capacities];
+              next[index] = value;
+              onCapacityChange(next);
             }
           }}
-          placeholder="Maximum capacity"
-          className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
-        />
-      </div>
-      {/* Price Row */}
-      <div className="mb-6">
-        <FormLabel className="block font-semibold text-sm mb-2 text-white">
-          Price
-        </FormLabel>
-        <Input
-          type="text"
-          value={price === 0 ? '' : price}
-          onChange={(e) => {
-            const value = e.target.value;
-            // Allow empty string, numbers, and backspace
-            if (value === '' || /^\d*$/.test(value)) {
-              const newValue = [...priceValue];
-              newValue[index] = value === '' ? 0 : parseInt(value) || 0;
-              onPriceChange(newValue);
-            }
-          }}
-          placeholder="Price per unit"
+          placeholder="Enter capacity"
           className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
         />
       </div>
