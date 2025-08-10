@@ -30,6 +30,7 @@ export interface TokenizedAssetUI {
   quantity: number;
   pricePerUnit: number;
   totalValue: number;
+  fileHash: string;
 }
 
 export interface TradeContextType {
@@ -96,6 +97,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
               },
             },
             assetClass: asset.name ?? 'Unknown Asset',
+            fileHash: asset.fileHash ?? '',
           };
         },
       );

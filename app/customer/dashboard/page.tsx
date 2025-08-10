@@ -42,9 +42,8 @@ import { CustomerOrder } from '@/types';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
-import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers';
+import { BrowserProvider, Contract } from 'ethers';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
-import { customerPackageSign } from '@/dapp-connectors/ausys-controller';
 import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 type SortConfig = {
