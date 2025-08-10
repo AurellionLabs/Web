@@ -19,9 +19,10 @@ import {
   Legend,
   ChartOptions,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { useNode } from '@/app/providers/node.provider';
+import { TokenizedAssetAttribute } from '@/domain/node';
 
 ChartJS.register(
   CategoryScale,
@@ -53,11 +54,24 @@ type TimePeriod = (typeof TIME_PERIODS)[number]['value'];
 
 const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const { assets } = useTrade();
+  const { getAssetAttributes } = useNode();
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
+  const [assetAttributes, setAssetAttributes] = useState<
+    TokenizedAssetAttribute[]
+  >([]);
   const router = useRouter();
 
   const asset = assets.find((a) => a.nodeId === params.id);
+
+  useEffect(() => {
+    const fetchAssetAttributes = async () => {
+      const attributes = await getAssetAttributes(asset?.fileHash || '');
+      setAssetAttributes(attributes);
+      console.log('[TradingPoolPage] Asset attributes>>>>>:', attributes);
+    };
+    fetchAssetAttributes();
+  }, [asset?.fileHash, getAssetAttributes]);
 
   // Generate mock price history data based on selected period
   const generatePriceHistory = () => {
@@ -360,6 +374,30 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                     </div>
                   </div>
                 </div>
+
+                {/* Asset Attributes */}
+                {assetAttributes.length > 0 && (
+                  <div className="border-t border-[${colors.neutral[800]}] pt-6">
+                    <h3 className="text-sm font-medium text-gray-400 mb-4">
+                      Asset Attributes
+                    </h3>
+                    <div className="space-y-3">
+                      {assetAttributes.map((attribute, index) => (
+                        <div key={index}>
+                          <div className="text-sm text-gray-400">
+                            {attribute.name}
+                          </div>
+                          <div className="font-medium">{attribute.value}</div>
+                          {attribute.description && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {attribute.description}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
