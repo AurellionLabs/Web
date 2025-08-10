@@ -18,8 +18,6 @@ import {
   Tooltip,
   Legend,
   ChartOptions,
-  Scale,
-  Tick,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import dynamic from 'next/dynamic';
@@ -54,12 +52,8 @@ const TIME_PERIODS = [
 type TimePeriod = (typeof TIME_PERIODS)[number]['value'];
 
 const TradingPoolPage: FC<PageProps> = ({ params }) => {
-  const { setCurrentUserRole, isWalletConnected } = useMainProvider();
   const { assets } = useTrade();
   const [quantity, setQuantity] = useState<number>(1);
-  const [deliveryLocation, setDeliveryLocation] = useState<string>('');
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [error, setError] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const router = useRouter();
 

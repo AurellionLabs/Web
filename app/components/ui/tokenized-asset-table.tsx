@@ -2,7 +2,7 @@ import { colors } from '@/lib/constants/colors';
 import { Button } from './button';
 import { ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { TokenizedAsset } from '@/app/providers/trade.provider';
+import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 
 type SortConfig = {
   key: 'quantity' | 'pricePerUnit' | 'totalValue' | null;
@@ -10,7 +10,7 @@ type SortConfig = {
 };
 
 interface TokenizedAssetTableProps {
-  assets: TokenizedAsset[];
+  assets: TokenizedAssetUI[];
   onSort: (key: SortConfig['key']) => void;
   sortConfig: SortConfig;
 }
@@ -78,7 +78,9 @@ export function TokenizedAssetTable({
               >
                 <td className="py-4 px-4">
                   <div>
-                    <div className="font-medium">{asset.nodeName}</div>
+                    <div className="font-medium">
+                      {asset.nodeLocation.addressName}
+                    </div>
                     <div className="text-sm text-gray-400">{asset.nodeId}</div>
                   </div>
                 </td>
