@@ -26,6 +26,7 @@ export interface TokenizedAssetUI {
       lng: string;
     };
   };
+  assetName: string;
   assetClass: string;
   quantity: number;
   pricePerUnit: number;
@@ -96,7 +97,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
                 lng: asset.nodeLocation?.location?.lng ?? '0',
               },
             },
-            assetClass: asset.name ?? 'Unknown Asset',
+            assetName: asset.name ?? 'Unknown Asset Name',
+            assetClass: asset.class ?? 'Unknown Asset Class',
             fileHash: asset.fileHash ?? '',
           };
         },

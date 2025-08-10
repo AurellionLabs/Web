@@ -19,9 +19,10 @@ import {
   Legend,
   ChartOptions,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { useNode } from '@/app/providers/node.provider';
+import { TokenizedAssetAttribute } from '@/domain/node';
 
 ChartJS.register(
   CategoryScale,
@@ -53,11 +54,24 @@ type TimePeriod = (typeof TIME_PERIODS)[number]['value'];
 
 const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const { assets } = useTrade();
+  const { getAssetAttributes } = useNode();
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
+  const [assetAttributes, setAssetAttributes] = useState<
+    TokenizedAssetAttribute[]
+  >([]);
   const router = useRouter();
 
   const asset = assets.find((a) => a.nodeId === params.id);
+
+  useEffect(() => {
+    const fetchAssetAttributes = async () => {
+      const attributes = await getAssetAttributes(asset?.fileHash || '');
+      setAssetAttributes(attributes);
+      console.log('[TradingPoolPage] Asset attributes>>>>>:', attributes);
+    };
+    fetchAssetAttributes();
+  }, [asset?.fileHash, getAssetAttributes]);
 
   // Generate mock price history data based on selected period
   const generatePriceHistory = () => {
@@ -199,7 +213,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             {asset.nodeLocation.addressName}
           </span>
           <span className="text-gray-600">/</span>
-          <span className="text-gray-400 capitalize">{asset.assetClass}</span>
+          <span className="text-gray-400">{asset.assetName}</span>
         </div>
 
         {/* Header */}
@@ -222,13 +236,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">
-                  {asset.nodeLocation.addressName}
+                  {asset.assetName}
                 </h1>
-                <p className="text-gray-400 text-sm sm:text-base">
-                  {asset.assetClass.charAt(0).toUpperCase() +
-                    asset.assetClass.slice(1)}{' '}
-                  Pool
-                </p>
               </div>
             </div>
           </div>
@@ -323,6 +332,27 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             >
               <h2 className="text-lg font-semibold mb-6">Stats</h2>
               <div className="space-y-6">
+                <div className="flex-col items-center justify-between">
+                  <div className="mb-2">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">
+                      Asset Name
+                    </h3>
+                    <div className="inline-flex items-center px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
+                      {asset.assetName.charAt(0).toUpperCase() +
+                        asset.assetName.slice(1)}
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">
+                      Asset Class
+                    </h3>
+                    <div className="inline-flex items-center px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
+                      {asset.assetClass.charAt(0).toUpperCase() +
+                        asset.assetClass.slice(1)}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-sm font-medium text-gray-400 mb-2">
@@ -360,6 +390,30 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                     </div>
                   </div>
                 </div>
+
+                {/* Asset Attributes */}
+                {assetAttributes.length > 0 && (
+                  <div className="border-t border-[${colors.neutral[800]}] pt-6">
+                    <h3 className="text-sm font-medium text-gray-400 mb-4">
+                      Asset Attributes
+                    </h3>
+                    <div className="space-y-3">
+                      {assetAttributes.map((attribute, index) => (
+                        <div key={index}>
+                          <div className="text-sm text-gray-400">
+                            {attribute.name}
+                          </div>
+                          <div className="font-medium">{attribute.value}</div>
+                          {attribute.description && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {attribute.description}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
