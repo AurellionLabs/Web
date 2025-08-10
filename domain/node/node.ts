@@ -55,6 +55,7 @@ export interface TokenizedAsset {
   id: number;
   amount: string;
   name: string;
+  class: string;
   fileHash: string;
   status: string;
   nodeAddress: string;

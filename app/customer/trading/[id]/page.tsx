@@ -213,7 +213,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             {asset.nodeLocation.addressName}
           </span>
           <span className="text-gray-600">/</span>
-          <span className="text-gray-400 capitalize">{asset.assetClass}</span>
+          <span className="text-gray-400">{asset.assetName}</span>
         </div>
 
         {/* Header */}
@@ -236,13 +236,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">
-                  {asset.nodeLocation.addressName}
+                  {asset.assetName}
                 </h1>
-                <p className="text-gray-400 text-sm sm:text-base">
-                  {asset.assetClass.charAt(0).toUpperCase() +
-                    asset.assetClass.slice(1)}{' '}
-                  Pool
-                </p>
               </div>
             </div>
           </div>
@@ -337,6 +332,27 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             >
               <h2 className="text-lg font-semibold mb-6">Stats</h2>
               <div className="space-y-6">
+                <div className="flex-col items-center justify-between">
+                  <div className="mb-2">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">
+                      Asset Name
+                    </h3>
+                    <div className="inline-flex items-center px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
+                      {asset.assetName.charAt(0).toUpperCase() +
+                        asset.assetName.slice(1)}
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">
+                      Asset Class
+                    </h3>
+                    <div className="inline-flex items-center px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
+                      {asset.assetClass.charAt(0).toUpperCase() +
+                        asset.assetClass.slice(1)}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-sm font-medium text-gray-400 mb-2">
