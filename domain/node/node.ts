@@ -126,15 +126,3 @@ export interface INodeAssetService {
     prices: number[],
   ): Promise<void>;
 }
-
-/**
- * Node handoff service interface
- */
-
-/**
- * Order repository interface
- */
-export interface OrderRepository {
-  customerMakeOrder(orderData: LocationContract.OrderStruct): Promise<void>;
-  getOrders(): Promise<LocationContract.OrderStruct[]>;
-}

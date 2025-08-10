@@ -14,9 +14,9 @@ import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { handleContractError } from '@/utils/error-handler';
-import { TokenizedAsset as DomainTokenizedAsset } from '@/domain/node';
+import { TokenizedAsset } from '@/domain/node';
 
-export interface TokenizedAsset {
+export interface TokenizedAssetUI {
   id: string;
   nodeId: string;
   nodeLocation: {
@@ -30,14 +30,15 @@ export interface TokenizedAsset {
   quantity: number;
   pricePerUnit: number;
   totalValue: number;
+  fileHash: string;
 }
 
 export interface TradeContextType {
-  assets: TokenizedAsset[];
-  setAssets: (assets: TokenizedAsset[]) => void;
+  assets: TokenizedAssetUI[];
+  setAssets: (assets: TokenizedAssetUI[]) => void;
   fetchAssets: () => Promise<void>;
   isLoading: boolean;
-  getAssetById: (id: string) => TokenizedAsset | undefined;
+  getAssetById: (id: string) => TokenizedAssetUI | undefined;
   placeOrder: (orderData: any) => Promise<boolean>;
   orders: LocationContract.OrderStructOutput[];
   loadOrders: () => Promise<void>;
@@ -46,7 +47,7 @@ export interface TradeContextType {
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
 export function TradeProvider({ children }: { children: ReactNode }) {
-  const [assets, setAssets] = useState<TokenizedAsset[]>([]);
+  const [assets, setAssets] = useState<TokenizedAssetUI[]>([]);
   const [orders, setOrders] = useState<LocationContract.OrderStructOutput[]>(
     [],
   );
@@ -76,8 +77,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const processedAssets: TokenizedAsset[] = domainAssets.map(
-        (asset: DomainTokenizedAsset) => {
+      const processedAssets: TokenizedAssetUI[] = domainAssets.map(
+        (asset: TokenizedAsset) => {
           const pricePerUnit = parseFloat(asset.price ?? '0');
           const quantity = parseInt(asset.amount ?? '0', 10);
 
@@ -96,6 +97,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
               },
             },
             assetClass: asset.name ?? 'Unknown Asset',
+            fileHash: asset.fileHash ?? '',
           };
         },
       );

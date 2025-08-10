@@ -1,9 +1,5 @@
 'use client';
 
-import {
-  customerPackageSign,
-  getOrders,
-} from '@/dapp-connectors/ausys-controller';
 import { LocationContract } from '@/typechain-types';
 import {
   createContext,

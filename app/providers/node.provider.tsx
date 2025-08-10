@@ -9,7 +9,8 @@ import {
   useEffect,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Node, TokenizedAsset } from '@/domain/node';
+import { Node, TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
+import { Asset } from '@/domain/platform';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
@@ -52,9 +53,10 @@ type NodeContextType = {
   // Asset operations
   getNodeAssets: (nodeAddress: string) => Promise<TokenizedAsset[]>;
   getAllNodeAssets: () => Promise<TokenizedAsset[]>;
+  getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
   mintAsset: (
     nodeAddress: string,
-    assetId: number,
+    asset: Asset,
     amount: number,
   ) => Promise<void>;
   updateAssetCapacity: (
@@ -271,6 +273,23 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [nodeRepository]);
 
+  // Get asset attributes by file hash
+  const getAssetAttributes = useCallback(
+    async (fileHash: string): Promise<TokenizedAssetAttribute[]> => {
+      try {
+        return await nodeRepository.getAssetAttributes(fileHash);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to get asset attributes'),
+        );
+        return [];
+      }
+    },
+    [nodeRepository],
+  );
+
   // Refresh the current nodes list
   const refreshNodes = useCallback(async (): Promise<void> => {
     if (currentWalletAddress) {
@@ -462,13 +481,13 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   const mintAsset = useCallback(
     async (
       nodeAddress: string,
-      assetId: number,
+      asset: Asset,
       amount: number,
     ): Promise<void> => {
       setLoading(true);
       setError(null);
       try {
-        await nodeAssetService.mintAsset(nodeAddress, assetId, amount);
+        await nodeAssetService.mintAsset(nodeAddress, asset, amount);
         // Refresh node assets after minting
         if (selectedNode === nodeAddress) {
           const assets = await getNodeAssets(nodeAddress);
@@ -623,6 +642,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     // Asset operations
     getNodeAssets,
     getAllNodeAssets,
+    getAssetAttributes,
     mintAsset,
     updateAssetCapacity,
     updateAssetPrice,
