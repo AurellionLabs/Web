@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 
 type SortConfig = {
-  key: 'quantity' | 'pricePerUnit' | 'totalValue' | null;
+  key:
+    | 'assetName'
+    | 'assetClass'
+    | 'quantity'
+    | 'pricePerUnit'
+    | 'totalValue'
+    | null;
   direction: 'asc' | 'desc';
 };
 
@@ -36,7 +42,26 @@ export function TokenizedAssetTable({
           <thead>
             <tr className="text-sm text-gray-400 border-b border-gray-800">
               <th className="h-12 px-4 text-left">Node</th>
-              <th className="h-12 px-4 text-left">Asset Class</th>
+              <th className="h-12 px-4 text-left">
+                Asset Name
+                <Button
+                  variant="ghost"
+                  onClick={() => onSort('assetName')}
+                  className="h-8 px-2"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </Button>
+              </th>
+              <th className="h-12 px-4 text-left">
+                Asset Class
+                <Button
+                  variant="ghost"
+                  onClick={() => onSort('assetClass')}
+                  className="h-8 px-2"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </Button>
+              </th>
               <th className="h-12 px-4 text-left">
                 Quantity
                 <Button
@@ -83,6 +108,9 @@ export function TokenizedAssetTable({
                     </div>
                     <div className="text-sm text-gray-400">{asset.nodeId}</div>
                   </div>
+                </td>
+                <td className="py-4 px-4">
+                  <span className="font-medium">{asset.assetName}</span>
                 </td>
                 <td className="py-4 px-4">
                   <span className="capitalize">{asset.assetClass}</span>

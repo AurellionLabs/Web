@@ -7,7 +7,13 @@ import { TokenizedAssetTable } from '@/app/components/ui/tokenized-asset-table';
 import { AssetClassFilter } from '@/app/components/ui/asset-class-filter';
 
 type SortConfig = {
-  key: 'quantity' | 'pricePerUnit' | 'totalValue' | null;
+  key:
+    | 'assetName'
+    | 'assetClass'
+    | 'quantity'
+    | 'pricePerUnit'
+    | 'totalValue'
+    | null;
   direction: 'asc' | 'desc';
 };
 
@@ -56,10 +62,23 @@ export default function TradingPage() {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
 
+      // Handle string sorting for assetName and assetClass
+      if (sortConfig.key === 'assetName' || sortConfig.key === 'assetClass') {
+        const aString = String(aValue).toLowerCase();
+        const bString = String(bValue).toLowerCase();
+
+        if (sortConfig.direction === 'asc') {
+          return aString.localeCompare(bString);
+        } else {
+          return bString.localeCompare(aString);
+        }
+      }
+
+      // Handle numeric sorting for quantity, pricePerUnit, totalValue
       if (sortConfig.direction === 'asc') {
-        return aValue - bValue;
+        return Number(aValue) - Number(bValue);
       } else {
-        return bValue - aValue;
+        return Number(bValue) - Number(aValue);
       }
     });
 
