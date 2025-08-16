@@ -25,6 +25,7 @@ import { PoolRepository } from '../repositories/pool-repository';
 import { RepositoryFactory } from '../factories/repository-factory';
 import { IPlatformRepository } from '@/domain/platform';
 import { PlatformRepository } from '../repositories/platform-repository';
+import { PinataSDK } from 'pinata';
 
 /**
  * Context that manages all repositories and their dependencies
@@ -59,10 +60,12 @@ export class RepositoryContext {
    * Initialize the context with required contracts and signer
    */
   public async initialize(
+    auraAssetContract: AuraAsset,
     ausysContract: LocationContract,
     aurumContract: AurumNodeManager,
     provider: BrowserProvider,
     signer: ethers.Signer,
+    pinata: PinataSDK,
   ) {
     this.ausysContract = ausysContract;
     this.aurumContract = aurumContract;
@@ -75,15 +78,14 @@ export class RepositoryContext {
       const repositories = await repositoryFactory.createAllRepositories(
         provider,
         signer,
-        aurumContract,
-        ausysContract,
+        pinata,
       );
 
       this.poolRepository = repositories.poolRepository;
       this.nodeRepository = repositories.nodeRepository;
       this.orderRepository = repositories.orderRepository;
       this.driverRepository = repositories.driverRepository;
-      this.platformRepository = new PlatformRepository();
+      this.platformRepository = repositories.platformRepository;
 
       console.log(
         '[RepositoryContext] Successfully created repositories with RPC separation',
@@ -112,7 +114,10 @@ export class RepositoryContext {
         provider,
         signer,
       );
-      this.platformRepository = new PlatformRepository();
+      this.platformRepository = new PlatformRepository(
+        auraAssetContract,
+        pinata,
+      );
     }
 
     this.auraGoatContract = AuraAsset__factory.connect(

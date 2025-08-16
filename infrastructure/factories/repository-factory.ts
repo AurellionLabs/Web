@@ -16,7 +16,10 @@ import {
   AurumNodeManager__factory,
   AurumNodeManager,
   LocationContract,
+  AuraAsset__factory,
 } from '@/typechain-types';
+import { PlatformRepository } from '../repositories/platform-repository';
+import { PinataSDK } from 'pinata';
 
 /**
  * Factory for creating repositories with proper RPC separation.
@@ -150,37 +153,55 @@ export class RepositoryFactory {
     );
   }
 
+  public async createPlatformRepository(
+    signer: Signer,
+    pinata: PinataSDK,
+  ): Promise<PlatformRepository> {
+    const contract = AuraAsset__factory.connect(
+      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+      signer,
+    );
+    return new PlatformRepository(contract, pinata);
+  }
+
   /**
    * Create all repositories at once for the RepositoryProvider
    */
   public async createAllRepositories(
     userProvider: Provider,
     signer: Signer,
-    aurumContract: AurumNodeManager,
-    ausysContract: LocationContract,
+    pinata: PinataSDK,
   ): Promise<{
     poolRepository: PoolRepository;
     orderRepository: OrderRepository;
     driverRepository: DriverRepository;
     nodeRepository: BlockchainNodeRepository;
+    platformRepository: PlatformRepository;
   }> {
     if (!this.isInitialized) {
       await this.initialize(userProvider, signer);
     }
 
-    const [poolRepository, orderRepository, driverRepository, nodeRepository] =
-      await Promise.all([
-        this.createPoolRepository(userProvider, signer),
-        this.createOrderRepository(userProvider, signer),
-        this.createDriverRepository(userProvider, signer),
-        this.createNodeRepository(userProvider, signer),
-      ]);
+    const [
+      poolRepository,
+      orderRepository,
+      driverRepository,
+      nodeRepository,
+      platformRepository,
+    ] = await Promise.all([
+      this.createPoolRepository(userProvider, signer),
+      this.createOrderRepository(userProvider, signer),
+      this.createDriverRepository(userProvider, signer),
+      this.createNodeRepository(userProvider, signer),
+      this.createPlatformRepository(signer, pinata),
+    ]);
 
     return {
       poolRepository,
       orderRepository,
       driverRepository,
       nodeRepository,
+      platformRepository,
     };
   }
 

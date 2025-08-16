@@ -6,15 +6,18 @@ import { useWallet } from '@/hooks/useWallet';
 import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AUSYS_ADDRESS,
+  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
 import {
   AurumNodeManager__factory,
   LocationContract__factory,
+  AuraAsset__factory,
 } from '@/typechain-types';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
+import { PinataSDK } from 'pinata';
 
 interface RepositoryProviderProps {
   children: ReactNode;
@@ -89,12 +92,22 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         signer,
       );
 
+      const auraAssetContract = AuraAsset__factory.connect(
+        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        signer,
+      );
       const repoContext = RepositoryContext.getInstance();
+      const pinata = new PinataSDK({
+        pinataJwt: process.env.PINATA_JWT!,
+        pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
+      });
       await repoContext.initialize(
+        auraAssetContract,
         ausysContract,
         aurumContract,
         provider,
         signer,
+        pinata,
       );
       console.log('[RepositoryProvider] RepositoryContext initialized.');
 
