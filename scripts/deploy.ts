@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
-import { AurumNodeManager, AuraGoat } from '../typechain-types';
+import { AurumNodeManager, AuraAsset } from '../typechain-types';
 
 dotenv.config();
 
@@ -61,19 +61,27 @@ async function main() {
     await waitForConfirmations(auStake.deploymentTransaction(), 2);
     console.log('AuStake contract deployed to:', auStakeAddress);
 
-    // Deploy AuraGoat with required parameters
-    const AuraGoat = await ethers.getContractFactory('AuraGoat');
-    const auraGoat = await AuraGoat.deploy(
-      deployer.address, // initialOwner
+    // Deploy AuraAsset (formerly AuraGoat) with required parameters
+    const AuraAssetFactory = await ethers.getContractFactory('AuraAsset');
+    const auraAsset = (await AuraAssetFactory.deploy(
+      deployer.address, // initialOwner (owner is deployer via Ownable)
       'https://your-metadata-uri.com/', // _uri for NFT metadata
       await aurumNodeManager.getAddress(), // _NodeManager address
-    );
-    await auraGoat.waitForDeployment();
-    console.log('AuraGoat deployed to:', await auraGoat.getAddress());
+    )) as unknown as AuraAsset;
+    await auraAsset.waitForDeployment();
+    console.log('AuraAsset deployed to:', await auraAsset.getAddress());
 
     // Optional: Set AuraGoat address in AurumNodeManager if needed
-    await aurumNodeManager.addToken(await auraGoat.getAddress());
-    console.log('AuraGoat token added to AurumNodeManager');
+    await aurumNodeManager.addToken(await auraAsset.getAddress());
+    console.log('AuraAsset token added to AurumNodeManager');
+
+    // Add default classes for testing
+    const defaultClasses = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
+    for (const className of defaultClasses) {
+      const tx = await auraAsset.addSupportedClass(className);
+      await waitForConfirmations(tx, 1);
+      console.log(`Added default class: ${className}`);
+    }
 
     // Set NodeManager in AuSys contract
     await auSys.setNodeManager(aurumNodeManagerAddress);
@@ -88,7 +96,7 @@ async function main() {
 export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${USDC}";
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
 export const NEXT_PUBLIC_AUSYS_ADDRESS = "${auSysAddress}";
-export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraGoat.getAddress()}";
+export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
 `;
 
     await fs.promises.writeFile('chain-constants.ts', constants);
@@ -101,7 +109,7 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraGoat.getAddress()}";
     console.log(`AuSys Contract: ${auSysAddress}`);
     console.log(`AurumNodeManager Contract: ${aurumNodeManagerAddress}`);
     console.log(`AuStake Contract: ${auStakeAddress}`);
-    console.log(`AuraGoat Contract: ${await auraGoat.getAddress()}`);
+    console.log(`AuraAsset Contract: ${await auraAsset.getAddress()}`);
     console.log(`Project Wallet: ${projectWallet}`);
     console.log(`Initial Owner: ${initialOwner}`);
   } catch (error) {

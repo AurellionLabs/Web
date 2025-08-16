@@ -69,6 +69,8 @@
     "next": "14.2.16",
     "next-themes": "latest",
     "node-cache": "^5.1.2",
+    "pinata": "^2.4.9",
+    "pinata-web3": "^0.5.4",
     "react": "^18.3.1",
     "react-chartjs-2": "latest",
     "react-day-picker": "8.10.1",

@@ -1,3 +1,5 @@
+import { AuraAsset } from '@/typechain-types';
+
 export interface Asset {
   assetClass: string;
   tokenID: bigint;
@@ -15,6 +17,7 @@ export interface AssetAttribute {
 }
 
 export interface IPlatformRepository {
+  contract: AuraAsset;
   getSupportedAssets(): Promise<Asset[]>;
   getSupportedAssetClasses(): Promise<string[]>;
   getClassAssets(assetClass: string): Promise<Asset[]>;

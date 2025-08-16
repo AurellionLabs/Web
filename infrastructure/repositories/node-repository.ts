@@ -11,8 +11,8 @@ import {
   AurumNode__factory,
   AurumNodeManager,
   AurumNodeManager__factory,
-  AuraGoat__factory,
-  AuraGoat,
+  AuraAsset__factory,
+  AuraAsset,
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
 
@@ -25,7 +25,7 @@ export class BlockchainNodeRepository implements NodeRepository {
   private provider: BrowserProvider;
   private signer: ethers.Signer;
   private auraGoatAddress: string;
-  private auraGoatContractInstance: AuraGoat | null = null;
+  private auraGoatContractInstance: AuraAsset | null = null;
 
   constructor(
     aurumContract: AurumNodeManager,
@@ -39,12 +39,12 @@ export class BlockchainNodeRepository implements NodeRepository {
     this.auraGoatAddress = auraGoatAddress;
   }
 
-  private async getAuraGoatContract(): Promise<AuraGoat> {
+  private async getAuraGoatContract(): Promise<AuraAsset> {
     if (this.auraGoatContractInstance) {
       return this.auraGoatContractInstance;
     }
 
-    const contract = AuraGoat__factory.connect(
+    const contract = AuraAsset__factory.connect(
       this.auraGoatAddress,
       this.signer,
     );
@@ -391,6 +391,17 @@ export class BlockchainNodeRepository implements NodeRepository {
       handleContractError(error, 'load available assets');
       throw error;
     }
+  }
+
+  async getSupportedAssets() {
+    // Delegate to PlatformRepository via RepositoryContext in app layer.
+    // This repository is focused on chain-side node data, so return empty here if called directly.
+    return [];
+  }
+
+  async getAssetAttributes(fileHash: string) {
+    // Not implemented at chain repository level
+    return [];
   }
 
   async getAssetBalance(

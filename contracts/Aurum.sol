@@ -48,7 +48,7 @@ contract AurumNodeManager {
 
   address[] public nodeList;
   locationContract ausys;
-  AuraGoat auraGoat;
+  AuraAsset auraAsset;
   address admin;
   uint256[] public resourceList;
   mapping(uint256 => uint256) public supplyPerResource;
@@ -70,9 +70,9 @@ contract AurumNodeManager {
   }
 
   //PLEASEESSEEEE CALLL MEEEEEEE
-  function addToken(AuraGoat _auraGoat) public {
-    require(address(_auraGoat) != address(0), 'Invalid token address');
-    auraGoat = _auraGoat;
+  function addToken(AuraAsset _auraAsset) public {
+    require(address(_auraAsset) != address(0), 'Invalid token address');
+    auraAsset = _auraAsset;
   }
 
   function setAdmin(address _admin) public adminOnly {
@@ -89,7 +89,7 @@ contract AurumNodeManager {
         node.supportedAssets.length == node.assetPrices.length,
       'Arrays length mismatch'
     );
-    aurumNode NodeContract = new aurumNode(node.owner, ausys, auraGoat, this);
+    aurumNode NodeContract = new aurumNode(node.owner, ausys, auraAsset, this);
     id = address(NodeContract);
     AllNodes[id] = node;
     AllNodes[id].validNode = bytes1(uint8(1));
@@ -287,18 +287,18 @@ contract AurumNodeManager {
 contract aurumNode is ERC1155Holder {
   address public owner;
   locationContract ausys;
-  AuraGoat auraGoat;
+  AuraAsset auraAsset;
   AurumNodeManager manager;
 
   constructor(
     address _owner,
     locationContract _ausys,
-    AuraGoat _auraGoat,
+    AuraAsset _auraAsset,
     AurumNodeManager _manager
   ) {
     owner = _owner;
     ausys = _ausys;
-    auraGoat = _auraGoat;
+    auraAsset = _auraAsset;
     manager = _manager;
   }
 
@@ -348,15 +348,19 @@ contract aurumNode is ERC1155Holder {
 
   function addItem(
     address itemOwner,
-    bytes32 id,
-    uint256 weight,
     uint256 amount,
-    address item,
-    string memory assetName,
-    string[] memory attributes,
+    AuraAsset.Asset memory asset,
+    string memory className,
     bytes memory data
-  ) public isOwner(msg.sender) {
-    auraGoat.nodeMint(itemOwner, assetName, attributes, amount, data);
+  ) public isOwner(msg.sender) returns (uint256 tokenId) {
+    (, uint256 mintedTokenId) = auraAsset.nodeMint(
+      itemOwner,
+      asset,
+      amount,
+      className,
+      data
+    );
+    tokenId = mintedTokenId;
     //TODO:
     //add the item to the node
     // data should be a abi.encode of the entire data struct of an asset

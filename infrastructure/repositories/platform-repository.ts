@@ -1,4 +1,6 @@
 import { IPlatformRepository, Asset } from '@/domain/platform';
+import { AuraAsset } from '@/typechain-types';
+import { PinataSDK } from 'pinata';
 
 const DUMMY_ASSET_CLASSES: string[] = [
   'Goat',
@@ -102,18 +104,143 @@ const DUMMY_ASSETS: Asset[] = [
 ];
 
 export class PlatformRepository implements IPlatformRepository {
+  contract: AuraAsset;
+  pinata: PinataSDK;
+  constructor(_contract: AuraAsset, _pinata: PinataSDK) {
+    this.contract = _contract;
+    this.pinata = _pinata;
+  }
   async getSupportedAssets(): Promise<Asset[]> {
-    return DUMMY_ASSETS;
+    const ipfsKeys: string[] = [];
+    // Probe sequentially until the contract getter reverts (no on-chain length available)
+    for (let i = 0; ; i++) {
+      try {
+        const key = await this.contract.ipfsID(i);
+        if (key && typeof key === 'string') {
+          ipfsKeys.push(key);
+        }
+      } catch (err) {
+        console.error('error in getSupportedAssets', err);
+        break;
+      }
+    }
+
+    if (ipfsKeys.length === 0) return [];
+
+    const assets = await Promise.all(
+      ipfsKeys.map(async (key) => {
+        try {
+          const { data } = await this.pinata.gateways.public.get(`${key}`);
+          const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+          const contractAsset = json.asset as {
+            id: string | number | bigint;
+            name: string;
+            attributes: { name: string; values: string[]; description: string };
+          };
+
+          const asset: Asset = {
+            assetClass: json.className ?? 'Unknown',
+            tokenID: BigInt(json.tokenId ?? contractAsset.id ?? 0),
+            name: contractAsset?.name ?? 'Unknown Asset',
+            attributes: contractAsset?.attributes
+              ? [
+                  {
+                    name: contractAsset.attributes.name,
+                    values: contractAsset.attributes.values ?? [],
+                    description: contractAsset.attributes.description ?? '',
+                  },
+                ]
+              : [],
+          };
+          return asset;
+        } catch (err) {
+          console.error(err);
+          return null;
+        }
+      }),
+    );
+
+    return assets.filter((a): a is Asset => a !== null);
   }
 
   async getSupportedAssetClasses(): Promise<string[]> {
-    return DUMMY_ASSET_CLASSES;
+    const supportedClasses: string[] = [];
+    for (let i = 0; i < this.getSupportedAssets.length; i++) {
+      this.contract.supportedAssets(i);
+      supportedClasses.push(await this.contract.supportedAssets(i));
+    }
+    return supportedClasses;
   }
 
   async getClassAssets(assetClass: string): Promise<Asset[]> {
-    const normalizedClass = assetClass.toLowerCase();
-    return DUMMY_ASSETS.filter(
-      (asset) => asset.assetClass.toLowerCase() === normalizedClass,
+    const normalizedClass = assetClass.trim().toLowerCase();
+
+    // Gather all keys by probing until revert
+    const allKeys: string[] = [];
+    for (let i = 0; ; i++) {
+      try {
+        const key = await this.contract.ipfsID(i);
+        allKeys.push(key);
+      } catch (err) {
+        console.error('error in getClassAssets', err);
+        break;
+      }
+    }
+    if (allKeys.length === 0) return [];
+
+    // Prefilter on-chain by class to avoid unnecessary gateway fetches
+    const matchingKeys = (
+      await Promise.all(
+        allKeys.map(async (key) => {
+          try {
+            const onChainClass = await this.contract.hashToClass(key);
+            return (onChainClass ?? '').trim().toLowerCase() === normalizedClass
+              ? key
+              : null;
+          } catch {
+            return null;
+          }
+        }),
+      )
+    ).filter((k): k is string => !!k);
+
+    if (matchingKeys.length === 0) return [];
+
+    const assets = await Promise.all(
+      matchingKeys.map(async (key) => {
+        try {
+          const { data } = await this.pinata.gateways.public.get(`${key}`);
+          const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+          const contractAsset = json.asset as {
+            id: string | number | bigint;
+            name: string;
+            attributes: { name: string; values: string[]; description: string };
+          };
+
+          const asset: Asset = {
+            assetClass: json.className ?? assetClass,
+            tokenID: BigInt(json.tokenId ?? contractAsset?.id ?? 0),
+            name: contractAsset?.name ?? 'Unknown Asset',
+            attributes: contractAsset?.attributes
+              ? [
+                  {
+                    name: contractAsset.attributes.name,
+                    values: contractAsset.attributes.values ?? [],
+                    description: contractAsset.attributes.description ?? '',
+                  },
+                ]
+              : [],
+          };
+          return asset;
+        } catch (err) {
+          console.error(err);
+          return null;
+        }
+      }),
     );
+
+    return assets.filter((a): a is Asset => a !== null);
   }
 }

@@ -5,8 +5,8 @@ import {
   LocationContract,
   AurumNode,
   AurumNode__factory,
-  AuraGoat,
-  AuraGoat__factory,
+  AuraAsset,
+  AuraAsset__factory,
 } from '@/typechain-types';
 import { BrowserProvider, ethers } from 'ethers';
 import { INodeAssetService } from '@/domain/node';
@@ -39,7 +39,7 @@ export class RepositoryContext {
   private aurumContract: AurumNodeManager | null = null;
   private ausysContract: LocationContract | null = null;
   private signer: ethers.Signer | null = null;
-  private auraGoatContract: AuraGoat | null = null;
+  private auraGoatContract: AuraAsset | null = null;
 
   private constructor(
     private readonly auraGoatAddress: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
@@ -115,7 +115,7 @@ export class RepositoryContext {
       this.platformRepository = new PlatformRepository();
     }
 
-    this.auraGoatContract = AuraGoat__factory.connect(
+    this.auraGoatContract = AuraAsset__factory.connect(
       this.auraGoatAddress,
       signer,
     );
@@ -215,7 +215,7 @@ export class RepositoryContext {
   /**
    * Get the AuraGoat contract instance
    */
-  public async getAuraGoatContract(): Promise<AuraGoat> {
+  public async getAuraGoatContract(): Promise<AuraAsset> {
     if (!this.auraGoatContract) {
       throw new Error('AuraGoat contract not initialized.');
     }

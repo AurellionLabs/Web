@@ -21,7 +21,7 @@ import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
 } from '@/chain-constants';
 import { ethers } from 'ethers';
-import { AuraGoat__factory } from '@/typechain-types';
+import { AuraAsset__factory } from '@/typechain-types';
 
 export type ResourceData = {
   id: bigint;
@@ -563,10 +563,10 @@ export const nodeMintAsset = async (
   }
 };
 
-// Add this function to get AuraGoat contract
+// Add this function to get AuraAsset contract
 const getAuraGoatContract = async (address: string) => {
   if (!signer) throw new Error('Wallet not connected');
-  return AuraGoat__factory.connect(address, signer);
+  return AuraAsset__factory.connect(address, signer);
 };
 
 export const getTokenizedAmount = async (

@@ -1,9 +1,12 @@
 import { INodeAssetService, NodeRepository } from '@/domain/node/node'; // Updated interface import
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { AurumNodeManager, AuraGoat } from '@/typechain-types';
+import { AurumNodeManager } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
-import { ethers, BigNumberish, BytesLike } from 'ethers';
+import { ethers, BigNumberish } from 'ethers';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants'; // Import needed constant
+import { PinataSDK } from 'pinata';
+import { Asset } from '@/domain/platform';
+import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/AuraGoat.sol/AuraAsset';
 
 /**
  * Concrete implementation of the INodeAssetService interface.
@@ -46,11 +49,11 @@ export class NodeAssetService implements INodeAssetService {
 
   async mintAsset(
     nodeAddress: string,
-    assetId: number,
+    asset: Omit<Asset, 'tokenID'>,
     amount: number,
   ): Promise<void> {
     console.log(
-      `[NodeAssetService] Minting asset ${assetId} amount ${amount} for node ${nodeAddress}`,
+      `[NodeAssetService] Minting asset ${asset} amount ${amount} for node ${nodeAddress}`,
     );
     // Get the specific AurumNode contract instance via the context
     const nodeContract = this.context.getAurumNodeContract(nodeAddress);
@@ -61,50 +64,76 @@ export class NodeAssetService implements INodeAssetService {
       // Verify the actual addItem signature in AurumNode.sol
       // Assuming addItem takes: owner, itemId (assetId?), quantity, tokenContract, data
       // Let's use BigInt for amounts/ids going to contract
-      const bigIntAssetId = BigInt(assetId);
       const bigIntAmount = BigInt(amount);
 
       console.log(
         `[NodeAssetService] Calling addItem on contract ${nodeAddress}`,
       );
       console.log(`   Owner: ${nodeAddress}`); // Assuming nodeAddress is the owner/recipient
-      console.log(`   Asset ID (itemId?): ${bigIntAssetId}`);
       console.log(`   Amount (quantity): ${bigIntAmount}`);
       console.log(`   Token Contract: ${NEXT_PUBLIC_AURA_GOAT_ADDRESS}`);
 
-      // Create the padded ID like in the controller
-      const paddedId: BytesLike = ethers.zeroPadValue(
-        ethers.toBeHex(assetId),
-        32,
+      // Build contract AssetStruct from domain Asset
+      const contractAsset: AuraAssetTypes.AssetStruct = {
+        name: asset.name,
+        attributes: {
+          name: asset.attributes.map((a) => a.name).join(', '),
+          values: asset.attributes.flatMap((a) => a.values),
+          description: asset.attributes.map((a) => a.description).join('; '),
+        },
+      };
+
+      // Compute tokenId and asset hash locally to avoid static calls with owner checks
+      const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+      const encodedAsset = abiCoder.encode(
+        [
+          'tuple(uint256 id,string name,tuple(string name,string[] values,string description) attributes)',
+        ],
+        [contractAsset],
       );
+      const tokenIdLocal = ethers.keccak256(encodedAsset);
+      const encodedWithOwner = abiCoder.encode(
+        [
+          'address',
+          'tuple(uint256 id,string name,tuple(string name,string[] values,string description) attributes)',
+        ],
+        [nodeAddress, contractAsset],
+      );
+      const assetHash = ethers.keccak256(encodedWithOwner);
 
-      // Adjust parameters based on the actual AurumNode.addItem signature
-      const assetName = this.getAssetName(assetId);
-      const attributes: string[] = []; // Empty attributes array
+      if (!asset.assetClass || asset.assetClass.trim() === '') {
+        throw new Error('className is required to mint an asset');
+      }
 
-      const tx = await nodeContract.addItem(
-        nodeAddress, // itemOwner
-        paddedId, // id (BytesLike)
-        bigIntAssetId, // weight (using assetId as weight like controller)
-        bigIntAmount, // amount
-        NEXT_PUBLIC_AURA_GOAT_ADDRESS, // item (token contract)
-        assetName, // assetName
-        attributes, // attributes
-        '0x', // data
-        // Overrides (optional) can be added here if needed e.g. { gasLimit: ... }
+      // Temporarily any-cast due to stale typechain types until regeneration
+      const tx = await (nodeContract as any).addItem(
+        nodeAddress,
+        bigIntAmount,
+        contractAsset,
+        asset.assetClass,
+        '0x',
       );
 
       console.log(`[NodeAssetService] addItem transaction sent: ${tx.hash}`);
       await tx.wait();
-      console.log(
-        `[NodeAssetService] Asset minted successfully for node ${nodeAddress}`,
-      );
+      const tokenId = tokenIdLocal;
+      const pinata = new PinataSDK({
+        pinataJwt: process.env.PINATA_JWT!,
+        pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
+      });
+
+      const upload = await pinata.upload.public.json({
+        content: {
+          tokenId: tokenId.toString(),
+          hash: assetHash,
+          asset: contractAsset,
+          className: asset.assetClass,
+        },
+        name: `${tokenId}.json`,
+      });
+      console.log('uploaded', upload);
     } catch (error) {
-      handleContractError(
-        error,
-        `mint asset ${assetId} for node ${nodeAddress}`,
-      );
-      throw error;
+      handleContractError(error, `error in mint asset for node ${nodeAddress}`);
     }
   }
 
