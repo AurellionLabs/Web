@@ -166,9 +166,9 @@ export class PlatformRepository implements IPlatformRepository {
 
   async getSupportedAssetClasses(): Promise<string[]> {
     const supportedClasses: string[] = [];
-    for (let i = 0; i < this.getSupportedAssets.length; i++) {
-      this.contract.supportedAssets(i);
-      supportedClasses.push(await this.contract.supportedAssets(i));
+    for (let i = 0; i < this.contract.supportedClasses.length; i++) {
+      this.contract.supportedClasses(i);
+      supportedClasses.push(await this.contract.supportedClasses(i));
     }
     return supportedClasses;
   }
