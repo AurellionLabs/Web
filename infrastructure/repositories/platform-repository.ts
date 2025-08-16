@@ -170,7 +170,7 @@ export class PlatformRepository implements IPlatformRepository {
       try {
         supportedClasses.push(await this.contract.supportedClasses(i));
       } catch (err) {
-        console.error('error in getSupportedAssetClasses', err);
+        console.log('likely end of supported asset classes list', err);
         break;
       }
     }

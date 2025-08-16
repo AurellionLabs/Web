@@ -137,12 +137,12 @@ export class BlockchainNodeRepository implements NodeRepository {
         },
         validNode: nodeData.validNode as ethers.BytesLike,
         owner: nodeData.owner,
-        supportedAssets: nodeData.supportedAssets.map((n) => BigInt(n)),
+        supportedAssets: [],
         status: (nodeData.status === 'Active'
           ? '0x01'
           : '0x00') as ethers.BytesLike,
-        capacity: nodeData.capacity.map((n) => BigInt(n)),
-        assetPrices: nodeData.assetPrices.map((n) => BigInt(n)),
+        capacity: [],
+        assetPrices: [],
       };
 
       console.log('Calling contract.registerNode with struct:', nodeStruct);
