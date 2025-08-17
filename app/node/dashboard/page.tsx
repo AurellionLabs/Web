@@ -36,6 +36,7 @@ import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
+import { usePlatform } from '@/app/providers/platform.provider';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -98,7 +99,7 @@ export default function NodeDashboardPage() {
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
   const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
-
+  const { supportedAssetClasses } = usePlatform();
   // Form handling
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
@@ -366,9 +367,7 @@ export default function NodeDashboardPage() {
                     selectedAssetId={form.watch('assetId')}
                     quantity={form.watch('quantity')}
                     price={form.watch('price')}
-                    supportedAssetClasses={Array.from(
-                      currentNodeData.supportedAssets || [],
-                    )}
+                    supportedAssetClasses={supportedAssetClasses}
                     onAssetClassChange={(value) => {
                       form.setValue('assetClass', value);
                     }}
