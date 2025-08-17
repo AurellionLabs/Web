@@ -83,6 +83,18 @@ async function main() {
       console.log(`Added default class: ${className}`);
     }
 
+    // Add default AUGOAT asset with attributes: weight (S,M,L) and sex (M,F)
+    const defaultAsset = {
+      name: 'AUGOAT',
+      attributes: [
+        { name: 'weight', values: ['S', 'M', 'L'], description: '' },
+        { name: 'sex', values: ['M', 'F'], description: '' },
+      ],
+    };
+    const addAssetTx = await auraAsset.addSupportedAsset(defaultAsset as any);
+    await waitForConfirmations(addAssetTx, 1);
+    console.log('Added default asset: AUGOAT');
+
     // Set NodeManager in AuSys contract
     await auSys.setNodeManager(aurumNodeManagerAddress);
     console.log('NodeManager set in AuSys contract');

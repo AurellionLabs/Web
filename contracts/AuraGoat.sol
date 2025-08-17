@@ -12,7 +12,7 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   AurumNodeManager NodeManager;
   struct Asset {
     string name;
-    Attribute attributes;
+    Attribute[] attributes;
   }
 
   struct Attribute {
