@@ -2,7 +2,12 @@ import { ethers } from 'hardhat';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
-import { AurumNodeManager, AuraAsset } from '../typechain-types';
+import {
+  AurumNodeManager,
+  AuraAsset,
+  LocationContract,
+} from '../typechain-types';
+import { PinataSDK } from 'pinata';
 
 dotenv.config();
 
@@ -35,7 +40,9 @@ async function main() {
     // Deploy contracts with sequential confirmations
     console.log('\nDeploying AuSys contract...');
     const AuSys = await ethers.getContractFactory('locationContract');
-    const auSys = await AuSys.deploy(initialOwner);
+    const auSys = (await AuSys.deploy(
+      initialOwner,
+    )) as unknown as LocationContract;
     const auSysAddress = await auSys.getAddress();
     await waitForConfirmations(auSys.deploymentTransaction(), 2);
     console.log('AuSys contract deployed to:', auSysAddress);
@@ -86,14 +93,42 @@ async function main() {
     // Add default AUGOAT asset with attributes: weight (S,M,L) and sex (M,F)
     const defaultAsset = {
       name: 'AUGOAT',
+      class: 'GOAT',
       attributes: [
-        { name: 'weight', values: ['S', 'M', 'L'], description: '' },
+        {
+          name: 'weight',
+          values: ['S', 'M', 'L'],
+          description: 'A goats weight either S = 20 KG , M = 30 KG, L = 40KG',
+        },
         { name: 'sex', values: ['M', 'F'], description: '' },
       ],
     };
     const addAssetTx = await auraAsset.addSupportedAsset(defaultAsset as any);
     await waitForConfirmations(addAssetTx, 1);
     console.log('Added default asset: AUGOAT');
+    const hash = await auraAsset.ipfsID(0);
+    console.log('IPFSID if it had one but it doesnt', hash);
+
+    console.log('pinata JWT', process.env.PINATA_JWT!);
+    const pinata = new PinataSDK({
+      pinataJwt: process.env.PINATA_JWT!,
+      pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
+    });
+    const metadataJson = {
+      tokenId: hash.toString(),
+      hash: hash,
+      asset: defaultAsset,
+      className: defaultAsset.class,
+    };
+    const metadataBase64 = Buffer.from(JSON.stringify(metadataJson)).toString(
+      'base64',
+    );
+    const upload = await pinata.upload.public
+      .base64(metadataBase64)
+      .name(`${hash}.json`)
+      .keyvalues({ tokenId: hash.toString(), className: defaultAsset.class });
+
+    console.log('uploaded default goat', upload);
 
     // Set NodeManager in AuSys contract
     await auSys.setNodeManager(aurumNodeManagerAddress);

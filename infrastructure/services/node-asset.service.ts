@@ -74,13 +74,11 @@ export class NodeAssetService implements INodeAssetService {
       console.log(`   Token Contract: ${NEXT_PUBLIC_AURA_GOAT_ADDRESS}`);
 
       // Build contract AssetStruct from domain Asset
+
       const contractAsset: AuraAssetTypes.AssetStruct = {
         name: asset.name,
-        attributes: {
-          name: asset.attributes.map((a) => a.name).join(', '),
-          values: asset.attributes.flatMap((a) => a.values),
-          description: asset.attributes.map((a) => a.description).join('; '),
-        },
+        class: asset.assetClass,
+        attributes: asset.attributes,
       };
 
       // Compute tokenId and asset hash locally to avoid static calls with owner checks
@@ -118,19 +116,26 @@ export class NodeAssetService implements INodeAssetService {
       await tx.wait();
       const tokenId = tokenIdLocal;
       const pinata = new PinataSDK({
-        pinataJwt: process.env.PINATA_JWT!,
+        pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
       });
 
-      const upload = await pinata.upload.public.json({
-        content: {
+      const metadataJson = {
+        tokenId: tokenId.toString(),
+        hash: assetHash,
+        asset: contractAsset,
+        className: asset.assetClass,
+      };
+      const metadataBase64 = Buffer.from(JSON.stringify(metadataJson)).toString(
+        'base64',
+      );
+      const upload = await pinata.upload.public
+        .base64(metadataBase64)
+        .name(`${tokenId}.json`)
+        .keyvalues({
           tokenId: tokenId.toString(),
-          hash: assetHash,
-          asset: contractAsset,
           className: asset.assetClass,
-        },
-        name: `${tokenId}.json`,
-      });
+        });
       console.log('uploaded', upload);
     } catch (error) {
       handleContractError(error, `error in mint asset for node ${nodeAddress}`);

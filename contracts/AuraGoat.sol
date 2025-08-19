@@ -12,14 +12,18 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   AurumNodeManager NodeManager;
   struct Asset {
     string name;
+    string class;
+    // id for per asset metadata so we understand what values each tokenized group of a given asset has
     Attribute[] attributes;
   }
 
   struct Attribute {
     string name;
+    // if there is a single item in this list it will be treated as the actual value of the tokenized asset
     string[] values;
     string description;
   }
+
   mapping(string => Asset) public nameToSupportedAssets;
   mapping(string => uint256) public nameToSupportedAssetIndex;
   string[] public supportedAssets;
@@ -77,6 +81,7 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   }
 
   // Attributes in Alphabetical Alphabetical Order
+  // when calling this please make sure there is one value per Attribute
   function nodeMint(
     address account,
     Asset memory asset,
@@ -121,7 +126,10 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   function addSupportedAsset(Asset memory asset) external onlyOwner {
     nameToSupportedAssetIndex[asset.name] = supportedAssets.length;
     nameToSupportedAssets[asset.name] = asset;
+    bytes32 hash = (keccak256(abi.encode(asset)));
+    hashToClass[hash] = asset.class;
     supportedAssets.push(asset.name);
+    ipfsID.push(hash);
   }
 
   // Tombstone remove for assets: clear mappings and leave empty hole in array

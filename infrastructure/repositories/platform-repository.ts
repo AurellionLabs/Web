@@ -78,51 +78,45 @@ export class PlatformRepository implements IPlatformRepository {
   }
 
   async getClassAssets(assetClass: string): Promise<Asset[]> {
-    const normalizedClass = assetClass.trim().toLowerCase();
-
-    // Gather all keys by probing until revert
-    const allKeys: string[] = [];
-    for (let i = 0; ; i++) {
-      try {
-        const key = await this.contract.ipfsID(i);
-        allKeys.push(key);
-      } catch (err) {
-        console.error('error in getClassAssets', err);
-        break;
-      }
+    // Client-only: query Pinata Files via keyvalues; no on-chain fallback.
+    const hasJwt = Boolean((this.pinata as any)?.config?.pinataJwt);
+    if (!hasJwt) {
+      console.warn(
+        '[getClassAssets] Missing Pinata JWT; cannot query by keyvalues',
+      );
+      return [];
     }
-    if (allKeys.length === 0) return [];
 
-    // Prefilter on-chain by class to avoid unnecessary gateway fetches
-    const matchingKeys = (
-      await Promise.all(
-        allKeys.map(async (key) => {
-          try {
-            const onChainClass = await this.contract.hashToClass(key);
-            return (onChainClass ?? '').trim().toLowerCase() === normalizedClass
-              ? key
-              : null;
-          } catch {
-            return null;
-          }
-        }),
-      )
-    ).filter((k): k is string => !!k);
+    let list: { cid: string }[] = [];
+    try {
+      list = await this.pinata.files.public
+        .list()
+        .keyvalues({ className: assetClass })
+        .all();
+      console.log(
+        '[getClassAssets] files.list keyvalues(className=%s) count=%d',
+        assetClass,
+        list.length,
+      );
+    } catch (e) {
+      console.error('[getClassAssets] Pinata files.list failed', e);
+      return [];
+    }
+    console.log('looked for', assetClass);
 
-    if (matchingKeys.length === 0) return [];
+    if (!list || list.length === 0) return [];
 
     const assets = await Promise.all(
-      matchingKeys.map(async (key) => {
+      list.map(async (item) => {
         try {
-          const { data } = await this.pinata.gateways.public.get(`${key}`);
+          const cid = item.cid;
+          const { data } = await this.pinata.gateways.public.get(`${cid}`);
           const json = typeof data === 'string' ? JSON.parse(data) : data;
-
           const contractAsset = json.asset as {
             id: string | number | bigint;
             name: string;
             attributes: { name: string; values: string[]; description: string };
           };
-
           const asset: Asset = {
             assetClass: json.className ?? assetClass,
             tokenID: BigInt(json.tokenId ?? contractAsset?.id ?? 0),
@@ -144,7 +138,6 @@ export class PlatformRepository implements IPlatformRepository {
         }
       }),
     );
-
     return assets.filter((a): a is Asset => a !== null);
   }
 }

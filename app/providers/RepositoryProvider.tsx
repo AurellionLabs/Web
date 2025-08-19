@@ -98,7 +98,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       );
       const repoContext = RepositoryContext.getInstance();
       const pinata = new PinataSDK({
-        pinataJwt: process.env.PINATA_JWT!,
+        pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
       });
       await repoContext.initialize(
