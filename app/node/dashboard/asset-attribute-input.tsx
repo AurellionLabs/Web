@@ -11,9 +11,12 @@ import {
 } from '@/app/components/ui/select';
 
 // Utility function to format snake_case to Title Case
-const formatAttributeName = (name: string): string => {
-  return name
+const formatAttributeName = (name?: string | null): string => {
+  const safeName = (name ?? '').toString();
+  if (safeName.length === 0) return '';
+  return safeName
     .split('_')
+    .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };

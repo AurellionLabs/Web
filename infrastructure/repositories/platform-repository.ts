@@ -34,24 +34,49 @@ export class PlatformRepository implements IPlatformRepository {
           const json = typeof data === 'string' ? JSON.parse(data) : data;
 
           const contractAsset = json.asset as {
-            id: string | number | bigint;
-            name: string;
-            attributes: { name: string; values: string[]; description: string };
+            id?: string | number | bigint;
+            name?: string;
+            attributes?:
+              | Array<{
+                  name?: string;
+                  values?: string[];
+                  description?: string;
+                }>
+              | { name?: string; values?: string[]; description?: string };
           };
 
-          const asset: Asset = {
-            assetClass: json.className ?? 'Unknown',
-            tokenID: BigInt(json.tokenId ?? contractAsset.id ?? 0),
-            name: contractAsset?.name ?? 'Unknown Asset',
-            attributes: contractAsset?.attributes
+          const attributesArray = Array.isArray(contractAsset?.attributes)
+            ? (contractAsset?.attributes as Array<{
+                name?: string;
+                values?: string[];
+                description?: string;
+              }>)
+            : contractAsset?.attributes &&
+                typeof contractAsset.attributes === 'object'
               ? [
-                  {
-                    name: contractAsset.attributes.name,
-                    values: contractAsset.attributes.values ?? [],
-                    description: contractAsset.attributes.description ?? '',
+                  contractAsset.attributes as {
+                    name?: string;
+                    values?: string[];
+                    description?: string;
                   },
                 ]
-              : [],
+              : [];
+
+          const asset: Asset = {
+            assetClass: json.className ?? (json.class as string) ?? 'Unknown',
+            tokenID: BigInt(
+              (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
+            ),
+            name: contractAsset?.name ?? 'Unknown Asset',
+            attributes: attributesArray
+              .map((attr) => ({
+                name: attr?.name ?? '',
+                values: Array.isArray(attr?.values)
+                  ? (attr?.values as string[])
+                  : [],
+                description: attr?.description ?? '',
+              }))
+              .filter((a) => typeof a.name === 'string' && a.name.length > 0),
           };
           return asset;
         } catch (err) {
@@ -110,27 +135,56 @@ export class PlatformRepository implements IPlatformRepository {
       list.map(async (item) => {
         try {
           const cid = item.cid;
+          console.log('returned cid', cid);
           const { data } = await this.pinata.gateways.public.get(`${cid}`);
           const json = typeof data === 'string' ? JSON.parse(data) : data;
+          console.log('returned output from ipfs', data);
           const contractAsset = json.asset as {
-            id: string | number | bigint;
-            name: string;
-            attributes: { name: string; values: string[]; description: string };
+            id?: string | number | bigint;
+            name?: string;
+            attributes?:
+              | Array<{
+                  name?: string;
+                  values?: string[];
+                  description?: string;
+                }>
+              | { name?: string; values?: string[]; description?: string };
           };
-          const asset: Asset = {
-            assetClass: json.className ?? assetClass,
-            tokenID: BigInt(json.tokenId ?? contractAsset?.id ?? 0),
-            name: contractAsset?.name ?? 'Unknown Asset',
-            attributes: contractAsset?.attributes
+
+          const attributesArray = Array.isArray(contractAsset?.attributes)
+            ? (contractAsset?.attributes as Array<{
+                name?: string;
+                values?: string[];
+                description?: string;
+              }>)
+            : contractAsset?.attributes &&
+                typeof contractAsset.attributes === 'object'
               ? [
-                  {
-                    name: contractAsset.attributes.name,
-                    values: contractAsset.attributes.values ?? [],
-                    description: contractAsset.attributes.description ?? '',
+                  contractAsset.attributes as {
+                    name?: string;
+                    values?: string[];
+                    description?: string;
                   },
                 ]
-              : [],
+              : [];
+
+          const asset: Asset = {
+            assetClass: json.className ?? (json.class as string) ?? assetClass,
+            tokenID: BigInt(
+              (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
+            ),
+            name: contractAsset?.name ?? 'Unknown Asset',
+            attributes: attributesArray
+              .map((attr) => ({
+                name: attr?.name ?? '',
+                values: Array.isArray(attr?.values)
+                  ? (attr?.values as string[])
+                  : [],
+                description: attr?.description ?? '',
+              }))
+              .filter((a) => typeof a.name === 'string' && a.name.length > 0),
           };
+          console.log('returned class asset', asset);
           return asset;
         } catch (err) {
           console.error(err);
