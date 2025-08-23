@@ -23,10 +23,11 @@ type Props = {
   onPriceChange: (value: string) => void;
   assetAttributes: Record<string, Record<string, any>>;
   onAssetAttributeChange: (
-    assetId: number,
+    assetId: string,
     attributeName: string,
     value: any,
   ) => void;
+  onSelectedAssetChange?: (asset: Asset | null) => void;
 };
 
 const AssetSelectionForm: React.FC<Props> = ({
@@ -41,6 +42,7 @@ const AssetSelectionForm: React.FC<Props> = ({
   onPriceChange,
   assetAttributes,
   onAssetAttributeChange,
+  onSelectedAssetChange,
 }) => {
   const { getClassAssets } = usePlatform();
   const [classAssets, setClassAssets] = useState<Asset[]>([]);
@@ -71,8 +73,10 @@ const AssetSelectionForm: React.FC<Props> = ({
         (a) => a.tokenID.toString() === selectedAssetId,
       );
       setSelectedAsset(asset || null);
+      onSelectedAssetChange?.(asset || null);
     } else {
       setSelectedAsset(null);
+      onSelectedAssetChange?.(null);
     }
   }, [selectedAssetId, classAssets]);
 

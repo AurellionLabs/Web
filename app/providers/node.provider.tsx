@@ -58,6 +58,7 @@ type NodeContextType = {
     nodeAddress: string,
     asset: Asset,
     amount: number,
+    priceWei: number,
   ) => Promise<void>;
   updateAssetCapacity: (
     nodeAddress: string,
@@ -273,11 +274,27 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [nodeRepository]);
 
-  // Get asset attributes by file hash
+  // Get asset attributes by file hash (CID or hashed filename). Falls back to empty on failure
   const getAssetAttributes = useCallback(
     async (fileHash: string): Promise<TokenizedAssetAttribute[]> => {
+      console.log('in function', fileHash);
       try {
-        return await nodeRepository.getAssetAttributes(fileHash);
+        if (!fileHash) return [];
+        const platformRepository =
+          RepositoryContext.getInstance().getPlatformRepository();
+        console.log('caling getAssetByHash from front end');
+        const assetDef = await platformRepository.getAssetByHash(fileHash);
+        if (!assetDef || !Array.isArray(assetDef.attributes)) return [];
+        return assetDef.attributes.map(
+          (attr: { name: string; values: string[]; description: string }) => ({
+            name: attr.name,
+            value:
+              Array.isArray(attr.values) && attr.values.length > 0
+                ? attr.values[0]
+                : '',
+            description: attr.description ?? '',
+          }),
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -287,7 +304,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         return [];
       }
     },
-    [nodeRepository],
+    [],
   );
 
   // Refresh the current nodes list
@@ -483,11 +500,12 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
       nodeAddress: string,
       asset: Asset,
       amount: number,
+      priceWei: number,
     ): Promise<void> => {
       setLoading(true);
       setError(null);
       try {
-        await nodeAssetService.mintAsset(nodeAddress, asset, amount);
+        await nodeAssetService.mintAsset(nodeAddress, asset, amount, priceWei);
         // Refresh node assets after minting
         if (selectedNode === nodeAddress) {
           const assets = await getNodeAssets(nodeAddress);

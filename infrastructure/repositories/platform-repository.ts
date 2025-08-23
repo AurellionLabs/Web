@@ -45,7 +45,7 @@ export class PlatformRepository implements IPlatformRepository {
               | { name?: string; values?: string[]; description?: string };
           };
 
-          const attributesArray = Array.isArray(contractAsset?.attributes)
+          const attributesArrayRaw = Array.isArray(contractAsset?.attributes)
             ? (contractAsset?.attributes as Array<{
                 name?: string;
                 values?: string[];
@@ -61,6 +61,13 @@ export class PlatformRepository implements IPlatformRepository {
                   },
                 ]
               : [];
+          const attributesArray = attributesArrayRaw.map((attr) => ({
+            name: attr?.name ?? '',
+            values: Array.isArray(attr?.values)
+              ? (attr?.values as string[]).map((v) => String(v))
+              : [],
+            description: attr?.description ?? '',
+          }));
 
           const asset: Asset = {
             assetClass: json.className ?? (json.class as string) ?? 'Unknown',
@@ -68,15 +75,9 @@ export class PlatformRepository implements IPlatformRepository {
               (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
             ),
             name: contractAsset?.name ?? 'Unknown Asset',
-            attributes: attributesArray
-              .map((attr) => ({
-                name: attr?.name ?? '',
-                values: Array.isArray(attr?.values)
-                  ? (attr?.values as string[])
-                  : [],
-                description: attr?.description ?? '',
-              }))
-              .filter((a) => typeof a.name === 'string' && a.name.length > 0),
+            attributes: attributesArray.filter(
+              (a) => typeof a.name === 'string' && a.name.length > 0,
+            ),
           };
           return asset;
         } catch (err) {
@@ -193,5 +194,196 @@ export class PlatformRepository implements IPlatformRepository {
       }),
     );
     return assets.filter((a): a is Asset => a !== null);
+  }
+  /**
+   * Lookup an asset JSON via Pinata keyvalues using the stored owner+asset hash
+   */
+  async getAssetByOwnerAssetHash(hashHex: string): Promise<Asset | null> {
+    try {
+      const list = await this.pinata.files.public
+        .list()
+        .keyvalues({ hash: hashHex })
+        .all();
+      if (!list || list.length === 0) return null;
+      const cid = list[0].cid;
+      const { data } = await this.pinata.gateways.public.get(`${cid}`);
+      const json = typeof data === 'string' ? JSON.parse(data) : data;
+      const contractAsset = json.asset as {
+        id?: string | number | bigint;
+        name?: string;
+        attributes?:
+          | Array<{ name?: string; values?: string[]; description?: string }>
+          | {
+              name?: string;
+              values?: string[];
+              description?: string;
+            };
+      };
+      const attributesArray = Array.isArray(contractAsset?.attributes)
+        ? (contractAsset?.attributes as Array<{
+            name?: string;
+            values?: string[];
+            description?: string;
+          }>)
+        : contractAsset?.attributes &&
+            typeof contractAsset.attributes === 'object'
+          ? [
+              contractAsset.attributes as {
+                name?: string;
+                values?: string[];
+                description?: string;
+              },
+            ]
+          : [];
+      const asset: Asset = {
+        assetClass: json.className ?? (json.class as string) ?? 'Unknown',
+        tokenID: BigInt(
+          (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
+        ),
+        name: contractAsset?.name ?? 'Unknown Asset',
+        attributes: attributesArray
+          .map((attr) => ({
+            name: attr?.name ?? '',
+            values: Array.isArray(attr?.values)
+              ? (attr?.values as string[])
+              : [],
+            description: attr?.description ?? '',
+          }))
+          .filter((a) => typeof a.name === 'string' && a.name.length > 0),
+      };
+      return asset;
+    } catch (e) {
+      console.error('[PlatformRepository] getAssetByOwnerAssetHash failed', e);
+      return null;
+    }
+  }
+  /**
+   * Lookup an asset JSON via Pinata keyvalues using the stored tokenId (decimal string)
+   */
+  async getAssetByTokenId(
+    tokenId: string | number | bigint,
+  ): Promise<Asset | null> {
+    try {
+      const tokenIdDecimal = BigInt(tokenId).toString(10);
+      const list = await this.pinata.files.public
+        .list()
+        .keyvalues({ tokenId: tokenIdDecimal })
+        .all();
+      if (!list || list.length === 0) return null;
+      const cid = list[0].cid;
+      const { data } = await this.pinata.gateways.public.get(`${cid}`);
+      const json = typeof data === 'string' ? JSON.parse(data) : data;
+      const contractAsset = json.asset as {
+        id?: string | number | bigint;
+        name?: string;
+        attributes?:
+          | Array<{ name?: string; values?: string[]; description?: string }>
+          | {
+              name?: string;
+              values?: string[];
+              description?: string;
+            };
+      };
+      const attributesArray = Array.isArray(contractAsset?.attributes)
+        ? (contractAsset?.attributes as Array<{
+            name?: string;
+            values?: string[];
+            description?: string;
+          }>)
+        : contractAsset?.attributes &&
+            typeof contractAsset.attributes === 'object'
+          ? [
+              contractAsset.attributes as {
+                name?: string;
+                values?: string[];
+                description?: string;
+              },
+            ]
+          : [];
+      const asset: Asset = {
+        assetClass: json.className ?? (json.class as string) ?? 'Unknown',
+        tokenID: BigInt(
+          (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
+        ),
+        name: contractAsset?.name ?? 'Unknown Asset',
+        attributes: attributesArray
+          .map((attr) => ({
+            name: attr?.name ?? '',
+            values: Array.isArray(attr?.values)
+              ? (attr?.values as string[])
+              : [],
+            description: attr?.description ?? '',
+          }))
+          .filter((a) => typeof a.name === 'string' && a.name.length > 0),
+      };
+      return asset;
+    } catch (e) {
+      console.error('[PlatformRepository] getAssetByTokenId failed', e);
+      return null;
+    }
+  }
+  /**
+   * Retrieve an asset definition by its IPFS CID/hash
+   */
+  async getAssetByHash(hashHex: string): Promise<Asset | null> {
+    try {
+      console.log('searching for hash hex', hashHex);
+      const list = await this.pinata.files.public
+        .list()
+        .keyvalues({ hash: hashHex })
+        .all();
+      console.log('returned list of hashHex', list);
+      if (!list || list.length === 0) return null;
+      const cid = list[0].cid;
+      const { data } = await this.pinata.gateways.public.get(`${cid}`);
+      const json = typeof data === 'string' ? JSON.parse(data) : data;
+      const contractAsset = json.asset as {
+        id?: string | number | bigint;
+        name?: string;
+        attributes?:
+          | Array<{ name?: string; values?: string[]; description?: string }>
+          | {
+              name?: string;
+              values?: string[];
+              description?: string;
+            };
+      };
+      const attributesArray = Array.isArray(contractAsset?.attributes)
+        ? (contractAsset?.attributes as Array<{
+            name?: string;
+            values?: string[];
+            description?: string;
+          }>)
+        : contractAsset?.attributes &&
+            typeof contractAsset.attributes === 'object'
+          ? [
+              contractAsset.attributes as {
+                name?: string;
+                values?: string[];
+                description?: string;
+              },
+            ]
+          : [];
+      const asset: Asset = {
+        assetClass: json.className ?? (json.class as string) ?? 'Unknown',
+        tokenID: BigInt(
+          (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
+        ),
+        name: contractAsset?.name ?? 'Unknown Asset',
+        attributes: attributesArray
+          .map((attr) => ({
+            name: attr?.name ?? '',
+            values: Array.isArray(attr?.values)
+              ? (attr?.values as string[])
+              : [],
+            description: attr?.description ?? '',
+          }))
+          .filter((a) => typeof a.name === 'string' && a.name.length > 0),
+      };
+      return asset;
+    } catch (err) {
+      console.error('[PlatformRepository] getAssetByHash failed', err);
+      return null;
+    }
   }
 }

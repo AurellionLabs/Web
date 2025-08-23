@@ -19,6 +19,7 @@ export interface Node {
   supportedAssets: string[];
   status: 'Active' | 'Inactive';
   capacity: number[];
+  assetPrices: number[];
 }
 
 /**
@@ -104,7 +105,12 @@ export interface NodeRepository {
  * Node asset service interface
  */
 export interface INodeAssetService {
-  mintAsset(nodeAddress: string, asset: Asset, amount: number): Promise<void>;
+  mintAsset(
+    nodeAddress: string,
+    asset: Asset,
+    amount: number,
+    priceWei: number,
+  ): Promise<void>;
   updateAssetCapacity(
     nodeAddress: string,
     assetId: number,

@@ -21,4 +21,5 @@ export interface IPlatformRepository {
   getSupportedAssets(): Promise<Asset[]>;
   getSupportedAssetClasses(): Promise<string[]>;
   getClassAssets(assetClass: string): Promise<Asset[]>;
+  getAssetByHash(hash: string): Promise<Asset | null>;
 }

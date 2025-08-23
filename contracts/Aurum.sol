@@ -174,6 +174,36 @@ contract AurumNodeManager {
     emit NodeCapacityUpdated(node, quantities);
   }
 
+  event SupportedAssetAdded(
+    address indexed node,
+    uint256 assetId,
+    uint256 capacity,
+    uint256 price
+  );
+
+  function addSupportedAsset(
+    address node,
+    uint256 assetId,
+    uint256 capacity,
+    uint256 price
+  ) public isOwner(node) {
+    Node storage n = AllNodes[node];
+
+    // Ensure not already supported
+    for (uint i = 0; i < n.supportedAssets.length; i++) {
+      require(n.supportedAssets[i] != assetId, 'Asset already supported');
+    }
+
+    n.supportedAssets.push(assetId);
+    n.capacity.push(capacity);
+    n.assetPrices.push(price);
+
+    // Track resources as before
+    resourceList.push(assetId);
+
+    emit SupportedAssetAdded(node, assetId, capacity, price);
+  }
+
   // New function to handle capacity reduction specifically for orders
   function reduceCapacityForOrder(
     address node,

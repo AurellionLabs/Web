@@ -24,32 +24,29 @@ export class BlockchainNodeRepository implements NodeRepository {
   private aurumContract: AurumNodeManager;
   private provider: BrowserProvider;
   private signer: ethers.Signer;
-  private auraGoatAddress: string;
-  private auraGoatContractInstance: AuraAsset | null = null;
+  private auraAsset: string;
+  private auraAssetContractInstance: AuraAsset | null = null;
 
   constructor(
     aurumContract: AurumNodeManager,
     provider: BrowserProvider,
     signer: ethers.Signer,
-    auraGoatAddress: string,
+    auraAsset: string,
   ) {
     this.aurumContract = aurumContract;
     this.provider = provider;
     this.signer = signer;
-    this.auraGoatAddress = auraGoatAddress;
+    this.auraAsset = auraAsset;
   }
 
-  private async getAuraGoatContract(): Promise<AuraAsset> {
-    if (this.auraGoatContractInstance) {
-      return this.auraGoatContractInstance;
+  private async getAuraAssetContract(): Promise<AuraAsset> {
+    if (this.auraAssetContractInstance) {
+      return this.auraAssetContractInstance;
     }
 
-    const contract = AuraAsset__factory.connect(
-      this.auraGoatAddress,
-      this.signer,
-    );
+    const contract = AuraAsset__factory.connect(this.auraAsset, this.signer);
 
-    this.auraGoatContractInstance = contract;
+    this.auraAssetContractInstance = contract;
     return contract;
   }
 
@@ -78,7 +75,7 @@ export class BlockchainNodeRepository implements NodeRepository {
         location,
         validNode: nodeData.validNode,
         owner: nodeData.owner,
-        supportedAssets: nodeData.supportedAssets.map((n) => Number(n)),
+        supportedAssets: nodeData.supportedAssets.map((n) => n.toString()),
         status: this.convertContractStatusToDomain(nodeData.status),
         capacity: nodeData.capacity.map((n) => Number(n)),
         assetPrices: nodeData.assetPrices.map((n) => Number(n)),
@@ -247,65 +244,114 @@ export class BlockchainNodeRepository implements NodeRepository {
   async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
     try {
       const managerContract = await this.aurumContract;
-      const goatContract = await this.getAuraGoatContract();
+      const auraAsset = await this.getAuraAssetContract();
       const node = await managerContract.getNode(address); // Get node registration data
 
       if (node.owner === ethers.ZeroAddress) {
         throw new Error('Node not found');
       }
 
-      // Create an array of promises for all balance checks
-      const balancePromises = node.supportedAssets.map(
-        async (assetIdBigInt) => {
-          const assetId = Number(assetIdBigInt);
-          // Use lookupHash consistent with minting and getAssetBalance
-          const assetNameForHash = this.getAssetName(assetId); // Get canonical name
-          const attributesForHash: string[] = []; // Assume empty attributes
-
-          try {
-            const tokenId = await goatContract.lookupHash(
-              assetNameForHash,
-              attributesForHash,
-            );
-            const balance = await goatContract.balanceOf(address, tokenId);
-            return {
-              id: assetId,
-              balance: balance,
-            };
-          } catch (error) {
-            // Handle errors fetching individual balances/lookupHash gracefully
-            console.warn(
-              `Error processing balance for node ${address}, asset ${assetId} (name ${assetNameForHash}): ${error instanceof Error ? error.message : error}`,
-            );
-            return { id: assetId, balance: BigInt(0) }; // Return 0 balance on error
+      // Build minted balances per assetId by scanning ERC1155 token IDs
+      const balancesByAssetId = new Map<number, bigint>();
+      const nameByAssetId = new Map<number, string>();
+      const representativeHashByAssetId = new Map<number, string>();
+      const representativeTokenIdByAssetId = new Map<number, bigint>();
+      let platform: any = null;
+      try {
+        const mod = await import(
+          '@/infrastructure/contexts/repository-context'
+        );
+        platform = mod.RepositoryContext.getInstance().getPlatformRepository();
+      } catch (e) {
+        // ignore; name fallback will be used
+      }
+      // Iterate ipfsID list and query balances for minted hashes
+      for (let i = 0; ; i++) {
+        try {
+          const hash = await auraAsset.ipfsID(i);
+          const tokenId = await auraAsset.hashToTokenID(hash);
+          if (tokenId && tokenId !== 0n) {
+            const bal = await auraAsset.balanceOf(address, tokenId);
+            if (bal && bal > 0n) {
+              const cls = await auraAsset.hashToClass(hash);
+              const assetId = this.getAssetIdByClassName(cls);
+              if (assetId !== null) {
+                const prev = balancesByAssetId.get(assetId) ?? 0n;
+                balancesByAssetId.set(assetId, prev + bal);
+                if (!representativeHashByAssetId.has(assetId)) {
+                  representativeHashByAssetId.set(assetId, hash);
+                  representativeTokenIdByAssetId.set(assetId, tokenId);
+                }
+                if (!nameByAssetId.has(assetId) && platform) {
+                  try {
+                    const def = await platform.getAssetByOwnerAssetHash(hash);
+                    if (def && def.name) {
+                      nameByAssetId.set(assetId, def.name);
+                    } else {
+                      try {
+                        const tokenIdDecimal = BigInt(tokenId).toString(10);
+                        const byToken =
+                          await platform.getAssetByTokenId(tokenIdDecimal);
+                        if (byToken && byToken.name) {
+                          nameByAssetId.set(assetId, byToken.name);
+                        } else {
+                          nameByAssetId.set(assetId, cls);
+                        }
+                      } catch (_) {
+                        nameByAssetId.set(assetId, cls);
+                      }
+                    }
+                  } catch (_) {
+                    try {
+                      const tokenIdDecimal = BigInt(tokenId).toString(10);
+                      const byToken =
+                        await platform.getAssetByTokenId(tokenIdDecimal);
+                      if (byToken && byToken.name) {
+                        nameByAssetId.set(assetId, byToken.name);
+                      } else {
+                        nameByAssetId.set(assetId, cls);
+                      }
+                    } catch (_) {
+                      nameByAssetId.set(assetId, cls);
+                    }
+                  }
+                } else if (!nameByAssetId.has(assetId)) {
+                  nameByAssetId.set(assetId, cls);
+                }
+              }
+            }
           }
-        },
-      );
+        } catch (e) {
+          // Revert indicates end of ipfsID array
+          break;
+        }
+      }
 
-      // Wait for all balance checks to complete
-      const balances = await Promise.all(balancePromises);
-
-      // Create a map for quick balance lookup
-      const balanceMap = new Map<number, bigint>();
-      balances.forEach((item) => balanceMap.set(item.id, item.balance));
-
-      // Map node data and fetched balances to TokenizedAsset
-      return node.supportedAssets.map((assetIdBigInt, index) => {
+      // Map node data to TokenizedAsset, using minted balances when present
+      const items: TokenizedAsset[] = [];
+      for (let idx = 0; idx < node.supportedAssets.length; idx++) {
+        const assetIdBigInt = node.supportedAssets[idx];
         const assetId = Number(assetIdBigInt);
-        const currentBalance = balanceMap.get(assetId) ?? BigInt(0); // Get balance from map, default to 0
-
-        return {
+        const minted = balancesByAssetId.get(assetId) ?? 0n;
+        const name =
+          nameByAssetId.get(assetId) ??
+          (await this.resolveAssetNameFromClass(this.getAssetName(assetId)));
+        const representativeHash =
+          representativeHashByAssetId.get(assetId) || '';
+        items.push({
           id: assetId,
-          amount: currentBalance.toString(), // Use actual balance
-          name: this.getAssetName(assetId),
-          // Consider using actual node status?
+          amount: minted.toString(),
+          name,
+          class: this.getAssetName(assetId),
+          fileHash: representativeHash,
           status: this.convertContractStatusToDomain(node.status),
           nodeAddress: address,
           nodeLocation: node.location,
-          price: node.assetPrices[index].toString(), // From registration data
-          capacity: node.capacity[index].toString(), // Keep capacity from registration data
-        };
-      });
+          price: node.assetPrices[idx].toString(),
+          capacity: node.capacity[idx].toString(),
+        });
+      }
+      return items;
     } catch (error) {
       // If it's already the "Node not found" error, just rethrow it
       if (error instanceof Error && error.message === 'Node not found') {
@@ -411,12 +457,16 @@ export class BlockchainNodeRepository implements NodeRepository {
     attributes: string[],
   ): Promise<number> {
     try {
-      const goatContract = await this.getAuraGoatContract();
+      const auraAsset = await this.getAuraAssetContract();
       // Use lookupHash to match the contract's ID generation
-      const tokenId = await goatContract.lookupHash(assetName, attributes);
+      const tokenId = await auraAsset.lookupHash({
+        name: assetName,
+        class: this.getAssetName(assetId),
+        attributes: [],
+      } as any);
 
       // Call balanceOf with the correct tokenId
-      const balance = await goatContract.balanceOf(ownerAddress, tokenId);
+      const balance = await auraAsset.balanceOf(ownerAddress, tokenId);
       console.log(
         `[NodeRepository] Balance check for owner ${ownerAddress}, asset ${assetId} (tokenId ${tokenId}): ${balance}`,
       );
@@ -456,6 +506,36 @@ export class BlockchainNodeRepository implements NodeRepository {
       5: 'DUCK',
     };
     return assetNames[id] || 'UNKNOWN';
+  }
+
+  private getAssetIdByClassName(name: string): number | null {
+    const normalized = (name || '').toUpperCase();
+    const map: { [key: string]: number } = {
+      GOAT: 1,
+      SHEEP: 2,
+      COW: 3,
+      CHICKEN: 4,
+      DUCK: 5,
+    };
+    return map[normalized] ?? null;
+  }
+
+  private async resolveAssetNameFromClass(className: string): Promise<string> {
+    // Prefer a known mapping first; fall back to className if not found
+    try {
+      const repoContext = (
+        await import('@/infrastructure/contexts/repository-context')
+      ).RepositoryContext.getInstance();
+      const platform = repoContext.getPlatformRepository();
+      const assets = await platform.getClassAssets(className);
+      if (assets && assets.length > 0) {
+        // choose first defined asset name, e.g., 'AUGOAT'
+        return assets[0].name || className;
+      }
+    } catch (e) {
+      // ignore and fall back
+    }
+    return className;
   }
 }
 

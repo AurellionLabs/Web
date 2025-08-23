@@ -25,7 +25,7 @@ type Props = {
   asset: Asset;
   attributeValues: Record<string, any>;
   onAttributeChange: (
-    assetId: number,
+    assetId: string,
     attributeName: string,
     value: any,
   ) => void;
@@ -57,7 +57,7 @@ const AssetAttributeInput: React.FC<Props> = ({
                 value={currentValue?.toString() ?? ''}
                 onValueChange={(value) =>
                   onAttributeChange(
-                    Number(asset.tokenID),
+                    asset.tokenID.toString(),
                     attribute.name,
                     value,
                   )
@@ -84,7 +84,7 @@ const AssetAttributeInput: React.FC<Props> = ({
                 }
                 onChange={(e) =>
                   onAttributeChange(
-                    Number(asset.tokenID),
+                    asset.tokenID.toString(),
                     attribute.name,
                     e.target.value,
                   )

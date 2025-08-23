@@ -66,12 +66,17 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
   useEffect(() => {
     const fetchAssetAttributes = async () => {
-      const attributes = await getAssetAttributes(asset?.fileHash || '');
-      setAssetAttributes(attributes);
-      console.log('[TradingPoolPage] Asset attributes>>>>>:', attributes);
+      console.log('this is the asset we are about to search on', asset);
+      if (asset)
+        if (asset.fileHash) {
+          var attributes = await getAssetAttributes(asset?.fileHash);
+          console.log('[TradingPoolPage] Asset attributes>>>>>:', attributes);
+          setAssetAttributes(attributes);
+        } else console.error('filehash doesnt exist');
+      else console.error('asset doesnt exist');
     };
     fetchAssetAttributes();
-  }, [asset?.fileHash, getAssetAttributes]);
+  }, [asset?.fileHash, getAssetAttributes, asset]);
 
   // Generate mock price history data based on selected period
   const generatePriceHistory = () => {

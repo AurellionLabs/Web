@@ -37,6 +37,7 @@ import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
+import type { Asset as PlatformAsset } from '@/domain/platform';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -100,6 +101,7 @@ export default function NodeDashboardPage() {
     useState<EditingCapacity | null>(null);
   const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
   const { supportedAssetClasses } = usePlatform();
+  const [selectedAssetName, setSelectedAssetName] = useState<string>('');
   // Form handling
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
@@ -118,42 +120,53 @@ export default function NodeDashboardPage() {
     setCapacityError(null);
     setIsTokenizing(true);
     try {
-      const assetId = Number(values.assetId);
+      const assetIdStr = values.assetId; // keep as string to avoid precision loss
+      const assetId = Number(assetIdStr);
       const quantity = Number(values.quantity);
 
-      // --- Capacity Check Start ---
+      // --- Capacity Check (Optional) ---
       const assetIndex = currentNodeData.supportedAssets.findIndex(
         (id) => Number(id) === assetId,
       );
-
-      if (assetIndex === -1) {
-        setCapacityError('Selected asset is not supported by this node.');
-        setIsTokenizing(false);
-        return;
-      }
-
-      const totalCapacity = Number(currentNodeData.capacity[assetIndex]);
-      const currentTokenizedAsset = assets.find(
-        (a) => Number(a.id) === assetId,
-      );
-      const currentAmount = currentTokenizedAsset
-        ? Number(currentTokenizedAsset.amount)
-        : 0;
-      const remainingCapacity = totalCapacity - currentAmount;
-
-      if (quantity > remainingCapacity) {
-        setCapacityError(
-          `You are exceeding capacity for ${getAssetName(assetId)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
+      if (assetIndex !== -1) {
+        const totalCapacity = Number(currentNodeData.capacity[assetIndex]);
+        const currentTokenizedAsset = assets.find(
+          (a) => Number(a.id) === assetId,
         );
-        setIsTokenizing(false);
-        return;
+        const currentAmount = currentTokenizedAsset
+          ? Number(currentTokenizedAsset.amount)
+          : 0;
+        const remainingCapacity = totalCapacity - currentAmount;
+
+        if (quantity > remainingCapacity) {
+          setCapacityError(
+            `You are exceeding capacity for ${getAssetName(assetId)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
+          );
+          setIsTokenizing(false);
+          return;
+        }
       }
-      // --- Capacity Check End ---
+      // --- End Optional Capacity Check ---
 
       // Log the attributes for debugging
       console.log('Asset Attributes:', assetAttributes);
 
-      await mintAsset(selectedNode, assetId, quantity);
+      const selectedValues = assetAttributes[assetIdStr] || {};
+      const normalizedAttributes = Object.entries(selectedValues).map(
+        ([attrName, attrValue]) => ({
+          name: attrName,
+          values: [String(attrValue)],
+          description: '',
+        }),
+      );
+      const assetPayload: PlatformAsset = {
+        assetClass: form.getValues('assetClass'),
+        tokenID: BigInt(assetIdStr),
+        name: selectedAssetName || getAssetName(assetId),
+        attributes: normalizedAttributes,
+      };
+      const priceWei = Number(values.price || '0');
+      await mintAsset(selectedNode, assetPayload, quantity, priceWei);
 
       // Refresh assets immediately after minting
       const nodeAssets = await getNodeAssets(selectedNode);
@@ -201,14 +214,14 @@ export default function NodeDashboardPage() {
 
   // Handle asset attribute changes
   const handleAssetAttributeChange = (
-    assetId: number,
+    assetId: string,
     attributeName: string,
     value: any,
   ) => {
-    const currentAttributes = assetAttributes[assetId.toString()] || {};
+    const currentAttributes = assetAttributes[assetId] || {};
     setAssetAttributes({
       ...assetAttributes,
-      [assetId.toString()]: {
+      [assetId]: {
         ...currentAttributes,
         [attributeName]: value,
       },
@@ -380,6 +393,9 @@ export default function NodeDashboardPage() {
                     onPriceChange={(value) => form.setValue('price', value)}
                     assetAttributes={assetAttributes}
                     onAssetAttributeChange={handleAssetAttributeChange}
+                    onSelectedAssetChange={(asset) =>
+                      setSelectedAssetName(asset?.name || '')
+                    }
                   />
                   {capacityError && (
                     <p className="text-sm font-medium text-red-500 dark:text-red-400">

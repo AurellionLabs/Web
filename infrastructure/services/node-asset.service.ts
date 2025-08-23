@@ -114,14 +114,15 @@ export class NodeAssetService implements INodeAssetService {
 
       console.log(`[NodeAssetService] addItem transaction sent: ${tx.hash}`);
       await tx.wait();
-      const tokenId = tokenIdLocal;
+      // Normalize tokenId to a decimal string for consistent keyvalue lookups
+      const tokenIdDecimal = BigInt(tokenIdLocal).toString(10);
       const pinata = new PinataSDK({
         pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
       });
 
       const metadataJson = {
-        tokenId: tokenId.toString(),
+        tokenId: tokenIdDecimal,
         hash: assetHash,
         asset: contractAsset,
         className: asset.assetClass,
@@ -131,10 +132,11 @@ export class NodeAssetService implements INodeAssetService {
       );
       const upload = await pinata.upload.public
         .base64(metadataBase64)
-        .name(`${tokenId}.json`)
+        .name(`${tokenIdDecimal}.json`)
         .keyvalues({
-          tokenId: tokenId.toString(),
+          tokenId: tokenIdDecimal,
           className: asset.assetClass,
+          hash: assetHash,
         });
       console.log('uploaded', upload);
     } catch (error) {
