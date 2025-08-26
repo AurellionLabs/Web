@@ -44,7 +44,7 @@ const AssetSelectionForm: React.FC<Props> = ({
   onAssetAttributeChange,
   onSelectedAssetChange,
 }) => {
-  const { getClassAssets } = usePlatform();
+  const { getClassTokenizableAssets } = usePlatform();
   const [classAssets, setClassAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [loadingAssets, setLoadingAssets] = useState(false);
@@ -57,14 +57,14 @@ const AssetSelectionForm: React.FC<Props> = ({
       if (!selectedAssetClass) return;
       setLoadingAssets(true);
       try {
-        const assets = await getClassAssets(selectedAssetClass);
+        const assets = await getClassTokenizableAssets(selectedAssetClass);
         setClassAssets(assets);
       } finally {
         setLoadingAssets(false);
       }
     };
     loadAssetsForClass();
-  }, [selectedAssetClass, getClassAssets]);
+  }, [selectedAssetClass, getClassTokenizableAssets]);
 
   // Update selected asset when assetId changes
   useEffect(() => {

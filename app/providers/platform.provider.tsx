@@ -10,7 +10,7 @@ export interface PlatformContextType {
   isLoading: boolean;
   error: string | null;
   refreshPlatformData: () => Promise<void>;
-  getClassAssets: (assetClass: string) => Promise<Asset[]>;
+  getClassTokenizableAssets: (assetClass: string) => Promise<Asset[]>;
 }
 
 const PlatformContext = createContext<PlatformContextType | undefined>(
@@ -58,11 +58,16 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const getClassAssets = async (assetClass: string): Promise<Asset[]> => {
+  const getClassTokenizableAssets = async (
+    assetClass: string,
+  ): Promise<Asset[]> => {
     const key = assetClass.trim();
     if (!key) return [];
     try {
-      return await repository.getClassAssets(key);
+      const assets = await repository.getClassAssets(key);
+      // Assets that are tokenizable are guaranteed to have at least 2 values for every attribute.
+      // So it is enough to only check the first attribute to determine if the asset is tokenizable.
+      return assets.filter((asset) => asset.attributes[0].values.length > 1);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load class assets';
@@ -86,7 +91,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         error,
         refreshPlatformData,
-        getClassAssets,
+        getClassTokenizableAssets,
       }}
     >
       {children}
