@@ -85,7 +85,7 @@ export class NodeAssetService implements INodeAssetService {
       const abiCoder = ethers.AbiCoder.defaultAbiCoder();
       const encodedAsset = abiCoder.encode(
         [
-          'tuple(uint256 id,string name,tuple(string name,string[] values,string description) attributes)',
+          'tuple(string name,string class,tuple(string name,string[] values,string description)[] attributes)',
         ],
         [contractAsset],
       );
@@ -93,7 +93,7 @@ export class NodeAssetService implements INodeAssetService {
       const encodedWithOwner = abiCoder.encode(
         [
           'address',
-          'tuple(uint256 id,string name,tuple(string name,string[] values,string description) attributes)',
+          'tuple(string name,string class,tuple(string name,string[] values,string description)[] attributes)',
         ],
         [nodeAddress, contractAsset],
       );
