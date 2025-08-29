@@ -330,6 +330,7 @@ export class BlockchainNodeRepository implements NodeRepository {
       // Map node data to TokenizedAsset, using minted balances when present
       const items: TokenizedAsset[] = [];
       for (let idx = 0; idx < node.supportedAssets.length; idx++) {
+        console.log('>>>>idx', idx);
         const assetIdBigInt = node.supportedAssets[idx];
         const assetId = Number(assetIdBigInt);
         const minted = balancesByAssetId.get(assetId) ?? 0n;

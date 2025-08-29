@@ -16,8 +16,8 @@ import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/Au
 export class NodeAssetService implements INodeAssetService {
   // Renamed class, updated implements
   private context: RepositoryContext;
-  private nodeRepository: NodeRepository | null = null;
-  private aurumContract: AurumNodeManager | null = null;
+  private nodeRepository: NodeRepository;
+  private aurumContract: AurumNodeManager;
   // private auraGoatContract: AuraGoat | null = null;
 
   constructor(context: RepositoryContext) {
@@ -51,6 +51,7 @@ export class NodeAssetService implements INodeAssetService {
     nodeAddress: string,
     asset: Omit<Asset, 'tokenID'>,
     amount: number,
+    priceWei: number,
   ): Promise<void> {
     console.log(
       `[NodeAssetService] Minting asset ${asset} amount ${amount} for node ${nodeAddress}`,
@@ -114,6 +115,18 @@ export class NodeAssetService implements INodeAssetService {
 
       console.log(`[NodeAssetService] addItem transaction sent: ${tx.hash}`);
       await tx.wait();
+
+      const tx1 = await this.aurumContract.addSupportedAsset(
+        nodeAddress,
+        tokenIdLocal,
+        bigIntAmount,
+        priceWei,
+      );
+      console.log(
+        `[NodeAssetService] addSupportedAsset transaction sent: ${tx1.hash}`,
+      );
+      await tx1.wait();
+
       // Normalize tokenId to a decimal string for consistent keyvalue lookups
       const tokenIdDecimal = BigInt(tokenIdLocal).toString(10);
       const pinata = new PinataSDK({

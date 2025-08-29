@@ -9,9 +9,6 @@ import {
   AuraAsset__factory,
 } from '@/typechain-types';
 import { BrowserProvider, ethers } from 'ethers';
-import { INodeAssetService } from '@/domain/node';
-import { IOrderService } from '@/domain/orders';
-import { IOrderRepository } from '@/domain/orders';
 import { OrderRepository } from '../repositories/orders-repository';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
