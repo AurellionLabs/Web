@@ -82,6 +82,13 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
 
   // Attributes in Alphabetical Alphabetical Order
   // when calling this please make sure there is one value per Attribute
+  event MintedAsset(
+    address indexed account,
+    bytes32 indexed hash,
+    uint256 indexed tokenId,
+    Asset asset
+  );
+
   function nodeMint(
     address account,
     Asset memory asset,

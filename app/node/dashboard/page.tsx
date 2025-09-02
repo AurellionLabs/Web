@@ -27,10 +27,8 @@ import * as z from 'zod';
 import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter } from 'next/navigation';
 import { useNode } from '@/app/providers/node.provider';
-import {
-  TokenizedAsset,
-  getAssetName,
-} from '@/dapp-connectors/aurum-controller';
+import { getAssetName } from '@/dapp-connectors/aurum-controller';
+import type { TokenizedAsset } from '@/domain/node';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { MapView } from '@/app/components/ui/map-view';
@@ -494,7 +492,7 @@ export default function NodeDashboardPage() {
                 {assets.map((asset) => (
                   <tr key={asset.id} className="border-b">
                     <td className="px-6 py-4">{asset.id}</td>
-                    <td className="px-6 py-4">{getAssetName(asset.id)}</td>
+                    <td className="px-6 py-4">{getAssetName(Number(asset.id))}</td>
                     <td className="px-6 py-4">{asset.amount}</td>
                     <td className="px-6 py-4">
                       <span

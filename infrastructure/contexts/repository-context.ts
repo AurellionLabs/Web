@@ -103,6 +103,7 @@ export class RepositoryContext {
         provider,
         signer,
         this.auraGoatAddress,
+        pinata,
       );
       this.orderRepository = new OrderRepository(
         ausysContract,
