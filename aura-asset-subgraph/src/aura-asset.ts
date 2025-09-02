@@ -39,7 +39,7 @@ export function handleMintedAsset(event: MintedAssetEvent): void {
   entity.hash = event.params.hash
   entity.tokenId = event.params.tokenId
   entity.asset_name = event.params.asset.name
-  entity.asset_class_ = event.params.asset.class_
+  entity.asset_class = event.params.asset.assetClass
   entity.asset_attributes = changetype<Bytes[]>(event.params.asset.attributes)
 
   entity.blockNumber = event.block.number
