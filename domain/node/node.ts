@@ -53,7 +53,7 @@ export interface AggregateAssetAmount {
  * Tokenized asset representation
  */
 export interface TokenizedAsset {
-  id: number;
+  id: string;
   amount: string;
   name: string;
   class: string;

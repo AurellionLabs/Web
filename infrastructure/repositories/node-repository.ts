@@ -15,6 +15,9 @@ import {
   AuraAsset,
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
+import { PinataSDK } from 'pinata';
+import { hashToAssets } from './shared/ipfs';
+import { AssetIpfsRecord } from '@/domain/platform';
 
 /**
  * Infrastructure implementation of the NodeRepository interface
@@ -26,17 +29,19 @@ export class BlockchainNodeRepository implements NodeRepository {
   private signer: ethers.Signer;
   private auraAsset: string;
   private auraAssetContractInstance: AuraAsset | null = null;
-
+  pinata: PinataSDK;
   constructor(
     aurumContract: AurumNodeManager,
     provider: BrowserProvider,
     signer: ethers.Signer,
     auraAsset: string,
+    _pinata: PinataSDK,
   ) {
     this.aurumContract = aurumContract;
     this.provider = provider;
     this.signer = signer;
     this.auraAsset = auraAsset;
+    this.pinata = _pinata;
   }
 
   private async getAuraAssetContract(): Promise<AuraAsset> {
@@ -240,126 +245,49 @@ export class BlockchainNodeRepository implements NodeRepository {
       throw error;
     }
   }
-
   async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
-    try {
-      const managerContract = await this.aurumContract;
-      const auraAsset = await this.getAuraAssetContract();
-      const node = await managerContract.getNode(address); // Get node registration data
+    const auraAsset = await this.getAuraAssetContract();
+    const nodeAssets: TokenizedAsset[] = [];
+    const node = await this.aurumContract.getNode(address); // Get node registration data
+    const supportedAssets: bigint[] = [];
 
-      if (node.owner === ethers.ZeroAddress) {
-        throw new Error('Node not found');
-      }
+    for (let i = 0; i < node.supportedAssets.length; i++) {
+      supportedAssets.push(node.supportedAssets[i]);
+    }
 
-      // Build minted balances per assetId by scanning ERC1155 token IDs
-      const balancesByAssetId = new Map<number, bigint>();
-      const nameByAssetId = new Map<number, string>();
-      const representativeHashByAssetId = new Map<number, string>();
-      const representativeTokenIdByAssetId = new Map<number, bigint>();
-      let platform: any = null;
+    for (let i = 0; ; i++) {
       try {
-        const mod = await import(
-          '@/infrastructure/contexts/repository-context'
-        );
-        platform = mod.RepositoryContext.getInstance().getPlatformRepository();
-      } catch (e) {
-        // ignore; name fallback will be used
-      }
-      // Iterate ipfsID list and query balances for minted hashes
-      for (let i = 0; ; i++) {
-        try {
-          const hash = await auraAsset.ipfsID(i);
-          const tokenId = await auraAsset.hashToTokenID(hash);
-          if (tokenId && tokenId !== 0n) {
-            const bal = await auraAsset.balanceOf(address, tokenId);
-            if (bal && bal > 0n) {
-              const cls = await auraAsset.hashToClass(hash);
-              const assetId = this.getAssetIdByClassName(cls);
-              if (assetId !== null) {
-                const prev = balancesByAssetId.get(assetId) ?? 0n;
-                balancesByAssetId.set(assetId, prev + bal);
-                if (!representativeHashByAssetId.has(assetId)) {
-                  representativeHashByAssetId.set(assetId, hash);
-                  representativeTokenIdByAssetId.set(assetId, tokenId);
-                }
-                if (!nameByAssetId.has(assetId) && platform) {
-                  try {
-                    const def = await platform.getAssetByOwnerAssetHash(hash);
-                    if (def && def.name) {
-                      nameByAssetId.set(assetId, def.name);
-                    } else {
-                      try {
-                        const tokenIdDecimal = BigInt(tokenId).toString(10);
-                        const byToken =
-                          await platform.getAssetByTokenId(tokenIdDecimal);
-                        if (byToken && byToken.name) {
-                          nameByAssetId.set(assetId, byToken.name);
-                        } else {
-                          nameByAssetId.set(assetId, cls);
-                        }
-                      } catch (_) {
-                        nameByAssetId.set(assetId, cls);
-                      }
-                    }
-                  } catch (_) {
-                    try {
-                      const tokenIdDecimal = BigInt(tokenId).toString(10);
-                      const byToken =
-                        await platform.getAssetByTokenId(tokenIdDecimal);
-                      if (byToken && byToken.name) {
-                        nameByAssetId.set(assetId, byToken.name);
-                      } else {
-                        nameByAssetId.set(assetId, cls);
-                      }
-                    } catch (_) {
-                      nameByAssetId.set(assetId, cls);
-                    }
-                  }
-                } else if (!nameByAssetId.has(assetId)) {
-                  nameByAssetId.set(assetId, cls);
-                }
-              }
-            }
-          }
-        } catch (e) {
-          // Revert indicates end of ipfsID array
-          break;
-        }
-      }
+        const hash = await auraAsset.ipfsID(i);
+        const tokenId = await auraAsset.hashToTokenID(hash);
 
-      // Map node data to TokenizedAsset, using minted balances when present
-      const items: TokenizedAsset[] = [];
-      for (let idx = 0; idx < node.supportedAssets.length; idx++) {
-        const assetIdBigInt = node.supportedAssets[idx];
-        const assetId = Number(assetIdBigInt);
-        const minted = balancesByAssetId.get(assetId) ?? 0n;
-        const name =
-          nameByAssetId.get(assetId) ??
-          (await this.resolveAssetNameFromClass(this.getAssetName(assetId)));
-        const representativeHash =
-          representativeHashByAssetId.get(assetId) || '';
-        items.push({
-          id: assetId,
-          amount: minted.toString(),
-          name,
-          class: this.getAssetName(assetId),
-          fileHash: representativeHash,
-          status: this.convertContractStatusToDomain(node.status),
-          nodeAddress: address,
-          nodeLocation: node.location,
-          price: node.assetPrices[idx].toString(),
-          capacity: node.capacity[idx].toString(),
-        });
+        for (let j = 0; j < node.supportedAssets.length; j++) {
+          if (tokenId != node.supportedAssets[j]) continue;
+          const balance = await auraAsset.balanceOf(address, tokenId);
+          if (balance === BigInt(0)) continue;
+          const rawAssets: AssetIpfsRecord[] = await hashToAssets(
+            hash,
+            this.pinata,
+          );
+          rawAssets.map((raw) => {
+            const nodeAsset: TokenizedAsset = {
+              id: raw.tokenId,
+              amount: balance.toString(),
+              name: raw.asset.name,
+              class: raw.className,
+              fileHash: raw.hash,
+              status: this.convertContractStatusToDomain(node.status),
+              nodeAddress: address,
+              nodeLocation: node.location,
+              price: node.assetPrices[j].toString(),
+              capacity: node.capacity[j].toString(),
+            };
+            nodeAssets.push(nodeAsset);
+          });
+        }
+      } catch (e) {
+        console.error('likely end of ipfsID list', e);
+        return nodeAssets;
       }
-      return items;
-    } catch (error) {
-      // If it's already the "Node not found" error, just rethrow it
-      if (error instanceof Error && error.message === 'Node not found') {
-        throw error;
-      }
-      console.error(`Error in getNodeAssets for address ${address}:`, error);
-      handleContractError(error, 'get node assets');
-      throw error;
     }
   }
 

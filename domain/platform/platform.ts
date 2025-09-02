@@ -16,6 +16,25 @@ export interface AssetAttribute {
   description: string;
 }
 
+export interface IpfsAssetAttribute {
+  name: string;
+  values: string[];
+  description: string;
+}
+
+export interface IpfsAsset {
+  name: string;
+  class: string;
+  attributes: IpfsAssetAttribute[];
+}
+
+export interface AssetIpfsRecord {
+  tokenId: string;
+  hash: string;
+  asset: IpfsAsset;
+  className: string;
+}
+
 export interface IPlatformRepository {
   contract: AuraAsset;
   getSupportedAssets(): Promise<Asset[]>;
