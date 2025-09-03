@@ -61,7 +61,7 @@
       {
         "components": [
           { "internalType": "string", "name": "name", "type": "string" },
-          { "internalType": "string", "name": "class", "type": "string" },
+          { "internalType": "string", "name": "assetClass", "type": "string" },
           {
             "components": [
               { "internalType": "string", "name": "name", "type": "string" },
@@ -207,7 +207,7 @@
       {
         "components": [
           { "internalType": "string", "name": "name", "type": "string" },
-          { "internalType": "string", "name": "class", "type": "string" },
+          { "internalType": "string", "name": "assetClass", "type": "string" },
           {
             "components": [
               { "internalType": "string", "name": "name", "type": "string" },
@@ -340,7 +340,7 @@
       {
         "components": [
           { "internalType": "string", "name": "name", "type": "string" },
-          { "internalType": "string", "name": "class", "type": "string" },
+          { "internalType": "string", "name": "assetClass", "type": "string" },
           {
             "components": [
               { "internalType": "string", "name": "name", "type": "string" },
@@ -394,7 +394,7 @@
     "name": "nameToSupportedAssets",
     "outputs": [
       { "internalType": "string", "name": "name", "type": "string" },
-      { "internalType": "string", "name": "class", "type": "string" }
+      { "internalType": "string", "name": "assetClass", "type": "string" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -419,7 +419,7 @@
       {
         "components": [
           { "internalType": "string", "name": "name", "type": "string" },
-          { "internalType": "string", "name": "class", "type": "string" },
+          { "internalType": "string", "name": "assetClass", "type": "string" },
           {
             "components": [
               { "internalType": "string", "name": "name", "type": "string" },
@@ -467,7 +467,7 @@
       {
         "components": [
           { "internalType": "string", "name": "name", "type": "string" },
-          { "internalType": "string", "name": "class", "type": "string" },
+          { "internalType": "string", "name": "assetClass", "type": "string" },
           {
             "components": [
               { "internalType": "string", "name": "name", "type": "string" },

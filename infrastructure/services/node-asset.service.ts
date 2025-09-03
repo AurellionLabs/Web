@@ -51,12 +51,14 @@ export class NodeAssetService implements INodeAssetService {
     nodeAddress: string,
     asset: Omit<Asset, 'tokenID'>,
     amount: number,
+    priceWei: bigint,
   ): Promise<void> {
     console.log(
       `[NodeAssetService] Minting asset ${asset} amount ${amount} for node ${nodeAddress}`,
     );
     // Get the specific AurumNode contract instance via the context
     const nodeContract = this.context.getAurumNodeContract(nodeAddress);
+    const aurumContract = this.context.getAurumContract()
 
     try {
       // Replicate logic from aurum-controller nodeMintAsset
@@ -89,7 +91,7 @@ export class NodeAssetService implements INodeAssetService {
         ],
         [contractAsset],
       );
-      const tokenIdLocal = ethers.keccak256(encodedAsset);
+      const tokenIdLocal = BigInt(ethers.keccak256(encodedAsset));
       const encodedWithOwner = abiCoder.encode(
         [
           'address',
@@ -104,7 +106,7 @@ export class NodeAssetService implements INodeAssetService {
       }
 
       // Temporarily any-cast due to stale typechain types until regeneration
-      const tx = await (nodeContract as any).addItem(
+      const tx = await nodeContract.addItem(
         nodeAddress,
         bigIntAmount,
         contractAsset,
@@ -112,17 +114,23 @@ export class NodeAssetService implements INodeAssetService {
         '0x',
       );
 
+      const tx2 = await aurumContract.addSupportedAsset(
+        nodeAddress,
+        tokenIdLocal,
+        bigIntAmount,
+        priceWei,
+      );
+
       console.log(`[NodeAssetService] addItem transaction sent: ${tx.hash}`);
       await tx.wait();
-      // Normalize tokenId to a decimal string for consistent keyvalue lookups
-      const tokenIdDecimal = BigInt(tokenIdLocal).toString(10);
+      await tx2.wait()
       const pinata = new PinataSDK({
         pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
       });
 
       const metadataJson = {
-        tokenId: tokenIdDecimal,
+        tokenId: tokenIdLocal,
         hash: assetHash,
         asset: contractAsset,
         className: asset.assetClass,
@@ -132,13 +140,14 @@ export class NodeAssetService implements INodeAssetService {
       );
       const upload = await pinata.upload.public
         .base64(metadataBase64)
-        .name(`${tokenIdDecimal}.json`)
+        .name(`${tokenIdLocal}.json`)
         .keyvalues({
-          tokenId: tokenIdDecimal,
+          tokenId: tokenIdLocal.toString(),
           className: asset.assetClass,
           hash: assetHash,
         });
       console.log('uploaded', upload);
+    
     } catch (error) {
       handleContractError(error, `error in mint asset for node ${nodeAddress}`);
     }

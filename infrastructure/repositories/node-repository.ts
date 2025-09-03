@@ -16,9 +16,13 @@ import {
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
 import { PinataSDK } from 'pinata';
-import { hashToAssets } from './shared/ipfs';
+import { hashToAssets, tokenIdToAssets } from './shared/ipfs';
 import { AssetIpfsRecord } from '@/domain/platform';
 import { GraphQLClient } from 'graphql-request';
+import { calculateCurrentBalances, GET_NODE_ASSETS_COMPLETE, NodeAssetsGraphResponse } from './shared/graph-queries';
+import { graphqlRequest } from './shared/graph';
+import { bigint } from 'zod';
+
 
 /**
  * Infrastructure implementation of the NodeRepository interface
@@ -30,6 +34,7 @@ export class BlockchainNodeRepository implements NodeRepository {
     private signer: ethers.Signer;
     private auraAsset: string;
     private auraAssetContractInstance: AuraAsset | null = null;
+    private graphQLEndpoint = "https://api.studio.thegraph.com/query/112596/aura-asset/version/latest";
     pinata: PinataSDK;
     constructor(
         aurumContract: AurumNodeManager,
@@ -248,52 +253,58 @@ export class BlockchainNodeRepository implements NodeRepository {
         }
     }
     async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
-        const auraAsset = await this.getAuraAssetContract();
-        const nodeAssets: TokenizedAsset[] = [];
-        const node = await this.aurumContract.getNode(address); // Get node registration data
-        const supportedAssets: bigint[] = [];
-
-        for (let i = 0; i < node.supportedAssets.length; i++) {
-            supportedAssets.push(node.supportedAssets[i]);
-        }
-
-        for (let i = 0; ; i++) {
-            try {
-                const hash = await auraAsset.ipfsID(i);
-                const tokenId = await auraAsset.hashToTokenID(hash);
-
-                for (let j = 0; j < node.supportedAssets.length; j++) {
-                    if (tokenId != node.supportedAssets[j]) continue;
-                    const balance = await auraAsset.balanceOf(address, tokenId);
-                    if (balance === BigInt(0)) continue;
-                    const rawAssets: AssetIpfsRecord[] = await hashToAssets(
-                        hash,
-                        this.pinata,
-                    );
-                    console.log("bird has returned with raw", rawAssets)
-                    console.log("length of raw assets", rawAssets.length)
-                    rawAssets.map((raw) => {
-                        console.log("mapping rawwww", raw)
-                        const nodeAsset: TokenizedAsset = {
-                            id: raw.tokenId,
-                            amount: balance.toString(),
-                            name: raw.asset.name,
-                            class: raw.className,
-                            fileHash: raw.hash,
-                            status: this.convertContractStatusToDomain(node.status),
-                            nodeAddress: address,
-                            nodeLocation: node.location,
-                            price: node.assetPrices[j].toString(),
-                            capacity: node.capacity[j].toString(),
-                        };
-                        nodeAssets.push(nodeAsset);
-                    });
-                }
-            } catch (e) {
-                console.error('likely end of ipfsID list', e);
-                console.log("returning node assets:", nodeAssets)
-                return nodeAssets;
+        try {
+            const node = await this.aurumContract.getNode(address);
+            if (node.owner === ethers.ZeroAddress) {
+                throw new Error('Node not found');
             }
+
+            // Get asset data from subgraph
+            const graphData = await graphqlRequest<NodeAssetsGraphResponse>(this.graphQLEndpoint, GET_NODE_ASSETS_COMPLETE, {
+                nodeAddress: address,
+            });
+            console.log('returned from graphData', graphData);
+
+            // Calculate current balances from transfer events
+            const currentBalances = calculateCurrentBalances(
+                graphData.transfersIn,
+                graphData.transfersOut,
+                graphData.mintedAssets
+            );
+
+            const nodeAssets: TokenizedAsset[] = [];
+
+            // Process each token with positive balance
+            for (const tokenBalance of currentBalances) {
+                // Find the corresponding supported asset index
+                const tokenId = tokenBalance.tokenId;
+                const assetIndex = node.supportedAssets.findIndex(asset => asset.toString() === tokenId);
+
+                if (assetIndex === -1) continue; // Skip if not in supported assets
+
+                nodeAssets.push({
+                    id: tokenBalance.tokenId,
+                    amount: tokenBalance.balance,
+                    name: tokenBalance.name || 'Unknown',
+                    class: tokenBalance.assetClass || 'Unknown',
+                    fileHash: tokenBalance.hash || '',
+                    status: this.convertContractStatusToDomain(node.status),
+                    nodeAddress: address,
+                    nodeLocation: node.location,
+                    price: node.assetPrices[assetIndex]?.toString() || '0',
+                    capacity: node.capacity[assetIndex]?.toString() || '0',
+                });
+            }
+            console.log("returned from node assets", nodeAssets)
+
+            return nodeAssets;
+        } catch (error) {
+            if (error instanceof Error && error.message === 'Node not found') {
+                throw error;
+            }
+            console.error(`Error in getNodeAssets for address ${address}:`, error);
+            handleContractError(error, 'get node assets');
+            throw error;
         }
     }
 

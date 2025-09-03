@@ -231,16 +231,20 @@ export default function NodeDashboardPage() {
     if (!currentNodeData?.supportedAssets) return null;
 
     return Array.from(currentNodeData.supportedAssets).map((assetId, index) => {
-      const id = Number(assetId);
+      const idStr = assetId.toString();
+      const assetMeta = assets.find((a) => a.id === idStr);
       return (
-        <tr key={id} className="border-b">
-          <td className="p-4">{id}</td>
-          <td className="p-4">{getAssetName(id)}</td>
+        <tr key={idStr} className="border-b">
+          <td className="p-4">{truncateId(idStr)}</td>
+          <td className="p-4">{assetMeta?.name}</td>
           <td className="p-4">{Number(currentNodeData.capacity[index])}</td>
         </tr>
       );
     });
   };
+
+  const truncateId = (value: string, max: number = 10) =>
+    value && value.length > max ? value.slice(0, max) + '...' : value;
 
   const handleStatusUpdate = async () => {
     if (!currentNodeData || !selectedNode) return;
@@ -491,8 +495,8 @@ export default function NodeDashboardPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
                 {assets.map((asset) => (
                   <tr key={asset.id} className="border-b">
-                    <td className="px-6 py-4">{asset.id}</td>
-                    <td className="px-6 py-4">{getAssetName(Number(asset.id))}</td>
+                    <td className="px-6 py-4">{truncateId(asset.id)}</td>
+                    <td className="px-6 py-4">{asset.name}</td>
                     <td className="px-6 py-4">{asset.amount}</td>
                     <td className="px-6 py-4">
                       <span

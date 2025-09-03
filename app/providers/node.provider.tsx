@@ -274,16 +274,16 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [nodeRepository]);
 
-  // Get asset attributes by file hash (CID or hashed filename). Falls back to empty on failure
+  // Get asset attributes by tokenId via Pinata keyvalues
   const getAssetAttributes = useCallback(
-    async (fileHash: string): Promise<TokenizedAssetAttribute[]> => {
-      console.log('in function', fileHash);
+    async (tokenId: string): Promise<TokenizedAssetAttribute[]> => {
+      console.log('in function getAssetAttributes tokenId', tokenId);
       try {
-        if (!fileHash) return [];
+        if (!tokenId) return [];
         const platformRepository =
           RepositoryContext.getInstance().getPlatformRepository();
-        console.log('caling getAssetByHash from front end');
-        const assetDef = await platformRepository.getAssetByHash(fileHash);
+        console.log('calling getAssetByTokenId from front end');
+        const assetDef = await platformRepository.getAssetByTokenId(tokenId);
         if (!assetDef || !Array.isArray(assetDef.attributes)) return [];
         return assetDef.attributes.map(
           (attr: { name: string; values: string[]; description: string }) => ({

@@ -109,7 +109,7 @@ export interface INodeAssetService {
     nodeAddress: string,
     asset: Asset,
     amount: number,
-    priceWei: number,
+    priceWei: bigint,
   ): Promise<void>;
   updateAssetCapacity(
     nodeAddress: string,

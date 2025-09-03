@@ -2,6 +2,8 @@ import { ethers } from 'hardhat';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
+import * as path from 'path';
+import { execSync } from 'child_process';
 import {
   AurumNodeManager,
   AuraAsset,
@@ -10,6 +12,45 @@ import {
 import { PinataSDK } from 'pinata';
 
 dotenv.config();
+
+function run(cmd: string, cwd: string) {
+  execSync(cmd, { cwd, stdio: 'inherit', env: { ...process.env } });
+}
+
+function runCapture(cmd: string, cwd: string): string {
+  const out = execSync(cmd, { cwd, stdio: 'pipe', env: { ...process.env } });
+  const stdout = out?.toString?.() ?? '';
+  process.stdout.write(stdout);
+  return stdout;
+}
+
+function parseGraphDeployQueryEndpoint(output: string): string | null {
+  const match = output.match(/Queries \(HTTP\):\s*(\S+)/);
+  return match?.[1] ?? null;
+}
+
+async function getDeploymentBlock(tx: any, provider: any) {
+  try {
+    const receipt = await tx.wait(1);
+    return receipt.blockNumber;
+  } catch (e) {
+    return await provider.getBlockNumber();
+  }
+}
+
+function updateJson(filePath: string, update: (data: any) => void) {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const json = JSON.parse(raw);
+  update(json);
+  fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
+}
+
+function updateSubgraphYaml(filePath: string, address: string, startBlock: number) {
+  let yml = fs.readFileSync(filePath, 'utf8');
+  yml = yml.replace(/address:\s*["'][0xA-Fa-f0-9]+["']/, `address: "${address}"`);
+  yml = yml.replace(/startBlock:\s*\d+/, `startBlock: ${startBlock}`);
+  fs.writeFileSync(filePath, yml);
+}
 
 async function waitForConfirmations(tx: any, confirmations: number) {
   try {
@@ -147,6 +188,81 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
 `;
 
     await fs.promises.writeFile('chain-constants.ts', constants);
+
+    // Subgraph auto-redeploy: update configs and deploy both subgraphs
+    const auraAssetAddress = await auraAsset.getAddress();
+    const auraAssetDeployBlock = await getDeploymentBlock(
+      auraAsset.deploymentTransaction(),
+      deployer.provider,
+    );
+    const auStakeDeployBlock = await getDeploymentBlock(
+      auStake.deploymentTransaction(),
+      deployer.provider,
+    );
+
+    const auraAssetSubgraphDir = path.resolve('/home/aurellius/Documents/Web/aura-asset-subgraph');
+    const aurellionSubgraphDir = path.resolve('/home/aurellius/Documents/Web/aurellion');
+
+    // Update networks.json entries
+    updateJson(path.join(auraAssetSubgraphDir, 'networks.json'), (j) => {
+      j['base-sepolia'] ??= {};
+      j['base-sepolia'].AuraAsset = {
+        address: auraAssetAddress,
+        startBlock: auraAssetDeployBlock,
+      };
+    });
+
+    updateJson(path.join(aurellionSubgraphDir, 'networks.json'), (j) => {
+      j['base-sepolia'] ??= {};
+      j['base-sepolia'].AuStake = {
+        address: auStakeAddress,
+        startBlock: auStakeDeployBlock,
+      };
+    });
+
+    // Keep subgraph.yaml in sync (since they contain hardcoded values)
+    updateSubgraphYaml(
+      path.join(auraAssetSubgraphDir, 'subgraph.yaml'),
+      auraAssetAddress,
+      auraAssetDeployBlock,
+    );
+    updateSubgraphYaml(
+      path.join(aurellionSubgraphDir, 'subgraph.yaml'),
+      auStakeAddress,
+      auStakeDeployBlock,
+    );
+
+    // Redeploy subgraphs (GRAPH_ACCESS_TOKEN must be set)
+    console.log('\nRedeploying subgraph: aura-asset');
+    run('npm run codegen', auraAssetSubgraphDir);
+    run('npm run build', auraAssetSubgraphDir);
+    const auraAssetVersion = `v${Date.now()}`;
+    const auraAssetDeployOut = runCapture(
+      `npx graph deploy --node https://api.studio.thegraph.com/deploy/ aura-asset --version-label ${auraAssetVersion}`,
+      auraAssetSubgraphDir,
+    );
+    const auraAssetQueryUrl =
+      parseGraphDeployQueryEndpoint(auraAssetDeployOut) || '';
+
+    console.log('\nRedeploying subgraph: aurellion');
+    run('npm run codegen', aurellionSubgraphDir);
+    run('npm run build', aurellionSubgraphDir);
+    const aurellionVersion = `v${Date.now()}`;
+    const aurellionDeployOut = runCapture(
+      `npx graph deploy --node https://api.studio.thegraph.com/deploy/ aurellion --version-label ${aurellionVersion}`,
+      aurellionSubgraphDir,
+    );
+    const aurellionQueryUrl =
+      parseGraphDeployQueryEndpoint(aurellionDeployOut) || '';
+
+    // Update chain constants with subgraph endpoints so the app always uses latest
+    const constantsWithSubgraphs = `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";
+export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${USDC}";
+export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
+export const NEXT_PUBLIC_AUSYS_ADDRESS = "${auSysAddress}";
+export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
+`;
+    await fs.promises.writeFile('chain-constants.ts', constantsWithSubgraphs);
 
     // Print deployment summary
     console.log('\nDeployment Summary');
