@@ -58,7 +58,7 @@ export class NodeAssetService implements INodeAssetService {
     );
     // Get the specific AurumNode contract instance via the context
     const nodeContract = this.context.getAurumNodeContract(nodeAddress);
-    const aurumContract = this.context.getAurumContract()
+    const aurumContract = this.context.getAurumContract();
 
     try {
       // Replicate logic from aurum-controller nodeMintAsset
@@ -114,16 +114,55 @@ export class NodeAssetService implements INodeAssetService {
         '0x',
       );
 
-      const tx2 = await aurumContract.addSupportedAsset(
-        nodeAddress,
-        tokenIdLocal,
-        bigIntAmount,
-        priceWei,
-      );
+      let tx2: any | null = null;
+      try {
+        tx2 = await aurumContract.addSupportedAsset(
+          nodeAddress,
+          tokenIdLocal,
+          bigIntAmount,
+          priceWei,
+        );
+      } catch (e) {
+        console.warn(
+          '[NodeAssetService] addSupportedAsset failed, attempting capacity/price update instead',
+          e,
+        );
+        // Fallback path: token already supported → update capacity and price
+        const node = await aurumContract.getNode(nodeAddress);
+        const supportedAssets: bigint[] = node.supportedAssets.map((a: any) =>
+          BigInt(a),
+        );
+        const capacities: bigint[] = node.capacity.map((c: any) => BigInt(c));
+        const prices: bigint[] = node.assetPrices.map((p: any) => BigInt(p));
+
+        const assetIndex = supportedAssets.findIndex((a) => a === tokenIdLocal);
+        if (assetIndex === -1) {
+          throw new Error(
+            `[NodeAssetService] Fallback update failed: tokenId not found in supportedAssets for node ${nodeAddress}`,
+          );
+        }
+
+        const updatedCapacities = capacities.map((cap, i) =>
+          i === assetIndex ? cap + bigIntAmount : cap,
+        );
+        // iterate through the prices array and if the index is the assetIndex, update the price to the new price
+        const updatedPrices = prices.map((p, i) =>
+          i === assetIndex ? priceWei : p,
+        );
+
+        await aurumContract.updateSupportedAssets(
+          nodeAddress,
+          updatedCapacities,
+          supportedAssets,
+          updatedPrices,
+        );
+      }
 
       console.log(`[NodeAssetService] addItem transaction sent: ${tx.hash}`);
       await tx.wait();
-      await tx2.wait()
+      if (tx2) {
+        await tx2.wait();
+      }
       const pinata = new PinataSDK({
         pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
@@ -147,7 +186,6 @@ export class NodeAssetService implements INodeAssetService {
           hash: assetHash,
         });
       console.log('uploaded', upload);
-    
     } catch (error) {
       handleContractError(error, `error in mint asset for node ${nodeAddress}`);
     }

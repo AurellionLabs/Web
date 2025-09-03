@@ -106,6 +106,13 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     hashToTokenID[hash] = tokenID;
     ipfsID.push(hash);
     _mint(account, tokenID, amount, data);
+
+  emit MintedAsset(
+    account,
+    hash,
+    tokenID,
+    asset
+  );
   }
 
   // Attributes in Alphabetical Alphabetical Order

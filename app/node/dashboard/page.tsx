@@ -228,19 +228,15 @@ export default function NodeDashboardPage() {
 
   // Fix the asset rows rendering with proper types
   const renderAssetRows = () => {
-    if (!currentNodeData?.supportedAssets) return null;
+    if (!assets || assets.length === 0) return null;
 
-    return Array.from(currentNodeData.supportedAssets).map((assetId, index) => {
-      const idStr = assetId.toString();
-      const assetMeta = assets.find((a) => a.id === idStr);
-      return (
-        <tr key={idStr} className="border-b">
-          <td className="p-4">{truncateId(idStr)}</td>
-          <td className="p-4">{assetMeta?.name}</td>
-          <td className="p-4">{Number(currentNodeData.capacity[index])}</td>
-        </tr>
-      );
-    });
+    return assets.map((asset) => (
+      <tr key={asset.id} className="border-b">
+        <td className="p-4">{truncateId(asset.id)}</td>
+        <td className="p-4">{asset.name}</td>
+        <td className="p-4">{Number(asset.capacity ?? '0')}</td>
+      </tr>
+    ));
   };
 
   const truncateId = (value: string, max: number = 10) =>
