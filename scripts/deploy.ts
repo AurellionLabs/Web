@@ -45,9 +45,16 @@ function updateJson(filePath: string, update: (data: any) => void) {
   fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
 }
 
-function updateSubgraphYaml(filePath: string, address: string, startBlock: number) {
+function updateSubgraphYaml(
+  filePath: string,
+  address: string,
+  startBlock: number,
+) {
   let yml = fs.readFileSync(filePath, 'utf8');
-  yml = yml.replace(/address:\s*["'][0xA-Fa-f0-9]+["']/, `address: "${address}"`);
+  yml = yml.replace(
+    /address:\s*["'][0xA-Fa-f0-9]+["']/,
+    `address: "${address}"`,
+  );
   yml = yml.replace(/startBlock:\s*\d+/, `startBlock: ${startBlock}`);
   fs.writeFileSync(filePath, yml);
 }
@@ -200,8 +207,12 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
       deployer.provider,
     );
 
-    const auraAssetSubgraphDir = path.resolve('/home/aurellius/Documents/Web/aura-asset-subgraph');
-    const aurellionSubgraphDir = path.resolve('/home/aurellius/Documents/Web/aurellion');
+    const auraAssetSubgraphDir = path.resolve(
+      '/home/aurellius/Documents/Web/aura-asset-subgraph',
+    );
+    const aurellionSubgraphDir = path.resolve(
+      '/home/aurellius/Documents/Web/aurellion',
+    );
 
     // Update networks.json entries
     updateJson(path.join(auraAssetSubgraphDir, 'networks.json'), (j) => {

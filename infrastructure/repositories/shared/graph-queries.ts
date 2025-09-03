@@ -19,7 +19,7 @@ export const GET_NODE_TOKENIDS = gql`
       blockTimestamp
       transactionHash
     }
-    
+
     # Get all transfers FROM the node address
     transfersOut: transferSingles(
       where: { from: $nodeAddress }
@@ -37,7 +37,7 @@ export const GET_NODE_TOKENIDS = gql`
 `;
 
 /**
- * Alternative query using MintedAsset events if you want to get 
+ * Alternative query using MintedAsset events if you want to get
  * assets that were originally minted to this node
  */
 export const GET_NODE_MINTED_ASSETS = gql`
@@ -63,9 +63,7 @@ export const GET_NODE_MINTED_ASSETS = gql`
 export const GET_NODE_ASSETS_COMPLETE = gql`
   query GetNodeAssetsComplete($nodeAddress: Bytes!) {
     # Originally minted assets
-    mintedAssets(
-      where: { account: $nodeAddress }
-    ) {
+    mintedAssets(where: { account: $nodeAddress }) {
       tokenId
       hash
       asset_name
@@ -73,21 +71,17 @@ export const GET_NODE_ASSETS_COMPLETE = gql`
       asset_attributes
       blockTimestamp
     }
-    
+
     # All incoming transfers
-    transfersIn: transferSingles(
-      where: { to: $nodeAddress }
-    ) {
+    transfersIn: transferSingles(where: { to: $nodeAddress }) {
       internal_id
       value
       from
       blockTimestamp
     }
-    
+
     # All outgoing transfers
-    transfersOut: transferSingles(
-      where: { from: $nodeAddress }
-    ) {
+    transfersOut: transferSingles(where: { from: $nodeAddress }) {
       internal_id
       value
       to
@@ -133,10 +127,13 @@ export interface NodeAssetsGraphResponse {
 export function calculateCurrentBalances(
   transfersIn: any[],
   transfersOut: any[],
-  mintedAssets: any[]
+  mintedAssets: any[],
 ): NodeTokenBalance[] {
   const balanceMap = new Map<string, bigint>();
-  const metadataMap = new Map<string, { name: string; assetClass: string; hash: string }>();
+  const metadataMap = new Map<
+    string,
+    { name: string; assetClass: string; hash: string }
+  >();
 
   // Add minted assets metadata
   for (const minted of mintedAssets) {
