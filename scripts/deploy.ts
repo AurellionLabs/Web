@@ -207,12 +207,8 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
       deployer.provider,
     );
 
-    const auraAssetSubgraphDir = path.resolve(
-      '/home/aurellius/Documents/Web/aura-asset-subgraph',
-    );
-    const aurellionSubgraphDir = path.resolve(
-      '/home/aurellius/Documents/Web/aurellion',
-    );
+    const auraAssetSubgraphDir = path.resolve('./aura-asset-subgraph');
+    const aurellionSubgraphDir = path.resolve('./aurellion');
 
     // Update networks.json entries
     updateJson(path.join(auraAssetSubgraphDir, 'networks.json'), (j) => {

@@ -1,8 +1,8 @@
 {
   "base-sepolia": {
     "AuStake": {
-      "address": "0x2ba1481FEFA5F6D30FC3738bf9fdE4db898e5D43",
-      "startBlock": 30567058
+      "address": "0x78f857Ce12b561ffe834475fA543917014295eCF",
+      "startBlock": 30655170
     }
   }
 }
