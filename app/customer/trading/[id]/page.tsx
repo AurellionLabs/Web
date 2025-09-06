@@ -66,10 +66,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
   useEffect(() => {
     const fetchAssetAttributes = async () => {
-      console.log('this is the asset we are about to search on', asset);
       if (asset) {
         const attributes = await getAssetAttributes(asset.id);
-        console.log('[TradingPoolPage] Asset attributes>>>>>:', attributes);
         setAssetAttributes(attributes);
       } else console.error('asset doesnt exist');
     };

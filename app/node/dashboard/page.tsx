@@ -1,7 +1,6 @@
 'use client';
 
-import { useMainProvider } from '@/app/providers/main.provider';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -28,7 +27,7 @@ import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter } from 'next/navigation';
 import { useNode } from '@/app/providers/node.provider';
 import { getAssetName } from '@/dapp-connectors/aurum-controller';
-import type { TokenizedAsset } from '@/domain/node';
+import type { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { MapView } from '@/app/components/ui/map-view';
@@ -75,6 +74,7 @@ export default function NodeDashboardPage() {
     refreshNodes,
     mintAsset,
     getNodeAssets,
+    getAssetAttributes,
     updateNodeStatus,
     updateAssetCapacity,
     updateAssetPrice,
@@ -91,6 +91,10 @@ export default function NodeDashboardPage() {
   const [assetAttributes, setAssetAttributes] = useState<
     Record<string, Record<string, any>>
   >({});
+  const [assetAttributesData, setAssetAttributesData] = useState<
+    Record<string, TokenizedAssetAttribute[]>
+  >({});
+  const [loadingAttributes, setLoadingAttributes] = useState<boolean>(false);
 
   // Status and capacity states
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -170,6 +174,9 @@ export default function NodeDashboardPage() {
       const nodeAssets = await getNodeAssets(selectedNode);
       setAssets(nodeAssets);
 
+      // Reload asset attributes
+      await loadAssetAttributes(nodeAssets);
+
       toast.success('Asset tokenized successfully');
       setIsAddAssetOpen(false);
       form.reset();
@@ -194,19 +201,54 @@ export default function NodeDashboardPage() {
     )
     .toFixed(2);
 
+  // Function to load asset attributes
+  const loadAssetAttributes = async (assets: TokenizedAsset[]) => {
+    if (assets.length === 0) return;
+
+    setLoadingAttributes(true);
+    const attributesMap: Record<string, TokenizedAssetAttribute[]> = {};
+
+    try {
+      // Load attributes for each asset in parallel
+      await Promise.all(
+        assets.map(async (asset) => {
+          try {
+            const attributes = await getAssetAttributes(asset.id);
+            attributesMap[asset.id] = attributes;
+          } catch (error) {
+            console.error(
+              `Error loading attributes for asset ${asset.id}:`,
+              error,
+            );
+            attributesMap[asset.id] = [];
+          }
+        }),
+      );
+
+      setAssetAttributesData(attributesMap);
+    } catch (error) {
+      console.error('Error loading asset attributes:', error);
+    } finally {
+      setLoadingAttributes(false);
+    }
+  };
+
   useEffect(() => {
     const loadAssets = async () => {
       if (selectedNode) {
         try {
           const nodeAssets = await getNodeAssets(selectedNode);
           setAssets(nodeAssets);
+
+          // Load attributes for all assets
+          await loadAssetAttributes(nodeAssets);
         } catch (error) {
           console.error('Error loading assets:', error);
         }
       }
     };
     loadAssets();
-  }, [selectedNode]);
+  }, [selectedNode, getAssetAttributes]);
 
   // Removed: legacy merging of supported assets; selection now uses platform provider
 
@@ -226,17 +268,62 @@ export default function NodeDashboardPage() {
     });
   };
 
-  // Fix the asset rows rendering with proper types
-  const renderAssetRows = () => {
-    if (!assets || assets.length === 0) return null;
+  // Render asset details with attributes
+  const renderAssetDetailsRows = () => {
+    if (!assets || assets.length === 0) {
+      return (
+        <tr>
+          <td colSpan={5} className="p-4 text-center text-gray-500">
+            No assets found
+          </td>
+        </tr>
+      );
+    }
 
-    return assets.map((asset) => (
-      <tr key={asset.id} className="border-b">
-        <td className="p-4">{truncateId(asset.id)}</td>
-        <td className="p-4">{asset.name}</td>
-        <td className="p-4">{Number(asset.capacity ?? '0')}</td>
-      </tr>
-    ));
+    return assets.map((asset) => {
+      const attributes = assetAttributesData[asset.id] || [];
+      const hasAttributes = attributes.length > 0;
+
+      return (
+        <React.Fragment key={asset.id}>
+          <tr>
+            <td className="p-4 font-medium">{truncateId(asset.id)}</td>
+            <td className="p-4">{asset.name}</td>
+            <td className="p-4 capitalize">{asset.class}</td>
+            <td className="p-4">{Number(asset.capacity ?? '0')}</td>
+            <td className="p-4">${Number(asset.price ?? '0').toFixed(2)}</td>
+          </tr>
+          {/* Attributes row */}
+          <tr className="border-b">
+            <td colSpan={5} className="px-4 pb-4 pt-2">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                {loadingAttributes ? (
+                  <div className="flex items-center gap-2">
+                    <LoadingSpinner />
+                    <span className="text-xs">Loading...</span>
+                  </div>
+                ) : hasAttributes ? (
+                  <div className="flex flex-wrap gap-2">
+                    {attributes.map((attr, index) => (
+                      <div
+                        key={index}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-xs"
+                        title={attr.description || undefined}
+                      >
+                        <span className="font-medium">{attr.name}:</span>
+                        <span>{attr.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400">No attributes</span>
+                )}
+              </div>
+            </td>
+          </tr>
+        </React.Fragment>
+      );
+    });
   };
 
   const truncateId = (value: string, max: number = 10) =>
@@ -517,7 +604,7 @@ export default function NodeDashboardPage() {
         <CardHeader>
           <CardTitle>Asset Details</CardTitle>
           <CardDescription>
-            Capacity and pricing for each supported asset
+            Capacity and attributes for each tokenized asset
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -526,12 +613,13 @@ export default function NodeDashboardPage() {
               <thead>
                 <tr className="border-b">
                   <th className="h-12 px-4 text-left align-middle">ID</th>
-                  <th className="h-12 px-4 text-left align-middle">Name</th>
+                  <th className="h-12 px-4 text-left align-middle">Asset</th>
+                  <th className="h-12 px-4 text-left align-middle">Class</th>
                   <th className="h-12 px-4 text-left align-middle">Capacity</th>
-                  {/* Removed Price column as Node domain does not include assetPrices */}
+                  <th className="h-12 px-4 text-left align-middle">Price</th>
                 </tr>
               </thead>
-              <tbody>{renderAssetRows()}</tbody>
+              <tbody>{renderAssetDetailsRows()}</tbody>
             </table>
           </div>
         </CardContent>
