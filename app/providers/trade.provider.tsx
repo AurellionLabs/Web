@@ -40,7 +40,7 @@ export interface TradeContextType {
   fetchAssets: () => Promise<void>;
   isLoading: boolean;
   getAssetById: (id: string) => TokenizedAssetUI | undefined;
-  placeOrder: (orderData: any) => Promise<boolean>;
+  placeOrder: (orderData: LocationContract.OrderStruct) => Promise<boolean>;
   orders: LocationContract.OrderStructOutput[];
   loadOrders: () => Promise<void>;
 }
@@ -120,8 +120,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [fetchAssets]);
 
   const getAssetById = useCallback(
-    (nodeId: string) => {
-      return assets.find((asset) => asset.nodeId === nodeId);
+    (id: string) => {
+      return assets.find((asset) => asset.id === id);
     },
     [assets],
   );
@@ -144,134 +144,55 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [orderRepository]);
 
   const placeOrder = useCallback(
-    async (orderData: any): Promise<boolean> => {
+    async (orderData: LocationContract.OrderStruct): Promise<boolean> => {
       setIsLoading(true);
       setError(null);
+
       try {
         const signer = repositoryContext.getSigner();
         const walletAddress = await signer.getAddress();
+
         if (!walletAddress) {
           throw new Error('Wallet not connected or address unavailable.');
         }
 
-        console.log('[TradeProvider] Wallet address:', walletAddress);
-        console.log(
-          '[TradeProvider] Token address:',
-          NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-        );
-        console.log('[TradeProvider] Raw Order data from UI:', orderData);
-
-        const randomBytes = ethers.randomBytes(32);
-        const bytesLikeId = ethers.hexlify(randomBytes);
-
-        const assetId = orderData.id;
-        const quantity = orderData.quantity;
-        const pricePerUnit = orderData.pricePerUnit;
-        const nodeId = orderData.nodeId;
-        const nodeLocation = orderData.nodeLocation?.location;
-        const deliveryCoordinates = orderData.deliveryCoordinates || {
-          lat: '0',
-          lng: '0',
+        // Ensure the customer address is set to the current wallet
+        const orderWithCustomer: LocationContract.OrderStruct = {
+          ...orderData,
+          customer: walletAddress,
         };
-        const deliveryLocationName =
-          orderData.deliveryLocation || 'Default Delivery Location';
 
-        if (
-          !assetId ||
-          !quantity ||
-          pricePerUnit === undefined ||
-          !nodeId ||
-          !nodeLocation
-        ) {
-          console.error('[TradeProvider] Missing fields:', {
-            assetId,
-            quantity,
-            pricePerUnit,
-            nodeId,
-            nodeLocation,
-          });
-          throw new Error(
-            'Missing required order data fields (assetId, quantity, price, nodeId, nodeLocation).',
+        console.log('[TradeProvider] Placing order:', orderWithCustomer);
+
+        // Create the order using the service
+        const actualOrderId = await orderService.createOrder(orderWithCustomer);
+        console.log(`[TradeProvider] Order created with ID: ${actualOrderId}`);
+
+        // Create the initial journey for the order
+        if (orderWithCustomer.nodes && orderWithCustomer.nodes.length > 0) {
+          const firstNodeAddress = String(orderWithCustomer.nodes[0]);
+          await orderService.createOrderJourney(
+            actualOrderId,
+            firstNodeAddress,
+            walletAddress,
+            orderWithCustomer.locationData,
+            BigInt(0), // bounty
+            BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)
+            BigInt(orderWithCustomer.tokenQuantity),
+            Number(orderWithCustomer.tokenId),
           );
+          console.log('[TradeProvider] Initial journey created for order');
         }
 
-        const blockchainOrder: LocationContract.OrderStruct = {
-          id: bytesLikeId,
-          token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-          tokenId: BigInt(assetId),
-          tokenQuantity: BigInt(quantity),
-          requestedTokenQuantity: BigInt(quantity),
-          price:
-            ethers.parseUnits(pricePerUnit.toFixed(18), 18) * BigInt(quantity),
-          txFee: BigInt(0),
-          customer: walletAddress,
-          journeyIds: [],
-          nodes: [ethers.getAddress(nodeId)],
-          locationData: {
-            startLocation: {
-              lat: nodeLocation.lat,
-              lng: nodeLocation.lng,
-            },
-            endLocation: {
-              lat: deliveryCoordinates.lat,
-              lng: deliveryCoordinates.lng,
-            },
-            startName: orderData.nodeLocation?.addressName ?? 'Origin Node',
-            endName: deliveryLocationName,
-          },
-          currentStatus: BigInt(0),
-          contracatualAgreement: ethers.ZeroHash,
-        };
-
-        console.log(
-          '[TradeProvider] Constructed blockchainOrder:',
-          JSON.stringify(blockchainOrder, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value,
-          ),
-        );
-        console.log(
-          `[TradeProvider] blockchainOrder.id used for creation: ${blockchainOrder.id}`,
-        );
-
-        console.log(
-          '[TradeProvider] Placing order with data:',
-          JSON.stringify(blockchainOrder, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value,
-          ),
-        );
-
-        const actualOrderId = await orderService.createOrder(blockchainOrder);
-        console.log(
-          `[TradeProvider] Actual Order ID from service: ${actualOrderId}`,
-        );
-
-        console.log(
-          `[TradeProvider] Calling createOrderJourney with orderId: ${actualOrderId}, nodeId: ${nodeId}, assetId: ${assetId}`,
-        );
-
-        const receipt2 = await orderService.createOrderJourney(
-          actualOrderId,
-          nodeId,
-          walletAddress,
-          blockchainOrder.locationData,
-          BigInt(0),
-          BigInt(10000000000000),
-          BigInt(quantity),
-          assetId,
-        );
-        console.log(
-          '[TradeProvider] Order placed successfully, tx receipt:',
-          receipt2,
-        );
         await loadOrders();
-        setIsLoading(false);
         return true;
       } catch (err) {
         console.error('[TradeProvider] Error placing order:', err);
         setError('Failed to place order.');
         handleContractError(err, 'place order');
-        setIsLoading(false);
         return false;
+      } finally {
+        setIsLoading(false);
       }
     },
     [orderService, repositoryContext, loadOrders],

@@ -62,7 +62,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   >([]);
   const router = useRouter();
 
-  const asset = assets.find((a) => a.nodeId === params.id);
+  const asset = assets.find((a) => a.id === params.id);
 
   useEffect(() => {
     const fetchAssetAttributes = async () => {

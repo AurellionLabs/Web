@@ -98,7 +98,7 @@ export function TokenizedAssetTable({
             {assets.map((asset) => (
               <tr
                 key={asset.nodeId}
-                onClick={() => router.push(`/customer/trading/${asset.nodeId}`)}
+                onClick={() => router.push(`/customer/trading/${asset.id}`)}
                 className="border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition-colors"
               >
                 <td className="py-4 px-4">

@@ -15,13 +15,15 @@ import * as z from 'zod';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/app/components/ui/form';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { LocationContract } from '@/typechain-types';
+import { ethers } from 'ethers';
+import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -140,26 +142,42 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                 }
 
                 try {
-                  const success = await placeOrder({
-                    id: asset.id,
-                    nodeAddress: asset.nodeId,
-                    nodeLocation: {
-                      addressName: asset.nodeLocation.addressName,
-                      location: {
+                  // Generate a unique order ID
+                  const randomBytes = ethers.randomBytes(32);
+                  const orderId = ethers.hexlify(randomBytes);
+
+                  // Build the proper LocationContract.OrderStruct
+                  const orderData: LocationContract.OrderStruct = {
+                    id: orderId,
+                    token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+                    tokenId: BigInt(asset.id),
+                    tokenQuantity: BigInt(data.quantity),
+                    requestedTokenQuantity: BigInt(data.quantity),
+                    price: ethers.parseUnits(
+                      (asset.pricePerUnit * data.quantity).toFixed(18),
+                      18,
+                    ),
+                    txFee: BigInt(0),
+                    customer: '0x0000000000000000000000000000000000000000', // Will be set by the service
+                    journeyIds: [],
+                    nodes: [ethers.getAddress(asset.nodeId)],
+                    locationData: {
+                      startLocation: {
                         lat: asset.nodeLocation.location.lat,
                         lng: asset.nodeLocation.location.lng,
                       },
+                      endLocation: {
+                        lat: selectedLocation.lat,
+                        lng: selectedLocation.lng,
+                      },
+                      startName: asset.nodeLocation.addressName,
+                      endName: data.deliveryLocation,
                     },
-                    assetClass: asset.assetClass,
-                    quantity: data.quantity,
-                    pricePerUnit: asset.pricePerUnit,
-                    totalValue: data.quantity * asset.pricePerUnit,
-                    deliveryLocation: data.deliveryLocation,
-                    deliveryCoordinates: {
-                      lat: selectedLocation.lat,
-                      lng: selectedLocation.lng,
-                    },
-                  });
+                    currentStatus: BigInt(0),
+                    contracatualAgreement: ethers.ZeroHash,
+                  };
+
+                  const success = await placeOrder(orderData);
 
                   if (success) {
                     router.push('/customer/trading');
