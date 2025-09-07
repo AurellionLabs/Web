@@ -201,6 +201,31 @@ export default function NodeDashboardPage() {
     )
     .toFixed(2);
 
+  // Group assets by class and calculate total quantities and values
+  const getAssetsSummaryByClass = () => {
+    const summary: Record<string, { quantity: number; value: number }> = {};
+
+    assets.forEach((asset) => {
+      const assetClass = asset.class || 'Unknown';
+      const quantity = Number(asset.amount) || 0;
+      const price = Number(asset.price) || 0;
+      const value = quantity * price;
+
+      if (summary[assetClass]) {
+        summary[assetClass].quantity += quantity;
+        summary[assetClass].value += value;
+      } else {
+        summary[assetClass] = { quantity, value };
+      }
+    });
+
+    return Object.entries(summary).map(([assetClass, { quantity, value }]) => ({
+      assetClass,
+      totalQuantity: quantity,
+      totalValue: value,
+    }));
+  };
+
   // Function to load asset attributes
   const loadAssetAttributes = async (assets: TokenizedAsset[]) => {
     if (assets.length === 0) return;
@@ -548,13 +573,11 @@ export default function NodeDashboardPage() {
         />
       </div>
 
-      {/* Tokenized Assets Table - Shows actual minted tokens */}
+      {/* Tokenized Assets Summary Table - Shows assets grouped by class */}
       <Card>
         <CardHeader>
           <CardTitle>Tokenized Assets</CardTitle>
-          <CardDescription>
-            Current tokenized assets on this node
-          </CardDescription>
+          <CardDescription>Summary of tokenized assets</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -562,38 +585,39 @@ export default function NodeDashboardPage() {
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    ID
+                    Asset Class
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Asset
+                    Quantity
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Minted Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Status
+                    Total Value
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                {assets.map((asset) => (
-                  <tr key={asset.id} className="border-b">
-                    <td className="px-6 py-4">{truncateId(asset.id)}</td>
-                    <td className="px-6 py-4">{asset.name}</td>
-                    <td className="px-6 py-4">{asset.amount}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          asset.status === 'Active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {asset.status}
-                      </span>
+                {getAssetsSummaryByClass().length > 0 ? (
+                  getAssetsSummaryByClass().map((summary) => (
+                    <tr key={summary.assetClass} className="border-b">
+                      <td className="px-6 py-4 capitalize font-medium">
+                        {summary.assetClass}
+                      </td>
+                      <td className="px-6 py-4">{summary.totalQuantity}</td>
+                      <td className="px-6 py-4">
+                        ${summary.totalValue.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
+                      No tokenized assets found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -615,7 +639,7 @@ export default function NodeDashboardPage() {
                   <th className="h-12 px-4 text-left align-middle">ID</th>
                   <th className="h-12 px-4 text-left align-middle">Asset</th>
                   <th className="h-12 px-4 text-left align-middle">Class</th>
-                  <th className="h-12 px-4 text-left align-middle">Capacity</th>
+                  <th className="h-12 px-4 text-left align-middle">Quantity</th>
                   <th className="h-12 px-4 text-left align-middle">Price</th>
                 </tr>
               </thead>
