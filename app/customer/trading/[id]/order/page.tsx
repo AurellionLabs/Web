@@ -21,9 +21,9 @@ import {
   FormMessage,
 } from '@/app/components/ui/form';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-import { LocationContract } from '@/typechain-types';
 import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import { Order } from '@/domain/orders';
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -147,7 +147,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   const orderId = ethers.hexlify(randomBytes);
 
                   // Build the proper LocationContract.OrderStruct
-                  const orderData: LocationContract.OrderStruct = {
+                  const orderData: Order = {
                     id: orderId,
                     token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
                     tokenId: BigInt(asset.id),
@@ -158,7 +158,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                       18,
                     ),
                     txFee: BigInt(0),
-                    customer: '0x0000000000000000000000000000000000000000', // Will be set by the service
+                    customer: '0x0000000000000000000000000000000000000000', // Will be set by the trade.provider
                     journeyIds: [],
                     nodes: [ethers.getAddress(asset.nodeId)],
                     locationData: {

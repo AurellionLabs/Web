@@ -1,14 +1,4 @@
-export type Location = {
-  lat: string;
-  lng: string;
-};
-
-export type ParcelData = {
-  startLocation: Location;
-  endLocation: Location;
-  startName: string;
-  endName: string;
-};
+import { ParcelData } from '@/domain/shared';
 
 export enum DeliveryStatus {
   PENDING = 0,

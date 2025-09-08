@@ -1,11 +1,10 @@
-import { AuraAsset__factory, LocationContract } from '@/typechain-types';
+import { Journey, ParcelData } from '@/domain/shared';
 import {
   BytesLike,
   ContractTransactionReceipt,
   Overrides,
   BigNumberish,
 } from 'ethers';
-import { NodeLocation, AssetType } from '@/domain/node';
 
 export enum OrderStatus {
   PENDING = 'pending',
@@ -22,6 +21,21 @@ export type Asset = {
   attributes: Attribute[];
 };
 
+export type Order = {
+  id: string;
+  token: string;
+  tokenId: bigint;
+  tokenQuantity: bigint;
+  requestedTokenQuantity: bigint;
+  price: bigint;
+  txFee: bigint;
+  customer: string;
+  journeyIds: string[];
+  nodes: string[];
+  locationData: ParcelData;
+  currentStatus: bigint;
+  contracatualAgreement: string;
+};
 /**
  * Interface defining the data access methods for orders and journeys.
  */
@@ -31,7 +45,7 @@ export interface IOrderRepository {
    * @param address The address of the node.
    * @returns A promise resolving to an array of order structures.
    */
-  getNodeOrders(address: string): Promise<LocationContract.OrderStruct[]>;
+  getNodeOrders(address: string): Promise<Order[]>;
 
   /**
    * Retrieves the journeys created by a specific customer.
@@ -39,9 +53,7 @@ export interface IOrderRepository {
    * @param address The optional wallet address of the customer.
    * @returns A promise resolving to an array of the customer's journey structures.
    */
-  getCustomerJourneys(
-    address?: string,
-  ): Promise<LocationContract.JourneyStruct[]>;
+  getCustomerJourneys(address?: string): Promise<Journey[]>;
 
   /**
    * Retrieves the journeys where a specific user is the receiver.
@@ -49,22 +61,20 @@ export interface IOrderRepository {
    * @param address The optional wallet address of the receiver.
    * @returns A promise resolving to an array of the receiver's journey structures.
    */
-  getReceiverJourneys(
-    address?: string,
-  ): Promise<LocationContract.JourneyStruct[]>;
+  getReceiverJourneys(address?: string): Promise<Journey[]>;
 
   /**
    * Fetches all journeys from the system.
    * @returns A promise resolving to an array of all journey structure outputs.
    */
-  fetchAllJourneys(): Promise<LocationContract.JourneyStructOutput[]>;
+  fetchAllJourneys(): Promise<Journey[]>;
 
   /**
    * Retrieves a specific journey by its ID.
    * @param journeyId The unique identifier (BytesLike) of the journey.
    * @returns A promise resolving to the journey structure.
    */
-  getJourneyById(journeyId: BytesLike): Promise<LocationContract.JourneyStruct>;
+  getJourneyById(journeyId: BytesLike): Promise<Journey>;
 
   /**
    * Retrieves the Order ID associated with a specific Journey ID.
@@ -79,16 +89,14 @@ export interface IOrderRepository {
    * @param address The optional wallet address of the customer.
    * @returns A promise resolving to an array of the customer's order structure outputs.
    */
-  getCustomerOrders(
-    address?: string,
-  ): Promise<LocationContract.OrderStructOutput[]>;
+  getCustomerOrders(address?: string): Promise<Order[]>;
 
   /**
    * Retrieves a specific order by its ID.
    * @param orderId The unique identifier (BytesLike) of the order.
    * @returns A promise resolving to the order structure output.
    */
-  getOrderById(orderId: BytesLike): Promise<LocationContract.OrderStructOutput>;
+  getOrderById(orderId: BytesLike): Promise<Order>;
 
   /**
    * Retrieves supported attributes and their value for a specific hash
@@ -114,7 +122,7 @@ export interface IOrderService {
    * @returns A promise resolving to the contract transaction receipt upon successful job creation.
    */
   jobCreation(
-    parcelData: LocationContract.ParcelDataStruct,
+    parcelData: ParcelData,
     recipientWalletAddress: string,
     senderWalletAddress?: string,
     bounty?: BigNumberish,
@@ -140,10 +148,7 @@ export interface IOrderService {
    * @param overrides Optional transaction overrides (e.g., gasLimit).
    * @returns A promise resolving to the unique ID (bytes32) of the created order.
    */
-  createOrder(
-    orderData: LocationContract.OrderStruct,
-    overrides?: Overrides,
-  ): Promise<BytesLike>;
+  createOrder(orderData: Order, overrides?: Overrides): Promise<string>;
 
   /**
    * Adds or updates the receiver for a specific order.
@@ -179,11 +184,11 @@ export interface IOrderService {
     orderId: BytesLike,
     senderNodeAddress: string,
     receiverAddress: string,
-    parcelData: LocationContract.ParcelDataStruct,
+    parcelData: ParcelData,
     bountyWei: bigint,
     etaTimestamp: bigint,
     tokenQuantity: bigint,
     assetId: number,
     overrides?: Overrides,
-  ): Promise<BytesLike>;
+  ): Promise<string>;
 }

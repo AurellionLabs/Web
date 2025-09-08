@@ -8,13 +8,11 @@ import React, {
   ReactNode,
   useEffect,
 } from 'react';
-import { LocationContract } from '@/typechain-types';
-import { ethers } from 'ethers';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { handleContractError } from '@/utils/error-handler';
 import { TokenizedAsset } from '@/domain/node';
+import { Order } from '@/domain/orders';
 
 export interface TokenizedAssetUI {
   id: string;
@@ -40,8 +38,8 @@ export interface TradeContextType {
   fetchAssets: () => Promise<void>;
   isLoading: boolean;
   getAssetById: (id: string) => TokenizedAssetUI | undefined;
-  placeOrder: (orderData: LocationContract.OrderStruct) => Promise<boolean>;
-  orders: LocationContract.OrderStructOutput[];
+  placeOrder: (orderData: Order) => Promise<boolean>;
+  orders: Order[];
   loadOrders: () => Promise<void>;
 }
 
@@ -49,9 +47,7 @@ const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
 export function TradeProvider({ children }: { children: ReactNode }) {
   const [assets, setAssets] = useState<TokenizedAssetUI[]>([]);
-  const [orders, setOrders] = useState<LocationContract.OrderStructOutput[]>(
-    [],
-  );
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,7 +140,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [orderRepository]);
 
   const placeOrder = useCallback(
-    async (orderData: LocationContract.OrderStruct): Promise<boolean> => {
+    async (orderData: Order): Promise<boolean> => {
       setIsLoading(true);
       setError(null);
 
@@ -157,7 +153,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         }
 
         // Ensure the customer address is set to the current wallet
-        const orderWithCustomer: LocationContract.OrderStruct = {
+        const orderWithCustomer: Order = {
           ...orderData,
           customer: walletAddress,
         };
