@@ -1,4 +1,3 @@
-import { AuStake, AuStake__factory } from '@/typechain-types';
 import { BigNumberish, BytesLike, ContractTransactionReceipt } from 'ethers';
 
 // From AuStake.sol: OperationStatus
@@ -9,15 +8,29 @@ export enum StakingOperationStatus {
   COMPLETE,
   PAID,
 }
+
+export type Operation = {
+  id: string;
+  name: string;
+  description: string;
+  token: string;
+  provider: string;
+  deadline: bigint;
+  startDate: bigint;
+  rwaName: string;
+  reward: bigint;
+  tokenTvl: bigint;
+  operationStatus: bigint;
+  fundingGoal: bigint;
+  assetPrice: bigint;
+};
 export interface IAuStakeRepository {
   /**
    * Retrieves the details of a staking operation.
    * @param operationId The ID of the operation.
    * @returns A promise that resolves to the StakingOperation details.
    */
-  getOperation(
-    operationId: BytesLike,
-  ): Promise<AuStake.OperationStructOutput | undefined>;
+  getOperation(operationId: BytesLike): Promise<Operation | undefined>;
   /**
    * Retrieves a staking operation by its ID from the blockchain.
    * @param operationId The ID of the operation.

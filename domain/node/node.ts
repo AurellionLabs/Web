@@ -5,7 +5,7 @@
  * These interfaces define the core domain models and their relationships.
  */
 
-import { LocationContract } from '@/typechain-types';
+import { Order } from '@/app/providers/node.provider';
 import { Asset } from '@/domain/platform';
 
 /**
@@ -90,7 +90,7 @@ export interface NodeRepository {
   getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'>;
   getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]>;
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
-  getNodeOrders(nodeAddress: string): Promise<LocationContract.OrderStruct[]>;
+  getNodeOrders(nodeAddress: string): Promise<Order[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
   getAssetBalance(
     ownerAddress: string,
