@@ -153,10 +153,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                     tokenId: BigInt(asset.id),
                     tokenQuantity: BigInt(data.quantity),
                     requestedTokenQuantity: BigInt(data.quantity),
-                    price: ethers.parseUnits(
-                      (asset.pricePerUnit * data.quantity).toFixed(18),
-                      18,
-                    ),
+                    price: BigInt(asset.pricePerUnit * data.quantity), // asset.pricePerUnit is already in wei, so no conversion needed
                     txFee: BigInt(0),
                     customer: '0x0000000000000000000000000000000000000000', // Will be set by the trade.provider
                     journeyIds: [],

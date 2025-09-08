@@ -175,7 +175,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
             BigInt(0), // bounty
             BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)
             BigInt(orderWithCustomer.tokenQuantity),
-            Number(orderWithCustomer.tokenId),
+            orderWithCustomer.tokenId,
           );
           console.log('[TradeProvider] Initial journey created for order');
         }

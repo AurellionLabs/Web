@@ -188,7 +188,7 @@ export interface IOrderService {
     bountyWei: bigint,
     etaTimestamp: bigint,
     tokenQuantity: bigint,
-    assetId: number,
+    assetId: bigint,
     overrides?: Overrides,
   ): Promise<string>;
 }
