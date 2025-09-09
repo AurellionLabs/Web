@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
 import { useTrade } from '@/app/providers/trade.provider';
 import { colors } from '@/lib/constants/colors';
 import Link from 'next/link';
@@ -146,10 +145,9 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   const randomBytes = ethers.randomBytes(32);
                   const orderId = ethers.hexlify(randomBytes);
 
-                  // Build the proper LocationContract.OrderStruct
                   const orderData: Order = {
                     id: orderId,
-                    token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+                    token: NEXT_PUBLIC_AURA_GOAT_ADDRESS, // TODO: Not sure why this is here
                     tokenId: BigInt(asset.id),
                     tokenQuantity: BigInt(data.quantity),
                     requestedTokenQuantity: BigInt(data.quantity),

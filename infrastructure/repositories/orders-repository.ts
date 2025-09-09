@@ -384,9 +384,9 @@ export class OrderRepository implements IOrderRepository {
   }
 
   async getCustomerOrders(
-    address?: string,
+    address: string,
   ): Promise<LocationContract.OrderStructOutput[]> {
-    const customerAddress = address ?? (await this._getWalletAddress());
+    const customerAddress = address;
     console.log(
       `[OrderRepository] Getting orders for customer: ${customerAddress}`,
     );

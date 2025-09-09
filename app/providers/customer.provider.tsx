@@ -12,7 +12,7 @@ import {
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { handleContractError } from '@/utils/error-handler';
-import { ethers } from 'ethers';
+import { useWallet } from '@/hooks/useWallet';
 
 // Types
 export type CustomerOrder = {
@@ -47,7 +47,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const orderRepository = RepositoryContext.getInstance().getOrderRepository();
   const orderService = ServiceContext.getInstance().getOrderService();
-
+  const { address } = useWallet();
   const loadCustomerOrders = useCallback(async () => {
     if (!orderRepository) {
       setError('Order Repository not available.');
@@ -57,7 +57,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       setError(null);
-      const contractOrders = await orderRepository.getCustomerOrders();
+      const contractOrders = await orderRepository.getCustomerOrders(
+        address as string,
+      );
       console.log(`[CustomerProvider] Contract orders: ${contractOrders}`);
       const mappedOrders: CustomerOrder[] = contractOrders.map(
         (order: LocationContract.OrderStructOutput) => ({
@@ -80,7 +82,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderRepository]);
+  }, [orderRepository, address]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
     try {

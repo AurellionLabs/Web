@@ -13,6 +13,7 @@ import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { handleContractError } from '@/utils/error-handler';
 import { TokenizedAsset } from '@/domain/node';
 import { Order } from '@/domain/orders';
+import { useWallet } from '@/hooks/useWallet';
 
 export interface TokenizedAssetUI {
   id: string;
@@ -46,6 +47,7 @@ export interface TradeContextType {
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
 export function TradeProvider({ children }: { children: ReactNode }) {
+  const { address } = useWallet();
   const [assets, setAssets] = useState<TokenizedAssetUI[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -127,7 +129,9 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const fetchedOrders = await orderRepository.getCustomerOrders();
+      const fetchedOrders = await orderRepository.getCustomerOrders(
+        address as string,
+      );
       console.log(`[TradeProvider] Fetched ${fetchedOrders.length} orders`);
       setOrders(fetchedOrders);
     } catch (err) {
@@ -137,7 +141,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderRepository]);
+  }, [orderRepository, address]);
 
   const placeOrder = useCallback(
     async (orderData: Order): Promise<boolean> => {

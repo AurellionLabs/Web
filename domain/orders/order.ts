@@ -89,7 +89,7 @@ export interface IOrderRepository {
    * @param address The optional wallet address of the customer.
    * @returns A promise resolving to an array of the customer's order structure outputs.
    */
-  getCustomerOrders(address?: string): Promise<Order[]>;
+  getCustomerOrders(address: string): Promise<Order[]>;
 
   /**
    * Retrieves a specific order by its ID.

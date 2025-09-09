@@ -1,4 +1,4 @@
-import { Location } from '@/app/providers/driver.provider';
+import { Location } from '@/domain/shared';
 
 export async function calculateETA(
   origin: Location,
