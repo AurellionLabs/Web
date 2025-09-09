@@ -2,7 +2,8 @@ import {
   type IOrderRepository,
   // type OrderStatus, // Keep commented if not used for mapping
   type Asset, // Import Asset type
-  type Attribute, // Import Attribute type
+  type Attribute,
+  Order, // Import Attribute type
 } from '@/domain/orders/order';
 import { LocationContract, LocationContract__factory } from '@/typechain-types';
 import {
@@ -16,6 +17,7 @@ import {
 } from 'ethers';
 import { handleContractError } from '@/utils/error-handler'; // Adjust path if necessary
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
+import { Journey } from '@/domain/shared';
 
 /**
  * Infrastructure implementation of the IOrderRepository interface.
@@ -101,9 +103,9 @@ export class OrderRepository implements IOrderRepository {
 
   async getNodeOrders(
     address: string,
-  ): Promise<LocationContract.OrderStructOutput[]> {
+  ): Promise<Order[]> {
     console.log(`[OrderRepository] Getting orders for node: ${address}`);
-    const orders: LocationContract.OrderStructOutput[] = [];
+    const orders: Order[] = [];
     try {
       let index = 0;
       const MAX_NODE_ORDERS = 100; // Safety limit
@@ -111,7 +113,7 @@ export class OrderRepository implements IOrderRepository {
         let orderId: BytesLike;
         try {
           // Use the explicit getter instead of direct mapping access
-          orderId = await this.contract.getNodeOrderIdByIndex(address, index);
+          orderId = await this.readContract.getNodeOrderIdByIndex(address, index);
           console.log(`[OrderRepository] Order ID>>: ${orderId}`);
           if (!orderId || orderId === ethers.ZeroHash) {
             console.log(
@@ -128,7 +130,7 @@ export class OrderRepository implements IOrderRepository {
         }
 
         try {
-          const order = await this.contract.getOrder(orderId);
+          const order = await this.readContract.getOrder(orderId);
           console.log('[OrderRepository] Order>>>>>:', order);
           // Ensure order has a valid ID before adding
           if (order && order.id !== ethers.ZeroHash) {
@@ -154,13 +156,18 @@ export class OrderRepository implements IOrderRepository {
     }
     console.log(
       `[OrderRepository] Found ${orders.length} orders for node ${address}.`,
+      orders
+    );
+
+    console.log(
+      `[OrderRepository] Found orders.`, orders
     );
     return orders;
   }
 
   async getCustomerJourneys(
     address?: string,
-  ): Promise<LocationContract.JourneyStructOutput[]> {
+  ): Promise<Journey[]> {
     const customerAddress = address ?? (await this._getWalletAddress());
     console.log(
       `[OrderRepository] Getting journeys for customer: ${customerAddress}`,
@@ -168,13 +175,13 @@ export class OrderRepository implements IOrderRepository {
     const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
       const journeyCount =
-        await this.contract.numberOfJourneysCreatedForCustomer(customerAddress);
+        await this.readContract.numberOfJourneysCreatedForCustomer(customerAddress);
       // console.log(`[OrderRepository] Customer ${customerAddress} has ${journeyCount} journeys.`);
 
       for (let i = 0; i < journeyCount; i++) {
         let journeyId: BytesLike;
         try {
-          journeyId = await this.contract.customerToJourneyId(
+          journeyId = await this.readContract.customerToJourneyId(
             customerAddress,
             i,
           );
@@ -191,7 +198,7 @@ export class OrderRepository implements IOrderRepository {
         }
 
         try {
-          const journey = await this.contract.journeyIdToJourney(journeyId);
+          const journey = await this.readContract.journeyIdToJourney(journeyId);
           // Basic validation
           if (journey && journey.journeyId !== ethers.ZeroHash) {
             journeys.push(journey);
@@ -219,7 +226,7 @@ export class OrderRepository implements IOrderRepository {
 
   async getReceiverJourneys(
     address?: string,
-  ): Promise<LocationContract.JourneyStructOutput[]> {
+  ): Promise<Journey[]> {
     const receiverAddress = address ?? (await this._getWalletAddress());
     console.log(
       `[OrderRepository] Getting journeys for receiver: ${receiverAddress}`,
@@ -227,13 +234,13 @@ export class OrderRepository implements IOrderRepository {
     const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
       const journeyCount =
-        await this.contract.numberOfJourneysCreatedForReceiver(receiverAddress);
+        await this.readContract.numberOfJourneysCreatedForReceiver(receiverAddress);
       // console.log(`[OrderRepository] Receiver ${receiverAddress} has ${journeyCount} journeys.`);
 
       for (let i = 0; i < journeyCount; i++) {
         let journeyId: BytesLike;
         try {
-          journeyId = await this.contract.receiverToJourneyId(
+          journeyId = await this.readContract.receiverToJourneyId(
             receiverAddress,
             i,
           );
@@ -250,7 +257,7 @@ export class OrderRepository implements IOrderRepository {
         }
 
         try {
-          const journey = await this.contract.journeyIdToJourney(journeyId);
+          const journey = await this.readContract.journeyIdToJourney(journeyId);
           if (journey && journey.journeyId !== ethers.ZeroHash) {
             journeys.push(journey);
           } else {
@@ -274,7 +281,7 @@ export class OrderRepository implements IOrderRepository {
     return journeys;
   }
 
-  async fetchAllJourneys(): Promise<LocationContract.JourneyStructOutput[]> {
+  async fetchAllJourneys(): Promise<Journey[]> {
     console.log(`[OrderRepository] Fetching all journeys...`);
     const allJourneys: LocationContract.JourneyStructOutput[] = [];
     try {
@@ -284,7 +291,7 @@ export class OrderRepository implements IOrderRepository {
         let journeyId: BytesLike;
         try {
           // Assuming numberToJourneyID mapping exists and holds the counter
-          journeyId = await this.contract.numberToJourneyID(index);
+          journeyId = await this.readContract.numberToJourneyID(index);
           console.log(
             `[OrderRepository] fetchAllJourneys loop index ${index}, raw journeyId:`,
             journeyId,
@@ -304,7 +311,7 @@ export class OrderRepository implements IOrderRepository {
         }
 
         try {
-          const journey = await this.contract.journeyIdToJourney(journeyId);
+          const journey = await this.readContract.journeyIdToJourney(journeyId);
           console.log(
             `[OrderRepository] fetchAllJourneys loop index ${index}, fetched journey sender:`,
             journey.sender,
@@ -350,7 +357,7 @@ export class OrderRepository implements IOrderRepository {
     try {
       // The contract has getjourney(bytes32) and journeyIdToJourney(bytes32 => Journey)
       // Use the mapping directly as it's simpler
-      const journey = await this.contract.journeyIdToJourney(journeyId);
+      const journey = await this.readContract.journeyIdToJourney(journeyId);
       if (!journey || journey.journeyId === ethers.ZeroHash) {
         // Match error message used in tests
         throw new Error(
@@ -374,7 +381,7 @@ export class OrderRepository implements IOrderRepository {
   async getOrderIdByJourneyId(journeyId: BytesLike): Promise<BytesLike> {
     // console.log(`[OrderRepository] Getting order ID for journey ID: ${journeyId}`);
     try {
-      const orderId = await this.contract.journeyToOrderId(journeyId);
+      const orderId = await this.readContract.journeyToOrderId(journeyId);
       // Contract returns bytes32, which might be ZeroHash if not linked
       return orderId;
     } catch (error) {
@@ -392,13 +399,13 @@ export class OrderRepository implements IOrderRepository {
     );
     const orders: LocationContract.OrderStructOutput[] = [];
     try {
-      let index = 0;
+      let index = 1;
       const MAX_ORDERS = 1000; // Safety limit
       while (index < MAX_ORDERS) {
         let orderId: BytesLike;
         try {
           // Read from public orderIds array getter
-          orderId = await this.contract.orderIds(index);
+          orderId = await this.readContract.orderIds(index);
           if (!orderId || orderId === ethers.ZeroHash) {
             // console.log(`[OrderRepository] Found zero hash order ID at global index ${index}, assuming end.`);
             break; // Assume end
@@ -409,7 +416,7 @@ export class OrderRepository implements IOrderRepository {
         }
 
         try {
-          const order = await this.contract.getOrder(orderId);
+          const order = await this.readContract.getOrder(orderId);
           // Filter by customer
           if (
             order &&
@@ -443,10 +450,10 @@ export class OrderRepository implements IOrderRepository {
 
   async getOrderById(
     orderId: BytesLike,
-  ): Promise<LocationContract.OrderStructOutput> {
+  ): Promise<Order> {
     // console.log(`[OrderRepository] Getting order by ID: ${orderId}`);
     try {
-      const order = await this.contract.getOrder(orderId);
+      const order = await this.readContract.getOrder(orderId);
       if (!order || order.id === ethers.ZeroHash) {
         // Match error message used in tests
         throw new Error(`Order with ID ${orderId} not found or is invalid.`);
