@@ -69,8 +69,7 @@ contract AurumNodeManager {
     _;
   }
 
-  //PLEASEESSEEEE CALLL MEEEEEEE
-  function addToken(AuraAsset _auraAsset) public {
+  function addToken(AuraAsset _auraAsset) adminOnly public {
     require(address(_auraAsset) != address(0), 'Invalid token address');
     auraAsset = _auraAsset;
   }
