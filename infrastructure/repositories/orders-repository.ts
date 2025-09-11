@@ -1,8 +1,6 @@
 import {
   type IOrderRepository,
   // type OrderStatus, // Keep commented if not used for mapping
-  type Asset, // Import Asset type
-  type Attribute,
   Order, // Import Attribute type
 } from '@/domain/orders/order';
 import { LocationContract, LocationContract__factory } from '@/typechain-types';
@@ -101,9 +99,7 @@ export class OrderRepository implements IOrderRepository {
 
   // --- IOrderRepository Implementation ---
 
-  async getNodeOrders(
-    address: string,
-  ): Promise<Order[]> {
+  async getNodeOrders(address: string): Promise<Order[]> {
     console.log(`[OrderRepository] Getting orders for node: ${address}`);
     const orders: Order[] = [];
     try {
@@ -113,7 +109,10 @@ export class OrderRepository implements IOrderRepository {
         let orderId: BytesLike;
         try {
           // Use the explicit getter instead of direct mapping access
-          orderId = await this.readContract.getNodeOrderIdByIndex(address, index);
+          orderId = await this.readContract.getNodeOrderIdByIndex(
+            address,
+            index,
+          );
           console.log(`[OrderRepository] Order ID>>: ${orderId}`);
           if (!orderId || orderId === ethers.ZeroHash) {
             console.log(
@@ -156,18 +155,14 @@ export class OrderRepository implements IOrderRepository {
     }
     console.log(
       `[OrderRepository] Found ${orders.length} orders for node ${address}.`,
-      orders
+      orders,
     );
 
-    console.log(
-      `[OrderRepository] Found orders.`, orders
-    );
+    console.log(`[OrderRepository] Found orders.`, orders);
     return orders;
   }
 
-  async getCustomerJourneys(
-    address?: string,
-  ): Promise<Journey[]> {
+  async getCustomerJourneys(address?: string): Promise<Journey[]> {
     const customerAddress = address ?? (await this._getWalletAddress());
     console.log(
       `[OrderRepository] Getting journeys for customer: ${customerAddress}`,
@@ -175,7 +170,9 @@ export class OrderRepository implements IOrderRepository {
     const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
       const journeyCount =
-        await this.readContract.numberOfJourneysCreatedForCustomer(customerAddress);
+        await this.readContract.numberOfJourneysCreatedForCustomer(
+          customerAddress,
+        );
       // console.log(`[OrderRepository] Customer ${customerAddress} has ${journeyCount} journeys.`);
 
       for (let i = 0; i < journeyCount; i++) {
@@ -224,9 +221,7 @@ export class OrderRepository implements IOrderRepository {
     return journeys;
   }
 
-  async getReceiverJourneys(
-    address?: string,
-  ): Promise<Journey[]> {
+  async getReceiverJourneys(address?: string): Promise<Journey[]> {
     const receiverAddress = address ?? (await this._getWalletAddress());
     console.log(
       `[OrderRepository] Getting journeys for receiver: ${receiverAddress}`,
@@ -234,7 +229,9 @@ export class OrderRepository implements IOrderRepository {
     const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
       const journeyCount =
-        await this.readContract.numberOfJourneysCreatedForReceiver(receiverAddress);
+        await this.readContract.numberOfJourneysCreatedForReceiver(
+          receiverAddress,
+        );
       // console.log(`[OrderRepository] Receiver ${receiverAddress} has ${journeyCount} journeys.`);
 
       for (let i = 0; i < journeyCount; i++) {
@@ -390,9 +387,7 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async getCustomerOrders(
-    address: string,
-  ): Promise<LocationContract.OrderStructOutput[]> {
+  async getCustomerOrders(address: string): Promise<Order[]> {
     const customerAddress = address;
     console.log(
       `[OrderRepository] Getting orders for customer: ${customerAddress}`,
@@ -448,9 +443,7 @@ export class OrderRepository implements IOrderRepository {
     return orders;
   }
 
-  async getOrderById(
-    orderId: BytesLike,
-  ): Promise<Order> {
+  async getOrderById(orderId: BytesLike): Promise<Order> {
     // console.log(`[OrderRepository] Getting order by ID: ${orderId}`);
     try {
       const order = await this.readContract.getOrder(orderId);
@@ -477,36 +470,6 @@ export class OrderRepository implements IOrderRepository {
    * @param assetName the name of the asset to be retrieved
    * @returns a an assets attributes and its values
    */
-  async getAssetAttributes(assetName: string): Promise<Asset> {
-    console.log(`[OrderRepository] Getting attributes for asset: ${assetName}`);
-    try {
-      // Assuming the contract has a method to get attributes by name.
-      // The actual contract method name might differ (e.g., getAsset, assetNameToData, etc.)
-      // We also need to map the contract's return type to the Asset/Attribute structure.
-      // This is a placeholder structure.
-
-      // Placeholder: Use keccak256 like in NodeRepository to potentially get an ID if needed
-      const attributesForHash: string[] = []; // Assuming empty attributes for now
-      const tokenId = ethers.solidityPackedKeccak256(
-        ['string', 'string[]'],
-        [assetName, attributesForHash],
-      );
-      console.log(
-        `[OrderRepository] Calculated tokenId for ${assetName}: ${tokenId}`,
-      );
-
-      // Placeholder: Return empty attributes as LocationContract doesn't seem to hold this data
-      const attributes: Attribute[] = [];
-
-      return {
-        assetName: assetName,
-        attributes: attributes,
-      };
-    } catch (error) {
-      handleContractError(error, `get attributes for asset ${assetName}`);
-      throw error;
-    }
-  }
 
   // --- End Implementation ---
 }

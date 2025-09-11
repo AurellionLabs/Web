@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from './dialog';
 import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
-import { CustomerOrder } from '@/types';
+import { CustomerOrder } from '@/app/providers/customer.provider';
 import { useState } from 'react';
 import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
@@ -160,7 +160,7 @@ export function OrderActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Asset</span>
                 <span className="text-base font-medium text-right capitalize">
-                  {getAssetName(Number(order.asset))}
+                  {order.asset.name}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">

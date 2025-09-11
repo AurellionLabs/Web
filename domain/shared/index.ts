@@ -22,3 +22,19 @@ export type Journey = {
   bounty: bigint;
   ETA: bigint;
 };
+
+export interface Asset {
+  assetClass: string;
+  tokenID: bigint;
+  name: string;
+  attributes: AssetAttribute[];
+}
+
+/**
+ * Asset attribute definition
+ */
+export interface AssetAttribute {
+  name: string;
+  values: string[];
+  description: string;
+}

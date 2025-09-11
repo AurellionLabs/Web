@@ -5,7 +5,8 @@
  * These interfaces define the core domain models and their relationships.
  */
 
-import { Asset, Order } from '../orders';
+import { Order } from '../orders';
+import { Asset } from '../shared';
 
 /**
  * Core node entity

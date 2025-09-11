@@ -1,4 +1,4 @@
-import { Journey, ParcelData } from '@/domain/shared';
+import { Journey, ParcelData, Asset } from '@/domain/shared';
 import {
   BytesLike,
   ContractTransactionReceipt,
@@ -12,14 +12,6 @@ export enum OrderStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }
-export type Attribute = {
-  name: string;
-  value: string;
-};
-export type Asset = {
-  assetName: string;
-  attributes: Attribute[];
-};
 
 export type Order = {
   id: string;
@@ -97,13 +89,6 @@ export interface IOrderRepository {
    * @returns A promise resolving to the order structure output.
    */
   getOrderById(orderId: BytesLike): Promise<Order>;
-
-  /**
-   * Retrieves supported attributes and their value for a specific hash
-   * @param assetName the name of the asset to be retrieved
-   * @returns a an assets attributes and its values
-   */
-  getAssetAttributes(assetName: string): Promise<Asset>;
 }
 
 /**

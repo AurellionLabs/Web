@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Asset } from '@/domain/platform/platform';
+import { Asset } from '@/domain/shared';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 export interface PlatformContextType {
@@ -11,6 +11,7 @@ export interface PlatformContextType {
   error: string | null;
   refreshPlatformData: () => Promise<void>;
   getClassTokenizableAssets: (assetClass: string) => Promise<Asset[]>;
+  getAssetByTokenId: (tokenId: string) => Promise<Asset | null>;
 }
 
 const PlatformContext = createContext<PlatformContextType | undefined>(
@@ -25,6 +26,11 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const repository = RepositoryContext.getInstance().getPlatformRepository();
+
+  const getAssetByTokenId = async (tokenId: string) => {
+    const asset = await repository.getAssetByTokenId(tokenId);
+    return asset;
+  };
 
   const refreshPlatformData = async () => {
     console.log('[PlatformProvider] Entering refreshPlatformData function...');
@@ -92,6 +98,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         error,
         refreshPlatformData,
         getClassTokenizableAssets,
+        getAssetByTokenId,
       }}
     >
       {children}

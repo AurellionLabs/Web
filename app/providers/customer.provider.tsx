@@ -13,12 +13,14 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
-
+import { Asset } from '@/domain/shared';
+import { usePlatform } from '@/app/providers/platform.provider';
+import { Order } from '@/domain/orders/order';
 // Types
 export type CustomerOrder = {
   id: string;
   journeyId: string | null;
-  asset: string;
+  asset: Asset;
   quantity: number;
   value: string;
   status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
@@ -48,6 +50,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const orderRepository = RepositoryContext.getInstance().getOrderRepository();
   const orderService = ServiceContext.getInstance().getOrderService();
   const { address } = useWallet();
+  const { getAssetByTokenId } = usePlatform();
+
   const loadCustomerOrders = useCallback(async () => {
     if (!orderRepository) {
       setError('Order Repository not available.');
@@ -60,17 +64,32 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       const contractOrders = await orderRepository.getCustomerOrders(
         address as string,
       );
-      console.log(`[CustomerProvider] Contract orders: ${contractOrders}`);
-      const mappedOrders: CustomerOrder[] = contractOrders.map(
-        (order: LocationContract.OrderStructOutput) => ({
-          id: order.id,
-          journeyId: order.journeyIds.length > 0 ? order.journeyIds[0] : null,
-          asset: order.tokenId.toString(),
-          quantity: Number(order.tokenQuantity),
-          value: order.price.toString(),
-          status: getOrderStatus(order.currentStatus),
-          timestamp: Date.now(),
-          deliveryLocation: order.locationData.endName ?? null,
+      console.log(`[CustomerProvider] Contract orders: ${contractOrders[0]}`);
+      console.log('[CustomerProvider] asset id', contractOrders[0].tokenId);
+      console.log(
+        '[CustomerProvider] asset id',
+        contractOrders[0].tokenId.toString(),
+      );
+
+      const mappedOrders: CustomerOrder[] = await Promise.all(
+        contractOrders.map(async (order: Order) => {
+          const asset = await getAssetByTokenId(order.tokenId.toString());
+          if (!asset) {
+            throw new Error(
+              `Asset not found for token ID: ${order.tokenId.toString()}`,
+            );
+          }
+
+          return {
+            id: order.id,
+            journeyId: order.journeyIds.length > 0 ? order.journeyIds[0] : null,
+            asset,
+            quantity: Number(order.tokenQuantity),
+            value: order.price.toString(),
+            status: getOrderStatus(order.currentStatus),
+            timestamp: Date.now(),
+            deliveryLocation: order.locationData.endName ?? null,
+          };
         }),
       );
 
@@ -82,7 +101,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderRepository, address]);
+  }, [orderRepository, address, getAssetByTokenId]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
     try {

@@ -394,17 +394,6 @@ export class BlockchainNodeRepository implements NodeRepository {
     }
   }
 
-  async getSupportedAssets() {
-    // Delegate to PlatformRepository via RepositoryContext in app layer.
-    // This repository is focused on chain-side node data, so return empty here if called directly.
-    return [];
-  }
-
-  async getAssetAttributes(fileHash: string) {
-    // Not implemented at chain repository level
-    return [];
-  }
-
   async getAssetBalance(
     ownerAddress: string,
     assetId: number,

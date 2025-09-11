@@ -6,7 +6,7 @@
  */
 
 import { Order } from '@/app/providers/node.provider';
-import { Asset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 
 /**
  * Core node entity

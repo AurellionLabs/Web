@@ -38,13 +38,11 @@ import {
 } from '@/app/components/ui/select';
 import { toast } from '@/app/components/ui/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
-import { CustomerOrder } from '@/types';
+import { CustomerOrder } from '@/app/providers/customer.provider';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
-import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract } from 'ethers';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
-import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 type SortConfig = {
   key: 'quantity' | 'value' | null;
@@ -78,7 +76,6 @@ export default function CustomerDashboard() {
     cancelOrder,
     confirmReceipt,
   } = useCustomer();
-
   // Filter states
   const [filters, setFilters] = useState({
     orderId: '',
@@ -115,7 +112,10 @@ export default function CustomerDashboard() {
     ) {
       return false;
     }
-    if (filters.asset !== 'all' && order.asset !== filters.asset) {
+    if (
+      filters.asset !== 'all' &&
+      order.asset.tokenID.toString() !== filters.asset
+    ) {
       return false;
     }
     if (filters.status !== 'all' && order.status !== filters.status) {
@@ -272,41 +272,27 @@ export default function CustomerDashboard() {
       await confirmReceipt(orderId);
       setWaitingForSignature((prev) => ({ ...prev, [orderId]: true }));
 
-      const cleanup = await setupSignatureListener({
-        onSignature: async (user, id) => {
-          if (id === orderId) {
-            setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
-            await refreshOrders();
-            toast({
-              title: 'Signature Received',
-              description: 'The driver has signed the receipt confirmation.',
-            });
-          }
-        },
-        onTimeout: () => {
-          setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
-          toast({
-            title: 'Signature Timeout',
-            description:
-              'The driver did not sign within the time limit. Please try again.',
-            variant: 'destructive',
-          });
-        },
-        onError: (error) => {
-          console.error('Error in signature listener:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to confirm receipt. Please try again.',
-            variant: 'destructive',
-          });
-        },
-      });
+      // Set a timeout to stop waiting after some time
+      const timeoutId = setTimeout(() => {
+        setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
+        toast({
+          title: 'Signature Timeout',
+          description:
+            'The driver did not sign within the time limit. Please try again.',
+          variant: 'destructive',
+        });
+      }, 120000); // 2 minutes timeout
 
       // Store cleanup function
       setSignatureCleanups((prev) => ({
         ...prev,
-        [orderId]: cleanup,
+        [orderId]: () => clearTimeout(timeoutId),
       }));
+
+      toast({
+        title: 'Receipt Confirmation Sent',
+        description: 'Waiting for driver signature confirmation.',
+      });
     } catch (error) {
       console.error('Error confirming receipt:', error);
       if (error instanceof Error) {
@@ -411,7 +397,7 @@ export default function CustomerDashboard() {
               <div className="space-y-2">
                 <div className="text-sm font-medium">Asset</div>
                 <div className="text-sm text-gray-400 capitalize">
-                  {getAssetName(Number(order.asset))}
+                  {order.asset.name}
                 </div>
               </div>
               <div className="space-y-2">
@@ -658,9 +644,7 @@ export default function CustomerDashboard() {
                   {currentOrders.map((order) => (
                     <tr key={order.id} className="border-b border-gray-800">
                       <td className="p-4">{order.id}</td>
-                      <td className="p-4 capitalize">
-                        {getAssetName(Number(order.asset))}
-                      </td>
+                      <td className="p-4 capitalize">{order.asset.name}</td>
                       <td className="p-4">{order.quantity}</td>
                       <td className="p-4">{order.value} USDT</td>
                       <td className="p-4">
