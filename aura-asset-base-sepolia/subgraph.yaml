@@ -8,7 +8,7 @@ dataSources:
     name: AuraAsset
     network: base-sepolia
     source:
-      address: "0x5AaFC06cD9C3Eb35f0961A84B951FE18931Df32D"
+      address: '0x5AaFC06cD9C3Eb35f0961A84B951FE18931Df32D'
       abi: AuraAsset
       startBlock: 30888651
     mapping:
