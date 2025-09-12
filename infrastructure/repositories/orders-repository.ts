@@ -101,9 +101,7 @@ export class OrderRepository implements IOrderRepository {
 
   // --- IOrderRepository Implementation ---
 
-  async getNodeOrders(
-    address: string,
-  ): Promise<Order[]> {
+  async getNodeOrders(address: string): Promise<Order[]> {
     console.log(`[OrderRepository] Getting orders for node: ${address}`);
     const orders: Order[] = [];
     try {
@@ -113,7 +111,10 @@ export class OrderRepository implements IOrderRepository {
         let orderId: BytesLike;
         try {
           // Use the explicit getter instead of direct mapping access
-          orderId = await this.readContract.getNodeOrderIdByIndex(address, index);
+          orderId = await this.readContract.getNodeOrderIdByIndex(
+            address,
+            index,
+          );
           console.log(`[OrderRepository] Order ID>>: ${orderId}`);
           if (!orderId || orderId === ethers.ZeroHash) {
             console.log(
@@ -156,18 +157,14 @@ export class OrderRepository implements IOrderRepository {
     }
     console.log(
       `[OrderRepository] Found ${orders.length} orders for node ${address}.`,
-      orders
+      orders,
     );
 
-    console.log(
-      `[OrderRepository] Found orders.`, orders
-    );
+    console.log(`[OrderRepository] Found orders.`, orders);
     return orders;
   }
 
-  async getCustomerJourneys(
-    address?: string,
-  ): Promise<Journey[]> {
+  async getCustomerJourneys(address?: string): Promise<Journey[]> {
     const customerAddress = address ?? (await this._getWalletAddress());
     console.log(
       `[OrderRepository] Getting journeys for customer: ${customerAddress}`,
@@ -175,7 +172,9 @@ export class OrderRepository implements IOrderRepository {
     const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
       const journeyCount =
-        await this.readContract.numberOfJourneysCreatedForCustomer(customerAddress);
+        await this.readContract.numberOfJourneysCreatedForCustomer(
+          customerAddress,
+        );
       // console.log(`[OrderRepository] Customer ${customerAddress} has ${journeyCount} journeys.`);
 
       for (let i = 0; i < journeyCount; i++) {
@@ -224,9 +223,7 @@ export class OrderRepository implements IOrderRepository {
     return journeys;
   }
 
-  async getReceiverJourneys(
-    address?: string,
-  ): Promise<Journey[]> {
+  async getReceiverJourneys(address?: string): Promise<Journey[]> {
     const receiverAddress = address ?? (await this._getWalletAddress());
     console.log(
       `[OrderRepository] Getting journeys for receiver: ${receiverAddress}`,
@@ -234,7 +231,9 @@ export class OrderRepository implements IOrderRepository {
     const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
       const journeyCount =
-        await this.readContract.numberOfJourneysCreatedForReceiver(receiverAddress);
+        await this.readContract.numberOfJourneysCreatedForReceiver(
+          receiverAddress,
+        );
       // console.log(`[OrderRepository] Receiver ${receiverAddress} has ${journeyCount} journeys.`);
 
       for (let i = 0; i < journeyCount; i++) {
@@ -448,9 +447,7 @@ export class OrderRepository implements IOrderRepository {
     return orders;
   }
 
-  async getOrderById(
-    orderId: BytesLike,
-  ): Promise<Order> {
+  async getOrderById(orderId: BytesLike): Promise<Order> {
     // console.log(`[OrderRepository] Getting order by ID: ${orderId}`);
     try {
       const order = await this.readContract.getOrder(orderId);
