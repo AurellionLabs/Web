@@ -5,7 +5,7 @@ import {
   TransferBatch as TransferBatchEvent,
   TransferSingle as TransferSingleEvent,
   URI as URIEvent,
-} from '../generated/Contract/Contract';
+} from '../generated/AuraAsset/AuraAsset';
 import {
   ApprovalForAll,
   MintedAsset,

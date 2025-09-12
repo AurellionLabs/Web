@@ -7,7 +7,7 @@ import {
   TransferBatch,
   TransferSingle,
   URI,
-} from '../generated/Contract/Contract';
+} from '../generated/AuraAsset/AuraAsset';
 
 export function createApprovalForAllEvent(
   account: Address,

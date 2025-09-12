@@ -8,9 +8,9 @@ import {
 } from 'matchstick-as/assembly/index';
 import { Address, Bytes, BigInt } from '@graphprotocol/graph-ts';
 import { ApprovalForAll } from '../generated/schema';
-import { ApprovalForAll as ApprovalForAllEvent } from '../generated/Contract/Contract';
-import { handleApprovalForAll } from '../src/contract';
-import { createApprovalForAllEvent } from './contract-utils';
+import { ApprovalForAll as ApprovalForAllEvent } from '../generated/AuraAsset/AuraAsset';
+import { handleApprovalForAll } from '../src/aura-asset';
+import { createApprovalForAllEvent } from './aura-asset-utils';
 
 // Tests structure (matchstick-as >=0.5.0)
 // https://thegraph.com/docs/en/subgraphs/developing/creating/unit-testing-framework/#tests-structure

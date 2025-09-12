@@ -1,8 +1,8 @@
 {
   "base-sepolia": {
-    "Contract": {
-      "address": "0x2B085C9f13189429316dF247a4962852fc6f1D1D",
-      "startBlock": 30655172
+    "AuraAsset": {
+      "address": "0x668B096F781c6767ab52c2B2BBD6Dc565539C92d",
+      "startBlock": 30975457
     }
   }
 }
