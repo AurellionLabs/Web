@@ -59,6 +59,38 @@ function updateSubgraphYaml(
   fs.writeFileSync(filePath, yml);
 }
 
+function fixClassKeywordInGeneratedCode(subgraphDir: string) {
+  const generatedFile = path.join(
+    subgraphDir,
+    'generated/AuraAsset/AuraAsset.ts',
+  );
+  if (fs.existsSync(generatedFile)) {
+    console.log('Fixing class keyword issues in generated TypeScript...');
+    let content = fs.readFileSync(generatedFile, 'utf8');
+    // Replace all instances of "get class():" with "get assetClass():"
+    content = content.replace(/get class\(\):/g, 'get assetClass():');
+    fs.writeFileSync(generatedFile, content);
+    console.log('Fixed class keyword issues');
+  }
+}
+
+function fixMappingFile(subgraphDir: string) {
+  const mappingFile = path.join(subgraphDir, 'src/aura-asset.ts');
+  if (fs.existsSync(mappingFile)) {
+    console.log('Updating mapping file to use assetClass...');
+    let content = fs.readFileSync(mappingFile, 'utf8');
+    // Replace event.params.asset.class_ with event.params.asset.assetClass
+    content = content.replace(
+      /event\.params\.asset\.class_/g,
+      'event.params.asset.assetClass',
+    );
+    // Also fix the entity field assignment to match the schema
+    content = content.replace(/entity\.asset_class_/g, 'entity.asset_class');
+    fs.writeFileSync(mappingFile, content);
+    console.log('Updated mapping file');
+  }
+}
+
 async function waitForConfirmations(tx: any, confirmations: number) {
   try {
     console.log(`Waiting for ${confirmations} confirmations...`);
@@ -207,8 +239,8 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
       deployer.provider,
     );
 
-    const auraAssetSubgraphDir = path.resolve('./aura-asset-subgraph');
-    const aurellionSubgraphDir = path.resolve('./aurellion');
+    const auraAssetSubgraphDir = path.resolve('./aura-asset-base-sepolia');
+    const auStakeSubgraphDir = path.resolve('./austake-base-sepolia');
 
     // Update networks.json entries
     updateJson(path.join(auraAssetSubgraphDir, 'networks.json'), (j) => {
@@ -219,7 +251,7 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
       };
     });
 
-    updateJson(path.join(aurellionSubgraphDir, 'networks.json'), (j) => {
+    updateJson(path.join(auStakeSubgraphDir, 'networks.json'), (j) => {
       j['base-sepolia'] ??= {};
       j['base-sepolia'].AuStake = {
         address: auStakeAddress,
@@ -234,33 +266,34 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
       auraAssetDeployBlock,
     );
     updateSubgraphYaml(
-      path.join(aurellionSubgraphDir, 'subgraph.yaml'),
+      path.join(auStakeSubgraphDir, 'subgraph.yaml'),
       auStakeAddress,
       auStakeDeployBlock,
     );
 
-    // Redeploy subgraphs (GRAPH_ACCESS_TOKEN must be set)
-    console.log('\nRedeploying subgraph: aura-asset');
-    run('npm run codegen', auraAssetSubgraphDir);
-    run('npm run build', auraAssetSubgraphDir);
+    console.log('\nRedeploying subgraph: aura-asset-base-sepolia');
+    run('graph codegen', auraAssetSubgraphDir);
+    fixClassKeywordInGeneratedCode(auraAssetSubgraphDir);
+    fixMappingFile(auraAssetSubgraphDir);
+    run('graph build', auraAssetSubgraphDir);
     const auraAssetVersion = `v${Date.now()}`;
     const auraAssetDeployOut = runCapture(
-      `npx graph deploy --node https://api.studio.thegraph.com/deploy/ aura-asset --version-label ${auraAssetVersion}`,
+      `graph deploy aura-asset-base-sepolia --version-label ${auraAssetVersion}`,
       auraAssetSubgraphDir,
     );
     const auraAssetQueryUrl =
       parseGraphDeployQueryEndpoint(auraAssetDeployOut) || '';
 
-    console.log('\nRedeploying subgraph: aurellion');
-    run('npm run codegen', aurellionSubgraphDir);
-    run('npm run build', aurellionSubgraphDir);
-    const aurellionVersion = `v${Date.now()}`;
-    const aurellionDeployOut = runCapture(
-      `npx graph deploy --node https://api.studio.thegraph.com/deploy/ aurellion --version-label ${aurellionVersion}`,
-      aurellionSubgraphDir,
+    console.log('\nRedeploying subgraph: austake-base-sepolia');
+    run('graph codegen', auStakeSubgraphDir);
+    run('graph build', auStakeSubgraphDir);
+    const auStakeVersion = `v${Date.now()}`;
+    const auStakeDeployOut = runCapture(
+      `graph deploy austake-base-sepolia --version-label ${auStakeVersion}`,
+      auStakeSubgraphDir,
     );
-    const aurellionQueryUrl =
-      parseGraphDeployQueryEndpoint(aurellionDeployOut) || '';
+    const auStakeQueryUrl =
+      parseGraphDeployQueryEndpoint(auStakeDeployOut) || '';
 
     // Update chain constants with subgraph endpoints so the app always uses latest
     const constantsWithSubgraphs = `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";
