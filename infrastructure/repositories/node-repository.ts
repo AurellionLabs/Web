@@ -38,7 +38,7 @@ export class BlockchainNodeRepository implements NodeRepository {
   private auraAsset: string;
   private auraAssetContractInstance: AuraAsset | null = null;
   private graphQLEndpoint =
-    'https://api.studio.thegraph.com/query/112596/aura-asset/version/latest';
+    'https://api.studio.thegraph.com/query/112596/aura-asset-base-sepolia/version/latest';
   pinata: PinataSDK;
   constructor(
     aurumContract: AurumNodeManager,

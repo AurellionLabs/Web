@@ -40,7 +40,7 @@ export class PoolRepository implements IPoolRepository {
   private contractAddress: string;
   private isInitialized = false;
   private graphqlEndpoint =
-    'https://api.studio.thegraph.com/query/112596/aurellion/version/latest';
+    'https://api.studio.thegraph.com/query/112596/austake-base-sepolia/version/latest';
 
   // NodeCache for GraphQL responses (30 second TTL)
   private cache = new NodeCache({
