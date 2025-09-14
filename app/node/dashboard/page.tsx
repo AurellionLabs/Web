@@ -715,9 +715,7 @@ export default function NodeDashboardPage() {
                       </td>
                       <td className="p-4">{order.tokenQuantity.toString()}</td>
                       <td className="p-4">{order.price} USDT</td>
-                      <td className="p-4 capitalize">
-                        {order.currentStatus.toString()}
-                      </td>
+                      <td className="p-4 capitalize">{order.currentStatus}</td>
                     </tr>
                   );
                 })}

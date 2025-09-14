@@ -11,15 +11,16 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Node, TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
 import { Asset } from '@/domain/shared';
-import { Order } from '@/domain/orders';
+import { Order, OrderStatus } from '@/domain/orders';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 
-export type OrderUI = Omit<Order, 'id'> & {
+export type OrderUI = Omit<Order, 'id' | 'currentStatus'> & {
   asset: Asset;
+  currentStatus: OrderStatus;
 };
 
 type NodeContextType = {
@@ -83,6 +84,23 @@ type NodeContextType = {
 };
 
 const NodeContext = createContext<NodeContextType | undefined>(undefined);
+
+// Map bigint status to OrderStatus enum
+function getOrderStatus(status: bigint): OrderStatus {
+  switch (Number(status)) {
+    case 0:
+      return OrderStatus.PENDING;
+    case 1:
+      return OrderStatus.ACTIVE;
+    case 2:
+      return OrderStatus.COMPLETED;
+    case 3:
+      return OrderStatus.CANCELLED;
+    default:
+      console.warn(`Unknown order status: ${status}`);
+      return OrderStatus.PENDING;
+  }
+}
 
 export const NodeProvider = ({ children }: { children: ReactNode }) => {
   console.log('[NodeProvider] Provider rendering...');
@@ -337,11 +355,12 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
           const asset = await getAssetByTokenId(order.tokenId.toString());
           console.log('found asset', asset);
           if (asset) {
-            const { id, ...orderWithoutId } = order;
+            const { id, currentStatus, ...orderWithoutId } = order;
             console.log('orderWithoutId', orderWithoutId);
             const orderUI: OrderUI = {
               ...orderWithoutId,
               asset,
+              currentStatus: getOrderStatus(currentStatus),
             };
             console.log('orderUI', orderUI);
             orderUIs.push(orderUI);
@@ -513,7 +532,12 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       try {
-        await nodeAssetService.mintAsset(nodeAddress, asset, amount, priceWei);
+        await nodeAssetService.mintAsset(
+          nodeAddress,
+          asset,
+          amount,
+          BigInt(priceWei),
+        );
         // Refresh node assets after minting
         if (selectedNode === nodeAddress) {
           const assets = await getNodeAssets(nodeAddress);
