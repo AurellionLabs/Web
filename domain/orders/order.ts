@@ -1,4 +1,4 @@
-import { Journey, ParcelData, Asset } from '@/domain/shared';
+import { Journey, ParcelData } from '@/domain/shared';
 import {
   BytesLike,
   ContractTransactionReceipt,

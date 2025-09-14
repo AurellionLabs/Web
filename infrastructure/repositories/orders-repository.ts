@@ -129,10 +129,26 @@ export class OrderRepository implements IOrderRepository {
         }
 
         try {
-          const order = await this.readContract.getOrder(orderId);
-          console.log('[OrderRepository] Order>>>>>:', order);
+          const contractOrder = await this.readContract.getOrder(orderId);
+          console.log('[OrderRepository] Order>>>>>:', contractOrder);
           // Ensure order has a valid ID before adding
-          if (order && order.id !== ethers.ZeroHash) {
+          if (contractOrder && contractOrder[0] !== ethers.ZeroHash) {
+            // Map contract result to Order domain object
+            const order: Order = {
+              id: contractOrder.id,
+              token: contractOrder.token,
+              tokenId: contractOrder.tokenId,
+              tokenQuantity: contractOrder.tokenQuantity,
+              requestedTokenQuantity: contractOrder.requestedTokenQuantity,
+              price: contractOrder.price,
+              txFee: contractOrder.txFee,
+              customer: contractOrder.customer,
+              journeyIds: contractOrder.journeyIds,
+              nodes: contractOrder.nodes,
+              locationData: contractOrder.locationData,
+              currentStatus: contractOrder.currentStatus,
+              contracatualAgreement: contractOrder.contracatualAgreement,
+            };
             orders.push(order);
           } else {
             // console.warn(`[OrderRepository] Node ${address} linked to invalid order ID ${orderId} at index ${index}`);

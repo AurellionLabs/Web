@@ -351,22 +351,6 @@ export class BlockchainNodeRepository implements NodeRepository {
     }
   }
 
-  async getNodeOrders(address: string): Promise<any[]> {
-    console.log(
-      `[NodeRepository] Getting orders for node ywannngngnngng: ${address}`,
-    );
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      // TODO: Implement actual logic to fetch orders related to the node
-      // This might involve interacting with AuSys contract or another mechanism
-      return []; // Currently returns an empty array
-    } catch (error) {
-      handleContractError(error, 'get node orders');
-      throw error;
-    }
-  }
-
   async loadAvailableAssets(): Promise<AggregateAssetAmount[]> {
     try {
       const contract = await this.aurumContract;

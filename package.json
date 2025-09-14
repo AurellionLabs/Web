@@ -109,6 +109,7 @@
     "@types/react-dom": "^18",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^3.2.12",
+    "abitype": "^1.1.0",
     "chai": "^4.5.0",
     "chai-as-promised": "^8.0.1",
     "cypress": "^14.3.2",

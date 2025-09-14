@@ -10,25 +10,21 @@ import {
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Node, TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
-import { Asset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
+import { Order } from '@/domain/orders';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
+import { usePlatform } from '@/app/providers/platform.provider';
 
-// Update types to match blockchain data
-export type Order = {
-  id: string;
-  customer: string;
-  asset: string;
-  quantity: number;
-  value: string;
-  status: 'active' | 'pending' | 'completed' | 'cancelled';
+export type OrderUI = Omit<Order, 'id'> & {
+  asset: Asset;
 };
 
 type NodeContextType = {
   // State
-  orders: Order[];
+  orders: OrderUI[];
   isRegisteredNode: boolean;
   nodeStatus: string;
   selectedNode: string | null;
@@ -46,7 +42,7 @@ type NodeContextType = {
     status: 'Active' | 'Inactive',
   ) => Promise<void>;
   getNodeStatus: (nodeAddress: string) => Promise<'Active' | 'Inactive'>;
-  getNodeOrders: (nodeAddress: string) => Promise<Order[]>;
+  getNodeOrders: (nodeAddress: string) => Promise<OrderUI[]>;
   selectNode: (nodeAddress: string) => void;
   refreshOrders: (nodeId: string) => Promise<void>;
 
@@ -90,7 +86,7 @@ const NodeContext = createContext<NodeContextType | undefined>(undefined);
 
 export const NodeProvider = ({ children }: { children: ReactNode }) => {
   console.log('[NodeProvider] Provider rendering...');
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderUI[]>([]);
   const [nodeStatus, setNodeStatus] = useState<string>('');
   const [isRegisteredNode, setIsRegisteredNode] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -106,6 +102,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
   const searchParams = useSearchParams();
   const { address } = useWallet();
   const { currentUserRole } = useMainProvider();
+  const { getAssetByTokenId } = usePlatform();
   console.log(`[NodeProvider] Address from useWallet on render: ${address}`);
 
   const nodeRepository = RepositoryContext.getInstance().getNodeRepository();
@@ -331,18 +328,29 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
 
   // Get node orders
   const getNodeOrders = useCallback(
-    async (nodeAddress: string): Promise<Order[]> => {
+    async (nodeAddress: string): Promise<OrderUI[]> => {
       try {
         const contractOrders = await orderRepository.getNodeOrders(nodeAddress);
+        const orderUIs: OrderUI[] = [];
+
+        for (const order of contractOrders) {
+          const asset = await getAssetByTokenId(order.tokenId.toString());
+          console.log('found asset', asset);
+          if (asset) {
+            const { id, ...orderWithoutId } = order;
+            console.log('orderWithoutId', orderWithoutId);
+            const orderUI: OrderUI = {
+              ...orderWithoutId,
+              asset,
+            };
+            console.log('orderUI', orderUI);
+            orderUIs.push(orderUI);
+          }
+        }
+
         console.log('[NodeProvider] Contract orders>>>>>:', contractOrders);
-        return contractOrders.map((order) => ({
-          id: order.id.toString(),
-          customer: order.customer.toString(),
-          asset: order.tokenId.toString(),
-          quantity: Number(order.tokenQuantity),
-          value: order.price.toString(),
-          status: Number(order.currentStatus) === 0 ? 'pending' : 'active',
-        }));
+        console.log('[NodeProvider] OrderUI objects>>>>>:', orderUIs);
+        return orderUIs;
       } catch (err) {
         setError(
           err instanceof Error ? err : new Error('Failed to get node orders'),
@@ -350,7 +358,7 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
         return [];
       }
     },
-    [orderRepository],
+    [orderRepository, getAssetByTokenId],
   );
 
   const selectNode = useCallback(

@@ -26,7 +26,6 @@ import * as z from 'zod';
 import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter } from 'next/navigation';
 import { useNode } from '@/app/providers/node.provider';
-import { getAssetName } from '@/dapp-connectors/aurum-controller';
 import type { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
@@ -34,7 +33,7 @@ import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
-import type { Asset as PlatformAsset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -60,6 +59,10 @@ interface EditingCapacity {
   id: number;
   value: string;
 }
+
+const getAssetName = (id: number) => {
+  return '1';
+};
 
 interface EditingPrice {
   id: number;
@@ -102,7 +105,7 @@ export default function NodeDashboardPage() {
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
   const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
-  const { supportedAssetClasses } = usePlatform();
+  const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
   // Form handling
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
@@ -161,10 +164,10 @@ export default function NodeDashboardPage() {
           description: '',
         }),
       );
-      const assetPayload: PlatformAsset = {
+      const assetPayload: Asset = {
         assetClass: form.getValues('assetClass'),
         tokenID: BigInt(assetIdStr),
-        name: selectedAssetName || getAssetName(assetId),
+        name: selectedAssetName,
         attributes: normalizedAttributes,
       };
       const priceWei = Number(values.price || '0');
@@ -698,18 +701,26 @@ export default function NodeDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.slice(0, 5).map((order) => (
-                  <tr key={order.id} className="border-b">
-                    <td className="p-4">{order.id}</td>
-                    <td className="p-4">{order.customer}</td>
-                    <td className="p-4 capitalize">
-                      {getAssetName(Number(order.asset))}
-                    </td>
-                    <td className="p-4">{order.quantity}</td>
-                    <td className="p-4">{order.value} USDT</td>
-                    <td className="p-4 capitalize">{order.status}</td>
-                  </tr>
-                ))}
+                {orders.slice(0, 5).map((order) => {
+                  console.log('order', order);
+                  return (
+                    <tr key={order.tokenId} className="border-b">
+                      <td className="p-4">
+                        {truncateId(order.tokenId.toString())}
+                      </td>
+                      <td className="p-4">{truncateId(order.customer)}</td>
+                      <td className="p-4 capitalize">
+                        {/* {getAssetName(Number(order.asset))} */}
+                        {order.asset.name}
+                      </td>
+                      <td className="p-4">{order.tokenQuantity.toString()}</td>
+                      <td className="p-4">{order.price} USDT</td>
+                      <td className="p-4 capitalize">
+                        {order.currentStatus.toString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
