@@ -130,7 +130,6 @@ export class OrderRepository implements IOrderRepository {
 
         try {
           const contractOrder = await this.readContract.getOrder(orderId);
-          console.log('[OrderRepository] Order>>>>>:', contractOrder);
           // Ensure order has a valid ID before adding
           if (contractOrder && contractOrder[0] !== ethers.ZeroHash) {
             // Map contract result to Order domain object
@@ -149,6 +148,7 @@ export class OrderRepository implements IOrderRepository {
               currentStatus: contractOrder.currentStatus,
               contracatualAgreement: contractOrder.contracatualAgreement,
             };
+            console.log('[OrderRepository] Order>>>>>:', order);
             orders.push(order);
           } else {
             // console.warn(`[OrderRepository] Node ${address} linked to invalid order ID ${orderId} at index ${index}`);

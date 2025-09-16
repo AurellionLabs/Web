@@ -1,4 +1,4 @@
-import type { IOrderService } from '@/domain/orders/order';
+import type { IOrderService, Order } from '@/domain/orders/order';
 import type { LocationContract } from '@/typechain-types';
 import {
   BytesLike,
@@ -181,10 +181,7 @@ export class OrderService implements IOrderService {
    * Creates a new order via the contract.
    * The connected signer is assumed to be the customer.
    */
-  async createOrder(
-    orderData: LocationContract.OrderStruct,
-    overrides?: Overrides,
-  ): Promise<BytesLike> {
+  async createOrder(orderData: Order, overrides?: Overrides): Promise<string> {
     const signerAddress = await this.getCurrentSignerAddress();
     console.log(
       `[OrderService] Signer ${signerAddress} creating order for customer: ${orderData.customer}`,
@@ -207,6 +204,7 @@ export class OrderService implements IOrderService {
     try {
       const contractWithSigner = this.contract.connect(this.currentSigner);
       // Call the contract's orderCreation function directly
+      console.log('orderData in order service', orderData);
       const tx = await contractWithSigner.orderCreation(orderData, {
         ...overrides,
       });

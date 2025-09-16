@@ -15,7 +15,8 @@ import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
 import { Asset } from '@/domain/shared';
 import { usePlatform } from '@/app/providers/platform.provider';
-import { Order } from '@/domain/orders/order';
+import { Order, OrderStatus } from '@/domain/orders/order';
+import { getOrderStatus } from '@/app/utils/helpers';
 // Types
 export type CustomerOrder = {
   id: string;
@@ -23,7 +24,7 @@ export type CustomerOrder = {
   asset: Asset;
   quantity: number;
   value: string;
-  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  status: OrderStatus;
   timestamp: number;
   deliveryLocation: string | null;
 };
@@ -84,7 +85,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             id: order.id,
             journeyId: order.journeyIds.length > 0 ? order.journeyIds[0] : null,
             asset,
-            quantity: Number(order.tokenQuantity),
+            quantity: Number(order.requestedTokenQuantity),
             value: order.price.toString(),
             status: getOrderStatus(order.currentStatus),
             timestamp: Date.now(),
@@ -112,7 +113,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === orderId
-            ? { ...order, status: 'cancelled' as const }
+            ? { ...order, status: OrderStatus.CANCELLED }
             : order,
         ),
       );
@@ -153,7 +154,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.id === orderId
-              ? { ...order, status: 'completed' as const }
+              ? { ...order, status: OrderStatus.COMPLETED }
               : order,
           ),
         );
@@ -190,26 +191,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       {children}
     </CustomerContext.Provider>
   );
-}
-
-function getOrderStatus(
-  status: bigint,
-): 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' {
-  switch (Number(status)) {
-    case 0:
-      return 'pending';
-    case 1:
-      return 'accepted';
-    case 2:
-      return 'in_progress';
-    case 3:
-      return 'completed';
-    case 4:
-      return 'cancelled';
-    default:
-      console.warn(`Unknown order status: ${status}`);
-      return 'pending';
-  }
 }
 
 // Hook for using the customer context
