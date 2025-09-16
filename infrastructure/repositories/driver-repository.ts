@@ -2,19 +2,8 @@ import {
   type IDriverRepository,
   type Delivery,
   DeliveryStatus,
-  type ParcelData,
-  type Location,
 } from '@/domain/driver/driver';
-// Commenting out unused Node imports
-// import type {
-//   Node,
-//   NodeRepository,
-//   TokenizedAsset,
-//   AggregateAssetAmount,
-//   NodeLocation,
-//   AssetType,
-// } from '@/domain/node';
-// import { Order } from '@/domain/orders'; // Comment out Order import for now
+import { type ParcelData, type Location } from '@/domain/shared';
 
 import { BrowserProvider, ethers, type Signer } from 'ethers'; // Added Signer
 import {
@@ -60,17 +49,20 @@ export class DriverRepository implements IDriverRepository {
   // --- Helper to map contract Journey status to domain DeliveryStatus ---
   private mapContractStatusToDomain(
     contractStatus: bigint | number,
+    driverAddress: string,
   ): DeliveryStatus {
     // Mapping based on LocationContract enum (Pending, InProgress, Completed, Canceled)
     // and DeliveryStatus enum (PENDING, ACCEPTED, PICKED_UP, COMPLETED, CANCELED)
     const statusNum = Number(contractStatus);
     switch (statusNum) {
       case 0: // Contract: Pending
+        // If there's a driver assigned but status is still Pending, it means ACCEPTED
+        if (driverAddress && driverAddress !== ethers.ZeroAddress) {
+          return DeliveryStatus.ACCEPTED;
+        }
         return DeliveryStatus.PENDING;
-      case 1: // Contract: InProgress (Assuming this maps to Accepted/PickedUp - let's use ACCEPTED for now)
-        // TODO: Refine this mapping - how to differentiate ACCEPTED vs PICKED_UP?
-        // Does the contract have separate statuses or rely on other flags (e.g., handOn event)?
-        return DeliveryStatus.ACCEPTED;
+      case 1: // Contract: InProgress - maps to PICKED_UP
+        return DeliveryStatus.PICKED_UP;
       case 2: // Contract: Completed
         return DeliveryStatus.COMPLETED;
       case 3: // Contract: Canceled
@@ -104,7 +96,10 @@ export class DriverRepository implements IDriverRepository {
       fee: Number(ethers.formatEther(journey.bounty)), // Convert bounty (BigInt wei) to number (Ether)
       ETA: Number(journey.ETA), // Convert BigInt timestamp to number
       deliveryETA: Number(journey.ETA), // Using ETA as deliveryETA, clarify if different field exists
-      currentStatus: this.mapContractStatusToDomain(journey.currentStatus),
+      currentStatus: this.mapContractStatusToDomain(
+        journey.currentStatus,
+        journey.driver,
+      ),
       parcelData: parcelData,
     };
   }
