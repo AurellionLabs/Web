@@ -259,6 +259,7 @@ export class BlockchainNodeRepository implements NodeRepository {
   async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
     try {
       const node = await this.aurumContract.getNode(address);
+      console.log('[NodeRepository] node', node);
       if (node.owner === ethers.ZeroAddress) {
         throw new Error('Node not found');
       }
@@ -271,7 +272,7 @@ export class BlockchainNodeRepository implements NodeRepository {
           nodeAddress: address,
         },
       );
-      console.log('returned from graphData', graphData);
+      console.log('[NodeRepository] returned from graphData', graphData);
 
       // Calculate current balances from transfer events
       const currentBalances = calculateCurrentBalances(

@@ -171,12 +171,19 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         // Create the initial journey for the order
         if (orderWithCustomer.nodes && orderWithCustomer.nodes.length > 0) {
           const firstNodeAddress = String(orderWithCustomer.nodes[0]);
+
+          // Formula: bounty = (price * quantity * 0.05)
+          const bountyPercentage = 2;
+          const totalOrderValue = orderWithCustomer.price;
+          const bounty =
+            (totalOrderValue * BigInt(bountyPercentage)) / BigInt(100);
+
           await orderService.createOrderJourney(
             actualOrderId,
             firstNodeAddress,
             walletAddress,
             orderWithCustomer.locationData,
-            BigInt(0), // bounty
+            bounty,
             BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)
             BigInt(orderWithCustomer.tokenQuantity),
             orderWithCustomer.tokenId,
