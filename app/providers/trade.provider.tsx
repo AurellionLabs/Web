@@ -155,25 +155,25 @@ export function TradeProvider({ children }: { children: ReactNode }) {
           throw new Error('Wallet not connected or address unavailable.');
         }
 
-        // Ensure the customer address is set to the current wallet
-        const orderWithCustomer: Order = {
+        // Ensure the buyer address is set to the current wallet
+        const orderWithBuyer: Order = {
           ...orderData,
-          customer: walletAddress,
+          buyer: walletAddress,
         };
 
-        console.log('[TradeProvider] Placing order:', orderWithCustomer);
+        console.log('[TradeProvider] Placing order:', orderWithBuyer);
 
         // Create the order using the centralized service
-        const actualOrderId = await orderService.createOrder(orderWithCustomer as any);
+        const actualOrderId = await orderService.createOrder(orderWithBuyer);
         console.log(`[TradeProvider] Order created with ID: ${actualOrderId}`);
 
         // Create the initial journey for the order
-        if (orderWithCustomer.nodes && orderWithCustomer.nodes.length > 0) {
-          const firstNodeAddress = String(orderWithCustomer.nodes[0]);
+        if (orderWithBuyer.nodes && orderWithBuyer.nodes.length > 0) {
+          const firstNodeAddress = String(orderWithBuyer.nodes[0]);
 
           // Formula: bounty = (price * quantity * 0.05)
           const bountyPercentage = 2;
-          const totalOrderValue = orderWithCustomer.price;
+          const totalOrderValue = orderWithBuyer.price;
           const bounty =
             (totalOrderValue * BigInt(bountyPercentage)) / BigInt(100);
 
@@ -181,11 +181,11 @@ export function TradeProvider({ children }: { children: ReactNode }) {
             actualOrderId,
             firstNodeAddress,
             walletAddress,
-            orderWithCustomer.locationData,
+            orderWithBuyer.locationData,
             bounty,
             BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)
-            BigInt(orderWithCustomer.tokenQuantity),
-            BigInt(orderWithCustomer.tokenId),
+            BigInt(orderWithBuyer.tokenQuantity),
+            BigInt(orderWithBuyer.tokenId),
           );
           console.log('[TradeProvider] Initial journey created for order');
         }
