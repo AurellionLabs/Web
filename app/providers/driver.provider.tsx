@@ -1,16 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Journey } from '@/domain/shared';
+import { Delivery } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { calculateETA } from '../utils/maps';
 
-type DriverDelivery = Journey & { deliveryETA: number };
-
 export interface DriverContextType {
-  availableDeliveries: DriverDelivery[];
-  myDeliveries: DriverDelivery[];
+  availableDeliveries: Delivery[];
+  myDeliveries: Delivery[];
   isLoading: boolean;
   error: string | null;
   refreshDeliveries: () => Promise<void>;
@@ -23,26 +21,22 @@ export interface DriverContextType {
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
 
 const calculateDeliveryETA = async (
-  delivery: Journey,
-): Promise<DriverDelivery> => {
+  delivery: Delivery,
+): Promise<Delivery> => {
   try {
     const deliveryETA = await calculateETA(
       delivery.parcelData.startLocation,
       delivery.parcelData.endLocation,
     );
-    return { ...(delivery as Journey), deliveryETA };
+    return { ...delivery, deliveryETA };
   } catch (error) {
-    return { ...(delivery as Journey), deliveryETA: -1 } as DriverDelivery;
+    return { ...delivery, deliveryETA: -1 };
   }
 };
 
 export function DriverProvider({ children }: { children: React.ReactNode }) {
-  const [availableDeliveries, setAvailableDeliveries] = useState<
-    DriverDelivery[]
-  >(
-    [],
-  );
-  const [myDeliveries, setMyDeliveries] = useState<DriverDelivery[]>([]);
+  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
+  const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { address: driverWalletAddress } = useWallet();

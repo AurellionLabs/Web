@@ -448,16 +448,11 @@ export const getNodeAssets = async (
   }
 };
 
-// export function getAssetName(id: number): string {
-//   const assetNames: { [key: number]: string } = {
-//     1: 'Goat',
-//     2: 'Sheep',
-//     3: 'Cow',
-//     4: 'Chicken',
-//     5: 'Duck',
-//   };
-//   return assetNames[id] || `Asset ${id}`;
-// }
+export function getAssetName(id: number): string {
+  return (
+    supportedAssetNameToId.find(([assetId]) => assetId === id)?.[1] || 'Unknown'
+  );
+}
 
 export const checkIfNodeExists = async (
   ownerAddress: string,
