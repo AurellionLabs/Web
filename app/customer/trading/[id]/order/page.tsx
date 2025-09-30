@@ -172,7 +172,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                     },
                     currentStatus: String(0),
                     buyer: '0x0000000000000000000000000000000000000000', // Will be set by the trade.provider
-                    seller: '0x0000000000000000000000000000000000000000', // Will be determined later
+                    seller: ethers.getAddress(asset.nodeId), // The node is the seller
                   };
 
                   const success = await placeOrder(orderData);
