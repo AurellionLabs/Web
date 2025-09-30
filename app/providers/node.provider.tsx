@@ -9,24 +9,27 @@ import {
   useEffect,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Node, TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
-import { Asset } from '@/domain/shared';
+import { Node, TokenizedAsset, TokenizedAssetAttribute, NodeAsset } from '@/domain/node/node';
+import { Asset } from '@/domain/platform';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
-import { usePlatform } from '@/app/providers/platform.provider';
-import { Order, OrderStatus } from '@/domain/orders/order';
-import { getOrderStatus } from '@/app/utils/helpers';
 
-export type OrderUI = Omit<Order, 'id' | 'currentStatus'> & {
-  asset: Asset;
-  currentStatus: OrderStatus;
+// Updated Order type with buyer/seller instead of customer
+export type Order = {
+  id: string;
+  buyer: string;        // Changed from 'customer'
+  seller: string;       // Added explicit seller
+  asset: string;
+  quantity: number;
+  value: string;
+  status: 'active' | 'pending' | 'completed' | 'cancelled';
 };
 
 type NodeContextType = {
   // State
-  orders: OrderUI[];
+  orders: Order[];
   isRegisteredNode: boolean;
   nodeStatus: string;
   selectedNode: string | null;
@@ -44,615 +47,327 @@ type NodeContextType = {
     status: 'Active' | 'Inactive',
   ) => Promise<void>;
   getNodeStatus: (nodeAddress: string) => Promise<'Active' | 'Inactive'>;
-  getNodeOrders: (nodeAddress: string) => Promise<OrderUI[]>;
+  getNodeOrders: (nodeAddress: string) => Promise<Order[]>;
   selectNode: (nodeAddress: string) => void;
-  refreshOrders: (nodeId: string) => Promise<void>;
+  refreshNodes: () => Promise<void>;
 
-  // Asset operations
-  getNodeAssets: (nodeAddress: string) => Promise<TokenizedAsset[]>;
-  getAllNodeAssets: () => Promise<TokenizedAsset[]>;
-  getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
+  // Asset operations - UPDATED signatures
   mintAsset: (
     nodeAddress: string,
     asset: Asset,
     amount: number,
-    priceWei: number,
+    priceWei: bigint,
   ) => Promise<void>;
+  getNodeAssets: (nodeAddress: string) => Promise<TokenizedAsset[]>;
   updateAssetCapacity: (
     nodeAddress: string,
-    assetId: number,
+    assetToken: string,
+    assetTokenId: string,
     newCapacity: number,
-    supportedAssets: number[],
-    capacities: number[],
-    assetPrices: number[],
   ) => Promise<void>;
   updateAssetPrice: (
     nodeAddress: string,
-    assetId: number,
-    newPrice: number,
-    supportedAssets: number[],
-    assetPrices: number[],
+    assetToken: string,
+    assetTokenId: string,
+    newPrice: bigint,
   ) => Promise<void>;
-  updateSupportedAssets: (
-    nodeAddress: string,
-    quantities: number[],
-    assets: number[],
-    prices: number[],
-  ) => Promise<void>;
-
-  // Utility
-  refreshNodes: () => Promise<void>;
+  getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
 };
 
 const NodeContext = createContext<NodeContextType | undefined>(undefined);
 
-export const NodeProvider = ({ children }: { children: ReactNode }) => {
-  console.log('[NodeProvider] Provider rendering...');
-  const [orders, setOrders] = useState<OrderUI[]>([]);
-  const [nodeStatus, setNodeStatus] = useState<string>('');
+export function NodeProvider({ children }: { children: ReactNode }) {
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isRegisteredNode, setIsRegisteredNode] = useState(false);
+  const [nodeStatus, setNodeStatus] = useState('');
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [currentNodeData, setCurrentNodeData] = useState<Node | null>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [currentWalletAddress, setCurrentWalletAddress] = useState<
-    string | null
-  >(null);
+  const [currentNodeData, setCurrentNodeData] = useState<Node | null>(null);
 
+  const { address } = useWallet();
+  const { connected } = useMainProvider();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { address } = useWallet();
-  const { currentUserRole } = useMainProvider();
-  const { getAssetByTokenId } = usePlatform();
-  console.log(`[NodeProvider] Address from useWallet on render: ${address}`);
 
-  const nodeRepository = RepositoryContext.getInstance().getNodeRepository();
-  const orderRepository = RepositoryContext.getInstance().getOrderRepository();
-  const serviceContext = ServiceContext.getInstance(
-    RepositoryContext.getInstance(),
-  );
-  const nodeAssetService = serviceContext.getNodeAssetService();
+  // Initialize contexts
+  const [repositoryContext, setRepositoryContext] = useState<RepositoryContext | null>(null);
+  const [serviceContext, setServiceContext] = useState<ServiceContext | null>(null);
 
-  // Load all nodes for a wallet address
-  const loadNodes = useCallback(
-    async (walletAddress: string) => {
-      console.log(
-        `[NodeProvider] loadNodes called with walletAddress: ${walletAddress}`,
+  useEffect(() => {
+    if (connected && address) {
+      const repoContext = RepositoryContext.getInstance();
+      const servContext = ServiceContext.getInstance();
+      setRepositoryContext(repoContext);
+      setServiceContext(servContext);
+    }
+  }, [connected, address]);
+
+  // Load nodes for the current wallet
+  const loadNodes = useCallback(async (walletAddress: string) => {
+    if (!repositoryContext) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const nodeRepository = repositoryContext.getNodeRepository();
+      const ownedNodes = await nodeRepository.getOwnedNodes(walletAddress);
+      
+      const nodeDataPromises = ownedNodes.map(nodeAddress => 
+        nodeRepository.getNode(nodeAddress)
       );
-      setLoading(true);
-      setError(null);
-      setCurrentWalletAddress(walletAddress);
-
-      try {
-        console.log('[NodeProvider] Calling nodeRepository.getOwnedNodes...');
-        const nodeAddresses = await nodeRepository.getOwnedNodes(walletAddress);
-        console.log('[NodeProvider] Received nodeAddresses:', nodeAddresses);
-
-        if (!nodeAddresses || nodeAddresses.length === 0) {
-          console.log(
-            '[NodeProvider] No node addresses found, setting nodes to empty array.',
-          );
-          setNodes([]);
-        } else {
-          console.log(
-            '[NodeProvider] Fetching full node data for each address...',
-          );
-          const nodePromises = nodeAddresses.map((address) =>
-            nodeRepository.getNode(address),
-          );
-          const loadedNodes = await Promise.all(nodePromises);
-          console.log(
-            '[NodeProvider] Fetched node data (pre-filter):',
-            loadedNodes,
-          );
-
-          // Filter out any null results before setting state
-          const validNodes = loadedNodes.filter(
-            (node): node is Node => node !== null,
-          );
-          console.log('[NodeProvider] Filtered valid nodes:', validNodes);
-
-          setNodes(validNodes); // Set state with only valid Node objects
-        }
-      } catch (err) {
-        console.error('[NodeProvider] Error in loadNodes:', err);
-        setError(
-          err instanceof Error ? err : new Error('Failed to load nodes'),
-        );
-        setNodes([]);
-      } finally {
-        console.log(
-          '[NodeProvider] loadNodes finished, setting loading to false.',
-        );
-        setLoading(false);
+      
+      const nodeDataResults = await Promise.all(nodeDataPromises);
+      const validNodes = nodeDataResults.filter((node): node is Node => node !== null);
+      
+      setNodes(validNodes);
+      setIsRegisteredNode(validNodes.length > 0);
+      
+      // Auto-select first node or from URL params
+      const nodeIdFromUrl = searchParams.get('nodeId');
+      if (nodeIdFromUrl && validNodes.some(n => n.address === nodeIdFromUrl)) {
+        selectNode(nodeIdFromUrl);
+      } else if (validNodes.length > 0 && !selectedNode) {
+        selectNode(validNodes[0].address);
       }
-    },
-    [nodeRepository],
-  );
+    } catch (err) {
+      console.error('Error loading nodes:', err);
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [repositoryContext, searchParams, selectedNode]);
 
-  // Get a single node by address
-  const getNode = useCallback(
-    async (nodeAddress: string): Promise<Node | null> => {
-      try {
-        return await nodeRepository.getNode(nodeAddress);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to get node'));
-        return null;
+  // Get single node data
+  const getNode = useCallback(async (nodeAddress: string): Promise<Node | null> => {
+    if (!repositoryContext) return null;
+    
+    try {
+      const nodeRepository = repositoryContext.getNodeRepository();
+      return await nodeRepository.getNode(nodeAddress);
+    } catch (err) {
+      console.error('Error getting node:', err);
+      return null;
+    }
+  }, [repositoryContext]);
+
+  // Register new node
+  const registerNode = useCallback(async (nodeData: Node) => {
+    if (!serviceContext) throw new Error('Service context not initialized');
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const nodeService = serviceContext.getNodeService();
+      const nodeAddress = await nodeService.registerNode(nodeData);
+      
+      // Reload nodes after registration
+      if (address) {
+        await loadNodes(address);
       }
-    },
-    [nodeRepository],
-  );
-
-  // Register a new node
-  const registerNode = useCallback(
-    async (nodeData: Node): Promise<void> => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        await nodeRepository.registerNode(nodeData);
-        // Refresh the nodes list if we're currently viewing the owner's nodes
-        if (currentWalletAddress === nodeData.owner) {
-          await loadNodes(currentWalletAddress);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to register node'),
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [nodeRepository, currentWalletAddress, loadNodes],
-  );
+      
+      // Navigate to the new node
+      router.push(`/node/dashboard?nodeId=${nodeAddress}`);
+    } catch (err) {
+      console.error('Error registering node:', err);
+      setError(err as Error);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [repositoryContext, address, loadNodes, router]);
 
   // Update node status
-  const updateNodeStatus = useCallback(
-    async (
-      nodeAddress: string,
-      status: 'Active' | 'Inactive',
-    ): Promise<void> => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        await nodeRepository.updateNodeStatus(nodeAddress, status);
-        // Update the node in our local list state
-        setNodes((currentNodes) =>
-          currentNodes.map((node) =>
-            node.address === nodeAddress ? { ...node, status } : node,
-          ),
-        );
-        // Also update the currently viewed node data if it matches
-        if (currentNodeData?.address === nodeAddress) {
-          setCurrentNodeData(
-            (prevData) => (prevData ? { ...prevData, status } : null), // Ensure prevData is not null
-          );
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err
-            : new Error('Failed to update node status'),
-        );
-        // Re-throw the error so the UI layer can potentially handle it (e.g., show toast)
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    // Added currentNodeData and setCurrentNodeData to dependencies
-    [nodeRepository, currentNodeData, setCurrentNodeData],
-  );
-
-  // Get assets for a specific node
-  const getNodeAssets = useCallback(
-    async (nodeAddress: string): Promise<TokenizedAsset[]> => {
-      try {
-        return await nodeRepository.getNodeAssets(nodeAddress);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to get node assets'),
-        );
-        return [];
-      }
-    },
-    [nodeRepository],
-  );
-
-  // Get all assets across all nodes
-  const getAllNodeAssets = useCallback(async (): Promise<TokenizedAsset[]> => {
+  const updateNodeStatus = useCallback(async (
+    nodeAddress: string,
+    status: 'Active' | 'Inactive',
+  ) => {
+    if (!serviceContext) throw new Error('Service context not initialized');
+    
     try {
-      return await nodeRepository.getAllNodeAssets();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error('Failed to get all node assets'),
+      const nodeService = serviceContext.getNodeService();
+      await nodeService.updateNodeStatus(nodeAddress, status);
+      
+      // Update local state
+      setNodes(prevNodes => 
+        prevNodes.map(node => 
+          node.address === nodeAddress ? { ...node, status } : node
+        )
       );
-      return [];
-    }
-  }, [nodeRepository]);
-
-  // Get asset attributes by tokenId via Pinata keyvalues
-  const getAssetAttributes = useCallback(
-    async (tokenId: string): Promise<TokenizedAssetAttribute[]> => {
-      console.log('in function getAssetAttributes tokenId', tokenId);
-      try {
-        if (!tokenId) return [];
-        const platformRepository =
-          RepositoryContext.getInstance().getPlatformRepository();
-        console.log('calling getAssetByTokenId from front end');
-        const assetDef = await platformRepository.getAssetByTokenId(tokenId);
-        if (!assetDef || !Array.isArray(assetDef.attributes)) return [];
-        return assetDef.attributes.map(
-          (attr: { name: string; values: string[]; description: string }) => ({
-            name: attr.name,
-            value:
-              Array.isArray(attr.values) && attr.values.length > 0
-                ? attr.values[0]
-                : '',
-            description: attr.description ?? '',
-          }),
-        );
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err
-            : new Error('Failed to get asset attributes'),
-        );
-        return [];
+      
+      if (currentNodeData?.address === nodeAddress) {
+        setCurrentNodeData(prev => prev ? { ...prev, status } : null);
       }
-    },
-    [],
-  );
-
-  // Refresh the current nodes list
-  const refreshNodes = useCallback(async (): Promise<void> => {
-    if (currentWalletAddress) {
-      await loadNodes(currentWalletAddress);
+    } catch (err) {
+      console.error('Error updating node status:', err);
+      throw err;
     }
-  }, [currentWalletAddress, loadNodes]);
+  }, [repositoryContext, currentNodeData]);
 
   // Get node status
-  const getNodeStatus = useCallback(
-    async (nodeAddress: string): Promise<'Active' | 'Inactive'> => {
-      try {
-        return await nodeRepository.getNodeStatus(nodeAddress);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to get node status'),
-        );
-        return 'Inactive';
-      }
-    },
-    [nodeRepository],
-  );
+  const getNodeStatus = useCallback(async (nodeAddress: string): Promise<'Active' | 'Inactive'> => {
+    if (!repositoryContext) return 'Inactive';
+    
+    try {
+      const nodeRepository = repositoryContext.getNodeRepository();
+      return await nodeRepository.getNodeStatus(nodeAddress);
+    } catch (err) {
+      console.error('Error getting node status:', err);
+      return 'Inactive';
+    }
+  }, [repositoryContext]);
 
   // Get node orders
-  const getNodeOrders = useCallback(
-    async (nodeAddress: string): Promise<OrderUI[]> => {
-      try {
-        const contractOrders = await orderRepository.getNodeOrders(nodeAddress);
-        const orderUIs: OrderUI[] = [];
+  const getNodeOrders = useCallback(async (nodeAddress: string): Promise<Order[]> => {
+    if (!repositoryContext) return [];
+    
+    try {
+      const orderRepository = repositoryContext.getOrderRepository();
+      const orders = await orderRepository.getNodeOrders(nodeAddress);
+      
+      // Convert to frontend Order format
+      return orders.map(order => ({
+        id: order.id,
+        buyer: order.buyer,
+        seller: order.seller,
+        asset: order.tokenId,
+        quantity: Number(order.tokenQuantity),
+        value: order.price.toString(),
+        status: order.currentStatus === 0n ? 'pending' : 
+                order.currentStatus === 1n ? 'active' :
+                order.currentStatus === 2n ? 'completed' : 'cancelled'
+      }));
+    } catch (err) {
+      console.error('Error getting node orders:', err);
+      return [];
+    }
+  }, [repositoryContext]);
 
-        for (const order of contractOrders) {
-          const asset = await getAssetByTokenId(order.tokenId.toString());
-          console.log('found asset', asset);
-          if (asset) {
-            const { id, currentStatus, ...orderWithoutId } = order;
-            console.log('orderWithoutId', orderWithoutId);
-            const orderUI: OrderUI = {
-              ...orderWithoutId,
-              asset,
-              currentStatus: getOrderStatus(currentStatus),
-            };
-            console.log('orderUI', orderUI);
-            orderUIs.push(orderUI);
-          }
-        }
+  // Select node
+  const selectNode = useCallback((nodeAddress: string) => {
+    setSelectedNode(nodeAddress);
+    
+    const node = nodes.find(n => n.address === nodeAddress);
+    setCurrentNodeData(node || null);
+    
+    if (node) {
+      setNodeStatus(node.status);
+    }
+  }, [nodes]);
 
-        console.log('[NodeProvider] Contract orders>>>>>:', contractOrders);
-        console.log('[NodeProvider] OrderUI objects>>>>>:', orderUIs);
-        return orderUIs;
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to get node orders'),
-        );
-        return [];
+  // Refresh nodes
+  const refreshNodes = useCallback(async () => {
+    if (address) {
+      await loadNodes(address);
+    }
+  }, [address, loadNodes]);
+
+  // UPDATED: Mint asset with new signature
+  const mintAsset = useCallback(async (
+    nodeAddress: string,
+    asset: Asset,
+    amount: number,
+    priceWei: bigint,
+  ) => {
+    if (!serviceContext) throw new Error('Service context not initialized');
+    
+    try {
+      const nodeAssetService = serviceContext.getNodeAssetService();
+      await nodeAssetService.mintAsset(nodeAddress, asset, amount, priceWei);
+      
+      // Refresh current node data
+      if (address) {
+        await loadNodes(address);
       }
-    },
-    [orderRepository, getAssetByTokenId],
-  );
+    } catch (err) {
+      console.error('Error minting asset:', err);
+      throw err;
+    }
+  }, [serviceContext, address, loadNodes]);
 
-  const selectNode = useCallback(
-    async (nodeAddress: string) => {
-      try {
-        console.log(`[NodeProvider] Selecting node: ${nodeAddress}`);
-        const node = await getNode(nodeAddress);
-        if (!node) return;
+  // Get node assets
+  const getNodeAssets = useCallback(async (nodeAddress: string): Promise<TokenizedAsset[]> => {
+    if (!repositoryContext) return [];
+    
+    try {
+      const nodeRepository = repositoryContext.getNodeRepository();
+      return await nodeRepository.getNodeAssets(nodeAddress);
+    } catch (err) {
+      console.error('Error getting node assets:', err);
+      return [];
+    }
+  }, [repositoryContext]);
 
-        setSelectedNode(nodeAddress);
-        setCurrentNodeData(node);
-
-        // Update orders for the selected node
-        const nodeOrders = await getNodeOrders(nodeAddress);
-        console.log('[NodeProvider] Node orders>>>>>:', nodeOrders);
-        setOrders(nodeOrders);
-
-        // Update node status
-        const status = await getNodeStatus(nodeAddress);
-        setIsRegisteredNode(!!status);
-        setNodeStatus(status);
-      } catch (error) {
-        console.error('Error selecting node:', error);
+  // UPDATED: Update asset capacity with new signature
+  const updateAssetCapacity = useCallback(async (
+    nodeAddress: string,
+    assetToken: string,
+    assetTokenId: string,
+    newCapacity: number,
+  ) => {
+    if (!serviceContext) throw new Error('Service context not initialized');
+    
+    try {
+      const nodeAssetService = serviceContext.getNodeAssetService();
+      await nodeAssetService.updateAssetCapacity(nodeAddress, assetToken, assetTokenId, newCapacity);
+      
+      // Refresh current node data
+      if (address) {
+        await loadNodes(address);
       }
-    },
-    [getNode, getNodeOrders, getNodeStatus],
-  );
+    } catch (err) {
+      console.error('Error updating asset capacity:', err);
+      throw err;
+    }
+  }, [serviceContext, address, loadNodes]);
 
-  const refreshOrders = useCallback(
-    async (nodeId: string) => {
-      console.log(`[NodeProvider] refreshOrders called for nodeId: ${nodeId}`);
-      setLoading(true);
-      setError(null);
-      try {
-        // Use the existing getNodeOrders function from this provider
-        const fetchedOrders = await getNodeOrders(nodeId);
-        setOrders(fetchedOrders);
-        console.log(
-          `[NodeProvider] Orders fetched for node ${nodeId}:`,
-          fetchedOrders,
-        );
-      } catch (err) {
-        console.error(
-          `[NodeProvider] Error fetching orders for node ${nodeId}:`,
-          err,
-        );
-        setError(
-          err instanceof Error
-            ? err
-            : new Error(`Failed to fetch orders for node ${nodeId}`),
-        );
-        setOrders([]); // Clear orders on error
-      } finally {
-        setLoading(false);
+  // UPDATED: Update asset price with new signature
+  const updateAssetPrice = useCallback(async (
+    nodeAddress: string,
+    assetToken: string,
+    assetTokenId: string,
+    newPrice: bigint,
+  ) => {
+    if (!serviceContext) throw new Error('Service context not initialized');
+    
+    try {
+      const nodeAssetService = serviceContext.getNodeAssetService();
+      await nodeAssetService.updateAssetPrice(nodeAddress, assetToken, assetTokenId, newPrice);
+      
+      // Refresh current node data
+      if (address) {
+        await loadNodes(address);
       }
-    },
-    // Add getNodeOrders to dependencies if it's not already implicitly included
-    // by being defined in the same scope, or if it relies on external state.
-    // For simplicity and safety, let's add it.
-    [getNodeOrders], // <--- Use getNodeOrders from provider context
-  );
+    } catch (err) {
+      console.error('Error updating asset price:', err);
+      throw err;
+    }
+  }, [serviceContext, address, loadNodes]);
 
-  // Effect to load nodes based on address AND role
+  // Get asset attributes
+  const getAssetAttributes = useCallback(async (fileHash: string): Promise<TokenizedAssetAttribute[]> => {
+    if (!repositoryContext) return [];
+    
+    try {
+      const nodeRepository = repositoryContext.getNodeRepository();
+      return await nodeRepository.getAssetAttributes(fileHash);
+    } catch (err) {
+      console.error('Error getting asset attributes:', err);
+      return [];
+    }
+  }, [repositoryContext]);
+
+  // Load nodes when wallet connects
   useEffect(() => {
-    console.log(
-      `[NodeProvider] Address/Role Effect Triggered. Role: ${currentUserRole}, Address: ${address}`,
-    );
-    // Only load nodes if address is present AND role is node
-    if (address && currentUserRole === 'node') {
-      console.log(
-        '[NodeProvider] Address/Role Effect - Address and Role valid, calling loadNodes().',
-      );
+    if (connected && address && repositoryContext) {
       loadNodes(address);
-    } else {
-      // Clear node state if address disconnects OR role is not node
-      console.log(
-        '[NodeProvider] Address/Role Effect - Clearing Node State (No address or role !== node).',
-      );
-      setNodes([]);
-      setSelectedNode(null);
-      setCurrentNodeData(null);
-      // setOrders([]);
-      setCurrentWalletAddress(null);
-      // Don't set loading to false here, as loadNodes wasn't called
     }
-    // Add currentUserRole to dependency array
-  }, [address, currentUserRole, loadNodes]);
+  }, [connected, address, repositoryContext, loadNodes]);
 
-  // Effect to select node based on URL parameter OR clear selection if param removed
-  useEffect(() => {
-    const nodeAddressFromUrl = searchParams.get('node');
-    console.log(
-      `[NodeProvider] URL Param Effect - Param: ${nodeAddressFromUrl}, Nodes Loaded: ${nodes.length}, Current Selected: ${selectedNode}`,
-    );
-
-    if (nodeAddressFromUrl) {
-      // Case 1: URL has a node parameter
-      if (
-        nodes.length > 0 && // Check if nodes are loaded
-        nodeAddressFromUrl !== selectedNode // Check if not already selected
-      ) {
-        // Check if the node from URL is actually owned by the user
-        const nodeExistsInList = nodes.some(
-          (node) => node.address === nodeAddressFromUrl,
-        );
-
-        if (nodeExistsInList) {
-          console.log(
-            `[NodeProvider] URL Param Effect - Selecting node from URL: ${nodeAddressFromUrl}`,
-          );
-          selectNode(nodeAddressFromUrl);
-        } else {
-          console.warn(
-            `[NodeProvider] URL Param Effect - Node ${nodeAddressFromUrl} not found in user's owned nodes. Clearing selection.`,
-          );
-          // Clear selection if URL node isn't valid or owned
-          setSelectedNode(null);
-          setCurrentNodeData(null);
-          // setOrders([]); // Clear orders too
-        }
-      }
-    } else {
-      // Case 2: URL does NOT have a node parameter
-      if (selectedNode !== null) {
-        console.log(
-          '[NodeProvider] URL Param Effect - No node in URL, clearing selection.',
-        );
-        setSelectedNode(null);
-        setCurrentNodeData(null);
-        // setOrders([]); // Clear orders too
-      }
-    }
-    // Ensure all dependencies used in the logic are included
-  }, [
-    nodes,
-    searchParams,
-    selectNode,
-    selectedNode,
-    setSelectedNode,
-    setCurrentNodeData,
-  ]);
-
-  // Asset service methods
-
-  const mintAsset = useCallback(
-    async (
-      nodeAddress: string,
-      asset: Asset,
-      amount: number,
-      priceWei: number,
-    ): Promise<void> => {
-      setLoading(true);
-      setError(null);
-      try {
-        await nodeAssetService.mintAsset(
-          nodeAddress,
-          asset,
-          amount,
-          BigInt(priceWei),
-        );
-        // Refresh node assets after minting
-        if (selectedNode === nodeAddress) {
-          const assets = await getNodeAssets(nodeAddress);
-          // You might want to add a state for node assets and update it here
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to mint asset'),
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [nodeAssetService, selectedNode, getNodeAssets],
-  );
-
-  const updateAssetCapacity = useCallback(
-    async (
-      nodeAddress: string,
-      assetId: number,
-      newCapacity: number,
-      supportedAssets: number[],
-      capacities: number[],
-      assetPrices: number[],
-    ): Promise<void> => {
-      setLoading(true);
-      setError(null);
-      try {
-        await nodeAssetService.updateAssetCapacity(
-          nodeAddress,
-          assetId,
-          newCapacity,
-          supportedAssets,
-          capacities,
-          assetPrices,
-        );
-        // Refresh node data after updating capacity
-        if (selectedNode === nodeAddress) {
-          const node = await getNode(nodeAddress);
-          if (node) {
-            setCurrentNodeData(node);
-          }
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err
-            : new Error('Failed to update asset capacity'),
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [nodeAssetService, selectedNode, getNode],
-  );
-
-  const updateAssetPrice = useCallback(
-    async (
-      nodeAddress: string,
-      assetId: number,
-      newPrice: number,
-      supportedAssets: number[],
-      assetPrices: number[],
-    ): Promise<void> => {
-      setLoading(true);
-      setError(null);
-      try {
-        await nodeAssetService.updateAssetPrice(
-          nodeAddress,
-          assetId,
-          newPrice,
-          supportedAssets,
-          assetPrices,
-        );
-        // Refresh node data after updating price
-        if (selectedNode === nodeAddress) {
-          const node = await getNode(nodeAddress);
-          if (node) {
-            setCurrentNodeData(node);
-          }
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err
-            : new Error('Failed to update asset price'),
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [nodeAssetService, selectedNode, getNode],
-  );
-
-  const updateSupportedAssets = useCallback(
-    async (
-      nodeAddress: string,
-      quantities: number[],
-      assets: number[],
-      prices: number[],
-    ): Promise<void> => {
-      setLoading(true);
-      setError(null);
-      try {
-        await nodeAssetService.updateSupportedAssets(
-          nodeAddress,
-          quantities,
-          assets,
-          prices,
-        );
-        // Refresh node data after updating supported assets
-        if (selectedNode === nodeAddress) {
-          const node = await getNode(nodeAddress);
-          if (node) {
-            setCurrentNodeData(node);
-          }
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err
-            : new Error('Failed to update supported assets'),
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [nodeAssetService, selectedNode, getNode],
-  );
-
-  const value = {
+  const value: NodeContextType = {
     // State
     orders,
     isRegisteredNode,
@@ -671,25 +386,19 @@ export const NodeProvider = ({ children }: { children: ReactNode }) => {
     getNodeStatus,
     getNodeOrders,
     selectNode,
-    refreshOrders,
+    refreshNodes,
 
     // Asset operations
-    getNodeAssets,
-    getAllNodeAssets,
-    getAssetAttributes,
     mintAsset,
+    getNodeAssets,
     updateAssetCapacity,
     updateAssetPrice,
-    updateSupportedAssets,
-
-    // Utility
-    refreshNodes,
+    getAssetAttributes,
   };
 
   return <NodeContext.Provider value={value}>{children}</NodeContext.Provider>;
-};
+}
 
-// Hook for using the node context
 export function useNode() {
   const context = useContext(NodeContext);
   if (context === undefined) {
@@ -697,3 +406,5 @@ export function useNode() {
   }
   return context;
 }
+
+

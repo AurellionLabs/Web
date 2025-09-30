@@ -69,9 +69,10 @@ const AssetSelectionForm: React.FC<Props> = ({
   // Update selected asset when assetId changes
   useEffect(() => {
     if (selectedAssetId) {
-      const asset = classAssets.find(
-        (a) => a.tokenID.toString() === selectedAssetId,
-      );
+      const asset = classAssets.find((a: any) => {
+        const idStr = String(a?.tokenId ?? a?.tokenID ?? '');
+        return idStr === selectedAssetId;
+      });
       setSelectedAsset(asset || null);
       onSelectedAssetChange?.(asset || null);
     } else {
@@ -125,10 +126,10 @@ const AssetSelectionForm: React.FC<Props> = ({
               <SelectValue placeholder="Select an asset" />
             </SelectTrigger>
             <SelectContent>
-              {classAssets.map((asset) => (
+              {classAssets.map((asset: any) => (
                 <SelectItem
-                  key={asset.tokenID.toString()}
-                  value={asset.tokenID.toString()}
+                  key={String(asset?.tokenId ?? asset?.tokenID)}
+                  value={String(asset?.tokenId ?? asset?.tokenID)}
                 >
                   {asset.name}
                 </SelectItem>
@@ -186,7 +187,7 @@ const AssetSelectionForm: React.FC<Props> = ({
           <AssetAttributeInput
             asset={selectedAsset}
             attributeValues={
-              assetAttributes[selectedAsset.tokenID.toString()] || {}
+              assetAttributes[String((selectedAsset as any)?.tokenId ?? (selectedAsset as any)?.tokenID ?? '')] || {}
             }
             onAttributeChange={onAssetAttributeChange}
           />

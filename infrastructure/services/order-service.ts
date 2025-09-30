@@ -1,9 +1,8 @@
-import type { IOrderService, Order } from '@/domain/orders/order';
-import type { LocationContract } from '@/typechain-types';
+import type { IOrderService, Order as DomainOrder } from '@/domain/orders/order';
+import type { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
 import {
   BytesLike,
   ContractTransactionReceipt,
-  Overrides,
   Signer,
   ethers,
   BigNumberish,
@@ -12,12 +11,13 @@ import { handleContractError } from '@/utils/error-handler';
 
 /**
  * Implements domain service operations for orders by interacting directly with the blockchain contract.
+ * REFACTOR NOTE: Updated to use Ausys contract with proper domain-to-contract mapping
  */
 export class OrderService implements IOrderService {
-  private contract: LocationContract;
+  private contract: Ausys;
   private currentSigner: Signer;
 
-  constructor(contractInstance: LocationContract, initialSigner: Signer) {
+  constructor(contractInstance: Ausys, initialSigner: Signer) {
     if (!contractInstance || !initialSigner) {
       throw new Error(
         'OrderService requires a contract instance and an initial signer.',
@@ -65,12 +65,11 @@ export class OrderService implements IOrderService {
    * Requires bounty and ETA to be provided.
    */
   async jobCreation(
-    parcelData: LocationContract.ParcelDataStruct,
+    parcelData: Ausys.ParcelDataStruct,
     recipientWalletAddress: string,
-    senderWalletAddress?: string, // Optional override, primarily uses currentSigner
-    bounty?: BigNumberish,
-    eta?: BigNumberish,
-    overrides?: Overrides,
+    senderWalletAddress: string,
+    bounty: BigNumberish,
+    eta: BigNumberish,
   ): Promise<ContractTransactionReceipt> {
     const connectedSignerAddress = await this.getCurrentSignerAddress();
     const effectiveSender = senderWalletAddress ?? connectedSignerAddress;
@@ -91,24 +90,17 @@ export class OrderService implements IOrderService {
       console.warn(
         `[OrderService] Provided senderWalletAddress ${effectiveSender} differs from connected signer ${connectedSignerAddress}. Transaction will be sent by connected signer.`,
       );
-      // Potentially throw an error here if strict sender control is needed
-      // throw new Error("Sender address mismatch");
     }
 
     try {
-      // Connect the current signer to the contract instance for this call
       const contractWithSigner = this.contract.connect(this.currentSigner);
 
-      // Caller (using the service) must ensure allowance is set beforehand
-      // await auraToken.connect(this.currentSigner).approve(this.contract.target, bounty); // This should happen *before* calling the service
-
       const tx = await contractWithSigner.journeyCreation(
-        connectedSignerAddress, // Use the actual signer's address as sender
+        connectedSignerAddress,
         recipientWalletAddress,
         parcelData,
         bounty,
         eta,
-        { ...overrides },
       );
       const receipt = await tx.wait();
       if (!receipt) {
@@ -129,7 +121,6 @@ export class OrderService implements IOrderService {
    */
   async customerSignPackage(
     journeyId: string,
-    overrides?: Overrides,
   ): Promise<ContractTransactionReceipt> {
     const signerAddress = await this.getCurrentSignerAddress();
     console.log(
@@ -147,19 +138,15 @@ export class OrderService implements IOrderService {
         );
       }
       if (journey.driver === ethers.ZeroAddress) {
-        // This might depend on exact state flow - can signing happen before driver assigned?
         console.warn(
           `[OrderService] Attempting to sign journey ${journeyId} which has no driver assigned yet.`,
         );
-        // Potentially throw: throw new Error('Cannot sign package before a driver is assigned.');
       }
 
-      // Call packageSign - assuming sender is the receiver, driver is journey.driver
       const tx = await contractWithSigner.packageSign(
-        journey.driver, // driver
-        signerAddress, // sender (in this context, the receiver signing)
+        journey.driver,
+        signerAddress,
         journeyId,
-        { ...overrides },
       );
       const receipt = await tx.wait();
       if (!receipt) {
@@ -179,17 +166,20 @@ export class OrderService implements IOrderService {
 
   /**
    * Creates a new order via the contract.
-   * The connected signer is assumed to be the customer.
+   * The connected signer is assumed to be the buyer/customer.
+   * REFACTOR NOTE: Maps domain Order to contract OrderStruct
    */
-  async createOrder(orderData: Order, overrides?: Overrides): Promise<string> {
+  async createOrder(
+    orderData: DomainOrder,
+  ): Promise<string> {
     const signerAddress = await this.getCurrentSignerAddress();
     console.log(
-      `[OrderService] Signer ${signerAddress} creating order for customer: ${orderData.customer}`,
+      `[OrderService] Signer ${signerAddress} creating order for buyer: ${orderData.buyer}`,
     );
 
     // Normalize addresses for comparison
     const normalizedCustomerAddress = ethers.getAddress(
-      String(orderData.customer),
+      String(orderData.buyer),
     );
 
     // Ensure the signer submitting the order IS the customer listed in the order data
@@ -203,11 +193,39 @@ export class OrderService implements IOrderService {
 
     try {
       const contractWithSigner = this.contract.connect(this.currentSigner);
-      // Call the contract's orderCreation function directly
-      console.log('orderData in order service', orderData);
-      const tx = await contractWithSigner.orderCreation(orderData, {
-        ...overrides,
-      });
+
+      // Map domain Order -> contract OrderStruct
+      const parcelData: Ausys.ParcelDataStruct = {
+        startLocation: {
+          lat: orderData.locationData.startLocation.lat,
+          lng: orderData.locationData.startLocation.lng,
+        },
+        endLocation: {
+          lat: orderData.locationData.endLocation.lat,
+          lng: orderData.locationData.endLocation.lng,
+        },
+        startName: orderData.locationData.startName,
+        endName: orderData.locationData.endName,
+      };
+
+      const contractOrder: Ausys.OrderStruct = {
+        id: ethers.ZeroHash,
+        token: orderData.token,
+        tokenId: orderData.tokenId,
+        tokenQuantity: orderData.tokenQuantity,
+        price: orderData.price,
+        txFee: 0n,
+        buyer: normalizedCustomerAddress, // domain buyer -> contract buyer
+        seller: orderData.seller,
+        journeyIds: [] as BytesLike[],
+        nodes: orderData.nodes,
+        locationData: parcelData,
+        currentStatus: 0, // Pending
+        contractualAgreement: ethers.ZeroHash,
+      };
+
+      // Call the contract's orderCreation with mapped struct
+      const tx = await contractWithSigner.orderCreation(contractOrder);
       const receipt = await tx.wait();
       if (!receipt) {
         throw new Error(
@@ -225,13 +243,12 @@ export class OrderService implements IOrderService {
         receipt.hash,
       );
 
-      // +++ Parse event to get orderId +++
-      // +++ Add Log for Raw Receipt Logs +++
+      // Parse event to get orderId
       console.log(
         '[OrderService] Raw receipt logs:',
         JSON.stringify(receipt.logs, null, 2),
       );
-      let createdOrderId: BytesLike = ethers.ZeroHash;
+      let createdOrderId: string = String(ethers.ZeroHash);
       const eventFragment = this.contract.interface.getEvent('OrderCreated');
       if (receipt.logs && eventFragment) {
         for (const log of receipt.logs) {
@@ -240,7 +257,7 @@ export class OrderService implements IOrderService {
               log as unknown as { topics: string[]; data: string },
             );
             if (parsedLog && parsedLog.name === 'OrderCreated') {
-              createdOrderId = parsedLog.args.orderId;
+              createdOrderId = String(parsedLog.args.orderId);
               console.log(
                 `[OrderService] Found OrderCreated event, orderId: ${createdOrderId}`,
               );
@@ -262,11 +279,11 @@ export class OrderService implements IOrderService {
         );
       }
 
-      return createdOrderId; // Return the parsed ID
+      return createdOrderId;
     } catch (error) {
       console.error('Error in create order service:', error);
       handleContractError(error, 'create order');
-      throw error; // Re-throw error after handling
+      throw error;
     }
   }
 
@@ -277,8 +294,7 @@ export class OrderService implements IOrderService {
   async addReceiverToOrder(
     orderId: BytesLike,
     receiver: string,
-    sender?: string, // Optional override, but TX will use connected signer
-    overrides?: Overrides,
+    sender?: string,
   ): Promise<ContractTransactionReceipt> {
     const signerAddress = await this.getCurrentSignerAddress();
     const effectiveSender = sender ?? signerAddress;
@@ -295,13 +311,11 @@ export class OrderService implements IOrderService {
 
     try {
       const contractWithSigner = this.contract.connect(this.currentSigner);
-      // Call the contract's addReceiver function
       const tx = await contractWithSigner.addReceiver(
         orderId,
         receiver,
         signerAddress,
-        { ...overrides },
-      ); // Pass signerAddress as the sender
+      );
       const receipt = await tx.wait();
       if (!receipt) {
         throw new Error('Add receiver transaction failed to return a receipt.');
@@ -316,25 +330,24 @@ export class OrderService implements IOrderService {
     }
   }
 
-  // +++ Implementation for createOrderJourney moved here +++
+  /**
+   * Creates a journey for an order
+   */
   async createOrderJourney(
     orderId: BytesLike,
     senderNodeAddress: string,
     receiverAddress: string,
-    parcelData: LocationContract.ParcelDataStruct,
+    parcelData: Ausys.ParcelDataStruct,
     bountyWei: bigint,
     etaTimestamp: bigint,
     tokenQuantity: bigint,
-    assetId: number,
-    overrides?: Overrides,
-  ): Promise<BytesLike> {
+    assetId: bigint,
+  ): Promise<string> {
     console.log(
       `[OrderService] Creating journey for order ${orderId} from ${senderNodeAddress} to ${receiverAddress}`,
     );
     try {
-      const contract = this.contract.connect(this.currentSigner); // Use this.contract and this.currentSigner
-
-      // Assuming bounty approval happens elsewhere or is handled by the caller
+      const contract = this.contract.connect(this.currentSigner);
 
       const tx = await contract.orderJourneyCreation(
         orderId,
@@ -345,7 +358,6 @@ export class OrderService implements IOrderService {
         etaTimestamp,
         tokenQuantity,
         assetId,
-        overrides ?? {},
       );
 
       console.log(`[OrderService] orderJourneyCreation tx sent: ${tx.hash}`);
@@ -361,7 +373,7 @@ export class OrderService implements IOrderService {
       }
 
       // Parse JourneyCreated event to get the journeyId
-      let journeyId: BytesLike = ethers.ZeroHash;
+      let journeyId: string = String(ethers.ZeroHash);
       const eventFragment = contract.interface.getEvent('JourneyCreated');
       if (receipt.logs && eventFragment) {
         for (const log of receipt.logs) {
@@ -370,7 +382,7 @@ export class OrderService implements IOrderService {
               log as unknown as { topics: string[]; data: string },
             );
             if (parsedLog && parsedLog.name === 'JourneyCreated') {
-              journeyId = parsedLog.args.journeyId;
+              journeyId = String(parsedLog.args.journeyId);
               console.log(
                 `[OrderService] Found JourneyCreated event, journeyId: ${journeyId}`,
               );
@@ -382,20 +394,16 @@ export class OrderService implements IOrderService {
         }
       }
 
-      if (journeyId === ethers.ZeroHash) {
+      if (journeyId === String(ethers.ZeroHash)) {
         console.warn(
           `[OrderService] Could not find JourneyCreated event in transaction logs for order ${orderId}.`,
         );
-        // Consider throwing an error here if a journeyId is strictly required
-        // throw new Error('Could not parse JourneyCreated event from transaction receipt');
       }
 
       return journeyId;
     } catch (error) {
-      // Ensure handleContractError exists and is appropriate here
       handleContractError(error, `create order journey for order ${orderId}`);
       throw error;
     }
   }
-  // --- End Implementation ---
 }

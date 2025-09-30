@@ -8,34 +8,43 @@ dataSources:
     name: AuraAsset
     network: base-sepolia
     source:
-      address: "0x4ce174A0c337Eb3453969CA12AFEF6Ef56e4708E"
+      address: "0x26961937262d9B96BC147f8AA226807bBE762486" # Will be updated by deploy script
       abi: AuraAsset
-      startBlock: 31345004
+      startBlock: 31667437 # Will be updated by deploy script
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
-        - ApprovalForAll
+        - Asset
+        - AssetAttribute
+        - SupportedAsset
+        - SupportedClass
         - MintedAsset
-        - OwnershipTransferred
+        - Transfer
         - TransferBatch
-        - TransferSingle
-        - URI
+        - TokenStats
+        - UserBalance
       abis:
         - name: AuraAsset
           file: ./abis/AuraAsset.json
       eventHandlers:
-        - event: ApprovalForAll(indexed address,indexed address,bool)
-          handler: handleApprovalForAll
-        - event: MintedAsset(indexed address,indexed bytes32,indexed uint256,(string,string,(string,string[],string)[]))
+        - event: MintedAsset(indexed address,indexed bytes32,indexed uint256,string,string,string)
           handler: handleMintedAsset
-        - event: OwnershipTransferred(indexed address,indexed address)
-          handler: handleOwnershipTransferred
-        - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
-          handler: handleTransferBatch
+        - event: AssetAttributeAdded(indexed bytes32,indexed uint256,string,string[],string)
+          handler: handleAssetAttributeAdded
         - event: TransferSingle(indexed address,indexed address,indexed address,uint256,uint256)
           handler: handleTransferSingle
-        - event: URI(string,indexed uint256)
-          handler: handleURI
+        - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
+          handler: handleTransferBatch
       file: ./src/aura-asset.ts
+
+
+
+
+
+
+
+
+
+

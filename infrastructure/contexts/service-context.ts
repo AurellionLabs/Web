@@ -1,137 +1,99 @@
 import { INodeAssetService } from '@/domain/node/node';
-import { NodeAssetService } from '@/infrastructure/services/node-asset.service';
-import { IDriverService } from '@/domain/driver/driver';
-import { DriverService } from '@/infrastructure/services/driver.service';
-import { RepositoryContext } from './repository-context';
+import { INodeService, NodeService } from '@/infrastructure/services/node.service';
 import { IOrderService } from '@/domain/orders/order';
-import { OrderService } from '../services/order-service';
-import { IPoolService } from '@/domain/pool';
-import { PoolService } from '../services/pool.service';
+import { NodeAssetService } from '../services/node-asset.service';
+import { RepositoryContext } from './repository-context';
+import { OrderService } from '@/infrastructure/services/order-service';
 
 /**
- * Context responsible for initializing and providing access to application services.
+ * Context that manages all services and their dependencies - UPDATED
  */
 export class ServiceContext {
   private static instance: ServiceContext;
-  private repositoryContext: RepositoryContext;
-
-  // Service instances
   private nodeAssetService: INodeAssetService | null = null;
-  private driverService: IDriverService | null = null;
+  private repositoryContext: RepositoryContext | null = null;
   private orderService: IOrderService | null = null;
-  private poolService: IPoolService | null = null;
+  private nodeService: INodeService | null = null;
 
-  private isInitialized = false;
-
-  // Private constructor for singleton pattern
-  private constructor(repositoryContext: RepositoryContext) {
-    if (!repositoryContext) {
-      throw new Error(
-        'RepositoryContext is required to initialize ServiceContext.',
-      );
-    }
-    this.repositoryContext = repositoryContext;
-  }
+  private constructor() {}
 
   /**
-   * Get the singleton instance of ServiceContext.
-   * Requires RepositoryContext instance to be passed on first call.
+   * Get the singleton instance of ServiceContext
    */
-  public static getInstance(
-    repositoryContext?: RepositoryContext,
-  ): ServiceContext {
+  public static getInstance(): ServiceContext {
     if (!ServiceContext.instance) {
-      if (!repositoryContext) {
-        throw new Error(
-          'RepositoryContext instance must be provided when calling getInstance for the first time.',
-        );
-      }
-      ServiceContext.instance = new ServiceContext(repositoryContext);
+      ServiceContext.instance = new ServiceContext();
     }
     return ServiceContext.instance;
   }
 
   /**
-   * Initialize all application services.
-   * Should be called once after RepositoryContext is initialized.
+   * Initialize the context with repository context
    */
-  public initialize(): void {
-    if (this.isInitialized) {
-      console.warn('[ServiceContext] Already initialized.');
-      return;
-    }
+  public initialize(repositoryContext: RepositoryContext) {
+    this.repositoryContext = repositoryContext;
 
-    // Initialize services, passing required dependencies from RepositoryContext
+    // Create services with updated implementations
+    this.nodeAssetService = new NodeAssetService(repositoryContext);
+    this.nodeService = new NodeService(repositoryContext);
+    // Wire OrderService using Ausys contract + signer from RepositoryContext
     try {
-      this.nodeAssetService = new NodeAssetService(this.repositoryContext);
-      this.driverService = new DriverService(this.repositoryContext);
-      // Initialize OrderService using dependencies from RepositoryContext
-      this.orderService = new OrderService(
-        this.repositoryContext.getAusysContract(),
-        this.repositoryContext.getSigner(),
-      );
-      // Initialize PoolService with provider, signer, and repository context
-      this.poolService = new PoolService(
-        this.repositoryContext.getSigner().provider!,
-        this.repositoryContext.getSigner(),
-        this.repositoryContext,
-      );
-
-      this.isInitialized = true;
-      console.log('[ServiceContext] Initialized successfully.');
-    } catch (error) {
-      console.error('[ServiceContext] Initialization failed:', error);
-      this.isInitialized = false;
-      // Optionally re-throw or handle specific initialization errors
-      throw new Error('ServiceContext initialization failed.');
+      const ausys = repositoryContext.getAusysContract();
+      const signer = repositoryContext.getSigner();
+      this.orderService = new OrderService(ausys as any, signer as any);
+    } catch (e) {
+      console.warn('[ServiceContext] Unable to initialize OrderService yet:', e);
+      this.orderService = null;
     }
+
+    console.log('[ServiceContext] Successfully created refactored services');
   }
 
   /**
-   * Get the Node Asset service instance.
+   * Get the node asset service instance
    */
   public getNodeAssetService(): INodeAssetService {
-    if (!this.isInitialized || !this.nodeAssetService) {
+    if (!this.nodeAssetService) {
       throw new Error(
-        'ServiceContext not initialized or NodeAssetService failed to initialize.',
+        'NodeAssetService not initialized. Call initialize() first.',
       );
     }
     return this.nodeAssetService;
   }
 
   /**
-   * Get the Driver service instance.
-   */
-  public getDriverService(): IDriverService {
-    if (!this.isInitialized || !this.driverService) {
-      throw new Error(
-        'ServiceContext not initialized or DriverService failed to initialize.',
-      );
-    }
-    return this.driverService;
-  }
-
-  /**
-   * Get the Order service instance.
+   * Get the order service instance
    */
   public getOrderService(): IOrderService {
-    if (!this.isInitialized || !this.orderService) {
+    if (!this.orderService) {
       throw new Error(
-        'ServiceContext not initialized or OrderService failed to initialize.',
+        'OrderService not initialized. Ensure RepositoryContext is initialized before ServiceContext.',
       );
     }
     return this.orderService;
   }
 
   /**
-   * Get the Pool service instance.
+   * Get the node service instance
    */
-  public getPoolService(): IPoolService {
-    if (!this.isInitialized || !this.poolService) {
+  public getNodeService(): INodeService {
+    if (!this.nodeService) {
       throw new Error(
-        'ServiceContext not initialized or PoolService failed to initialize.',
+        'NodeService not initialized. Ensure RepositoryContext is initialized before ServiceContext.',
       );
     }
-    return this.poolService;
+    return this.nodeService;
+  }
+
+  /**
+   * Clean up resources
+   */
+  public cleanup(): void {
+    this.nodeAssetService = null;
+    this.repositoryContext = null;
+    this.orderService = null;
+    this.nodeService = null;
   }
 }
+
+

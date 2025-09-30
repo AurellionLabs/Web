@@ -26,6 +26,7 @@ import * as z from 'zod';
 import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter } from 'next/navigation';
 import { useNode } from '@/app/providers/node.provider';
+import { getAssetName } from '@/dapp-connectors/aurum-controller';
 import type { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
@@ -33,7 +34,7 @@ import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
-import { Asset } from '@/domain/shared';
+import type { Asset as PlatformAsset } from '@/domain/platform';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -59,10 +60,6 @@ interface EditingCapacity {
   id: number;
   value: string;
 }
-
-const getAssetName = (id: number) => {
-  return '1';
-};
 
 interface EditingPrice {
   id: number;
@@ -105,7 +102,7 @@ export default function NodeDashboardPage() {
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
   const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
-  const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
+  const { supportedAssetClasses } = usePlatform();
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
   // Form handling
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
@@ -125,16 +122,14 @@ export default function NodeDashboardPage() {
     setCapacityError(null);
     setIsTokenizing(true);
     try {
-      const assetIdStr = values.assetId; // keep as string to avoid precision loss
+      const assetIdStr = values.assetId;
       const assetId = Number(assetIdStr);
       const quantity = Number(values.quantity);
 
       // --- Capacity Check (Optional) ---
-      const assetIndex = currentNodeData.supportedAssets.findIndex(
-        (id) => Number(id) === assetId,
-      );
-      if (assetIndex !== -1) {
-        const totalCapacity = Number(currentNodeData.capacity[assetIndex]);
+      const assetInfo = currentNodeData.assets?.find(a => Number(a.tokenId) === assetId);
+      if (assetInfo) {
+        const totalCapacity = Number(assetInfo.capacity);
         const currentTokenizedAsset = assets.find(
           (a) => Number(a.id) === assetId,
         );
@@ -157,20 +152,20 @@ export default function NodeDashboardPage() {
       console.log('Asset Attributes:', assetAttributes);
 
       const selectedValues = assetAttributes[assetIdStr] || {};
-      const normalizedAttributes = Object.entries(selectedValues).map(
-        ([attrName, attrValue]) => ({
-          name: attrName,
+      const normalizedAttributes = Object.entries(selectedValues)
+        .filter(([attrName, attrValue]) => attrName != null && attrValue != null)
+        .map(([attrName, attrValue]) => ({
+          name: String(attrName),
           values: [String(attrValue)],
           description: '',
-        }),
-      );
-      const assetPayload: Asset = {
+        }));
+      const assetPayload: PlatformAsset = {
         assetClass: form.getValues('assetClass'),
-        tokenID: BigInt(assetIdStr),
-        name: selectedAssetName,
+        tokenId: assetIdStr,
+        name: selectedAssetName || getAssetName(assetId),
         attributes: normalizedAttributes,
       };
-      const priceWei = Number(values.price || '0');
+      const priceWei = BigInt(values.price || '0');
       await mintAsset(selectedNode, assetPayload, quantity, priceWei);
 
       // Refresh assets immediately after minting
@@ -195,8 +190,9 @@ export default function NodeDashboardPage() {
     }
   };
 
-  // Computed values from currentNodeData with proper type handling
-  const supportedAssets = currentNodeData?.supportedAssets?.length || 0;
+  // Computed values
+  // Use loaded tokenized assets for the count rather than currentNodeData (Graph node doesn't embed assets)
+  const supportedAssets = assets.length;
   const tokenizedValue = assets
     .reduce(
       (total, asset) => total + Number(asset.price) * Number(asset.amount),
@@ -241,7 +237,7 @@ export default function NodeDashboardPage() {
       await Promise.all(
         assets.map(async (asset) => {
           try {
-            const attributes = await getAssetAttributes(asset.id);
+            const attributes = await getAssetAttributes(asset.fileHash || asset.id);
             attributesMap[asset.id] = attributes;
           } catch (error) {
             console.error(
@@ -381,11 +377,9 @@ export default function NodeDashboardPage() {
     try {
       await updateAssetCapacity(
         selectedNode,
-        assetId,
+        currentNodeData.owner,
+        String(assetId),
         parseInt(newValue),
-        Array.from(currentNodeData.supportedAssets).map((v) => Number(v)),
-        currentNodeData.capacity,
-        new Array(currentNodeData.capacity.length).fill(0),
       );
 
       await refreshNodes();
@@ -405,10 +399,9 @@ export default function NodeDashboardPage() {
     try {
       await updateAssetPrice(
         selectedNode,
-        assetId,
-        Number(newValue),
-        Array.from(currentNodeData.supportedAssets).map((v) => Number(v)),
-        new Array(currentNodeData.capacity.length).fill(0),
+        currentNodeData.owner,
+        String(assetId),
+        BigInt(newValue),
       );
 
       await refreshNodes();
@@ -437,15 +430,15 @@ export default function NodeDashboardPage() {
         </div>
         <div className="flex gap-2">
           {currentNodeData && (
-            <EditNodeModal
+              <EditNodeModal
               nodeAddress={selectedNode!}
-              nodeData={currentNodeData}
-              assetNames={Object.fromEntries(
-                Array.from(currentNodeData.supportedAssets || []).map((id) => [
-                  Number(id),
-                  getAssetName(Number(id)),
-                ]),
-              )}
+                nodeData={currentNodeData as any}
+                assetNames={Object.fromEntries(
+                  (currentNodeData.assets || []).map((a) => [
+                    Number(a.tokenId),
+                    getAssetName(Number(a.tokenId)),
+                  ]),
+                )}
               onNodeUpdated={refreshNodes}
             />
           )}
@@ -693,7 +686,7 @@ export default function NodeDashboardPage() {
               <thead>
                 <tr className="border-b">
                   <th className="h-12 px-4 text-left align-middle">Order ID</th>
-                  <th className="h-12 px-4 text-left align-middle">Customer</th>
+                  <th className="h-12 px-4 text-left align-middle">Buyer</th>
                   <th className="h-12 px-4 text-left align-middle">Asset</th>
                   <th className="h-12 px-4 text-left align-middle">Quantity</th>
                   <th className="h-12 px-4 text-left align-middle">Value</th>
@@ -701,28 +694,18 @@ export default function NodeDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.slice(0, 5).map((order) => {
-                  console.log('order', order);
-                  return (
-                    <tr key={order.tokenId} className="border-b">
-                      <td className="p-4">
-                        {truncateId(order.tokenId.toString())}
-                      </td>
-                      <td className="p-4">{truncateId(order.customer)}</td>
-                      <td className="p-4 capitalize">
-                        {/* {getAssetName(Number(order.asset))} */}
-                        {order.asset.name}
-                      </td>
-                      <td className="p-4">
-                        {order.requestedTokenQuantity.toString()}
-                      </td>
-                      <td className="p-4">{order.price} USDT</td>
-                      <td className="p-4 capitalize">
-                        {order.currentStatus.toString()}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {orders.slice(0, 5).map((order) => (
+                  <tr key={order.id} className="border-b">
+                    <td className="p-4">{order.id}</td>
+                    <td className="p-4">{order.buyer}</td>
+                    <td className="p-4 capitalize">
+                      {getAssetName(Number(order.asset))}
+                    </td>
+                    <td className="p-4">{order.quantity}</td>
+                    <td className="p-4">{order.value} USDT</td>
+                    <td className="p-4 capitalize">{order.status}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

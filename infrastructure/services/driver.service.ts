@@ -66,11 +66,7 @@ export class DriverService implements IDriverService {
       }
       const customerAddress = journey.sender;
 
-      const tx = await contract.handOn(
-        driverAddress,
-        customerAddress,
-        journeyId,
-      );
+      const tx = await contract.handOn(journeyId);
       await tx.wait();
       console.log(
         `[DriverService] Pickup confirmed successfully for journey ${journeyId}`,
@@ -95,14 +91,7 @@ export class DriverService implements IDriverService {
       if (!journey || journey.sender === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no sender.`);
       }
-      const senderAddress = journey.sender;
-
-      // Call packageSign with driver address as msg.sender (assumed) and sender from journey
-      const tx = await contract.packageSign(
-        driverAddress,
-        senderAddress,
-        journeyId,
-      );
+      const tx = await contract.packageSign(journeyId);
       await tx.wait();
       console.log(
         `[DriverService] Package signed successfully for journey ${journeyId} by driver ${driverAddress}`,
@@ -129,15 +118,7 @@ export class DriverService implements IDriverService {
       if (!journey || journey.receiver === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no receiver.`);
       }
-      const receiverAddress = journey.receiver;
-
-      // Call handOff with driver address as msg.sender (assumed), receiver from journey, and token address
-      const tx = await contract.handOff(
-        driverAddress,
-        receiverAddress,
-        journeyId,
-        tokenAddress,
-      );
+      const tx = await contract.handOff(journeyId);
       await tx.wait();
       console.log(
         `[DriverService] Delivery completed successfully for journey ${journeyId}`,

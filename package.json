@@ -14,6 +14,7 @@
     "test:service:unit": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.test.ts'",
     "test:service:integration": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.integration.test.ts'",
     "test:service": "npm run test:service:unit && npm run test:service:integration",
+    "test:repo:unit": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/repositories/**/*.unit.test.ts'",
     "test": "npm run test:hardhat && npm run test:service"
   },
   "lint-staged": {

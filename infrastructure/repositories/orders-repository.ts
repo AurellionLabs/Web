@@ -1,44 +1,59 @@
 import {
   type IOrderRepository,
-  // type OrderStatus, // Keep commented if not used for mapping
-  Order, // Import Attribute type
+  type Asset,
+  type Attribute,
+  Order,
 } from '@/domain/orders/order';
-import { LocationContract, LocationContract__factory } from '@/typechain-types';
+import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
+import { Ausys__factory } from '@/typechain-types/factories/contracts/AuSys.sol/Ausys__factory';
 import {
   type BrowserProvider,
   type Signer,
   ethers,
   type BytesLike,
   Provider,
-  // type ContractTransactionReceipt, // Not needed in repo
-  // type AddressLike, // Already inferred for addresses
 } from 'ethers';
-import { handleContractError } from '@/utils/error-handler'; // Adjust path if necessary
+import { handleContractError } from '@/utils/error-handler';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 import { Journey } from '@/domain/shared';
+import { graphqlRequest } from './shared/graph';
+import {
+  GET_JOURNEYS_BY_SENDER,
+  GET_JOURNEYS_BY_RECEIVER,
+  GET_JOURNEY_BY_ID,
+  GET_ALL_JOURNEYS,
+  GET_ORDERS_BY_BUYER,
+  GET_ORDERS_BY_SELLER,
+  GET_ORDER_BY_ID,
+  GET_ORDERS_BY_NODE,
+  convertGraphJourneyToDomain,
+  convertGraphOrderToDomain,
+  JourneyGraphResponse,
+  OrderGraphResponse,
+} from '../shared/graph-queries';
 
 /**
- * Infrastructure implementation of the IOrderRepository interface.
- * Interacts with the LocationContract (AuSys) blockchain contract.
- * Uses dedicated RPC for read operations and user's signer for write operations.
+ * Infrastructure implementation of the IOrderRepository interface - REFACTORED
+ * Uses The Graph for all read operations instead of on-chain iteration
  */
 export class OrderRepository implements IOrderRepository {
-  private readContract: LocationContract;
-  private writeContract: LocationContract;
+  private readContract: Ausys;
+  private writeContract: Ausys;
   private userProvider: BrowserProvider;
   private readProvider: Provider;
   private signer: Signer;
   private contractAddress: string;
   private isInitialized = false;
+  private graphQLEndpoint = 'https://api.studio.thegraph.com/query/112596/ausys/version/latest';
 
   constructor(
-    contract: LocationContract,
+    contract: Ausys,
     userProvider: BrowserProvider,
     signer: Signer,
   ) {
     if (!contract) {
       throw new Error(
-        'OrderRepository: LocationContract instance is required.',
+        'OrderRepository: Ausys instance is required.',
       );
     }
     this.writeContract = contract;
@@ -56,436 +71,278 @@ export class OrderRepository implements IOrderRepository {
 
   private async initializeReadProvider(): Promise<void> {
     try {
-      const chainId = await RpcProviderFactory.getChainId(this.userProvider);
-      this.readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
-
-      // Read contract uses dedicated RPC provider
-      this.readContract = LocationContract__factory.connect(
+      const chainId = await RpcProviderFactory.getChainId(this.userProvider as any);
+      const rpcProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
+      this.readProvider = rpcProvider;
+      this.readContract = Ausys__factory.connect(
         this.contractAddress,
-        this.readProvider,
+        rpcProvider,
       );
       this.isInitialized = true;
-
-      console.log(
-        `[OrderRepository] Initialized with dedicated RPC for chain ${chainId}`,
-      );
+      console.log('[OrderRepository] Initialized with dedicated RPC provider');
     } catch (error) {
       console.warn(
-        '[OrderRepository] Failed to initialize read provider, using user provider:',
+        '[OrderRepository] Failed to initialize dedicated RPC provider, using user provider:',
         error,
       );
-      // Already initialized with user provider as fallback
       this.isInitialized = true;
     }
   }
 
-  private async ensureInitialized(): Promise<void> {
-    if (!this.isInitialized) {
-      await this.initializeReadProvider();
+  private async waitForInitialization(): Promise<void> {
+    while (!this.isInitialized) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
   /**
-   * Helper to get the wallet address from the current signer.
+   * REFACTORED: Uses GraphQL query instead of on-chain iteration
    */
-  private async _getWalletAddress(): Promise<string> {
-    try {
-      return await this.signer.getAddress();
-    } catch (error) {
-      console.error('Error getting wallet address from signer:', error);
-      throw new Error('Could not get wallet address. Is the wallet connected?');
-    }
-  }
-
-  // --- IOrderRepository Implementation ---
-
   async getNodeOrders(address: string): Promise<Order[]> {
-    console.log(`[OrderRepository] Getting orders for node: ${address}`);
-    const orders: Order[] = [];
     try {
-      let index = 0;
-      const MAX_NODE_ORDERS = 100; // Safety limit
-      while (index < MAX_NODE_ORDERS) {
-        let orderId: BytesLike;
-        try {
-          // Use the explicit getter instead of direct mapping access
-          orderId = await this.readContract.getNodeOrderIdByIndex(
-            address,
-            index,
-          );
-          console.log(`[OrderRepository] Order ID>>: ${orderId}`);
-          if (!orderId || orderId === ethers.ZeroHash) {
-            console.log(
-              `[OrderRepository] End of order list for node ${address} at index ${index}`,
-            );
-            break; // Assume end of list if ZeroHash
-          }
-        } catch (error: any) {
-          console.log(
-            `[OrderRepository] Error fetching order ID for node ${address} at index ${index} (likely end):`,
-            error.message,
-          );
-          break; // Assume end of list on error
-        }
+      const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
+        this.graphQLEndpoint,
+        GET_ORDERS_BY_NODE,
+        { nodeAddress: address.toLowerCase() }
+      );
 
-        try {
-          const contractOrder = await this.readContract.getOrder(orderId);
-          // Ensure order has a valid ID before adding
-          if (contractOrder && contractOrder[0] !== ethers.ZeroHash) {
-            // Map contract result to Order domain object
-            const order: Order = {
-              id: contractOrder.id,
-              token: contractOrder.token,
-              tokenId: contractOrder.tokenId,
-              tokenQuantity: contractOrder.tokenQuantity,
-              requestedTokenQuantity: contractOrder.requestedTokenQuantity,
-              price: contractOrder.price,
-              txFee: contractOrder.txFee,
-              customer: contractOrder.customer,
-              journeyIds: contractOrder.journeyIds,
-              nodes: contractOrder.nodes,
-              locationData: contractOrder.locationData,
-              currentStatus: contractOrder.currentStatus,
-              contracatualAgreement: contractOrder.contracatualAgreement,
-            };
-            console.log('[OrderRepository] Order>>>>>:', order);
-            orders.push(order);
-          } else {
-            // console.warn(`[OrderRepository] Node ${address} linked to invalid order ID ${orderId} at index ${index}`);
-          }
-        } catch (orderError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch order details for ID ${orderId} linked to node ${address}:`,
-            orderError.message,
-          );
-          // Decide whether to continue or break on single order fetch failure
-        }
-        index++;
-      }
-      // if (index >= MAX_NODE_ORDERS) {
-      //     console.warn(`[OrderRepository] Reached MAX_NODE_ORDERS limit for node ${address}.`);
-      // }
+      return response.orders.map((order: OrderGraphResponse) => 
+        convertGraphOrderToDomain(order)
+      );
     } catch (error) {
-      handleContractError(error, `get orders for node ${address}`);
-      throw error; // Re-throw after handling
+      console.error('Error fetching node orders from Graph:', error);
+      // Fallback to empty array instead of on-chain iteration
+      return [];
     }
-    console.log(
-      `[OrderRepository] Found ${orders.length} orders for node ${address}.`,
-      orders,
-    );
-
-    console.log(`[OrderRepository] Found orders.`, orders);
-    return orders;
   }
 
+  /**
+   * REFACTORED: Uses GraphQL query instead of on-chain iteration
+   */
   async getCustomerJourneys(address?: string): Promise<Journey[]> {
-    const customerAddress = address ?? (await this._getWalletAddress());
-    console.log(
-      `[OrderRepository] Getting journeys for customer: ${customerAddress}`,
-    );
-    const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
-      const journeyCount =
-        await this.readContract.numberOfJourneysCreatedForCustomer(
-          customerAddress,
-        );
-      // console.log(`[OrderRepository] Customer ${customerAddress} has ${journeyCount} journeys.`);
-
-      for (let i = 0; i < journeyCount; i++) {
-        let journeyId: BytesLike;
-        try {
-          journeyId = await this.readContract.customerToJourneyId(
-            customerAddress,
-            i,
-          );
-          if (!journeyId || journeyId === ethers.ZeroHash) {
-            // console.warn(`[OrderRepository] Found zero hash journey ID for customer ${customerAddress} at index ${i}`);
-            continue; // Skip this one
-          }
-        } catch (idError: any) {
-          console.error(
-            `[OrderRepository] Error fetching journey ID for customer ${customerAddress} at index ${i}:`,
-            idError.message,
-          );
-          continue; // Skip if ID fetch fails
-        }
-
-        try {
-          const journey = await this.readContract.journeyIdToJourney(journeyId);
-          // Basic validation
-          if (journey && journey.journeyId !== ethers.ZeroHash) {
-            journeys.push(journey);
-          } else {
-            // console.warn(`[OrderRepository] Invalid journey data returned for ID ${journeyId} (customer ${customerAddress})`);
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch journey details for ID ${journeyId} (customer ${customerAddress}):`,
-            journeyError.message,
-          );
-          // Decide whether to continue or break
-        }
+      if (!address) {
+        address = await this.signer.getAddress();
       }
-    } catch (error) {
-      handleContractError(
-        error,
-        `get journeys for customer ${customerAddress}`,
+
+      const response = await graphqlRequest<{ journeys: JourneyGraphResponse[] }>(
+        this.graphQLEndpoint,
+        GET_JOURNEYS_BY_SENDER,
+        { senderAddress: address.toLowerCase() }
       );
-      throw error;
+
+      return response.journeys.map((journey: JourneyGraphResponse) => 
+        convertGraphJourneyToDomain(journey)
+      );
+    } catch (error) {
+      console.error('Error fetching customer journeys from Graph:', error);
+      return [];
     }
-    // console.log(`[OrderRepository] Found ${journeys.length} journeys for customer ${customerAddress}.`);
-    return journeys;
   }
 
+  /**
+   * REFACTORED: Uses GraphQL query instead of on-chain iteration
+   */
   async getReceiverJourneys(address?: string): Promise<Journey[]> {
-    const receiverAddress = address ?? (await this._getWalletAddress());
-    console.log(
-      `[OrderRepository] Getting journeys for receiver: ${receiverAddress}`,
-    );
-    const journeys: LocationContract.JourneyStructOutput[] = [];
     try {
-      const journeyCount =
-        await this.readContract.numberOfJourneysCreatedForReceiver(
-          receiverAddress,
-        );
-      // console.log(`[OrderRepository] Receiver ${receiverAddress} has ${journeyCount} journeys.`);
-
-      for (let i = 0; i < journeyCount; i++) {
-        let journeyId: BytesLike;
-        try {
-          journeyId = await this.readContract.receiverToJourneyId(
-            receiverAddress,
-            i,
-          );
-          if (!journeyId || journeyId === ethers.ZeroHash) {
-            // console.warn(`[OrderRepository] Found zero hash journey ID for receiver ${receiverAddress} at index ${i}`);
-            continue;
-          }
-        } catch (idError: any) {
-          console.error(
-            `[OrderRepository] Error fetching journey ID for receiver ${receiverAddress} at index ${i}:`,
-            idError.message,
-          );
-          continue;
-        }
-
-        try {
-          const journey = await this.readContract.journeyIdToJourney(journeyId);
-          if (journey && journey.journeyId !== ethers.ZeroHash) {
-            journeys.push(journey);
-          } else {
-            // console.warn(`[OrderRepository] Invalid journey data returned for ID ${journeyId} (receiver ${receiverAddress})`);
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch journey details for ID ${journeyId} (receiver ${receiverAddress}):`,
-            journeyError.message,
-          );
-        }
+      if (!address) {
+        address = await this.signer.getAddress();
       }
-    } catch (error) {
-      handleContractError(
-        error,
-        `get journeys for receiver ${receiverAddress}`,
+
+      const response = await graphqlRequest<{ journeys: JourneyGraphResponse[] }>(
+        this.graphQLEndpoint,
+        GET_JOURNEYS_BY_RECEIVER,
+        { receiverAddress: address.toLowerCase() }
       );
-      throw error;
+
+      return response.journeys.map((journey: JourneyGraphResponse) => 
+        convertGraphJourneyToDomain(journey)
+      );
+    } catch (error) {
+      console.error('Error fetching receiver journeys from Graph:', error);
+      return [];
     }
-    // console.log(`[OrderRepository] Found ${journeys.length} journeys for receiver ${receiverAddress}.`);
-    return journeys;
   }
 
+  /**
+   * REFACTORED: Uses GraphQL query with pagination
+   */
   async fetchAllJourneys(): Promise<Journey[]> {
-    console.log(`[OrderRepository] Fetching all journeys...`);
-    const allJourneys: LocationContract.JourneyStructOutput[] = [];
     try {
-      let index = 1;
-      const MAX_JOURNEYS = 1000; // Safety break
-      while (index < MAX_JOURNEYS) {
-        let journeyId: BytesLike;
-        try {
-          // Assuming numberToJourneyID mapping exists and holds the counter
-          journeyId = await this.readContract.numberToJourneyID(index);
-          console.log(
-            `[OrderRepository] fetchAllJourneys loop index ${index}, raw journeyId:`,
-            journeyId,
-          );
-          if (!journeyId || journeyId === ethers.ZeroHash) {
-            console.log(
-              `[OrderRepository] End of global journey list reached at index ${index}.`,
-            );
-            break;
-          }
-        } catch (error: any) {
-          console.log(
-            `[OrderRepository] Error fetching journey ID at global index ${index} (likely end):`,
-            error.message,
-          );
-          break;
-        }
+      const response = await graphqlRequest<{ journeys: JourneyGraphResponse[] }>(
+        this.graphQLEndpoint,
+        GET_ALL_JOURNEYS,
+        { first: 1000, skip: 0 } // Can be made configurable
+      );
 
-        try {
-          const journey = await this.readContract.journeyIdToJourney(journeyId);
-          console.log(
-            `[OrderRepository] fetchAllJourneys loop index ${index}, fetched journey sender:`,
-            journey.sender,
-          );
-          // Add validation similar to ausys-controller if needed
-          if (
-            journey &&
-            journey.journeyId !== ethers.ZeroHash &&
-            journey.parcelData?.startLocation &&
-            journey.parcelData?.endLocation
-          ) {
-            allJourneys.push(journey);
-          } else {
-            console.warn(
-              `[OrderRepository] Skipping invalid or incomplete journey data for ID ${journeyId} at global index ${index}`,
-            );
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch journey details for ID ${journeyId} at global index ${index}:`,
-            journeyError.message,
-          );
-        }
-        index++;
-      }
-      // if (index >= MAX_JOURNEYS) {
-      //      console.warn(`[OrderRepository] Reached MAX_JOURNEYS limit while fetching all journeys.`);
-      // }
+      return response.journeys.map((journey: JourneyGraphResponse) => 
+        convertGraphJourneyToDomain(journey)
+      );
     } catch (error) {
-      handleContractError(error, `fetch all journeys`);
-      throw error;
-    }
-    console.log(
-      `[OrderRepository] Found ${allJourneys.length} total journeys.`,
-    );
-    return allJourneys;
-  }
-
-  async getJourneyById(
-    journeyId: BytesLike,
-  ): Promise<LocationContract.JourneyStructOutput> {
-    // console.log(`[OrderRepository] Getting journey by ID: ${journeyId}`);
-    try {
-      // The contract has getjourney(bytes32) and journeyIdToJourney(bytes32 => Journey)
-      // Use the mapping directly as it's simpler
-      const journey = await this.readContract.journeyIdToJourney(journeyId);
-      if (!journey || journey.journeyId === ethers.ZeroHash) {
-        // Match error message used in tests
-        throw new Error(
-          `Journey with ID ${journeyId} not found or is invalid.`,
-        );
-      }
-      return journey;
-    } catch (error) {
-      // Re-throw specific not found error, handle others
-      if (
-        error instanceof Error &&
-        error.message.includes('not found or is invalid')
-      ) {
-        throw error;
-      }
-      handleContractError(error, `get journey by ID ${journeyId}`);
-      throw error; // Ensure other errors are thrown after handling
+      console.error('Error fetching all journeys from Graph:', error);
+      return [];
     }
   }
 
+  /**
+   * REFACTORED: Uses GraphQL query for single journey lookup
+   */
+  async getJourneyById(journeyId: BytesLike): Promise<Journey> {
+    try {
+      const response = await graphqlRequest<{ journey: JourneyGraphResponse | null }>(
+        this.graphQLEndpoint,
+        GET_JOURNEY_BY_ID,
+        { journeyId: journeyId.toString() }
+      );
+
+      if (!response.journey) {
+        throw new Error(`Journey ${journeyId} not found`);
+      }
+
+      return convertGraphJourneyToDomain(response.journey);
+    } catch (error) {
+      console.error('Error fetching journey by ID from Graph:', error);
+      // Fallback to on-chain call for critical path
+      await this.waitForInitialization();
+      const contractJourney = await this.readContract.getjourney(journeyId);
+      
+      return {
+        parcelData: contractJourney.parcelData,
+        journeyId: contractJourney.journeyId,
+        currentStatus: contractJourney.currentStatus,
+        sender: contractJourney.sender,
+        receiver: contractJourney.receiver,
+        driver: contractJourney.driver,
+        journeyStart: contractJourney.journeyStart,
+        journeyEnd: contractJourney.journeyEnd,
+        bounty: contractJourney.bounty,
+        ETA: contractJourney.ETA,
+      };
+    }
+  }
+
+  /**
+   * Uses direct contract call (mapping lookup is efficient)
+   */
   async getOrderIdByJourneyId(journeyId: BytesLike): Promise<BytesLike> {
-    // console.log(`[OrderRepository] Getting order ID for journey ID: ${journeyId}`);
     try {
-      const orderId = await this.readContract.journeyToOrderId(journeyId);
-      // Contract returns bytes32, which might be ZeroHash if not linked
-      return orderId;
+      await this.waitForInitialization();
+      return await this.readContract.journeyToOrderId(journeyId);
     } catch (error) {
       handleContractError(error, `get order ID for journey ${journeyId}`);
       throw error;
     }
   }
 
-  async getCustomerOrders(address: string): Promise<Order[]> {
-    const customerAddress = address;
-    console.log(
-      `[OrderRepository] Getting orders for customer: ${customerAddress}`,
-    );
-    const orders: LocationContract.OrderStructOutput[] = [];
+  /**
+   * REFACTORED: Uses GraphQL query (renamed from getCustomerOrders to getBuyerOrders)
+   */
+  async getBuyerOrders(address: string): Promise<Order[]> {
     try {
-      let index = 1;
-      const MAX_ORDERS = 1000; // Safety limit
-      while (index < MAX_ORDERS) {
-        let orderId: BytesLike;
-        try {
-          // Read from public orderIds array getter
-          orderId = await this.readContract.orderIds(index);
-          if (!orderId || orderId === ethers.ZeroHash) {
-            // console.log(`[OrderRepository] Found zero hash order ID at global index ${index}, assuming end.`);
-            break; // Assume end
-          }
-        } catch (error: any) {
-          // console.log(`[OrderRepository] Error fetching order ID at global index ${index} (likely end):`, error.message);
-          break; // Assume end on error
-        }
+      const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
+        this.graphQLEndpoint,
+        GET_ORDERS_BY_BUYER,
+        { buyerAddress: address.toLowerCase() }
+      );
 
-        try {
-          const order = await this.readContract.getOrder(orderId);
-          // Filter by customer
-          if (
-            order &&
-            order.id !== ethers.ZeroHash &&
-            order.customer.toLowerCase() === customerAddress.toLowerCase()
-          ) {
-            orders.push(order);
-          }
-          // else: either invalid order or belongs to another customer
-        } catch (orderError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch order details for ID ${orderId} at global index ${index}:`,
-            orderError.message,
-          );
-          // Continue checking other orders
-        }
-        index++;
-      }
-      //  if (index >= MAX_ORDERS) {
-      //      console.warn(`[OrderRepository] Reached MAX_ORDERS limit while fetching orders for customer ${customerAddress}.`);
-      // }
+      return response.orders.map((order: OrderGraphResponse) => 
+        convertGraphOrderToDomain(order)
+      );
     } catch (error) {
-      handleContractError(error, `get orders for customer ${customerAddress}`);
-      throw error;
-    }
-    console.log(
-      `[OrderRepository] Found ${orders.length} orders for customer ${customerAddress}.`,
-    );
-    return orders;
-  }
-
-  async getOrderById(orderId: BytesLike): Promise<Order> {
-    // console.log(`[OrderRepository] Getting order by ID: ${orderId}`);
-    try {
-      const order = await this.readContract.getOrder(orderId);
-      if (!order || order.id === ethers.ZeroHash) {
-        // Match error message used in tests
-        throw new Error(`Order with ID ${orderId} not found or is invalid.`);
-      }
-      return order;
-    } catch (error) {
-      // Re-throw specific not found error, handle others
-      if (
-        error instanceof Error &&
-        error.message.includes('not found or is invalid')
-      ) {
-        throw error;
-      }
-      handleContractError(error, `get order by ID ${orderId}`);
-      throw error; // Ensure other errors are thrown after handling
+      console.error('Error fetching buyer orders from Graph:', error);
+      return [];
     }
   }
 
   /**
-   * Retrieves supported attributes and their value for a specific hash
-   * @param assetName the name of the asset to be retrieved
-   * @returns a an assets attributes and its values
+   * NEW: Uses GraphQL query for seller orders
    */
+  async getSellerOrders(address: string): Promise<Order[]> {
+    try {
+      const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
+        this.graphQLEndpoint,
+        GET_ORDERS_BY_SELLER,
+        { sellerAddress: address.toLowerCase() }
+      );
 
-  // --- End Implementation ---
+      return response.orders.map((order: OrderGraphResponse) => 
+        convertGraphOrderToDomain(order)
+      );
+    } catch (error) {
+      console.error('Error fetching seller orders from Graph:', error);
+      return [];
+    }
+  }
+
+  /**
+   * REFACTORED: Uses GraphQL query for single order lookup
+   */
+  async getOrderById(orderId: BytesLike): Promise<Order> {
+    try {
+      const response = await graphqlRequest<{ order: OrderGraphResponse | null }>(
+        this.graphQLEndpoint,
+        GET_ORDER_BY_ID,
+        { orderId: orderId.toString() }
+      );
+
+      if (!response.order) {
+        throw new Error(`Order ${orderId} not found`);
+      }
+
+      return convertGraphOrderToDomain(response.order);
+    } catch (error) {
+      console.error('Error fetching order by ID from Graph:', error);
+      // Fallback to on-chain call for critical path
+      await this.waitForInitialization();
+      const contractOrder = await this.readContract.getOrder(orderId);
+      
+      return {
+        id: contractOrder.id,
+        token: contractOrder.token,
+        tokenId: String(contractOrder.tokenId),
+        tokenQuantity: String(contractOrder.tokenQuantity),
+        requestedTokenQuantity: String(contractOrder.requestedTokenQuantity),
+        price: String(contractOrder.price),
+        txFee: String(contractOrder.txFee),
+        buyer: contractOrder.customer,
+        seller: ethers.ZeroAddress,
+        journeyIds: contractOrder.journeyIds,
+        nodes: contractOrder.nodes,
+        locationData: contractOrder.locationData,
+        currentStatus: String(contractOrder.currentStatus),
+      };
+    }
+  }
+
+  /**
+   * Placeholder for asset attributes (not stored in LocationContract)
+   */
+  async getAssetAttributes(assetName: string): Promise<Asset> {
+    console.warn('getAssetAttributes: LocationContract does not store asset attribute data');
+    return {
+      assetName,
+      attributes: [],
+    };
+  }
+
+  // =====================
+  // LEGACY COMPATIBILITY METHODS
+  // =====================
+
+  /**
+   * Legacy method - redirects to getBuyerOrders
+   * @deprecated Use getBuyerOrders instead
+   */
+  async getCustomerOrders(address: string): Promise<Order[]> {
+    console.warn('getCustomerOrders is deprecated, use getBuyerOrders instead');
+    return this.getBuyerOrders(address);
+  }
 }
+
+
+
+
+
+
+
+

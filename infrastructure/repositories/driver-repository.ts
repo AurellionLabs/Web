@@ -3,39 +3,35 @@ import {
   type Delivery,
   DeliveryStatus,
 } from '@/domain/driver/driver';
-import { type ParcelData, type Location } from '@/domain/shared';
+import { type ParcelData } from '@/domain/shared';
 
-import { BrowserProvider, ethers, type Signer } from 'ethers'; // Added Signer
-import {
-  LocationContract, // Use LocationContract type
-  LocationContract__factory, // Keep factory if needed elsewhere, maybe not here
-} from '@/typechain-types';
+import { BrowserProvider, ethers, type Signer } from 'ethers';
+// REFACTOR: Use Ausys contract instead of LocationContract
+import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
 import { handleContractError } from '@/utils/error-handler';
-// Commenting out unused constants
-// import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
 // Define the delay constant at the top of the file
 const JOURNEY_FETCH_DELAY_MS = 350;
 
-// Helper function for delay (can be defined here or in a utils file)
+// Helper function for delay
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
  * Infrastructure implementation of the IDriverRepository interface
- * This implementation directly interacts with the Ausys (LocationContract) blockchain contracts
+ * This implementation directly interacts with the Ausys blockchain contracts
+ * 
+ * REFACTOR NOTE: Updated to use Ausys contract while keeping dev's Delivery domain model
  */
-// Corrected class name to match export expectation potentially, and implements the right interface
 export class DriverRepository implements IDriverRepository {
-  private ausysContract: LocationContract;
-  private provider: BrowserProvider; // Keep if needed for specific provider calls
-  private signer: Signer; // Keep signer if needed
+  private ausysContract: Ausys;
+  private provider: BrowserProvider;
+  private signer: Signer;
 
-  // Constructor accepting the initialized Ausys contract
   constructor(
-    ausysContract: LocationContract,
-    provider: BrowserProvider, // Keep provider/signer if potentially needed
+    ausysContract: Ausys,
+    provider: BrowserProvider,
     signer: Signer,
   ) {
     if (!ausysContract) {
@@ -47,11 +43,12 @@ export class DriverRepository implements IDriverRepository {
   }
 
   // --- Helper to map contract Journey status to domain DeliveryStatus ---
+  // DEV VERSION: Better mapping with driver awareness
   private mapContractStatusToDomain(
     contractStatus: bigint | number,
     driverAddress: string,
   ): DeliveryStatus {
-    // Mapping based on LocationContract enum (Pending, InProgress, Completed, Canceled)
+    // Mapping based on Ausys contract enum (Pending, InProgress, Completed, Canceled)
     // and DeliveryStatus enum (PENDING, ACCEPTED, PICKED_UP, COMPLETED, CANCELED)
     const statusNum = Number(contractStatus);
     switch (statusNum) {
@@ -74,8 +71,9 @@ export class DriverRepository implements IDriverRepository {
   }
 
   // --- Helper to map contract Journey struct to domain Delivery model ---
+  // DEV VERSION: Maps to user-friendly Delivery model
   private mapJourneyToDelivery(
-    journey: LocationContract.JourneyStructOutput, // Use the output struct type from TypeChain
+    journey: Ausys.JourneyStructOutput,
   ): Delivery {
     const parcelData: ParcelData = {
       startLocation: {
@@ -95,7 +93,7 @@ export class DriverRepository implements IDriverRepository {
       customer: journey.sender, // Assuming sender is the customer placing the delivery
       fee: Number(ethers.formatEther(journey.bounty)), // Convert bounty (BigInt wei) to number (Ether)
       ETA: Number(journey.ETA), // Convert BigInt timestamp to number
-      deliveryETA: Number(journey.ETA), // Using ETA as deliveryETA, clarify if different field exists
+      deliveryETA: Number(journey.ETA), // Using ETA as deliveryETA
       currentStatus: this.mapContractStatusToDomain(
         journey.currentStatus,
         journey.driver,
@@ -116,7 +114,7 @@ export class DriverRepository implements IDriverRepository {
       while (index < MAX_ITERATIONS) {
         let journeyId: string;
         try {
-          // Use numberToJourneyID mapping like in ausys-controller#fetchAllJourneyIds
+          // Use numberToJourneyID mapping
           journeyId = await this.ausysContract.numberToJourneyID(index);
           // Check for zero address or empty bytes32 indicating end of list
           if (
@@ -165,7 +163,7 @@ export class DriverRepository implements IDriverRepository {
             journeyError.message,
           );
         }
-        await sleep(JOURNEY_FETCH_DELAY_MS); // Use the constant for delay
+        await sleep(JOURNEY_FETCH_DELAY_MS);
         index++;
       }
       if (index >= MAX_ITERATIONS) {
@@ -179,7 +177,7 @@ export class DriverRepository implements IDriverRepository {
       return availableDeliveries;
     } catch (error) {
       handleContractError(error, 'get available deliveries');
-      throw error; // Rethrow after handling
+      throw error;
     }
   }
 
@@ -235,7 +233,7 @@ export class DriverRepository implements IDriverRepository {
             journeyError.message,
           );
         }
-        await sleep(JOURNEY_FETCH_DELAY_MS); // Use the constant for delay
+        await sleep(JOURNEY_FETCH_DELAY_MS);
         index++;
       }
       if (index >= MAX_ITERATIONS) {
@@ -252,7 +250,7 @@ export class DriverRepository implements IDriverRepository {
         error,
         `get deliveries for driver ${driverWalletAddress}`,
       );
-      throw error; // Rethrow after handling
+      throw error;
     }
   }
-} // End of class DriverRepository
+}

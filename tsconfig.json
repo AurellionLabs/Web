@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "typeRoots": ["./node_modules/@types", "./types", "./typechain-types"],
+    "typeRoots": ["./node_modules/@types"],
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "target": "es2020",
@@ -29,13 +29,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "./blockchain/scripts",
-    "./blockchain/test",
-    "./blockchain/typechain-types",
-    "./blockchain/types",
-    "./blockchain/hardhat.config.ts",
     "./typechain-types/**/*.ts"
   ],
-  "exclude": ["node_modules"],
-  "files": ["./blockchain/hardhat.config.ts"]
+  "exclude": ["node_modules"]
 }

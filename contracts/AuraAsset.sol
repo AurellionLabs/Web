@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
-import './Aurum.sol';
+// Use a lightweight interface to avoid circular import with Aurum.sol
+interface IAurumNodeManager {
+  function getNodeStatus(address node) external view returns (bytes1);
+}
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 // import "@openzeppelin/contracts/security/Pausable.sol";
@@ -9,10 +12,10 @@ import '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
 
 contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   //@param _uri NFT metadata URI
-  AurumNodeManager NodeManager;
+  IAurumNodeManager NodeManager;
   struct Asset {
     string name;
-    string class;
+    string assetClass;
     // id for per asset metadata so we understand what values each tokenized group of a given asset has
     Attribute[] attributes;
   }
@@ -42,7 +45,7 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   constructor(
     address /*initialOwner*/,
     string memory _uri,
-    AurumNodeManager _NodeManager
+    IAurumNodeManager _NodeManager
   ) payable ERC1155(_uri) Ownable() {
     NodeManager = _NodeManager;
     // first push is an empty string to reserve the 0th index as rubbish bin
@@ -65,7 +68,7 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   //A1->A5 goat tiers
   //A1W->A5W goat tiers
   modifier validNode(address node) {
-    require(bytes1(NodeManager.getNode(node).status) == bytes1(uint8(1)));
+    require(bytes1(NodeManager.getNodeStatus(node)) == bytes1(uint8(1)));
     _;
   }
 
@@ -86,7 +89,17 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     address indexed account,
     bytes32 indexed hash,
     uint256 indexed tokenId,
-    Asset asset
+    string name,
+    string assetClass,
+    string className
+  );
+
+  event AssetAttributeAdded(
+    bytes32 indexed hash,
+    uint256 indexed attributeIndex,
+    string name,
+    string[] values,
+    string description
   );
 
   function nodeMint(
@@ -107,12 +120,32 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     ipfsID.push(hash);
     _mint(account, tokenID, amount, data);
 
-  emit MintedAsset(
-    account,
-    hash,
-    tokenID,
-    asset
-  );
+    // Get className from contract state
+    string memory resolvedClassName = hashToClass[hash];
+    if (bytes(resolvedClassName).length == 0) {
+      resolvedClassName = className;
+    }
+
+    // Emit main asset event with flat structure
+    emit MintedAsset(
+      account,
+      hash,
+      tokenID,
+      asset.name,
+      asset.assetClass,
+      resolvedClassName
+    );
+
+    // Emit separate events for each attribute
+    for (uint256 i = 0; i < asset.attributes.length; i++) {
+      emit AssetAttributeAdded(
+        hash,
+        i,
+        asset.attributes[i].name,
+        asset.attributes[i].values,
+        asset.attributes[i].description
+      );
+    }
   }
 
   // Attributes in Alphabetical Alphabetical Order
@@ -141,7 +174,7 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     nameToSupportedAssetIndex[asset.name] = supportedAssets.length;
     nameToSupportedAssets[asset.name] = asset;
     bytes32 hash = (keccak256(abi.encode(asset)));
-    hashToClass[hash] = asset.class;
+    hashToClass[hash] = asset.assetClass;
     supportedAssets.push(asset.name);
     ipfsID.push(hash);
   }

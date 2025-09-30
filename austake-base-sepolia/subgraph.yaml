@@ -8,34 +8,49 @@ dataSources:
     name: AuStake
     network: base-sepolia
     source:
-      address: "0x1ECEf37392FADb6Ff183047D6B852D7331dA7866"
+      address: "0xf19d37566c754E680007964bEBe6377A0F8AdA89" # Will be updated by deploy script
       abi: AuStake
-      startBlock: 31345002
+      startBlock: 31667435 # Will be updated by deploy script
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
-        - AdminStatusChanged
+        - Operation
+        - Stake
         - OperationCreated
-        - OwnershipTransferred
-        - RewardPaid
         - Staked
         - Unstaked
+        - RewardPaid
+        - AdminStatusChanged
+        - UserStats
+        - TokenStats
       abis:
         - name: AuStake
           file: ./abis/AuStake.json
       eventHandlers:
-        - event: AdminStatusChanged(indexed address,bool)
-          handler: handleAdminStatusChanged
         - event: OperationCreated(indexed bytes32,string,address)
           handler: handleOperationCreated
-        - event: OwnershipTransferred(indexed address,indexed address)
-          handler: handleOwnershipTransferred
-        - event: RewardPaid(indexed address,uint256,indexed bytes32)
-          handler: handleRewardPaid
         - event: Staked(indexed address,indexed address,uint256,indexed bytes32,string,uint256)
           handler: handleStaked
         - event: Unstaked(indexed address,indexed address,uint256,indexed bytes32,string,uint256)
           handler: handleUnstaked
+        - event: RewardPaid(indexed address,uint256,indexed bytes32)
+          handler: handleRewardPaid
+        - event: AdminStatusChanged(indexed address,bool)
+          handler: handleAdminStatusChanged
       file: ./src/au-stake.ts
+
+
+
+
+
+
+
+
+
+
+
+
+
+

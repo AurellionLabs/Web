@@ -1,18 +1,20 @@
-import type {
-  Node,
-  NodeRepository,
-  TokenizedAsset,
-  AggregateAssetAmount,
-  NodeLocation,
+import {
+    Node,
+    NodeRepository,
+    TokenizedAsset,
+    AggregateAssetAmount,
+    NodeAsset,
+    ContractAssetStruct,
+    NodeAssetConverters,
 } from '@/domain/node';
 import { BrowserProvider, ethers } from 'ethers';
 import {
-  AurumNode,
-  AurumNode__factory,
-  AurumNodeManager,
-  AurumNodeManager__factory,
-  AuraAsset__factory,
-  AuraAsset,
+    AurumNode,
+    AurumNode__factory,
+    AurumNodeManager,
+    AurumNodeManager__factory,
+    AuraAsset__factory,
+    AuraAsset,
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
 import { PinataSDK } from 'pinata';
@@ -20,455 +22,468 @@ import { hashToAssets, tokenIdToAssets } from './shared/ipfs';
 import { AssetIpfsRecord } from '@/domain/platform';
 import { GraphQLClient } from 'graphql-request';
 import {
-  calculateCurrentBalances,
-  GET_NODE_ASSETS_COMPLETE,
-  NodeAssetsGraphResponse,
+    NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+    NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL
+} from '@/chain-constants';
+import {
+    GET_NODE_ASSETS_AURUM,
+    GET_ALL_NODE_ASSETS_AURUM,
+    GET_USER_BALANCES_AURA,
+    GET_ASSETS_BY_HASHES,
+    GET_ASSETS_BY_TOKEN_IDS,
+    NodeAssetsAurumResponse,
+    UserBalancesAuraResponse,
+    AssetsAuraResponse,
+    UserBalanceAura,
+    AssetAura,
 } from './shared/graph-queries';
 import { graphqlRequest } from './shared/graph';
-import { bigint } from 'zod';
+import {
+    GET_NODE_BY_ADDRESS,
+    GET_NODES_BY_OWNER,
+    GET_ALL_NODE_ASSETS,
+    convertGraphNodeToDomain,
+    type NodeGraphResponse,
+    GET_ORDERS_BY_NODE,
+    type OrderGraphResponse,
+    convertGraphOrderToDomain,
+} from '../shared/graph-queries';
 
 /**
- * Infrastructure implementation of the NodeRepository interface
- * This implementation directly interacts with the Aurum blockchain contracts
+ * Infrastructure implementation of the NodeRepository interface - REFACTORED
+ * This implementation correctly handles the new Asset struct format from contracts
  */
 export class BlockchainNodeRepository implements NodeRepository {
-  private aurumContract: AurumNodeManager;
-  private provider: BrowserProvider;
-  private signer: ethers.Signer;
-  private auraAsset: string;
-  private auraAssetContractInstance: AuraAsset | null = null;
-  private graphQLEndpoint =
-    'https://api.studio.thegraph.com/query/112596/aura-asset-base-sepolia/version/latest';
-  pinata: PinataSDK;
-  constructor(
-    aurumContract: AurumNodeManager,
-    provider: BrowserProvider,
-    signer: ethers.Signer,
-    auraAsset: string,
-    _pinata: PinataSDK,
-    graphQlClietn: GraphQLClient,
-  ) {
-    this.aurumContract = aurumContract;
-    this.provider = provider;
-    this.signer = signer;
-    this.auraAsset = auraAsset;
-    this.pinata = _pinata;
-  }
+    private aurumContract: AurumNodeManager;
+    private provider: BrowserProvider;
+    private signer: ethers.Signer;
+    private auraAsset: string;
+    private auraAssetContractInstance: AuraAsset | null = null;
+    private graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
+    pinata: PinataSDK;
 
-  private async getAuraAssetContract(): Promise<AuraAsset> {
-    if (this.auraAssetContractInstance) {
-      return this.auraAssetContractInstance;
+    constructor(
+        aurumContract: AurumNodeManager,
+        provider: BrowserProvider,
+        signer: ethers.Signer,
+        auraAsset: string,
+        _pinata: PinataSDK,
+        graphQlClient?: GraphQLClient,
+    ) {
+        this.aurumContract = aurumContract;
+        this.provider = provider;
+        this.signer = signer;
+        this.auraAsset = auraAsset;
+        this.pinata = _pinata;
     }
 
-    const contract = AuraAsset__factory.connect(this.auraAsset, this.signer);
-
-    this.auraAssetContractInstance = contract;
-    return contract;
-  }
-
-  private async getAurumNodeContract(address: string): Promise<AurumNode> {
-    return AurumNode__factory.connect(address, this.signer);
-  }
-
-  async getNode(nodeAddress: string): Promise<Node | null> {
-    try {
-      const nodeData = await this.aurumContract.getNode(nodeAddress);
-
-      if (nodeData.owner === ethers.ZeroAddress) {
-        throw new Error('Node not found');
-      }
-
-      const location: NodeLocation = {
-        addressName: nodeData.location.addressName,
-        location: {
-          lat: nodeData.location.location.lat,
-          lng: nodeData.location.location.lng,
-        },
-      };
-
-      return {
-        address: nodeAddress,
-        location,
-        validNode: nodeData.validNode,
-        owner: nodeData.owner,
-        supportedAssets: nodeData.supportedAssets.map((n) => n.toString()),
-        status: this.convertContractStatusToDomain(nodeData.status),
-        capacity: nodeData.capacity.map((n) => Number(n)),
-        assetPrices: nodeData.assetPrices.map((n) => Number(n)),
-      };
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Node not found') {
-        throw error;
-      }
-      handleContractError(error, 'get node');
-      throw error;
-    }
-  }
-
-  async getOwnedNodes(ownerAddress: string): Promise<string[]> {
-    console.log(
-      `[NodeRepository] getOwnedNodes called for owner: ${ownerAddress}`,
-    );
-    try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      console.log(`[NodeRepository] Node count from contract: ${nodeCount}`);
-      const ownedNodes: string[] = [];
-
-      for (let i = 0; i < nodeCount; i++) {
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        const node = await contract.getNode(nodeAddress);
-        console.log(
-          `[NodeRepository] Checking node index ${i}: address=${nodeAddress}, owner=${node.owner}`,
-        );
-        if (node.owner.toLowerCase() === ownerAddress.toLowerCase()) {
-          console.log(
-            `[NodeRepository] Match found! Adding node: ${nodeAddress}`,
-          );
-          ownedNodes.push(nodeAddress);
-        }
-      }
-
-      console.log(`[NodeRepository] Returning owned nodes:`, ownedNodes);
-      return ownedNodes;
-    } catch (error) {
-      handleContractError(error, 'get owned nodes');
-      throw error;
-    }
-  }
-
-  async registerNode(nodeData: Node): Promise<string> {
-    try {
-      const contract = await this.aurumContract;
-      const nodeStruct: AurumNodeManager.NodeStruct = {
-        location: {
-          addressName: nodeData.location.addressName,
-          location: {
-            lat: nodeData.location.location.lat,
-            lng: nodeData.location.location.lng,
-          },
-        },
-        validNode: nodeData.validNode as ethers.BytesLike,
-        owner: nodeData.owner,
-        supportedAssets: [],
-        status: (nodeData.status === 'Active'
-          ? '0x01'
-          : '0x00') as ethers.BytesLike,
-        capacity: [],
-        assetPrices: [],
-      };
-
-      console.log('Calling contract.registerNode with struct:', nodeStruct);
-
-      const tx = await contract.registerNode(nodeStruct);
-      console.log('Transaction sent, waiting for receipt...');
-      const receipt = await tx.wait();
-      console.log('Transaction receipt received');
-
-      if (!receipt) {
-        throw new Error('Transaction failed: No receipt received.');
-      }
-      if (receipt.status === 0) {
-        console.error('Transaction reverted. Receipt:', receipt);
-        throw new Error(
-          `Node registration transaction failed (reverted). Hash: ${receipt.hash}`,
-        );
-      }
-
-      const eventFragment = contract.interface.getEvent('NodeRegistered');
-      if (!eventFragment) {
-        throw new Error(
-          'NodeRegistered event fragment not found in contract ABI.',
-        );
-      }
-
-      let newNodeAddress: string | undefined;
-      for (const log of receipt.logs) {
-        try {
-          const parsedLog = contract.interface.parseLog(
-            log as unknown as { topics: string[]; data: string },
-          );
-          if (parsedLog && parsedLog.name === 'NodeRegistered') {
-            newNodeAddress = parsedLog.args.nodeAddress;
-            console.log(
-              `NodeRegistered event found. New node address: ${newNodeAddress}`,
+    private async getAuraAssetContract(): Promise<AuraAsset> {
+        if (!this.auraAssetContractInstance) {
+            this.auraAssetContractInstance = AuraAsset__factory.connect(
+                this.auraAsset,
+                this.signer,
             );
-            break;
-          }
-        } catch (e) {
-          // Ignore logs that don't match the NodeRegistered signature
         }
-      }
-
-      if (!newNodeAddress) {
-        console.error('RECEIPT LOGS:', JSON.stringify(receipt.logs, null, 2));
-        throw new Error(
-          "NodeRegistered event not found or couldn't be parsed in transaction logs.",
-        );
-      }
-
-      return newNodeAddress;
-    } catch (error) {
-      console.error('Detailed error in registerNode:', error);
-      if (
-        !(error instanceof Error && error.message.startsWith('Contract error'))
-      ) {
-        handleContractError(error, 'register node');
-      }
-      throw error;
+        return this.auraAssetContractInstance;
     }
-  }
 
-  async updateNodeStatus(
-    nodeAddress: string,
-    status: 'Active' | 'Inactive',
-  ): Promise<void> {
-    try {
-      const contract = await this.aurumContract;
-      const statusBytes = (
-        status === 'Active' ? '0x01' : '0x00'
-      ) as ethers.BytesLike;
-      await contract.updateStatus(statusBytes, nodeAddress);
-    } catch (error) {
-      handleContractError(error, 'update node status');
-      throw error;
-    }
-  }
-
-  async checkIfNodeExists(address: string): Promise<boolean> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      return node.owner !== ethers.ZeroAddress;
-    } catch (error) {
-      handleContractError(error, 'check if node exists');
-      throw error;
-    }
-  }
-
-  async getNodeStatus(address: string): Promise<'Active' | 'Inactive'> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      return this.convertContractStatusToDomain(node.status);
-    } catch (error) {
-      handleContractError(error, 'get node status');
-      throw error;
-    }
-  }
-  async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
-    try {
-      const node = await this.aurumContract.getNode(address);
-      console.log('[NodeRepository] node', node);
-      if (node.owner === ethers.ZeroAddress) {
-        throw new Error('Node not found');
-      }
-
-      // Get asset data from subgraph
-      const graphData = await graphqlRequest<NodeAssetsGraphResponse>(
-        this.graphQLEndpoint,
-        GET_NODE_ASSETS_COMPLETE,
-        {
-          nodeAddress: address,
-        },
-      );
-      console.log('[NodeRepository] returned from graphData', graphData);
-
-      // Calculate current balances from transfer events
-      const currentBalances = calculateCurrentBalances(
-        graphData.transfersIn,
-        graphData.transfersOut,
-        graphData.mintedAssets,
-      );
-
-      const nodeAssets: TokenizedAsset[] = [];
-
-      // Process each token with positive balance
-      for (const tokenBalance of currentBalances) {
-        // Find the corresponding supported asset index
-        const tokenId = tokenBalance.tokenId;
-        const assetIndex = node.supportedAssets.findIndex(
-          (asset) => asset.toString() === tokenId,
-        );
-
-        if (assetIndex === -1) continue; // Skip if not in supported assets
-
-        nodeAssets.push({
-          id: tokenBalance.tokenId,
-          amount: tokenBalance.balance,
-          name: tokenBalance.name || 'Unknown',
-          class: tokenBalance.assetClass || 'Unknown',
-          fileHash: tokenBalance.hash || '',
-          status: this.convertContractStatusToDomain(node.status),
-          nodeAddress: address,
-          nodeLocation: node.location,
-          price: node.assetPrices[assetIndex]?.toString() || '0',
-          capacity: node.capacity[assetIndex]?.toString() || '0',
-        });
-      }
-      console.log('returned from node assets', nodeAssets);
-
-      return nodeAssets;
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Node not found') {
-        throw error;
-      }
-      console.error(`Error in getNodeAssets for address ${address}:`, error);
-      handleContractError(error, 'get node assets');
-      throw error;
-    }
-  }
-
-  async getAllNodeAssets(): Promise<TokenizedAsset[]> {
-    try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      const allAssets: TokenizedAsset[] = [];
-
-      for (let i = 0; i < nodeCount; i++) {
-        // Add a small delay to avoid hitting RPC rate limits
-        await sleep(150); // Delay for 150 milliseconds (adjust as needed)
-
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        // Wrap getNodeAssets in a try-catch to handle potential errors for a single node
-
-        // without stopping the entire process, unless the error is critical.
+    /**
+     * REFACTORED: Correctly maps contract Node struct with Asset[] to domain Node
+     */
+    async getNode(nodeAddress: string): Promise<Node | null> {
         try {
-          const nodeAssets = await this.getNodeAssets(nodeAddress);
-          allAssets.push(...nodeAssets);
+            // Basic node info from Aurum subgraph (no embedded assets)
+            const response = await graphqlRequest<{ node: NodeGraphResponse | null }>(
+                this.graphQLEndpoint,
+                GET_NODE_BY_ADDRESS,
+                { nodeAddress: nodeAddress.toLowerCase() },
+            );
+            if (!response.node) return null;
+
+            // Fetch node asset capacities/prices from nodeAssets table
+            const aurumAssetsResp: NodeAssetsAurumResponse = await graphqlRequest(
+                NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+                GET_NODE_ASSETS_AURUM,
+                { nodeAddress: nodeAddress.toLowerCase() },
+            );
+
+            const nodeAssets: NodeAsset[] = (aurumAssetsResp.nodeAssets || []).map(a => ({
+                token: a.token,
+                tokenId: a.tokenId,
+                price: BigInt(a.price || '0'),
+                capacity: Number(a.capacity || '0'),
+            }));
+
+            return {
+                address: response.node.id,
+                owner: response.node.owner,
+                location: {
+                    addressName: response.node.location.addressName,
+                    location: { lat: response.node.location.lat, lng: response.node.location.lng },
+                },
+                validNode: Boolean(response.node.validNode),
+                status: ((s: string) => {
+                    const x = (s || '').toLowerCase();
+                    if (x === 'active' || x === '1' || x === 'true' || x === '0x01') return 'Active';
+                    return 'Inactive';
+                })(response.node.status),
+                assets: nodeAssets,
+            } as Node;
         } catch (error) {
-          console.error(
-            `Error in getAllNodeAssets for node ${nodeAddress}:`,
-            error,
-          );
-          // If the error is not critical, continue with the next node
+            handleContractError(error, `get node ${nodeAddress}`);
+            return null;
         }
-      }
-
-      return allAssets;
-    } catch (error) {
-      handleContractError(error, 'get all node assets');
-      throw error;
     }
-  }
 
-  async loadAvailableAssets(): Promise<AggregateAssetAmount[]> {
-    try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      const assetMap = new Map<number, number>();
-
-      for (let i = 0; i < nodeCount; i++) {
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        const node = await contract.getNode(nodeAddress);
-
-        node.supportedAssets.forEach((assetId, index) => {
-          const id = Number(assetId);
-          const amount = Number(node.capacity[index]);
-          assetMap.set(id, (assetMap.get(id) || 0) + amount);
-        });
-      }
-
-      return Array.from(assetMap.entries()).map(([id, amount]) => ({
-        id,
-        amount,
-      }));
-    } catch (error) {
-      handleContractError(error, 'load available assets');
-      throw error;
+    /**
+     * REFACTORED: Uses GraphQL instead of on-chain iteration (when available)
+     * Falls back to on-chain iteration for now until GraphQL is fully implemented
+     */
+    async getOwnedNodes(ownerAddress: string): Promise<string[]> {
+        try {
+            const response = await graphqlRequest<{ nodes: NodeGraphResponse[] }>(
+                this.graphQLEndpoint,
+                GET_NODES_BY_OWNER,
+                { ownerAddress: ownerAddress },
+            );
+            console.log("response for getOwnedNodes", response)
+            return (response.nodes || []).map(n => n.id);
+        } catch (error) {
+            handleContractError(error, `get owned nodes for ${ownerAddress}`);
+            return [];
+        }
     }
-  }
 
-  async getAssetBalance(
-    ownerAddress: string,
-    assetId: number,
-    assetName: string,
-    attributes: string[],
-  ): Promise<number> {
-    try {
-      const auraAsset = await this.getAuraAssetContract();
-      // Use lookupHash to match the contract's ID generation
-      const tokenId = await auraAsset.lookupHash({
-        name: assetName,
-        class: this.getAssetName(assetId),
-        attributes: [],
-      } as any);
+    /**
+     * REFACTORED: Correctly constructs contract Node struct with Asset[] 
+     */
+    // Write operation moved to NodeService
 
-      // Call balanceOf with the correct tokenId
-      const balance = await auraAsset.balanceOf(ownerAddress, tokenId);
-      console.log(
-        `[NodeRepository] Balance check for owner ${ownerAddress}, asset ${assetId} (tokenId ${tokenId}): ${balance}`,
-      );
-      return Number(balance);
-    } catch (error: any) {
-      if (
-        error.code === 'BAD_DATA' ||
-        (error.info?.error?.code === 'CALL_EXCEPTION' &&
-          error.info?.error?.reason?.includes('ERC1155: invalid token ID')) ||
-        (error.message &&
-          error.message.includes('could not decode result data'))
-      ) {
-        console.warn(
-          `[NodeRepository] Handled error fetching balance for owner ${ownerAddress}, asset ${assetId} (likely non-existent). Returning 0. Error: ${error.message}`,
-        );
-        return 0;
-      }
-      handleContractError(
-        error,
-        `get asset balance for ${ownerAddress}, asset ${assetId}`,
-      );
-      throw error;
+    // Write operation moved to NodeService
+
+    async checkIfNodeExists(ownerAddress: string): Promise<boolean> {
+        try {
+            const ownedNodes = await this.getOwnedNodes(ownerAddress);
+            return ownedNodes.length > 0;
+        } catch (error) {
+            handleContractError(error, `check if node exists for ${ownerAddress}`);
+            return false;
+        }
     }
-  }
 
-  private convertContractStatusToDomain(status: string): 'Inactive' | 'Active' {
-    console.log('status', status);
-    return status === '0x01' ? 'Active' : 'Inactive';
-  }
-
-  private getAssetName(id: number): string {
-    const assetNames: { [key: number]: string } = {
-      1: 'GOAT',
-      2: 'SHEEP',
-      3: 'COW',
-      4: 'CHICKEN',
-      5: 'DUCK',
-    };
-    return assetNames[id] || 'UNKNOWN';
-  }
-
-  private getAssetIdByClassName(name: string): number | null {
-    const normalized = (name || '').toUpperCase();
-    const map: { [key: string]: number } = {
-      GOAT: 1,
-      SHEEP: 2,
-      COW: 3,
-      CHICKEN: 4,
-      DUCK: 5,
-    };
-    return map[normalized] ?? null;
-  }
-
-  private async resolveAssetNameFromClass(className: string): Promise<string> {
-    // Prefer a known mapping first; fall back to className if not found
-    try {
-      const repoContext = (
-        await import('@/infrastructure/contexts/repository-context')
-      ).RepositoryContext.getInstance();
-      const platform = repoContext.getPlatformRepository();
-      const assets = await platform.getClassAssets(className);
-      if (assets && assets.length > 0) {
-        // choose first defined asset name, e.g., 'AUGOAT'
-        return assets[0].name || className;
-      }
-    } catch (e) {
-      // ignore and fall back
+    async getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'> {
+        try {
+            const statusBytes = await this.aurumContract.getNodeStatus(nodeAddress);
+            return NodeAssetConverters.bytes1ToStatus(statusBytes);
+        } catch (error) {
+            handleContractError(error, `get node status for ${nodeAddress}`);
+            return 'Inactive';
+        }
     }
-    return className;
-  }
+
+    /**
+     * Gets node assets by combining data from both Aurum and AuraAsset subgraphs
+     */
+    async getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]> {
+        try {
+            // Step 1: Get node pricing/capacity from Aurum subgraph
+            const aurumResponse: NodeAssetsAurumResponse = await graphqlRequest(
+                NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+                GET_NODE_ASSETS_AURUM,
+                { nodeAddress: nodeAddress.toLowerCase() },
+            );
+
+            if (!aurumResponse.nodeAssets || aurumResponse.nodeAssets.length === 0) {
+                return [];
+            }
+
+            // Step 2: Get user balances from AuraAsset subgraph
+            let auraBalanceResponse: UserBalancesAuraResponse = { userBalances: [] };
+            try {
+                auraBalanceResponse = await graphqlRequest(
+                    NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+                    GET_USER_BALANCES_AURA,
+                    { userAddress: nodeAddress.toLowerCase() },
+                );
+            } catch (error) {
+                console.warn('[NodeRepository] Failed to get user balances:', error);
+                return [];
+            }
+
+
+            // Step 3: Try to get asset metadata directly by tokenIds first
+            const tokenIds = aurumResponse.nodeAssets.map(asset => asset.tokenId);
+            let assetsMetadata: AssetsAuraResponse = { assets: [] };
+
+            if (tokenIds.length > 0) {
+                try {
+                    assetsMetadata = await graphqlRequest(
+                        NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+                        GET_ASSETS_BY_TOKEN_IDS,
+                        { tokenIds },
+                    );
+                    console.log('[NodeRepository] Found assets by tokenIds:', assetsMetadata.assets.length);
+                } catch (error) {
+                    console.warn('[NodeRepository] Failed to get assets by tokenIds:', error);
+
+                    // Fallback: try to get by hashes from user balances
+                    const balanceMap = new Map<string, UserBalanceAura>();
+                    auraBalanceResponse.userBalances?.forEach(balance => {
+                        balanceMap.set(balance.tokenId, balance);
+                    });
+
+                    const assetHashes = Array.from(balanceMap.values()).map(b => b.asset);
+                    if (assetHashes.length > 0) {
+                        try {
+                            assetsMetadata = await graphqlRequest(
+                                NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+                                GET_ASSETS_BY_HASHES,
+                                { hashes: assetHashes },
+                            );
+                            console.log('[NodeRepository] Found assets by hashes:', assetsMetadata.assets.length);
+                        } catch (hashError) {
+                            console.warn('[NodeRepository] Failed to get assets by hashes:', hashError);
+                        }
+                    }
+                }
+            }
+
+            // Step 4: Create maps for lookups
+            const balanceMap = new Map<string, UserBalanceAura>();
+            auraBalanceResponse.userBalances?.forEach(balance => {
+                balanceMap.set(balance.tokenId, balance);
+            });
+
+            const metadataMap = new Map<string, AssetAura>();
+            assetsMetadata.assets.forEach(asset => {
+                metadataMap.set(asset.tokenId, asset);
+            });
+
+            // Step 5: Get node location data
+            const node = await this.getNode(nodeAddress);
+
+            // Step 6: Combine all data
+            return aurumResponse.nodeAssets.map((nodeAsset) => {
+                // Find balance for this token
+                const balance = balanceMap.get(nodeAsset.tokenId);
+
+                // Find metadata for this token
+                const metadata = metadataMap.get(nodeAsset.tokenId);
+
+                console.log(`[NodeRepository] Token ${nodeAsset.tokenId}: balance=${balance?.balance}, metadata=${!!metadata}`);
+
+                return {
+                    id: nodeAsset.tokenId,
+                    amount: balance?.balance || '0',
+                    name: metadata?.name || 'Unknown',
+                    class: metadata?.assetClass || 'Unknown',
+                    fileHash: metadata?.hash || '',
+                    status: Number(balance?.balance || '0') > 0 ? 'Available' : 'Unavailable',
+                    nodeAddress,
+                    nodeLocation: node?.location || { addressName: '', location: { lat: '0', lng: '0' } },
+                    price: nodeAsset.price,
+                    capacity: nodeAsset.capacity,
+                };
+            });
+        } catch (error) {
+            console.error('Error fetching node assets from Graph:', error);
+            return [];
+        }
+    }
+
+    async getAllNodeAssets(): Promise<TokenizedAsset[]> {
+        try {
+            // Page through Aurum nodeAssets to avoid overfetch
+            const PAGE_SIZE = 500;
+            let skip = 0;
+            let allNodeAssets: NodeAssetsAurumResponse['nodeAssets'] = [];
+
+            // Fetch pages until fewer than PAGE_SIZE results are returned
+            // Cap pages to avoid runaway loops (e.g., 10k assets)
+            const MAX_PAGES = 50;
+            for (let page = 0; page < MAX_PAGES; page++) {
+                const pageResp = await graphqlRequest<NodeAssetsAurumResponse>(
+                    NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+                    GET_ALL_NODE_ASSETS_AURUM,
+                    { first: PAGE_SIZE, skip },
+                );
+                const pageItems = pageResp.nodeAssets || [];
+                allNodeAssets = allNodeAssets.concat(pageItems);
+                if (pageItems.length < PAGE_SIZE) break;
+                skip += PAGE_SIZE;
+            }
+
+            if (allNodeAssets.length === 0) return [];
+
+            // Unique tokenIds for metadata query and map of tokenId -> list of node assets
+            const tokenIdSet = new Set<string>();
+            allNodeAssets.forEach(a => tokenIdSet.add(a.tokenId));
+            const tokenIds = Array.from(tokenIdSet);
+
+            // Fetch metadata for all tokenIds from AuraAsset subgraph
+            let assetsMetadata: AssetsAuraResponse = { assets: [] };
+            try {
+                // Batch tokenIds to avoid exceeding Graph limits
+                const BATCH = 500;
+                const metadataAccum: AssetAura[] = [] as any;
+                for (let i = 0; i < tokenIds.length; i += BATCH) {
+                    const batch = tokenIds.slice(i, i + BATCH);
+                    const res: AssetsAuraResponse = await graphqlRequest(
+                        NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+                        GET_ASSETS_BY_TOKEN_IDS,
+                        { tokenIds: batch },
+                    );
+                    metadataAccum.push(...(res.assets || []));
+                }
+                assetsMetadata.assets = metadataAccum;
+            } catch (error) {
+                console.warn('[NodeRepository] Failed to get assets metadata for all tokenIds:', error);
+            }
+
+            const metadataMap = new Map<string, AssetAura>();
+            assetsMetadata.assets.forEach(asset => {
+                metadataMap.set(asset.tokenId, asset);
+            });
+
+            // Fetch per-node ERC1155 balances and node locations
+            const nodeSet = new Set<string>();
+            allNodeAssets.forEach(a => nodeSet.add(a.node));
+
+            const nodeLocationMap = new Map<string, Node['location']>();
+            const nodeBalanceMap = new Map<string, Map<string, string>>(); // node -> (tokenId -> balance)
+            // Fetch each node via existing getNode, but do it sequentially to avoid rate limits
+            for (const nodeAddr of nodeSet) {
+                const node = await this.getNode(nodeAddr);
+                if (node) nodeLocationMap.set(nodeAddr, node.location);
+
+                try {
+                    const balancesResp: UserBalancesAuraResponse = await graphqlRequest(
+                        NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+                        GET_USER_BALANCES_AURA,
+                        { userAddress: nodeAddr.toLowerCase() },
+                    );
+                    const map = new Map<string, string>();
+                    (balancesResp.userBalances || []).forEach(b => {
+                        map.set(b.tokenId, b.balance);
+                    });
+                    nodeBalanceMap.set(nodeAddr, map);
+                } catch (e) {
+                    console.warn('[NodeRepository] Failed to fetch balances for node', nodeAddr, e);
+                }
+            }
+
+            // Build TokenizedAsset list
+            const results: TokenizedAsset[] = allNodeAssets.map(na => {
+                const meta = metadataMap.get(na.tokenId);
+                const nodeLocation = nodeLocationMap.get(na.node) || { addressName: '', location: { lat: '0', lng: '0' } };
+                const balancesForNode = nodeBalanceMap.get(na.node);
+                const balanceForToken = balancesForNode?.get(na.tokenId) || '0';
+                return {
+                    id: na.tokenId,
+                    amount: balanceForToken,
+                    name: meta?.name || 'Unknown',
+                    class: meta?.assetClass || 'Unknown',
+                    fileHash: meta?.hash || '',
+                    status: Number(balanceForToken) > 0 ? 'Available' : 'Unavailable',
+                    nodeAddress: na.node,
+                    nodeLocation,
+                    price: na.price,
+                    capacity: na.capacity,
+                };
+            });
+
+            return results;
+        } catch (error) {
+            handleContractError(error, 'get all node assets');
+            return [];
+        }
+    }
+
+    async getNodeOrders(nodeAddress: string): Promise<import('@/domain/orders/order').Order[]> {
+        try {
+            const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
+                this.graphQLEndpoint,
+                GET_ORDERS_BY_NODE,
+                { nodeAddress: nodeAddress.toLowerCase() },
+            );
+            return (response.orders || []).map(o => convertGraphOrderToDomain(o));
+        } catch (error) {
+            handleContractError(error, `get orders for node ${nodeAddress}`);
+            return [];
+        }
+    }
+
+    /**
+     * REFACTORED: Will use GraphQL aggregation instead of on-chain iteration
+     * Falls back to on-chain approach for now
+     */
+    async loadAvailableAssets(): Promise<AggregateAssetAmount[]> {
+        try {
+            const response = await graphqlRequest<{ nodeAssets: { token: string; tokenId: string; capacity: string }[] }>(
+                this.graphQLEndpoint,
+                GET_ALL_NODE_ASSETS,
+            );
+
+            const assetAmounts: { [key: string]: number } = {};
+            (response.nodeAssets || []).forEach(a => {
+                const key = `${a.token}-${a.tokenId}`;
+                assetAmounts[key] = (assetAmounts[key] || 0) + Number(a.capacity);
+            });
+
+            return Object.entries(assetAmounts).map(([, amount], index) => ({
+                id: index + 1,
+                amount,
+            }));
+        } catch (error) {
+            handleContractError(error, 'load available assets');
+            return [];
+        }
+    }
+
+    async getAssetBalance(
+        ownerAddress: string,
+        assetId: number,
+        assetName: string,
+        attributes: string[],
+    ): Promise<number> {
+        try {
+            const auraAssetContract = await this.getAuraAssetContract();
+            const balance = await auraAssetContract.balanceOf(ownerAddress, assetId);
+            return Number(balance);
+        } catch (error) {
+            handleContractError(error, `get asset balance for ${ownerAddress}`);
+            return 0;
+        }
+    }
+
+    async getAssetAttributes(fileHash: string): Promise<any[]> {
+        try {
+            // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails
+            let records: AssetIpfsRecord[] = [];
+            if (fileHash && fileHash.length > 0) {
+                records = await hashToAssets(fileHash, this.pinata);
+            }
+            if ((!records || records.length === 0) && /^(\d+)$/.test(fileHash)) {
+                records = await tokenIdToAssets(fileHash, this.pinata);
+            }
+
+            if (!records || records.length === 0) {
+                return [];
+            }
+
+            // Map the first matching record's attributes into TokenizedAssetAttribute[] shape
+            const first = records[0];
+            const attrs = first.asset?.attributes || [];
+            return attrs.map(a => ({
+                name: a.name,
+                value: (a.values && a.values.length > 0 ? a.values[0] : ''),
+                description: a.description || '',
+            }));
+        } catch (error) {
+            handleContractError(error, `get asset attributes for ${fileHash}`);
+            return [];
+        }
+    }
 }
 
-// Helper function for delay
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+

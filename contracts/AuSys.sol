@@ -4,14 +4,44 @@ pragma solidity ^0.8.28;
 
 import './Aura.sol' as AuraContract;
 import './Aurum.sol';
-import './AuraGoat.sol';
+import './AuraAsset.sol';
+import '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
+import '@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
+import '@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol';
+import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/access/AccessControl.sol';
 
-// TO DO use smart contracct account pf the token for the treasury and create a private fuinctioion that auto mints
-contract locationContract {
+using SafeERC20 for IERC20;
+
+// =====================
+// Custom Errors
+// =====================
+error NotJourneyParticipant();
+error JourneyNotInProgress();
+error JourneyNotPending();
+error JourneyIncomplete();
+error AlreadySettled();
+error DriverNotSigned();
+error SenderNotSigned();
+error ReceiverNotSigned();
+error InvalidAddress();
+error InvalidAmount();
+error InvalidETA();
+error QuantityExceedsRequested();
+error InvalidNode();
+error RewardAlreadyPaid();
+error DriverMaxAssignment();
+error InvalidCaller();
+
+contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
   enum Status {
     Pending,
     InProgress,
     Completed,
+    Settled,
     Canceled
   }
   struct Location {
@@ -34,15 +64,16 @@ contract locationContract {
     address token;
     uint tokenId;
     uint tokenQuantity;
-    uint requestedTokenQuantity;
     uint price;
     uint txFee;
-    address customer;
+    address buyer;
+    // to be a seller you must be a node
+    address seller;
     bytes32[] journeyIds;
     address[] nodes;
     ParcelData locationData;
     Status currentStatus;
-    bytes32 contracatualAgreement;
+    bytes32 contractualAgreement;
   }
   struct Journey {
     ParcelData parcelData;
@@ -57,101 +88,76 @@ contract locationContract {
     uint ETA;
   }
 
-  struct SubJourney {
-    ParcelData parcelData;
-  }
-
-  // Map a journey to multiple sub journeys
-
-  // Keep count of which sub journey of a journey the parcel is on
+  IERC20 payToken;
+  AurumNodeManager nodeManager;
   bytes32[] public orderIds;
-  mapping(address => bytes32[]) public customerToOrderIds;
-  mapping(address => bytes32[]) public nodeToOrderIds;
   mapping(bytes32 => Order) public idToOrder;
   mapping(bytes32 => bytes32) public journeyToOrderId;
-  mapping(bytes32 => uint256) public subJourneyCount;
-  // Map the drivers address to a Journey/SubJourney, need to add address => uint => bytes32
-  // need to map this to a list of bytes
   mapping(address => bytes32[]) public driverToJourneyId;
-  // maps a sender to a journey
-  mapping(address => bytes32[]) public customerToJourneyId;
-  mapping(address => uint256) public numberOfJourneysCreatedForCustomer;
-  // driver related mappings
-  mapping(address => uint256) public numberOfJourneysAssigned;
-  // maps a receiver to a journey
-  mapping(address => bytes32[]) public receiverToJourneyId;
-  mapping(address => uint256) public numberOfJourneysCreatedForReceiver;
-  // Map Journey ID to Journey
-  mapping(bytes32 => Journey) public journeyIdToJourney;
-
-  // maps number to JOB id for the purpose of iterating through journeys
-  mapping(uint => bytes32) public numberToJourneyID;
-  // a bool that checks if the sender has handed off the package (need to change this to address => journey or journey id => bool
+  mapping(bytes32 => Journey) public idToJourney;
   mapping(address => mapping(bytes32 => bool)) public customerHandOff;
   mapping(address => mapping(bytes32 => bool)) public driverHandOn;
-  //maps a journey to a corresponding box
-  mapping(bytes32 => uint) journeyToBox;
-  // maps a sender address to running balance of their token amount
-  mapping(address => uint) customerToTokenAmount;
-  Journey[] public subJourneys;
+  mapping(bytes32 => bool) rewardPaid;
+  // RBAC roles
+  bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
+  bytes32 public constant DRIVER_ROLE = keccak256('DRIVER_ROLE');
+  bytes32 public constant DISPATCHER_ROLE = keccak256('DISPATCHER_ROLE');
   uint public journeyIdCounter = 0;
   uint public orderIdCounter = 0;
-  AuraContract.Aura auraToken;
-  AurumNodeManager nodeManager;
 
-  constructor(AuraContract.Aura _aura) {
-    auraToken = _aura;
+  constructor(IERC20 token) {
+    payToken = token;
+    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    _grantRole(ADMIN_ROLE, msg.sender);
   }
 
   // vulnerability somebody
-  modifier customerDriverCheck(
-    address sender,
-    address driver,
-    bytes32 id
-  ) {
-    require(
-      (journeyIdToJourney[id].driver == driver &&
-        journeyIdToJourney[id].sender == sender) ||
-        journeyIdToJourney[id].receiver == sender,
-      'Was not correct 1'
-    );
-    require(msg.sender == sender || msg.sender == driver, 'Was not correct 2');
-    _;
-  }
-  modifier DriversBoxVerify(address driver, uint box) {
-    //require(journeyToBox[driverToJourneyId[driver]] == box);
+  modifier customerDriverCheck(bytes32 id) {
+    Journey storage J = idToJourney[id];
+    if (
+      !(msg.sender == J.sender ||
+        msg.sender == J.driver ||
+        msg.sender == J.receiver)
+    ) revert NotJourneyParticipant();
     _;
   }
   modifier isInProgress(bytes32 id) {
-    require(
-      journeyIdToJourney[id].currentStatus == Status.InProgress,
-      'Journey is not in Progress'
-    );
+    if (idToJourney[id].currentStatus != Status.InProgress)
+      revert JourneyNotInProgress();
     _;
   }
   modifier isPending(bytes32 id) {
-    require(
-      journeyIdToJourney[id].currentStatus == Status.Pending,
-      'Journey is not Pending'
-    );
+    if (idToJourney[id].currentStatus != Status.Pending)
+      revert JourneyNotPending();
     _;
   }
   modifier isCompleted(bytes32 id) {
-    require(
-      journeyIdToJourney[id].currentStatus == Status.Completed,
-      'Journey is Incomplete'
-    );
+    if (idToJourney[id].currentStatus != Status.Completed)
+      revert JourneyIncomplete();
     _;
   }
 
-  function setNodeManager(AurumNodeManager _nodeManager) public {
+  function setNodeManager(AurumNodeManager _nodeManager) public onlyOwner {
     nodeManager = _nodeManager;
   }
 
-  function journeyKeyHashing(
-    Journey memory journey
-  ) private pure returns (bytes32) {
-    return keccak256(abi.encode(journey));
+  function setAdmin(address admin) public onlyOwner {
+    _grantRole(ADMIN_ROLE, admin);
+    emit AdminSet(admin);
+  }
+
+  function revokeAdmin(address admin) public onlyOwner {
+    _revokeRole(ADMIN_ROLE, admin);
+  }
+
+  function setDriver(address driver, bool enable) public onlyRole(ADMIN_ROLE) {
+    if (enable) _grantRole(DRIVER_ROLE, driver);
+    else _revokeRole(DRIVER_ROLE, driver);
+  }
+
+  function setDispatcher(address dispatcher, bool enable) public onlyRole(ADMIN_ROLE) {
+    if (enable) _grantRole(DISPATCHER_ROLE, dispatcher);
+    else _revokeRole(DISPATCHER_ROLE, dispatcher);
   }
 
   function getHashedJourneyId() private returns (bytes32) {
@@ -161,208 +167,158 @@ contract locationContract {
   function getHashedOrderId() private returns (bytes32) {
     return keccak256(abi.encode(orderIdCounter += 1));
   }
+  event AdminSet(address indexed admin);
   event emitSig(address indexed user, bytes32 indexed id);
+  event OrderSettled(bytes32 indexed orderId);
+  event JourneyCanceled(
+    bytes32 indexed journeyId,
+    address indexed sender,
+    uint refundedAmount
+  );
+  event FundsEscrowed(address indexed from, uint amount);
+  event FundsRefunded(address indexed to, uint amount);
+  event DriverAssigned(address indexed driver, bytes32 indexed journeyId);
+  event SellerPaid(address indexed seller, uint amount);
+  event NodeFeeDistributed(address indexed node, uint amount);
 
   function getjourney(bytes32 id) public view returns (Journey memory) {
-    return journeyIdToJourney[id];
+    return idToJourney[id];
   }
 
-  //could you exploit this feature by an agent calling from a non aurellion source  assign themseleves to all journeys then not showing up
+  // this could be exploited by an agent calling from a non aurellion source  assign themseleves to all journeys then not showing up
+  // this will be mitigated by KYC in the future so leaving open for now
   function assignDriverToJourneyId(address driver, bytes32 journeyID) public {
+    // Require the target driver to be registered/approved
+    if (!hasRole(DRIVER_ROLE, driver)) revert InvalidCaller();
+    // Only the driver themselves, a dispatcher, or the journey sender can assign
+    bool callerAuthorized = (
+      msg.sender == driver ||
+      hasRole(DISPATCHER_ROLE, msg.sender) ||
+      msg.sender == idToJourney[journeyID].sender
+    );
+    if (!callerAuthorized) revert InvalidCaller();
+    if (driverToJourneyId[driver].length >= 10) revert DriverMaxAssignment();
     driverToJourneyId[driver].push(journeyID);
-    journeyIdToJourney[journeyID].driver = driver;
-    numberOfJourneysAssigned[driver] += 1;
+    idToJourney[journeyID].driver = driver;
+    emit DriverAssigned(driver, journeyID);
   }
 
   //sender can be both receiver and sender
-  function packageSign(
-    address driver,
-    address sender,
-    bytes32 id
-  ) public customerDriverCheck(sender, driver, id) {
-    if (msg.sender == sender) {
-      customerHandOff[sender][id] = true;
-      emit emitSig(sender, id);
-    }
-
-    if (msg.sender == driver) {
-      driverHandOn[driver][id] = true;
-      emit emitSig(driver, id);
-    }
-
-    if (
-      customerHandOff[sender][id] == true && driverHandOn[driver][id] == true
-    ) {
-      emit emitSig(driver, id);
+  function packageSign(bytes32 id) public customerDriverCheck(id) {
+    Journey storage J = idToJourney[id];
+    if (msg.sender == J.sender) {
+      customerHandOff[J.sender][id] = true;
+      emit emitSig(J.sender, id);
+    } else if (msg.sender == J.receiver) {
+      customerHandOff[J.receiver][id] = true;
+      emit emitSig(J.receiver, id);
+    } else if (msg.sender == J.driver) {
+      driverHandOn[J.driver][id] = true;
+      emit emitSig(J.driver, id);
     }
   }
 
-  function boxActivate(
-    address driver,
-    uint box
-  ) public pure DriversBoxVerify(driver, box) returns (bool) {
-    //activation code here
-    return true;
-  }
-
-  // verify person has enough funds in contract
-  // TODO: function wasn't working because the isCompleted modifier was wrong. Corrected it, need to retest.
-  function generateReward(bytes32 id, address driver) public isCompleted(id) {
-    uint completeJourney = journeyIdToJourney[id].journeyEnd -
-      journeyIdToJourney[id].journeyStart;
-    emit printUint(completeJourney);
-    // to find reward you didvide the ETA by the time it was completed in. this will give you a number less than 1 which you then multiply the reward by to give the driver  a fraction of that reward.
-    // if driver completed it quicker it will do the opposite .
-    //need to consider whether the treausry gives extra reward for the faster delivery proportional to the excess of the fraction( the amount the sender didnt provide but is entitled to the driver as bonus.
-    //may have to * by x**10*y to make sure decimals are taken into account
-    uint reward = (journeyIdToJourney[id].ETA *
-      journeyIdToJourney[id].bounty *
-      10 ** 18) / completeJourney;
-    emit printUint(reward);
-    // transfer reward here
-    auraToken.transfer(driver, reward);
-    customerToTokenAmount[journeyIdToJourney[id].sender] -= journeyIdToJourney[
-      id
-    ].bounty;
-  }
-
-  event printUint(uint256 value);
-
-  function assignJourneyToBox(bytes32 journey, uint box) public {
-    journeyToBox[journey] = box;
+  function generateReward(bytes32 id) internal isCompleted(id) {
+    if (rewardPaid[id]) revert RewardAlreadyPaid();
+    rewardPaid[id] = true;
+    Journey storage J = idToJourney[id];
+    payToken.safeTransfer(J.driver, J.bounty);
   }
 
   function handOn(
-    address driver,
-    address sender,
     bytes32 id
-  )
-    public
-    customerDriverCheck(sender, driver, id)
-    isPending(id)
-    returns (bool)
-  {
-    if (
-      customerHandOff[sender][id] == true && driverHandOn[driver][id] == true
-    ) {
-      journeyIdToJourney[id].currentStatus = Status.InProgress;
-      journeyIdToJourney[id].journeyStart = block.timestamp;
-      driverHandOn[driver][id] == false;
-      customerHandOff[sender][id] == false;
-      return true;
-    } else {
-      return false;
+  ) public customerDriverCheck(id) isPending(id) nonReentrant returns (bool) {
+    Journey storage J = idToJourney[id];
+    if (!driverHandOn[J.driver][id]) revert DriverNotSigned();
+    if (!customerHandOff[J.sender][id]) revert SenderNotSigned();
+    J.journeyStart = block.timestamp;
+    driverHandOn[J.driver][id] = false;
+    customerHandOff[J.sender][id] = false;
+    J.currentStatus = Status.InProgress;
+
+    Order storage O = idToOrder[journeyToOrderId[id]];
+    if (J.sender == O.seller) {
+      IERC1155(O.token).safeTransferFrom(
+        //sender should always be a node
+        O.seller,
+        address(this),
+        O.tokenId,
+        O.tokenQuantity,
+        '0x'
+      );
+      AurumNodeManager.Asset memory a = AurumNodeManager.Asset({
+        token: O.token,
+        tokenId: O.tokenId,
+        price: 0,
+        capacity: 0
+      });
+      nodeManager.reduceCapacityForOrder(O.seller, a, O.tokenQuantity);
     }
+    emit JourneyStatusUpdated(id, J.currentStatus);
+    return true;
   }
 
   function handOff(
-    address driver,
-    address receiver,
-    bytes32 id,
-    //pass 0x0 if addr not requred
-    address token
+    bytes32 id
   )
     public
     isInProgress(id)
-    customerDriverCheck(receiver, driver, id)
+    customerDriverCheck(id)
+    nonReentrant
     returns (bool)
   {
-    if (
-      customerHandOff[receiver][id] == true && driverHandOn[driver][id] == true
-    ) {
-      journeyIdToJourney[id].currentStatus = Status.Completed;
-      journeyIdToJourney[id].journeyEnd = block.timestamp;
-      generateReward(id, driver);
+    Journey storage J = idToJourney[id];
+    Order storage O = idToOrder[journeyToOrderId[id]];
+    if (O.currentStatus == Status.Settled) revert AlreadySettled();
+    if (!driverHandOn[J.driver][id]) revert DriverNotSigned();
+    if (!customerHandOff[J.receiver][id]) revert ReceiverNotSigned();
+    J.currentStatus = Status.Completed;
+    J.journeyEnd = block.timestamp;
+    generateReward(id);
 
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  // when specifying please specify quantity for a given tokenID at the same
-  // in the token qauntity list
-  //can be called by a customer and a node
-  function nodeHandOff(
-    address sendingNode,
-    address driver,
-    address receiver,
-    bytes32 id,
-    uint256[] memory tokenIds,
-    address token,
-    uint[] memory quantities,
-    bytes memory data
-  ) public returns (bool) {
-    //APPROVE BEFORE CALLING
-    //perform the transfer per token
-    Order memory order = idToOrder[journeyToOrderId[id]];
-    if (
-      bytes1(nodeManager.getNode(receiver).validNode) == bytes1(uint8(1)) ||
-      receiver == order.customer
-    ) {
-      handOff(driver, receiver, id, token);
-      (bool success, bytes memory result) = token.call(
-        abi.encodeWithSignature(
-          'safeBatchTransferFrom(adress,address,uint256,uin256,bytes)',
-          journeyIdToJourney[id].sender,
-          journeyIdToJourney[id].receiver,
-          tokenIds,
-          quantities,
-          data
-        )
+    if (J.receiver == O.buyer) {
+      O.currentStatus = Status.Settled;
+      IERC1155(O.token).safeTransferFrom(
+        //sender should always be a node
+        address(this),
+        O.buyer,
+        O.tokenId,
+        O.tokenQuantity,
+        '0x'
       );
-      require(success);
-      //reducing the capacity of the recieving nod if it is a
-      if (receiver == order.customer) {
-        order.currentStatus = Status.Completed;
-        nodeManager.updateSupportedAssets(
-          sendingNode,
-          quantities,
-          tokenIds,
-          new uint256[](tokenIds.length)
-        );
-        uint nodeReward = order.txFee / order.nodes.length;
-
-        for (uint i = 0; i < order.nodes.length; i++)
-          auraToken.transfer(order.nodes[i], nodeReward);
+      payToken.safeTransfer(O.seller, O.price);
+      emit SellerPaid(O.seller, O.price);
+      if (O.nodes.length > 0) {
+        uint nodeCount = O.nodes.length;
+        uint nodeReward = O.txFee / nodeCount;
+        uint remainder = O.txFee - (nodeReward * nodeCount);
+        for (uint i = 0; i < nodeCount; i++) {
+          uint amount = nodeReward + (i == 0 ? remainder : 0);
+          payToken.safeTransfer(O.nodes[i], amount);
+          emit NodeFeeDistributed(O.nodes[i], amount);
+        }
       }
-      return true;
-    } else {
-      return false;
+      emit OrderSettled(journeyToOrderId[id]);
     }
+
+    return true;
   }
 
-  //TO DO make function to send funds to treasury
 
-  //function uploads(ParcelData memory _data) public {
-  //Journey memory journey = Journey({parcelData: _data, journeyId: getHashedJourneyId(), currentStatus: Status.Pending, sender: address(0), driver: address(0), receiver: address(0) });
-  //journeyIdToJourney[journey.journeyId] = journey;
-  //journeyToBox[journey.journeyId] = journeyIdCounter;
-
-  // SubJourney memory subJourney = SubJourney({parcelData: _array[i]});
-
-  // journeys.push(journey);
-  // journeys[journey][subJourneyCount[journey] += 1] = subJourney;
-
-  // subJourneyCount[journeyKeyHashing(journey)]+=1;
-  // journeys[journeyKeyHashing(journey)][subJourneyCount(journeyKeyHashing(journey))+=1] = subJourney;
-  // SubJourney memory xyz = journeys[journeyKeyHashing(journey)][subJourneyCount(journeyKeyHashing(journey))+=1];
-  // }
   function journeyCreation(
     address sender,
     address receiver,
     ParcelData memory _data,
     uint bounty,
     uint ETA
-  ) public {
-    require(sender != address(0), 'Invalid sender');
-    require(receiver != address(0), 'Invalid receiver');
-    require(bounty > 0, 'Invalid bounty');
-    require(ETA > block.timestamp, 'Invalid ETA');
+  ) public nonReentrant {
+    if (msg.sender != receiver && !hasRole(ADMIN_ROLE, msg.sender))
+      revert InvalidCaller();
+    if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
+    if (bounty == 0) revert InvalidAmount();
+    if (ETA <= block.timestamp) revert InvalidETA();
 
-    // TO DO transfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
-    auraToken.transferFrom(sender, address(this), bounty);
-    customerToTokenAmount[sender] += bounty;
+    // TO DO safeTransfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
     Journey memory journey = Journey({
       parcelData: _data,
       journeyId: getHashedJourneyId(),
@@ -375,17 +331,9 @@ contract locationContract {
       bounty: bounty,
       ETA: ETA
     });
-    journeyIdToJourney[journey.journeyId] = journey;
-    journeyToBox[journey.journeyId] = journeyIdCounter;
-
-    numberOfJourneysCreatedForCustomer[sender] += 1;
-    customerToJourneyId[sender].push(journey.journeyId);
-
-    numberOfJourneysCreatedForReceiver[receiver] += 1;
-    receiverToJourneyId[receiver].push(journey.journeyId);
-    // add journeyId to global mapping of journeys
-    numberToJourneyID[journeyIdCounter] = journey.journeyId;
-
+    idToJourney[journey.journeyId] = journey;
+    payToken.safeTransferFrom(receiver, address(this), bounty);
+    emit FundsEscrowed(receiver, bounty);
     emit JourneyCreated(journey.journeyId, sender, receiver);
   }
 
@@ -395,49 +343,30 @@ contract locationContract {
     address indexed receiver
   );
   event JourneyStatusUpdated(bytes32 indexed journeyId, Status newStatus);
-  event OrderCreated(bytes32 indexed orderId, address indexed customer);
+  event OrderCreated(bytes32 indexed orderId, address indexed buyer);
 
-  // Debug event
-  event DebugNodeData(
-    address indexed nodeAddress,
-    uint assetsLength,
-    uint capacityLength,
-    uint pricesLength
-  );
-
-  // TODO: node Acceptance function as this is just forced creation of order by a node, algo runs acceptance and then creation is pushed through
-  //made flexible by adding nullish value to any param
-  function addReceiver(
-    bytes32 orderId,
-    address receiver,
-    address sender
-  ) public {
-    bytes32[] memory _journeyIds = idToOrder[orderId].journeyIds;
-    for (uint i; i < _journeyIds.length; i++) {
-      if (journeyIdToJourney[_journeyIds[i]].sender == sender) {
-        journeyIdToJourney[idToOrder[orderId].journeyIds[i]]
-          .receiver = receiver;
-      }
-    }
-  }
-
-  //only called with a node as the sender
-  //TODO: restrict so only node can call
   function orderJourneyCreation(
     bytes32 orderId,
     address sender,
     address receiver,
-    // not neccessarily a receiver
     ParcelData memory _data,
     uint bounty,
     uint ETA,
     uint tokenQuantity,
     uint assetId
   ) public {
-    // TODO: transfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
-    //    auraToken.transferFrom(sender, address(this), bounty * 10 ** 18);
-    customerToTokenAmount[idToOrder[orderId].customer] += bounty;
+    // TODO: safeTransfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
+    //    payToken.safeTransferFrom(sender, address(this), bounty * 10 ** 18);
     // this is to add to an aggregate tx fee from all the journeys being created
+    Order storage O = idToOrder[orderId];
+
+    if (bytes1(nodeManager.getNode(receiver).validNode) != bytes1(uint8(1)))
+      revert InvalidNode();
+
+    if (msg.sender != O.buyer && !hasRole(ADMIN_ROLE, msg.sender))
+      revert InvalidCaller();
+    if (ETA <= block.timestamp) revert InvalidETA();
+    if (tokenQuantity == 0) revert InvalidAmount();
     Journey memory journey = Journey({
       parcelData: _data,
       journeyId: getHashedJourneyId(),
@@ -450,28 +379,22 @@ contract locationContract {
       bounty: bounty,
       ETA: ETA
     });
-    journeyIdToJourney[journey.journeyId] = journey;
-    journeyToBox[journey.journeyId] = journeyIdCounter;
+    payToken.safeTransferFrom(O.buyer, address(this), bounty);
+    emit FundsEscrowed(O.buyer, bounty);
+    idToJourney[journey.journeyId] = journey;
 
-    numberOfJourneysCreatedForCustomer[sender] += 1;
-    customerToJourneyId[sender].push(journey.journeyId);
-
-    numberOfJourneysCreatedForReceiver[receiver] += 1;
-    receiverToJourneyId[receiver].push(journey.journeyId);
     // add journeyId to global mapping of journeys
-    numberToJourneyID[journeyIdCounter] = journey.journeyId;
     idToOrder[orderId].journeyIds.push(journey.journeyId);
     idToOrder[orderId].currentStatus = Status.Pending;
     journeyToOrderId[journey.journeyId] = orderId;
 
-    nodeToOrderIds[sender].push(orderId);
-
     // +++ Call the new function on nodeManager +++
-    nodeManager.reduceCapacityForOrder(
-      sender, // The node address
-      assetId, // +++ New way: Using the passed simple assetId +++
-      tokenQuantity // The quantity requested for this journey leg
-    );
+    AurumNodeManager.Asset memory a = AurumNodeManager.Asset({
+      token: idToOrder[orderId].token,
+      tokenId: assetId,
+      price: 0,
+      capacity: 0
+    });
     // Also update the order's tracked token quantity
     // This assumes the reduceCapacityForOrder call above did not revert
     idToOrder[orderId].tokenQuantity += tokenQuantity;
@@ -479,15 +402,30 @@ contract locationContract {
     emit JourneyCreated(journey.journeyId, sender, receiver);
   }
 
-  function orderCreation(Order memory order) public returns (bytes32) {
+  function orderCreation(
+    Order memory order
+  ) public nonReentrant returns (bytes32) {
+    if (
+      order.buyer == address(0) ||
+      order.seller == address(0) ||
+      order.token == address(0)
+    ) revert InvalidAddress();
+    if (order.price == 0) revert InvalidAmount();
+    if (order.buyer == order.seller) revert InvalidAddress();
+    if (order.tokenQuantity == 0) revert InvalidAmount();
     bytes32 id = getHashedOrderId();
     idToOrder[id] = order;
     idToOrder[id].currentStatus = Status.Pending;
     idToOrder[id].id = id;
     idToOrder[id].txFee = (order.price * 2) / 100;
-    customerToOrderIds[order.customer].push(id);
     orderIds.push(id);
-    emit OrderCreated(id, order.customer);
+    payToken.safeTransferFrom(
+      order.buyer,
+      address(this),
+      order.price + idToOrder[id].txFee
+    );
+    emit FundsEscrowed(order.buyer, order.price + idToOrder[id].txFee);
+    emit OrderCreated(id, order.buyer);
     return id;
   }
 
@@ -495,21 +433,19 @@ contract locationContract {
     return idToOrder[id];
   }
 
+  function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    override(AccessControl, ERC1155Receiver)
+    returns (bool)
+  {
+    return super.supportsInterface(interfaceId);
+  }
+
   /**
-   * @notice Explicit getter function for nodeToOrderIds mapping.
    * @dev Bypasses the implicit public getter which might have issues.
    * @param nodeAddress The address of the node.
    * @param index The index in the node's order ID array.
    * @return The order ID (bytes32) at the specified index, or ZeroHash if out of bounds.
    */
-  function getNodeOrderIdByIndex(
-    address nodeAddress,
-    uint index
-  ) public view returns (bytes32) {
-    // Check bounds to prevent revert on out-of-bounds access
-    if (index >= nodeToOrderIds[nodeAddress].length) {
-      return bytes32(0); // Return ZeroHash if index is out of bounds
-    }
-    return nodeToOrderIds[nodeAddress][index];
-  }
 }

@@ -58,34 +58,100 @@ export const GET_NODE_MINTED_ASSETS = gql`
 `;
 
 /**
- * Combined query to get both minted assets and current balances
+ * Query Aurum subgraph for node assets (pricing and capacity)
  */
-export const GET_NODE_ASSETS_COMPLETE = gql`
-  query GetNodeAssetsComplete($nodeAddress: Bytes!) {
-    # Originally minted assets
-    mintedAssets(where: { account: $nodeAddress }) {
+export const GET_NODE_ASSETS_AURUM = gql`
+  query GetNodeAssetsAurum($nodeAddress: String!) {
+    nodeAssets(where: { node: $nodeAddress }) {
+      id
+      node
+      token
       tokenId
+      price
+      capacity
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+/**
+ * Query Aurum subgraph for ALL node assets (pricing and capacity)
+ */
+export const GET_ALL_NODE_ASSETS_AURUM = gql`
+  query GetAllNodeAssetsAurum($first: Int!, $skip: Int!) {
+    nodeAssets(first: $first, skip: $skip, orderBy: createdAt, orderDirection: desc) {
+      id
+      node
+      token
+      tokenId
+      price
+      capacity
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+/**
+ * Query AuraAsset subgraph for user balances and asset metadata
+ */
+export const GET_USER_BALANCES_AURA = gql`
+  query GetUserBalancesAura($userAddress: Bytes!) {
+    userBalances(where: { user: $userAddress }) {
+      id
+      user
+      tokenId
+      balance
+      asset
+      firstReceived
+      lastUpdated
+    }
+  }
+`;
+
+/**
+ * Query AuraAsset subgraph for asset metadata by hashes
+ */
+export const GET_ASSETS_BY_HASHES = gql`
+  query GetAssetsByHashes($hashes: [String!]!) {
+    assets(where: { hash_in: $hashes }) {
+      id
       hash
-      asset_name
-      asset_class
-      asset_attributes
-      blockTimestamp
+      tokenId
+      name
+      assetClass
+      className
+      account
+      amount
+      attributes {
+        name
+        values
+        description
+      }
     }
+  }
+`;
 
-    # All incoming transfers
-    transfersIn: transferSingles(where: { to: $nodeAddress }) {
-      internal_id
-      value
-      from
-      blockTimestamp
-    }
-
-    # All outgoing transfers
-    transfersOut: transferSingles(where: { from: $nodeAddress }) {
-      internal_id
-      value
-      to
-      blockTimestamp
+/**
+ * Query AuraAsset subgraph for asset metadata by tokenIds
+ */
+export const GET_ASSETS_BY_TOKEN_IDS = gql`
+  query GetAssetsByTokenIds($tokenIds: [BigInt!]!) {
+    assets(where: { tokenId_in: $tokenIds }) {
+      id
+      hash
+      tokenId
+      name
+      assetClass
+      className
+      account
+      amount
+      attributes {
+        name
+        values
+        description
+      }
     }
   }
 `;
@@ -115,61 +181,52 @@ export interface GraphMintedAsset {
   blockTimestamp: string;
 }
 
-export interface NodeAssetsGraphResponse {
-  transfersIn: GraphTransferEvent[];
-  transfersOut: GraphTransferEvent[];
-  mintedAssets: GraphMintedAsset[];
+// Response interfaces for new queries
+export interface NodeAssetAurum {
+  id: string;
+  node: string;
+  token: string;
+  tokenId: string;
+  price: string;
+  capacity: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-/**
- * Helper function to calculate current balances from transfer events
- */
-export function calculateCurrentBalances(
-  transfersIn: any[],
-  transfersOut: any[],
-  mintedAssets: any[],
-): NodeTokenBalance[] {
-  const balanceMap = new Map<string, bigint>();
-  const metadataMap = new Map<
-    string,
-    { name: string; assetClass: string; hash: string }
-  >();
+export interface UserBalanceAura {
+  id: string;
+  user: string;
+  tokenId: string;
+  balance: string;
+  asset: string; // hash reference
+  firstReceived: string;
+  lastUpdated: string;
+}
 
-  // Add minted assets metadata
-  for (const minted of mintedAssets) {
-    const tokenId = minted.tokenId.toString();
-    metadataMap.set(tokenId, {
-      name: minted.asset_name,
-      assetClass: minted.asset_class,
-      hash: minted.hash,
-    });
-  }
+export interface AssetAura {
+  id: string;
+  hash: string;
+  tokenId: string;
+  name: string;
+  assetClass: string;
+  className: string;
+  account: string;
+  amount: string;
+  attributes: Array<{
+    name: string;
+    values: string[];
+    description: string;
+  }>;
+}
 
-  // Process incoming transfers (add to balance)
-  for (const transfer of transfersIn) {
-    const tokenId = transfer.internal_id.toString();
-    const current = balanceMap.get(tokenId) || 0n;
-    balanceMap.set(tokenId, current + BigInt(transfer.value));
-  }
+export interface NodeAssetsAurumResponse {
+  nodeAssets: NodeAssetAurum[];
+}
 
-  // Process outgoing transfers (subtract from balance)
-  for (const transfer of transfersOut) {
-    const tokenId = transfer.internal_id.toString();
-    const current = balanceMap.get(tokenId) || 0n;
-    balanceMap.set(tokenId, current - BigInt(transfer.value));
-  }
+export interface UserBalancesAuraResponse {
+  userBalances: UserBalanceAura[];
+}
 
-  // Convert to result array, filtering out zero balances
-  return Array.from(balanceMap.entries())
-    .filter(([, balance]) => balance > 0n)
-    .map(([tokenId, balance]) => {
-      const metadata = metadataMap.get(tokenId);
-      return {
-        tokenId,
-        balance: balance.toString(),
-        name: metadata?.name,
-        assetClass: metadata?.assetClass,
-        hash: metadata?.hash,
-      };
-    });
+export interface AssetsAuraResponse {
+  assets: AssetAura[];
 }

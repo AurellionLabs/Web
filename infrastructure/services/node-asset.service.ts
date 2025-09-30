@@ -1,33 +1,31 @@
-import { INodeAssetService, NodeRepository } from '@/domain/node/node'; // Updated interface import
+import { INodeAssetService, NodeRepository, NodeAsset, NodeAssetConverters } from '@/domain/node/node';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { AurumNodeManager } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
-import { ethers, BigNumberish } from 'ethers';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants'; // Import needed constant
+import { ethers } from 'ethers';
+import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { PinataSDK } from 'pinata';
 import { Asset } from '@/domain/platform';
-import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/AuraGoat.sol/AuraAsset';
+import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/Aurum.sol/AurumNode';
 
 /**
- * Concrete implementation of the INodeAssetService interface.
- *
- * Handles business logic related to managing assets on nodes.
+ * Concrete implementation of the INodeAssetService interface - REFACTORED
+ * 
+ * This version uses the correct contract function signatures:
+ * - addSupportedAsset(address node, Asset memory supportedAsset)
+ * - updateSupportedAssets(address node, Asset[] memory supportedAssets)
  */
 export class NodeAssetService implements INodeAssetService {
-  // Renamed class, updated implements
   private context: RepositoryContext;
   private nodeRepository: NodeRepository | null = null;
   private aurumContract: AurumNodeManager | null = null;
-  // private auraGoatContract: AuraGoat | null = null;
 
   constructor(context: RepositoryContext) {
     this.context = context;
     this.aurumContract = this.context.getAurumContract();
     this.nodeRepository = this.context.getNodeRepository();
-    // this.auraGoatContract = this.context.getAuraGoatContract(); // Example
   }
 
-  // --- Add back the private getter methods ---
   private getAurumContractOrThrow(): AurumNodeManager {
     if (!this.aurumContract) {
       throw new Error(
@@ -43,10 +41,10 @@ export class NodeAssetService implements INodeAssetService {
     }
     return this.nodeRepository;
   }
-  // --- End of added private methods ---
 
-  // --- Implement INodeAssetService methods ---
-
+  /**
+   * REFACTORED: Uses correct addSupportedAsset signature with Asset struct
+   */
   async mintAsset(
     nodeAddress: string,
     asset: Omit<Asset, 'tokenID'>,
@@ -54,40 +52,31 @@ export class NodeAssetService implements INodeAssetService {
     priceWei: bigint,
   ): Promise<void> {
     console.log(
-      `[NodeAssetService] Minting asset ${asset} amount ${amount} for node ${nodeAddress}`,
+      `[NodeAssetService] Minting asset ${JSON.stringify(asset)} amount ${amount} for node ${nodeAddress}`,
     );
-    // Get the specific AurumNode contract instance via the context
+
     const nodeContract = this.context.getAurumNodeContract(nodeAddress);
-    const aurumContract = this.context.getAurumContract();
+    const aurumContract = this.getAurumContractOrThrow();
 
     try {
-      // Replicate logic from aurum-controller nodeMintAsset
-      // The controller used a padded ID, but addItem seems to just take the assetId directly as uint256?
-      // Verify the actual addItem signature in AurumNode.sol
-      // Assuming addItem takes: owner, itemId (assetId?), quantity, tokenContract, data
-      // Let's use BigInt for amounts/ids going to contract
       const bigIntAmount = BigInt(amount);
 
-      console.log(
-        `[NodeAssetService] Calling addItem on contract ${nodeAddress}`,
-      );
-      console.log(`   Owner: ${nodeAddress}`); // Assuming nodeAddress is the owner/recipient
-      console.log(`   Amount (quantity): ${bigIntAmount}`);
-      console.log(`   Token Contract: ${NEXT_PUBLIC_AURA_GOAT_ADDRESS}`);
-
       // Build contract AssetStruct from domain Asset
-
       const contractAsset: AuraAssetTypes.AssetStruct = {
-        name: asset.name,
-        class: asset.assetClass,
-        attributes: asset.attributes,
-      };
+        name: asset.name || '',
+        assetClass: asset.assetClass || '',
+        attributes: (asset.attributes || []).map(attr => ({
+          name: attr.name || '',
+          values: attr.values || [],
+          description: attr.description || '',
+        })),
+      } as any;
 
-      // Compute tokenId and asset hash locally to avoid static calls with owner checks
+      // Compute tokenId and asset hash locally
       const abiCoder = ethers.AbiCoder.defaultAbiCoder();
       const encodedAsset = abiCoder.encode(
         [
-          'tuple(string name,string class,tuple(string name,string[] values,string description)[] attributes)',
+          'tuple(string name,string assetClass,tuple(string name,string[] values,string description)[] attributes)',
         ],
         [contractAsset],
       );
@@ -95,7 +84,7 @@ export class NodeAssetService implements INodeAssetService {
       const encodedWithOwner = abiCoder.encode(
         [
           'address',
-          'tuple(string name,string class,tuple(string name,string[] values,string description)[] attributes)',
+          'tuple(string name,string assetClass,tuple(string name,string[] values,string description)[] attributes)',
         ],
         [nodeAddress, contractAsset],
       );
@@ -105,7 +94,7 @@ export class NodeAssetService implements INodeAssetService {
         throw new Error('className is required to mint an asset');
       }
 
-      // Temporarily any-cast due to stale typechain types until regeneration
+      // Call addItem on the node contract
       const tx = await nodeContract.addItem(
         nodeAddress,
         bigIntAmount,
@@ -114,48 +103,51 @@ export class NodeAssetService implements INodeAssetService {
         '0x',
       );
 
+      // FIXED: Use correct addSupportedAsset signature with Asset struct
+      const assetStruct = {
+        token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        tokenId: tokenIdLocal,
+        price: priceWei,
+        capacity: bigIntAmount
+      };
+
+      // Diagnostic: Check node ownership before attempting to add asset
+      try {
+        const runner = aurumContract.runner;
+        const signerAddress = runner && 'getAddress' in runner ? await (runner as any).getAddress() : 'unknown';
+        const nodeData = await aurumContract.getNode(nodeAddress);
+        console.log('[NodeAssetService] Diagnostic info:');
+        console.log('  Signer address:', signerAddress);
+        console.log('  Node address:', nodeAddress);
+        console.log('  Node owner from contract:', nodeData.owner);
+        if (typeof signerAddress === 'string' && signerAddress !== 'unknown') {
+          console.log('  Ownership match:', signerAddress.toLowerCase() === nodeData.owner.toLowerCase());
+        }
+      } catch (diagError) {
+        console.error('[NodeAssetService] Diagnostic check failed:', diagError);
+      }
+
       let tx2: any | null = null;
       try {
-        tx2 = await aurumContract.addSupportedAsset(
-          nodeAddress,
-          tokenIdLocal,
-          bigIntAmount,
-          priceWei,
-        );
+        tx2 = await aurumContract.addSupportedAsset(nodeAddress, assetStruct);
       } catch (e) {
-        console.warn(
-          '[NodeAssetService] addSupportedAsset failed, attempting capacity/price update instead',
+        console.error(
+          '[NodeAssetService] addSupportedAsset failed with error:',
           e,
         );
-        // Fallback path: token already supported → update capacity and price
-        const node = await aurumContract.getNode(nodeAddress);
-        const supportedAssets: bigint[] = node.supportedAssets.map((a: any) =>
-          BigInt(a),
-        );
-        const capacities: bigint[] = node.capacity.map((c: any) => BigInt(c));
-        const prices: bigint[] = node.assetPrices.map((p: any) => BigInt(p));
-
-        const assetIndex = supportedAssets.findIndex((a) => a === tokenIdLocal);
-        if (assetIndex === -1) {
-          throw new Error(
-            `[NodeAssetService] Fallback update failed: tokenId not found in supportedAssets for node ${nodeAddress}`,
-          );
+        console.error('[NodeAssetService] Node address:', nodeAddress);
+        console.error('[NodeAssetService] Asset struct:', assetStruct);
+        const runner = aurumContract.runner;
+        const signerAddr = runner && 'getAddress' in runner ? await (runner as any).getAddress() : 'unknown';
+        console.error('[NodeAssetService] Signer address:', signerAddr);
+        
+        // Fallback: Update existing asset capacity/price
+        try {
+          await this.updateExistingAsset(nodeAddress, assetStruct, bigIntAmount);
+        } catch (fallbackError) {
+          console.error('[NodeAssetService] Fallback updateExistingAsset also failed:', fallbackError);
+          throw fallbackError;
         }
-
-        const updatedCapacities = capacities.map((cap, i) =>
-          i === assetIndex ? cap + bigIntAmount : cap,
-        );
-        // iterate through the prices array and if the index is the assetIndex, update the price to the new price
-        const updatedPrices = prices.map((p, i) =>
-          i === assetIndex ? priceWei : p,
-        );
-
-        await aurumContract.updateSupportedAssets(
-          nodeAddress,
-          updatedCapacities,
-          supportedAssets,
-          updatedPrices,
-        );
       }
 
       console.log(`[NodeAssetService] addItem transaction sent: ${tx.hash}`);
@@ -163,167 +155,121 @@ export class NodeAssetService implements INodeAssetService {
       if (tx2) {
         await tx2.wait();
       }
-      const pinata = new PinataSDK({
-        pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
-        pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
-      });
 
-      const metadataJson = {
-        tokenId: tokenIdLocal,
-        hash: assetHash,
-        asset: contractAsset,
-        className: asset.assetClass,
-      };
-      const metadataBase64 = Buffer.from(JSON.stringify(metadataJson)).toString(
-        'base64',
-      );
-      const upload = await pinata.upload.public
-        .base64(metadataBase64)
-        .name(`${tokenIdLocal}.json`)
-        .keyvalues({
-          tokenId: tokenIdLocal.toString(),
-          className: asset.assetClass,
-          hash: assetHash,
-        });
-      console.log('uploaded', upload);
+      // Upload metadata to IPFS
+      await this.uploadMetadataToIPFS(tokenIdLocal, assetHash, contractAsset, asset.assetClass);
+
     } catch (error) {
       handleContractError(error, `error in mint asset for node ${nodeAddress}`);
+      throw error;
     }
   }
 
+  /**
+   * REFACTORED: Works with NodeAsset instead of separate arrays
+   */
   async updateAssetCapacity(
     nodeAddress: string,
-    assetId: number,
+    assetToken: string,
+    assetTokenId: string,
     newCapacity: number,
-    supportedAssets: number[], // Assuming domain uses number[]
-    capacities: number[], // Assuming domain uses number[]
-    assetPrices: number[], // Assuming domain uses number[]
   ): Promise<void> {
     console.log(
-      `[NodeAssetService] Updating capacity for asset ${assetId} on node ${nodeAddress} to ${newCapacity}`,
+      `[NodeAssetService] Updating capacity for asset ${assetTokenId} on node ${nodeAddress} to ${newCapacity}`,
     );
-    const contract = this.getAurumContractOrThrow();
 
     try {
-      // Find the index of the asset to update its capacity
-      const assetIndex = supportedAssets.indexOf(assetId);
-      if (assetIndex === -1) {
-        throw new Error(
-          `Asset ID ${assetId} not found in supported assets for node ${nodeAddress}`,
-        );
+      const node = await this.getNodeRepositoryOrThrow().getNode(nodeAddress);
+      if (!node) {
+        throw new Error(`Node ${nodeAddress} not found`);
       }
 
-      // Create updated capacity array, converting to BigInt for contract
-      const updatedCapacities: BigNumberish[] = capacities.map((cap, i) =>
-        i === assetIndex ? BigInt(newCapacity) : BigInt(cap),
-      );
+      // Find and update the specific asset
+      const updatedAssets = node.assets.map(asset => {
+        if (asset.token === assetToken && asset.tokenId === assetTokenId) {
+          return { ...asset, capacity: newCapacity };
+        }
+        return asset;
+      });
 
-      // Convert other arrays to BigInt
-      const assetsBigInt: BigNumberish[] = supportedAssets.map(BigInt);
-      const pricesBigInt: BigNumberish[] = assetPrices.map(BigInt);
+      // Update all assets using the new signature
+      await this.updateSupportedAssets(nodeAddress, updatedAssets);
 
-      // Call the contract function (matches controller logic)
-      const tx = await contract.updateSupportedAssets(
-        nodeAddress,
-        updatedCapacities,
-        assetsBigInt,
-        pricesBigInt,
-      );
-      await tx.wait();
       console.log(
-        `[NodeAssetService] Capacity updated successfully for asset ${assetId} on node ${nodeAddress}`,
+        `[NodeAssetService] Capacity updated successfully for asset ${assetTokenId} on node ${nodeAddress}`,
       );
     } catch (error) {
       handleContractError(
         error,
-        `update asset capacity for ${nodeAddress}, asset ${assetId}`,
+        `update asset capacity for ${nodeAddress}, asset ${assetTokenId}`,
       );
       throw error;
     }
   }
 
+  /**
+   * REFACTORED: Works with NodeAsset instead of separate arrays
+   */
   async updateAssetPrice(
     nodeAddress: string,
-    assetId: number,
-    newPrice: number, // Assuming domain uses number
-    supportedAssets: number[],
-    assetPrices: number[],
+    assetToken: string,
+    assetTokenId: string,
+    newPrice: bigint,
   ): Promise<void> {
     console.log(
-      `[NodeAssetService] Updating price for asset ${assetId} on node ${nodeAddress} to ${newPrice}`,
+      `[NodeAssetService] Updating price for asset ${assetTokenId} on node ${nodeAddress} to ${newPrice}`,
     );
-    const contract = this.getAurumContractOrThrow();
-    const nodeRepo = this.getNodeRepositoryOrThrow();
 
     try {
-      // Find the index of the asset to update its price
-      const assetIndex = supportedAssets.indexOf(assetId);
-      if (assetIndex === -1) {
-        throw new Error(
-          `Asset ID ${assetId} not found in supported assets for node ${nodeAddress}`,
-        );
-      }
-
-      // Create updated price array, converting to BigInt for contract
-      const updatedPrices: BigNumberish[] = assetPrices.map((price, i) =>
-        i === assetIndex ? BigInt(newPrice) : BigInt(price),
-      );
-
-      // Fetch current node data to get capacities
-      const node = await nodeRepo.getNode(nodeAddress);
+      const node = await this.getNodeRepositoryOrThrow().getNode(nodeAddress);
       if (!node) {
-        throw new Error(
-          `Node ${nodeAddress} not found when trying to update asset price.`,
-        );
+        throw new Error(`Node ${nodeAddress} not found`);
       }
-      // Convert needed arrays to BigInt
-      const currentCapacities: BigNumberish[] = node.capacity.map(BigInt);
-      const assetsBigInt: BigNumberish[] = supportedAssets.map(BigInt);
 
-      // Call the contract function (matches controller logic, uses fetched capacities)
-      const tx = await contract.updateSupportedAssets(
-        nodeAddress,
-        currentCapacities,
-        assetsBigInt,
-        updatedPrices,
-      );
-      await tx.wait();
+      // Find and update the specific asset
+      const updatedAssets = node.assets.map(asset => {
+        if (asset.token === assetToken && asset.tokenId === assetTokenId) {
+          return { ...asset, price: newPrice };
+        }
+        return asset;
+      });
+
+      // Update all assets using the new signature
+      await this.updateSupportedAssets(nodeAddress, updatedAssets);
+
       console.log(
-        `[NodeAssetService] Price updated successfully for asset ${assetId} on node ${nodeAddress}`,
+        `[NodeAssetService] Price updated successfully for asset ${assetTokenId} on node ${nodeAddress}`,
       );
     } catch (error) {
       handleContractError(
         error,
-        `update asset price for ${nodeAddress}, asset ${assetId}`,
+        `update asset price for ${nodeAddress}, asset ${assetTokenId}`,
       );
       throw error;
     }
   }
 
+  /**
+   * REFACTORED: Uses correct updateSupportedAssets signature with Asset[] array
+   */
   async updateSupportedAssets(
     nodeAddress: string,
-    quantities: number[], // Assuming domain uses number[]
-    assets: number[], // Assuming domain uses number[]
-    prices: number[], // Assuming domain uses number[]
+    assets: NodeAsset[],
   ): Promise<void> {
     console.log(
       `[NodeAssetService] Updating all supported assets for node ${nodeAddress}`,
     );
-    const contract = this.getAurumContractOrThrow();
-    try {
-      // Convert all arrays to BigInt for contract
-      const quantitiesBigInt: BigNumberish[] = quantities.map(BigInt);
-      const assetsBigInt: BigNumberish[] = assets.map(BigInt);
-      const pricesBigInt: BigNumberish[] = prices.map(BigInt);
 
-      // Directly call the contract function (matches controller logic)
-      const tx = await contract.updateSupportedAssets(
-        nodeAddress,
-        quantitiesBigInt,
-        assetsBigInt,
-        pricesBigInt,
-      );
+    const contract = this.getAurumContractOrThrow();
+    
+    try {
+      // Convert NodeAsset[] to contract Asset[] struct format
+      const contractAssets = assets.map(asset => NodeAssetConverters.toContractStruct(asset));
+
+      // FIXED: Call with correct signature: updateSupportedAssets(node, Asset[] memory)
+      const tx = await contract.updateSupportedAssets(nodeAddress, contractAssets);
       await tx.wait();
+
       console.log(
         `[NodeAssetService] Supported assets updated successfully for node ${nodeAddress}`,
       );
@@ -333,15 +279,83 @@ export class NodeAssetService implements INodeAssetService {
     }
   }
 
-  // Add helper function copied from BlockchainNodeRepository
-  private getAssetName(id: number): string {
-    const assetNames: { [key: number]: string } = {
-      1: 'GOAT',
-      2: 'SHEEP',
-      3: 'COW',
-      4: 'CHICKEN',
-      5: 'DUCK',
+  /**
+   * Helper method to update existing asset when addSupportedAsset fails
+   */
+  private async updateExistingAsset(
+    nodeAddress: string,
+    newAssetStruct: any,
+    additionalCapacity: bigint
+  ): Promise<void> {
+    const node = await this.getNodeRepositoryOrThrow().getNode(nodeAddress);
+    if (!node) {
+      throw new Error(`Node ${nodeAddress} not found for asset update fallback`);
+    }
+
+    // Find existing asset and update capacity
+    const updatedAssets = node.assets.map(asset => {
+      if (asset.token === newAssetStruct.token && asset.tokenId === newAssetStruct.tokenId.toString()) {
+        return {
+          ...asset,
+          capacity: asset.capacity + Number(additionalCapacity),
+          price: newAssetStruct.price
+        };
+      }
+      return asset;
+    });
+
+    // If asset not found, add it
+    if (!updatedAssets.some(asset => 
+      asset.token === newAssetStruct.token && asset.tokenId === newAssetStruct.tokenId.toString()
+    )) {
+      updatedAssets.push({
+        token: newAssetStruct.token,
+        tokenId: newAssetStruct.tokenId.toString(),
+        price: newAssetStruct.price,
+        capacity: Number(newAssetStruct.capacity)
+      });
+    }
+
+    await this.updateSupportedAssets(nodeAddress, updatedAssets);
+  }
+
+  /**
+   * Helper method to upload metadata to IPFS
+   */
+  private async uploadMetadataToIPFS(
+    tokenId: bigint,
+    hash: string,
+    contractAsset: any,
+    className: string
+  ): Promise<void> {
+    const pinata = new PinataSDK({
+      pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
+      pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
+    });
+
+    const metadataJson = {
+      tokenId: tokenId.toString(),
+      hash: hash,
+      asset: contractAsset,
+      className: className,
     };
-    return assetNames[id] || 'UNKNOWN';
+
+    const encoder = new TextEncoder();
+    const jsonBytes = encoder.encode(JSON.stringify(metadataJson));
+    // Browser-safe base64 (no Node Buffer)
+    const metadataBase64 = btoa(String.fromCharCode(...jsonBytes));
+    
+    const upload = await pinata.upload.public
+      .base64(metadataBase64)
+      .name(`${tokenId}.json`)
+      .keyvalues({
+        tokenId: tokenId.toString(),
+        className: className,
+        hash: hash,
+      });
+
+    console.log('Metadata uploaded to IPFS:', upload);
   }
 }
+
+

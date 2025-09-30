@@ -1,26 +1,69 @@
-type AdminStatusChanged @entity(immutable: true) {
-  id: Bytes!
-  admin: Bytes! # address
-  status: Boolean! # bool
+type Operation @entity(immutable: false) {
+  id: Bytes! # operationId
+  name: String!
+  description: String!
+  token: Bytes! # address
+  provider: Bytes! # address
+  deadline: BigInt! # uint256 (days)
+  startDate: BigInt! # uint256 (timestamp)
+  rwaName: String!
+  reward: BigInt! # uint256 (basis points)
+  tokenTvl: BigInt! # uint256 (wei)
+  operationStatus: String! # INACTIVE/ACTIVE/COMPLETE/PAID
+  fundingGoal: BigInt! # uint256 (wei)
+  assetPrice: BigInt! # uint256 (wei)
+  createdAt: BigInt!
+  updatedAt: BigInt!
   blockNumber: BigInt!
-  blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
 
+type Stake @entity(immutable: false) {
+  id: ID! # operationId-userAddress
+  operation: String! # operationId as string
+  user: Bytes! # address
+  token: Bytes! # address
+  amount: BigInt! # uint256 (wei)
+  timestamp: BigInt! # uint256 (timestamp)
+  isActive: Boolean!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Event entities
 type OperationCreated @entity(immutable: true) {
   id: Bytes!
   operationId: Bytes! # bytes32
-  name: String! # string
+  name: String!
   token: Bytes! # address
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
 
-type OwnershipTransferred @entity(immutable: true) {
+type Staked @entity(immutable: true) {
   id: Bytes!
-  previousOwner: Bytes! # address
-  newOwner: Bytes! # address
+  token: Bytes! # address
+  user: Bytes! # address
+  amount: BigInt! # uint256
+  operationId: Bytes! # bytes32
+  eType: String!
+  time: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Unstaked @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # address
+  user: Bytes! # address
+  amount: BigInt! # uint256
+  operationId: Bytes! # bytes32
+  eType: String!
+  time: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -36,28 +79,48 @@ type RewardPaid @entity(immutable: true) {
   transactionHash: Bytes!
 }
 
-type Staked @entity(immutable: true) {
+type AdminStatusChanged @entity(immutable: true) {
   id: Bytes!
-  token: Bytes! # address
-  user: Bytes! # address
-  amount: BigInt! # uint256
-  operationId: Bytes! # bytes32
-  eType: String! # string
-  time: BigInt! # uint256
+  admin: Bytes! # address
+  status: Boolean!
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
 
-type Unstaked @entity(immutable: true) {
-  id: Bytes!
-  token: Bytes! # address
+# Aggregated entities for efficient queries
+type UserStats @entity(immutable: false) {
+  id: Bytes! # user address
   user: Bytes! # address
-  amount: BigInt! # uint256
-  operationId: Bytes! # bytes32
-  eType: String! # string
-  time: BigInt! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+  totalStaked: BigInt!
+  totalRewarded: BigInt!
+  activeStakes: BigInt!
+  operationsCount: BigInt!
+  firstStakeAt: BigInt!
+  lastActiveAt: BigInt!
+  updatedAt: BigInt!
 }
+
+type TokenStats @entity(immutable: false) {
+  id: Bytes! # token address
+  token: Bytes! # address
+  totalTvl: BigInt!
+  totalStakers: BigInt!
+  totalOperations: BigInt!
+  averageReward: BigInt!
+  updatedAt: BigInt!
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

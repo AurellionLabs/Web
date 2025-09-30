@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
 import './Aura.sol';
 import './AuSys.sol';
-import './AuraGoat.sol';
+import './AuraAsset.sol';
 import '@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol';
-pragma solidity 0.8.28;
-
-//TODO: make an asset name to number finder on smart contract
-
-contract AurumNodeManager {
+import '@openzeppelin/contracts/access/Ownable.sol';
+error NotAValidOperator();
+error InvalidTokenAddress();
+error NotOwnerOrAdmin();
+error InvalidOwnerAddress();
+error NotAusysCaller();
+error NodeDoesNotExist();
+error InsufficientCapacity();
+error AssetNotSupported();
+error AssetNotFound();
+error InvalidNewOwner();
+contract AurumNodeManager is Ownable {
   struct Location {
     string lat;
     string lng;
@@ -15,10 +23,6 @@ contract AurumNodeManager {
   struct NodeLocationData {
     string addressName;
     Location location;
-
-    //add customer?
-    //add driver?
-    //add box
   }
   struct Node {
     NodeLocationData location;
@@ -26,354 +30,228 @@ contract AurumNodeManager {
     bytes1 validNode;
     //TODO: Make a setter for this
     address owner;
-    uint256[] supportedAssets;
+    Asset[] supportedAssets;
     bytes1 status;
-    uint256[] capacity;
-    uint256[] assetPrices;
     //capacity needs to be kept on an asset by asset basis
   }
   struct Asset {
-    address tokenAddr;
-    uint id;
-    // amount == to balance
-  }
-  struct Item {
-    string category;
-    string subCategory;
-    string Type;
+    address token;
+    uint tokenId;
+    uint price;
+    uint256 capacity;
   }
   uint256 public nodeIdCounter = 0;
+  mapping(address => bool) public isAdmin;
   mapping(address => address[]) public ownedNodes;
   mapping(address => Node) public AllNodes;
 
   address[] public nodeList;
-  locationContract ausys;
+  Ausys ausys;
   AuraAsset auraAsset;
-  address admin;
-  uint256[] public resourceList;
-  mapping(uint256 => uint256) public supplyPerResource;
 
-  constructor(locationContract _ausys, address _admin) {
+  constructor(Ausys _ausys) {
     ausys = _ausys;
-    // need to call add goat token for this to work
-    admin = _admin;
   }
 
-  modifier adminOnly() {
-    require(msg.sender == admin);
+  modifier onlyNodeOwner(address node) {
+    if (msg.sender != AllNodes[node].owner) revert NotAValidOperator();
     _;
   }
-  modifier isOwner(address node) {
-    address owner = AllNodes[node].owner;
-    require(msg.sender == owner, 'Not the owner');
+  modifier onlyNodeOperator(address node) {
+    if (msg.sender != AllNodes[node].owner) revert NotAValidOperator();
     _;
   }
 
-  //PLEASEESSEEEE CALLL MEEEEEEE
-  function addToken(AuraAsset _auraAsset) public {
-    require(address(_auraAsset) != address(0), 'Invalid token address');
+  function addToken(AuraAsset _auraAsset) public onlyOwner {
+    if (address(_auraAsset) == address(0)) revert InvalidTokenAddress();
     auraAsset = _auraAsset;
   }
 
-  function setAdmin(address _admin) public adminOnly {
-    admin = _admin;
+  event eventUpdateAdmin(address admin);
+  function setAdmin(address _admin) public onlyOwner {
+    isAdmin[_admin] = true;
     emit eventUpdateAdmin(_admin);
-  }
 
-  mapping(uint256 => bool) public resourceExists;
+  }
+  // operator management removed in this refactor (only owner acts as operator)
 
   function registerNode(Node memory node) public returns (address id) {
-    require(node.owner != address(0), 'Invalid owner address');
-    require(
-      node.supportedAssets.length == node.capacity.length &&
-        node.supportedAssets.length == node.assetPrices.length,
-      'Arrays length mismatch'
-    );
+    if (!(msg.sender == node.owner || isAdmin[msg.sender])) revert NotOwnerOrAdmin();
+    if (node.owner == address(0)) revert InvalidOwnerAddress();
     aurumNode NodeContract = new aurumNode(node.owner, ausys, auraAsset, this);
     id = address(NodeContract);
-    AllNodes[id] = node;
+    AllNodes[id].location = node.location;
     AllNodes[id].validNode = bytes1(uint8(1));
-    updateOwner(node.owner, id);
+    AllNodes[id].owner = node.owner;
+    AllNodes[id].status = node.status;
+    for (uint256 i = 0; i < node.supportedAssets.length; i++) {
+      AllNodes[id].supportedAssets.push(node.supportedAssets[i]);
+    }
+    ownedNodes[node.owner].push(id);
+    emit eventUpdateOwner(node.owner, id);
     nodeList.push(id);
     nodeIdCounter += 1;
-    updateSupportedAssets(
-      address(NodeContract),
-      node.capacity,
-      node.supportedAssets,
-      node.assetPrices
-    );
-    for (uint i = 0; i < node.supportedAssets.length; i++) {
-      resourceList.push(node.supportedAssets[i]);
-    }
     emit NodeRegistered(id, node.owner);
+    // Emit initial location so subgraph can seed NodeLocation
+    emit eventUpdateLocation(
+      node.location.addressName,
+      node.location.location.lat,
+      node.location.location.lng,
+      id
+    );
   }
 
   function getNode(address nodeAddress) public view returns (Node memory node) {
     node = AllNodes[nodeAddress];
   }
 
-  //require both parties to sign on item addition
-  //create a node package sign function that mints to the node from aura when
-  // thhe node succesfully calls hand off
-  event eventUpdateOwner(address owner, address node);
-  event eventUpdateAdmin(address admin);
-
-  function updateOwner(address owner, address node) public {
-    AllNodes[node].owner = owner;
-    ownedNodes[owner].push(node);
-    emit eventUpdateOwner(owner, node);
+  function getNodeStatus(address node) external view returns (bytes1) {
+    return AllNodes[node].status;
   }
 
-  event eventUpdateLocation(string location, address node);
+  event eventUpdateOwner(address owner, address node);
+
+  function updateOwner(address newOwner, address node) public onlyNodeOwner(node) {
+    if (newOwner == address(0)) revert InvalidNewOwner();
+    address oldOwner = AllNodes[node].owner;
+    if (oldOwner == newOwner) return;
+
+    // remove node from old owner's list (swap-pop)
+    address[] storage list = ownedNodes[oldOwner];
+    for (uint256 i = 0; i < list.length; i++) {
+      if (list[i] == node) {
+        list[i] = list[list.length - 1];
+        list.pop();
+        break;
+      }
+    }
+
+    AllNodes[node].owner = newOwner;
+    ownedNodes[newOwner].push(node);
+    emit eventUpdateOwner(newOwner, node);
+  }
+
+  event eventUpdateLocation(string addressName, string lat, string lng, address node);
 
   function updateLocation(
     NodeLocationData memory newLocation,
     address node
-  ) public isOwner(node) {
+  ) public onlyNodeOperator(node) {
     AllNodes[node].location = newLocation;
-    emit eventUpdateLocation(newLocation.addressName, node);
+    emit eventUpdateLocation(
+      newLocation.addressName,
+      newLocation.location.lat,
+      newLocation.location.lng,
+      node
+    );
   }
 
   event eventUpdateStatus(bytes1 status, address node);
 
-  //TODO: secure dis
+  event SupportedAssetsUpdated(address indexed node, Asset[] supportedAssets);
+  event SupportedAssetAdded(address indexed node, Asset asset);
   function updateSupportedAssets(
     address node,
-    uint256[] memory quantities,
-    uint256[] memory assets,
-    uint256[] memory prices
-  ) public {
-    require(
-      quantities.length == assets.length && quantities.length == prices.length,
-      'Array lengths must match'
-    );
-    Node storage targetNode = AllNodes[node];
-    require(
-      assets.length == targetNode.supportedAssets.length,
-      'Invalid assets length'
-    );
-
-    for (uint256 i = 0; i < targetNode.supportedAssets.length; i++) {
-      if (targetNode.supportedAssets[i] == assets[i]) {
-        targetNode.capacity[i] = quantities[i];
-        targetNode.assetPrices[i] = prices[i];
-        if (targetNode.capacity[i] > quantities[i]) {
-          supplyPerResource[assets[i]] = targetNode.capacity[i] - quantities[i];
-        } else {
-          supplyPerResource[assets[i]] = targetNode.capacity[i] + quantities[i];
-        }
-      }
+    Asset[] memory supportedAssets
+  ) public onlyNodeOperator(node) {
+    Node storage n = AllNodes[node];
+    delete n.supportedAssets;
+    for (uint256 i = 0; i < supportedAssets.length; i++) {
+      n.supportedAssets.push(supportedAssets[i]);
     }
-    for (uint256 i = 0; i < targetNode.supportedAssets.length; i++) {
-      uint256 currentAsset = targetNode.supportedAssets[i];
-      if (!resourceExists[currentAsset]) {
-        resourceList.push(currentAsset);
-        resourceExists[currentAsset] = true;
-      }
-    }
-    emit NodeCapacityUpdated(node, quantities);
+    emit SupportedAssetsUpdated(node, supportedAssets);
   }
-
-  event SupportedAssetAdded(
-    address indexed node,
-    uint256 assetId,
-    uint256 capacity,
-    uint256 price
-  );
 
   function addSupportedAsset(
     address node,
-    uint256 assetId,
-    uint256 capacity,
-    uint256 price
-  ) public isOwner(node) {
+    Asset memory supportedAsset
+  ) public onlyNodeOperator(node) {
     Node storage n = AllNodes[node];
-
-    // Ensure not already supported
-    for (uint i = 0; i < n.supportedAssets.length; i++) {
-      require(n.supportedAssets[i] != assetId, 'Asset already supported');
-    }
-
-    n.supportedAssets.push(assetId);
-    n.capacity.push(capacity);
-    n.assetPrices.push(price);
-
-    // Track resources as before
-    resourceList.push(assetId);
-
-    emit SupportedAssetAdded(node, assetId, capacity, price);
+    n.supportedAssets.push(supportedAsset);
+    emit SupportedAssetAdded(node, supportedAsset);
   }
 
-  // New function to handle capacity reduction specifically for orders
   function reduceCapacityForOrder(
     address node,
-    uint256 assetId,
+    Asset memory supportedAsset,
     uint256 quantityToReduce
   ) public {
-    // Add require sender is locationContract? Or leave public for now?
-    Node storage targetNode = AllNodes[node];
-    // Ensure node is valid?
-    require(targetNode.owner != address(0), 'Node does not exist');
+    if (msg.sender != address(ausys)) revert NotAusysCaller();
+    Node storage n = AllNodes[node];
+    if (n.owner == address(0)) revert NodeDoesNotExist();
 
     bool found = false;
-    for (uint256 i = 0; i < targetNode.supportedAssets.length; i++) {
-      if (targetNode.supportedAssets[i] == assetId) {
-        require(
-          targetNode.capacity[i] >= quantityToReduce,
-          'Insufficient capacity'
-        );
-        targetNode.capacity[i] -= quantityToReduce;
+    for (uint256 i = 0; i < n.supportedAssets.length; i++) {
+      if (
+        n.supportedAssets[i].token == supportedAsset.token &&
+        n.supportedAssets[i].tokenId == supportedAsset.tokenId
+      ) {
+        if (n.supportedAssets[i].capacity < quantityToReduce) revert InsufficientCapacity();
+        n.supportedAssets[i].capacity -= quantityToReduce;
         // Optionally update supplyPerResource mapping if needed (logic from updateSupportedAssets)
         // supplyPerResource[assetId] = ??? // Need careful calculation based on old/new capacity
         found = true;
         break; // Assume asset ID is unique
       }
     }
-    require(found, 'Asset ID not supported by node');
-
-    // Emit an event similar to NodeCapacityUpdated but maybe more specific?
-    // For now, we can reuse it or skip emitting here
-    // emit NodeCapacityUpdated(node, targetNode.capacity); // Emitting the full array might be excessive
+    if (!found) revert AssetNotSupported();
+    emit SupportedAssetsUpdated(node, n.supportedAssets);
   }
 
-  function expensiveFuzzyUpdateCapacity(
-    address node,
-    uint256[] memory quantities,
-    uint256[] memory assets
-  ) public isOwner(node) {
-    Node storage targetNode = AllNodes[node];
-    require(assets.length == targetNode.supportedAssets.length);
-    for (uint256 k = 0; k < assets.length; k++)
-      for (uint256 i = 0; i < AllNodes[node].supportedAssets.length; i++) {
-        if (targetNode.supportedAssets[i] == assets[k]) {
-          targetNode.capacity[i] = quantities[i];
-          break;
-        }
-      }
-  }
-
-  function updateStatus(bytes1 status, address node) public isOwner(node) {
+  function updateStatus(bytes1 status, address node) public onlyOwner {
     AllNodes[node].status = status;
     emit eventUpdateStatus(status, node);
   }
 
-  event eventUpdateSupportedAssets(string[] supportedAssets, uint[] capacity);
-
-  function nodeHandoff(
-    address node,
-    address driver,
-    address reciever,
-    bytes32 id,
-    uint256[] memory tokenIds,
-    address token,
-    uint256[] memory quantities,
-    bytes memory data
-  ) public {
-    address sender = ausys.getjourney(id).sender;
-    if (
-      msg.sender == sender &&
-      AllNodes[node].validNode == bytes1(uint8(1)) &&
-      AllNodes[node].owner == msg.sender
-    )
-      ausys.nodeHandOff(
-        msg.sender,
-        driver,
-        reciever,
-        id,
-        tokenIds,
-        token,
-        quantities,
-        data
-      );
-    //implement node tax (so take a cut from the protocol fee and)
-    // job creator has to pay this (if job creator is a node he only has to pay the burnt part)
-  }
-
-  //WHENEVER A NODE TRIGGERS HAND OFF IT GETS PAID OUT (WHAT ABOUT LOOPS WHERE PEOPLE SEND THE SAME PKG BACK AND FORTH)
-  //capacity
-  //handshake
-  // add new item (tokenise)
-  //mint token with added item so onchain rep
-  // erc1155 with unique id for goat grae and multiple stuff in  ID
-  //delete item
 
   event NodeRegistered(address indexed nodeAddress, address indexed owner);
   event NodeCapacityUpdated(address indexed node, uint256[] quantities);
 
-  function getAssetPrice(
+  function getAsset(
     address node,
-    uint256 assetId
-  ) public view returns (uint256) {
-    Node storage targetNode = AllNodes[node];
-    for (uint256 i = 0; i < targetNode.supportedAssets.length; i++) {
-      if (targetNode.supportedAssets[i] == assetId) {
-        return targetNode.assetPrices[i];
+    address token,
+    uint256 tokenId
+  ) public view returns (Asset memory) {
+    Node storage n = AllNodes[node];
+    for (uint256 i = 0; i < n.supportedAssets.length; i++) {
+      if (
+        n.supportedAssets[i].token == token &&
+        n.supportedAssets[i].tokenId == tokenId
+      ) {
+        return n.supportedAssets[i];
       }
     }
-    revert('Asset not found');
+    revert AssetNotFound();
   }
 }
 
-contract aurumNode is ERC1155Holder {
-  address public owner;
-  locationContract ausys;
+contract aurumNode is ERC1155Holder, Ownable {
+  Ausys ausys;
   AuraAsset auraAsset;
   AurumNodeManager manager;
 
   constructor(
     address _owner,
-    locationContract _ausys,
+    Ausys _ausys,
     AuraAsset _auraAsset,
     AurumNodeManager _manager
   ) {
-    owner = _owner;
+    _transferOwnership(_owner);
     ausys = _ausys;
     auraAsset = _auraAsset;
     manager = _manager;
   }
 
-  modifier isOwner(address user) {
-    require(user == owner);
-    _;
+  function nodeHandoff(bytes32 id) public onlyOwner {
+    ausys.handOff(id);
   }
 
-  function nodeHandoff(
-    address node,
-    address driver,
-    address reciever,
-    bytes32 id,
-    uint256[] memory tokenIds,
-    address token,
-    uint256[] memory quantities,
-    bytes memory data
-  ) public {
-    address sender = ausys.getjourney(id).sender;
-    if (
-      msg.sender == sender &&
-      manager.getNode(node).validNode == bytes1(uint8(1)) &&
-      manager.getNode(node).owner == msg.sender
-    )
-      ausys.nodeHandOff(
-        msg.sender,
-        driver,
-        reciever,
-        id,
-        tokenIds,
-        token,
-        quantities,
-        data
-      );
-    //implement node tax (so take a cut from the protocol fee and)
-
-    // job creator has to pay this (if job creator is a node he only has to pay the burnt part)
+  function nodeHandOn(bytes32 id) public onlyOwner {
+    ausys.handOn(id);
   }
 
-  function nodeHandOn(address driver, address reciever, bytes32 id) public {
-    ausys.handOn(driver, reciever, id);
-  }
-
-  function nodeSign(address node, address driver, bytes32 jobid) public {
-    ausys.packageSign(driver, node, jobid);
+  function nodeSign(bytes32 id) public onlyOwner {
+    ausys.packageSign(id);
   }
 
   function addItem(
@@ -382,7 +260,7 @@ contract aurumNode is ERC1155Holder {
     AuraAsset.Asset memory asset,
     string memory className,
     bytes memory data
-  ) public isOwner(msg.sender) returns (uint256 tokenId) {
+  ) public onlyOwner returns (uint256 tokenId) {
     (, uint256 mintedTokenId) = auraAsset.nodeMint(
       itemOwner,
       asset,
@@ -391,17 +269,5 @@ contract aurumNode is ERC1155Holder {
       data
     );
     tokenId = mintedTokenId;
-    //TODO:
-    //add the item to the node
-    // data should be a abi.encode of the entire data struct of an asset
-    // data should be decoded in the mint function of the desired asset
-    //unpack data
-    // mint goat tokens to node and have them transferred wherver the package goes
-    //(bool success, bytes memory result) = item.call(
-    //    abi.encodeWithSignature("mint(adress,bytes)", itemOwner, data)
-    //);
-    //     AllNodes[id].capacity -= quantity;
-    //require(success);
-    //(bool success, bytes memory result) = addr.call(abi.encodeWithSignature("myFunction(uint,address)", 10, msg.sender));
   }
 }
