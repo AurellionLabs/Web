@@ -148,12 +148,11 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   const orderData: Order = {
                     id: orderId,
                     token: NEXT_PUBLIC_AURA_GOAT_ADDRESS, // TODO: Not sure why this is here
-                    tokenId: BigInt(asset.id),
-                    tokenQuantity: BigInt(data.quantity),
-                    requestedTokenQuantity: BigInt(data.quantity),
-                    price: BigInt(asset.pricePerUnit * data.quantity), // asset.pricePerUnit is already in wei, so no conversion needed
-                    txFee: BigInt(0),
-                    customer: '0x0000000000000000000000000000000000000000', // Will be set by the trade.provider
+                    tokenId: asset.id,
+                    tokenQuantity: String(data.quantity),
+                    requestedTokenQuantity: String(data.quantity),
+                    price: String(asset.pricePerUnit * data.quantity), // asset.pricePerUnit is already in wei, so no conversion needed
+                    txFee: String(0),
                     journeyIds: [],
                     nodes: [ethers.getAddress(asset.nodeId)],
                     locationData: {
@@ -168,8 +167,9 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                       startName: asset.nodeLocation.addressName,
                       endName: data.deliveryLocation,
                     },
-                    currentStatus: BigInt(0),
-                    contracatualAgreement: ethers.ZeroHash,
+                    currentStatus: String(0),
+                    buyer: '0x0000000000000000000000000000000000000000', // Will be set by the trade.provider
+                    seller: '0x0000000000000000000000000000000000000000', // Will be determined later
                   };
 
                   const success = await placeOrder(orderData);

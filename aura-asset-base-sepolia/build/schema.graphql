@@ -1,0 +1,103 @@
+type Asset @entity(immutable: false) {
+  id: ID! # hash as string
+  hash: Bytes! # bytes32
+  tokenId: BigInt! # uint256
+  name: String!
+  assetClass: String!
+  className: String! # from mint parameters
+  account: Bytes! # address - owner
+  amount: BigInt! # uint256 - minted amount
+  attributes: [AssetAttribute!]! @derivedFrom(field: "asset")
+  createdAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type AssetAttribute @entity(immutable: true) {
+  id: ID! # hash-attributeIndex
+  asset: Asset! # reference to Asset entity
+  name: String!
+  values: [String!]! # string array
+  description: String!
+}
+
+type SupportedAsset @entity(immutable: false) {
+  id: ID! # name
+  name: String!
+  index: BigInt! # uint256
+  asset: String! # reference to Asset by hash
+  isActive: Boolean!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type SupportedClass @entity(immutable: false) {
+  id: ID! # className
+  name: String!
+  index: BigInt! # uint256
+  isActive: Boolean!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# Event entities
+type MintedAsset @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  hash: Bytes! # bytes32
+  tokenId: BigInt! # uint256
+  assetName: String!
+  assetClass: String!
+  className: String!
+  amount: BigInt! # minted amount
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# Transfer events from ERC1155
+type Transfer @entity(immutable: true) {
+  id: Bytes!
+  operator: Bytes! # address
+  from: Bytes! # address
+  to: Bytes! # address
+  tokenId: BigInt! # uint256
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TransferBatch @entity(immutable: true) {
+  id: Bytes!
+  operator: Bytes! # address
+  from: Bytes! # address
+  to: Bytes! # address
+  tokenIds: [BigInt!]! # uint256[]
+  amounts: [BigInt!]! # uint256[]
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# Aggregated entities
+type TokenStats @entity(immutable: false) {
+  id: String! # tokenId as string
+  tokenId: BigInt! # uint256
+  totalSupply: BigInt! # uint256
+  holders: BigInt! # number of unique holders
+  transfers: BigInt! # number of transfers
+  asset: String! # reference to Asset by hash
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type UserBalance @entity(immutable: false) {
+  id: ID! # userAddress-tokenId
+  user: Bytes! # address
+  tokenId: BigInt! # uint256
+  balance: BigInt! # uint256
+  asset: String! # reference to Asset by hash
+  firstReceived: BigInt!
+  lastUpdated: BigInt!
+}

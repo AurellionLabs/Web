@@ -4,13 +4,15 @@ pragma solidity ^0.8.28;
 
 import './Aura.sol' as AuraContract;
 import './Aurum.sol';
-import './AuraGoat.sol';
+import './AuraAsset.sol';
 import '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
+import '@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/access/AccessControl.sol';
 
 using SafeERC20 for IERC20;
 
@@ -32,9 +34,9 @@ error QuantityExceedsRequested();
 error InvalidNode();
 error RewardAlreadyPaid();
 error DriverMaxAssignment();
-error InvalidParam();
+error InvalidCaller();
 
-contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
+contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
   enum Status {
     Pending,
     InProgress,
@@ -86,36 +88,86 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
     uint ETA;
   }
 
-  // Map a journey to multiple sub journeys
-
-  // Keep count of which sub journey of a journey the parcel is on
-  bytes32[] public orderIds;
-  mapping(address => bytes32[]) public customerToOrderIds;
-  mapping(address => bytes32[]) public nodeToOrderIds;
-  mapping(bytes32 => Order) public idToOrder;
-  mapping(bytes32 => bytes32) public journeyToOrderId;
-  // Map the drivers address to a Journey/SubJourney, need to add address => uint => bytes32
-  // need to map this to a list of bytes
-  mapping(address => bytes32[]) public driverToJourneyId;
-  // maps a sender to a journey
-  mapping(address => bytes32[]) public customerToJourneyId;
-  // driver related mappings
-  mapping(address => uint256) public numberOfJourneysAssigned;
-  // maps a receiver to a journey
-  // Map Journey ID to Journey
-  mapping(bytes32 => Journey) public journeyIdToJourney;
-
-  // maps number to JOB id for the purpose of iterating through journeys
-  // a bool that checks if the sender has handed off the package (need to change this to address => journey or journey id => bool
-  mapping(address => mapping(bytes32 => bool)) public customerHandOff;
-  mapping(address => mapping(bytes32 => bool)) public driverHandOn;
-  // maps a sender address to running balance of their token amount
-  mapping(address => uint) customerToTokenAmount;
-  mapping(bytes32 => bool) rewardPaid;
-  uint public journeyIdCounter = 0;
-  uint public orderIdCounter = 0;
   IERC20 payToken;
   AurumNodeManager nodeManager;
+  bytes32[] public orderIds;
+  mapping(bytes32 => Order) public idToOrder;
+  mapping(bytes32 => bytes32) public journeyToOrderId;
+  mapping(address => bytes32[]) public driverToJourneyId;
+  mapping(bytes32 => Journey) public idToJourney;
+  mapping(address => mapping(bytes32 => bool)) public customerHandOff;
+  mapping(address => mapping(bytes32 => bool)) public driverHandOn;
+  mapping(bytes32 => bool) rewardPaid;
+  // RBAC roles
+  bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
+  bytes32 public constant DRIVER_ROLE = keccak256('DRIVER_ROLE');
+  bytes32 public constant DISPATCHER_ROLE = keccak256('DISPATCHER_ROLE');
+  uint public journeyIdCounter = 0;
+  uint public orderIdCounter = 0;
+
+  constructor(IERC20 token) {
+    payToken = token;
+    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    _grantRole(ADMIN_ROLE, msg.sender);
+  }
+
+  // vulnerability somebody
+  modifier customerDriverCheck(bytes32 id) {
+    Journey storage J = idToJourney[id];
+    if (
+      !(msg.sender == J.sender ||
+        msg.sender == J.driver ||
+        msg.sender == J.receiver)
+    ) revert NotJourneyParticipant();
+    _;
+  }
+  modifier isInProgress(bytes32 id) {
+    if (idToJourney[id].currentStatus != Status.InProgress)
+      revert JourneyNotInProgress();
+    _;
+  }
+  modifier isPending(bytes32 id) {
+    if (idToJourney[id].currentStatus != Status.Pending)
+      revert JourneyNotPending();
+    _;
+  }
+  modifier isCompleted(bytes32 id) {
+    if (idToJourney[id].currentStatus != Status.Completed)
+      revert JourneyIncomplete();
+    _;
+  }
+
+  function setNodeManager(AurumNodeManager _nodeManager) public onlyOwner {
+    nodeManager = _nodeManager;
+  }
+
+  function setAdmin(address admin) public onlyOwner {
+    _grantRole(ADMIN_ROLE, admin);
+    emit AdminSet(admin);
+  }
+
+  function revokeAdmin(address admin) public onlyOwner {
+    _revokeRole(ADMIN_ROLE, admin);
+  }
+
+  function setDriver(address driver, bool enable) public onlyRole(ADMIN_ROLE) {
+    if (enable) _grantRole(DRIVER_ROLE, driver);
+    else _revokeRole(DRIVER_ROLE, driver);
+  }
+
+  function setDispatcher(address dispatcher, bool enable) public onlyRole(ADMIN_ROLE) {
+    if (enable) _grantRole(DISPATCHER_ROLE, dispatcher);
+    else _revokeRole(DISPATCHER_ROLE, dispatcher);
+  }
+
+  function getHashedJourneyId() private returns (bytes32) {
+    return keccak256(abi.encode(journeyIdCounter += 1));
+  }
+
+  function getHashedOrderId() private returns (bytes32) {
+    return keccak256(abi.encode(orderIdCounter += 1));
+  }
+  event AdminSet(address indexed admin);
   event emitSig(address indexed user, bytes32 indexed id);
   event OrderSettled(bytes32 indexed orderId);
   event JourneyCanceled(
@@ -129,65 +181,31 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
   event SellerPaid(address indexed seller, uint amount);
   event NodeFeeDistributed(address indexed node, uint amount);
 
-  constructor(IERC20 token) {
-    payToken = token;
-  }
-
-  // vulnerability somebody
-  modifier customerDriverCheck(bytes32 id) {
-    Journey storage J = journeyIdToJourney[id];
-    if (
-      !(msg.sender == J.sender ||
-        msg.sender == J.driver ||
-        msg.sender == J.receiver)
-    ) revert NotJourneyParticipant();
-    _;
-  }
-  modifier isInProgress(bytes32 id) {
-    if (journeyIdToJourney[id].currentStatus != Status.InProgress)
-      revert JourneyNotInProgress();
-    _;
-  }
-  modifier isPending(bytes32 id) {
-    if (journeyIdToJourney[id].currentStatus != Status.Pending)
-      revert JourneyNotPending();
-    _;
-  }
-  modifier isCompleted(bytes32 id) {
-    if (journeyIdToJourney[id].currentStatus != Status.Completed)
-      revert JourneyIncomplete();
-    _;
-  }
-
-  function setNodeManager(AurumNodeManager _nodeManager) public onlyOwner {
-    nodeManager = _nodeManager;
-  }
-
-  function getHashedJourneyId() private returns (bytes32) {
-    return keccak256(abi.encode(journeyIdCounter += 1));
-  }
-
-  function getHashedOrderId() private returns (bytes32) {
-    return keccak256(abi.encode(orderIdCounter += 1));
-  }
-
   function getjourney(bytes32 id) public view returns (Journey memory) {
-    return journeyIdToJourney[id];
+    return idToJourney[id];
   }
 
   // this could be exploited by an agent calling from a non aurellion source  assign themseleves to all journeys then not showing up
   // this will be mitigated by KYC in the future so leaving open for now
   function assignDriverToJourneyId(address driver, bytes32 journeyID) public {
+    // Require the target driver to be registered/approved
+    if (!hasRole(DRIVER_ROLE, driver)) revert InvalidCaller();
+    // Only the driver themselves, a dispatcher, or the journey sender can assign
+    bool callerAuthorized = (
+      msg.sender == driver ||
+      hasRole(DISPATCHER_ROLE, msg.sender) ||
+      msg.sender == idToJourney[journeyID].sender
+    );
+    if (!callerAuthorized) revert InvalidCaller();
     if (driverToJourneyId[driver].length >= 10) revert DriverMaxAssignment();
     driverToJourneyId[driver].push(journeyID);
-    journeyIdToJourney[journeyID].driver = driver;
-    numberOfJourneysAssigned[driver] += 1;
+    idToJourney[journeyID].driver = driver;
     emit DriverAssigned(driver, journeyID);
   }
 
   //sender can be both receiver and sender
   function packageSign(bytes32 id) public customerDriverCheck(id) {
-    Journey storage J = journeyIdToJourney[id];
+    Journey storage J = idToJourney[id];
     if (msg.sender == J.sender) {
       customerHandOff[J.sender][id] = true;
       emit emitSig(J.sender, id);
@@ -202,19 +220,15 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
 
   function generateReward(bytes32 id) internal isCompleted(id) {
     if (rewardPaid[id]) revert RewardAlreadyPaid();
-    if (journeyToOrderId[id]) revert InvalidParam();
     rewardPaid[id] = true;
-    Journey storage J = journeyIdToJourney[id];
-    uint completeJourney = J.journeyEnd - J.journeyStart;
+    Journey storage J = idToJourney[id];
     payToken.safeTransfer(J.driver, J.bounty);
-    address payer = idToOrder[journeyToOrderId[id]].buyer;
-    customerToTokenAmount[payer] -= J.bounty;
   }
 
   function handOn(
     bytes32 id
   ) public customerDriverCheck(id) isPending(id) nonReentrant returns (bool) {
-    Journey storage J = journeyIdToJourney[id];
+    Journey storage J = idToJourney[id];
     if (!driverHandOn[J.driver][id]) revert DriverNotSigned();
     if (!customerHandOff[J.sender][id]) revert SenderNotSigned();
     J.journeyStart = block.timestamp;
@@ -232,7 +246,13 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
         O.tokenQuantity,
         '0x'
       );
-      nodeManager.reduceCapacityForOrder(O.seller, O.tokenId, O.tokenQuantity);
+      AurumNodeManager.Asset memory a = AurumNodeManager.Asset({
+        token: O.token,
+        tokenId: O.tokenId,
+        price: 0,
+        capacity: 0
+      });
+      nodeManager.reduceCapacityForOrder(O.seller, a, O.tokenQuantity);
     }
     emit JourneyStatusUpdated(id, J.currentStatus);
     return true;
@@ -247,7 +267,7 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
     nonReentrant
     returns (bool)
   {
-    Journey storage J = journeyIdToJourney[id];
+    Journey storage J = idToJourney[id];
     Order storage O = idToOrder[journeyToOrderId[id]];
     if (O.currentStatus == Status.Settled) revert AlreadySettled();
     if (!driverHandOn[J.driver][id]) revert DriverNotSigned();
@@ -284,7 +304,6 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
     return true;
   }
 
-  //can be called by a buyer and a node
 
   function journeyCreation(
     address sender,
@@ -293,14 +312,13 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
     uint bounty,
     uint ETA
   ) public nonReentrant {
+    if (msg.sender != receiver && !hasRole(ADMIN_ROLE, msg.sender))
+      revert InvalidCaller();
     if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
     if (bounty == 0) revert InvalidAmount();
     if (ETA <= block.timestamp) revert InvalidETA();
 
     // TO DO safeTransfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
-    payToken.safeTransferFrom(sender, address(this), bounty);
-    customerToTokenAmount[sender] += bounty;
-    emit FundsEscrowed(sender, bounty);
     Journey memory journey = Journey({
       parcelData: _data,
       journeyId: getHashedJourneyId(),
@@ -313,12 +331,9 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
       bounty: bounty,
       ETA: ETA
     });
-    journeyIdToJourney[journey.journeyId] = journey;
-
-    customerToJourneyId[sender].push(journey.journeyId);
-
-    // add journeyId to global mapping of journeys
-
+    idToJourney[journey.journeyId] = journey;
+    payToken.safeTransferFrom(receiver, address(this), bounty);
+    emit FundsEscrowed(receiver, bounty);
     emit JourneyCreated(journey.journeyId, sender, receiver);
   }
 
@@ -330,27 +345,10 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
   event JourneyStatusUpdated(bytes32 indexed journeyId, Status newStatus);
   event OrderCreated(bytes32 indexed orderId, address indexed buyer);
 
-  function addReceiver(
-    bytes32 orderId,
-    address receiver,
-    address sender
-  ) public onlyOwner {
-    bytes32[] memory _journeyIds = idToOrder[orderId].journeyIds;
-    for (uint i; i < _journeyIds.length; i++) {
-      if (journeyIdToJourney[_journeyIds[i]].sender == sender) {
-        journeyIdToJourney[idToOrder[orderId].journeyIds[i]]
-          .receiver = receiver;
-      }
-    }
-  }
-
-  //only called with a node as the sender
-  //TODO: restrict so only node can call
   function orderJourneyCreation(
     bytes32 orderId,
     address sender,
     address receiver,
-    // not neccessarily a receiver
     ParcelData memory _data,
     uint bounty,
     uint ETA,
@@ -359,14 +357,16 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
   ) public {
     // TODO: safeTransfer bounty  from sender to contract make mapping of sender => tokens and make a withdraw function later
     //    payToken.safeTransferFrom(sender, address(this), bounty * 10 ** 18);
-    customerToTokenAmount[idToOrder[orderId].buyer] += bounty;
     // this is to add to an aggregate tx fee from all the journeys being created
+    Order storage O = idToOrder[orderId];
 
     if (bytes1(nodeManager.getNode(receiver).validNode) != bytes1(uint8(1)))
       revert InvalidNode();
+
+    if (msg.sender != O.buyer && !hasRole(ADMIN_ROLE, msg.sender))
+      revert InvalidCaller();
     if (ETA <= block.timestamp) revert InvalidETA();
     if (tokenQuantity == 0) revert InvalidAmount();
-    Order storage O1 = idToOrder[orderId];
     Journey memory journey = Journey({
       parcelData: _data,
       journeyId: getHashedJourneyId(),
@@ -379,20 +379,22 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
       bounty: bounty,
       ETA: ETA
     });
-    journeyIdToJourney[journey.journeyId] = journey;
-    customerToJourneyId[sender].push(journey.journeyId);
+    payToken.safeTransferFrom(O.buyer, address(this), bounty);
+    emit FundsEscrowed(O.buyer, bounty);
+    idToJourney[journey.journeyId] = journey;
+
     // add journeyId to global mapping of journeys
     idToOrder[orderId].journeyIds.push(journey.journeyId);
     idToOrder[orderId].currentStatus = Status.Pending;
     journeyToOrderId[journey.journeyId] = orderId;
-    nodeToOrderIds[sender].push(orderId);
 
     // +++ Call the new function on nodeManager +++
-    nodeManager.reduceCapacityForOrder(
-      sender, // The node address
-      assetId, // +++ New way: Using the passed simple assetId +++
-      tokenQuantity // The quantity requested for this journey leg
-    );
+    AurumNodeManager.Asset memory a = AurumNodeManager.Asset({
+      token: idToOrder[orderId].token,
+      tokenId: assetId,
+      price: 0,
+      capacity: 0
+    });
     // Also update the order's tracked token quantity
     // This assumes the reduceCapacityForOrder call above did not revert
     idToOrder[orderId].tokenQuantity += tokenQuantity;
@@ -410,13 +412,12 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
     ) revert InvalidAddress();
     if (order.price == 0) revert InvalidAmount();
     if (order.buyer == order.seller) revert InvalidAddress();
-    if (order.tokenQuantity != 0) revert InvalidAmount();
+    if (order.tokenQuantity == 0) revert InvalidAmount();
     bytes32 id = getHashedOrderId();
     idToOrder[id] = order;
     idToOrder[id].currentStatus = Status.Pending;
     idToOrder[id].id = id;
     idToOrder[id].txFee = (order.price * 2) / 100;
-    customerToOrderIds[order.buyer].push(id);
     orderIds.push(id);
     payToken.safeTransferFrom(
       order.buyer,
@@ -432,21 +433,19 @@ contract locationContract is ReentrancyGuard, ERC1155Holder, Ownable {
     return idToOrder[id];
   }
 
+  function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    override(AccessControl, ERC1155Receiver)
+    returns (bool)
+  {
+    return super.supportsInterface(interfaceId);
+  }
+
   /**
-   * @notice Explicit getter function for nodeToOrderIds mapping.
    * @dev Bypasses the implicit public getter which might have issues.
    * @param nodeAddress The address of the node.
    * @param index The index in the node's order ID array.
    * @return The order ID (bytes32) at the specified index, or ZeroHash if out of bounds.
    */
-  function getNodeOrderIdByIndex(
-    address nodeAddress,
-    uint index
-  ) public view returns (bytes32) {
-    // Check bounds to prevent revert on out-of-bounds access
-    if (index >= nodeToOrderIds[nodeAddress].length) {
-      return bytes32(0); // Return ZeroHash if index is out of bounds
-    }
-    return nodeToOrderIds[nodeAddress][index];
-  }
 }

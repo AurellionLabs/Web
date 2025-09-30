@@ -54,10 +54,9 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const repositoryContext = RepositoryContext.getInstance();
-  const serviceContext = ServiceContext.getInstance();
   const nodeRepository = repositoryContext.getNodeRepository();
   const orderRepository = repositoryContext.getOrderRepository();
-  const orderService = serviceContext.getOrderService();
+  const orderService = ServiceContext.getInstance().getOrderService();
 
   const fetchAssets = useCallback(async () => {
     console.log('[TradeProvider] fetchAssets called');
@@ -129,7 +128,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const fetchedOrders = await orderRepository.getCustomerOrders(
+      const fetchedOrders = await orderRepository.getBuyerOrders(
         address as string,
       );
       console.log(`[TradeProvider] Fetched ${fetchedOrders.length} orders`);
@@ -164,8 +163,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
 
         console.log('[TradeProvider] Placing order:', orderWithCustomer);
 
-        // Create the order using the service
-        const actualOrderId = await orderService.createOrder(orderWithCustomer);
+        // Create the order using the centralized service
+        const actualOrderId = await orderService.createOrder(orderWithCustomer as any);
         console.log(`[TradeProvider] Order created with ID: ${actualOrderId}`);
 
         // Create the initial journey for the order
@@ -179,7 +178,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
             BigInt(0), // bounty
             BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)
             BigInt(orderWithCustomer.tokenQuantity),
-            orderWithCustomer.tokenId,
+            BigInt(orderWithCustomer.tokenId),
           );
           console.log('[TradeProvider] Initial journey created for order');
         }

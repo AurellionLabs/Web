@@ -8,11 +8,9 @@ import {
   NEXT_PUBLIC_AUSYS_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
-import {
-  AurumNodeManager__factory,
-  LocationContract__factory,
-  AuraAsset__factory,
-} from '@/typechain-types';
+import { AurumNodeManager__factory } from '@/typechain-types/factories/contracts/Aurum.sol/AurumNodeManager__factory';
+import { AuraAsset__factory } from '@/typechain-types/factories/contracts/AuraAsset.sol/AuraAsset__factory';
+import { Ausys__factory } from '@/typechain-types/factories/contracts/AuSys.sol/Ausys__factory';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';
@@ -87,7 +85,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         signer,
       );
 
-      const ausysContract = LocationContract__factory.connect(
+      const ausysContract = Ausys__factory.connect(
         NEXT_PUBLIC_AUSYS_ADDRESS,
         signer,
       );
@@ -111,8 +109,8 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       );
       console.log('[RepositoryProvider] RepositoryContext initialized.');
 
-      const serviceContext = ServiceContext.getInstance(repoContext);
-      serviceContext.initialize();
+      const serviceContext = ServiceContext.getInstance();
+      serviceContext.initialize(repoContext);
       console.log('[RepositoryProvider] ServiceContext initialized.');
       // TODO: Add a check to see if the user is connected to the correct chain
       setIsInitialized(true);

@@ -57,7 +57,7 @@ const AssetAttributeInput: React.FC<Props> = ({
                 value={currentValue?.toString() ?? ''}
                 onValueChange={(value) =>
                   onAttributeChange(
-                    asset.tokenID.toString(),
+                    String((asset as any)?.tokenId ?? (asset as any)?.tokenID ?? ''),
                     attribute.name,
                     value,
                   )
@@ -84,7 +84,7 @@ const AssetAttributeInput: React.FC<Props> = ({
                 }
                 onChange={(e) =>
                   onAttributeChange(
-                    asset.tokenID.toString(),
+                    String((asset as any)?.tokenId ?? (asset as any)?.tokenID ?? ''),
                     attribute.name,
                     e.target.value,
                   )

@@ -1,15 +1,16 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Delivery, DeliveryStatus } from '@/domain/driver/driver';
+import { Journey } from '@/domain/shared';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { calculateETA } from '../utils/maps';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
+
+type DriverDelivery = Journey & { deliveryETA: number };
 
 export interface DriverContextType {
-  availableDeliveries: Delivery[];
-  myDeliveries: Delivery[];
+  availableDeliveries: DriverDelivery[];
+  myDeliveries: DriverDelivery[];
   isLoading: boolean;
   error: string | null;
   refreshDeliveries: () => Promise<void>;
@@ -21,28 +22,32 @@ export interface DriverContextType {
 
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
 
-const calculateDeliveryETA = async (delivery: Delivery): Promise<Delivery> => {
+const calculateDeliveryETA = async (
+  delivery: Journey,
+): Promise<DriverDelivery> => {
   try {
     const deliveryETA = await calculateETA(
       delivery.parcelData.startLocation,
       delivery.parcelData.endLocation,
     );
-    return { ...delivery, deliveryETA };
+    return { ...(delivery as Journey), deliveryETA };
   } catch (error) {
-    return { ...delivery, deliveryETA: -1 };
+    return { ...(delivery as Journey), deliveryETA: -1 } as DriverDelivery;
   }
 };
 
 export function DriverProvider({ children }: { children: React.ReactNode }) {
-  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>(
+  const [availableDeliveries, setAvailableDeliveries] = useState<
+    DriverDelivery[]
+  >(
     [],
   );
-  const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
+  const [myDeliveries, setMyDeliveries] = useState<DriverDelivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { address: driverWalletAddress } = useWallet();
-  const repository = RepositoryContext.getInstance().getDriverRepository();
-  const service = ServiceContext.getInstance().getDriverService();
+  const repoContext = RepositoryContext.getInstance();
+  const repository = repoContext.getDriverRepository();
 
   const refreshDeliveries = async () => {
     console.log('[DriverProvider] Entering refreshDeliveries function...');
@@ -100,7 +105,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      await service.acceptDelivery(jobId);
+      const ausys = repoContext.getAusysContract();
+      // Assign driver to journey
+      await ausys.assignDriverToJourneyId(driverWalletAddress!, jobId as any);
       await refreshDeliveries();
     } catch (err) {
       setError(
@@ -122,7 +129,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      await service.confirmPickup(jobId);
+      const ausys = repoContext.getAusysContract();
+      await ausys.packageSign(jobId as any);
       await refreshDeliveries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to confirm pickup');
@@ -142,7 +150,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      await service.completeDelivery(jobId);
+      const ausys = repoContext.getAusysContract();
+      await ausys.handOff(jobId as any);
       await refreshDeliveries();
     } catch (err) {
       setError(
@@ -164,7 +173,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      await service.packageSign(jobId);
+      const ausys = repoContext.getAusysContract();
+      await ausys.packageSign(jobId as any);
       await refreshDeliveries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign package');

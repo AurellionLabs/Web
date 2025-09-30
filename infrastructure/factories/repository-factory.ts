@@ -10,14 +10,9 @@ import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
-import {
-  AuStake__factory,
-  LocationContract__factory,
-  AurumNodeManager__factory,
-  AurumNodeManager,
-  LocationContract,
-  AuraAsset__factory,
-} from '@/typechain-types';
+import { AuStake__factory, AurumNodeManager__factory, AurumNodeManager, AuraAsset__factory } from '@/typechain-types';
+import { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';
+import { LocationContract__factory } from '@/typechain-types/factories/contracts/AuSys.sol/LocationContract__factory';
 import { PlatformRepository } from '../repositories/platform-repository';
 import { PinataSDK } from 'pinata';
 
@@ -135,6 +130,7 @@ export class RepositoryFactory {
     signer: Signer,
     aurumManagerAddress: string = NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
     auraGoatAddress: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+    pinata: PinataSDK,
   ): Promise<BlockchainNodeRepository> {
     if (!this.isInitialized) {
       await this.initialize(userProvider, signer);
@@ -150,6 +146,7 @@ export class RepositoryFactory {
       userProvider as any,
       signer,
       auraGoatAddress,
+      pinata,
     );
   }
 
@@ -192,7 +189,7 @@ export class RepositoryFactory {
       this.createPoolRepository(userProvider, signer),
       this.createOrderRepository(userProvider, signer),
       this.createDriverRepository(userProvider, signer),
-      this.createNodeRepository(userProvider, signer),
+      this.createNodeRepository(userProvider, signer, NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS, NEXT_PUBLIC_AURA_GOAT_ADDRESS, pinata),
       this.createPlatformRepository(signer, pinata),
     ]);
 

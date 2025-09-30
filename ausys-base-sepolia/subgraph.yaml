@@ -1,0 +1,77 @@
+specVersion: 1.3.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Ausys
+    network: base-sepolia
+    source:
+      address: "0x3288c3F11ac0626a91d7d6A50a3393b5B3994e76" # Will be updated by deploy script
+      abi: Ausys
+      startBlock: 31667431 # Will be updated by deploy script
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Journey
+        - Order
+        - ParcelData
+        - PackageSignature
+        - DriverAssignment
+        - JourneyStatusUpdate
+        - OrderCreated
+        - JourneyCreated
+        - OrderSettled
+        - FundsEscrowed
+        - RewardPaid
+        - SellerPaid
+        - NodeFeeDistributed
+        - AdminSet
+        - DriverStats
+        - NodeStats
+      abis:
+        - name: Ausys
+          file: ./abis/Ausys.json
+      eventHandlers:
+        - event: JourneyCreated(indexed bytes32,indexed address,indexed address)
+          handler: handleJourneyCreated
+        - event: JourneyStatusUpdated(indexed bytes32,uint8)
+          handler: handleJourneyStatusUpdated
+        - event: OrderCreated(indexed bytes32,indexed address)
+          handler: handleOrderCreated
+        - event: OrderSettled(indexed bytes32)
+          handler: handleOrderSettled
+        - event: DriverAssigned(indexed address,indexed bytes32)
+          handler: handleDriverAssigned
+        - event: emitSig(indexed address,indexed bytes32)
+          handler: handlePackageSignature
+        - event: FundsEscrowed(indexed address,uint256)
+          handler: handleFundsEscrowed
+        - event: FundsRefunded(indexed address,uint256)
+          handler: handleFundsRefunded
+        - event: SellerPaid(indexed address,uint256)
+          handler: handleSellerPaid
+        - event: NodeFeeDistributed(indexed address,uint256)
+          handler: handleNodeFeeDistributed
+        - event: AdminSet(indexed address)
+          handler: handleAdminSet
+        - event: JourneyCanceled(indexed bytes32,indexed address,uint256)
+          handler: handleJourneyCanceled
+      file: ./src/ausys.ts
+
+
+
+
+
+
+
+
+
+
+
+
+
+

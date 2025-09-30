@@ -122,16 +122,14 @@ export default function NodeDashboardPage() {
     setCapacityError(null);
     setIsTokenizing(true);
     try {
-      const assetIdStr = values.assetId; // keep as string to avoid precision loss
+      const assetIdStr = values.assetId;
       const assetId = Number(assetIdStr);
       const quantity = Number(values.quantity);
 
       // --- Capacity Check (Optional) ---
-      const assetIndex = currentNodeData.supportedAssets.findIndex(
-        (id) => Number(id) === assetId,
-      );
-      if (assetIndex !== -1) {
-        const totalCapacity = Number(currentNodeData.capacity[assetIndex]);
+      const assetInfo = currentNodeData.assets?.find(a => Number(a.tokenId) === assetId);
+      if (assetInfo) {
+        const totalCapacity = Number(assetInfo.capacity);
         const currentTokenizedAsset = assets.find(
           (a) => Number(a.id) === assetId,
         );
@@ -154,20 +152,20 @@ export default function NodeDashboardPage() {
       console.log('Asset Attributes:', assetAttributes);
 
       const selectedValues = assetAttributes[assetIdStr] || {};
-      const normalizedAttributes = Object.entries(selectedValues).map(
-        ([attrName, attrValue]) => ({
-          name: attrName,
+      const normalizedAttributes = Object.entries(selectedValues)
+        .filter(([attrName, attrValue]) => attrName != null && attrValue != null)
+        .map(([attrName, attrValue]) => ({
+          name: String(attrName),
           values: [String(attrValue)],
           description: '',
-        }),
-      );
+        }));
       const assetPayload: PlatformAsset = {
         assetClass: form.getValues('assetClass'),
-        tokenID: BigInt(assetIdStr),
+        tokenId: assetIdStr,
         name: selectedAssetName || getAssetName(assetId),
         attributes: normalizedAttributes,
       };
-      const priceWei = Number(values.price || '0');
+      const priceWei = BigInt(values.price || '0');
       await mintAsset(selectedNode, assetPayload, quantity, priceWei);
 
       // Refresh assets immediately after minting
@@ -192,8 +190,9 @@ export default function NodeDashboardPage() {
     }
   };
 
-  // Computed values from currentNodeData with proper type handling
-  const supportedAssets = currentNodeData?.supportedAssets?.length || 0;
+  // Computed values
+  // Use loaded tokenized assets for the count rather than currentNodeData (Graph node doesn't embed assets)
+  const supportedAssets = assets.length;
   const tokenizedValue = assets
     .reduce(
       (total, asset) => total + Number(asset.price) * Number(asset.amount),
@@ -238,7 +237,7 @@ export default function NodeDashboardPage() {
       await Promise.all(
         assets.map(async (asset) => {
           try {
-            const attributes = await getAssetAttributes(asset.id);
+            const attributes = await getAssetAttributes(asset.fileHash || asset.id);
             attributesMap[asset.id] = attributes;
           } catch (error) {
             console.error(
@@ -378,11 +377,9 @@ export default function NodeDashboardPage() {
     try {
       await updateAssetCapacity(
         selectedNode,
-        assetId,
+        currentNodeData.owner,
+        String(assetId),
         parseInt(newValue),
-        Array.from(currentNodeData.supportedAssets).map((v) => Number(v)),
-        currentNodeData.capacity,
-        new Array(currentNodeData.capacity.length).fill(0),
       );
 
       await refreshNodes();
@@ -402,10 +399,9 @@ export default function NodeDashboardPage() {
     try {
       await updateAssetPrice(
         selectedNode,
-        assetId,
-        Number(newValue),
-        Array.from(currentNodeData.supportedAssets).map((v) => Number(v)),
-        new Array(currentNodeData.capacity.length).fill(0),
+        currentNodeData.owner,
+        String(assetId),
+        BigInt(newValue),
       );
 
       await refreshNodes();
@@ -434,15 +430,15 @@ export default function NodeDashboardPage() {
         </div>
         <div className="flex gap-2">
           {currentNodeData && (
-            <EditNodeModal
+              <EditNodeModal
               nodeAddress={selectedNode!}
-              nodeData={currentNodeData}
-              assetNames={Object.fromEntries(
-                Array.from(currentNodeData.supportedAssets || []).map((id) => [
-                  Number(id),
-                  getAssetName(Number(id)),
-                ]),
-              )}
+                nodeData={currentNodeData as any}
+                assetNames={Object.fromEntries(
+                  (currentNodeData.assets || []).map((a) => [
+                    Number(a.tokenId),
+                    getAssetName(Number(a.tokenId)),
+                  ]),
+                )}
               onNodeUpdated={refreshNodes}
             />
           )}
@@ -690,7 +686,7 @@ export default function NodeDashboardPage() {
               <thead>
                 <tr className="border-b">
                   <th className="h-12 px-4 text-left align-middle">Order ID</th>
-                  <th className="h-12 px-4 text-left align-middle">Customer</th>
+                  <th className="h-12 px-4 text-left align-middle">Buyer</th>
                   <th className="h-12 px-4 text-left align-middle">Asset</th>
                   <th className="h-12 px-4 text-left align-middle">Quantity</th>
                   <th className="h-12 px-4 text-left align-middle">Value</th>
@@ -701,7 +697,7 @@ export default function NodeDashboardPage() {
                 {orders.slice(0, 5).map((order) => (
                   <tr key={order.id} className="border-b">
                     <td className="p-4">{order.id}</td>
-                    <td className="p-4">{order.customer}</td>
+                    <td className="p-4">{order.buyer}</td>
                     <td className="p-4 capitalize">
                       {getAssetName(Number(order.asset))}
                     </td>

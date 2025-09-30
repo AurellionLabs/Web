@@ -2,7 +2,7 @@ import { AuraAsset } from '@/typechain-types';
 
 export interface Asset {
   assetClass: string;
-  tokenID: bigint;
+  tokenId: string;
   name: string;
   attributes: AssetAttribute[];
 }

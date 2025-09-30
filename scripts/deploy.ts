@@ -219,7 +219,7 @@ async function main() {
     await waitForConfirmations(auStake.deploymentTransaction(), 2);
     console.log('AuStake contract deployed to:', auStakeAddress);
 
-    // Deploy AuraAsset (formerly AuraGoat) with required parameters
+    // Deploy NEXT_PUBLIC_AUSYS_SUBGRAPH_URLAuraAsset (formerly AuraGoat) with required parameters
     const AuraAssetFactory = await ethers.getContractFactory('AuraAsset');
     const auraAsset = (await AuraAssetFactory.deploy(
       deployer.address, // initialOwner (owner is deployer via Ownable)
@@ -424,6 +424,17 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
     await waitForUserToPublish('austake-base-sepolia', auStakeSubgraphDir, auStakeVersion);
 
     console.log('\nDeploying subgraph: aurum-base-sepolia');
+    // Sync latest ABI from Hardhat artifacts to subgraph abis to avoid stale signatures
+    const artifactAbiPath = path.resolve('./artifacts/contracts/Aurum.sol/AurumNodeManager.json');
+    const subgraphAbiDir = path.join(aurumSubgraphDir, 'abis');
+    const subgraphAbiPath = path.join(subgraphAbiDir, 'AurumNodeManager.json');
+    if (fs.existsSync(artifactAbiPath)) {
+      if (!fs.existsSync(subgraphAbiDir)) fs.mkdirSync(subgraphAbiDir, { recursive: true });
+      fs.copyFileSync(artifactAbiPath, subgraphAbiPath);
+      console.log('✔ Synced ABI to subgraph:', subgraphAbiPath);
+    } else {
+      console.warn('⚠ Could not find artifact ABI at', artifactAbiPath);
+    }
     run('npm install', aurumSubgraphDir);
     run('graph codegen', aurumSubgraphDir);
     run('graph build', aurumSubgraphDir);
@@ -459,12 +470,10 @@ export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${USDC}";
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
 export const NEXT_PUBLIC_AUSYS_ADDRESS = "${auSysAddress}";
 export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
-
-// Subgraph endpoints
-export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = "${auraAssetQueryUrl}";
-export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = "${auStakeQueryUrl}";
-export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = "${aurumQueryUrl}";
-export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "${ausysQueryUrl}";
+export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/aura-asset-base-sepolia/version/latest";
+export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/austake-base-sepolia/version/latest";
+export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/aurum-base-sepolia/version/latest";
+export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest";
 `;
     await fs.promises.writeFile('chain-constants.ts', constantsWithSubgraphs);
 

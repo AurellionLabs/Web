@@ -24,17 +24,17 @@ export type Asset = {
 export type Order = {
   id: string;
   token: string;
-  tokenId: bigint;
-  tokenQuantity: bigint;
-  requestedTokenQuantity: bigint;
-  price: bigint;
-  txFee: bigint;
-  customer: string;
+  tokenId: string;
+  tokenQuantity: string;
+  price: string;
+  txFee: string;
+  buyer: string;
+  seller: string;
   journeyIds: string[];
   nodes: string[];
   locationData: ParcelData;
-  currentStatus: bigint;
-  contracatualAgreement: string;
+  currentStatus: string;
+  contractualAgreement: string;
 };
 /**
  * Interface defining the data access methods for orders and journeys.

@@ -1,6 +1,6 @@
 'use client';
 
-import { LocationContract } from '@/typechain-types';
+import { ethers } from 'ethers';
 import {
   createContext,
   useContext,
@@ -10,7 +10,7 @@ import {
   useCallback,
 } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
+// ServiceContext not used; we call contract directly via RepositoryContext
 import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
 
@@ -45,8 +45,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const orderRepository = RepositoryContext.getInstance().getOrderRepository();
-  const orderService = ServiceContext.getInstance().getOrderService();
+  const repoContext = RepositoryContext.getInstance();
+  const orderRepository = repoContext.getOrderRepository();
   const { address } = useWallet();
   const loadCustomerOrders = useCallback(async () => {
     if (!orderRepository) {
@@ -57,22 +57,26 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       setError(null);
-      const contractOrders = await orderRepository.getCustomerOrders(
+      const domainOrders = await orderRepository.getCustomerJourneys(
         address as string,
       );
-      console.log(`[CustomerProvider] Contract orders: ${contractOrders}`);
-      const mappedOrders: CustomerOrder[] = contractOrders.map(
-        (order: LocationContract.OrderStructOutput) => ({
-          id: order.id,
-          journeyId: order.journeyIds.length > 0 ? order.journeyIds[0] : null,
-          asset: order.tokenId.toString(),
-          quantity: Number(order.tokenQuantity),
-          value: order.price.toString(),
-          status: getOrderStatus(order.currentStatus),
-          timestamp: Date.now(),
-          deliveryLocation: order.locationData.endName ?? null,
-        }),
+      // domainOrders here returns journeys; for customer orders view, fetch buyer orders instead
+      const buyerOrders = await orderRepository.getBuyerOrders(
+        address as string,
       );
+      const mappedOrders: CustomerOrder[] = buyerOrders.map((order: any) => ({
+        id: order.id,
+        journeyId:
+          Array.isArray(order.journeyIds) && order.journeyIds.length > 0
+            ? order.journeyIds[0]
+            : null,
+        asset: order.tokenId,
+        quantity: Number(order.tokenQuantity),
+        value: order.price?.toString?.() ?? String(order.price),
+        status: getOrderStatus(order.currentStatus),
+        timestamp: Date.now(),
+        deliveryLocation: order.locationData?.endName ?? null,
+      }));
 
       setOrders(mappedOrders);
     } catch (err) {
@@ -107,10 +111,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const confirmReceipt = useCallback(
     async (orderId: string) => {
-      if (!orderService) {
-        setError('Order Service not available.');
-        return;
-      }
       const orderToConfirm = orders.find((o) => o.id === orderId);
 
       if (!orderToConfirm) {
@@ -126,9 +126,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         setError(null);
-        const receipt = await orderService.customerSignPackage(
-          orderToConfirm.journeyId,
-        );
+        const ausys = repoContext.getAusysContract();
+        const tx = await ausys.packageSign(orderToConfirm.journeyId as any);
+        const receipt = await tx.wait();
         console.log('Confirmation Receipt:', receipt);
 
         setOrders((prevOrders) =>
@@ -146,7 +146,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [orderService, orders, loadCustomerOrders],
+    [orders, loadCustomerOrders],
   );
 
   const refreshOrders = useCallback(async () => {

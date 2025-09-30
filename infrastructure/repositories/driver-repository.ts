@@ -1,10 +1,5 @@
-import {
-  type IDriverRepository,
-  type Delivery,
-  DeliveryStatus,
-  type ParcelData,
-  type Location,
-} from '@/domain/driver/driver';
+import { type IDriverRepository } from '@/domain/driver/driver';
+import { type Journey, type ParcelData } from '@/domain/shared';
 // Commenting out unused Node imports
 // import type {
 //   Node,
@@ -17,10 +12,7 @@ import {
 // import { Order } from '@/domain/orders'; // Comment out Order import for now
 
 import { BrowserProvider, ethers, type Signer } from 'ethers'; // Added Signer
-import {
-  LocationContract, // Use LocationContract type
-  LocationContract__factory, // Keep factory if needed elsewhere, maybe not here
-} from '@/typechain-types';
+import { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';
 import { handleContractError } from '@/utils/error-handler';
 // Commenting out unused constants
 // import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
@@ -58,33 +50,14 @@ export class DriverRepository implements IDriverRepository {
   }
 
   // --- Helper to map contract Journey status to domain DeliveryStatus ---
-  private mapContractStatusToDomain(
-    contractStatus: bigint | number,
-  ): DeliveryStatus {
-    // Mapping based on LocationContract enum (Pending, InProgress, Completed, Canceled)
-    // and DeliveryStatus enum (PENDING, ACCEPTED, PICKED_UP, COMPLETED, CANCELED)
-    const statusNum = Number(contractStatus);
-    switch (statusNum) {
-      case 0: // Contract: Pending
-        return DeliveryStatus.PENDING;
-      case 1: // Contract: InProgress (Assuming this maps to Accepted/PickedUp - let's use ACCEPTED for now)
-        // TODO: Refine this mapping - how to differentiate ACCEPTED vs PICKED_UP?
-        // Does the contract have separate statuses or rely on other flags (e.g., handOn event)?
-        return DeliveryStatus.ACCEPTED;
-      case 2: // Contract: Completed
-        return DeliveryStatus.COMPLETED;
-      case 3: // Contract: Canceled
-        return DeliveryStatus.CANCELED;
-      default:
-        console.warn(`Unknown contract status received: ${statusNum}`);
-        return DeliveryStatus.PENDING; // Default fallback
-    }
+  private mapContractStatusToDomain(contractStatus: bigint | number): bigint {
+    return BigInt(contractStatus);
   }
 
   // --- Helper to map contract Journey struct to domain Delivery model ---
-  private mapJourneyToDelivery(
-    journey: LocationContract.JourneyStructOutput, // Use the output struct type from TypeChain
-  ): Delivery {
+  private mapJourneyToDomain(
+    journey: LocationContract.JourneyStructOutput,
+  ): Journey {
     const parcelData: ParcelData = {
       startLocation: {
         lat: journey.parcelData.startLocation.lat,
@@ -99,21 +72,24 @@ export class DriverRepository implements IDriverRepository {
     };
 
     return {
-      jobId: journey.journeyId,
-      customer: journey.sender, // Assuming sender is the customer placing the delivery
-      fee: Number(ethers.formatEther(journey.bounty)), // Convert bounty (BigInt wei) to number (Ether)
-      ETA: Number(journey.ETA), // Convert BigInt timestamp to number
-      deliveryETA: Number(journey.ETA), // Using ETA as deliveryETA, clarify if different field exists
+      parcelData,
+      journeyId: journey.journeyId,
       currentStatus: this.mapContractStatusToDomain(journey.currentStatus),
-      parcelData: parcelData,
+      sender: journey.sender,
+      receiver: journey.receiver,
+      driver: journey.driver,
+      journeyStart: journey.journeyStart,
+      journeyEnd: journey.journeyEnd,
+      bounty: journey.bounty,
+      ETA: journey.ETA,
     };
   }
 
   // --- Implement IDriverRepository methods ---
 
-  async getAvailableDeliveries(): Promise<Delivery[]> {
+  async getAvailableDeliveries(): Promise<Journey[]> {
     console.log('[DriverRepository] Getting available deliveries...');
-    const availableDeliveries: Delivery[] = [];
+    const availableDeliveries: Journey[] = [];
     let index = 1;
     const MAX_ITERATIONS = 1000; // Safety break for loop
 
@@ -161,7 +137,7 @@ export class DriverRepository implements IDriverRepository {
             Number(journey.currentStatus) === 0 && // Status.Pending
             journey.driver === ethers.ZeroAddress
           ) {
-            availableDeliveries.push(this.mapJourneyToDelivery(journey));
+            availableDeliveries.push(this.mapJourneyToDomain(journey));
           }
         } catch (journeyError: any) {
           // Log error fetching specific journey but continue iteration
@@ -188,11 +164,11 @@ export class DriverRepository implements IDriverRepository {
     }
   }
 
-  async getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]> {
+  async getMyDeliveries(driverWalletAddress: string): Promise<Journey[]> {
     console.log(
       `[DriverRepository] Getting deliveries for driver: ${driverWalletAddress}`,
     );
-    const myDeliveries: Delivery[] = [];
+    const myDeliveries: Journey[] = [];
     let index = 1;
     const MAX_ITERATIONS = 1000; // Safety break
 
@@ -232,7 +208,7 @@ export class DriverRepository implements IDriverRepository {
           if (
             journey.driver.toLowerCase() === driverWalletAddress.toLowerCase()
           ) {
-            myDeliveries.push(this.mapJourneyToDelivery(journey));
+            myDeliveries.push(this.mapJourneyToDomain(journey));
           }
         } catch (journeyError: any) {
           console.error(

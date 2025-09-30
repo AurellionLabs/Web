@@ -71,7 +71,7 @@ export class PlatformRepository implements IPlatformRepository {
 
           const asset: Asset = {
             assetClass: json.className ?? (json.class as string) ?? 'Unknown',
-            tokenID: BigInt(
+            tokenId: String(
               (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
             ),
             name: contractAsset?.name ?? 'Unknown Asset',
@@ -171,7 +171,7 @@ export class PlatformRepository implements IPlatformRepository {
 
           const asset: Asset = {
             assetClass: json.className ?? (json.class as string) ?? assetClass,
-            tokenID: BigInt(
+            tokenId: String(
               (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
             ),
             name: contractAsset?.name ?? 'Unknown Asset',
@@ -237,7 +237,7 @@ export class PlatformRepository implements IPlatformRepository {
           : [];
       const asset: Asset = {
         assetClass: json.className ?? (json.class as string) ?? 'Unknown',
-        tokenID: BigInt(
+        tokenId: String(
           (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
         ),
         name: contractAsset?.name ?? 'Unknown Asset',
@@ -302,7 +302,7 @@ export class PlatformRepository implements IPlatformRepository {
           : [];
       const asset: Asset = {
         assetClass: json.className ?? (json.class as string) ?? 'Unknown',
-        tokenID: BigInt(
+        tokenId: String(
           (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
         ),
         name: contractAsset?.name ?? 'Unknown Asset',

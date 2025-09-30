@@ -1,0 +1,18 @@
+{
+  "extends": "@graphprotocol/graph-ts/types/tsconfig.base.json",
+  "include": ["src", "generated"]
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

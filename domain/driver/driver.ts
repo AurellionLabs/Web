@@ -1,27 +1,18 @@
-import { ParcelData } from '@/domain/shared';
+import type { Journey } from '@/domain/shared';
 
+// Driver domain refactored to use Journey directly
 export enum DeliveryStatus {
-  PENDING = 0,
-  ACCEPTED = 1,
-  PICKED_UP = 2,
-  COMPLETED = 3,
-  CANCELED = 4,
+  AVAILABLE = 'available',
+  ASSIGNED = 'assigned', 
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled'
 }
-
-export interface Delivery {
-  jobId: string;
-  customer: string;
-  fee: number;
-  ETA: number;
-  deliveryETA: number;
-  currentStatus: DeliveryStatus;
-  parcelData: ParcelData;
-}
-
 export interface IDriverRepository {
-  getAvailableDeliveries(): Promise<Delivery[]>;
-  getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]>;
+  getAvailableDeliveries(): Promise<Journey[]>;
+  getMyDeliveries(driverWalletAddress: string): Promise<Journey[]>;
 }
+
 export interface IDriverService {
   acceptDelivery(journeyId: string): Promise<void>;
   confirmPickup(journeyId: string): Promise<void>;

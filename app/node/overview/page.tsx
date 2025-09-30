@@ -112,14 +112,14 @@ export default function NodeOverviewPage() {
                     <div>
                       <p className="text-sm font-medium">Supported Assets</p>
                       <p className="text-sm">
-                        {node.supportedAssets.length} assets
+                        {(node as any)?.assets?.length ?? 0} assets
                       </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium">Total Capacity</p>
                       <p className="text-sm">
-                        {node.capacity.reduce(
-                          (sum, cap) => Number(sum) + Number(cap),
+                        {((node as any)?.assets ?? []).reduce(
+                          (sum: number, a: any) => sum + Number(a?.capacity ?? 0),
                           0,
                         )}{' '}
                         units

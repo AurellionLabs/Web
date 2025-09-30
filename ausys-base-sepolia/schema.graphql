@@ -1,0 +1,185 @@
+type Journey @entity(immutable: false) {
+  id: Bytes! # journeyId
+  sender: Bytes! # address
+  receiver: Bytes! # address
+  driver: Bytes # address (can be null initially)
+  currentStatus: BigInt! # 0=Pending, 1=InProgress, 2=Completed, 3=Settled, 4=Canceled
+  bounty: BigInt! # uint256 (wei)
+  journeyStart: BigInt! # uint256 (timestamp)
+  journeyEnd: BigInt! # uint256 (timestamp)
+  eta: BigInt! # uint256 (timestamp)
+  parcelData: ParcelData!
+  order: Order # related order (can be null for standalone journeys)
+  # signatures: [PackageSignature!]! # Query PackageSignatures by journey field instead
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type ParcelData @entity(immutable: false) {
+  id: ID! # journeyId
+  journey: String! # journeyId as string
+  startLocationLat: String!
+  startLocationLng: String!
+  endLocationLat: String!
+  endLocationLng: String!
+  startName: String!
+  endName: String!
+}
+
+type Order @entity(immutable: false) {
+  id: Bytes! # orderId
+  buyer: Bytes! # address
+  seller: Bytes! # address
+  token: Bytes! # address
+  tokenId: BigInt! # uint256
+  tokenQuantity: BigInt! # uint256
+  requestedTokenQuantity: BigInt! # uint256
+  price: BigInt! # uint256 (wei)
+  txFee: BigInt! # uint256 (wei)
+  currentStatus: BigInt! # 0=Pending, 1=InProgress, 2=Completed, 3=Settled, 4=Canceled
+  # journeys: [Journey!]! # Query Journeys by order field instead
+  nodes: [Bytes!]! # address[] - nodes involved
+  locationData: ParcelData!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type PackageSignature @entity(immutable: true) {
+  id: Bytes!
+  journey: String! # journeyId as string
+  signer: Bytes! # address
+  signatureType: String! # "sender", "receiver", "driver"
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type DriverAssignment @entity(immutable: true) {
+  id: Bytes!
+  driver: Bytes! # address
+  journeyId: Bytes! # bytes32
+  assignedBy: Bytes! # address (who assigned the driver)
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type JourneyStatusUpdate @entity(immutable: true) {
+  id: Bytes!
+  journeyId: Bytes! # bytes32
+  oldStatus: BigInt! # uint256
+  newStatus: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OrderCreated @entity(immutable: true) {
+  id: Bytes!
+  orderId: Bytes! # bytes32
+  buyer: Bytes! # address
+  seller: Bytes! # address
+  price: BigInt! # uint256
+  tokenQuantity: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type JourneyCreated @entity(immutable: true) {
+  id: Bytes!
+  journeyId: Bytes! # bytes32
+  sender: Bytes! # address
+  receiver: Bytes! # address
+  bounty: BigInt! # uint256
+  eta: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OrderSettled @entity(immutable: true) {
+  id: Bytes!
+  orderId: Bytes! # bytes32
+  totalPrice: BigInt! # uint256
+  totalFee: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FundsEscrowed @entity(immutable: true) {
+  id: Bytes!
+  from: Bytes! # address
+  amount: BigInt! # uint256
+  purpose: String! # "bounty", "order_payment", etc.
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardPaid @entity(immutable: true) {
+  id: Bytes!
+  driver: Bytes! # address
+  amount: BigInt! # uint256
+  journeyId: Bytes! # bytes32
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type SellerPaid @entity(immutable: true) {
+  id: Bytes!
+  seller: Bytes! # address
+  amount: BigInt! # uint256
+  orderId: Bytes! # bytes32
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeFeeDistributed @entity(immutable: true) {
+  id: Bytes!
+  node: Bytes! # address
+  amount: BigInt! # uint256
+  orderId: Bytes! # bytes32
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AdminSet @entity(immutable: true) {
+  id: Bytes!
+  admin: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# Aggregated entities for analytics
+type DriverStats @entity(immutable: false) {
+  id: Bytes! # driver address
+  driver: Bytes! # address
+  totalJourneys: BigInt!
+  completedJourneys: BigInt!
+  canceledJourneys: BigInt!
+  totalEarnings: BigInt!
+  averageRating: BigInt! # scaled by 1000 (e.g., 4500 = 4.5 stars)
+  lastActiveAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type NodeStats @entity(immutable: false) {
+  id: Bytes! # node address
+  node: Bytes! # address
+  totalOrders: BigInt!
+  completedOrders: BigInt!
+  totalRevenue: BigInt!
+  totalFeesEarned: BigInt!
+  lastActiveAt: BigInt!
+  updatedAt: BigInt!
+}

@@ -1,23 +1,19 @@
 import { NodeRepository } from '@/domain/node/node';
 import { BlockchainNodeRepository } from '../repositories/node-repository';
-import {
-  AurumNodeManager,
-  LocationContract,
-  AurumNode,
-  AurumNode__factory,
-  AuraAsset,
-  AuraAsset__factory,
-} from '@/typechain-types';
-import { BrowserProvider, ethers } from 'ethers';
-import { INodeAssetService } from '@/domain/node';
-import { IOrderService } from '@/domain/orders';
-import { IOrderRepository } from '@/domain/orders';
 import { OrderRepository } from '../repositories/orders-repository';
+import { IOrderRepository } from '@/domain/orders/order';
+import { AurumNodeManager } from '@/typechain-types/contracts/Aurum.sol/AurumNodeManager';
+import { AuraAsset } from '@/typechain-types/contracts/AuraAsset.sol/AuraAsset';
+import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
+import { BrowserProvider, ethers } from 'ethers';
+import { INodeAssetService } from '@/domain/node/node';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
 import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+  NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
 } from '@/chain-constants';
 import { listenForSignature } from '../services/signature-listener.service';
 import { IPoolRepository } from '@/domain/pool';
@@ -26,19 +22,20 @@ import { RepositoryFactory } from '../factories/repository-factory';
 import { IPlatformRepository } from '@/domain/platform';
 import { PlatformRepository } from '../repositories/platform-repository';
 import { PinataSDK } from 'pinata';
+import { AurumNode, AurumNode__factory } from '@/typechain-types';
 
 /**
- * Context that manages all repositories and their dependencies
+ * Context that manages all repositories and their dependencies - UPDATED for refactored contracts
  */
 export class RepositoryContext {
   private static instance: RepositoryContext;
   private nodeRepository: NodeRepository | null = null;
-  private orderRepository: OrderRepository | null = null;
+  private orderRepository: IOrderRepository | null = null;
   private driverRepository: IDriverRepository | null = null;
   private poolRepository: IPoolRepository | null = null;
   private platformRepository: IPlatformRepository | null = null;
   private aurumContract: AurumNodeManager | null = null;
-  private ausysContract: LocationContract | null = null;
+  private ausysContract: Ausys | null = null;
   private signer: ethers.Signer | null = null;
   private auraGoatContract: AuraAsset | null = null;
 
@@ -57,11 +54,11 @@ export class RepositoryContext {
   }
 
   /**
-   * Initialize the context with required contracts and signer
+   * Initialize the context with required contracts and signer - UPDATED
    */
   public async initialize(
     auraAssetContract: AuraAsset,
-    ausysContract: LocationContract,
+    ausysContract: Ausys,
     aurumContract: AurumNodeManager,
     provider: BrowserProvider,
     signer: ethers.Signer,
@@ -70,34 +67,12 @@ export class RepositoryContext {
     this.ausysContract = ausysContract;
     this.aurumContract = aurumContract;
     this.signer = signer;
-
-    // Use the factory to create repositories with RPC separation
-    const repositoryFactory = RepositoryFactory.getInstance();
+    this.auraGoatContract = auraAssetContract;
 
     try {
-      const repositories = await repositoryFactory.createAllRepositories(
-        provider,
-        signer,
-        pinata,
-      );
+      console.log('[RepositoryContext] Creating repositories with refactored implementations...');
 
-      this.poolRepository = repositories.poolRepository;
-      this.nodeRepository = repositories.nodeRepository;
-      this.orderRepository = repositories.orderRepository;
-      this.driverRepository = repositories.driverRepository;
-      this.platformRepository = repositories.platformRepository;
-
-      console.log(
-        '[RepositoryContext] Successfully created repositories with RPC separation',
-      );
-    } catch (error) {
-      console.error(
-        '[RepositoryContext] Failed to create repositories with factory, falling back to direct creation:',
-        error,
-      );
-
-      // Fallback to direct creation if factory fails
-      this.poolRepository = new PoolRepository(provider, signer);
+      // Create NodeRepository with updated implementation
       this.nodeRepository = new BlockchainNodeRepository(
         aurumContract,
         provider,
@@ -105,26 +80,33 @@ export class RepositoryContext {
         this.auraGoatAddress,
         pinata,
       );
+
+      // Create OrderRepository with GraphQL integration
       this.orderRepository = new OrderRepository(
         ausysContract,
         provider,
         signer,
       );
+
+      // Create other repositories (these may need updates too)
       this.driverRepository = new DriverRepository(
         ausysContract,
         provider,
         signer,
       );
+
+      this.poolRepository = new PoolRepository(provider, signer);
+
       this.platformRepository = new PlatformRepository(
         auraAssetContract,
         pinata,
       );
-    }
 
-    this.auraGoatContract = AuraAsset__factory.connect(
-      this.auraGoatAddress,
-      signer,
-    );
+      console.log('[RepositoryContext] Successfully created refactored repositories');
+    } catch (error) {
+      console.error('[RepositoryContext] Failed to create repositories:', error);
+      throw error;
+    }
   }
 
   /**
@@ -133,16 +115,19 @@ export class RepositoryContext {
   public getNodeRepository(): NodeRepository {
     if (!this.nodeRepository) {
       throw new Error(
-        'RepositoryContext not initialized. Call initialize() first.',
+        'NodeRepository not initialized. Call initialize() first.',
       );
     }
     return this.nodeRepository;
   }
 
-  public getOrderRepository(): OrderRepository {
+  /**
+   * Get the order repository instance
+   */
+  public getOrderRepository(): IOrderRepository {
     if (!this.orderRepository) {
       throw new Error(
-        'RepositoryContext not initialized. Call initialize() first.',
+        'OrderRepository not initialized. Call initialize() first.',
       );
     }
     return this.orderRepository;
@@ -154,31 +139,31 @@ export class RepositoryContext {
   public getDriverRepository(): IDriverRepository {
     if (!this.driverRepository) {
       throw new Error(
-        'RepositoryContext not initialized. Call initialize() first.',
+        'DriverRepository not initialized. Call initialize() first.',
       );
     }
     return this.driverRepository;
   }
 
   /**
-   * Get the Pool repository instance
+   * Get the pool repository instance
    */
   public getPoolRepository(): IPoolRepository {
     if (!this.poolRepository) {
       throw new Error(
-        'RepositoryContext not initialized or PoolRepository failed to initialize.',
+        'PoolRepository not initialized. Call initialize() first.',
       );
     }
     return this.poolRepository;
   }
 
   /**
-   * Get the Platform repository instance
+   * Get the platform repository instance
    */
   public getPlatformRepository(): IPlatformRepository {
     if (!this.platformRepository) {
       throw new Error(
-        'RepositoryContext not initialized or PlatformRepository failed to initialize.',
+        'PlatformRepository not initialized. Call initialize() first.',
       );
     }
     return this.platformRepository;
@@ -189,89 +174,93 @@ export class RepositoryContext {
    */
   public getAurumContract(): AurumNodeManager {
     if (!this.aurumContract) {
-      throw new Error(
-        'RepositoryContext not initialized. Call initialize() first.',
-      );
+      throw new Error('AurumContract not initialized. Call initialize() first.');
     }
     return this.aurumContract;
   }
 
   /**
-   * Get the Ausys (LocationContract) contract instance
+   * Get the Ausys contract instance
    */
-  public getAusysContract(): LocationContract {
+  public getAusysContract(): Ausys {
     if (!this.ausysContract) {
-      throw new Error(
-        'RepositoryContext not initialized. Call initialize() first.',
-      );
+      throw new Error('AusysContract not initialized. Call initialize() first.');
     }
     return this.ausysContract;
   }
 
   /**
-   * Get the connected Signer instance.
+   * Get a specific AurumNode contract instance
    */
-  public getSigner(): ethers.Signer {
+  public getAurumNodeContract(nodeAddress: string): AurumNode {
     if (!this.signer) {
-      throw new Error('RepositoryContext not initialized with a signer.');
+      throw new Error('Signer not initialized. Call initialize() first.');
     }
-    return this.signer;
+    return AurumNode__factory.connect(nodeAddress, this.signer);
   }
 
   /**
    * Get the AuraGoat contract instance
    */
-  public async getAuraGoatContract(): Promise<AuraAsset> {
+  public getAuraGoatContract(): AuraAsset {
     if (!this.auraGoatContract) {
-      throw new Error('AuraGoat contract not initialized.');
+      throw new Error('AuraGoatContract not initialized. Call initialize() first.');
     }
     return this.auraGoatContract;
   }
 
   /**
-   * Get an AurumNode contract instance connected to a specific address.
-   * Requires the context to be initialized with a signer.
+   * Get the current signer
    */
-  public getAurumNodeContract(address: string): AurumNode {
+  public getSigner(): ethers.Signer {
     if (!this.signer) {
-      throw new Error(
-        'RepositoryContext not initialized with a signer. Cannot get AurumNode contract.',
-      );
+      throw new Error('Signer not initialized. Call initialize() first.');
     }
-    try {
-      // Use the factory to connect to the specific node address with the stored signer
-      return AurumNode__factory.connect(address, this.signer);
-    } catch (error) {
-      console.error(
-        `Error connecting to AurumNode contract at ${address}:`,
-        error,
-      );
-      throw new Error(`Failed to connect to AurumNode contract at ${address}`);
-    }
+    return this.signer;
   }
 
   /**
-   * Waits for the Multi-Party Signature Confirmation (two distinct signatures)
-   * for a specific job ID on the Ausys/Location contract.
-   * Resolves true if two distinct parties sign within the timeout, otherwise rejects.
-   *
-   * @param jobID The string ID of the job requiring signature confirmation.
-   * @param timeoutMs Optional timeout override (defaults to ~2 minutes).
-   * @returns Promise<boolean>
-   * @throws Error if RepositoryContext is not initialized or ausysContract is missing.
+   * Listen for signature events on a journey
    */
-  public async waitForSignaturesForJob(
-    jobID: string,
-    timeoutMs?: number,
+  public async listenForSignature(
+    journeyId: string,
+    expectedSigner: string,
+    timeoutMs: number = 30000,
   ): Promise<boolean> {
     if (!this.ausysContract) {
-      throw new Error(
-        'RepositoryContext not initialized or Ausys contract not available.',
-      );
+      throw new Error('AusysContract not initialized. Call initialize() first.');
     }
-    // The ausysContract instance here is already connected to the user's signer
-    // Call the underlying infrastructure service function
-    console.log('[RepositoryContext] Initiating waitForSignaturesForJob...');
-    return listenForSignature(this.ausysContract, jobID, timeoutMs);
+    return listenForSignature(
+      this.ausysContract,
+      journeyId,
+      timeoutMs,
+    );
+  }
+
+  /**
+   * Get subgraph endpoints
+   */
+  public getSubgraphEndpoints() {
+    return {
+      aurum: NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+      ausys: NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+    };
+  }
+
+  /**
+   * Clean up resources
+   */
+  public cleanup(): void {
+    this.nodeRepository = null;
+    this.orderRepository = null;
+    this.driverRepository = null;
+    this.poolRepository = null;
+    this.platformRepository = null;
+    this.aurumContract = null;
+    this.ausysContract = null;
+    this.signer = null;
+    this.auraGoatContract = null;
   }
 }
+
+
