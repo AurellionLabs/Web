@@ -221,6 +221,18 @@ export class OrderService implements IOrderService {
         contractualAgreement: ethers.ZeroHash,
       };
 
+      // DEBUG: Log the contract order before sending
+      console.log('[OrderService] Contract order being sent:', {
+        id: contractOrder.id,
+        token: contractOrder.token,
+        tokenId: contractOrder.tokenId,
+        tokenQuantity: contractOrder.tokenQuantity,
+        price: contractOrder.price,
+        buyer: contractOrder.buyer,
+        seller: contractOrder.seller,
+        nodes: contractOrder.nodes,
+      });
+
       // Call the contract's orderCreation with mapped struct
       const tx = await contractWithSigner.orderCreation(contractOrder);
       const receipt = await tx.wait();
