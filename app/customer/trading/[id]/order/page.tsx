@@ -27,6 +27,9 @@ import { Order } from '@/domain/orders';
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
+// Force dynamic rendering to avoid static generation issues with wallet libraries
+export const dynamic = 'force-dynamic';
+
 export default function OrderPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { getAssetById, placeOrder } = useTrade();
