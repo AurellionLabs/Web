@@ -129,8 +129,8 @@ export class OrderService implements IOrderService {
     try {
       const contractWithSigner = this.contract.connect(this.currentSigner);
 
-      // Fetch journey details to verify receiver and get driver address
-      const journey = await contractWithSigner.journeyIdToJourney(journeyId);
+      // Fetch journey details to verify receiver
+      const journey = await contractWithSigner.getjourney(journeyId);
 
       if (journey.receiver.toLowerCase() !== signerAddress.toLowerCase()) {
         throw new Error(
@@ -143,11 +143,8 @@ export class OrderService implements IOrderService {
         );
       }
 
-      const tx = await contractWithSigner.packageSign(
-        journey.driver,
-        signerAddress,
-        journeyId,
-      );
+      // packageSign only takes the journey ID - signatures are tracked by msg.sender
+      const tx = await contractWithSigner.packageSign(journeyId);
       const receipt = await tx.wait();
       if (!receipt) {
         throw new Error(
@@ -289,45 +286,16 @@ export class OrderService implements IOrderService {
 
   /**
    * Adds a receiver to an existing order via the contract.
-   * The connected signer is assumed to be the sender initiating the change.
+   * NOTE: This method may not be implemented in the current contract version.
+   * Keeping as a placeholder for future implementation.
    */
   async addReceiverToOrder(
     orderId: BytesLike,
     receiver: string,
     sender?: string,
   ): Promise<ContractTransactionReceipt> {
-    const signerAddress = await this.getCurrentSignerAddress();
-    const effectiveSender = sender ?? signerAddress;
-
-    console.log(
-      `[OrderService] Signer ${signerAddress} adding receiver ${receiver} to order ${orderId}. Effective sender: ${effectiveSender}`,
-    );
-
-    if (sender && sender.toLowerCase() !== signerAddress.toLowerCase()) {
-      console.warn(
-        `[OrderService] Provided sender ${sender} differs from connected signer ${signerAddress}. Transaction will be sent by connected signer.`,
-      );
-    }
-
-    try {
-      const contractWithSigner = this.contract.connect(this.currentSigner);
-      const tx = await contractWithSigner.addReceiver(
-        orderId,
-        receiver,
-        signerAddress,
-      );
-      const receipt = await tx.wait();
-      if (!receipt) {
-        throw new Error('Add receiver transaction failed to return a receipt.');
-      }
-      console.log(
-        `[OrderService] Add receiver successful, tx: ${receipt.hash}`,
-      );
-      return receipt;
-    } catch (error) {
-      handleContractError(error, 'add receiver to order service');
-      throw error;
-    }
+    console.warn('[OrderService] addReceiverToOrder is not currently supported in the Ausys contract');
+    throw new Error('addReceiverToOrder is not implemented in the current contract version');
   }
 
   /**
