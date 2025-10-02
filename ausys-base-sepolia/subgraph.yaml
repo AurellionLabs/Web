@@ -8,9 +8,9 @@ dataSources:
     name: Ausys
     network: base-sepolia
     source:
-      address: "0x3288c3F11ac0626a91d7d6A50a3393b5B3994e76" # Will be updated by deploy script
+      address: "0xC341Ec4e1c39e018eF9D9e43ff36611780Af281B" # Will be updated by deploy script
       abi: Ausys
-      startBlock: 31667431 # Will be updated by deploy script
+      startBlock: 31735848 # Will be updated by deploy script
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

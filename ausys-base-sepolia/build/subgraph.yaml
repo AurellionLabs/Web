@@ -8,9 +8,9 @@ dataSources:
     name: Ausys
     network: base-sepolia
     source:
-      address: "0x3288c3F11ac0626a91d7d6A50a3393b5B3994e76"
+      address: "0xC341Ec4e1c39e018eF9D9e43ff36611780Af281B"
       abi: Ausys
-      startBlock: 31667431
+      startBlock: 31735848
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

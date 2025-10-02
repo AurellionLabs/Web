@@ -185,15 +185,28 @@ async function main() {
       return options;
     };
 
-    const USDC = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
     const initialOwner = deployer.address;
     const projectWallet = deployer.address;
+
+    // Deploy Aura token for Base Sepolia testnet
+    console.log('\nDeploying Aura Token contract...');
+    const AuraFactory = await ethers.getContractFactory('Aura');
+    const auraToken = await AuraFactory.deploy();
+    const auraTokenAddress = await auraToken.getAddress();
+    await waitForConfirmations(auraToken.deploymentTransaction(), 2);
+    console.log('Aura Token deployed to:', auraTokenAddress);
+
+    // Mint some initial tokens for testing
+    console.log('Minting initial Aura tokens for deployer...');
+    const mintTx = await auraToken.mintTokenToTreasury(1000000); // 1M tokens
+    await mintTx.wait();
+    console.log('Minted 1,000,000 AURA tokens to deployer');
 
     // Deploy contracts with sequential confirmations
     console.log('\nDeploying AuSys contract...');
     const AuSys = await ethers.getContractFactory('Ausys');
     const auSys = (await AuSys.deploy(
-      USDC, // payToken - USDC address
+      auraTokenAddress, // payToken - Using Aura token instead of USDC for testnet
     ));
     const auSysAddress = await auSys.getAddress();
     await waitForConfirmations(auSys.deploymentTransaction(), 2);
@@ -295,7 +308,7 @@ async function main() {
       process.cwd() + '/chain-constants.ts',
     );
     const constants = `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";
-export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${USDC}";
+export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${auraTokenAddress}";
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
 export const NEXT_PUBLIC_AUSYS_ADDRESS = "${auSysAddress}";
 export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
@@ -466,7 +479,7 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
 
     // Update chain constants with subgraph endpoints so the app always uses latest
     const constantsWithSubgraphs = `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";
-export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${USDC}";
+export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${auraTokenAddress}";
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
 export const NEXT_PUBLIC_AUSYS_ADDRESS = "${auSysAddress}";
 export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
@@ -481,7 +494,7 @@ export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/q
     console.log('\nDeployment Summary');
     console.log('==================');
     console.log(`Deployer: ${deployer.address}`);
-    console.log(`Aura Token: ${USDC}`);
+    console.log(`Aura Token: ${auraTokenAddress}`);
     console.log(`AuSys Contract: ${auSysAddress}`);
     console.log(`AurumNodeManager Contract: ${aurumNodeManagerAddress}`);
     console.log(`AuStake Contract: ${auStakeAddress}`);
