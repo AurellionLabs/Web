@@ -11,6 +11,7 @@ import {
   BigNumberish,
 } from 'ethers';
 import { handleContractError } from '@/utils/error-handler';
+import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 
 /**
  * Implements domain service operations for orders by interacting directly with the blockchain contract.
@@ -64,6 +65,63 @@ export class OrderService implements IOrderService {
   }
 
   /**
+   * Handles token approval for order payments.
+   * Checks current allowance and approves if insufficient.
+   */
+  private async handleTokenApproval(amount: BigNumberish): Promise<void> {
+    try {
+      // Create ERC20 contract instance for AURA token
+      const erc20Abi = [
+        'function allowance(address owner, address spender) view returns (uint256)',
+        'function approve(address spender, uint256 amount) returns (bool)',
+      ];
+      const tokenContract = new ethers.Contract(
+        NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
+        erc20Abi,
+        this.currentSigner,
+      );
+
+      const signerAddress = await this.getCurrentSignerAddress();
+      const contractAddress = await this.contract.getAddress();
+
+      // Check current allowance
+      const currentAllowance = await tokenContract.allowance(
+        signerAddress,
+        contractAddress,
+      );
+
+      console.log(
+        `[OrderService] Current allowance: ${currentAllowance.toString()}, Required: ${amount.toString()}`,
+      );
+
+      // Approve if insufficient allowance
+      if (BigInt(currentAllowance.toString()) < BigInt(amount.toString())) {
+        console.log(
+          `[OrderService] Approving token spend for amount: ${amount.toString()}`,
+        );
+        const approveTx = await tokenContract.approve(contractAddress, amount);
+        const approveReceipt = await approveTx.wait();
+        if (!approveReceipt || approveReceipt.status !== 1) {
+          throw new Error('Token approval transaction failed');
+        }
+        console.log(
+          `[OrderService] Token approval successful, tx: ${approveReceipt.hash}`,
+        );
+      } else {
+        console.log(`[OrderService] Sufficient allowance exists`);
+      }
+    } catch (error) {
+      console.error(
+        '[OrderService.handleTokenApproval] Error handling token approval:',
+        error,
+      );
+      throw new Error(
+        `Failed to approve token: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
    * Creates a new job (journey) via the contract.
    * Requires bounty and ETA to be provided.
    */
@@ -97,6 +155,9 @@ export class OrderService implements IOrderService {
 
     try {
       const contractWithSigner = this.contract.connect(this.currentSigner);
+
+      // Handle token approval for bounty payment
+      await this.handleTokenApproval(bounty);
 
       const tx = await contractWithSigner.journeyCreation(
         connectedSignerAddress,
@@ -191,6 +252,14 @@ export class OrderService implements IOrderService {
 
     try {
       const contractWithSigner = this.contract.connect(this.currentSigner);
+
+      // Calculate total amount needed (price + 2% tx fee)
+      const price = BigInt(orderData.price);
+      const txFee = (price * 2n) / 100n;
+      const totalAmount = price + txFee;
+
+      // Handle token approval before creating order
+      await this.handleTokenApproval(totalAmount);
 
       // Map domain Order -> contract OrderStruct
       const parcelData: Ausys.ParcelDataStruct = {
@@ -333,6 +402,9 @@ export class OrderService implements IOrderService {
     );
     try {
       const contract = this.contract.connect(this.currentSigner);
+
+      // Handle token approval for bounty payment
+      await this.handleTokenApproval(bountyWei);
 
       const tx = await contract.orderJourneyCreation(
         orderId,

@@ -173,7 +173,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
 
           // Formula: bounty = (price * quantity * 0.05)
           const bountyPercentage = 2;
-          const totalOrderValue = orderWithBuyer.price;
+          const totalOrderValue = BigInt(orderWithBuyer.price);
           const bounty =
             (totalOrderValue * BigInt(bountyPercentage)) / BigInt(100);
 
