@@ -216,7 +216,7 @@ export default function NodeDashboardPage() {
   const supportedAssets = assets.length;
   const tokenizedValue = assets
     .reduce(
-      (total, asset) => total + Number(asset.price) * Number(asset.amount),
+      (total, asset) => total + Number(asset.price) * Number(asset.capacity),
       0,
     )
     .toFixed(2);
@@ -227,7 +227,7 @@ export default function NodeDashboardPage() {
 
     assets.forEach((asset) => {
       const assetClass = asset.class || 'Unknown';
-      const quantity = Number(asset.amount) || 0;
+      const quantity = Number(asset.capacity) || 0;
       const price = Number(asset.price) || 0;
       const value = quantity * price;
 
