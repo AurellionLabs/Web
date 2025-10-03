@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMainProvider } from '@/app/providers/main.provider';
-import { useNode } from '@/app/providers/node.provider';
+import { useNodes } from '@/app/providers/nodes.provider';
+import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import {
   Card,
   CardContent,
@@ -31,7 +32,8 @@ type NodeOverview = {
 export default function NodeOverviewPage() {
   console.log('[NodeOverviewPage] Rendering...');
   const { setCurrentUserRole } = useMainProvider();
-  const { nodes, loading, loadNodes, selectNode, getNode } = useNode();
+  const { nodes, loading } = useNodes();
+  const { selectNode } = useSelectedNode();
   const router = useRouter();
 
   console.log('[NodeOverviewPage] Nodes from useNode:', nodes);
@@ -44,7 +46,7 @@ export default function NodeOverviewPage() {
 
   const handleNodeSelect = async (nodeAddress: string) => {
     await selectNode(nodeAddress);
-    router.push(`/node/dashboard?node=${nodeAddress}`);
+    router.push(`/node/dashboard?nodeId=${nodeAddress}`);
   };
 
   if (loading) {
@@ -119,7 +121,8 @@ export default function NodeOverviewPage() {
                       <p className="text-sm font-medium">Total Capacity</p>
                       <p className="text-sm">
                         {((node as any)?.assets ?? []).reduce(
-                          (sum: number, a: any) => sum + Number(a?.capacity ?? 0),
+                          (sum: number, a: any) =>
+                            sum + Number(a?.capacity ?? 0),
                           0,
                         )}{' '}
                         units

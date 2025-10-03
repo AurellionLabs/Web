@@ -70,7 +70,9 @@ export class RepositoryContext {
     this.auraGoatContract = auraAssetContract;
 
     try {
-      console.log('[RepositoryContext] Creating repositories with refactored implementations...');
+      console.log(
+        '[RepositoryContext] Creating repositories with refactored implementations...',
+      );
 
       // Create NodeRepository with updated implementation
       this.nodeRepository = new BlockchainNodeRepository(
@@ -102,9 +104,14 @@ export class RepositoryContext {
         pinata,
       );
 
-      console.log('[RepositoryContext] Successfully created refactored repositories');
+      console.log(
+        '[RepositoryContext] Successfully created refactored repositories',
+      );
     } catch (error) {
-      console.error('[RepositoryContext] Failed to create repositories:', error);
+      console.error(
+        '[RepositoryContext] Failed to create repositories:',
+        error,
+      );
       throw error;
     }
   }
@@ -174,7 +181,9 @@ export class RepositoryContext {
    */
   public getAurumContract(): AurumNodeManager {
     if (!this.aurumContract) {
-      throw new Error('AurumContract not initialized. Call initialize() first.');
+      throw new Error(
+        'AurumContract not initialized. Call initialize() first.',
+      );
     }
     return this.aurumContract;
   }
@@ -184,7 +193,9 @@ export class RepositoryContext {
    */
   public getAusysContract(): Ausys {
     if (!this.ausysContract) {
-      throw new Error('AusysContract not initialized. Call initialize() first.');
+      throw new Error(
+        'AusysContract not initialized. Call initialize() first.',
+      );
     }
     return this.ausysContract;
   }
@@ -204,7 +215,9 @@ export class RepositoryContext {
    */
   public getAuraGoatContract(): AuraAsset {
     if (!this.auraGoatContract) {
-      throw new Error('AuraGoatContract not initialized. Call initialize() first.');
+      throw new Error(
+        'AuraGoatContract not initialized. Call initialize() first.',
+      );
     }
     return this.auraGoatContract;
   }
@@ -228,13 +241,11 @@ export class RepositoryContext {
     timeoutMs: number = 30000,
   ): Promise<boolean> {
     if (!this.ausysContract) {
-      throw new Error('AusysContract not initialized. Call initialize() first.');
+      throw new Error(
+        'AusysContract not initialized. Call initialize() first.',
+      );
     }
-    return listenForSignature(
-      this.ausysContract,
-      journeyId,
-      timeoutMs,
-    );
+    return listenForSignature(this.ausysContract, journeyId, timeoutMs);
   }
 
   /**
@@ -262,5 +273,3 @@ export class RepositoryContext {
     this.auraGoatContract = null;
   }
 }
-
-

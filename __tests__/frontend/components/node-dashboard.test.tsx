@@ -12,7 +12,7 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
       address: '0x1234567890123456789012345678901234567890',
       location: {
         addressName: 'Test Node',
-        location: { lat: '40.7128', lng: '-74.0060' }
+        location: { lat: '40.7128', lng: '-74.0060' },
       },
       validNode: true,
       owner: '0x0987654321098765432109876543210987654321',
@@ -21,16 +21,16 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
           token: '0x1111111111111111111111111111111111111111',
           tokenId: '1',
           price: 1000000000000000000n,
-          capacity: 100
+          capacity: 100,
         },
         {
           token: '0x2222222222222222222222222222222222222222',
           tokenId: '2',
           price: 2000000000000000000n,
-          capacity: 50
-        }
+          capacity: 50,
+        },
       ],
-      status: 'Active'
+      status: 'Active',
     };
 
     mockNodeProvider = {
@@ -50,7 +50,7 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
     it('should display assets from new assets array structure', () => {
       // Test that dashboard can render assets from node.assets[]
       const { assets } = mockNode;
-      
+
       expect(assets).toHaveLength(2);
       expect(assets[0]).toHaveProperty('token');
       expect(assets[0]).toHaveProperty('tokenId');
@@ -67,7 +67,9 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
       }));
 
       expect(assetElements).toHaveLength(2);
-      expect(assetElements[0].key).toBe('0x1111111111111111111111111111111111111111-1');
+      expect(assetElements[0].key).toBe(
+        '0x1111111111111111111111111111111111111111-1',
+      );
     });
 
     it('should NOT try to access old structure properties', () => {
@@ -92,17 +94,17 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
 
       // Test new updateAssetCapacity call signature
       await mockNodeProvider.updateAssetCapacity(
-        mockNode.address,     // nodeAddress
-        asset.token,          // assetToken
-        asset.tokenId,        // assetTokenId
-        newCapacity           // newCapacity
+        mockNode.address, // nodeAddress
+        asset.token, // assetToken
+        asset.tokenId, // assetTokenId
+        newCapacity, // newCapacity
       );
 
       expect(mockNodeProvider.updateAssetCapacity).toHaveBeenCalledWith(
         mockNode.address,
         asset.token,
         asset.tokenId,
-        newCapacity
+        newCapacity,
       );
     });
 
@@ -112,17 +114,17 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
 
       // Test new updateAssetPrice call signature
       await mockNodeProvider.updateAssetPrice(
-        mockNode.address,     // nodeAddress
-        asset.token,          // assetToken
-        asset.tokenId,        // assetTokenId
-        newPrice              // newPrice (BigInt)
+        mockNode.address, // nodeAddress
+        asset.token, // assetToken
+        asset.tokenId, // assetTokenId
+        newPrice, // newPrice (BigInt)
       );
 
       expect(mockNodeProvider.updateAssetPrice).toHaveBeenCalledWith(
         mockNode.address,
         asset.token,
         asset.tokenId,
-        newPrice
+        newPrice,
       );
     });
   });
@@ -130,14 +132,14 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
   describe('Asset Editing UI', () => {
     it('should handle capacity editing for specific assets', () => {
       const asset = mockNode.assets[0];
-      
+
       // Test editing state structure
       const editingCapacity = {
         nodeAddress: mockNode.address,
         assetToken: asset.token,
         assetTokenId: asset.tokenId,
         currentCapacity: asset.capacity,
-        newCapacity: 150
+        newCapacity: 150,
       };
 
       expect(editingCapacity).toHaveProperty('nodeAddress');
@@ -149,14 +151,14 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
 
     it('should handle price editing for specific assets', () => {
       const asset = mockNode.assets[0];
-      
+
       // Test price editing state structure
       const editingPrice = {
         nodeAddress: mockNode.address,
         assetToken: asset.token,
         assetTokenId: asset.tokenId,
         currentPrice: asset.price,
-        newPrice: 2000000000000000000n
+        newPrice: 2000000000000000000n,
       };
 
       expect(editingPrice).toHaveProperty('nodeAddress');
@@ -194,32 +196,19 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
     it('should handle nodes with empty assets array', () => {
       const emptyNode = {
         ...mockNode,
-        assets: []
+        assets: [],
       };
 
       expect(emptyNode.assets).toHaveLength(0);
       expect(Array.isArray(emptyNode.assets)).toBe(true);
 
       // Should show empty state message
-      const emptyStateMessage = emptyNode.assets.length === 0 
-        ? 'No assets available for this node'
-        : null;
+      const emptyStateMessage =
+        emptyNode.assets.length === 0
+          ? 'No assets available for this node'
+          : null;
 
       expect(emptyStateMessage).toBe('No assets available for this node');
     });
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-

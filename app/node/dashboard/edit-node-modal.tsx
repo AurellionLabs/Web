@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/app/components/ui/dialog';
-import { useNode } from '@/app/providers/node.provider';
+import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { toast } from 'react-hot-toast';
 import {
   Tabs,
@@ -38,7 +38,7 @@ export function EditNodeModal({
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('assets');
-  const { updateNodeStatus, updateSupportedAssets } = useNode();
+  const { updateNodeStatus } = useSelectedNode();
 
   // Asset capacity and price states
   const [capacities, setCapacities] = useState<Record<number, string>>({});

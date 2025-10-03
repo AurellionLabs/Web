@@ -8,7 +8,7 @@ describe('Node Domain Model', () => {
         token: '0x1234567890123456789012345678901234567890',
         tokenId: '12345',
         price: 1000000000000000000n, // 1 ETH in wei
-        capacity: 100
+        capacity: 100,
       };
 
       expect(nodeAsset).toHaveProperty('token');
@@ -30,8 +30,8 @@ describe('Node Domain Model', () => {
           addressName: 'Test Location',
           location: {
             lat: '40.7128',
-            lng: '-74.0060'
-          }
+            lng: '-74.0060',
+          },
         },
         validNode: true, // Should be boolean, not string
         owner: '0x0987654321098765432109876543210987654321',
@@ -40,23 +40,23 @@ describe('Node Domain Model', () => {
             token: '0x1111111111111111111111111111111111111111',
             tokenId: '1',
             price: 1000000000000000000n,
-            capacity: 50
+            capacity: 50,
           },
           {
             token: '0x2222222222222222222222222222222222222222',
             tokenId: '2',
             price: 2000000000000000000n,
-            capacity: 75
-          }
+            capacity: 75,
+          },
         ],
-        status: 'Active'
+        status: 'Active',
       };
 
       expect(node).toHaveProperty('assets');
       expect(Array.isArray(node.assets)).toBe(true);
       expect(node.assets).toHaveLength(2);
       expect(typeof node.validNode).toBe('boolean');
-      
+
       // Should NOT have the old separate arrays
       expect(node).not.toHaveProperty('supportedAssets');
       expect(node).not.toHaveProperty('capacity');
@@ -68,12 +68,12 @@ describe('Node Domain Model', () => {
         address: '0x1234567890123456789012345678901234567890',
         location: {
           addressName: 'New Location',
-          location: { lat: '0', lng: '0' }
+          location: { lat: '0', lng: '0' },
         },
         validNode: true,
         owner: '0x0987654321098765432109876543210987654321',
         assets: [],
-        status: 'Active'
+        status: 'Active',
       };
 
       expect(newNode.assets).toHaveLength(0);
@@ -90,7 +90,7 @@ describe('Node Domain Model', () => {
             address: nodeAddress,
             location: {
               addressName: 'Mock Location',
-              location: { lat: '0', lng: '0' }
+              location: { lat: '0', lng: '0' },
             },
             validNode: true,
             owner: '0x0000000000000000000000000000000000000000',
@@ -99,12 +99,12 @@ describe('Node Domain Model', () => {
                 token: '0x1111111111111111111111111111111111111111',
                 tokenId: '1',
                 price: 1000000000000000000n,
-                capacity: 100
-              }
+                capacity: 100,
+              },
             ],
-            status: 'Active'
+            status: 'Active',
           };
-        }
+        },
       };
 
       expect(mockNodeRepo.getNode).toBeDefined();

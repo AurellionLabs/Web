@@ -44,17 +44,12 @@ export class OrderRepository implements IOrderRepository {
   private signer: Signer;
   private contractAddress: string;
   private isInitialized = false;
-  private graphQLEndpoint = 'https://api.studio.thegraph.com/query/112596/ausys/version/latest';
+  private graphQLEndpoint =
+    'https://api.studio.thegraph.com/query/112596/ausys/version/latest';
 
-  constructor(
-    contract: Ausys,
-    userProvider: BrowserProvider,
-    signer: Signer,
-  ) {
+  constructor(contract: Ausys, userProvider: BrowserProvider, signer: Signer) {
     if (!contract) {
-      throw new Error(
-        'OrderRepository: Ausys instance is required.',
-      );
+      throw new Error('OrderRepository: Ausys instance is required.');
     }
     this.writeContract = contract;
     this.userProvider = userProvider;
@@ -71,7 +66,9 @@ export class OrderRepository implements IOrderRepository {
 
   private async initializeReadProvider(): Promise<void> {
     try {
-      const chainId = await RpcProviderFactory.getChainId(this.userProvider as any);
+      const chainId = await RpcProviderFactory.getChainId(
+        this.userProvider as any,
+      );
       const rpcProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
       this.readProvider = rpcProvider;
       this.readContract = Ausys__factory.connect(
@@ -91,7 +88,7 @@ export class OrderRepository implements IOrderRepository {
 
   private async waitForInitialization(): Promise<void> {
     while (!this.isInitialized) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -103,11 +100,11 @@ export class OrderRepository implements IOrderRepository {
       const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
         this.graphQLEndpoint,
         GET_ORDERS_BY_NODE,
-        { nodeAddress: address.toLowerCase() }
+        { nodeAddress: address.toLowerCase() },
       );
 
-      return response.orders.map((order: OrderGraphResponse) => 
-        convertGraphOrderToDomain(order)
+      return response.orders.map((order: OrderGraphResponse) =>
+        convertGraphOrderToDomain(order),
       );
     } catch (error) {
       console.error('Error fetching node orders from Graph:', error);
@@ -125,14 +122,14 @@ export class OrderRepository implements IOrderRepository {
         address = await this.signer.getAddress();
       }
 
-      const response = await graphqlRequest<{ journeys: JourneyGraphResponse[] }>(
-        this.graphQLEndpoint,
-        GET_JOURNEYS_BY_SENDER,
-        { senderAddress: address.toLowerCase() }
-      );
+      const response = await graphqlRequest<{
+        journeys: JourneyGraphResponse[];
+      }>(this.graphQLEndpoint, GET_JOURNEYS_BY_SENDER, {
+        senderAddress: address.toLowerCase(),
+      });
 
-      return response.journeys.map((journey: JourneyGraphResponse) => 
-        convertGraphJourneyToDomain(journey)
+      return response.journeys.map((journey: JourneyGraphResponse) =>
+        convertGraphJourneyToDomain(journey),
       );
     } catch (error) {
       console.error('Error fetching customer journeys from Graph:', error);
@@ -149,14 +146,14 @@ export class OrderRepository implements IOrderRepository {
         address = await this.signer.getAddress();
       }
 
-      const response = await graphqlRequest<{ journeys: JourneyGraphResponse[] }>(
-        this.graphQLEndpoint,
-        GET_JOURNEYS_BY_RECEIVER,
-        { receiverAddress: address.toLowerCase() }
-      );
+      const response = await graphqlRequest<{
+        journeys: JourneyGraphResponse[];
+      }>(this.graphQLEndpoint, GET_JOURNEYS_BY_RECEIVER, {
+        receiverAddress: address.toLowerCase(),
+      });
 
-      return response.journeys.map((journey: JourneyGraphResponse) => 
-        convertGraphJourneyToDomain(journey)
+      return response.journeys.map((journey: JourneyGraphResponse) =>
+        convertGraphJourneyToDomain(journey),
       );
     } catch (error) {
       console.error('Error fetching receiver journeys from Graph:', error);
@@ -169,14 +166,16 @@ export class OrderRepository implements IOrderRepository {
    */
   async fetchAllJourneys(): Promise<Journey[]> {
     try {
-      const response = await graphqlRequest<{ journeys: JourneyGraphResponse[] }>(
+      const response = await graphqlRequest<{
+        journeys: JourneyGraphResponse[];
+      }>(
         this.graphQLEndpoint,
         GET_ALL_JOURNEYS,
-        { first: 1000, skip: 0 } // Can be made configurable
+        { first: 1000, skip: 0 }, // Can be made configurable
       );
 
-      return response.journeys.map((journey: JourneyGraphResponse) => 
-        convertGraphJourneyToDomain(journey)
+      return response.journeys.map((journey: JourneyGraphResponse) =>
+        convertGraphJourneyToDomain(journey),
       );
     } catch (error) {
       console.error('Error fetching all journeys from Graph:', error);
@@ -189,11 +188,11 @@ export class OrderRepository implements IOrderRepository {
    */
   async getJourneyById(journeyId: BytesLike): Promise<Journey> {
     try {
-      const response = await graphqlRequest<{ journey: JourneyGraphResponse | null }>(
-        this.graphQLEndpoint,
-        GET_JOURNEY_BY_ID,
-        { journeyId: journeyId.toString() }
-      );
+      const response = await graphqlRequest<{
+        journey: JourneyGraphResponse | null;
+      }>(this.graphQLEndpoint, GET_JOURNEY_BY_ID, {
+        journeyId: journeyId.toString(),
+      });
 
       if (!response.journey) {
         throw new Error(`Journey ${journeyId} not found`);
@@ -205,7 +204,7 @@ export class OrderRepository implements IOrderRepository {
       // Fallback to on-chain call for critical path
       await this.waitForInitialization();
       const contractJourney = await this.readContract.getjourney(journeyId);
-      
+
       return {
         parcelData: contractJourney.parcelData,
         journeyId: contractJourney.journeyId,
@@ -242,11 +241,11 @@ export class OrderRepository implements IOrderRepository {
       const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
         this.graphQLEndpoint,
         GET_ORDERS_BY_BUYER,
-        { buyerAddress: address.toLowerCase() }
+        { buyerAddress: address.toLowerCase() },
       );
 
-      return response.orders.map((order: OrderGraphResponse) => 
-        convertGraphOrderToDomain(order)
+      return response.orders.map((order: OrderGraphResponse) =>
+        convertGraphOrderToDomain(order),
       );
     } catch (error) {
       console.error('Error fetching buyer orders from Graph:', error);
@@ -262,11 +261,11 @@ export class OrderRepository implements IOrderRepository {
       const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
         this.graphQLEndpoint,
         GET_ORDERS_BY_SELLER,
-        { sellerAddress: address.toLowerCase() }
+        { sellerAddress: address.toLowerCase() },
       );
 
-      return response.orders.map((order: OrderGraphResponse) => 
-        convertGraphOrderToDomain(order)
+      return response.orders.map((order: OrderGraphResponse) =>
+        convertGraphOrderToDomain(order),
       );
     } catch (error) {
       console.error('Error fetching seller orders from Graph:', error);
@@ -279,11 +278,11 @@ export class OrderRepository implements IOrderRepository {
    */
   async getOrderById(orderId: BytesLike): Promise<Order> {
     try {
-      const response = await graphqlRequest<{ order: OrderGraphResponse | null }>(
-        this.graphQLEndpoint,
-        GET_ORDER_BY_ID,
-        { orderId: orderId.toString() }
-      );
+      const response = await graphqlRequest<{
+        order: OrderGraphResponse | null;
+      }>(this.graphQLEndpoint, GET_ORDER_BY_ID, {
+        orderId: orderId.toString(),
+      });
 
       if (!response.order) {
         throw new Error(`Order ${orderId} not found`);
@@ -295,7 +294,7 @@ export class OrderRepository implements IOrderRepository {
       // Fallback to on-chain call for critical path
       await this.waitForInitialization();
       const contractOrder = await this.readContract.getOrder(orderId);
-      
+
       return {
         id: contractOrder.id,
         token: contractOrder.token,
@@ -318,7 +317,9 @@ export class OrderRepository implements IOrderRepository {
    * Placeholder for asset attributes (not stored in LocationContract)
    */
   async getAssetAttributes(assetName: string): Promise<Asset> {
-    console.warn('getAssetAttributes: LocationContract does not store asset attribute data');
+    console.warn(
+      'getAssetAttributes: LocationContract does not store asset attribute data',
+    );
     return {
       assetName,
       attributes: [],
@@ -338,11 +339,3 @@ export class OrderRepository implements IOrderRepository {
     return this.getBuyerOrders(address);
   }
 }
-
-
-
-
-
-
-
-

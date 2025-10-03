@@ -27,7 +27,10 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import { useNode, type Order } from '@/app/providers/node.provider';
+import {
+  useSelectedNode,
+  type Order,
+} from '@/app/providers/selected-node.provider';
 import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 const orderStatuses = [
@@ -45,21 +48,25 @@ type SortConfig = {
 
 export default function OrdersPage() {
   const { setCurrentUserRole } = useMainProvider();
-  const { orders, refreshOrders } = useNode();
+  const { orders, refreshOrders, selectNode, selectedNodeAddress } =
+    useSelectedNode();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const params = useParams();
   const nodeId = params.nodeId as string;
 
   useEffect(() => {
     setCurrentUserRole('node');
-    handleRefresh(nodeId);
-  }, [setCurrentUserRole, nodeId]);
+    // Select the node if it's not already selected
+    if (nodeId && nodeId !== selectedNodeAddress) {
+      selectNode(nodeId);
+    }
+  }, [setCurrentUserRole, nodeId, selectedNodeAddress, selectNode]);
 
-  const handleRefresh = async (currentNodeId: string) => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await refreshOrders(currentNodeId);
-      console.log('orders for node', currentNodeId, '>>>>>>>>>', orders);
+      await refreshOrders();
+      console.log('orders for node', nodeId, '>>>>>>>>>', orders);
     } finally {
       setIsRefreshing(false);
     }
@@ -70,7 +77,7 @@ export default function OrdersPage() {
       <OrdersContent
         nodeId={nodeId}
         orders={orders}
-        onRefresh={() => handleRefresh(nodeId)}
+        onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
     </Suspense>

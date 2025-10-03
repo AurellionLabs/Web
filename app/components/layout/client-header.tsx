@@ -8,14 +8,14 @@ import { colors } from '@/lib/constants/colors';
 import { RoleSelector } from '@/app/components/ui/role-selector';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useMainProvider } from '@/app/providers/main.provider';
-import { useNode } from '@/app/providers/node.provider';
+import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { cn } from '@/lib/utils';
 import ConnectButton from '../ConnectButtont';
 
 export function ClientHeader() {
   const [mounted, setMounted] = useState(false);
   const { currentUserRole } = useMainProvider();
-  const { selectedNode } = useNode();
+  const { selectedNodeAddress } = useSelectedNode();
   const pathname = usePathname();
 
   useEffect(() => {

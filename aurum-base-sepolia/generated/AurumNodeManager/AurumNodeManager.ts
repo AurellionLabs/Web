@@ -8,7 +8,7 @@ import {
   Bytes,
   Address,
   BigInt,
-} from "@graphprotocol/graph-ts";
+} from '@graphprotocol/graph-ts';
 
 export class NodeCapacityUpdated extends ethereum.Event {
   get params(): NodeCapacityUpdated__Params {
@@ -292,10 +292,10 @@ export class AurumNodeManager__AllNodesResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromTuple(this.value0));
-    map.set("value1", ethereum.Value.fromFixedBytes(this.value1));
-    map.set("value2", ethereum.Value.fromAddress(this.value2));
-    map.set("value3", ethereum.Value.fromFixedBytes(this.value3));
+    map.set('value0', ethereum.Value.fromTuple(this.value0));
+    map.set('value1', ethereum.Value.fromFixedBytes(this.value1));
+    map.set('value2', ethereum.Value.fromAddress(this.value2));
+    map.set('value3', ethereum.Value.fromFixedBytes(this.value3));
     return map;
   }
 
@@ -464,13 +464,13 @@ export class AurumNodeManager__registerNodeInputNodeSupportedAssetsStruct extend
 
 export class AurumNodeManager extends ethereum.SmartContract {
   static bind(address: Address): AurumNodeManager {
-    return new AurumNodeManager("AurumNodeManager", address);
+    return new AurumNodeManager('AurumNodeManager', address);
   }
 
   AllNodes(param0: Address): AurumNodeManager__AllNodesResult {
     let result = super.call(
-      "AllNodes",
-      "AllNodes(address):((string,(string,string)),bytes1,address,bytes1)",
+      'AllNodes',
+      'AllNodes(address):((string,(string,string)),bytes1,address,bytes1)',
       [ethereum.Value.fromAddress(param0)],
     );
 
@@ -490,8 +490,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
     param0: Address,
   ): ethereum.CallResult<AurumNodeManager__AllNodesResult> {
     let result = super.tryCall(
-      "AllNodes",
-      "AllNodes(address):((string,(string,string)),bytes1,address,bytes1)",
+      'AllNodes',
+      'AllNodes(address):((string,(string,string)),bytes1,address,bytes1)',
       [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
@@ -518,8 +518,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
     tokenId: BigInt,
   ): AurumNodeManager__getAssetResultValue0Struct {
     let result = super.call(
-      "getAsset",
-      "getAsset(address,address,uint256):((address,uint256,uint256,uint256))",
+      'getAsset',
+      'getAsset(address,address,uint256):((address,uint256,uint256,uint256))',
       [
         ethereum.Value.fromAddress(node),
         ethereum.Value.fromAddress(token),
@@ -538,8 +538,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
     tokenId: BigInt,
   ): ethereum.CallResult<AurumNodeManager__getAssetResultValue0Struct> {
     let result = super.tryCall(
-      "getAsset",
-      "getAsset(address,address,uint256):((address,uint256,uint256,uint256))",
+      'getAsset',
+      'getAsset(address,address,uint256):((address,uint256,uint256,uint256))',
       [
         ethereum.Value.fromAddress(node),
         ethereum.Value.fromAddress(token),
@@ -559,8 +559,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
 
   getNode(nodeAddress: Address): AurumNodeManager__getNodeResultNodeStruct {
     let result = super.call(
-      "getNode",
-      "getNode(address):(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1))",
+      'getNode',
+      'getNode(address):(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1))',
       [ethereum.Value.fromAddress(nodeAddress)],
     );
 
@@ -573,8 +573,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
     nodeAddress: Address,
   ): ethereum.CallResult<AurumNodeManager__getNodeResultNodeStruct> {
     let result = super.tryCall(
-      "getNode",
-      "getNode(address):(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1))",
+      'getNode',
+      'getNode(address):(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1))',
       [ethereum.Value.fromAddress(nodeAddress)],
     );
     if (result.reverted) {
@@ -588,8 +588,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
 
   getNodeStatus(node: Address): Bytes {
     let result = super.call(
-      "getNodeStatus",
-      "getNodeStatus(address):(bytes1)",
+      'getNodeStatus',
+      'getNodeStatus(address):(bytes1)',
       [ethereum.Value.fromAddress(node)],
     );
 
@@ -598,8 +598,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
 
   try_getNodeStatus(node: Address): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "getNodeStatus",
-      "getNodeStatus(address):(bytes1)",
+      'getNodeStatus',
+      'getNodeStatus(address):(bytes1)',
       [ethereum.Value.fromAddress(node)],
     );
     if (result.reverted) {
@@ -610,7 +610,7 @@ export class AurumNodeManager extends ethereum.SmartContract {
   }
 
   isAdmin(param0: Address): boolean {
-    let result = super.call("isAdmin", "isAdmin(address):(bool)", [
+    let result = super.call('isAdmin', 'isAdmin(address):(bool)', [
       ethereum.Value.fromAddress(param0),
     ]);
 
@@ -618,7 +618,7 @@ export class AurumNodeManager extends ethereum.SmartContract {
   }
 
   try_isAdmin(param0: Address): ethereum.CallResult<boolean> {
-    let result = super.tryCall("isAdmin", "isAdmin(address):(bool)", [
+    let result = super.tryCall('isAdmin', 'isAdmin(address):(bool)', [
       ethereum.Value.fromAddress(param0),
     ]);
     if (result.reverted) {
@@ -629,15 +629,15 @@ export class AurumNodeManager extends ethereum.SmartContract {
   }
 
   nodeIdCounter(): BigInt {
-    let result = super.call("nodeIdCounter", "nodeIdCounter():(uint256)", []);
+    let result = super.call('nodeIdCounter', 'nodeIdCounter():(uint256)', []);
 
     return result[0].toBigInt();
   }
 
   try_nodeIdCounter(): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "nodeIdCounter",
-      "nodeIdCounter():(uint256)",
+      'nodeIdCounter',
+      'nodeIdCounter():(uint256)',
       [],
     );
     if (result.reverted) {
@@ -648,7 +648,7 @@ export class AurumNodeManager extends ethereum.SmartContract {
   }
 
   nodeList(param0: BigInt): Address {
-    let result = super.call("nodeList", "nodeList(uint256):(address)", [
+    let result = super.call('nodeList', 'nodeList(uint256):(address)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
 
@@ -656,7 +656,7 @@ export class AurumNodeManager extends ethereum.SmartContract {
   }
 
   try_nodeList(param0: BigInt): ethereum.CallResult<Address> {
-    let result = super.tryCall("nodeList", "nodeList(uint256):(address)", [
+    let result = super.tryCall('nodeList', 'nodeList(uint256):(address)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
     if (result.reverted) {
@@ -668,8 +668,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
 
   ownedNodes(param0: Address, param1: BigInt): Address {
     let result = super.call(
-      "ownedNodes",
-      "ownedNodes(address,uint256):(address)",
+      'ownedNodes',
+      'ownedNodes(address,uint256):(address)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromUnsignedBigInt(param1),
@@ -684,8 +684,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
     param1: BigInt,
   ): ethereum.CallResult<Address> {
     let result = super.tryCall(
-      "ownedNodes",
-      "ownedNodes(address,uint256):(address)",
+      'ownedNodes',
+      'ownedNodes(address,uint256):(address)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromUnsignedBigInt(param1),
@@ -699,13 +699,13 @@ export class AurumNodeManager extends ethereum.SmartContract {
   }
 
   owner(): Address {
-    let result = super.call("owner", "owner():(address)", []);
+    let result = super.call('owner', 'owner():(address)', []);
 
     return result[0].toAddress();
   }
 
   try_owner(): ethereum.CallResult<Address> {
-    let result = super.tryCall("owner", "owner():(address)", []);
+    let result = super.tryCall('owner', 'owner():(address)', []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -715,8 +715,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
 
   registerNode(node: AurumNodeManager__registerNodeInputNodeStruct): Address {
     let result = super.call(
-      "registerNode",
-      "registerNode(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1)):(address)",
+      'registerNode',
+      'registerNode(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1)):(address)',
       [ethereum.Value.fromTuple(node)],
     );
 
@@ -727,8 +727,8 @@ export class AurumNodeManager extends ethereum.SmartContract {
     node: AurumNodeManager__registerNodeInputNodeStruct,
   ): ethereum.CallResult<Address> {
     let result = super.tryCall(
-      "registerNode",
-      "registerNode(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1)):(address)",
+      'registerNode',
+      'registerNode(((string,(string,string)),bytes1,address,(address,uint256,uint256,uint256)[],bytes1)):(address)',
       [ethereum.Value.fromTuple(node)],
     );
     if (result.reverted) {

@@ -11,7 +11,6 @@ import {
 import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
 import { CustomerOrder } from '@/app/providers/customer.provider';
 import { useState } from 'react';
-import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 interface OrderActionDialogProps {
   order: CustomerOrder;

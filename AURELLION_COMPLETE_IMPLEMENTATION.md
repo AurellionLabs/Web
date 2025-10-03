@@ -21,20 +21,23 @@ Aurellion's blockchain foundation rests on four interconnected smart contracts, 
 AuSys is the beating heart of Aurellion's commerce engine. This contract manages the complete lifecycle of orders and journeys, from initial creation through final settlement. It's built with sophisticated role-based access control (RBAC) and implements a state machine that ensures orders can only progress through valid transitions.
 
 **Core Data Structures:**
+
 - `Order` struct contains the complete commercial agreement: buyer, seller, token details, pricing, nodes involved, and current status
 - `Journey` struct represents each leg of physical transport with sender, receiver, driver, timestamps, and bounty
 - `ParcelData` struct captures geographic routing with start/end locations and descriptive names
 
 **Key State Management:**
 The contract maintains several critical mappings:
+
 - `idToOrder` maps order IDs to complete order data
-- `idToJourney` maps journey IDs to journey details  
+- `idToJourney` maps journey IDs to journey details
 - `journeyToOrderId` links journeys back to their parent orders
 - `driverToJourneyId` tracks driver assignments
 - `customerHandOff` and `driverHandOn` manage custody signatures
 
 **The Order Creation Flow:**
 When `orderCreation()` is called, the contract performs atomic operations:
+
 1. Validates all addresses and amounts are non-zero
 2. Generates a unique order ID using `getHashedOrderId()`
 3. Calculates a 2% transaction fee automatically
@@ -43,6 +46,7 @@ When `orderCreation()` is called, the contract performs atomic operations:
 
 **Journey Management and Custody:**
 The journey system implements programmable custody with cryptographic signatures:
+
 - `assignDriverToJourneyId()` assigns verified drivers with role checks
 - `packageSign()` captures custody signatures from senders, drivers, and receivers
 - `handOn()` transitions journeys to InProgress and pulls tokens into escrow
@@ -50,6 +54,7 @@ The journey system implements programmable custody with cryptographic signatures
 
 **Settlement and Fee Distribution:**
 When the final journey delivers to the buyer, settlement occurs atomically:
+
 - ERC-1155 tokens transfer from contract custody to the buyer
 - The seller receives payment in the designated ERC-20 token
 - Transaction fees are distributed proportionally across all nodes that provided capacity
@@ -61,6 +66,7 @@ AurumNodeManager serves as the authoritative registry for the physical network o
 
 **Node Registration Process:**
 When `registerNode()` is called, the contract:
+
 1. Validates the caller is either the node owner or an admin
 2. Deploys a new `aurumNode` contract instance for the node
 3. Stores node data including location, supported assets, and capacity
@@ -69,6 +75,7 @@ When `registerNode()` is called, the contract:
 
 **Capacity Management:**
 The critical `reduceCapacityForOrder()` function is callable only by AuSys and implements atomic capacity reduction:
+
 1. Validates the calling contract is AuSys (preventing external manipulation)
 2. Searches the node's supported assets for a matching token/tokenId pair
 3. Checks sufficient capacity exists before reduction
@@ -77,6 +84,7 @@ The critical `reduceCapacityForOrder()` function is callable only by AuSys and i
 
 **Asset Management:**
 Nodes can dynamically manage their supported assets through:
+
 - `addSupportedAsset()` for adding new asset types and capacities
 - `updateSupportedAssets()` for batch updates
 - Each asset includes token address, tokenId, price, and available capacity
@@ -87,12 +95,14 @@ AuraAsset is an ERC-1155 contract that serves as the canonical registry for all 
 
 **Asset Definition System:**
 Assets are defined through a hierarchical structure:
+
 - `Asset` struct contains name, class, and attribute array
 - `Attribute` struct defines properties with multiple possible values
 - Classes (GOAT, SHEEP, COW) are managed separately with activation status
 
 **Node-Restricted Minting:**
 The `nodeMint()` function implements several security layers:
+
 1. `validNode` modifier ensures only verified nodes can mint tokens
 2. Class activation check prevents minting of inactive asset classes
 3. Deterministic token ID generation based on asset hash
@@ -101,6 +111,7 @@ The `nodeMint()` function implements several security layers:
 
 **Class and Asset Management:**
 The contract implements "tombstoning" for efficient deletion:
+
 - `addSupportedClass()` adds new asset classes with activation
 - `removeSupportedClass()` deactivates classes without breaking array indices
 - Similar tombstoning for asset definitions maintains referential integrity
@@ -111,6 +122,7 @@ AuStake provides yield-generating operations that can underwrite liquidity for a
 
 **Operation Lifecycle:**
 Operations progress through defined states: INACTIVE → ACTIVE → COMPLETE → PAID
+
 - `createOperation()` establishes new staking opportunities with funding goals
 - `stake()` allows users to commit tokens to operations
 - `unlockReward()` allows providers to fund rewards when operations complete
@@ -118,6 +130,7 @@ Operations progress through defined states: INACTIVE → ACTIVE → COMPLETE →
 
 **Reward Calculation:**
 The contract uses basis points for precise percentage calculations:
+
 - Rewards stored as basis points (1234 = 12.34%)
 - Total rewards calculated as `(tokenTvl * reward) / REWARD_PRECISION`
 - Individual rewards calculated as `(userStake * reward) / REWARD_PRECISION`
@@ -135,6 +148,7 @@ Aurellion implements four specialized subgraphs that transform on-chain events i
 The AuSys subgraph (`ausys-base-sepolia/`) indexes all commerce-related events:
 
 **Event Handlers:**
+
 - `handleOrderCreated()` creates Order entities with buyer, seller, and pricing data
 - `handleJourneyCreated()` creates Journey entities linked to parent orders
 - `handleJourneyStatusUpdated()` tracks journey state transitions
@@ -144,6 +158,7 @@ The AuSys subgraph (`ausys-base-sepolia/`) indexes all commerce-related events:
 
 **Entity Relationships:**
 The subgraph maintains complex relationships:
+
 - Orders contain arrays of journey IDs
 - Journeys reference parent order IDs
 - Driver statistics aggregate across all assigned journeys
@@ -154,6 +169,7 @@ The subgraph maintains complex relationships:
 The Aurum subgraph (`aurum-base-sepolia/`) indexes node registration and capacity events:
 
 **Event Handlers:**
+
 - `handleNodeRegistered()` creates Node entities with location and ownership data
 - `handleSupportedAssetAdded()` tracks individual asset additions
 - `handleSupportedAssetsUpdated()` processes batch asset updates
@@ -161,6 +177,7 @@ The Aurum subgraph (`aurum-base-sepolia/`) indexes node registration and capacit
 
 **Capacity Tracking:**
 The subgraph maintains real-time capacity data:
+
 - Each asset update event triggers capacity recalculation
 - Historical capacity changes are preserved for analytics
 - Aggregate capacity views enable market-wide supply analysis
@@ -170,6 +187,7 @@ The subgraph maintains real-time capacity data:
 The AuraAsset subgraph (`aura-asset-base-sepolia/`) indexes token creation and class management:
 
 **Event Handlers:**
+
 - `handleMintedAsset()` creates Asset entities with metadata hashes
 - Class management events track available asset types
 - IPFS hash mapping enables metadata resolution
@@ -179,6 +197,7 @@ The AuraAsset subgraph (`aura-asset-base-sepolia/`) indexes token creation and c
 The AuStake subgraph (`austake-base-sepolia/`) tracks staking operations:
 
 **Event Handlers:**
+
 - `handleOperationCreated()` creates Operation entities with funding goals
 - `handleStaked()` records user stakes and updates TVL
 - `handleUnstaked()` processes withdrawals and reward claims
@@ -189,6 +208,7 @@ The AuStake subgraph (`austake-base-sepolia/`) tracks staking operations:
 The deployment script (`scripts/deploy.ts`) is a masterpiece of infrastructure automation that ensures perfect synchronization between contracts and subgraphs:
 
 **Contract Deployment Sequence:**
+
 1. Deploys AuSys with USDC as the payment token
 2. Deploys AurumNodeManager with AuSys reference
 3. Deploys AuStake with project wallet configuration
@@ -198,6 +218,7 @@ The deployment script (`scripts/deploy.ts`) is a masterpiece of infrastructure a
 
 **Subgraph Synchronization:**
 For each subgraph, the script:
+
 1. Updates `networks.json` with fresh contract addresses and start blocks
 2. Updates `subgraph.yaml` with the same information
 3. Runs `graph codegen` to generate TypeScript types
@@ -208,6 +229,7 @@ For each subgraph, the script:
 
 **Metadata Integration:**
 The script demonstrates IPFS integration by:
+
 1. Creating a default AUGOAT asset with weight and sex attributes
 2. Uploading metadata to Pinata with keyvalue indexing
 3. Linking IPFS hashes to token IDs for frontend discovery
@@ -225,6 +247,7 @@ Aurellion's domain layer serves as the "universal translator" between the techni
 The Order domain encapsulates the complete commercial lifecycle:
 
 **Core Types:**
+
 - `Order` type mirrors the contract structure but uses business-friendly names
 - `Journey` type represents transport segments with driver and timing data
 - `Asset` type defines tokenizable items with attributes
@@ -232,6 +255,7 @@ The Order domain encapsulates the complete commercial lifecycle:
 
 **Repository Interface:**
 `IOrderRepository` defines the contract for order data access:
+
 - `getBuyerOrders()` retrieves orders by buyer address
 - `getSellerOrders()` retrieves orders by seller (node) address
 - `getCustomerJourneys()` and `getReceiverJourneys()` handle journey queries
@@ -239,6 +263,7 @@ The Order domain encapsulates the complete commercial lifecycle:
 
 **Status Management:**
 The domain provides clean status enums and conversion utilities:
+
 - Order statuses: Pending, InProgress, Completed, Settled, Canceled
 - Status converters translate between contract integers and domain enums
 
@@ -247,12 +272,14 @@ The domain provides clean status enums and conversion utilities:
 The Node domain manages the physical network of storage and logistics providers:
 
 **Core Types:**
+
 - `Node` type represents a physical location with owner, location, and supported assets
 - `NodeAsset` type aggregates token, capacity, and pricing information
 - `NodeLocation` type captures geographic and descriptive data
 
 **Repository Interface:**
 `NodeRepository` defines node management operations:
+
 - `registerNode()` handles new node registration
 - `getOwnedNodes()` retrieves nodes by owner address
 - `updateNodeStatus()` manages node activation/deactivation
@@ -260,6 +287,7 @@ The Node domain manages the physical network of storage and logistics providers:
 
 **Service Interface:**
 `INodeAssetService` handles asset operations:
+
 - `mintAsset()` creates new tokenized assets
 - `updateAssetCapacity()` modifies available quantities
 - `addSupportedAsset()` expands node capabilities
@@ -269,12 +297,14 @@ The Node domain manages the physical network of storage and logistics providers:
 The Pool domain manages liquidity and staking operations:
 
 **Core Types:**
+
 - `Pool` type represents staking operations with funding goals and rewards
 - `StakeEvent` type tracks user staking actions
 - `PoolDynamicData` type provides real-time calculations
 
 **Repository Interface:**
 `IPoolRepository` defines pool data access:
+
 - `getAllPools()` retrieves all available pools
 - `getPoolById()` provides detailed pool information
 - `getUserPoolsWithDynamicData()` shows user-specific pool data
@@ -292,12 +322,14 @@ Aurellion implements a sophisticated repository pattern that separates read and 
 The `RpcProviderFactory` (`infrastructure/providers/rpc-provider-factory.ts`) implements chain-aware provider creation:
 
 **Provider Creation:**
+
 - `getReadOnlyProvider()` creates dedicated providers using environment-configured RPC URLs
 - `getChainId()` extracts chain information from user providers
 - Provider caching ensures efficient resource usage
 
 **Configuration:**
 Environment variables define dedicated RPC endpoints:
+
 ```
 NEXT_PUBLIC_RPC_URL_42161=https://your-arbitrum-rpc.com
 NEXT_PUBLIC_RPC_URL_8453=https://your-base-rpc.com
@@ -309,6 +341,7 @@ NEXT_PUBLIC_RPC_URL_84532=https://your-base-sepolia-rpc.com
 The `RepositoryFactory` (`infrastructure/factories/repository-factory.ts`) orchestrates repository creation with proper RPC separation:
 
 **Factory Methods:**
+
 - `createAllRepositories()` creates all repositories in parallel
 - Individual creation methods for each repository type
 - Automatic initialization of read providers
@@ -316,6 +349,7 @@ The `RepositoryFactory` (`infrastructure/factories/repository-factory.ts`) orche
 
 **Repository Configuration:**
 Each repository receives:
+
 - User provider for write operations (requires signatures)
 - Dedicated read provider for query operations
 - Contract instances bound to appropriate providers
@@ -326,17 +360,20 @@ The `OrderRepository` (`infrastructure/repositories/orders-repository.ts`) demon
 
 **Constructor Pattern:**
 The repository initializes with both read and write capabilities:
+
 - Write contract connected to user signer for transactions
 - Read contract connected to dedicated RPC for queries
 - Asynchronous initialization of read provider with fallback
 
 **Read/Write Separation:**
+
 - Read operations use `this.readContract` connected to dedicated RPC
 - Write operations use `this.writeContract` connected to user signer
 - `ensureInitialized()` ensures read provider is ready before queries
 
 **GraphQL Integration:**
 The repository prioritizes GraphQL queries over direct contract calls:
+
 - `getBuyerOrders()` uses `GET_ORDERS_BY_BUYER` GraphQL query
 - `getCustomerJourneys()` uses `GET_JOURNEYS_BY_SENDER` query
 - Fallback to contract calls only for critical operations
@@ -346,17 +383,20 @@ The repository prioritizes GraphQL queries over direct contract calls:
 The `PoolRepository` (`infrastructure/repositories/pool-repository.ts`) implements advanced features:
 
 **Caching Strategy:**
+
 - NodeCache with 30-second TTL for GraphQL responses
 - Cache key generation based on query and variables
 - Cache hit/miss logging for performance monitoring
 
 **Rate Limiting:**
+
 - Minimum 1-second interval between requests
 - Automatic backoff for 429 responses
 - Retry logic with exponential backoff
 
 **Dynamic Data Calculation:**
 The repository calculates real-time pool metrics:
+
 - TVL (Total Value Locked) aggregation
 - Reward calculations based on current rates
 - User-specific stake and reward data
@@ -366,6 +406,7 @@ The repository calculates real-time pool metrics:
 The `PlatformRepository` (`infrastructure/repositories/platform-repository.ts`) bridges on-chain and off-chain data:
 
 **Asset Discovery:**
+
 - `getSupportedAssets()` combines contract registry with IPFS metadata
 - `getClassAssets()` queries Pinata using keyvalue filtering
 - Metadata hydration for rich asset descriptions
@@ -382,6 +423,7 @@ The repository demonstrates sophisticated IPFS integration by querying Pinata's 
 The `RepositoryProvider` (`app/providers/RepositoryProvider.tsx`) manages the complex initialization sequence:
 
 **Initialization Flow:**
+
 1. Waits for Privy authentication and wallet availability
 2. Creates BrowserProvider from Privy's Ethereum provider
 3. Generates signer for transaction signing
@@ -390,6 +432,7 @@ The `RepositoryProvider` (`app/providers/RepositoryProvider.tsx`) manages the co
 6. Initializes ServiceContext with business logic services
 
 **Error Handling:**
+
 - Comprehensive error logging for debugging
 - Graceful fallback for authentication failures
 - Retry logic for transient failures
@@ -404,12 +447,14 @@ The provider orchestrates the initialization of both repository and service cont
 The `NodeProvider` (`app/providers/node.provider.tsx`) manages node-specific operations:
 
 **State Management:**
+
 - `nodes` array containing owned nodes
 - `selectedNode` for current operations
 - `currentNodeData` for detailed node information
 - `orders` array for node-specific orders
 
 **Key Operations:**
+
 - `loadNodes()` fetches nodes owned by current user
 - `registerNode()` handles new node registration
 - `updateNodeAssets()` manages supported assets and capacity
@@ -423,11 +468,13 @@ The provider integrates with NodeAssetService for complex operations like asset 
 The `TradeProvider` (`app/providers/trade.provider.tsx`) manages market interactions:
 
 **Market Data:**
+
 - Available assets aggregated across all nodes
 - Price discovery and capacity tracking
 - Order placement and tracking
 
 **Order Management:**
+
 - Order creation with validation
 - Journey planning and driver coordination
 - Settlement tracking and confirmation
@@ -437,6 +484,7 @@ The `TradeProvider` (`app/providers/trade.provider.tsx`) manages market interact
 The `useWallet` hook (`hooks/useWallet.ts`) provides Web3 connectivity:
 
 **Wallet State:**
+
 - Connection status and user address
 - Chain ID and network validation
 - Error handling and loading states
@@ -455,18 +503,21 @@ Aurellion provides three distinct user interfaces tailored to specific roles:
 #### Customer Interface: Asset Discovery and Purchase
 
 **Discovery Flow:**
+
 1. Browse available assets using PlatformRepository
 2. Filter by asset class, location, and price
 3. View detailed asset information including IPFS metadata
 4. Select quantity and delivery location
 
 **Purchase Flow:**
+
 1. Create order through OrderRepository
 2. Approve ERC-20 tokens for payment
 3. Submit order transaction with escrow
 4. Track order status through subgraph updates
 
 **Journey Tracking:**
+
 1. View journey segments and driver assignments
 2. Sign custody handoffs when receiving deliveries
 3. Monitor real-time status updates
@@ -474,17 +525,20 @@ Aurellion provides three distinct user interfaces tailored to specific roles:
 #### Node Operator Interface: Network Management
 
 **Node Registration:**
+
 1. Register new nodes with location and capacity
 2. Configure supported asset types and pricing
 3. Mint new tokenized assets representing physical inventory
 
 **Order Fulfillment:**
+
 1. View incoming orders for owned nodes
 2. Create journey segments for order fulfillment
 3. Coordinate with drivers for pickup and delivery
 4. Sign custody handoffs when releasing assets
 
 **Capacity Management:**
+
 1. Update available capacity for each asset type
 2. Add new supported asset types
 3. Monitor utilization and revenue metrics
@@ -492,11 +546,13 @@ Aurellion provides three distinct user interfaces tailored to specific roles:
 #### Driver Interface: Logistics Coordination
 
 **Journey Management:**
+
 1. View available journey assignments
 2. Accept journey assignments within capacity limits
 3. Coordinate pickup and delivery schedules
 
 **Custody Operations:**
+
 1. Sign custody handoffs at pickup locations
 2. Transport assets between nodes and customers
 3. Sign custody handoffs at delivery locations
@@ -507,16 +563,19 @@ Aurellion provides three distinct user interfaces tailored to specific roles:
 Aurellion implements sophisticated state management to provide real-time updates:
 
 **Event-Driven Updates:**
+
 - Subgraphs index events within seconds of block confirmation
 - GraphQL subscriptions (where available) push updates to clients
 - Polling fallback ensures eventual consistency
 
 **Optimistic Updates:**
+
 - UI immediately reflects user actions
 - Background confirmation through transaction receipts
 - Rollback capability for failed transactions
 
 **State Persistence:**
+
 - Repository contexts maintain application-wide state
 - Provider contexts manage domain-specific state
 - Local storage for user preferences and session data
@@ -530,6 +589,7 @@ Aurellion implements sophisticated state management to provide real-time updates
 The story begins when a livestock farmer in Kenya decides to tokenize their goats through Aurellion. Here's the complete technical flow:
 
 **Node Registration Process:**
+
 1. Farmer connects wallet through Privy authentication
 2. `RepositoryProvider` initializes with user's signer and dedicated RPC providers
 3. `NodeProvider` loads existing nodes (empty for new users)
@@ -542,6 +602,7 @@ The story begins when a livestock farmer in Kenya decides to tokenize their goat
 10. Frontend refreshes via GraphQL query showing new registered node
 
 **Asset Tokenization Process:**
+
 1. Farmer selects registered node and chooses "Add Assets"
 2. Defines asset: name="AUGOAT", class="GOAT", attributes=[weight: "M", sex: "F"]
 3. Frontend calls `nodeAssetService.mintAsset()` with asset definition
@@ -558,6 +619,7 @@ The story begins when a livestock farmer in Kenya decides to tokenize their goat
 A buyer in Nairobi discovers the tokenized goats and places an order:
 
 **Discovery Process:**
+
 1. Buyer opens Aurellion marketplace
 2. `PlatformProvider` loads available assets via GraphQL queries
 3. `PlatformRepository.getClassAssets("GOAT")` queries both subgraph and Pinata
@@ -566,6 +628,7 @@ A buyer in Nairobi discovers the tokenized goats and places an order:
 6. Selects specific goats from specific node with desired attributes
 
 **Order Placement Process:**
+
 1. Buyer configures order: quantity=2, delivery location, price acceptance
 2. Frontend validates order parameters and checks token approvals
 3. Calls `orderRepository.createOrder()` with order details
@@ -583,6 +646,7 @@ A buyer in Nairobi discovers the tokenized goats and places an order:
 The order requires transportation from the farm to Nairobi:
 
 **Journey Creation Process:**
+
 1. Node operator (or admin) views pending orders needing fulfillment
 2. Creates journey segment from farm to buyer location
 3. Frontend calls `orderRepository.createOrderJourney()` with route details
@@ -595,6 +659,7 @@ The order requires transportation from the farm to Nairobi:
 10. AuSys subgraph indexes journey and updates order relationship
 
 **Driver Assignment Process:**
+
 1. Verified driver views available journeys in their area
 2. Driver accepts journey assignment through driver interface
 3. Frontend calls `driverRepository.assignToJourney()` with journey ID
@@ -610,6 +675,7 @@ The order requires transportation from the farm to Nairobi:
 The physical transport process is managed through cryptographic signatures:
 
 **Pickup Process:**
+
 1. Driver arrives at farm and confirms asset readiness
 2. Both farmer (sender) and driver sign custody handoff
 3. Frontend calls `ausys.packageSign()` for both parties
@@ -623,6 +689,7 @@ The physical transport process is managed through cryptographic signatures:
 11. `JourneyStatusUpdated` event emitted with InProgress status
 
 **Delivery Process:**
+
 1. Driver arrives at buyer location with assets
 2. Buyer inspects and confirms asset condition
 3. Both buyer (receiver) and driver sign custody handoff
@@ -639,6 +706,7 @@ The physical transport process is managed through cryptographic signatures:
 The final delivery triggers automatic settlement:
 
 **Settlement Process:**
+
 1. Contract detects final delivery to order buyer
 2. Updates order status to Settled
 3. Executes `safeTransferFrom` moving ERC-1155 tokens to buyer
@@ -651,6 +719,7 @@ The final delivery triggers automatic settlement:
 10. All parties receive settlement confirmations
 
 **Post-Settlement State:**
+
 1. Buyer owns ERC-1155 tokens representing physical goats
 2. Seller received payment in USDC
 3. Driver received bounty payment
@@ -687,7 +756,7 @@ Fallback mechanisms at every layer ensure the system remains functional even whe
 Aurellion represents a masterclass in complex system design:
 
 - **6 Smart Contracts** working in concert with proper separation of concerns
-- **4 Subgraphs** providing real-time indexing of all system events  
+- **4 Subgraphs** providing real-time indexing of all system events
 - **15+ Repository Methods** abstracting blockchain complexity
 - **5+ Provider Contexts** managing application state
 - **3 Role-Based Interfaces** tailored to different user types
@@ -703,14 +772,3 @@ This is not just a marketplace; it's a complete reimagining of how physical asse
 Through Aurellion, a goat in Kenya becomes discoverable to a buyer in Nairobi, purchaseable with cryptographic certainty, transportable through a verified network, and deliverable with immutable proof of custody. The system eliminates traditional intermediaries while providing better transparency, faster settlement, and lower costs than any centralized alternative.
 
 The architecture scales to support any physical asset, any geography, and any logistics complexity while maintaining the same guarantees of correctness, performance, and user experience. This is the future of physical asset tokenization, built with the engineering excellence it deserves.
-
-
-
-
-
-
-
-
-
-
-

@@ -1,5 +1,8 @@
 import { INodeAssetService } from '@/domain/node/node';
-import { INodeService, NodeService } from '@/infrastructure/services/node.service';
+import {
+  INodeService,
+  NodeService,
+} from '@/infrastructure/services/node.service';
 import { IOrderService } from '@/domain/orders/order';
 import { NodeAssetService } from '../services/node-asset.service';
 import { RepositoryContext } from './repository-context';
@@ -42,7 +45,10 @@ export class ServiceContext {
       const signer = repositoryContext.getSigner();
       this.orderService = new OrderService(ausys as any, signer as any);
     } catch (e) {
-      console.warn('[ServiceContext] Unable to initialize OrderService yet:', e);
+      console.warn(
+        '[ServiceContext] Unable to initialize OrderService yet:',
+        e,
+      );
       this.orderService = null;
     }
 
@@ -95,5 +101,3 @@ export class ServiceContext {
     this.nodeService = null;
   }
 }
-
-

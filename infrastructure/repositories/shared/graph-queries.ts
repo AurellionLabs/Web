@@ -80,7 +80,12 @@ export const GET_NODE_ASSETS_AURUM = gql`
  */
 export const GET_ALL_NODE_ASSETS_AURUM = gql`
   query GetAllNodeAssetsAurum($first: Int!, $skip: Int!) {
-    nodeAssets(first: $first, skip: $skip, orderBy: createdAt, orderDirection: desc) {
+    nodeAssets(
+      first: $first
+      skip: $skip
+      orderBy: createdAt
+      orderDirection: desc
+    ) {
       id
       node
       token

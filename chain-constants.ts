@@ -1,9 +1,18 @@
-export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "0x65B6f72A0b01f52cF6e0CbddA6fbA372c3792Ae2";
-export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "0xf741e685C24037e03fC47043D39fc44944E204d8";
-export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "0x2Ce62989E6DD1Ce3F78Fa51dD8fF4614E3010a2D";
-export const NEXT_PUBLIC_AUSYS_ADDRESS = "0xC341Ec4e1c39e018eF9D9e43ff36611780Af281B";
-export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "0x98939d7a34787EE4d737ed54A926c01D31AdF7c2";
-export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/aura-asset-base-sepolia/version/latest";
-export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/austake-base-sepolia/version/latest";
-export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/aurum-base-sepolia/version/latest";
-export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest";
+export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
+  '0x65B6f72A0b01f52cF6e0CbddA6fbA372c3792Ae2';
+export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
+  '0xf741e685C24037e03fC47043D39fc44944E204d8';
+export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
+  '0x2Ce62989E6DD1Ce3F78Fa51dD8fF4614E3010a2D';
+export const NEXT_PUBLIC_AUSYS_ADDRESS =
+  '0xC341Ec4e1c39e018eF9D9e43ff36611780Af281B';
+export const NEXT_PUBLIC_AURA_GOAT_ADDRESS =
+  '0x98939d7a34787EE4d737ed54A926c01D31AdF7c2';
+export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL =
+  'https://api.studio.thegraph.com/query/112596/aura-asset-base-sepolia/version/latest';
+export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL =
+  'https://api.studio.thegraph.com/query/112596/austake-base-sepolia/version/latest';
+export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL =
+  'https://api.studio.thegraph.com/query/112596/aurum-base-sepolia/version/latest';
+export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL =
+  'https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest';

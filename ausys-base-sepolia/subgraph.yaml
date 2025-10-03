@@ -8,7 +8,7 @@ dataSources:
     name: Ausys
     network: base-sepolia
     source:
-      address: "0xC341Ec4e1c39e018eF9D9e43ff36611780Af281B" # Will be updated by deploy script
+      address: '0xC341Ec4e1c39e018eF9D9e43ff36611780Af281B' # Will be updated by deploy script
       abi: Ausys
       startBlock: 31735848 # Will be updated by deploy script
     mapping:
@@ -61,17 +61,3 @@ dataSources:
         - event: JourneyCanceled(indexed bytes32,indexed address,uint256)
           handler: handleJourneyCanceled
       file: ./src/ausys.ts
-
-
-
-
-
-
-
-
-
-
-
-
-
-

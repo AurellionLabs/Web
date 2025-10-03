@@ -25,8 +25,8 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter } from 'next/navigation';
-import { useNode } from '@/app/providers/node.provider';
-import { getAssetName } from '@/dapp-connectors/aurum-controller';
+import { useSelectedNode } from '@/app/providers/selected-node.provider';
+import { useNodes } from '@/app/providers/nodes.provider';
 import type { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
@@ -61,6 +61,10 @@ interface EditingCapacity {
   value: string;
 }
 
+const getAssetName = (id: number) => {
+  return '1';
+};
+
 interface EditingPrice {
   id: number;
   value: string;
@@ -68,24 +72,34 @@ interface EditingPrice {
 
 export default function NodeDashboardPage() {
   const {
-    currentNodeData,
-    selectedNode,
+    selectedNodeAddress,
+    nodeData: currentNodeData,
     orders,
-    refreshNodes,
+    assets: nodeAssets,
+    loading: nodeLoading,
+    selectNode,
     mintAsset,
-    getNodeAssets,
-    getAssetAttributes,
     updateNodeStatus,
     updateAssetCapacity,
     updateAssetPrice,
-  } = useNode();
+    getAssetAttributes,
+    refreshAssets,
+  } = useSelectedNode();
+
+  const { refreshNodes } = useNodes();
   const router = useRouter();
+
+  // Get nodeId from URL params
+  const searchParams = new URLSearchParams(window.location.search);
+  const nodeIdFromUrl = searchParams.get('nodeId');
 
   // Form and dialog states
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
   const [isViewingOrders, setIsViewingOrders] = useState(false);
-  const [assets, setAssets] = useState<TokenizedAsset[]>([]);
+
+  // Use assets from provider instead of local state
+  const assets = nodeAssets;
   const [capacityError, setCapacityError] = useState<string | null>(null);
   // Available assets state removed; assets now loaded per selected class inside the form
   const [assetAttributes, setAssetAttributes] = useState<
@@ -102,7 +116,7 @@ export default function NodeDashboardPage() {
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
   const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
-  const { supportedAssetClasses } = usePlatform();
+  const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
   // Form handling
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
@@ -116,8 +130,15 @@ export default function NodeDashboardPage() {
     },
   });
 
+  // Select node when page loads
+  useEffect(() => {
+    if (nodeIdFromUrl && nodeIdFromUrl !== selectedNodeAddress) {
+      selectNode(nodeIdFromUrl);
+    }
+  }, [nodeIdFromUrl, selectedNodeAddress, selectNode]);
+
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
-    if (!selectedNode || !currentNodeData) return;
+    if (!selectedNodeAddress || !currentNodeData) return;
 
     setCapacityError(null);
     setIsTokenizing(true);
@@ -127,7 +148,9 @@ export default function NodeDashboardPage() {
       const quantity = Number(values.quantity);
 
       // --- Capacity Check (Optional) ---
-      const assetInfo = currentNodeData.assets?.find(a => Number(a.tokenId) === assetId);
+      const assetInfo = currentNodeData.assets?.find(
+        (a) => Number(a.tokenId) === assetId,
+      );
       if (assetInfo) {
         const totalCapacity = Number(assetInfo.capacity);
         const currentTokenizedAsset = assets.find(
@@ -140,7 +163,7 @@ export default function NodeDashboardPage() {
 
         if (quantity > remainingCapacity) {
           setCapacityError(
-            `You are exceeding capacity for ${getAssetName(assetId)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
+            `You are exceeding capacity for ${getAssetByTokenId(assetIdStr)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
           );
           setIsTokenizing(false);
           return;
@@ -153,7 +176,9 @@ export default function NodeDashboardPage() {
 
       const selectedValues = assetAttributes[assetIdStr] || {};
       const normalizedAttributes = Object.entries(selectedValues)
-        .filter(([attrName, attrValue]) => attrName != null && attrValue != null)
+        .filter(
+          ([attrName, attrValue]) => attrName != null && attrValue != null,
+        )
         .map(([attrName, attrValue]) => ({
           name: String(attrName),
           values: [String(attrValue)],
@@ -162,18 +187,14 @@ export default function NodeDashboardPage() {
       const assetPayload: PlatformAsset = {
         assetClass: form.getValues('assetClass'),
         tokenId: assetIdStr,
-        name: selectedAssetName || getAssetName(assetId),
+        name: selectedAssetName,
         attributes: normalizedAttributes,
       };
       const priceWei = BigInt(values.price || '0');
-      await mintAsset(selectedNode, assetPayload, quantity, priceWei);
+      await mintAsset(assetPayload, quantity, priceWei);
 
-      // Refresh assets immediately after minting
-      const nodeAssets = await getNodeAssets(selectedNode);
-      setAssets(nodeAssets);
-
-      // Reload asset attributes
-      await loadAssetAttributes(nodeAssets);
+      // Reload asset attributes (assets are automatically refreshed by provider)
+      await loadAssetAttributes(assets);
 
       toast.success('Asset tokenized successfully');
       setIsAddAssetOpen(false);
@@ -237,7 +258,9 @@ export default function NodeDashboardPage() {
       await Promise.all(
         assets.map(async (asset) => {
           try {
-            const attributes = await getAssetAttributes(asset.fileHash || asset.id);
+            const attributes = await getAssetAttributes(
+              asset.fileHash || asset.id,
+            );
             attributesMap[asset.id] = attributes;
           } catch (error) {
             console.error(
@@ -257,22 +280,12 @@ export default function NodeDashboardPage() {
     }
   };
 
+  // Load asset attributes when assets change
   useEffect(() => {
-    const loadAssets = async () => {
-      if (selectedNode) {
-        try {
-          const nodeAssets = await getNodeAssets(selectedNode);
-          setAssets(nodeAssets);
-
-          // Load attributes for all assets
-          await loadAssetAttributes(nodeAssets);
-        } catch (error) {
-          console.error('Error loading assets:', error);
-        }
-      }
-    };
-    loadAssets();
-  }, [selectedNode, getAssetAttributes]);
+    if (assets.length > 0) {
+      loadAssetAttributes(assets);
+    }
+  }, [assets]);
 
   // Removed: legacy merging of supported assets; selection now uses platform provider
 
@@ -354,14 +367,13 @@ export default function NodeDashboardPage() {
     value && value.length > max ? value.slice(0, max) + '...' : value;
 
   const handleStatusUpdate = async () => {
-    if (!currentNodeData || !selectedNode) return;
+    if (!currentNodeData) return;
 
     setIsUpdatingStatus(true);
     try {
       const newStatus =
         currentNodeData.status === 'Active' ? 'Inactive' : 'Active';
-      await updateNodeStatus(selectedNode, newStatus);
-      await refreshNodes();
+      await updateNodeStatus(newStatus);
       toast.success('Node status updated successfully');
     } catch (error) {
       toast.error('Failed to update node status');
@@ -371,18 +383,16 @@ export default function NodeDashboardPage() {
   };
 
   const handleCapacityUpdate = async (assetId: number, newValue: string) => {
-    if (!currentNodeData || !selectedNode) return;
+    if (!currentNodeData) return;
 
     setIsUpdatingCapacity(true);
     try {
       await updateAssetCapacity(
-        selectedNode,
         currentNodeData.owner,
         String(assetId),
         parseInt(newValue),
       );
 
-      await refreshNodes();
       setEditingCapacity(null);
       toast.success('Capacity updated successfully');
     } catch (error) {
@@ -394,17 +404,15 @@ export default function NodeDashboardPage() {
   };
 
   const handlePriceUpdate = async (assetId: number, newValue: string) => {
-    if (!currentNodeData || !selectedNode) return;
+    if (!currentNodeData) return;
 
     try {
       await updateAssetPrice(
-        selectedNode,
         currentNodeData.owner,
         String(assetId),
         BigInt(newValue),
       );
 
-      await refreshNodes();
       setEditingPrice(null);
       toast.success('Price updated successfully');
     } catch (error) {
@@ -429,7 +437,7 @@ export default function NodeDashboardPage() {
           <p className="text-gray-500">Manage your node and its assets</p>
         </div>
         <div className="flex gap-2">
-          {currentNodeData && (
+          {/* {currentNodeData && (
               <EditNodeModal
               nodeAddress={selectedNode!}
                 nodeData={currentNodeData as any}
@@ -441,7 +449,7 @@ export default function NodeDashboardPage() {
                 )}
               onNodeUpdated={refreshNodes}
             />
-          )}
+          )} */}
           <Dialog
             open={isAddAssetOpen}
             onOpenChange={(open) => {
@@ -659,11 +667,11 @@ export default function NodeDashboardPage() {
             onClick={async () => {
               setIsViewingOrders(true);
               try {
-                if (!selectedNode) {
+                if (!selectedNodeAddress) {
                   toast.error('No node selected to view orders.');
                   return;
                 }
-                await router.push(`/node/${selectedNode}/orders`);
+                await router.push(`/node/${selectedNodeAddress}/orders`);
               } finally {
                 setIsViewingOrders(false);
               }
@@ -698,9 +706,7 @@ export default function NodeDashboardPage() {
                   <tr key={order.id} className="border-b">
                     <td className="p-4">{order.id}</td>
                     <td className="p-4">{order.buyer}</td>
-                    <td className="p-4 capitalize">
-                      {getAssetName(Number(order.asset))}
-                    </td>
+                    <td className="p-4 capitalize">{order.asset}</td>
                     <td className="p-4">{order.quantity}</td>
                     <td className="p-4">{order.value} USDT</td>
                     <td className="p-4 capitalize">{order.status}</td>

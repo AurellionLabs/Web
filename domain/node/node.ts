@@ -1,7 +1,7 @@
 /**
  * Node Management Domain Interfaces - REFACTORED
  *
- * This file contains the updated domain interfaces that align with the 
+ * This file contains the updated domain interfaces that align with the
  * refactored smart contracts (Asset struct instead of separate arrays)
  */
 
@@ -11,10 +11,10 @@ import { Order } from '@/domain/orders/order';
  * Asset as stored on a node - matches contract Asset struct
  */
 export interface NodeAsset {
-  token: string;        // Contract address of the token
-  tokenId: string;      // Token ID (converted from BigInt to string for domain)
-  price: bigint;        // Price in wei (kept as BigInt for precision)
-  capacity: number;     // Available capacity (converted from BigInt to number)
+  token: string; // Contract address of the token
+  tokenId: string; // Token ID (converted from BigInt to string for domain)
+  price: bigint; // Price in wei (kept as BigInt for precision)
+  capacity: number; // Available capacity (converted from BigInt to number)
 }
 
 /**
@@ -23,9 +23,9 @@ export interface NodeAsset {
 export interface Node {
   address: string;
   location: NodeLocation;
-  validNode: boolean;     // Changed from string to boolean (contract now uses bool)
+  validNode: boolean; // Changed from string to boolean (contract now uses bool)
   owner: string;
-  assets: NodeAsset[];    // SIMPLIFIED: Single assets array instead of separate arrays
+  assets: NodeAsset[]; // SIMPLIFIED: Single assets array instead of separate arrays
   status: 'Active' | 'Inactive';
 }
 
@@ -101,7 +101,7 @@ export interface INodeAssetService {
     amount: number,
     priceWei: bigint,
   ): Promise<void>;
-  
+
   // Updated to work with NodeAsset instead of separate arrays
   updateAssetCapacity(
     nodeAddress: string,
@@ -109,14 +109,14 @@ export interface INodeAssetService {
     assetTokenId: string,
     newCapacity: number,
   ): Promise<void>;
-  
+
   updateAssetPrice(
     nodeAddress: string,
     assetToken: string,
     assetTokenId: string,
     newPrice: bigint,
   ): Promise<void>;
-  
+
   // Updated to work with NodeAsset array
   updateSupportedAssets(
     nodeAddress: string,
@@ -146,7 +146,7 @@ export const NodeAssetConverters = {
       token: nodeAsset.token,
       tokenId: BigInt(nodeAsset.tokenId),
       price: nodeAsset.price,
-      capacity: BigInt(nodeAsset.capacity)
+      capacity: BigInt(nodeAsset.capacity),
     };
   },
 
@@ -158,7 +158,7 @@ export const NodeAssetConverters = {
       token: contractAsset.token,
       tokenId: contractAsset.tokenId.toString(),
       price: contractAsset.price,
-      capacity: Number(contractAsset.capacity)
+      capacity: Number(contractAsset.capacity),
     };
   },
 
@@ -174,13 +174,5 @@ export const NodeAssetConverters = {
    */
   bytes1ToStatus(bytes1: string): 'Active' | 'Inactive' {
     return bytes1 === '0x01' ? 'Active' : 'Inactive';
-  }
+  },
 };
-
-
-
-
-
-
-
-

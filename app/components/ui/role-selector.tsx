@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useRouter } from 'next/navigation';
 import { checkIfNodeExists } from '@/dapp-connectors/aurum-controller';
-import { useNode } from '@/app/providers/node.provider';
+import { useNodes } from '@/app/providers/nodes.provider';
 
 const roles = [
   {
@@ -36,7 +36,7 @@ export function RoleSelector() {
   const [open, setOpen] = React.useState(false);
   const { currentUserRole, setCurrentUserRole } = useMainProvider();
   const router = useRouter();
-  const { isRegisteredNode: nodeStatus } = useNode();
+  const { isRegisteredNode: nodeStatus } = useNodes();
 
   const checkNodeRegistration = async () => {
     try {

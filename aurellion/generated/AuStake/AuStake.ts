@@ -8,7 +8,7 @@ import {
   Bytes,
   Address,
   BigInt,
-} from "@graphprotocol/graph-ts";
+} from '@graphprotocol/graph-ts';
 
 export class AdminStatusChanged extends ethereum.Event {
   get params(): AdminStatusChanged__Params {
@@ -283,22 +283,22 @@ export class AuStake__idToOperationResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromFixedBytes(this.value0));
-    map.set("value1", ethereum.Value.fromString(this.value1));
-    map.set("value2", ethereum.Value.fromString(this.value2));
-    map.set("value3", ethereum.Value.fromAddress(this.value3));
-    map.set("value4", ethereum.Value.fromAddress(this.value4));
-    map.set("value5", ethereum.Value.fromUnsignedBigInt(this.value5));
-    map.set("value6", ethereum.Value.fromUnsignedBigInt(this.value6));
-    map.set("value7", ethereum.Value.fromString(this.value7));
-    map.set("value8", ethereum.Value.fromUnsignedBigInt(this.value8));
-    map.set("value9", ethereum.Value.fromUnsignedBigInt(this.value9));
+    map.set('value0', ethereum.Value.fromFixedBytes(this.value0));
+    map.set('value1', ethereum.Value.fromString(this.value1));
+    map.set('value2', ethereum.Value.fromString(this.value2));
+    map.set('value3', ethereum.Value.fromAddress(this.value3));
+    map.set('value4', ethereum.Value.fromAddress(this.value4));
+    map.set('value5', ethereum.Value.fromUnsignedBigInt(this.value5));
+    map.set('value6', ethereum.Value.fromUnsignedBigInt(this.value6));
+    map.set('value7', ethereum.Value.fromString(this.value7));
+    map.set('value8', ethereum.Value.fromUnsignedBigInt(this.value8));
+    map.set('value9', ethereum.Value.fromUnsignedBigInt(this.value9));
     map.set(
-      "value10",
+      'value10',
       ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value10)),
     );
-    map.set("value11", ethereum.Value.fromUnsignedBigInt(this.value11));
-    map.set("value12", ethereum.Value.fromUnsignedBigInt(this.value12));
+    map.set('value11', ethereum.Value.fromUnsignedBigInt(this.value11));
+    map.set('value12', ethereum.Value.fromUnsignedBigInt(this.value12));
     return map;
   }
 
@@ -368,9 +368,9 @@ export class AuStake__operationStakesResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromUnsignedBigInt(this.value0));
-    map.set("value1", ethereum.Value.fromUnsignedBigInt(this.value1));
-    map.set("value2", ethereum.Value.fromBoolean(this.value2));
+    map.set('value0', ethereum.Value.fromUnsignedBigInt(this.value0));
+    map.set('value1', ethereum.Value.fromUnsignedBigInt(this.value1));
+    map.set('value2', ethereum.Value.fromBoolean(this.value2));
     return map;
   }
 
@@ -400,9 +400,9 @@ export class AuStake__stakesResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromUnsignedBigInt(this.value0));
-    map.set("value1", ethereum.Value.fromUnsignedBigInt(this.value1));
-    map.set("value2", ethereum.Value.fromBoolean(this.value2));
+    map.set('value0', ethereum.Value.fromUnsignedBigInt(this.value0));
+    map.set('value1', ethereum.Value.fromUnsignedBigInt(this.value1));
+    map.set('value2', ethereum.Value.fromBoolean(this.value2));
     return map;
   }
 
@@ -421,13 +421,13 @@ export class AuStake__stakesResult {
 
 export class AuStake extends ethereum.SmartContract {
   static bind(address: Address): AuStake {
-    return new AuStake("AuStake", address);
+    return new AuStake('AuStake', address);
   }
 
   activeOperations(param0: BigInt): Bytes {
     let result = super.call(
-      "activeOperations",
-      "activeOperations(uint256):(bytes32)",
+      'activeOperations',
+      'activeOperations(uint256):(bytes32)',
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
 
@@ -436,8 +436,8 @@ export class AuStake extends ethereum.SmartContract {
 
   try_activeOperations(param0: BigInt): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "activeOperations",
-      "activeOperations(uint256):(bytes32)",
+      'activeOperations',
+      'activeOperations(uint256):(bytes32)',
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
@@ -448,7 +448,7 @@ export class AuStake extends ethereum.SmartContract {
   }
 
   admins(param0: Address): boolean {
-    let result = super.call("admins", "admins(address):(bool)", [
+    let result = super.call('admins', 'admins(address):(bool)', [
       ethereum.Value.fromAddress(param0),
     ]);
 
@@ -456,7 +456,7 @@ export class AuStake extends ethereum.SmartContract {
   }
 
   try_admins(param0: Address): ethereum.CallResult<boolean> {
-    let result = super.tryCall("admins", "admins(address):(bool)", [
+    let result = super.tryCall('admins', 'admins(address):(bool)', [
       ethereum.Value.fromAddress(param0),
     ]);
     if (result.reverted) {
@@ -478,8 +478,8 @@ export class AuStake extends ethereum.SmartContract {
     assetPrice: BigInt,
   ): Bytes {
     let result = super.call(
-      "createOperation",
-      "createOperation(string,string,address,address,uint256,uint256,string,uint256,uint256):(bytes32)",
+      'createOperation',
+      'createOperation(string,string,address,address,uint256,uint256,string,uint256,uint256):(bytes32)',
       [
         ethereum.Value.fromString(name),
         ethereum.Value.fromString(description),
@@ -508,8 +508,8 @@ export class AuStake extends ethereum.SmartContract {
     assetPrice: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "createOperation",
-      "createOperation(string,string,address,address,uint256,uint256,string,uint256,uint256):(bytes32)",
+      'createOperation',
+      'createOperation(string,string,address,address,uint256,uint256,string,uint256,uint256):(bytes32)',
       [
         ethereum.Value.fromString(name),
         ethereum.Value.fromString(description),
@@ -531,8 +531,8 @@ export class AuStake extends ethereum.SmartContract {
 
   getOperation(id: Bytes): AuStake__getOperationResultOperationStruct {
     let result = super.call(
-      "getOperation",
-      "getOperation(bytes32):((bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256))",
+      'getOperation',
+      'getOperation(bytes32):((bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256))',
       [ethereum.Value.fromFixedBytes(id)],
     );
 
@@ -545,8 +545,8 @@ export class AuStake extends ethereum.SmartContract {
     id: Bytes,
   ): ethereum.CallResult<AuStake__getOperationResultOperationStruct> {
     let result = super.tryCall(
-      "getOperation",
-      "getOperation(bytes32):((bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256))",
+      'getOperation',
+      'getOperation(bytes32):((bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256))',
       [ethereum.Value.fromFixedBytes(id)],
     );
     if (result.reverted) {
@@ -562,8 +562,8 @@ export class AuStake extends ethereum.SmartContract {
 
   idToOperation(param0: Bytes): AuStake__idToOperationResult {
     let result = super.call(
-      "idToOperation",
-      "idToOperation(bytes32):(bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256)",
+      'idToOperation',
+      'idToOperation(bytes32):(bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
 
@@ -588,8 +588,8 @@ export class AuStake extends ethereum.SmartContract {
     param0: Bytes,
   ): ethereum.CallResult<AuStake__idToOperationResult> {
     let result = super.tryCall(
-      "idToOperation",
-      "idToOperation(bytes32):(bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256)",
+      'idToOperation',
+      'idToOperation(bytes32):(bytes32,string,string,address,address,uint256,uint256,string,uint256,uint256,uint8,uint256,uint256)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
     if (result.reverted) {
@@ -616,13 +616,13 @@ export class AuStake extends ethereum.SmartContract {
   }
 
   lockPeriod(): BigInt {
-    let result = super.call("lockPeriod", "lockPeriod():(uint256)", []);
+    let result = super.call('lockPeriod', 'lockPeriod():(uint256)', []);
 
     return result[0].toBigInt();
   }
 
   try_lockPeriod(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall("lockPeriod", "lockPeriod():(uint256)", []);
+    let result = super.tryCall('lockPeriod', 'lockPeriod():(uint256)', []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -635,8 +635,8 @@ export class AuStake extends ethereum.SmartContract {
     param1: Address,
   ): AuStake__operationStakesResult {
     let result = super.call(
-      "operationStakes",
-      "operationStakes(bytes32,address):(uint256,uint256,bool)",
+      'operationStakes',
+      'operationStakes(bytes32,address):(uint256,uint256,bool)',
       [
         ethereum.Value.fromFixedBytes(param0),
         ethereum.Value.fromAddress(param1),
@@ -655,8 +655,8 @@ export class AuStake extends ethereum.SmartContract {
     param1: Address,
   ): ethereum.CallResult<AuStake__operationStakesResult> {
     let result = super.tryCall(
-      "operationStakes",
-      "operationStakes(bytes32,address):(uint256,uint256,bool)",
+      'operationStakes',
+      'operationStakes(bytes32,address):(uint256,uint256,bool)',
       [
         ethereum.Value.fromFixedBytes(param0),
         ethereum.Value.fromAddress(param1),
@@ -676,13 +676,13 @@ export class AuStake extends ethereum.SmartContract {
   }
 
   owner(): Address {
-    let result = super.call("owner", "owner():(address)", []);
+    let result = super.call('owner', 'owner():(address)', []);
 
     return result[0].toAddress();
   }
 
   try_owner(): ethereum.CallResult<Address> {
-    let result = super.tryCall("owner", "owner():(address)", []);
+    let result = super.tryCall('owner', 'owner():(address)', []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -691,15 +691,15 @@ export class AuStake extends ethereum.SmartContract {
   }
 
   projectWallet(): Address {
-    let result = super.call("projectWallet", "projectWallet():(address)", []);
+    let result = super.call('projectWallet', 'projectWallet():(address)', []);
 
     return result[0].toAddress();
   }
 
   try_projectWallet(): ethereum.CallResult<Address> {
     let result = super.tryCall(
-      "projectWallet",
-      "projectWallet():(address)",
+      'projectWallet',
+      'projectWallet():(address)',
       [],
     );
     if (result.reverted) {
@@ -711,8 +711,8 @@ export class AuStake extends ethereum.SmartContract {
 
   providerToOperationIds(param0: Address, param1: BigInt): Bytes {
     let result = super.call(
-      "providerToOperationIds",
-      "providerToOperationIds(address,uint256):(bytes32)",
+      'providerToOperationIds',
+      'providerToOperationIds(address,uint256):(bytes32)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromUnsignedBigInt(param1),
@@ -727,8 +727,8 @@ export class AuStake extends ethereum.SmartContract {
     param1: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "providerToOperationIds",
-      "providerToOperationIds(address,uint256):(bytes32)",
+      'providerToOperationIds',
+      'providerToOperationIds(address,uint256):(bytes32)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromUnsignedBigInt(param1),
@@ -743,8 +743,8 @@ export class AuStake extends ethereum.SmartContract {
 
   stakes(param0: Address, param1: Address): AuStake__stakesResult {
     let result = super.call(
-      "stakes",
-      "stakes(address,address):(uint256,uint256,bool)",
+      'stakes',
+      'stakes(address,address):(uint256,uint256,bool)',
       [ethereum.Value.fromAddress(param0), ethereum.Value.fromAddress(param1)],
     );
 
@@ -760,8 +760,8 @@ export class AuStake extends ethereum.SmartContract {
     param1: Address,
   ): ethereum.CallResult<AuStake__stakesResult> {
     let result = super.tryCall(
-      "stakes",
-      "stakes(address,address):(uint256,uint256,bool)",
+      'stakes',
+      'stakes(address,address):(uint256,uint256,bool)',
       [ethereum.Value.fromAddress(param0), ethereum.Value.fromAddress(param1)],
     );
     if (result.reverted) {
@@ -779,8 +779,8 @@ export class AuStake extends ethereum.SmartContract {
 
   tokenToOperationIds(param0: Address): Bytes {
     let result = super.call(
-      "tokenToOperationIds",
-      "tokenToOperationIds(address):(bytes32)",
+      'tokenToOperationIds',
+      'tokenToOperationIds(address):(bytes32)',
       [ethereum.Value.fromAddress(param0)],
     );
 
@@ -789,8 +789,8 @@ export class AuStake extends ethereum.SmartContract {
 
   try_tokenToOperationIds(param0: Address): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "tokenToOperationIds",
-      "tokenToOperationIds(address):(bytes32)",
+      'tokenToOperationIds',
+      'tokenToOperationIds(address):(bytes32)',
       [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
@@ -801,7 +801,7 @@ export class AuStake extends ethereum.SmartContract {
   }
 
   tokenTvl(param0: Address): BigInt {
-    let result = super.call("tokenTvl", "tokenTvl(address):(uint256)", [
+    let result = super.call('tokenTvl', 'tokenTvl(address):(uint256)', [
       ethereum.Value.fromAddress(param0),
     ]);
 
@@ -809,7 +809,7 @@ export class AuStake extends ethereum.SmartContract {
   }
 
   try_tokenTvl(param0: Address): ethereum.CallResult<BigInt> {
-    let result = super.tryCall("tokenTvl", "tokenTvl(address):(uint256)", [
+    let result = super.tryCall('tokenTvl', 'tokenTvl(address):(uint256)', [
       ethereum.Value.fromAddress(param0),
     ]);
     if (result.reverted) {

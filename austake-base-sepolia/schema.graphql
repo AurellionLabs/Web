@@ -110,17 +110,3 @@ type TokenStats @entity(immutable: false) {
   averageReward: BigInt!
   updatedAt: BigInt!
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

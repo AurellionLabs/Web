@@ -21,7 +21,7 @@ import {
 } from 'chart.js';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useNode } from '@/app/providers/node.provider';
+import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { TokenizedAssetAttribute } from '@/domain/node';
 
 ChartJS.register(
@@ -54,7 +54,7 @@ type TimePeriod = (typeof TIME_PERIODS)[number]['value'];
 
 const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const { assets } = useTrade();
-  const { getAssetAttributes } = useNode();
+  const { getAssetAttributes } = useSelectedNode();
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const [assetAttributes, setAssetAttributes] = useState<

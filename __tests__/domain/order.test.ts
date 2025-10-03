@@ -20,16 +20,16 @@ describe('Order Domain Model', () => {
           startLocation: { lat: '40.7128', lng: '-74.0060' },
           endLocation: { lat: '34.0522', lng: '-118.2437' },
           startName: 'New York',
-          endName: 'Los Angeles'
+          endName: 'Los Angeles',
         },
-        currentStatus: 0n // Pending
+        currentStatus: 0n, // Pending
       };
 
       expect(order).toHaveProperty('buyer');
       expect(order).toHaveProperty('seller');
       expect(order).not.toHaveProperty('customer'); // Should not exist
       expect(order).not.toHaveProperty('contracatualAgreement'); // Typo + unused
-      
+
       expect(typeof order.buyer).toBe('string');
       expect(typeof order.seller).toBe('string');
       expect(typeof order.price).toBe('bigint');
@@ -54,9 +54,9 @@ describe('Order Domain Model', () => {
           startLocation: { lat: '0', lng: '0' },
           endLocation: { lat: '1', lng: '1' },
           startName: 'A',
-          endName: 'B'
+          endName: 'B',
         },
-        currentStatus: 1n
+        currentStatus: 1n,
       };
 
       // All contract numeric values should be BigInt
@@ -75,8 +75,8 @@ describe('Order Domain Model', () => {
         assetName: 'GOAT',
         attributes: [
           { name: 'color', value: 'brown' },
-          { name: 'weight', value: '50kg' }
-        ]
+          { name: 'weight', value: '50kg' },
+        ],
       };
 
       expect(asset).toHaveProperty('assetName');
@@ -107,11 +107,11 @@ describe('Order Domain Model', () => {
               startLocation: { lat: '0', lng: '0' },
               endLocation: { lat: '1', lng: '1' },
               startName: 'A',
-              endName: 'B'
+              endName: 'B',
             },
-            currentStatus: 0n
+            currentStatus: 0n,
           };
-        }
+        },
       };
 
       expect(mockOrderRepo.getOrderById).toBeDefined();
@@ -119,17 +119,3 @@ describe('Order Domain Model', () => {
     });
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -20,9 +20,7 @@ export interface DriverContextType {
 
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
 
-const calculateDeliveryETA = async (
-  delivery: Delivery,
-): Promise<Delivery> => {
+const calculateDeliveryETA = async (delivery: Delivery): Promise<Delivery> => {
   try {
     const deliveryETA = await calculateETA(
       delivery.parcelData.startLocation,
@@ -35,7 +33,9 @@ const calculateDeliveryETA = async (
 };
 
 export function DriverProvider({ children }: { children: React.ReactNode }) {
-  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
+  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>(
+    [],
+  );
   const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

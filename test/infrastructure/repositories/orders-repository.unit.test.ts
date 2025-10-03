@@ -11,10 +11,14 @@ import {
 describe('OrderRepository (GraphQL)', () => {
   const dummyProvider = {} as any; // BrowserProvider is not used in Graph paths
   const dummySigner = {
-    getAddress: sinon.stub().resolves('0xABCDEFabcdef0000000000000000000000000001'),
+    getAddress: sinon
+      .stub()
+      .resolves('0xABCDEFabcdef0000000000000000000000000001'),
   } as any;
 
-  const dummyContract = { target: '0x0000000000000000000000000000000000000000' } as any;
+  const dummyContract = {
+    target: '0x0000000000000000000000000000000000000000',
+  } as any;
 
   let graphqlStub: sinon.SinonStub;
 
@@ -95,7 +99,9 @@ describe('OrderRepository (GraphQL)', () => {
 
     expect(graphqlStub.calledOnce).to.equal(true);
     const vars = graphqlStub.firstCall.args[2];
-    expect(vars.senderAddress).to.equal('0xabcdefabcdef0000000000000000000000000001');
+    expect(vars.senderAddress).to.equal(
+      '0xabcdefabcdef0000000000000000000000000001',
+    );
 
     expect(res[0].journeyId).to.equal('0xjourney1');
     expect(res[0].bounty).to.equal(100n);
@@ -189,11 +195,3 @@ describe('OrderRepository (GraphQL)', () => {
     expect(res.bounty).to.equal(42n);
   });
 });
-
-
-
-
-
-
-
-

@@ -8,7 +8,7 @@ import {
   Bytes,
   Address,
   BigInt,
-} from "@graphprotocol/graph-ts";
+} from '@graphprotocol/graph-ts';
 
 export class ApprovalForAll extends ethereum.Event {
   get params(): ApprovalForAll__Params {
@@ -247,8 +247,8 @@ export class AuraAsset__nameToSupportedAssetsResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromString(this.value0));
-    map.set("value1", ethereum.Value.fromString(this.value1));
+    map.set('value0', ethereum.Value.fromString(this.value0));
+    map.set('value1', ethereum.Value.fromString(this.value1));
     return map;
   }
 
@@ -272,8 +272,8 @@ export class AuraAsset__nodeMintResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromFixedBytes(this.value0));
-    map.set("value1", ethereum.Value.fromUnsignedBigInt(this.value1));
+    map.set('value0', ethereum.Value.fromFixedBytes(this.value0));
+    map.set('value1', ethereum.Value.fromUnsignedBigInt(this.value1));
     return map;
   }
 
@@ -316,13 +316,13 @@ export class AuraAsset__nodeMintInputAssetAttributesStruct extends ethereum.Tupl
 
 export class AuraAsset extends ethereum.SmartContract {
   static bind(address: Address): AuraAsset {
-    return new AuraAsset("AuraAsset", address);
+    return new AuraAsset('AuraAsset', address);
   }
 
   balanceOf(account: Address, id: BigInt): BigInt {
     let result = super.call(
-      "balanceOf",
-      "balanceOf(address,uint256):(uint256)",
+      'balanceOf',
+      'balanceOf(address,uint256):(uint256)',
       [
         ethereum.Value.fromAddress(account),
         ethereum.Value.fromUnsignedBigInt(id),
@@ -334,8 +334,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_balanceOf(account: Address, id: BigInt): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "balanceOf",
-      "balanceOf(address,uint256):(uint256)",
+      'balanceOf',
+      'balanceOf(address,uint256):(uint256)',
       [
         ethereum.Value.fromAddress(account),
         ethereum.Value.fromUnsignedBigInt(id),
@@ -350,8 +350,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   balanceOfBatch(accounts: Array<Address>, ids: Array<BigInt>): Array<BigInt> {
     let result = super.call(
-      "balanceOfBatch",
-      "balanceOfBatch(address[],uint256[]):(uint256[])",
+      'balanceOfBatch',
+      'balanceOfBatch(address[],uint256[]):(uint256[])',
       [
         ethereum.Value.fromAddressArray(accounts),
         ethereum.Value.fromUnsignedBigIntArray(ids),
@@ -366,8 +366,8 @@ export class AuraAsset extends ethereum.SmartContract {
     ids: Array<BigInt>,
   ): ethereum.CallResult<Array<BigInt>> {
     let result = super.tryCall(
-      "balanceOfBatch",
-      "balanceOfBatch(address[],uint256[]):(uint256[])",
+      'balanceOfBatch',
+      'balanceOfBatch(address[],uint256[]):(uint256[])',
       [
         ethereum.Value.fromAddressArray(accounts),
         ethereum.Value.fromUnsignedBigIntArray(ids),
@@ -381,7 +381,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   exists(id: BigInt): boolean {
-    let result = super.call("exists", "exists(uint256):(bool)", [
+    let result = super.call('exists', 'exists(uint256):(bool)', [
       ethereum.Value.fromUnsignedBigInt(id),
     ]);
 
@@ -389,7 +389,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   try_exists(id: BigInt): ethereum.CallResult<boolean> {
-    let result = super.tryCall("exists", "exists(uint256):(bool)", [
+    let result = super.tryCall('exists', 'exists(uint256):(bool)', [
       ethereum.Value.fromUnsignedBigInt(id),
     ]);
     if (result.reverted) {
@@ -400,7 +400,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   hashToClass(param0: Bytes): string {
-    let result = super.call("hashToClass", "hashToClass(bytes32):(string)", [
+    let result = super.call('hashToClass', 'hashToClass(bytes32):(string)', [
       ethereum.Value.fromFixedBytes(param0),
     ]);
 
@@ -408,7 +408,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   try_hashToClass(param0: Bytes): ethereum.CallResult<string> {
-    let result = super.tryCall("hashToClass", "hashToClass(bytes32):(string)", [
+    let result = super.tryCall('hashToClass', 'hashToClass(bytes32):(string)', [
       ethereum.Value.fromFixedBytes(param0),
     ]);
     if (result.reverted) {
@@ -420,8 +420,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   hashToTokenID(param0: Bytes): BigInt {
     let result = super.call(
-      "hashToTokenID",
-      "hashToTokenID(bytes32):(uint256)",
+      'hashToTokenID',
+      'hashToTokenID(bytes32):(uint256)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
 
@@ -430,8 +430,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_hashToTokenID(param0: Bytes): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "hashToTokenID",
-      "hashToTokenID(bytes32):(uint256)",
+      'hashToTokenID',
+      'hashToTokenID(bytes32):(uint256)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
     if (result.reverted) {
@@ -442,7 +442,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   ipfsID(param0: BigInt): Bytes {
-    let result = super.call("ipfsID", "ipfsID(uint256):(bytes32)", [
+    let result = super.call('ipfsID', 'ipfsID(uint256):(bytes32)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
 
@@ -450,7 +450,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   try_ipfsID(param0: BigInt): ethereum.CallResult<Bytes> {
-    let result = super.tryCall("ipfsID", "ipfsID(uint256):(bytes32)", [
+    let result = super.tryCall('ipfsID', 'ipfsID(uint256):(bytes32)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
     if (result.reverted) {
@@ -462,8 +462,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   isApprovedForAll(account: Address, operator: Address): boolean {
     let result = super.call(
-      "isApprovedForAll",
-      "isApprovedForAll(address,address):(bool)",
+      'isApprovedForAll',
+      'isApprovedForAll(address,address):(bool)',
       [
         ethereum.Value.fromAddress(account),
         ethereum.Value.fromAddress(operator),
@@ -478,8 +478,8 @@ export class AuraAsset extends ethereum.SmartContract {
     operator: Address,
   ): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "isApprovedForAll",
-      "isApprovedForAll(address,address):(bool)",
+      'isApprovedForAll',
+      'isApprovedForAll(address,address):(bool)',
       [
         ethereum.Value.fromAddress(account),
         ethereum.Value.fromAddress(operator),
@@ -493,7 +493,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   isClassActive(param0: Bytes): boolean {
-    let result = super.call("isClassActive", "isClassActive(bytes32):(bool)", [
+    let result = super.call('isClassActive', 'isClassActive(bytes32):(bool)', [
       ethereum.Value.fromFixedBytes(param0),
     ]);
 
@@ -502,8 +502,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_isClassActive(param0: Bytes): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "isClassActive",
-      "isClassActive(bytes32):(bool)",
+      'isClassActive',
+      'isClassActive(bytes32):(bool)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
     if (result.reverted) {
@@ -515,8 +515,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   lookupHash(asset: AuraAsset__lookupHashInputAssetStruct): BigInt {
     let result = super.call(
-      "lookupHash",
-      "lookupHash((string,string,(string,string[],string)[])):(uint256)",
+      'lookupHash',
+      'lookupHash((string,string,(string,string[],string)[])):(uint256)',
       [ethereum.Value.fromTuple(asset)],
     );
 
@@ -527,8 +527,8 @@ export class AuraAsset extends ethereum.SmartContract {
     asset: AuraAsset__lookupHashInputAssetStruct,
   ): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "lookupHash",
-      "lookupHash((string,string,(string,string[],string)[])):(uint256)",
+      'lookupHash',
+      'lookupHash((string,string,(string,string[],string)[])):(uint256)',
       [ethereum.Value.fromTuple(asset)],
     );
     if (result.reverted) {
@@ -540,8 +540,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   nameToSupportedAssetIndex(param0: string): BigInt {
     let result = super.call(
-      "nameToSupportedAssetIndex",
-      "nameToSupportedAssetIndex(string):(uint256)",
+      'nameToSupportedAssetIndex',
+      'nameToSupportedAssetIndex(string):(uint256)',
       [ethereum.Value.fromString(param0)],
     );
 
@@ -550,8 +550,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_nameToSupportedAssetIndex(param0: string): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "nameToSupportedAssetIndex",
-      "nameToSupportedAssetIndex(string):(uint256)",
+      'nameToSupportedAssetIndex',
+      'nameToSupportedAssetIndex(string):(uint256)',
       [ethereum.Value.fromString(param0)],
     );
     if (result.reverted) {
@@ -565,8 +565,8 @@ export class AuraAsset extends ethereum.SmartContract {
     param0: string,
   ): AuraAsset__nameToSupportedAssetsResult {
     let result = super.call(
-      "nameToSupportedAssets",
-      "nameToSupportedAssets(string):(string,string)",
+      'nameToSupportedAssets',
+      'nameToSupportedAssets(string):(string,string)',
       [ethereum.Value.fromString(param0)],
     );
 
@@ -580,8 +580,8 @@ export class AuraAsset extends ethereum.SmartContract {
     param0: string,
   ): ethereum.CallResult<AuraAsset__nameToSupportedAssetsResult> {
     let result = super.tryCall(
-      "nameToSupportedAssets",
-      "nameToSupportedAssets(string):(string,string)",
+      'nameToSupportedAssets',
+      'nameToSupportedAssets(string):(string,string)',
       [ethereum.Value.fromString(param0)],
     );
     if (result.reverted) {
@@ -598,8 +598,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   nameToSupportedClass(param0: string): string {
     let result = super.call(
-      "nameToSupportedClass",
-      "nameToSupportedClass(string):(string)",
+      'nameToSupportedClass',
+      'nameToSupportedClass(string):(string)',
       [ethereum.Value.fromString(param0)],
     );
 
@@ -608,8 +608,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_nameToSupportedClass(param0: string): ethereum.CallResult<string> {
     let result = super.tryCall(
-      "nameToSupportedClass",
-      "nameToSupportedClass(string):(string)",
+      'nameToSupportedClass',
+      'nameToSupportedClass(string):(string)',
       [ethereum.Value.fromString(param0)],
     );
     if (result.reverted) {
@@ -621,8 +621,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   nameToSupportedClassIndex(param0: string): BigInt {
     let result = super.call(
-      "nameToSupportedClassIndex",
-      "nameToSupportedClassIndex(string):(uint256)",
+      'nameToSupportedClassIndex',
+      'nameToSupportedClassIndex(string):(uint256)',
       [ethereum.Value.fromString(param0)],
     );
 
@@ -631,8 +631,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_nameToSupportedClassIndex(param0: string): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "nameToSupportedClassIndex",
-      "nameToSupportedClassIndex(string):(uint256)",
+      'nameToSupportedClassIndex',
+      'nameToSupportedClassIndex(string):(uint256)',
       [ethereum.Value.fromString(param0)],
     );
     if (result.reverted) {
@@ -650,8 +650,8 @@ export class AuraAsset extends ethereum.SmartContract {
     data: Bytes,
   ): AuraAsset__nodeMintResult {
     let result = super.call(
-      "nodeMint",
-      "nodeMint(address,(string,string,(string,string[],string)[]),uint256,string,bytes):(bytes32,uint256)",
+      'nodeMint',
+      'nodeMint(address,(string,string,(string,string[],string)[]),uint256,string,bytes):(bytes32,uint256)',
       [
         ethereum.Value.fromAddress(account),
         ethereum.Value.fromTuple(asset),
@@ -675,8 +675,8 @@ export class AuraAsset extends ethereum.SmartContract {
     data: Bytes,
   ): ethereum.CallResult<AuraAsset__nodeMintResult> {
     let result = super.tryCall(
-      "nodeMint",
-      "nodeMint(address,(string,string,(string,string[],string)[]),uint256,string,bytes):(bytes32,uint256)",
+      'nodeMint',
+      'nodeMint(address,(string,string,(string,string[],string)[]),uint256,string,bytes):(bytes32,uint256)',
       [
         ethereum.Value.fromAddress(account),
         ethereum.Value.fromTuple(asset),
@@ -695,13 +695,13 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   owner(): Address {
-    let result = super.call("owner", "owner():(address)", []);
+    let result = super.call('owner', 'owner():(address)', []);
 
     return result[0].toAddress();
   }
 
   try_owner(): ethereum.CallResult<Address> {
-    let result = super.tryCall("owner", "owner():(address)", []);
+    let result = super.tryCall('owner', 'owner():(address)', []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -711,8 +711,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   supportedAssets(param0: BigInt): string {
     let result = super.call(
-      "supportedAssets",
-      "supportedAssets(uint256):(string)",
+      'supportedAssets',
+      'supportedAssets(uint256):(string)',
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
 
@@ -721,8 +721,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_supportedAssets(param0: BigInt): ethereum.CallResult<string> {
     let result = super.tryCall(
-      "supportedAssets",
-      "supportedAssets(uint256):(string)",
+      'supportedAssets',
+      'supportedAssets(uint256):(string)',
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
@@ -734,8 +734,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   supportedClasses(param0: BigInt): string {
     let result = super.call(
-      "supportedClasses",
-      "supportedClasses(uint256):(string)",
+      'supportedClasses',
+      'supportedClasses(uint256):(string)',
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
 
@@ -744,8 +744,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_supportedClasses(param0: BigInt): ethereum.CallResult<string> {
     let result = super.tryCall(
-      "supportedClasses",
-      "supportedClasses(uint256):(string)",
+      'supportedClasses',
+      'supportedClasses(uint256):(string)',
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
@@ -757,8 +757,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   supportsInterface(interfaceId: Bytes): boolean {
     let result = super.call(
-      "supportsInterface",
-      "supportsInterface(bytes4):(bool)",
+      'supportsInterface',
+      'supportsInterface(bytes4):(bool)',
       [ethereum.Value.fromFixedBytes(interfaceId)],
     );
 
@@ -767,8 +767,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_supportsInterface(interfaceId: Bytes): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "supportsInterface",
-      "supportsInterface(bytes4):(bool)",
+      'supportsInterface',
+      'supportsInterface(bytes4):(bool)',
       [ethereum.Value.fromFixedBytes(interfaceId)],
     );
     if (result.reverted) {
@@ -779,7 +779,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   totalSupply(id: BigInt): BigInt {
-    let result = super.call("totalSupply", "totalSupply(uint256):(uint256)", [
+    let result = super.call('totalSupply', 'totalSupply(uint256):(uint256)', [
       ethereum.Value.fromUnsignedBigInt(id),
     ]);
 
@@ -788,8 +788,8 @@ export class AuraAsset extends ethereum.SmartContract {
 
   try_totalSupply(id: BigInt): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "totalSupply",
-      "totalSupply(uint256):(uint256)",
+      'totalSupply',
+      'totalSupply(uint256):(uint256)',
       [ethereum.Value.fromUnsignedBigInt(id)],
     );
     if (result.reverted) {
@@ -800,7 +800,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   uri(param0: BigInt): string {
-    let result = super.call("uri", "uri(uint256):(string)", [
+    let result = super.call('uri', 'uri(uint256):(string)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
 
@@ -808,7 +808,7 @@ export class AuraAsset extends ethereum.SmartContract {
   }
 
   try_uri(param0: BigInt): ethereum.CallResult<string> {
-    let result = super.tryCall("uri", "uri(uint256):(string)", [
+    let result = super.tryCall('uri', 'uri(uint256):(string)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
     if (result.reverted) {

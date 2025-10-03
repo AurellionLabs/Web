@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { MainProvider } from './providers/main.provider';
-import { NodeProvider } from './providers/node.provider';
+import { NodesProvider } from './providers/nodes.provider';
+import { SelectedNodeProvider } from './providers/selected-node.provider';
 import { ClientLayout } from '@/app/components/layout/client-layout';
 import { TradeProvider } from './providers/trade.provider';
 import { CustomerProvider } from './providers/customer.provider';
@@ -30,15 +31,17 @@ export default function RootLayout({
           <MainProvider>
             <RepositoryProvider>
               <PlatformProvider>
-                <NodeProvider>
-                  <CustomerProvider>
-                    <DriverProvider>
-                      <TradeProvider>
-                        <ClientLayout>{children}</ClientLayout>
-                      </TradeProvider>
-                    </DriverProvider>
-                  </CustomerProvider>
-                </NodeProvider>
+                <NodesProvider>
+                  <SelectedNodeProvider>
+                    <CustomerProvider>
+                      <DriverProvider>
+                        <TradeProvider>
+                          <ClientLayout>{children}</ClientLayout>
+                        </TradeProvider>
+                      </DriverProvider>
+                    </CustomerProvider>
+                  </SelectedNodeProvider>
+                </NodesProvider>
               </PlatformProvider>
             </RepositoryProvider>
           </MainProvider>

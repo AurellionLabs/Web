@@ -37,7 +37,7 @@ import {
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
-import { useNode } from '@/app/providers/node.provider';
+import { useNodes } from '@/app/providers/nodes.provider';
 import { ethers } from 'ethers';
 import {
   getCurrentWalletAddress,
@@ -124,7 +124,7 @@ export default function NodeRegistrationPage() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { connected } = useMainProvider();
-  const { registerNode } = useNode();
+  const { registerNode } = useNodes();
   const { supportedAssetClasses, isLoading } = usePlatform();
 
   const form = useForm<z.infer<typeof formSchema>>({

@@ -8,7 +8,7 @@ dataSources:
     name: AuraAsset
     network: base-sepolia
     source:
-      address: "0x98939d7a34787EE4d737ed54A926c01D31AdF7c2" # Will be updated by deploy script
+      address: '0x98939d7a34787EE4d737ed54A926c01D31AdF7c2' # Will be updated by deploy script
       abi: AuraAsset
       startBlock: 31735854 # Will be updated by deploy script
     mapping:
@@ -38,13 +38,3 @@ dataSources:
         - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
           handler: handleTransferBatch
       file: ./src/aura-asset.ts
-
-
-
-
-
-
-
-
-
-

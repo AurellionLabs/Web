@@ -7,7 +7,10 @@ import { handleContractError } from '@/utils/error-handler';
 
 export interface INodeService {
   registerNode(nodeData: Node): Promise<string>;
-  updateNodeStatus(nodeAddress: string, status: 'Active' | 'Inactive'): Promise<void>;
+  updateNodeStatus(
+    nodeAddress: string,
+    status: 'Active' | 'Inactive',
+  ): Promise<void>;
 }
 
 export class NodeService implements INodeService {
@@ -29,18 +32,22 @@ export class NodeService implements INodeService {
 
       // Normalize assets: support new Node.assets or legacy arrays
       const hasNewAssets = Array.isArray((nodeData as any).assets);
-      const legacyIds = (nodeData as any).supportedAssets as number[] | undefined;
+      const legacyIds = (nodeData as any).supportedAssets as
+        | number[]
+        | undefined;
       const legacyCaps = (nodeData as any).capacity as number[] | undefined;
-      const legacyPrices = (nodeData as any).assetPrices as number[] | undefined;
+      const legacyPrices = (nodeData as any).assetPrices as
+        | number[]
+        | undefined;
 
       let assetIds: bigint[] = [];
       let capacities: bigint[] = [];
       let prices: bigint[] = [];
 
       if (hasNewAssets && (nodeData.assets?.length ?? 0) > 0) {
-        assetIds = nodeData.assets!.map(a => BigInt(a.tokenId));
-        capacities = nodeData.assets!.map(a => BigInt(a.capacity));
-        prices = nodeData.assets!.map(a => a.price);
+        assetIds = nodeData.assets!.map((a) => BigInt(a.tokenId));
+        capacities = nodeData.assets!.map((a) => BigInt(a.capacity));
+        prices = nodeData.assets!.map((a) => a.price);
       } else if (
         Array.isArray(legacyIds) &&
         Array.isArray(legacyCaps) &&
@@ -48,9 +55,9 @@ export class NodeService implements INodeService {
         legacyIds.length === legacyCaps.length &&
         legacyIds.length === legacyPrices.length
       ) {
-        assetIds = legacyIds.map(id => BigInt(id));
-        capacities = legacyCaps.map(c => BigInt(c));
-        prices = legacyPrices.map(p => BigInt(p));
+        assetIds = legacyIds.map((id) => BigInt(id));
+        capacities = legacyCaps.map((c) => BigInt(c));
+        prices = legacyPrices.map((p) => BigInt(p));
       }
 
       const contractNodeStruct = {
@@ -74,14 +81,19 @@ export class NodeService implements INodeService {
       const receipt = await tx.wait();
 
       const nodeRegisteredEvent = receipt?.logs?.find(
-        (log: any) => log.topics[0] === ethers.id('NodeRegistered(address,address)')
+        (log: any) =>
+          log.topics[0] === ethers.id('NodeRegistered(address,address)'),
       );
 
       if (nodeRegisteredEvent) {
-        return ethers.getAddress(`0x${nodeRegisteredEvent.topics[1].slice(26)}`);
+        return ethers.getAddress(
+          `0x${nodeRegisteredEvent.topics[1].slice(26)}`,
+        );
       }
 
-      throw new Error('Could not extract node address from registration transaction');
+      throw new Error(
+        'Could not extract node address from registration transaction',
+      );
     } catch (error) {
       handleContractError(error, `register node for owner ${nodeData.owner}`);
       throw error;
@@ -103,9 +115,3 @@ export class NodeService implements INodeService {
     }
   }
 }
-
-
-
-
-
-

@@ -8,7 +8,7 @@ dataSources:
     name: AuStake
     network: base-sepolia
     source:
-      address: "0x65B6f72A0b01f52cF6e0CbddA6fbA372c3792Ae2"
+      address: '0x65B6f72A0b01f52cF6e0CbddA6fbA372c3792Ae2'
       abi: AuStake
       startBlock: 31735852
     mapping:

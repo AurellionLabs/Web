@@ -12,7 +12,7 @@ describe('NodeRepository', () => {
     mockAurumContract = {
       getNode: jest.fn(),
       registerNode: jest.fn(),
-      updateStatus: jest.fn()
+      updateStatus: jest.fn(),
     };
 
     mockProvider = {};
@@ -25,7 +25,7 @@ describe('NodeRepository', () => {
       const contractNodeData = {
         location: {
           addressName: 'Test Location',
-          location: { lat: '40.7128', lng: '-74.0060' }
+          location: { lat: '40.7128', lng: '-74.0060' },
         },
         validNode: true, // Contract now uses bool
         owner: '0x1111111111111111111111111111111111111111',
@@ -34,16 +34,16 @@ describe('NodeRepository', () => {
             token: '0x2222222222222222222222222222222222222222',
             tokenId: 1n,
             price: 1000000000000000000n,
-            capacity: 100n
+            capacity: 100n,
           },
           {
             token: '0x3333333333333333333333333333333333333333',
             tokenId: 2n,
             price: 2000000000000000000n,
-            capacity: 50n
-          }
+            capacity: 50n,
+          },
         ],
-        status: '0x01' // bytes1 for Active
+        status: '0x01', // bytes1 for Active
       };
 
       mockAurumContract.getNode.mockResolvedValue(contractNodeData);
@@ -53,30 +53,34 @@ describe('NodeRepository', () => {
         address: '0x4444444444444444444444444444444444444444',
         location: {
           addressName: 'Test Location',
-          location: { lat: '40.7128', lng: '-74.0060' }
+          location: { lat: '40.7128', lng: '-74.0060' },
         },
         validNode: true, // Should be boolean in domain
         owner: '0x1111111111111111111111111111111111111111',
-        assets: [ // Simplified: single assets array
+        assets: [
+          // Simplified: single assets array
           {
             token: '0x2222222222222222222222222222222222222222',
             tokenId: '1', // Convert to string for domain
             price: 1000000000000000000n,
-            capacity: 100
+            capacity: 100,
           },
           {
             token: '0x3333333333333333333333333333333333333333',
             tokenId: '2',
             price: 2000000000000000000n,
-            capacity: 50
-          }
+            capacity: 50,
+          },
         ],
-        status: 'Active'
+        status: 'Active',
       };
 
       // Test the mapping logic
-      const result = await mockNodeRepository(contractNodeData, '0x4444444444444444444444444444444444444444');
-      
+      const result = await mockNodeRepository(
+        contractNodeData,
+        '0x4444444444444444444444444444444444444444',
+      );
+
       expect(result).toEqual(expectedDomainNode);
       expect(result.validNode).toBe(true); // Should be boolean
       expect(result.assets).toHaveLength(2);
@@ -90,18 +94,21 @@ describe('NodeRepository', () => {
       const contractNodeData = {
         location: {
           addressName: 'Empty Node',
-          location: { lat: '0', lng: '0' }
+          location: { lat: '0', lng: '0' },
         },
         validNode: true,
         owner: '0x1111111111111111111111111111111111111111',
         supportedAssets: [], // Empty array
-        status: '0x01'
+        status: '0x01',
       };
 
       mockAurumContract.getNode.mockResolvedValue(contractNodeData);
 
-      const result = await mockNodeRepository(contractNodeData, '0x4444444444444444444444444444444444444444');
-      
+      const result = await mockNodeRepository(
+        contractNodeData,
+        '0x4444444444444444444444444444444444444444',
+      );
+
       expect(result.assets).toHaveLength(0);
       expect(Array.isArray(result.assets)).toBe(true);
     });
@@ -113,18 +120,18 @@ describe('NodeRepository', () => {
         validNode: true,
         owner: '0x1111111111111111111111111111111111111111',
         supportedAssets: [
-          { token: '0x2222', tokenId: 1n, price: 1000n, capacity: 100n }
+          { token: '0x2222', tokenId: 1n, price: 1000n, capacity: 100n },
         ],
-        status: '0x01'
+        status: '0x01',
       };
 
       const result = await mockNodeRepository(contractNodeData, '0x4444');
-      
+
       // Should NOT have the old separate arrays
       expect(result).not.toHaveProperty('capacity');
       expect(result).not.toHaveProperty('assetPrices');
       expect(result).not.toHaveProperty('supportedAssets');
-      
+
       // Should have the new unified structure
       expect(result).toHaveProperty('assets');
     });
@@ -136,7 +143,7 @@ describe('NodeRepository', () => {
         address: '0x4444444444444444444444444444444444444444',
         location: {
           addressName: 'New Node',
-          location: { lat: '40.7128', lng: '-74.0060' }
+          location: { lat: '40.7128', lng: '-74.0060' },
         },
         validNode: true,
         owner: '0x1111111111111111111111111111111111111111',
@@ -145,36 +152,41 @@ describe('NodeRepository', () => {
             token: '0x2222222222222222222222222222222222222222',
             tokenId: '1',
             price: 1000000000000000000n,
-            capacity: 100
-          }
+            capacity: 100,
+          },
         ],
-        status: 'Active'
+        status: 'Active',
       };
 
       // Expected contract struct format
       const expectedContractNode = {
         location: {
           addressName: 'New Node',
-          location: { lat: '40.7128', lng: '-74.0060' }
+          location: { lat: '40.7128', lng: '-74.0060' },
         },
         validNode: true, // Should be bool for contract
         owner: '0x1111111111111111111111111111111111111111',
-        supportedAssets: [ // Contract expects Asset[] struct
+        supportedAssets: [
+          // Contract expects Asset[] struct
           {
             token: '0x2222222222222222222222222222222222222222',
             tokenId: 1n, // Convert back to BigInt for contract
             price: 1000000000000000000n,
-            capacity: 100n
-          }
+            capacity: 100n,
+          },
         ],
-        status: '0x01' // Convert to bytes1 for contract
+        status: '0x01', // Convert to bytes1 for contract
       };
 
-      mockAurumContract.registerNode.mockResolvedValue('0x5555555555555555555555555555555555555555');
+      mockAurumContract.registerNode.mockResolvedValue(
+        '0x5555555555555555555555555555555555555555',
+      );
 
       await mockAurumContract.registerNode(expectedContractNode);
 
-      expect(mockAurumContract.registerNode).toHaveBeenCalledWith(expectedContractNode);
+      expect(mockAurumContract.registerNode).toHaveBeenCalledWith(
+        expectedContractNode,
+      );
     });
   });
 
@@ -182,7 +194,7 @@ describe('NodeRepository', () => {
     it('should correctly convert between domain status and contract bytes1', () => {
       const statusMappings = [
         { domain: 'Active', contract: '0x01' },
-        { domain: 'Inactive', contract: '0x00' }
+        { domain: 'Inactive', contract: '0x00' },
       ];
 
       statusMappings.forEach(({ domain, contract }) => {
@@ -208,9 +220,9 @@ describe('NodeRepository', () => {
         token: asset.token,
         tokenId: asset.tokenId.toString(),
         price: asset.price,
-        capacity: Number(asset.capacity)
+        capacity: Number(asset.capacity),
       })),
-      status: contractData.status === '0x01' ? 'Active' : 'Inactive'
+      status: contractData.status === '0x01' ? 'Active' : 'Inactive',
     };
   };
 
@@ -222,17 +234,3 @@ describe('NodeRepository', () => {
     return status === '0x01' ? 'Active' : 'Inactive';
   };
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-

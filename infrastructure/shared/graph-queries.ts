@@ -157,7 +157,12 @@ export const GET_JOURNEY_BY_ID = gql`
 
 export const GET_ALL_JOURNEYS = gql`
   query GetAllJourneys($first: Int = 100, $skip: Int = 0) {
-    journeys(first: $first, skip: $skip, orderBy: createdAt, orderDirection: desc) {
+    journeys(
+      first: $first
+      skip: $skip
+      orderBy: createdAt
+      orderDirection: desc
+    ) {
       id
       sender
       receiver
@@ -463,19 +468,21 @@ export interface NodeAssetsGraphResponse {
 /**
  * Calculate current balances from mint/transfer events (existing function, kept for compatibility)
  */
-export function calculateCurrentBalances(nodeAssets: NodeAssetsGraphResponse['nodeAssets']) {
+export function calculateCurrentBalances(
+  nodeAssets: NodeAssetsGraphResponse['nodeAssets'],
+) {
   const balances: { [tokenId: string]: number } = {};
 
-  nodeAssets.forEach(asset => {
+  nodeAssets.forEach((asset) => {
     let balance = 0;
-    
+
     // Add minted amounts
-    asset.mintEvents.forEach(mint => {
+    asset.mintEvents.forEach((mint) => {
       balance += parseInt(mint.amount);
     });
-    
+
     // Subtract transferred amounts (outgoing)
-    asset.transferEvents.forEach(transfer => {
+    asset.transferEvents.forEach((transfer) => {
       if (transfer.from !== '0x0000000000000000000000000000000000000000') {
         balance -= parseInt(transfer.amount);
       }
@@ -483,7 +490,7 @@ export function calculateCurrentBalances(nodeAssets: NodeAssetsGraphResponse['no
         balance += parseInt(transfer.amount);
       }
     });
-    
+
     balances[asset.tokenId] = balance;
   });
 
@@ -493,7 +500,9 @@ export function calculateCurrentBalances(nodeAssets: NodeAssetsGraphResponse['no
 /**
  * Convert Graph response to domain Journey
  */
-export function convertGraphJourneyToDomain(graphJourney: JourneyGraphResponse) {
+export function convertGraphJourneyToDomain(
+  graphJourney: JourneyGraphResponse,
+) {
   return {
     parcelData: {
       startLocation: {
@@ -564,10 +573,9 @@ export function convertGraphNodeToDomain(node: NodeGraphResponse) {
     assets: [],
     status: ((s: string) => {
       const x = (s || '').toLowerCase();
-      if (x === 'active' || x === '1' || x === 'true' || x === '0x01') return 'Active';
+      if (x === 'active' || x === '1' || x === 'true' || x === '0x01')
+        return 'Active';
       return 'Inactive';
     })(node.status),
   } as any;
 }
-
-

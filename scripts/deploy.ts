@@ -5,10 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import * as readline from 'readline';
-import {
-  AurumNodeManager,
-  AuraAsset,
-} from '../typechain-types';
+import { AurumNodeManager, AuraAsset } from '../typechain-types';
 import { PinataSDK } from 'pinata';
 
 dotenv.config();
@@ -21,14 +18,14 @@ function generateSemver(): string {
   const hour = now.getHours();
   const minute = now.getMinutes();
   const second = now.getSeconds();
-  
+
   // Traditional semver format: 1.MINOR.PATCH
   // MINOR: YYYYMMDD (e.g., 20250114 for Jan 14, 2025)
   // PATCH: HHMMSS (e.g., 143045 for 14:30:45)
   const major = 1; // Start with version 1.x.x
   const minor = year * 10000 + month * 100 + day; // e.g., 20250114
   const patch = hour * 10000 + minute * 100 + second; // e.g., 143045
-  
+
   return `${major}.${minor}.${patch}`;
 }
 
@@ -48,10 +45,14 @@ function parseGraphDeployQueryEndpoint(output: string): string | null {
   return match?.[1] ?? null;
 }
 
-async function waitForUserToPublish(subgraphName: string, subgraphDir: string, version: string): Promise<void> {
+async function waitForUserToPublish(
+  subgraphName: string,
+  subgraphDir: string,
+  version: string,
+): Promise<void> {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
   console.log(`\n🚀 ${subgraphName} is ready for manual publishing!`);
@@ -66,13 +67,16 @@ async function waitForUserToPublish(subgraphName: string, subgraphDir: string, v
   console.log(`   - graph auth --studio <DEPLOY_KEY>`);
   console.log(`   - graph deploy --studio ${subgraphName}`);
   console.log(`\n⏸️  PAUSED: Please complete the publishing steps above.`);
-  
+
   return new Promise((resolve) => {
-    rl.question('\n✅ Press ENTER after you have successfully published this subgraph to continue...', () => {
-      console.log(`\n✨ Great! Continuing with the next subgraph...\n`);
-      rl.close();
-      resolve();
-    });
+    rl.question(
+      '\n✅ Press ENTER after you have successfully published this subgraph to continue...',
+      () => {
+        console.log(`\n✨ Great! Continuing with the next subgraph...\n`);
+        rl.close();
+        resolve();
+      },
+    );
   });
 }
 
@@ -160,7 +164,7 @@ async function main() {
   try {
     const deploymentVersion = generateSemver();
     console.log(`🚀 Starting deployment with version: ${deploymentVersion}`);
-    
+
     // Get signers and provider setup
     const [deployer]: HardhatEthersSigner[] = await ethers.getSigners();
     console.log('Deploying contracts with account:', deployer.address);
@@ -171,13 +175,18 @@ async function main() {
 
     // Get current gas price and add buffer for faster confirmation
     const feeData = await deployer.provider.getFeeData();
-    const gasPrice = feeData.gasPrice ? feeData.gasPrice * 120n / 100n : undefined; // 20% buffer
+    const gasPrice = feeData.gasPrice
+      ? (feeData.gasPrice * 120n) / 100n
+      : undefined; // 20% buffer
     console.log('Using gas price:', gasPrice?.toString());
-    
+
     // Get current nonce to avoid conflicts
-    let nonce = await deployer.provider.getTransactionCount(deployer.address, 'pending');
+    let nonce = await deployer.provider.getTransactionCount(
+      deployer.address,
+      'pending',
+    );
     console.log('Starting nonce:', nonce);
-    
+
     const getTxOptions = () => {
       const options: any = {};
       if (gasPrice) options.gasPrice = gasPrice;
@@ -205,9 +214,9 @@ async function main() {
     // Deploy contracts with sequential confirmations
     console.log('\nDeploying AuSys contract...');
     const AuSys = await ethers.getContractFactory('Ausys');
-    const auSys = (await AuSys.deploy(
+    const auSys = await AuSys.deploy(
       auraTokenAddress, // payToken - Using Aura token instead of USDC for testnet
-    ));
+    );
     const auSysAddress = await auSys.getAddress();
     await waitForConfirmations(auSys.deploymentTransaction(), 2);
     console.log('AuSys contract deployed to:', auSysAddress);
@@ -243,11 +252,17 @@ async function main() {
     console.log('AuraAsset deployed to:', await auraAsset.getAddress());
 
     // Reset nonce after all deployments to get current state
-    nonce = await deployer.provider.getTransactionCount(deployer.address, 'pending');
+    nonce = await deployer.provider.getTransactionCount(
+      deployer.address,
+      'pending',
+    );
     console.log('Updated nonce after deployments:', nonce);
 
     // Optional: Set AuraGoat address in AurumNodeManager if needed
-    await aurumNodeManager.addToken(await auraAsset.getAddress(), getTxOptions());
+    await aurumNodeManager.addToken(
+      await auraAsset.getAddress(),
+      getTxOptions(),
+    );
     console.log('AuraAsset token added to AurumNodeManager');
 
     // Add default classes for testing
@@ -271,7 +286,10 @@ async function main() {
         { name: 'sex', values: ['M', 'F'], description: '' },
       ],
     };
-    const addAssetTx = await auraAsset.addSupportedAsset(defaultAsset as any, getTxOptions());
+    const addAssetTx = await auraAsset.addSupportedAsset(
+      defaultAsset as any,
+      getTxOptions(),
+    );
     await waitForConfirmations(addAssetTx, 1);
     console.log('Added default asset: AUGOAT');
     const hash = await auraAsset.ipfsID(0);
@@ -294,7 +312,10 @@ async function main() {
     const upload = await pinata.upload.public
       .base64(metadataBase64)
       .name(`${hash}.json`)
-      .keyvalues({ tokenId: hash.toString(), className: defaultAsset.assetClass });
+      .keyvalues({
+        tokenId: hash.toString(),
+        className: defaultAsset.assetClass,
+      });
 
     console.log('uploaded default goat', upload);
 
@@ -362,26 +383,34 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
     // Create networks.json for new subgraphs
     fs.writeFileSync(
       path.join(aurumSubgraphDir, 'networks.json'),
-      JSON.stringify({
-        'base-sepolia': {
-          AurumNodeManager: {
-            address: aurumNodeManagerAddress,
-            startBlock: aurumDeployBlock,
+      JSON.stringify(
+        {
+          'base-sepolia': {
+            AurumNodeManager: {
+              address: aurumNodeManagerAddress,
+              startBlock: aurumDeployBlock,
+            },
           },
         },
-      }, null, 2)
+        null,
+        2,
+      ),
     );
 
     fs.writeFileSync(
       path.join(ausysSubgraphDir, 'networks.json'),
-      JSON.stringify({
-        'base-sepolia': {
-          Ausys: {
-            address: auSysAddress,
-            startBlock: ausysDeployBlock,
+      JSON.stringify(
+        {
+          'base-sepolia': {
+            Ausys: {
+              address: auSysAddress,
+              startBlock: ausysDeployBlock,
+            },
           },
         },
-      }, null, 2)
+        null,
+        2,
+      ),
     );
 
     // Keep subgraph.yaml in sync (since they contain hardcoded values)
@@ -418,9 +447,13 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
     );
     const auraAssetQueryUrl =
       parseGraphDeployQueryEndpoint(auraAssetDeployOut) || '';
-    
+
     // Wait for user to manually publish
-    await waitForUserToPublish('aura-asset-base-sepolia', auraAssetSubgraphDir, auraAssetVersion);
+    await waitForUserToPublish(
+      'aura-asset-base-sepolia',
+      auraAssetSubgraphDir,
+      auraAssetVersion,
+    );
 
     console.log('\nRedeploying subgraph: austake-base-sepolia');
     run('graph codegen', auStakeSubgraphDir);
@@ -432,17 +465,24 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
     );
     const auStakeQueryUrl =
       parseGraphDeployQueryEndpoint(auStakeDeployOut) || '';
-    
+
     // Wait for user to manually publish
-    await waitForUserToPublish('austake-base-sepolia', auStakeSubgraphDir, auStakeVersion);
+    await waitForUserToPublish(
+      'austake-base-sepolia',
+      auStakeSubgraphDir,
+      auStakeVersion,
+    );
 
     console.log('\nDeploying subgraph: aurum-base-sepolia');
     // Sync latest ABI from Hardhat artifacts to subgraph abis to avoid stale signatures
-    const artifactAbiPath = path.resolve('./artifacts/contracts/Aurum.sol/AurumNodeManager.json');
+    const artifactAbiPath = path.resolve(
+      './artifacts/contracts/Aurum.sol/AurumNodeManager.json',
+    );
     const subgraphAbiDir = path.join(aurumSubgraphDir, 'abis');
     const subgraphAbiPath = path.join(subgraphAbiDir, 'AurumNodeManager.json');
     if (fs.existsSync(artifactAbiPath)) {
-      if (!fs.existsSync(subgraphAbiDir)) fs.mkdirSync(subgraphAbiDir, { recursive: true });
+      if (!fs.existsSync(subgraphAbiDir))
+        fs.mkdirSync(subgraphAbiDir, { recursive: true });
       fs.copyFileSync(artifactAbiPath, subgraphAbiPath);
       console.log('✔ Synced ABI to subgraph:', subgraphAbiPath);
     } else {
@@ -456,11 +496,14 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
       `graph deploy aurum-base-sepolia --version-label ${aurumVersion}`,
       aurumSubgraphDir,
     );
-    const aurumQueryUrl =
-      parseGraphDeployQueryEndpoint(aurumDeployOut) || '';
-    
+    const aurumQueryUrl = parseGraphDeployQueryEndpoint(aurumDeployOut) || '';
+
     // Wait for user to manually publish
-    await waitForUserToPublish('aurum-base-sepolia', aurumSubgraphDir, aurumVersion);
+    await waitForUserToPublish(
+      'aurum-base-sepolia',
+      aurumSubgraphDir,
+      aurumVersion,
+    );
 
     console.log('\nDeploying subgraph: ausys-base-sepolia');
     run('npm install', ausysSubgraphDir);
@@ -471,11 +514,14 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
       `graph deploy ausys-base-sepolia --version-label ${ausysVersion}`,
       ausysSubgraphDir,
     );
-    const ausysQueryUrl =
-      parseGraphDeployQueryEndpoint(ausysDeployOut) || '';
-    
+    const ausysQueryUrl = parseGraphDeployQueryEndpoint(ausysDeployOut) || '';
+
     // Wait for user to manually publish
-    await waitForUserToPublish('ausys-base-sepolia', ausysSubgraphDir, ausysVersion);
+    await waitForUserToPublish(
+      'ausys-base-sepolia',
+      ausysSubgraphDir,
+      ausysVersion,
+    );
 
     // Update chain constants with subgraph endpoints so the app always uses latest
     const constantsWithSubgraphs = `export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "${auStakeAddress}";

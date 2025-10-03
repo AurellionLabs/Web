@@ -21,7 +21,7 @@ function sleep(ms: number): Promise<void> {
 /**
  * Infrastructure implementation of the IDriverRepository interface
  * This implementation directly interacts with the Ausys blockchain contracts
- * 
+ *
  * REFACTOR NOTE: Updated to use Ausys contract while keeping dev's Delivery domain model
  */
 export class DriverRepository implements IDriverRepository {
@@ -29,11 +29,7 @@ export class DriverRepository implements IDriverRepository {
   private provider: BrowserProvider;
   private signer: Signer;
 
-  constructor(
-    ausysContract: Ausys,
-    provider: BrowserProvider,
-    signer: Signer,
-  ) {
+  constructor(ausysContract: Ausys, provider: BrowserProvider, signer: Signer) {
     if (!ausysContract) {
       throw new Error('DriverRepository: Ausys contract instance is required.');
     }
@@ -72,9 +68,7 @@ export class DriverRepository implements IDriverRepository {
 
   // --- Helper to map contract Journey struct to domain Delivery model ---
   // DEV VERSION: Maps to user-friendly Delivery model
-  private mapJourneyToDelivery(
-    journey: Ausys.JourneyStructOutput,
-  ): Delivery {
+  private mapJourneyToDelivery(journey: Ausys.JourneyStructOutput): Delivery {
     const parcelData: ParcelData = {
       startLocation: {
         lat: journey.parcelData.startLocation.lat,

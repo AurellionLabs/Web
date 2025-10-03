@@ -187,7 +187,13 @@ const AssetSelectionForm: React.FC<Props> = ({
           <AssetAttributeInput
             asset={selectedAsset}
             attributeValues={
-              assetAttributes[String((selectedAsset as any)?.tokenId ?? (selectedAsset as any)?.tokenID ?? '')] || {}
+              assetAttributes[
+                String(
+                  (selectedAsset as any)?.tokenId ??
+                    (selectedAsset as any)?.tokenID ??
+                    '',
+                )
+              ] || {}
             }
             onAttributeChange={onAssetAttributeChange}
           />

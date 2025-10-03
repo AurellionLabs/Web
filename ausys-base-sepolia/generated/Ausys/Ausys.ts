@@ -8,7 +8,7 @@ import {
   Bytes,
   Address,
   BigInt,
-} from "@graphprotocol/graph-ts";
+} from '@graphprotocol/graph-ts';
 
 export class AdminSet extends ethereum.Event {
   get params(): AdminSet__Params {
@@ -642,19 +642,19 @@ export class Ausys__idToJourneyResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromTuple(this.value0));
-    map.set("value1", ethereum.Value.fromFixedBytes(this.value1));
+    map.set('value0', ethereum.Value.fromTuple(this.value0));
+    map.set('value1', ethereum.Value.fromFixedBytes(this.value1));
     map.set(
-      "value2",
+      'value2',
       ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value2)),
     );
-    map.set("value3", ethereum.Value.fromAddress(this.value3));
-    map.set("value4", ethereum.Value.fromAddress(this.value4));
-    map.set("value5", ethereum.Value.fromAddress(this.value5));
-    map.set("value6", ethereum.Value.fromUnsignedBigInt(this.value6));
-    map.set("value7", ethereum.Value.fromUnsignedBigInt(this.value7));
-    map.set("value8", ethereum.Value.fromUnsignedBigInt(this.value8));
-    map.set("value9", ethereum.Value.fromUnsignedBigInt(this.value9));
+    map.set('value3', ethereum.Value.fromAddress(this.value3));
+    map.set('value4', ethereum.Value.fromAddress(this.value4));
+    map.set('value5', ethereum.Value.fromAddress(this.value5));
+    map.set('value6', ethereum.Value.fromUnsignedBigInt(this.value6));
+    map.set('value7', ethereum.Value.fromUnsignedBigInt(this.value7));
+    map.set('value8', ethereum.Value.fromUnsignedBigInt(this.value8));
+    map.set('value9', ethereum.Value.fromUnsignedBigInt(this.value9));
     return map;
   }
 
@@ -785,21 +785,21 @@ export class Ausys__idToOrderResult {
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromFixedBytes(this.value0));
-    map.set("value1", ethereum.Value.fromAddress(this.value1));
-    map.set("value2", ethereum.Value.fromUnsignedBigInt(this.value2));
-    map.set("value3", ethereum.Value.fromUnsignedBigInt(this.value3));
-    map.set("value4", ethereum.Value.fromUnsignedBigInt(this.value4));
-    map.set("value5", ethereum.Value.fromUnsignedBigInt(this.value5));
-    map.set("value6", ethereum.Value.fromUnsignedBigInt(this.value6));
-    map.set("value7", ethereum.Value.fromAddress(this.value7));
-    map.set("value8", ethereum.Value.fromAddress(this.value8));
-    map.set("value9", ethereum.Value.fromTuple(this.value9));
+    map.set('value0', ethereum.Value.fromFixedBytes(this.value0));
+    map.set('value1', ethereum.Value.fromAddress(this.value1));
+    map.set('value2', ethereum.Value.fromUnsignedBigInt(this.value2));
+    map.set('value3', ethereum.Value.fromUnsignedBigInt(this.value3));
+    map.set('value4', ethereum.Value.fromUnsignedBigInt(this.value4));
+    map.set('value5', ethereum.Value.fromUnsignedBigInt(this.value5));
+    map.set('value6', ethereum.Value.fromUnsignedBigInt(this.value6));
+    map.set('value7', ethereum.Value.fromAddress(this.value7));
+    map.set('value8', ethereum.Value.fromAddress(this.value8));
+    map.set('value9', ethereum.Value.fromTuple(this.value9));
     map.set(
-      "value10",
+      'value10',
       ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value10)),
     );
-    map.set("value11", ethereum.Value.fromFixedBytes(this.value11));
+    map.set('value11', ethereum.Value.fromFixedBytes(this.value11));
     return map;
   }
 
@@ -956,17 +956,17 @@ export class Ausys__orderCreationInputOrderLocationDataEndLocationStruct extends
 
 export class Ausys extends ethereum.SmartContract {
   static bind(address: Address): Ausys {
-    return new Ausys("Ausys", address);
+    return new Ausys('Ausys', address);
   }
 
   ADMIN_ROLE(): Bytes {
-    let result = super.call("ADMIN_ROLE", "ADMIN_ROLE():(bytes32)", []);
+    let result = super.call('ADMIN_ROLE', 'ADMIN_ROLE():(bytes32)', []);
 
     return result[0].toBytes();
   }
 
   try_ADMIN_ROLE(): ethereum.CallResult<Bytes> {
-    let result = super.tryCall("ADMIN_ROLE", "ADMIN_ROLE():(bytes32)", []);
+    let result = super.tryCall('ADMIN_ROLE', 'ADMIN_ROLE():(bytes32)', []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -976,8 +976,8 @@ export class Ausys extends ethereum.SmartContract {
 
   DEFAULT_ADMIN_ROLE(): Bytes {
     let result = super.call(
-      "DEFAULT_ADMIN_ROLE",
-      "DEFAULT_ADMIN_ROLE():(bytes32)",
+      'DEFAULT_ADMIN_ROLE',
+      'DEFAULT_ADMIN_ROLE():(bytes32)',
       [],
     );
 
@@ -986,8 +986,8 @@ export class Ausys extends ethereum.SmartContract {
 
   try_DEFAULT_ADMIN_ROLE(): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "DEFAULT_ADMIN_ROLE",
-      "DEFAULT_ADMIN_ROLE():(bytes32)",
+      'DEFAULT_ADMIN_ROLE',
+      'DEFAULT_ADMIN_ROLE():(bytes32)',
       [],
     );
     if (result.reverted) {
@@ -999,8 +999,8 @@ export class Ausys extends ethereum.SmartContract {
 
   DISPATCHER_ROLE(): Bytes {
     let result = super.call(
-      "DISPATCHER_ROLE",
-      "DISPATCHER_ROLE():(bytes32)",
+      'DISPATCHER_ROLE',
+      'DISPATCHER_ROLE():(bytes32)',
       [],
     );
 
@@ -1009,8 +1009,8 @@ export class Ausys extends ethereum.SmartContract {
 
   try_DISPATCHER_ROLE(): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "DISPATCHER_ROLE",
-      "DISPATCHER_ROLE():(bytes32)",
+      'DISPATCHER_ROLE',
+      'DISPATCHER_ROLE():(bytes32)',
       [],
     );
     if (result.reverted) {
@@ -1021,13 +1021,13 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   DRIVER_ROLE(): Bytes {
-    let result = super.call("DRIVER_ROLE", "DRIVER_ROLE():(bytes32)", []);
+    let result = super.call('DRIVER_ROLE', 'DRIVER_ROLE():(bytes32)', []);
 
     return result[0].toBytes();
   }
 
   try_DRIVER_ROLE(): ethereum.CallResult<Bytes> {
-    let result = super.tryCall("DRIVER_ROLE", "DRIVER_ROLE():(bytes32)", []);
+    let result = super.tryCall('DRIVER_ROLE', 'DRIVER_ROLE():(bytes32)', []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -1037,8 +1037,8 @@ export class Ausys extends ethereum.SmartContract {
 
   customerHandOff(param0: Address, param1: Bytes): boolean {
     let result = super.call(
-      "customerHandOff",
-      "customerHandOff(address,bytes32):(bool)",
+      'customerHandOff',
+      'customerHandOff(address,bytes32):(bool)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromFixedBytes(param1),
@@ -1053,8 +1053,8 @@ export class Ausys extends ethereum.SmartContract {
     param1: Bytes,
   ): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "customerHandOff",
-      "customerHandOff(address,bytes32):(bool)",
+      'customerHandOff',
+      'customerHandOff(address,bytes32):(bool)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromFixedBytes(param1),
@@ -1069,8 +1069,8 @@ export class Ausys extends ethereum.SmartContract {
 
   driverHandOn(param0: Address, param1: Bytes): boolean {
     let result = super.call(
-      "driverHandOn",
-      "driverHandOn(address,bytes32):(bool)",
+      'driverHandOn',
+      'driverHandOn(address,bytes32):(bool)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromFixedBytes(param1),
@@ -1085,8 +1085,8 @@ export class Ausys extends ethereum.SmartContract {
     param1: Bytes,
   ): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "driverHandOn",
-      "driverHandOn(address,bytes32):(bool)",
+      'driverHandOn',
+      'driverHandOn(address,bytes32):(bool)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromFixedBytes(param1),
@@ -1101,8 +1101,8 @@ export class Ausys extends ethereum.SmartContract {
 
   driverToJourneyId(param0: Address, param1: BigInt): Bytes {
     let result = super.call(
-      "driverToJourneyId",
-      "driverToJourneyId(address,uint256):(bytes32)",
+      'driverToJourneyId',
+      'driverToJourneyId(address,uint256):(bytes32)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromUnsignedBigInt(param1),
@@ -1117,8 +1117,8 @@ export class Ausys extends ethereum.SmartContract {
     param1: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "driverToJourneyId",
-      "driverToJourneyId(address,uint256):(bytes32)",
+      'driverToJourneyId',
+      'driverToJourneyId(address,uint256):(bytes32)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromUnsignedBigInt(param1),
@@ -1133,8 +1133,8 @@ export class Ausys extends ethereum.SmartContract {
 
   getOrder(id: Bytes): Ausys__getOrderResultValue0Struct {
     let result = super.call(
-      "getOrder",
-      "getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))",
+      'getOrder',
+      'getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))',
       [ethereum.Value.fromFixedBytes(id)],
     );
 
@@ -1145,8 +1145,8 @@ export class Ausys extends ethereum.SmartContract {
     id: Bytes,
   ): ethereum.CallResult<Ausys__getOrderResultValue0Struct> {
     let result = super.tryCall(
-      "getOrder",
-      "getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))",
+      'getOrder',
+      'getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))',
       [ethereum.Value.fromFixedBytes(id)],
     );
     if (result.reverted) {
@@ -1159,7 +1159,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   getRoleAdmin(role: Bytes): Bytes {
-    let result = super.call("getRoleAdmin", "getRoleAdmin(bytes32):(bytes32)", [
+    let result = super.call('getRoleAdmin', 'getRoleAdmin(bytes32):(bytes32)', [
       ethereum.Value.fromFixedBytes(role),
     ]);
 
@@ -1168,8 +1168,8 @@ export class Ausys extends ethereum.SmartContract {
 
   try_getRoleAdmin(role: Bytes): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "getRoleAdmin",
-      "getRoleAdmin(bytes32):(bytes32)",
+      'getRoleAdmin',
+      'getRoleAdmin(bytes32):(bytes32)',
       [ethereum.Value.fromFixedBytes(role)],
     );
     if (result.reverted) {
@@ -1181,8 +1181,8 @@ export class Ausys extends ethereum.SmartContract {
 
   getjourney(id: Bytes): Ausys__getjourneyResultValue0Struct {
     let result = super.call(
-      "getjourney",
-      "getjourney(bytes32):((((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256))",
+      'getjourney',
+      'getjourney(bytes32):((((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256))',
       [ethereum.Value.fromFixedBytes(id)],
     );
 
@@ -1193,8 +1193,8 @@ export class Ausys extends ethereum.SmartContract {
     id: Bytes,
   ): ethereum.CallResult<Ausys__getjourneyResultValue0Struct> {
     let result = super.tryCall(
-      "getjourney",
-      "getjourney(bytes32):((((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256))",
+      'getjourney',
+      'getjourney(bytes32):((((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256))',
       [ethereum.Value.fromFixedBytes(id)],
     );
     if (result.reverted) {
@@ -1207,7 +1207,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   handOff(id: Bytes): boolean {
-    let result = super.call("handOff", "handOff(bytes32):(bool)", [
+    let result = super.call('handOff', 'handOff(bytes32):(bool)', [
       ethereum.Value.fromFixedBytes(id),
     ]);
 
@@ -1215,7 +1215,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   try_handOff(id: Bytes): ethereum.CallResult<boolean> {
-    let result = super.tryCall("handOff", "handOff(bytes32):(bool)", [
+    let result = super.tryCall('handOff', 'handOff(bytes32):(bool)', [
       ethereum.Value.fromFixedBytes(id),
     ]);
     if (result.reverted) {
@@ -1226,7 +1226,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   handOn(id: Bytes): boolean {
-    let result = super.call("handOn", "handOn(bytes32):(bool)", [
+    let result = super.call('handOn', 'handOn(bytes32):(bool)', [
       ethereum.Value.fromFixedBytes(id),
     ]);
 
@@ -1234,7 +1234,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   try_handOn(id: Bytes): ethereum.CallResult<boolean> {
-    let result = super.tryCall("handOn", "handOn(bytes32):(bool)", [
+    let result = super.tryCall('handOn', 'handOn(bytes32):(bool)', [
       ethereum.Value.fromFixedBytes(id),
     ]);
     if (result.reverted) {
@@ -1245,7 +1245,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   hasRole(role: Bytes, account: Address): boolean {
-    let result = super.call("hasRole", "hasRole(bytes32,address):(bool)", [
+    let result = super.call('hasRole', 'hasRole(bytes32,address):(bool)', [
       ethereum.Value.fromFixedBytes(role),
       ethereum.Value.fromAddress(account),
     ]);
@@ -1254,7 +1254,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   try_hasRole(role: Bytes, account: Address): ethereum.CallResult<boolean> {
-    let result = super.tryCall("hasRole", "hasRole(bytes32,address):(bool)", [
+    let result = super.tryCall('hasRole', 'hasRole(bytes32,address):(bool)', [
       ethereum.Value.fromFixedBytes(role),
       ethereum.Value.fromAddress(account),
     ]);
@@ -1267,8 +1267,8 @@ export class Ausys extends ethereum.SmartContract {
 
   idToJourney(param0: Bytes): Ausys__idToJourneyResult {
     let result = super.call(
-      "idToJourney",
-      "idToJourney(bytes32):(((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256)",
+      'idToJourney',
+      'idToJourney(bytes32):(((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
 
@@ -1294,8 +1294,8 @@ export class Ausys extends ethereum.SmartContract {
     param0: Bytes,
   ): ethereum.CallResult<Ausys__idToJourneyResult> {
     let result = super.tryCall(
-      "idToJourney",
-      "idToJourney(bytes32):(((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256)",
+      'idToJourney',
+      'idToJourney(bytes32):(((string,string),(string,string),string,string),bytes32,uint8,address,address,address,uint256,uint256,uint256,uint256)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
     if (result.reverted) {
@@ -1324,8 +1324,8 @@ export class Ausys extends ethereum.SmartContract {
 
   idToOrder(param0: Bytes): Ausys__idToOrderResult {
     let result = super.call(
-      "idToOrder",
-      "idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)",
+      'idToOrder',
+      'idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
 
@@ -1347,8 +1347,8 @@ export class Ausys extends ethereum.SmartContract {
 
   try_idToOrder(param0: Bytes): ethereum.CallResult<Ausys__idToOrderResult> {
     let result = super.tryCall(
-      "idToOrder",
-      "idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)",
+      'idToOrder',
+      'idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
     if (result.reverted) {
@@ -1377,8 +1377,8 @@ export class Ausys extends ethereum.SmartContract {
 
   journeyIdCounter(): BigInt {
     let result = super.call(
-      "journeyIdCounter",
-      "journeyIdCounter():(uint256)",
+      'journeyIdCounter',
+      'journeyIdCounter():(uint256)',
       [],
     );
 
@@ -1387,8 +1387,8 @@ export class Ausys extends ethereum.SmartContract {
 
   try_journeyIdCounter(): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "journeyIdCounter",
-      "journeyIdCounter():(uint256)",
+      'journeyIdCounter',
+      'journeyIdCounter():(uint256)',
       [],
     );
     if (result.reverted) {
@@ -1400,8 +1400,8 @@ export class Ausys extends ethereum.SmartContract {
 
   journeyToOrderId(param0: Bytes): Bytes {
     let result = super.call(
-      "journeyToOrderId",
-      "journeyToOrderId(bytes32):(bytes32)",
+      'journeyToOrderId',
+      'journeyToOrderId(bytes32):(bytes32)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
 
@@ -1410,8 +1410,8 @@ export class Ausys extends ethereum.SmartContract {
 
   try_journeyToOrderId(param0: Bytes): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "journeyToOrderId",
-      "journeyToOrderId(bytes32):(bytes32)",
+      'journeyToOrderId',
+      'journeyToOrderId(bytes32):(bytes32)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
     if (result.reverted) {
@@ -1429,8 +1429,8 @@ export class Ausys extends ethereum.SmartContract {
     param4: Bytes,
   ): Bytes {
     let result = super.call(
-      "onERC1155BatchReceived",
-      "onERC1155BatchReceived(address,address,uint256[],uint256[],bytes):(bytes4)",
+      'onERC1155BatchReceived',
+      'onERC1155BatchReceived(address,address,uint256[],uint256[],bytes):(bytes4)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromAddress(param1),
@@ -1451,8 +1451,8 @@ export class Ausys extends ethereum.SmartContract {
     param4: Bytes,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "onERC1155BatchReceived",
-      "onERC1155BatchReceived(address,address,uint256[],uint256[],bytes):(bytes4)",
+      'onERC1155BatchReceived',
+      'onERC1155BatchReceived(address,address,uint256[],uint256[],bytes):(bytes4)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromAddress(param1),
@@ -1476,8 +1476,8 @@ export class Ausys extends ethereum.SmartContract {
     param4: Bytes,
   ): Bytes {
     let result = super.call(
-      "onERC1155Received",
-      "onERC1155Received(address,address,uint256,uint256,bytes):(bytes4)",
+      'onERC1155Received',
+      'onERC1155Received(address,address,uint256,uint256,bytes):(bytes4)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromAddress(param1),
@@ -1498,8 +1498,8 @@ export class Ausys extends ethereum.SmartContract {
     param4: Bytes,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "onERC1155Received",
-      "onERC1155Received(address,address,uint256,uint256,bytes):(bytes4)",
+      'onERC1155Received',
+      'onERC1155Received(address,address,uint256,uint256,bytes):(bytes4)',
       [
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromAddress(param1),
@@ -1517,8 +1517,8 @@ export class Ausys extends ethereum.SmartContract {
 
   orderCreation(order: Ausys__orderCreationInputOrderStruct): Bytes {
     let result = super.call(
-      "orderCreation",
-      "orderCreation((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)",
+      'orderCreation',
+      'orderCreation((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)',
       [ethereum.Value.fromTuple(order)],
     );
 
@@ -1529,8 +1529,8 @@ export class Ausys extends ethereum.SmartContract {
     order: Ausys__orderCreationInputOrderStruct,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "orderCreation",
-      "orderCreation((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)",
+      'orderCreation',
+      'orderCreation((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)',
       [ethereum.Value.fromTuple(order)],
     );
     if (result.reverted) {
@@ -1541,15 +1541,15 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   orderIdCounter(): BigInt {
-    let result = super.call("orderIdCounter", "orderIdCounter():(uint256)", []);
+    let result = super.call('orderIdCounter', 'orderIdCounter():(uint256)', []);
 
     return result[0].toBigInt();
   }
 
   try_orderIdCounter(): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "orderIdCounter",
-      "orderIdCounter():(uint256)",
+      'orderIdCounter',
+      'orderIdCounter():(uint256)',
       [],
     );
     if (result.reverted) {
@@ -1560,7 +1560,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   orderIds(param0: BigInt): Bytes {
-    let result = super.call("orderIds", "orderIds(uint256):(bytes32)", [
+    let result = super.call('orderIds', 'orderIds(uint256):(bytes32)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
 
@@ -1568,7 +1568,7 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   try_orderIds(param0: BigInt): ethereum.CallResult<Bytes> {
-    let result = super.tryCall("orderIds", "orderIds(uint256):(bytes32)", [
+    let result = super.tryCall('orderIds', 'orderIds(uint256):(bytes32)', [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
     if (result.reverted) {
@@ -1579,13 +1579,13 @@ export class Ausys extends ethereum.SmartContract {
   }
 
   owner(): Address {
-    let result = super.call("owner", "owner():(address)", []);
+    let result = super.call('owner', 'owner():(address)', []);
 
     return result[0].toAddress();
   }
 
   try_owner(): ethereum.CallResult<Address> {
-    let result = super.tryCall("owner", "owner():(address)", []);
+    let result = super.tryCall('owner', 'owner():(address)', []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -1595,8 +1595,8 @@ export class Ausys extends ethereum.SmartContract {
 
   supportsInterface(interfaceId: Bytes): boolean {
     let result = super.call(
-      "supportsInterface",
-      "supportsInterface(bytes4):(bool)",
+      'supportsInterface',
+      'supportsInterface(bytes4):(bool)',
       [ethereum.Value.fromFixedBytes(interfaceId)],
     );
 
@@ -1605,8 +1605,8 @@ export class Ausys extends ethereum.SmartContract {
 
   try_supportsInterface(interfaceId: Bytes): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "supportsInterface",
-      "supportsInterface(bytes4):(bool)",
+      'supportsInterface',
+      'supportsInterface(bytes4):(bool)',
       [ethereum.Value.fromFixedBytes(interfaceId)],
     );
     if (result.reverted) {

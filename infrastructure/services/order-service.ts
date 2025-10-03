@@ -1,4 +1,7 @@
-import type { IOrderService, Order as DomainOrder } from '@/domain/orders/order';
+import type {
+  IOrderService,
+  Order as DomainOrder,
+} from '@/domain/orders/order';
 import type { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
 import {
   BytesLike,
@@ -166,9 +169,7 @@ export class OrderService implements IOrderService {
    * The connected signer is assumed to be the buyer/customer.
    * REFACTOR NOTE: Maps domain Order to contract OrderStruct
    */
-  async createOrder(
-    orderData: DomainOrder,
-  ): Promise<string> {
+  async createOrder(orderData: DomainOrder): Promise<string> {
     const signerAddress = await this.getCurrentSignerAddress();
     console.log(
       `[OrderService] Signer ${signerAddress} creating order for buyer: ${orderData.buyer}`,
@@ -306,8 +307,12 @@ export class OrderService implements IOrderService {
     receiver: string,
     sender?: string,
   ): Promise<ContractTransactionReceipt> {
-    console.warn('[OrderService] addReceiverToOrder is not currently supported in the Ausys contract');
-    throw new Error('addReceiverToOrder is not implemented in the current contract version');
+    console.warn(
+      '[OrderService] addReceiverToOrder is not currently supported in the Ausys contract',
+    );
+    throw new Error(
+      'addReceiverToOrder is not implemented in the current contract version',
+    );
   }
 
   /**

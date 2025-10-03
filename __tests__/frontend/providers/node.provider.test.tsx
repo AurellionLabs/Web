@@ -38,19 +38,20 @@ describe('NodeProvider - Updated for New Domain Models', () => {
         address: '0x1234567890123456789012345678901234567890',
         location: {
           addressName: 'Test Node',
-          location: { lat: '40.7128', lng: '-74.0060' }
+          location: { lat: '40.7128', lng: '-74.0060' },
         },
         validNode: true, // Should be boolean
         owner: '0x0987654321098765432109876543210987654321',
-        assets: [ // NEW: Single assets array
+        assets: [
+          // NEW: Single assets array
           {
             token: '0x1111111111111111111111111111111111111111',
             tokenId: '1',
             price: 1000000000000000000n,
-            capacity: 100
-          }
+            capacity: 100,
+          },
         ],
-        status: 'Active'
+        status: 'Active',
       };
 
       // Test that NodeProvider can handle this structure
@@ -86,9 +87,9 @@ describe('NodeProvider - Updated for New Domain Models', () => {
           startLocation: { lat: '40.7128', lng: '-74.0060' },
           endLocation: { lat: '34.0522', lng: '-118.2437' },
           startName: 'New York',
-          endName: 'Los Angeles'
+          endName: 'Los Angeles',
         },
-        currentStatus: 0n
+        currentStatus: 0n,
       };
 
       // Test new structure
@@ -125,7 +126,7 @@ describe('NodeProvider - Updated for New Domain Models', () => {
       };
 
       // All methods should be functions
-      Object.values(expectedContext).forEach(value => {
+      Object.values(expectedContext).forEach((value) => {
         if (typeof value === 'function') {
           expect(typeof value).toBe('function');
         }
@@ -146,7 +147,7 @@ describe('NodeProvider - Updated for New Domain Models', () => {
         nodeAddress,
         assetToken,
         assetTokenId,
-        newCapacity
+        newCapacity,
       };
 
       expect(updateCapacityCall).toHaveProperty('nodeAddress');
@@ -159,7 +160,7 @@ describe('NodeProvider - Updated for New Domain Models', () => {
         nodeAddress,
         assetToken,
         assetTokenId,
-        newPrice
+        newPrice,
       };
 
       expect(updatePriceCall).toHaveProperty('newPrice');
@@ -189,17 +190,3 @@ describe('NodeProvider - Updated for New Domain Models', () => {
     });
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
