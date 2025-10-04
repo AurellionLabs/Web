@@ -1,10 +1,8 @@
 'use client';
 
 import { FC, useEffect, useState } from 'react';
-import { useMainProvider } from '@/app/providers/main.provider';
 import { useTrade } from '@/app/providers/trade.provider';
 import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
 import { colors } from '@/lib/constants/colors';
 import { ArrowLeft, Share2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
@@ -55,7 +53,6 @@ type TimePeriod = (typeof TIME_PERIODS)[number]['value'];
 const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const { assets } = useTrade();
   const { getAssetAttributes } = useSelectedNode();
-  const [quantity, setQuantity] = useState<number>(1);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const [assetAttributes, setAssetAttributes] = useState<
     TokenizedAssetAttribute[]
@@ -189,8 +186,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
       </div>
     );
   }
-
-  const totalPrice = quantity * parseFloat(asset.price);
 
   return (
     <div
