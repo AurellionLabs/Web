@@ -179,6 +179,14 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     async (nodeAddress: string) => {
       if (selectedNodeAddress === nodeAddress) return; // Already selected
 
+      // Check if repository context is available
+      if (!repositoryContext) {
+        console.warn('Repository context not initialized, cannot select node');
+        throw new Error(
+          'Repository context not initialized. Please ensure wallet is connected.',
+        );
+      }
+
       setLoading(true);
       setError(null);
       setSelectedNodeAddress(nodeAddress);
@@ -186,6 +194,9 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       try {
         // Load node data
         const node = await getNode(nodeAddress);
+        if (!node) {
+          throw new Error(`Node with address ${nodeAddress} not found`);
+        }
         setNodeData(node);
 
         // Load node-specific data in parallel
@@ -193,11 +204,15 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error('Error selecting node:', err);
         setError(err as Error);
+        // Clear the selection on error
+        setSelectedNodeAddress(null);
+        setNodeData(null);
+        throw err; // Re-throw to allow calling code to handle
       } finally {
         setLoading(false);
       }
     },
-    [selectedNodeAddress, getNode, loadOrders, loadAssets],
+    [selectedNodeAddress, getNode, loadOrders, loadAssets, repositoryContext],
   );
 
   // Clear selection

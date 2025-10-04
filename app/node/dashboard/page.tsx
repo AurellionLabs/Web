@@ -133,7 +133,19 @@ export default function NodeDashboardPage() {
   // Select node when page loads
   useEffect(() => {
     if (nodeIdFromUrl && nodeIdFromUrl !== selectedNodeAddress) {
-      selectNode(nodeIdFromUrl);
+      const attemptSelection = async () => {
+        try {
+          await selectNode(nodeIdFromUrl);
+        } catch (error) {
+          console.error('Error selecting node from URL:', error);
+          // If selection fails, show error and provide retry option
+          toast.error(
+            'Failed to load node data. Please ensure your wallet is connected and try again.',
+          );
+        }
+      };
+
+      attemptSelection();
     }
   }, [nodeIdFromUrl, selectedNodeAddress, selectNode]);
 
@@ -421,10 +433,29 @@ export default function NodeDashboardPage() {
     }
   };
 
-  if (!currentNodeData) {
+  // Show loading spinner while node is being loaded
+  if (nodeLoading || (!currentNodeData && nodeIdFromUrl)) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex flex-col justify-center items-center min-h-screen space-y-4">
         <LoadingSpinner />
+        <p className="text-gray-500">Loading node data...</p>
+        {nodeIdFromUrl && (
+          <p className="text-sm text-gray-400">
+            Node ID: {nodeIdFromUrl.slice(0, 10)}...
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Show error state if no node data and no nodeId from URL
+  if (!currentNodeData && !nodeIdFromUrl) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen space-y-4">
+        <p className="text-gray-500">No node selected</p>
+        <Button onClick={() => router.push('/node/overview')}>
+          Go to Node Overview
+        </Button>
       </div>
     );
   }
@@ -561,7 +592,7 @@ export default function NodeDashboardPage() {
         />
         <StatCard
           title="Node Status"
-          value={currentNodeData?.status}
+          value={currentNodeData?.status || 'Unknown'}
           description="Current operational status"
           icon={
             <div
@@ -728,9 +759,11 @@ export default function NodeDashboardPage() {
             </CardDescription>
           </CardHeader>
           <MapView
-            lat={currentNodeData.location.location.lat}
-            lng={currentNodeData.location.location.lng}
-            addressName={currentNodeData.location.addressName}
+            lat={currentNodeData?.location?.location?.lat || '0'}
+            lng={currentNodeData?.location?.location?.lng || '0'}
+            addressName={
+              currentNodeData?.location?.addressName || 'Unknown Location'
+            }
           />
         </Card>
       </div>
