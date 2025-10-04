@@ -15,22 +15,9 @@ import { TokenizedAsset } from '@/domain/node';
 import { Order } from '@/domain/orders';
 import { useWallet } from '@/hooks/useWallet';
 
-export interface TokenizedAssetUI {
-  id: string;
-  nodeId: string;
-  nodeLocation: {
-    addressName: string;
-    location: {
-      lat: string;
-      lng: string;
-    };
-  };
-  assetName: string;
-  assetClass: string;
-  quantity: number;
-  pricePerUnit: number;
+export interface TokenizedAssetUI extends TokenizedAsset {
+  // Additional UI-specific computed fields
   totalValue: number;
-  fileHash: string;
 }
 
 export interface TradeContextType {
@@ -76,29 +63,12 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       }
 
       const processedAssets: TokenizedAssetUI[] = domainAssets.map(
-        (asset: TokenizedAsset) => {
-          const pricePerUnit = parseFloat(asset.price ?? '0');
-          const quantity = parseInt(asset.amount ?? '0', 10);
-
-          return {
-            id: asset.id.toString(),
-            quantity: quantity,
-            pricePerUnit: pricePerUnit,
-            totalValue: pricePerUnit * quantity,
-            nodeId: asset.nodeAddress ?? '',
-            nodeLocation: {
-              addressName:
-                asset.nodeLocation?.addressName ?? 'Unknown Location',
-              location: {
-                lat: asset.nodeLocation?.location?.lat ?? '0',
-                lng: asset.nodeLocation?.location?.lng ?? '0',
-              },
-            },
-            assetName: asset.name ?? 'Unknown Asset Name',
-            assetClass: asset.class ?? 'Unknown Asset Class',
-            fileHash: asset.fileHash ?? '',
-          };
-        },
+        (asset: TokenizedAsset) => ({
+          ...asset,
+          // Add computed UI field
+          totalValue:
+            parseFloat(asset.price ?? '0') * parseInt(asset.capacity ?? '0'),
+        }),
       );
 
       setAssets(processedAssets);

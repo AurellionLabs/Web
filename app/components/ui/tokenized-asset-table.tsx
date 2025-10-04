@@ -1,17 +1,10 @@
-import { colors } from '@/lib/constants/colors';
 import { Button } from './button';
 import { ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 
 type SortConfig = {
-  key:
-    | 'assetName'
-    | 'assetClass'
-    | 'quantity'
-    | 'pricePerUnit'
-    | 'totalValue'
-    | null;
+  key: 'name' | 'class' | 'amount' | 'price' | 'totalValue' | null;
   direction: 'asc' | 'desc';
 };
 
@@ -46,7 +39,7 @@ export function TokenizedAssetTable({
                 Asset Name
                 <Button
                   variant="ghost"
-                  onClick={() => onSort('assetName')}
+                  onClick={() => onSort('name')}
                   className="h-8 px-2"
                 >
                   <ArrowUpDown className="h-4 w-4" />
@@ -56,7 +49,7 @@ export function TokenizedAssetTable({
                 Asset Class
                 <Button
                   variant="ghost"
-                  onClick={() => onSort('assetClass')}
+                  onClick={() => onSort('class')}
                   className="h-8 px-2"
                 >
                   <ArrowUpDown className="h-4 w-4" />
@@ -66,7 +59,7 @@ export function TokenizedAssetTable({
                 Quantity
                 <Button
                   variant="ghost"
-                  onClick={() => onSort('quantity')}
+                  onClick={() => onSort('amount')}
                   className="h-8 px-2"
                 >
                   <ArrowUpDown className="h-4 w-4" />
@@ -76,7 +69,7 @@ export function TokenizedAssetTable({
                 Price per Unit
                 <Button
                   variant="ghost"
-                  onClick={() => onSort('pricePerUnit')}
+                  onClick={() => onSort('price')}
                   className="h-8 px-2"
                 >
                   <ArrowUpDown className="h-4 w-4" />
@@ -97,7 +90,7 @@ export function TokenizedAssetTable({
           <tbody>
             {assets.map((asset) => (
               <tr
-                key={asset.nodeId}
+                key={asset.nodeAddress}
                 onClick={() => router.push(`/customer/trading/${asset.id}`)}
                 className="border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition-colors"
               >
@@ -106,18 +99,20 @@ export function TokenizedAssetTable({
                     <div className="font-medium">
                       {asset.nodeLocation.addressName}
                     </div>
-                    <div className="text-sm text-gray-400">{asset.nodeId}</div>
+                    <div className="text-sm text-gray-400">
+                      {asset.nodeAddress}
+                    </div>
                   </div>
                 </td>
                 <td className="py-4 px-4">
-                  <span className="font-medium">{asset.assetName}</span>
+                  <span className="font-medium">{asset.name}</span>
                 </td>
                 <td className="py-4 px-4">
-                  <span className="capitalize">{asset.assetClass}</span>
+                  <span className="capitalize">{asset.class}</span>
                 </td>
-                <td className="py-4 px-4">{asset.quantity}</td>
+                <td className="py-4 px-4">{parseInt(asset.capacity)}</td>
                 <td className="py-4 px-4">
-                  {formatCurrency(asset.pricePerUnit)}
+                  {formatCurrency(parseFloat(asset.price))}
                 </td>
                 <td className="py-4 px-4">
                   {formatCurrency(asset.totalValue)}

@@ -7,13 +7,7 @@ import { TokenizedAssetTable } from '@/app/components/ui/tokenized-asset-table';
 import { AssetClassFilter } from '@/app/components/ui/asset-class-filter';
 
 type SortConfig = {
-  key:
-    | 'assetName'
-    | 'assetClass'
-    | 'quantity'
-    | 'pricePerUnit'
-    | 'totalValue'
-    | null;
+  key: 'name' | 'class' | 'amount' | 'price' | 'totalValue' | null;
   direction: 'asc' | 'desc';
 };
 
@@ -54,7 +48,7 @@ export default function TradingPage() {
   const filteredAndSortedAssets = [...assets]
     .filter(
       (asset) =>
-        selectedAssetClass === 'all' || asset.assetClass === selectedAssetClass,
+        selectedAssetClass === 'all' || asset.class === selectedAssetClass,
     )
     .sort((a, b) => {
       if (!sortConfig.key) return 0;
@@ -62,8 +56,8 @@ export default function TradingPage() {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
 
-      // Handle string sorting for assetName and assetClass
-      if (sortConfig.key === 'assetName' || sortConfig.key === 'assetClass') {
+      // Handle string sorting for name and class
+      if (sortConfig.key === 'name' || sortConfig.key === 'class') {
         const aString = String(aValue).toLowerCase();
         const bString = String(bValue).toLowerCase();
 
@@ -74,7 +68,7 @@ export default function TradingPage() {
         }
       }
 
-      // Handle numeric sorting for quantity, pricePerUnit, totalValue
+      // Handle numeric sorting for amount, price, totalValue
       if (sortConfig.direction === 'asc') {
         return Number(aValue) - Number(bValue);
       } else {

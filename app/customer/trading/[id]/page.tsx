@@ -76,7 +76,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
   // Generate mock price history data based on selected period
   const generatePriceHistory = () => {
-    const basePrice = asset?.pricePerUnit || 0;
+    const basePrice = asset ? parseFloat(asset.price) : 0;
     let points = 7;
     switch (selectedPeriod) {
       case '1h':
@@ -190,7 +190,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
     );
   }
 
-  const totalPrice = quantity * asset.pricePerUnit;
+  const totalPrice = quantity * parseFloat(asset.price);
 
   return (
     <div
@@ -214,7 +214,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             {asset.nodeLocation.addressName}
           </span>
           <span className="text-gray-600">/</span>
-          <span className="text-gray-400">{asset.assetName}</span>
+          <span className="text-gray-400">{asset.name}</span>
         </div>
 
         {/* Header */}
@@ -236,9 +236,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                 <div className="w-8 h-8 rounded-full bg-red-700 border-2 border-gray-900" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold">
-                  {asset.assetName}
-                </h1>
+                <h1 className="text-xl sm:text-2xl font-bold">{asset.name}</h1>
               </div>
             </div>
           </div>
@@ -272,7 +270,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             >
               <div className="mb-6">
                 <div className="text-2xl sm:text-3xl font-bold mb-1">
-                  ${asset.pricePerUnit.toFixed(2)}
+                  ${parseFloat(asset.price).toFixed(2)}
                 </div>
                 <p className="text-sm text-gray-400">Current Price</p>
               </div>
@@ -316,7 +314,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                       <td className="py-4">2024-02-26</td>
                       <td className="py-4 text-green-500">Purchased</td>
                       <td className="py-4 text-right">
-                        ${(asset.pricePerUnit * 2).toFixed(2)}
+                        ${(parseFloat(asset.price) * 2).toFixed(2)}
                       </td>
                       <td className="py-4 text-right">2</td>
                     </tr>
@@ -339,8 +337,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                       Asset Name
                     </h3>
                     <div className="inline-flex items-center px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
-                      {asset.assetName.charAt(0).toUpperCase() +
-                        asset.assetName.slice(1)}
+                      {asset.name.charAt(0).toUpperCase() + asset.name.slice(1)}
                     </div>
                   </div>
                   <div className="mb-2">
@@ -348,8 +345,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                       Asset Class
                     </h3>
                     <div className="inline-flex items-center px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
-                      {asset.assetClass.charAt(0).toUpperCase() +
-                        asset.assetClass.slice(1)}
+                      {asset.class.charAt(0).toUpperCase() +
+                        asset.class.slice(1)}
                     </div>
                   </div>
                 </div>
@@ -359,7 +356,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                     <h3 className="text-sm font-medium text-gray-400 mb-2">
                       Available Quantity
                     </h3>
-                    <p className="text-2xl font-semibold">{asset.quantity}</p>
+                    <p className="text-2xl font-semibold">
+                      {parseInt(asset.capacity)}
+                    </p>
                   </div>
 
                   <div>
@@ -386,7 +385,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                     <div>
                       <div className="text-sm text-gray-400">ID</div>
                       <div className="font-mono text-sm bg-gray-800/50 p-2 rounded-lg break-all">
-                        {asset.nodeId}
+                        {asset.nodeAddress}
                       </div>
                     </div>
                   </div>

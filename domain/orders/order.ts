@@ -76,12 +76,11 @@ export interface IOrderRepository {
   getOrderIdByJourneyId(journeyId: BytesLike): Promise<BytesLike>;
 
   /**
-   * Retrieves all orders created by a specific customer.
-   * If no address is provided, it defaults to the connected user's wallet address.
-   * @param address The optional wallet address of the customer.
-   * @returns A promise resolving to an array of the customer's order structure outputs.
+   * Retrieves all orders created by a specific buyer.
+   * @param address The wallet address of the buyer.
+   * @returns A promise resolving to an array of the buyer's order structure outputs.
    */
-  getCustomerOrders(address: string): Promise<Order[]>;
+  getBuyerOrders(address: string): Promise<Order[]>;
 
   /**
    * Retrieves a specific order by its ID.
