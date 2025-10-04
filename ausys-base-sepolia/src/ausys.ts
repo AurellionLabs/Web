@@ -129,9 +129,9 @@ export function handleOrderCreated(event: OrderCreatedEvent): void {
   );
   entity.orderId = event.params.orderId;
   entity.buyer = event.params.buyer;
-  entity.seller = Bytes.empty(); // Will be populated from contract call
-  entity.price = BigInt.fromI32(0); // Will be populated from contract call
-  entity.tokenQuantity = BigInt.fromI32(0); // Will be populated from contract call
+  entity.seller = event.params.seller;
+  entity.price = event.params.price;
+  entity.tokenQuantity = event.params.tokenQuantity;
 
   entity.blockNumber = event.block.number;
   entity.blockTimestamp = event.block.timestamp;
@@ -142,57 +142,42 @@ export function handleOrderCreated(event: OrderCreatedEvent): void {
   // Create Order entity
   let order = new Order(event.params.orderId);
   order.buyer = event.params.buyer;
-  order.currentStatus = BigInt.fromI32(0); // Pending
-  order.nodes = [];
+  order.seller = event.params.seller;
+  order.token = event.params.token;
+  order.tokenId = event.params.tokenId;
+  order.tokenQuantity = event.params.tokenQuantity;
+  order.requestedTokenQuantity = event.params.requestedTokenQuantity;
+  order.price = event.params.price;
+  order.txFee = event.params.txFee;
+  order.currentStatus = BigInt.fromI32(event.params.currentStatus);
   order.createdAt = event.block.timestamp;
   order.updatedAt = event.block.timestamp;
   order.blockNumber = event.block.number;
   order.transactionHash = event.transaction.hash;
 
-  // Try to get additional data from contract
-  let contract = Ausys.bind(event.address);
-  let orderResult = contract.try_getOrder(event.params.orderId);
-  if (!orderResult.reverted) {
-    let orderData = orderResult.value;
-    order.seller = orderData.seller;
-    order.token = orderData.token;
-    order.tokenId = orderData.tokenId;
-    order.tokenQuantity = orderData.tokenQuantity;
-    order.requestedTokenQuantity = orderData.requestedTokenQuantity;
-    order.price = orderData.price;
-    order.txFee = orderData.txFee;
-    order.currentStatus = BigInt.fromI32(orderData.currentStatus);
-
-    // Update event entity
-    entity.seller = orderData.seller;
-    entity.price = orderData.price;
-    entity.tokenQuantity = orderData.tokenQuantity;
-
-    // Create ParcelData for order
-    let parcelData = new ParcelData(
-      event.params.orderId.toHexString() + '-order',
-    );
-    parcelData.journey = 'order-' + event.params.orderId.toHexString(); // Not linked to journey yet
-    parcelData.startLocationLat = orderData.locationData.startLocation.lat;
-    parcelData.startLocationLng = orderData.locationData.startLocation.lng;
-    parcelData.endLocationLat = orderData.locationData.endLocation.lat;
-    parcelData.endLocationLng = orderData.locationData.endLocation.lng;
-    parcelData.startName = orderData.locationData.startName;
-    parcelData.endName = orderData.locationData.endName;
-    parcelData.save();
-
-    order.locationData = parcelData.id;
-
-    // Convert nodes array
-    let nodesList: Bytes[] = [];
-    for (let i = 0; i < orderData.nodes.length; i++) {
-      nodesList.push(orderData.nodes[i]);
-    }
-    order.nodes = nodesList;
+  // Convert nodes array from event
+  let nodesList: Bytes[] = [];
+  for (let i = 0; i < event.params.nodes.length; i++) {
+    nodesList.push(event.params.nodes[i]);
   }
+  order.nodes = nodesList;
+
+  // Create ParcelData from event
+  let parcelData = new ParcelData(
+    event.params.orderId.toHexString() + '-order',
+  );
+  parcelData.journey = 'order-' + event.params.orderId.toHexString();
+  parcelData.startLocationLat = event.params.locationData.startLocation.lat;
+  parcelData.startLocationLng = event.params.locationData.startLocation.lng;
+  parcelData.endLocationLat = event.params.locationData.endLocation.lat;
+  parcelData.endLocationLng = event.params.locationData.endLocation.lng;
+  parcelData.startName = event.params.locationData.startName;
+  parcelData.endName = event.params.locationData.endName;
+  parcelData.save();
+
+  order.locationData = parcelData.id;
 
   order.save();
-  entity.save();
 }
 
 export function handleOrderSettled(event: OrderSettledEvent): void {

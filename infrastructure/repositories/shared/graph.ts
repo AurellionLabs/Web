@@ -11,16 +11,34 @@ export const graphqlRequest = async <T>(
     Authorization: `Bearer ${apiKey}`,
   };
   try {
-    console.log('graph variables', graphqlEndpoint, query, variables, headers);
+    console.log('GraphQL Request:', {
+      endpoint: graphqlEndpoint,
+      query: query.substring(0, 100) + '...', // Log first 100 chars of query
+      variables,
+      hasApiKey: !!apiKey,
+    });
+
     const response = await request<T>(
       graphqlEndpoint,
       query,
       variables,
       headers,
     );
-    console.log('response for the Graph:', response);
+
+    console.log('GraphQL Response:', {
+      hasResponse: !!response,
+      responseKeys: response ? Object.keys(response) : 'null/undefined',
+      responseType: typeof response,
+    });
+
     return response;
   } catch (e) {
+    console.error('GraphQL Request Error:', {
+      endpoint: graphqlEndpoint,
+      query: query.substring(0, 100) + '...',
+      variables,
+      error: e,
+    });
     throw new Error('error when querying GraphQl', { cause: e as Error });
   }
 };

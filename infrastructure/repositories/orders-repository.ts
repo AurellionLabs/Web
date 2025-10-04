@@ -1,9 +1,4 @@
-import {
-  type IOrderRepository,
-  type Asset,
-  type Attribute,
-  Order,
-} from '@/domain/orders/order';
+import { type IOrderRepository, Order } from '@/domain/orders/order';
 import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
 import { Ausys__factory } from '@/typechain-types/factories/contracts/AuSys.sol/Ausys__factory';
 import {
@@ -45,7 +40,7 @@ export class OrderRepository implements IOrderRepository {
   private contractAddress: string;
   private isInitialized = false;
   private graphQLEndpoint =
-    'https://api.studio.thegraph.com/query/112596/ausys/version/latest';
+    'https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest';
 
   constructor(contract: Ausys, userProvider: BrowserProvider, signer: Signer) {
     if (!contract) {
@@ -102,6 +97,19 @@ export class OrderRepository implements IOrderRepository {
         GET_ORDERS_BY_NODE,
         { nodeAddress: address.toLowerCase() },
       );
+
+      // Add null checks to prevent TypeError
+      if (!response) {
+        console.warn('GraphQL response is null/undefined for getNodeOrders');
+        return [];
+      }
+
+      if (!response.orders) {
+        console.warn(
+          'GraphQL response.orders is null/undefined for getNodeOrders',
+        );
+        return [];
+      }
 
       return response.orders.map((order: OrderGraphResponse) =>
         convertGraphOrderToDomain(order),
@@ -244,6 +252,19 @@ export class OrderRepository implements IOrderRepository {
         { buyerAddress: address.toLowerCase() },
       );
 
+      // Add null checks to prevent TypeError
+      if (!response) {
+        console.warn('GraphQL response is null/undefined for getBuyerOrders');
+        return [];
+      }
+
+      if (!response.orders) {
+        console.warn(
+          'GraphQL response.orders is null/undefined for getBuyerOrders',
+        );
+        return [];
+      }
+
       return response.orders.map((order: OrderGraphResponse) =>
         convertGraphOrderToDomain(order),
       );
@@ -263,6 +284,19 @@ export class OrderRepository implements IOrderRepository {
         GET_ORDERS_BY_SELLER,
         { sellerAddress: address.toLowerCase() },
       );
+
+      // Add null checks to prevent TypeError
+      if (!response) {
+        console.warn('GraphQL response is null/undefined for getSellerOrders');
+        return [];
+      }
+
+      if (!response.orders) {
+        console.warn(
+          'GraphQL response.orders is null/undefined for getSellerOrders',
+        );
+        return [];
+      }
 
       return response.orders.map((order: OrderGraphResponse) =>
         convertGraphOrderToDomain(order),
@@ -300,15 +334,15 @@ export class OrderRepository implements IOrderRepository {
         token: contractOrder.token,
         tokenId: String(contractOrder.tokenId),
         tokenQuantity: String(contractOrder.tokenQuantity),
-        requestedTokenQuantity: String(contractOrder.requestedTokenQuantity),
         price: String(contractOrder.price),
         txFee: String(contractOrder.txFee),
-        buyer: contractOrder.customer,
-        seller: ethers.ZeroAddress,
+        buyer: contractOrder.buyer,
+        seller: contractOrder.seller,
         journeyIds: contractOrder.journeyIds,
         nodes: contractOrder.nodes,
         locationData: contractOrder.locationData,
         currentStatus: String(contractOrder.currentStatus),
+        contractualAgreement: '', // Default empty string for now
       };
     }
   }
@@ -316,7 +350,9 @@ export class OrderRepository implements IOrderRepository {
   /**
    * Placeholder for asset attributes (not stored in LocationContract)
    */
-  async getAssetAttributes(assetName: string): Promise<Asset> {
+  async getAssetAttributes(
+    assetName: string,
+  ): Promise<{ assetName: string; attributes: any[] }> {
     console.warn(
       'getAssetAttributes: LocationContract does not store asset attribute data',
     );

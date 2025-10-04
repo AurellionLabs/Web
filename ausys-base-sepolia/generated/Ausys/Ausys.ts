@@ -210,6 +210,90 @@ export class OrderCreated__Params {
   get buyer(): Address {
     return this._event.parameters[1].value.toAddress();
   }
+
+  get seller(): Address {
+    return this._event.parameters[2].value.toAddress();
+  }
+
+  get token(): Address {
+    return this._event.parameters[3].value.toAddress();
+  }
+
+  get tokenId(): BigInt {
+    return this._event.parameters[4].value.toBigInt();
+  }
+
+  get tokenQuantity(): BigInt {
+    return this._event.parameters[5].value.toBigInt();
+  }
+
+  get requestedTokenQuantity(): BigInt {
+    return this._event.parameters[6].value.toBigInt();
+  }
+
+  get price(): BigInt {
+    return this._event.parameters[7].value.toBigInt();
+  }
+
+  get txFee(): BigInt {
+    return this._event.parameters[8].value.toBigInt();
+  }
+
+  get currentStatus(): i32 {
+    return this._event.parameters[9].value.toI32();
+  }
+
+  get nodes(): Array<Address> {
+    return this._event.parameters[10].value.toAddressArray();
+  }
+
+  get locationData(): OrderCreatedLocationDataStruct {
+    return changetype<OrderCreatedLocationDataStruct>(
+      this._event.parameters[11].value.toTuple(),
+    );
+  }
+}
+
+export class OrderCreatedLocationDataStruct extends ethereum.Tuple {
+  get startLocation(): OrderCreatedLocationDataStartLocationStruct {
+    return changetype<OrderCreatedLocationDataStartLocationStruct>(
+      this[0].toTuple(),
+    );
+  }
+
+  get endLocation(): OrderCreatedLocationDataEndLocationStruct {
+    return changetype<OrderCreatedLocationDataEndLocationStruct>(
+      this[1].toTuple(),
+    );
+  }
+
+  get startName(): string {
+    return this[2].toString();
+  }
+
+  get endName(): string {
+    return this[3].toString();
+  }
+}
+
+export class OrderCreatedLocationDataStartLocationStruct extends ethereum.Tuple {
+  get lat(): string {
+    return this[0].toString();
+  }
+
+  get lng(): string {
+    return this[1].toString();
+  }
+}
+
+export class OrderCreatedLocationDataEndLocationStruct extends ethereum.Tuple {
+  get lat(): string {
+    return this[0].toString();
+  }
+
+  get lng(): string {
+    return this[1].toString();
+  }
 }
 
 export class OrderSettled extends ethereum.Event {
@@ -391,46 +475,42 @@ export class Ausys__getOrderResultValue0Struct extends ethereum.Tuple {
     return this[3].toBigInt();
   }
 
-  get requestedTokenQuantity(): BigInt {
+  get price(): BigInt {
     return this[4].toBigInt();
   }
 
-  get price(): BigInt {
+  get txFee(): BigInt {
     return this[5].toBigInt();
   }
 
-  get txFee(): BigInt {
-    return this[6].toBigInt();
-  }
-
   get buyer(): Address {
-    return this[7].toAddress();
+    return this[6].toAddress();
   }
 
   get seller(): Address {
-    return this[8].toAddress();
+    return this[7].toAddress();
   }
 
   get journeyIds(): Array<Bytes> {
-    return this[9].toBytesArray();
+    return this[8].toBytesArray();
   }
 
   get nodes(): Array<Address> {
-    return this[10].toAddressArray();
+    return this[9].toAddressArray();
   }
 
   get locationData(): Ausys__getOrderResultValue0LocationDataStruct {
     return changetype<Ausys__getOrderResultValue0LocationDataStruct>(
-      this[11].toTuple(),
+      this[10].toTuple(),
     );
   }
 
   get currentStatus(): i32 {
-    return this[12].toI32();
+    return this[11].toI32();
   }
 
   get contractualAgreement(): Bytes {
-    return this[13].toBytes();
+    return this[12].toBytes();
   }
 }
 
@@ -748,12 +828,11 @@ export class Ausys__idToOrderResult {
   value3: BigInt;
   value4: BigInt;
   value5: BigInt;
-  value6: BigInt;
+  value6: Address;
   value7: Address;
-  value8: Address;
-  value9: Ausys__idToOrderResultLocationDataStruct;
-  value10: i32;
-  value11: Bytes;
+  value8: Ausys__idToOrderResultLocationDataStruct;
+  value9: i32;
+  value10: Bytes;
 
   constructor(
     value0: Bytes,
@@ -762,12 +841,11 @@ export class Ausys__idToOrderResult {
     value3: BigInt,
     value4: BigInt,
     value5: BigInt,
-    value6: BigInt,
+    value6: Address,
     value7: Address,
-    value8: Address,
-    value9: Ausys__idToOrderResultLocationDataStruct,
-    value10: i32,
-    value11: Bytes,
+    value8: Ausys__idToOrderResultLocationDataStruct,
+    value9: i32,
+    value10: Bytes,
   ) {
     this.value0 = value0;
     this.value1 = value1;
@@ -780,7 +858,6 @@ export class Ausys__idToOrderResult {
     this.value8 = value8;
     this.value9 = value9;
     this.value10 = value10;
-    this.value11 = value11;
   }
 
   toMap(): TypedMap<string, ethereum.Value> {
@@ -791,15 +868,14 @@ export class Ausys__idToOrderResult {
     map.set('value3', ethereum.Value.fromUnsignedBigInt(this.value3));
     map.set('value4', ethereum.Value.fromUnsignedBigInt(this.value4));
     map.set('value5', ethereum.Value.fromUnsignedBigInt(this.value5));
-    map.set('value6', ethereum.Value.fromUnsignedBigInt(this.value6));
+    map.set('value6', ethereum.Value.fromAddress(this.value6));
     map.set('value7', ethereum.Value.fromAddress(this.value7));
-    map.set('value8', ethereum.Value.fromAddress(this.value8));
-    map.set('value9', ethereum.Value.fromTuple(this.value9));
+    map.set('value8', ethereum.Value.fromTuple(this.value8));
     map.set(
-      'value10',
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value10)),
+      'value9',
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value9)),
     );
-    map.set('value11', ethereum.Value.fromFixedBytes(this.value11));
+    map.set('value10', ethereum.Value.fromFixedBytes(this.value10));
     return map;
   }
 
@@ -819,36 +895,32 @@ export class Ausys__idToOrderResult {
     return this.value3;
   }
 
-  getRequestedTokenQuantity(): BigInt {
+  getPrice(): BigInt {
     return this.value4;
   }
 
-  getPrice(): BigInt {
+  getTxFee(): BigInt {
     return this.value5;
   }
 
-  getTxFee(): BigInt {
+  getBuyer(): Address {
     return this.value6;
   }
 
-  getBuyer(): Address {
+  getSeller(): Address {
     return this.value7;
   }
 
-  getSeller(): Address {
+  getLocationData(): Ausys__idToOrderResultLocationDataStruct {
     return this.value8;
   }
 
-  getLocationData(): Ausys__idToOrderResultLocationDataStruct {
+  getCurrentStatus(): i32 {
     return this.value9;
   }
 
-  getCurrentStatus(): i32 {
-    return this.value10;
-  }
-
   getContractualAgreement(): Bytes {
-    return this.value11;
+    return this.value10;
   }
 }
 
@@ -869,46 +941,42 @@ export class Ausys__orderCreationInputOrderStruct extends ethereum.Tuple {
     return this[3].toBigInt();
   }
 
-  get requestedTokenQuantity(): BigInt {
+  get price(): BigInt {
     return this[4].toBigInt();
   }
 
-  get price(): BigInt {
+  get txFee(): BigInt {
     return this[5].toBigInt();
   }
 
-  get txFee(): BigInt {
-    return this[6].toBigInt();
-  }
-
   get buyer(): Address {
-    return this[7].toAddress();
+    return this[6].toAddress();
   }
 
   get seller(): Address {
-    return this[8].toAddress();
+    return this[7].toAddress();
   }
 
   get journeyIds(): Array<Bytes> {
-    return this[9].toBytesArray();
+    return this[8].toBytesArray();
   }
 
   get nodes(): Array<Address> {
-    return this[10].toAddressArray();
+    return this[9].toAddressArray();
   }
 
   get locationData(): Ausys__orderCreationInputOrderLocationDataStruct {
     return changetype<Ausys__orderCreationInputOrderLocationDataStruct>(
-      this[11].toTuple(),
+      this[10].toTuple(),
     );
   }
 
   get currentStatus(): i32 {
-    return this[12].toI32();
+    return this[11].toI32();
   }
 
   get contractualAgreement(): Bytes {
-    return this[13].toBytes();
+    return this[12].toBytes();
   }
 }
 
@@ -1134,7 +1202,7 @@ export class Ausys extends ethereum.SmartContract {
   getOrder(id: Bytes): Ausys__getOrderResultValue0Struct {
     let result = super.call(
       'getOrder',
-      'getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))',
+      'getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))',
       [ethereum.Value.fromFixedBytes(id)],
     );
 
@@ -1146,7 +1214,7 @@ export class Ausys extends ethereum.SmartContract {
   ): ethereum.CallResult<Ausys__getOrderResultValue0Struct> {
     let result = super.tryCall(
       'getOrder',
-      'getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))',
+      'getOrder(bytes32):((bytes32,address,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32))',
       [ethereum.Value.fromFixedBytes(id)],
     );
     if (result.reverted) {
@@ -1325,7 +1393,7 @@ export class Ausys extends ethereum.SmartContract {
   idToOrder(param0: Bytes): Ausys__idToOrderResult {
     let result = super.call(
       'idToOrder',
-      'idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)',
+      'idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
 
@@ -1336,19 +1404,18 @@ export class Ausys extends ethereum.SmartContract {
       result[3].toBigInt(),
       result[4].toBigInt(),
       result[5].toBigInt(),
-      result[6].toBigInt(),
+      result[6].toAddress(),
       result[7].toAddress(),
-      result[8].toAddress(),
-      changetype<Ausys__idToOrderResultLocationDataStruct>(result[9].toTuple()),
-      result[10].toI32(),
-      result[11].toBytes(),
+      changetype<Ausys__idToOrderResultLocationDataStruct>(result[8].toTuple()),
+      result[9].toI32(),
+      result[10].toBytes(),
     );
   }
 
   try_idToOrder(param0: Bytes): ethereum.CallResult<Ausys__idToOrderResult> {
     let result = super.tryCall(
       'idToOrder',
-      'idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)',
+      'idToOrder(bytes32):(bytes32,address,uint256,uint256,uint256,uint256,address,address,((string,string),(string,string),string,string),uint8,bytes32)',
       [ethereum.Value.fromFixedBytes(param0)],
     );
     if (result.reverted) {
@@ -1363,14 +1430,13 @@ export class Ausys extends ethereum.SmartContract {
         value[3].toBigInt(),
         value[4].toBigInt(),
         value[5].toBigInt(),
-        value[6].toBigInt(),
+        value[6].toAddress(),
         value[7].toAddress(),
-        value[8].toAddress(),
         changetype<Ausys__idToOrderResultLocationDataStruct>(
-          value[9].toTuple(),
+          value[8].toTuple(),
         ),
-        value[10].toI32(),
-        value[11].toBytes(),
+        value[9].toI32(),
+        value[10].toBytes(),
       ),
     );
   }
@@ -1518,7 +1584,7 @@ export class Ausys extends ethereum.SmartContract {
   orderCreation(order: Ausys__orderCreationInputOrderStruct): Bytes {
     let result = super.call(
       'orderCreation',
-      'orderCreation((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)',
+      'orderCreation((bytes32,address,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)',
       [ethereum.Value.fromTuple(order)],
     );
 
@@ -1530,7 +1596,7 @@ export class Ausys extends ethereum.SmartContract {
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       'orderCreation',
-      'orderCreation((bytes32,address,uint256,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)',
+      'orderCreation((bytes32,address,uint256,uint256,uint256,uint256,address,address,bytes32[],address[],((string,string),(string,string),string,string),uint8,bytes32)):(bytes32)',
       [ethereum.Value.fromTuple(order)],
     );
     if (result.reverted) {
@@ -2026,46 +2092,42 @@ export class OrderCreationCallOrderStruct extends ethereum.Tuple {
     return this[3].toBigInt();
   }
 
-  get requestedTokenQuantity(): BigInt {
+  get price(): BigInt {
     return this[4].toBigInt();
   }
 
-  get price(): BigInt {
+  get txFee(): BigInt {
     return this[5].toBigInt();
   }
 
-  get txFee(): BigInt {
-    return this[6].toBigInt();
-  }
-
   get buyer(): Address {
-    return this[7].toAddress();
+    return this[6].toAddress();
   }
 
   get seller(): Address {
-    return this[8].toAddress();
+    return this[7].toAddress();
   }
 
   get journeyIds(): Array<Bytes> {
-    return this[9].toBytesArray();
+    return this[8].toBytesArray();
   }
 
   get nodes(): Array<Address> {
-    return this[10].toAddressArray();
+    return this[9].toAddressArray();
   }
 
   get locationData(): OrderCreationCallOrderLocationDataStruct {
     return changetype<OrderCreationCallOrderLocationDataStruct>(
-      this[11].toTuple(),
+      this[10].toTuple(),
     );
   }
 
   get currentStatus(): i32 {
-    return this[12].toI32();
+    return this[11].toI32();
   }
 
   get contractualAgreement(): Bytes {
-    return this[13].toBytes();
+    return this[12].toBytes();
   }
 }
 

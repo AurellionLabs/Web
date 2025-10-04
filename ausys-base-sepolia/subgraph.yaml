@@ -8,9 +8,9 @@ dataSources:
     name: Ausys
     network: base-sepolia
     source:
-      address: '0xC341Ec4e1c39e018eF9D9e43ff36611780Af281B' # Will be updated by deploy script
+      address: "0xEac77885b36a1Bb214bdDe44486DAa3a56073967"
       abi: Ausys
-      startBlock: 31735848 # Will be updated by deploy script
+      startBlock: 31923105
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -40,7 +40,7 @@ dataSources:
           handler: handleJourneyCreated
         - event: JourneyStatusUpdated(indexed bytes32,uint8)
           handler: handleJourneyStatusUpdated
-        - event: OrderCreated(indexed bytes32,indexed address)
+        - event: OrderCreated(indexed bytes32,indexed address,indexed address,address,uint256,uint256,uint256,uint256,uint256,uint8,address[],((string,string),(string,string),string,string))
           handler: handleOrderCreated
         - event: OrderSettled(indexed bytes32)
           handler: handleOrderSettled

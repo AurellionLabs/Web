@@ -155,7 +155,10 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     else _revokeRole(DRIVER_ROLE, driver);
   }
 
-  function setDispatcher(address dispatcher, bool enable) public onlyRole(ADMIN_ROLE) {
+  function setDispatcher(
+    address dispatcher,
+    bool enable
+  ) public onlyRole(ADMIN_ROLE) {
     if (enable) _grantRole(DISPATCHER_ROLE, dispatcher);
     else _revokeRole(DISPATCHER_ROLE, dispatcher);
   }
@@ -167,6 +170,7 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
   function getHashedOrderId() private returns (bytes32) {
     return keccak256(abi.encode(orderIdCounter += 1));
   }
+
   event AdminSet(address indexed admin);
   event emitSig(address indexed user, bytes32 indexed id);
   event OrderSettled(bytes32 indexed orderId);
@@ -191,11 +195,9 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     // Require the target driver to be registered/approved
     if (!hasRole(DRIVER_ROLE, driver)) revert InvalidCaller();
     // Only the driver themselves, a dispatcher, or the journey sender can assign
-    bool callerAuthorized = (
-      msg.sender == driver ||
+    bool callerAuthorized = (msg.sender == driver ||
       hasRole(DISPATCHER_ROLE, msg.sender) ||
-      msg.sender == idToJourney[journeyID].sender
-    );
+      msg.sender == idToJourney[journeyID].sender);
     if (!callerAuthorized) revert InvalidCaller();
     if (driverToJourneyId[driver].length >= 10) revert DriverMaxAssignment();
     driverToJourneyId[driver].push(journeyID);
@@ -304,7 +306,6 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     return true;
   }
 
-
   function journeyCreation(
     address sender,
     address receiver,
@@ -343,7 +344,20 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     address indexed receiver
   );
   event JourneyStatusUpdated(bytes32 indexed journeyId, Status newStatus);
-  event OrderCreated(bytes32 indexed orderId, address indexed buyer);
+  event OrderCreated(
+    bytes32 indexed orderId,
+    address indexed buyer,
+    address indexed seller,
+    address token,
+    uint256 tokenId,
+    uint256 tokenQuantity,
+    uint256 requestedTokenQuantity,
+    uint256 price,
+    uint256 txFee,
+    uint8 currentStatus,
+    address[] nodes,
+    ParcelData locationData
+  );
 
   function orderJourneyCreation(
     bytes32 orderId,
@@ -425,7 +439,20 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
       order.price + idToOrder[id].txFee
     );
     emit FundsEscrowed(order.buyer, order.price + idToOrder[id].txFee);
-    emit OrderCreated(id, order.buyer);
+    emit OrderCreated(
+      id,
+      order.buyer,
+      order.seller,
+      order.token,
+      order.tokenId,
+      order.tokenQuantity,
+      order.tokenQuantity, // Use tokenQuantity for requestedTokenQuantity since they're the same
+      order.price,
+      idToOrder[id].txFee,
+      uint8(order.currentStatus),
+      order.nodes,
+      order.locationData
+    );
     return id;
   }
 
@@ -433,12 +460,9 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     return idToOrder[id];
   }
 
-  function supportsInterface(bytes4 interfaceId)
-    public
-    view
-    override(AccessControl, ERC1155Receiver)
-    returns (bool)
-  {
+  function supportsInterface(
+    bytes4 interfaceId
+  ) public view override(AccessControl, ERC1155Receiver) returns (bool) {
     return super.supportsInterface(interfaceId);
   }
 
