@@ -147,10 +147,18 @@ export function TradeProvider({ children }: { children: ReactNode }) {
           const bounty =
             (totalOrderValue * BigInt(bountyPercentage)) / BigInt(100);
 
+          // TODO: For the first journey, the receiver should be the next node in the chain
+          // If there's only one node, we'll need to handle this differently
+          // For now, let's use the same node as receiver (this might need adjustment based on business logic)
+          const receiverNodeAddress =
+            orderWithBuyer.nodes.length > 1
+              ? orderWithBuyer.nodes[1]
+              : firstNodeAddress; // Use same node if only one node in chain
+
           await orderService.createOrderJourney(
             actualOrderId,
             firstNodeAddress,
-            walletAddress,
+            receiverNodeAddress,
             orderWithBuyer.locationData,
             bounty,
             BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)

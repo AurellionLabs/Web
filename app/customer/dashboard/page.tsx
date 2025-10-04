@@ -20,7 +20,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  ArrowRight,
   RefreshCw,
   ArrowUpDown,
   ChevronLeft,

@@ -57,8 +57,8 @@ export default function OrderPage({ params }: { params: { id: string } }) {
       .min(1, 'Quantity must be greater than 0')
       .refine((val) => Number.isInteger(val), 'Quantity must be a whole number')
       .refine(
-        (val) => val <= asset!.quantity,
-        `Quantity must be less than or equal to ${asset?.quantity}`,
+        (val) => val <= parseInt(asset!.capacity || '0'),
+        `Quantity must be less than or equal to ${asset?.capacity || '0'}`,
       ),
     deliveryLocation: z
       .string()
@@ -107,7 +107,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const totalPrice = form.watch('quantity') * asset.pricePerUnit;
+  const totalPrice = form.watch('quantity') * parseFloat(asset.price || '0');
 
   return (
     <div
@@ -153,11 +153,12 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                     token: NEXT_PUBLIC_AURA_GOAT_ADDRESS, // TODO: Not sure why this is here
                     tokenId: asset.id,
                     tokenQuantity: String(data.quantity),
-                    requestedTokenQuantity: String(data.quantity),
-                    price: String(asset.pricePerUnit * data.quantity), // asset.pricePerUnit is already in wei, so no conversion needed
+                    price: String(
+                      parseFloat(asset.price || '0') * data.quantity,
+                    ), // asset.price is already in wei, so no conversion needed
                     txFee: String(0),
                     journeyIds: [],
-                    nodes: [ethers.getAddress(asset.nodeId)],
+                    nodes: [ethers.getAddress(asset.nodeAddress)],
                     locationData: {
                       startLocation: {
                         lat: asset.nodeLocation.location.lat,
@@ -172,7 +173,8 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                     },
                     currentStatus: String(0),
                     buyer: '0x0000000000000000000000000000000000000000', // Will be set by the trade.provider
-                    seller: ethers.getAddress(asset.nodeId), // The node is the seller
+                    seller: ethers.getAddress(asset.nodeAddress), // The node is the seller
+                    contractualAgreement: '', // Empty for now, can be populated later
                   };
 
                   const success = await placeOrder(orderData);
@@ -204,12 +206,15 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                             <Input
                               type="number"
                               min="1"
-                              max={asset.quantity}
+                              max={parseInt(asset.capacity || '0')}
                               {...field}
                               onChange={(e) => {
                                 const value = parseInt(e.target.value);
-                                if (value > asset.quantity) {
-                                  form.setValue('quantity', asset.quantity);
+                                const maxCapacity = parseInt(
+                                  asset.capacity || '0',
+                                );
+                                if (value > maxCapacity) {
+                                  form.setValue('quantity', maxCapacity);
                                 } else if (value < 1) {
                                   form.setValue('quantity', 1);
                                 } else {
@@ -265,7 +270,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   </h3>
                   <div className="flex justify-between mb-2">
                     <span>Price per unit:</span>
-                    <span>${asset.pricePerUnit.toFixed(2)}</span>
+                    <span>${parseFloat(asset.price || '0').toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between mb-2">
                     <span>Quantity:</span>
@@ -274,7 +279,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   <div className="flex justify-between font-semibold pt-2 border-t border-gray-700">
                     <span>Total:</span>
                     <span className="text-xl font-bold">
-                      ${totalPrice.toFixed(2)}
+                      ${(totalPrice || 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
