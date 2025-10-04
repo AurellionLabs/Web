@@ -8,7 +8,7 @@ dataSources:
     name: AurumNodeManager
     network: base-sepolia
     source:
-      address: "0xA4d3787449b7496B01d18bbCc00AceCf042DA660" # Will be updated by deploy script
+      address: '0xA4d3787449b7496B01d18bbCc00AceCf042DA660' # Will be updated by deploy script
       abi: AurumNodeManager
       startBlock: 31923107 # Will be updated by deploy script
     mapping:

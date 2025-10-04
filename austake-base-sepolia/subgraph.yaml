@@ -8,7 +8,7 @@ dataSources:
     name: AuStake
     network: base-sepolia
     source:
-      address: "0xA30d1A759295Cd7021C72f1917096741F809643a" # Will be updated by deploy script
+      address: '0xA30d1A759295Cd7021C72f1917096741F809643a' # Will be updated by deploy script
       abi: AuStake
       startBlock: 31923109 # Will be updated by deploy script
     mapping:

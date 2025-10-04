@@ -8,7 +8,7 @@ dataSources:
     name: Ausys
     network: base-sepolia
     source:
-      address: "0xEac77885b36a1Bb214bdDe44486DAa3a56073967"
+      address: '0xEac77885b36a1Bb214bdDe44486DAa3a56073967'
       abi: Ausys
       startBlock: 31923105
     mapping:
