@@ -9,14 +9,12 @@ import { BrowserProvider, ethers, type Signer } from 'ethers';
 // REFACTOR: Use Ausys contract instead of LocationContract
 import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
 import { handleContractError } from '@/utils/error-handler';
-
-// Define the delay constant at the top of the file
-const JOURNEY_FETCH_DELAY_MS = 350;
-
-// Helper function for delay
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { graphqlRequest } from './shared/graph';
+import {
+  GET_AVAILABLE_JOURNEYS,
+  GET_JOURNEYS_BY_DRIVER,
+  JourneyGraphResponse,
+} from '../shared/graph-queries';
 
 /**
  * Infrastructure implementation of the IDriverRepository interface
@@ -28,6 +26,8 @@ export class DriverRepository implements IDriverRepository {
   private ausysContract: Ausys;
   private provider: BrowserProvider;
   private signer: Signer;
+  private graphQLEndpoint =
+    'https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest';
 
   constructor(ausysContract: Ausys, provider: BrowserProvider, signer: Signer) {
     if (!ausysContract) {
@@ -38,10 +38,10 @@ export class DriverRepository implements IDriverRepository {
     this.signer = signer;
   }
 
-  // --- Helper to map contract Journey status to domain DeliveryStatus ---
+  // --- Helper to map contract/graph Journey status to domain DeliveryStatus ---
   // DEV VERSION: Better mapping with driver awareness
   private mapContractStatusToDomain(
-    contractStatus: bigint | number,
+    contractStatus: bigint | number | string,
     driverAddress: string,
   ): DeliveryStatus {
     // Mapping based on Ausys contract enum (Pending, InProgress, Completed, Canceled)
@@ -66,31 +66,77 @@ export class DriverRepository implements IDriverRepository {
     }
   }
 
-  // --- Helper to map contract Journey struct to domain Delivery model ---
-  // DEV VERSION: Maps to user-friendly Delivery model
-  private mapJourneyToDelivery(journey: Ausys.JourneyStructOutput): Delivery {
-    const parcelData: ParcelData = {
-      startLocation: {
-        lat: journey.parcelData.startLocation.lat,
-        lng: journey.parcelData.startLocation.lng,
-      },
-      endLocation: {
-        lat: journey.parcelData.endLocation.lat,
-        lng: journey.parcelData.endLocation.lng,
-      },
-      startName: journey.parcelData.startName,
-      endName: journey.parcelData.endName,
-    };
+  // --- Helper to map Journey (graph or contract) to domain Delivery model ---
+  // Accepts either Graph response or Contract struct shape
+  private mapJourneyToDelivery(
+    journey:
+      | Ausys.JourneyStructOutput
+      | (JourneyGraphResponse & { id: string }),
+  ): Delivery {
+    // Normalize fields between graph and contract outputs
+    const isGraph =
+      (journey as JourneyGraphResponse).parcelData?.startLocationLat !==
+      undefined;
+
+    const parcelData: ParcelData = isGraph
+      ? {
+          startLocation: {
+            lat: (journey as JourneyGraphResponse).parcelData.startLocationLat,
+            lng: (journey as JourneyGraphResponse).parcelData.startLocationLng,
+          },
+          endLocation: {
+            lat: (journey as JourneyGraphResponse).parcelData.endLocationLat,
+            lng: (journey as JourneyGraphResponse).parcelData.endLocationLng,
+          },
+          startName: (journey as JourneyGraphResponse).parcelData.startName,
+          endName: (journey as JourneyGraphResponse).parcelData.endName,
+        }
+      : {
+          startLocation: {
+            lat: (journey as Ausys.JourneyStructOutput).parcelData.startLocation
+              .lat,
+            lng: (journey as Ausys.JourneyStructOutput).parcelData.startLocation
+              .lng,
+          },
+          endLocation: {
+            lat: (journey as Ausys.JourneyStructOutput).parcelData.endLocation
+              .lat,
+            lng: (journey as Ausys.JourneyStructOutput).parcelData.endLocation
+              .lng,
+          },
+          startName: (journey as Ausys.JourneyStructOutput).parcelData
+            .startName,
+          endName: (journey as Ausys.JourneyStructOutput).parcelData.endName,
+        };
+
+    const jobId = isGraph
+      ? (journey as JourneyGraphResponse).id
+      : (journey as Ausys.JourneyStructOutput).journeyId;
+    const sender = isGraph
+      ? (journey as JourneyGraphResponse).sender
+      : (journey as Ausys.JourneyStructOutput).sender;
+    const driver = isGraph
+      ? (journey as JourneyGraphResponse).driver
+      : (journey as Ausys.JourneyStructOutput).driver;
+    const bounty = isGraph
+      ? (journey as JourneyGraphResponse).bounty
+      : (journey as Ausys.JourneyStructOutput).bounty;
+    const eta = isGraph
+      ? (journey as JourneyGraphResponse).eta
+      : (journey as Ausys.JourneyStructOutput).ETA;
+    const currentStatus = isGraph
+      ? (journey as JourneyGraphResponse).currentStatus
+      : (journey as Ausys.JourneyStructOutput).currentStatus;
 
     return {
-      jobId: journey.journeyId,
-      customer: journey.sender, // Assuming sender is the customer placing the delivery
-      fee: Number(ethers.formatEther(journey.bounty)), // Convert bounty (BigInt wei) to number (Ether)
-      ETA: Number(journey.ETA), // Convert BigInt timestamp to number
-      deliveryETA: Number(journey.ETA), // Using ETA as deliveryETA
+      jobId,
+      customer: sender,
+      fee: Number(ethers.formatEther(bounty as any)),
+      ETA: Number(eta as any),
+      deliveryETA: Number(eta as any),
       currentStatus: this.mapContractStatusToDomain(
-        journey.currentStatus,
-        journey.driver,
+        currentStatus as any,
+        driver,
       ),
       parcelData: parcelData,
     };
@@ -99,90 +145,28 @@ export class DriverRepository implements IDriverRepository {
   // --- Implement IDriverRepository methods ---
 
   async getAvailableDeliveries(): Promise<Delivery[]> {
-    console.log('[DriverRepository] Getting available deliveries...');
-    const availableDeliveries: Delivery[] = [];
-    let index = 1;
-    const MAX_ITERATIONS = 1000; // Safety break for loop
-
+    console.log('[DriverRepository] Getting available deliveries (Graph)...');
     try {
-      while (index < MAX_ITERATIONS) {
-        let journeyId: string;
-        try {
-          // Use numberToJourneyID mapping
-          journeyId = await this.ausysContract.numberToJourneyID(index);
-          // Check for zero address or empty bytes32 indicating end of list
-          if (
-            !journeyId ||
-            journeyId === ethers.ZeroHash ||
-            journeyId === ethers.ZeroAddress
-          ) {
-            console.log(
-              `[DriverRepository] End of journey list reached at index ${index}.`,
-            );
-            break;
-          }
-        } catch (error: any) {
-          // Error fetching ID likely means end of list
-          console.log(
-            `[DriverRepository] Error fetching journey ID at index ${index} (likely end):`,
-            error.message,
-          );
-          break;
-        }
-
-        try {
-          const journey = await this.ausysContract.getjourney(journeyId);
-
-          console.log(
-            `[DriverRepository] Processing Journey ID: ${journeyId}`,
-            {
-              status: Number(journey.currentStatus),
-              driver: journey.driver,
-              isPending: Number(journey.currentStatus) === 0,
-              isDriverZero: journey.driver === ethers.ZeroAddress,
-            },
-          );
-
-          // Filter for available: Pending status and no driver assigned
-          if (
-            Number(journey.currentStatus) === 0 && // Status.Pending
-            journey.driver === ethers.ZeroAddress
-          ) {
-            availableDeliveries.push(this.mapJourneyToDelivery(journey));
-          }
-        } catch (journeyError: any) {
-          // Log error fetching specific journey but continue iteration
-          console.error(
-            `[DriverRepository] Failed to fetch journey details for ID ${journeyId}:`,
-            journeyError.message,
-          );
-        }
-        await sleep(JOURNEY_FETCH_DELAY_MS);
-        index++;
-      }
-      if (index >= MAX_ITERATIONS) {
-        console.warn(
-          '[DriverRepository] Reached MAX_ITERATIONS limit while fetching available deliveries.',
-        );
-      }
-      console.log(
-        `[DriverRepository] Found ${availableDeliveries.length} available deliveries.`,
+      const response = await graphqlRequest<{
+        journeys: JourneyGraphResponse[];
+      }>(this.graphQLEndpoint, GET_AVAILABLE_JOURNEYS, { first: 200, skip: 0 });
+      const deliveries = (response.journeys || []).map((j) =>
+        this.mapJourneyToDelivery(j as any),
       );
-      return availableDeliveries;
+      console.log(
+        `[DriverRepository] Found ${deliveries.length} available deliveries (Graph).`,
+      );
+      return deliveries;
     } catch (error) {
-      handleContractError(error, 'get available deliveries');
-      throw error;
+      handleContractError(error, 'get available deliveries (Graph)');
+      return [];
     }
   }
 
   async getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]> {
     console.log(
-      `[DriverRepository] Getting deliveries for driver: ${driverWalletAddress}`,
+      `[DriverRepository] Getting deliveries for driver (Graph): ${driverWalletAddress}`,
     );
-    const myDeliveries: Delivery[] = [];
-    let index = 1;
-    const MAX_ITERATIONS = 1000; // Safety break
-
     if (!driverWalletAddress) {
       console.error(
         '[DriverRepository] driverWalletAddress is required for getMyDeliveries',
@@ -191,60 +175,24 @@ export class DriverRepository implements IDriverRepository {
     }
 
     try {
-      while (index < MAX_ITERATIONS) {
-        let journeyId: string;
-        try {
-          journeyId = await this.ausysContract.numberToJourneyID(index);
-          if (
-            !journeyId ||
-            journeyId === ethers.ZeroHash ||
-            journeyId === ethers.ZeroAddress
-          ) {
-            console.log(
-              `[DriverRepository] End of journey list reached at index ${index}.`,
-            );
-            break;
-          }
-        } catch (error: any) {
-          console.log(
-            `[DriverRepository] Error fetching journey ID at index ${index} (likely end):`,
-            error.message,
-          );
-          break;
-        }
-
-        try {
-          const journey = await this.ausysContract.getjourney(journeyId);
-          // Filter: Check if the driver address matches
-          if (
-            journey.driver.toLowerCase() === driverWalletAddress.toLowerCase()
-          ) {
-            myDeliveries.push(this.mapJourneyToDelivery(journey));
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[DriverRepository] Failed to fetch journey details for ID ${journeyId}:`,
-            journeyError.message,
-          );
-        }
-        await sleep(JOURNEY_FETCH_DELAY_MS);
-        index++;
-      }
-      if (index >= MAX_ITERATIONS) {
-        console.warn(
-          '[DriverRepository] Reached MAX_ITERATIONS limit while fetching driver deliveries.',
-        );
-      }
-      console.log(
-        `[DriverRepository] Found ${myDeliveries.length} deliveries for driver ${driverWalletAddress}.`,
+      const response = await graphqlRequest<{
+        journeys: JourneyGraphResponse[];
+      }>(this.graphQLEndpoint, GET_JOURNEYS_BY_DRIVER, {
+        driverAddress: driverWalletAddress.toLowerCase(),
+      });
+      const deliveries = (response.journeys || []).map((j) =>
+        this.mapJourneyToDelivery(j as any),
       );
-      return myDeliveries;
+      console.log(
+        `[DriverRepository] Found ${deliveries.length} deliveries for driver (Graph).`,
+      );
+      return deliveries;
     } catch (error) {
       handleContractError(
         error,
-        `get deliveries for driver ${driverWalletAddress}`,
+        `get deliveries for driver via Graph ${driverWalletAddress}`,
       );
-      throw error;
+      return [];
     }
   }
 }

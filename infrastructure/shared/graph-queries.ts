@@ -130,6 +130,38 @@ export const GET_JOURNEYS_BY_DRIVER = gql`
   }
 `;
 
+// Journeys available to accept: no driver assigned and status Pending (0)
+export const GET_AVAILABLE_JOURNEYS = gql`
+  query GetAvailableJourneys($first: Int = 100, $skip: Int = 0) {
+    journeys(
+      first: $first
+      skip: $skip
+      where: { driver: null, currentStatus: 0 }
+      orderBy: createdAt
+      orderDirection: desc
+    ) {
+      id
+      sender
+      receiver
+      driver
+      currentStatus
+      bounty
+      journeyStart
+      journeyEnd
+      eta
+      parcelData {
+        startLocationLat
+        startLocationLng
+        endLocationLat
+        endLocationLng
+        startName
+        endName
+      }
+      createdAt
+    }
+  }
+`;
+
 export const GET_JOURNEY_BY_ID = gql`
   query GetJourneyById($journeyId: String!) {
     journey(id: $journeyId) {
