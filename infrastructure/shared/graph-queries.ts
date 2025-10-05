@@ -1,4 +1,5 @@
 import { gql } from 'graphql-request';
+import { OrderStatus } from '@/domain/orders/order';
 
 // =====================
 // NODE QUERIES
@@ -532,6 +533,23 @@ export function convertGraphJourneyToDomain(
  * Convert Graph response to domain Order
  */
 export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
+  // Helper function to convert numeric status string to OrderStatus enum
+  const convertStatusToEnum = (status: string): OrderStatus => {
+    switch (status) {
+      case '0':
+        return OrderStatus.PENDING;
+      case '1':
+        return OrderStatus.ACTIVE;
+      case '2':
+        return OrderStatus.COMPLETED;
+      case '3':
+        return OrderStatus.CANCELLED;
+      default:
+        console.warn(`Unknown order status from Graph: ${status}`);
+        return OrderStatus.PENDING;
+    }
+  };
+
   return {
     id: graphOrder.id,
     token: graphOrder.token,
@@ -556,7 +574,8 @@ export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
       startName: graphOrder.locationData.startName,
       endName: graphOrder.locationData.endName,
     },
-    currentStatus: graphOrder.currentStatus,
+    currentStatus: convertStatusToEnum(graphOrder.currentStatus),
+    contractualAgreement: '', // Default empty string for now
   };
 }
 

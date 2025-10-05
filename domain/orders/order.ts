@@ -25,7 +25,7 @@ export type Order = {
   journeyIds: string[];
   nodes: string[];
   locationData: ParcelData;
-  currentStatus: string;
+  currentStatus: OrderStatus;
   contractualAgreement: string;
 };
 /**

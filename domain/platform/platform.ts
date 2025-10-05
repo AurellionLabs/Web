@@ -1,20 +1,5 @@
 import { AuraAsset } from '@/typechain-types';
-
-export interface Asset {
-  assetClass: string;
-  tokenId: string;
-  name: string;
-  attributes: AssetAttribute[];
-}
-
-/**
- * Asset attribute definition
- */
-export interface AssetAttribute {
-  name: string;
-  values: string[];
-  description: string;
-}
+import { Asset } from '../shared';
 
 export interface IpfsAssetAttribute {
   name: string;

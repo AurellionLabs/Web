@@ -9,11 +9,11 @@ import {
   DialogTrigger,
 } from './dialog';
 import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
-import { CustomerOrder } from '@/app/providers/customer.provider';
+import { OrderWithAsset } from '@/app/providers/customer.provider';
 import { useState } from 'react';
 
 interface OrderActionDialogProps {
-  order: CustomerOrder;
+  order: OrderWithAsset;
   onConfirm: (orderId: string) => Promise<void>;
   variant: 'cancel' | 'confirm' | 'pickup';
   isLoading?: boolean;
@@ -159,19 +159,19 @@ export function OrderActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Asset</span>
                 <span className="text-base font-medium text-right capitalize">
-                  {order.asset.name}
+                  {order.asset?.name}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Quantity</span>
                 <span className="text-base font-medium text-right">
-                  {order.quantity}
+                  {order.tokenQuantity}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Value</span>
                 <span className="text-base font-medium text-right">
-                  {order.value} USDT
+                  {order.price} USDT
                 </span>
               </div>
             </div>

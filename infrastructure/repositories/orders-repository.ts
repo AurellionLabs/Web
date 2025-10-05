@@ -1,4 +1,8 @@
-import { type IOrderRepository, Order } from '@/domain/orders/order';
+import {
+  type IOrderRepository,
+  Order,
+  OrderStatus,
+} from '@/domain/orders/order';
 import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
 import { Ausys__factory } from '@/typechain-types/factories/contracts/AuSys.sol/Ausys__factory';
 import {
@@ -329,6 +333,23 @@ export class OrderRepository implements IOrderRepository {
       await this.waitForInitialization();
       const contractOrder = await this.readContract.getOrder(orderId);
 
+      // Helper function to convert contract status to OrderStatus enum
+      const convertContractStatusToEnum = (status: bigint): OrderStatus => {
+        switch (Number(status)) {
+          case 0:
+            return OrderStatus.PENDING;
+          case 1:
+            return OrderStatus.ACTIVE;
+          case 2:
+            return OrderStatus.COMPLETED;
+          case 3:
+            return OrderStatus.CANCELLED;
+          default:
+            console.warn(`Unknown contract status: ${status}`);
+            return OrderStatus.PENDING;
+        }
+      };
+
       return {
         id: contractOrder.id,
         token: contractOrder.token,
@@ -341,7 +362,7 @@ export class OrderRepository implements IOrderRepository {
         journeyIds: contractOrder.journeyIds,
         nodes: contractOrder.nodes,
         locationData: contractOrder.locationData,
-        currentStatus: String(contractOrder.currentStatus),
+        currentStatus: convertContractStatusToEnum(contractOrder.currentStatus),
         contractualAgreement: '', // Default empty string for now
       };
     }

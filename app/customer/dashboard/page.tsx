@@ -37,24 +37,33 @@ import {
 } from '@/app/components/ui/select';
 import { toast } from '@/app/components/ui/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
-import { CustomerOrder } from '@/app/providers/customer.provider';
+import { OrderStatus } from '@/domain/orders/order';
+import { OrderWithAsset } from '@/app/providers/customer.provider';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract } from 'ethers';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 
 type SortConfig = {
-  key: 'quantity' | 'value' | null;
+  key: 'tokenQuantity' | 'price' | null;
   direction: 'asc' | 'desc';
 };
 
-const ORDER_STATUSES = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'accepted', label: 'Accepted' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-] as const;
+// Helper function to get display label for OrderStatus
+const getStatusLabel = (status: OrderStatus): string => {
+  switch (status) {
+    case OrderStatus.PENDING:
+      return 'Pending';
+    case OrderStatus.ACTIVE:
+      return 'Active';
+    case OrderStatus.COMPLETED:
+      return 'Completed';
+    case OrderStatus.CANCELLED:
+      return 'Cancelled';
+    default:
+      return 'Unknown';
+  }
+};
 
 const ASSETS = [
   { value: 'all', label: 'All Assets' },
@@ -111,13 +120,10 @@ export default function CustomerDashboard() {
     ) {
       return false;
     }
-    if (
-      filters.asset !== 'all' &&
-      order.asset.tokenID.toString() !== filters.asset
-    ) {
+    if (filters.asset !== 'all' && order.tokenId.toString() !== filters.asset) {
       return false;
     }
-    if (filters.status !== 'all' && order.status !== filters.status) {
+    if (filters.status !== 'all' && order.currentStatus !== filters.status) {
       return false;
     }
     return true;
@@ -128,11 +134,11 @@ export default function CustomerDashboard() {
     if (sortConfig.key === null) return 0;
 
     const aValue =
-      sortConfig.key === 'value'
+      sortConfig.key === 'price'
         ? parseFloat(a[sortConfig.key])
         : a[sortConfig.key];
     const bValue =
-      sortConfig.key === 'value'
+      sortConfig.key === 'price'
         ? parseFloat(b[sortConfig.key])
         : b[sortConfig.key];
 
@@ -144,19 +150,19 @@ export default function CustomerDashboard() {
   });
 
   // Calculate statistics from filtered orders
-  const inProgressOrders = filteredOrders.filter(
-    (order) => order.status === 'in_progress',
+  const activeOrders = filteredOrders.filter(
+    (order) => order.currentStatus === OrderStatus.ACTIVE,
   ).length;
   const completedOrders = filteredOrders.filter(
-    (order) => order.status === 'completed',
+    (order) => order.currentStatus === OrderStatus.COMPLETED,
   ).length;
   const pendingOrders = filteredOrders.filter(
-    (order) => order.status === 'pending',
+    (order) => order.currentStatus === OrderStatus.PENDING,
   ).length;
 
   const totalSpent = filteredOrders
-    .filter((order) => order.status === 'completed')
-    .reduce((total, order) => total + parseFloat(order.value), 0);
+    .filter((order) => order.currentStatus === OrderStatus.COMPLETED)
+    .reduce((total, order) => total + parseFloat(order.price), 0);
 
   // Calculate pagination values
   const totalPages = Math.ceil(sortedOrders.length / ordersPerPage);
@@ -177,7 +183,7 @@ export default function CustomerDashboard() {
     setCurrentPage(1);
   }, [filters, sortConfig]);
 
-  const handleSort = (key: 'quantity' | 'value') => {
+  const handleSort = (key: 'tokenQuantity' | 'price') => {
     setSortConfig((prevSort) => ({
       key,
       direction:
@@ -361,7 +367,7 @@ export default function CustomerDashboard() {
     );
   }
 
-  const renderOrderCard = (order: CustomerOrder) => (
+  const renderOrderCard = (order: OrderWithAsset) => (
     <Card key={order.id} className="bg-[#1a1f2d] border-0">
       <CardContent className="pt-6">
         <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -370,22 +376,22 @@ export default function CustomerDashboard() {
               <span className="text-sm text-gray-400">Order ID:</span>
               <span className="font-medium">{order.id}</span>
               <span className="ml-4">
-                {order.status === 'pending' && (
+                {order.currentStatus === OrderStatus.PENDING && (
                   <span className="bg-blue-500/10 text-blue-500 text-xs px-2 py-1 rounded-full">
                     Pending
                   </span>
                 )}
-                {order.status === 'in_progress' && (
+                {order.currentStatus === OrderStatus.ACTIVE && (
                   <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
-                    In Progress
+                    Active
                   </span>
                 )}
-                {order.status === 'completed' && (
+                {order.currentStatus === OrderStatus.COMPLETED && (
                   <span className="bg-green-500/10 text-green-500 text-xs px-2 py-1 rounded-full">
                     Completed
                   </span>
                 )}
-                {order.status === 'cancelled' && (
+                {order.currentStatus === OrderStatus.CANCELLED && (
                   <span className="bg-red-500/10 text-red-500 text-xs px-2 py-1 rounded-full">
                     Cancelled
                   </span>
@@ -396,42 +402,44 @@ export default function CustomerDashboard() {
               <div className="space-y-2">
                 <div className="text-sm font-medium">Asset</div>
                 <div className="text-sm text-gray-400 capitalize">
-                  {order.asset.name}
+                  {order.asset?.name}
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-medium">Quantity</div>
-                <div className="text-sm text-gray-400">{order.quantity}</div>
+                <div className="text-sm text-gray-400">
+                  {order.tokenQuantity}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-gray-400" />
                 <span className="text-sm">
-                  {new Date(order.timestamp).toLocaleDateString()}
+                  {new Date().toLocaleDateString()}
                 </span>
               </div>
-              {order.deliveryLocation && (
+              {order.locationData?.endName && (
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">{order.deliveryLocation}</span>
+                  <span className="text-sm">{order.locationData.endName}</span>
                 </div>
               )}
             </div>
           </div>
           <div className="flex flex-col justify-between items-end">
             <div className="text-2xl font-bold text-amber-500">
-              ${parseFloat(order.value).toFixed(2)}
+              ${parseFloat(order.price).toFixed(2)}
             </div>
             <div className="flex justify-end space-x-4">
-              {order.status === 'pending' && (
+              {order.currentStatus === OrderStatus.PENDING && (
                 <OrderActionDialog
                   order={order}
                   onConfirm={handleCancelOrder}
                   variant="cancel"
                 />
               )}
-              {order.status === 'in_progress' && (
+              {order.currentStatus === OrderStatus.ACTIVE && (
                 <OrderActionDialog
                   order={order}
                   onConfirm={handleConfirmReceipt}
@@ -480,9 +488,7 @@ export default function CustomerDashboard() {
                   <p className="text-sm font-medium text-gray-400">
                     In Progress Orders
                   </p>
-                  <h3 className="text-2xl font-bold mt-2">
-                    {inProgressOrders}
-                  </h3>
+                  <h3 className="text-2xl font-bold mt-2">{activeOrders}</h3>
                 </div>
                 <Activity className="h-8 w-8 text-amber-500" />
               </div>
@@ -593,11 +599,19 @@ export default function CustomerDashboard() {
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ORDER_STATUSES.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>
-                        {status.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value={OrderStatus.PENDING}>
+                      {getStatusLabel(OrderStatus.PENDING)}
+                    </SelectItem>
+                    <SelectItem value={OrderStatus.ACTIVE}>
+                      {getStatusLabel(OrderStatus.ACTIVE)}
+                    </SelectItem>
+                    <SelectItem value={OrderStatus.COMPLETED}>
+                      {getStatusLabel(OrderStatus.COMPLETED)}
+                    </SelectItem>
+                    <SelectItem value={OrderStatus.CANCELLED}>
+                      {getStatusLabel(OrderStatus.CANCELLED)}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -617,7 +631,7 @@ export default function CustomerDashboard() {
                         variant="ghost"
                         size="sm"
                         className="ml-2"
-                        onClick={() => handleSort('quantity')}
+                        onClick={() => handleSort('tokenQuantity')}
                       >
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
@@ -628,7 +642,7 @@ export default function CustomerDashboard() {
                         variant="ghost"
                         size="sm"
                         className="ml-2"
-                        onClick={() => handleSort('value')}
+                        onClick={() => handleSort('price')}
                       >
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
@@ -643,38 +657,38 @@ export default function CustomerDashboard() {
                   {currentOrders.map((order) => (
                     <tr key={order.id} className="border-b border-gray-800">
                       <td className="p-4">{order.id}</td>
-                      <td className="p-4 capitalize">{order.asset.name}</td>
-                      <td className="p-4">{order.quantity}</td>
-                      <td className="p-4">{order.value} USDT</td>
+                      <td className="p-4 capitalize">{order.asset?.name}</td>
+                      <td className="p-4">{order.tokenQuantity}</td>
+                      <td className="p-4">{order.price} USDT</td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          {order.status === 'completed' && (
+                          {order.currentStatus === OrderStatus.COMPLETED && (
                             <CheckCircle2 className="h-4 w-4 text-green-500" />
                           )}
-                          {order.status === 'cancelled' && (
+                          {order.currentStatus === OrderStatus.CANCELLED && (
                             <XCircle className="h-4 w-4 text-red-500" />
                           )}
-                          {order.status === 'in_progress' && (
+                          {order.currentStatus === OrderStatus.ACTIVE && (
                             <Activity className="h-4 w-4 text-amber-500" />
                           )}
-                          {order.status === 'pending' && (
+                          {order.currentStatus === OrderStatus.PENDING && (
                             <Clock className="h-4 w-4 text-blue-500" />
                           )}
                           <span className="capitalize">
-                            {order.status.replace('_', ' ')}
+                            {getStatusLabel(order.currentStatus)}
                           </span>
                         </div>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          {order.status === 'pending' && (
+                          {order.currentStatus === OrderStatus.PENDING && (
                             <OrderActionDialog
                               order={order}
                               onConfirm={handleCancelOrder}
                               variant="cancel"
                             />
                           )}
-                          {order.status === 'in_progress' && (
+                          {order.currentStatus === OrderStatus.ACTIVE && (
                             <OrderActionDialog
                               order={order}
                               onConfirm={handleConfirmReceipt}

@@ -13,21 +13,17 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 // ServiceContext not used; we call contract directly via RepositoryContext
 import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
+import { Order, OrderStatus } from '@/domain/orders/order';
+import { Asset } from '@/domain/shared';
+import { usePlatform } from './platform.provider';
 
-// Types
-export type CustomerOrder = {
-  id: string;
-  journeyId: string | null;
-  asset: string;
-  quantity: number;
-  value: string;
-  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
-  timestamp: number;
-  deliveryLocation: string | null;
+// Extended Order type that includes asset details
+export type OrderWithAsset = Order & {
+  asset: Asset | null;
 };
 
 type CustomerContextType = {
-  orders: CustomerOrder[];
+  orders: OrderWithAsset[];
   isLoading: boolean;
   error: string | null;
   refreshOrders: () => Promise<void>;
@@ -42,12 +38,13 @@ const CustomerContext = createContext<CustomerContextType | undefined>(
 
 // Provider component
 export function CustomerProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [orders, setOrders] = useState<OrderWithAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const repoContext = RepositoryContext.getInstance();
   const orderRepository = repoContext.getOrderRepository();
   const { address } = useWallet();
+  const { getAssetByTokenId } = usePlatform();
   const loadCustomerOrders = useCallback(async () => {
     if (!orderRepository) {
       setError('Order Repository not available.');
@@ -57,28 +54,35 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       setError(null);
-      const domainOrders = await orderRepository.getCustomerJourneys(
-        address as string,
-      );
-      // domainOrders here returns journeys; for customer orders view, fetch buyer orders instead
+      // Fetch buyer orders directly from the repository
       const buyerOrders = await orderRepository.getBuyerOrders(
         address as string,
       );
-      const mappedOrders: CustomerOrder[] = buyerOrders.map((order: any) => ({
-        id: order.id,
-        journeyId:
-          Array.isArray(order.journeyIds) && order.journeyIds.length > 0
-            ? order.journeyIds[0]
-            : null,
-        asset: order.tokenId,
-        quantity: Number(order.tokenQuantity),
-        value: order.price?.toString?.() ?? String(order.price),
-        status: getOrderStatus(order.currentStatus),
-        timestamp: Date.now(),
-        deliveryLocation: order.locationData?.endName ?? null,
-      }));
+      console.log('buyerOrders', buyerOrders);
 
-      setOrders(mappedOrders);
+      // Fetch asset details for each order
+      const ordersWithAssets: OrderWithAsset[] = await Promise.all(
+        buyerOrders.map(async (order) => {
+          try {
+            const asset = await getAssetByTokenId(order.tokenId);
+            return {
+              ...order,
+              asset,
+            };
+          } catch (err) {
+            console.warn(
+              `Failed to fetch asset for tokenId ${order.tokenId}:`,
+              err,
+            );
+            return {
+              ...order,
+              asset: null,
+            };
+          }
+        }),
+      );
+
+      setOrders(ordersWithAssets);
     } catch (err) {
       console.error('Error loading customer orders:', err);
       setError('Failed to load customer orders');
@@ -86,7 +90,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderRepository, address]);
+  }, [orderRepository, address, getAssetByTokenId]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -97,7 +101,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === orderId
-            ? { ...order, status: 'cancelled' as const }
+            ? { ...order, currentStatus: OrderStatus.CANCELLED }
             : order,
         ),
       );
@@ -118,7 +122,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (!orderToConfirm.journeyId) {
+      if (
+        !orderToConfirm.journeyIds ||
+        orderToConfirm.journeyIds.length === 0
+      ) {
         setError(`Order ${orderId} has no associated journey to sign.`);
         return;
       }
@@ -127,14 +134,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setError(null);
         const ausys = repoContext.getAusysContract();
-        const tx = await ausys.packageSign(orderToConfirm.journeyId as any);
+        const tx = await ausys.packageSign(orderToConfirm.journeyIds[0] as any);
         const receipt = await tx.wait();
         console.log('Confirmation Receipt:', receipt);
 
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.id === orderId
-              ? { ...order, status: 'completed' as const }
+              ? { ...order, currentStatus: OrderStatus.COMPLETED }
               : order,
           ),
         );
@@ -146,7 +153,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [orders, loadCustomerOrders],
+    [orders, repoContext],
   );
 
   const refreshOrders = useCallback(async () => {
@@ -171,26 +178,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       {children}
     </CustomerContext.Provider>
   );
-}
-
-function getOrderStatus(
-  status: bigint,
-): 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' {
-  switch (Number(status)) {
-    case 0:
-      return 'pending';
-    case 1:
-      return 'accepted';
-    case 2:
-      return 'in_progress';
-    case 3:
-      return 'completed';
-    case 4:
-      return 'cancelled';
-    default:
-      console.warn(`Unknown order status: ${status}`);
-      return 'pending';
-  }
 }
 
 // Hook for using the customer context
