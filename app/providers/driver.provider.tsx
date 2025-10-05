@@ -100,6 +100,36 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
+      // Debug logs for troubleshooting accept flow
+      try {
+        console.log('[Accept] jobId:', jobId);
+        const DRIVER_ROLE = await (ausys as any).DRIVER_ROLE?.();
+        const ADMIN_ROLE = await (ausys as any).ADMIN_ROLE?.();
+        const hasDriverRole = DRIVER_ROLE
+          ? await (ausys as any).hasRole?.(DRIVER_ROLE, driverWalletAddress)
+          : undefined;
+        const hasAdminRole = ADMIN_ROLE
+          ? await (ausys as any).hasRole?.(ADMIN_ROLE, driverWalletAddress)
+          : undefined;
+        console.log('[Accept] roles', {
+          hasDriverRole,
+          hasAdminRole,
+          driverWalletAddress,
+        });
+        try {
+          const j = await (ausys as any).getjourney(jobId as any);
+          console.log('[Accept] journey', {
+            driver: j?.driver,
+            status: Number(j?.currentStatus),
+            isPending: Number(j?.currentStatus) === 0,
+          });
+        } catch (e) {
+          console.log('[Accept] getjourney error', e);
+        }
+        if (typeof window !== 'undefined') (window as any).ausys = ausys;
+      } catch (e) {
+        console.log('[Accept] debug log error', e);
+      }
       // Assign driver to journey
       await ausys.assignDriverToJourneyId(driverWalletAddress!, jobId as any);
       await refreshDeliveries();
