@@ -13,14 +13,9 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 // ServiceContext not used; we call contract directly via RepositoryContext
 import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
-import { Order, OrderStatus } from '@/domain/orders/order';
-import { Asset } from '@/domain/shared';
+import { OrderStatus } from '@/domain/orders/order';
 import { usePlatform } from './platform.provider';
-
-// Extended Order type that includes asset details
-export type OrderWithAsset = Order & {
-  asset: Asset | null;
-};
+import { OrderWithAsset } from '@/app/types/shared';
 
 type CustomerContextType = {
   orders: OrderWithAsset[];

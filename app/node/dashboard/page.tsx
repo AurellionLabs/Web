@@ -34,7 +34,7 @@ import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
-import type { Asset as PlatformAsset } from '@/domain/platform';
+import type { Asset } from '@/domain/shared';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -192,9 +192,9 @@ export default function NodeDashboardPage() {
           values: [String(attrValue)],
           description: '',
         }));
-      const assetPayload: PlatformAsset = {
+      const assetPayload: Asset = {
         assetClass: form.getValues('assetClass'),
-        tokenId: assetIdStr,
+        tokenID: BigInt(assetIdStr),
         name: selectedAssetName,
         attributes: normalizedAttributes,
       };
@@ -733,10 +733,12 @@ export default function NodeDashboardPage() {
                   <tr key={order.id} className="border-b">
                     <td className="p-4">{order.id}</td>
                     <td className="p-4">{order.buyer}</td>
-                    <td className="p-4 capitalize">{order.asset}</td>
-                    <td className="p-4">{order.quantity}</td>
-                    <td className="p-4">{order.value} USDT</td>
-                    <td className="p-4 capitalize">{order.status}</td>
+                    <td className="p-4 capitalize">
+                      {order.asset?.name || 'Unknown Asset'}
+                    </td>
+                    <td className="p-4">{order.tokenQuantity}</td>
+                    <td className="p-4">{order.price} USDT</td>
+                    <td className="p-4 capitalize">{order.currentStatus}</td>
                   </tr>
                 ))}
               </tbody>

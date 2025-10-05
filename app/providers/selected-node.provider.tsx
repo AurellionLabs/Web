@@ -13,23 +13,14 @@ import {
   TokenizedAsset,
   TokenizedAssetAttribute,
 } from '@/domain/node/node';
-import { Asset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
 import { useNodes } from './nodes.provider';
-
-// Order type from the original provider
-export type Order = {
-  id: string;
-  buyer: string;
-  seller: string;
-  asset: string;
-  quantity: number;
-  value: string;
-  status: 'active' | 'pending' | 'completed' | 'cancelled';
-};
+import { usePlatform } from './platform.provider';
+import { OrderWithAsset } from '@/app/types/shared';
 
 type SelectedNodeContextType = {
   // Current selection
@@ -37,7 +28,7 @@ type SelectedNodeContextType = {
   nodeData: Node | null;
 
   // Node-specific data
-  orders: Order[];
+  orders: OrderWithAsset[];
   assets: TokenizedAsset[];
 
   // Loading states
@@ -86,7 +77,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   const [nodeData, setNodeData] = useState<Node | null>(null);
 
   // Node-specific data
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderWithAsset[]>([]);
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
 
   // Loading states
@@ -98,6 +89,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   const { address } = useWallet();
   const { connected } = useMainProvider();
   const { getNode, refreshNodes } = useNodes();
+  const { getAssetByTokenId } = usePlatform();
 
   // Initialize contexts
   const [repositoryContext, setRepositoryContext] =
@@ -125,25 +117,29 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         const orderRepository = repositoryContext.getOrderRepository();
         const nodeOrders = await orderRepository.getNodeOrders(nodeAddress);
 
-        // Convert to frontend Order format
-        const formattedOrders = nodeOrders.map((order) => ({
-          id: order.id,
-          buyer: order.buyer,
-          seller: order.seller,
-          asset: order.tokenId,
-          quantity: Number(order.tokenQuantity),
-          value: order.price.toString(),
-          status:
-            order.currentStatus === '0'
-              ? 'pending'
-              : order.currentStatus === '1'
-                ? 'active'
-                : order.currentStatus === '2'
-                  ? 'completed'
-                  : 'cancelled',
-        })) as Order[];
+        // Fetch asset details for each order
+        const ordersWithAssets: OrderWithAsset[] = await Promise.all(
+          nodeOrders.map(async (order) => {
+            try {
+              const asset = await getAssetByTokenId(order.tokenId);
+              return {
+                ...order,
+                asset,
+              } as OrderWithAsset;
+            } catch (err) {
+              console.warn(
+                `Failed to fetch asset for tokenId ${order.tokenId}:`,
+                err,
+              );
+              return {
+                ...order,
+                asset: null,
+              } as OrderWithAsset;
+            }
+          }),
+        );
 
-        setOrders(formattedOrders);
+        setOrders(ordersWithAssets);
       } catch (err) {
         console.error('Error loading orders:', err);
         setOrders([]);
@@ -151,7 +147,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setOrdersLoading(false);
       }
     },
-    [repositoryContext],
+    [repositoryContext, getAssetByTokenId],
   );
 
   // Load assets for selected node

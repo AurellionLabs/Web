@@ -283,10 +283,21 @@ export const GET_ORDERS_BY_NODE = gql`
       token
       tokenId
       tokenQuantity
+      requestedTokenQuantity
       price
       txFee
       currentStatus
+      locationData {
+        startLocationLat
+        startLocationLng
+        endLocationLat
+        endLocationLng
+        startName
+        endName
+      }
+      nodes
       createdAt
+      updatedAt
     }
   }
 `;

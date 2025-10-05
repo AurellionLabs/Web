@@ -27,11 +27,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import {
-  useSelectedNode,
-  type Order,
-} from '@/app/providers/selected-node.provider';
-import { getAssetName } from '@/dapp-connectors/aurum-controller';
+import { useSelectedNode } from '@/app/providers/selected-node.provider';
+import { OrderWithAsset } from '@/app/types/shared';
 
 const orderStatuses = [
   { value: 'all', label: 'All Statuses' },
@@ -91,13 +88,14 @@ function OrdersContent({
   isRefreshing,
 }: {
   nodeId: string;
-  orders: Order[];
+  orders: OrderWithAsset[];
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
 }) {
   const searchParams = useSearchParams();
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>(orders);
-  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] =
+    useState<OrderWithAsset[]>(orders);
+  const [displayedOrders, setDisplayedOrders] = useState<OrderWithAsset[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: null,
@@ -120,6 +118,18 @@ function OrdersContent({
     }));
   };
 
+  // Get unique assets from orders for filtering
+  const uniqueAssets = Array.from(
+    new Map(
+      orders
+        .filter((order) => order.asset !== null)
+        .map((order) => [
+          String(order.asset!.tokenID),
+          { value: String(order.asset!.tokenID), label: order.asset!.name },
+        ]),
+    ).values(),
+  );
+
   useEffect(() => {
     // Apply filters
     let result = orders;
@@ -132,30 +142,34 @@ function OrdersContent({
 
     if (filters.customerId) {
       result = result.filter((order) =>
-        order.customer.toLowerCase().includes(filters.customerId.toLowerCase()),
+        order.buyer.toLowerCase().includes(filters.customerId.toLowerCase()),
       );
     }
 
     if (filters.assetType !== 'all') {
-      result = result.filter((order) => order.asset === filters.assetType);
+      result = result.filter(
+        (order) => String(order.asset?.tokenID) === filters.assetType,
+      );
     }
 
     if (filters.status !== 'all') {
-      result = result.filter((order) => order.status === filters.status);
+      result = result.filter((order) => order.currentStatus === filters.status);
     }
 
     // Apply sorting
     if (sortConfig.key) {
       result = [...result].sort((a, b) => {
         if (sortConfig.key === 'quantity') {
+          const aQuantity = Number(a.tokenQuantity);
+          const bQuantity = Number(b.tokenQuantity);
           return sortConfig.direction === 'asc'
-            ? a.quantity - b.quantity
-            : b.quantity - a.quantity;
+            ? aQuantity - bQuantity
+            : bQuantity - aQuantity;
         }
         // For value, convert string to number
         if (sortConfig.key === 'value') {
-          const aValue = parseFloat(a.value);
-          const bValue = parseFloat(b.value);
+          const aValue = parseFloat(a.price);
+          const bValue = parseFloat(b.price);
           return sortConfig.direction === 'asc'
             ? aValue - bValue
             : bValue - aValue;
@@ -241,7 +255,7 @@ function OrdersContent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Assets</SelectItem>
-                  {supportedAssets.map((asset) => (
+                  {uniqueAssets.map((asset) => (
                     <SelectItem key={asset.value} value={asset.value}>
                       {asset.label}
                     </SelectItem>
@@ -315,11 +329,13 @@ function OrdersContent({
                 {displayedOrders.map((order) => (
                   <tr key={order.id} className="border-b">
                     <td className="p-4">{order.id}</td>
-                    <td className="p-4">{order.customer}</td>
-                    <td className="p-4">{getAssetName(Number(order.asset))}</td>
-                    <td className="p-4">{order.quantity}</td>
-                    <td className="p-4">{order.value} USDT</td>
-                    <td className="p-4 capitalize">{order.status}</td>
+                    <td className="p-4">{order.buyer}</td>
+                    <td className="p-4 capitalize">
+                      {order.asset?.name || 'Unknown Asset'}
+                    </td>
+                    <td className="p-4">{order.tokenQuantity}</td>
+                    <td className="p-4">{order.price} USDT</td>
+                    <td className="p-4 capitalize">{order.currentStatus}</td>
                   </tr>
                 ))}
               </tbody>
