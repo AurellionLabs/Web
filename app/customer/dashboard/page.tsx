@@ -367,95 +367,6 @@ export default function CustomerDashboard() {
     );
   }
 
-  const renderOrderCard = (order: OrderWithAsset) => (
-    <Card key={order.id} className="bg-[#1a1f2d] border-0">
-      <CardContent className="pt-6">
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-400">Order ID:</span>
-              <span className="font-medium">{order.id}</span>
-              <span className="ml-4">
-                {order.currentStatus === OrderStatus.PENDING && (
-                  <span className="bg-blue-500/10 text-blue-500 text-xs px-2 py-1 rounded-full">
-                    Pending
-                  </span>
-                )}
-                {order.currentStatus === OrderStatus.ACTIVE && (
-                  <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
-                    Active
-                  </span>
-                )}
-                {order.currentStatus === OrderStatus.COMPLETED && (
-                  <span className="bg-green-500/10 text-green-500 text-xs px-2 py-1 rounded-full">
-                    Completed
-                  </span>
-                )}
-                {order.currentStatus === OrderStatus.CANCELLED && (
-                  <span className="bg-red-500/10 text-red-500 text-xs px-2 py-1 rounded-full">
-                    Cancelled
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Asset</div>
-                <div className="text-sm text-gray-400 capitalize">
-                  {order.asset?.name}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Quantity</div>
-                <div className="text-sm text-gray-400">
-                  {order.tokenQuantity}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">
-                  {new Date().toLocaleDateString()}
-                </span>
-              </div>
-              {order.locationData?.endName && (
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">{order.locationData.endName}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col justify-between items-end">
-            <div className="text-2xl font-bold text-amber-500">
-              ${parseFloat(order.price).toFixed(2)}
-            </div>
-            <div className="flex justify-end space-x-4">
-              {order.currentStatus === OrderStatus.PENDING && (
-                <OrderActionDialog
-                  order={order}
-                  onConfirm={handleCancelOrder}
-                  variant="cancel"
-                />
-              )}
-              {order.currentStatus === OrderStatus.ACTIVE && (
-                <OrderActionDialog
-                  order={order}
-                  onConfirm={handleConfirmReceipt}
-                  variant="confirm"
-                  isLoading={loading}
-                  isWaitingForSignature={waitingForSignature[order.id]}
-                  waitingForRole="driver"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <div
       className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
@@ -547,12 +458,6 @@ export default function CustomerDashboard() {
               <CardTitle>Recent Orders</CardTitle>
               <CardDescription>Your latest order activity</CardDescription>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/customer/orders')}
-            >
-              View All Orders
-            </Button>
           </CardHeader>
           <CardContent>
             {/* Filters */}
