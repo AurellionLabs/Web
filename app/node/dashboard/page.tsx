@@ -61,10 +61,6 @@ interface EditingCapacity {
   value: string;
 }
 
-const getAssetName = (id: number) => {
-  return '1';
-};
-
 interface EditingPrice {
   id: number;
   value: string;

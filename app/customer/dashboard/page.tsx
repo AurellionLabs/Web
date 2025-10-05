@@ -38,7 +38,6 @@ import {
 import { toast } from '@/app/components/ui/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import { OrderStatus } from '@/domain/orders/order';
-import { OrderWithAsset } from '@/app/providers/customer.provider';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract } from 'ethers';
@@ -65,16 +64,7 @@ const getStatusLabel = (status: OrderStatus): string => {
   }
 };
 
-const ASSETS = [
-  { value: 'all', label: 'All Assets' },
-  { value: '3', label: 'Cow' },
-  { value: '1', label: 'Goat' },
-  { value: '2', label: 'Sheep' },
-  { value: '4', label: 'Chicken' },
-] as const;
-
 export default function CustomerDashboard() {
-  const router = useRouter();
   const { setCurrentUserRole } = useMainProvider();
   const {
     orders,
@@ -471,26 +461,6 @@ export default function CustomerDashboard() {
                     setFilters((prev) => ({ ...prev, orderId: e.target.value }))
                   }
                 />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Asset</label>
-                <Select
-                  value={filters.asset}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, asset: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select asset" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ASSETS.map((asset) => (
-                      <SelectItem key={asset.value} value={asset.value}>
-                        {asset.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
