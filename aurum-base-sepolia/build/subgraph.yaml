@@ -8,7 +8,7 @@ dataSources:
     name: AurumNodeManager
     network: base-sepolia
     source:
-      address: "0xBD8892DbcEDe50827bd82248a49bC1A757c7a378"
+      address: '0xBD8892DbcEDe50827bd82248a49bC1A757c7a378'
       abi: AurumNodeManager
       startBlock: 31968895
     mapping:
