@@ -84,6 +84,16 @@ export function handleJourneyCreated(event: JourneyCreatedEvent): void {
     journey.parcelData = parcelData.id;
   }
 
+  // Link journey to order if this was created via orderJourneyCreation
+  let orderIdResult = contract.try_journeyToOrderId(event.params.journeyId);
+  if (
+    !orderIdResult.reverted &&
+    orderIdResult.value.toHexString() !=
+      '0x0000000000000000000000000000000000000000000000000000000000000000'
+  ) {
+    journey.order = orderIdResult.value;
+  }
+
   journey.save();
 }
 

@@ -25,6 +25,7 @@ import {
   GET_ORDERS_BY_SELLER,
   GET_ORDER_BY_ID,
   GET_ORDERS_BY_NODE,
+  GET_JOURNEYS_BY_ORDER_ID,
   convertGraphJourneyToDomain,
   convertGraphOrderToDomain,
   JourneyGraphResponse,
@@ -115,9 +116,26 @@ export class OrderRepository implements IOrderRepository {
         return [];
       }
 
-      return response.orders.map((order: OrderGraphResponse) =>
-        convertGraphOrderToDomain(order),
+      // Also fetch journey ids per order (subgraph exposes journeys by order relation)
+      const results = await Promise.all(
+        response.orders.map(async (order: OrderGraphResponse) => {
+          try {
+            const jRes = await graphqlRequest<{ journeys: { id: string }[] }>(
+              this.graphQLEndpoint,
+              GET_JOURNEYS_BY_ORDER_ID,
+              { orderId: order.id },
+            );
+            const mapped = convertGraphOrderToDomain(order);
+            mapped.journeyIds = (jRes?.journeys || []).map((j) => j.id);
+            return mapped;
+          } catch (e) {
+            const mapped = convertGraphOrderToDomain(order);
+            mapped.journeyIds = [];
+            return mapped;
+          }
+        }),
       );
+      return results;
     } catch (error) {
       console.error('Error fetching node orders from Graph:', error);
       // Fallback to empty array instead of on-chain iteration

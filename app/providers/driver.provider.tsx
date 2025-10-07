@@ -16,6 +16,7 @@ export interface DriverContextType {
   confirmPickup: (jobId: string) => Promise<void>;
   completeDelivery: (jobId: string) => Promise<void>;
   packageSign: (jobId: string) => Promise<void>;
+  startJourney: (jobId: string) => Promise<void>;
 }
 
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
@@ -100,36 +101,45 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
-      // Debug logs for troubleshooting accept flow
+
+      // Check and grant DRIVER_ROLE if needed
       try {
-        console.log('[Accept] jobId:', jobId);
-        const DRIVER_ROLE = await (ausys as any).DRIVER_ROLE?.();
-        const ADMIN_ROLE = await (ausys as any).ADMIN_ROLE?.();
-        const hasDriverRole = DRIVER_ROLE
-          ? await (ausys as any).hasRole?.(DRIVER_ROLE, driverWalletAddress)
-          : undefined;
-        const hasAdminRole = ADMIN_ROLE
-          ? await (ausys as any).hasRole?.(ADMIN_ROLE, driverWalletAddress)
-          : undefined;
-        console.log('[Accept] roles', {
-          hasDriverRole,
-          hasAdminRole,
+        console.log('[Accept] Checking driver role for', driverWalletAddress);
+        const DRIVER_ROLE = await (ausys as any).DRIVER_ROLE();
+        const hasDriverRole = await (ausys as any).hasRole(
+          DRIVER_ROLE,
           driverWalletAddress,
-        });
-        try {
-          const j = await (ausys as any).getjourney(jobId as any);
-          console.log('[Accept] journey', {
-            driver: j?.driver,
-            status: Number(j?.currentStatus),
-            isPending: Number(j?.currentStatus) === 0,
-          });
-        } catch (e) {
-          console.log('[Accept] getjourney error', e);
+        );
+
+        if (!hasDriverRole) {
+          console.log(
+            '[Accept] Driver role not found, attempting to grant via setDriver...',
+          );
+          // Try to self-grant driver role (requires ADMIN_ROLE or contract owner)
+          try {
+            const tx = await (ausys as any).setDriver(
+              driverWalletAddress,
+              true,
+            );
+            await tx.wait();
+            console.log('[Accept] Driver role granted successfully');
+          } catch (roleErr) {
+            console.warn('[Accept] Could not auto-grant driver role:', roleErr);
+            setError(
+              'You need DRIVER_ROLE to accept deliveries. Please contact an admin.',
+            );
+            throw new Error(
+              'Missing DRIVER_ROLE. Contact admin to grant driver permissions.',
+            );
+          }
+        } else {
+          console.log('[Accept] Driver role already granted');
         }
-        if (typeof window !== 'undefined') (window as any).ausys = ausys;
       } catch (e) {
-        console.log('[Accept] debug log error', e);
+        console.error('[Accept] Role check/grant failed:', e);
+        // Continue anyway in case role check failed but user actually has role
       }
+
       // Assign driver to journey
       await ausys.assignDriverToJourneyId(driverWalletAddress!, jobId as any);
       await refreshDeliveries();
@@ -154,10 +164,57 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
-      await ausys.packageSign(jobId as any);
+
+      // Debug: Check journey details
+      console.log('[confirmPickup] Driver address:', driverWalletAddress);
+      console.log('[confirmPickup] Journey ID:', jobId);
+      try {
+        const journey = await (ausys as any).idToJourney(jobId);
+        console.log('[confirmPickup] Journey details:', {
+          sender: journey.sender,
+          receiver: journey.receiver,
+          driver: journey.driver,
+          status: journey.currentStatus.toString(),
+        });
+      } catch (e) {
+        console.warn('[confirmPickup] Could not fetch journey details:', e);
+      }
+
+      const tx = await ausys.packageSign(jobId as any);
+      console.log('[confirmPickup] packageSign tx sent:', tx.hash);
+      const receipt = await tx.wait();
+      console.log(
+        '[confirmPickup] packageSign tx mined:',
+        receipt.transactionHash,
+      );
       await refreshDeliveries();
     } catch (err) {
+      console.error('[confirmPickup] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to confirm pickup');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const startJourney = async (jobId: string) => {
+    if (!driverWalletAddress) {
+      setError('Wallet not connected');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const ausys = repoContext.getAusysContract();
+      const tx = await ausys.handOn(jobId as any);
+      await tx.wait();
+      await refreshDeliveries();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to start journey (handOn)',
+      );
       throw err;
     } finally {
       setIsLoading(false);
@@ -175,7 +232,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
-      await ausys.handOff(jobId as any);
+      const tx = await ausys.handOff(jobId as any);
+      await tx.wait();
       await refreshDeliveries();
     } catch (err) {
       setError(
@@ -198,7 +256,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
-      await ausys.packageSign(jobId as any);
+      const tx = await ausys.packageSign(jobId as any);
+      await tx.wait();
       await refreshDeliveries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign package');
@@ -237,6 +296,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         confirmPickup,
         completeDelivery,
         packageSign,
+        startJourney,
       }}
     >
       {children}

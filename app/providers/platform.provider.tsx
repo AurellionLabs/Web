@@ -73,7 +73,17 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       const assets = await repository.getClassAssets(key);
       // Assets that are tokenizable are guaranteed to have at least 2 values for every attribute.
       // So it is enough to only check the first attribute to determine if the asset is tokenizable.
-      return assets.filter((asset) => asset.attributes[0].values.length > 1);
+      return assets.filter(
+        (asset) =>
+          // Verify attributes array exists
+          asset.attributes &&
+          // Ensure attributes array is not empty
+          asset.attributes.length > 0 &&
+          // Validate that the first attribute has a values property
+          asset.attributes[0]?.values &&
+          // Confirm the attribute has multiple values (tokenizable requirement)
+          asset.attributes[0].values.length > 1,
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load class assets';

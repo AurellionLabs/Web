@@ -63,6 +63,9 @@ type SelectedNodeContextType = {
     newPrice: bigint,
   ) => Promise<void>;
   getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
+  // Custody actions for node (sender)
+  packageSign: (journeyId: string) => Promise<void>;
+  startJourney: (journeyId: string) => Promise<void>;
 };
 
 const SelectedNodeContext = createContext<SelectedNodeContextType | undefined>(
@@ -270,6 +273,31 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     [serviceContext, selectedNodeAddress, nodeData, refreshNodes],
   );
 
+  // Node custody actions: packageSign and handOn
+  const packageSign = useCallback(
+    async (journeyId: string) => {
+      if (!repositoryContext)
+        throw new Error('Repository context not initialized');
+      const ausys = repositoryContext.getAusysContract();
+      const tx = await (ausys as any).packageSign(journeyId as any);
+      await tx.wait();
+    },
+    [repositoryContext],
+  );
+
+  const startJourney = useCallback(
+    async (journeyId: string) => {
+      if (!repositoryContext)
+        throw new Error('Repository context not initialized');
+      const ausys = repositoryContext.getAusysContract();
+      const tx = await (ausys as any).handOn(journeyId as any);
+      await tx.wait();
+    },
+    [repositoryContext],
+  );
+
+  // Removed getOrderJourneyIds - journeyIds now come from subgraph repository
+
   // Get node status
   const getNodeStatus = useCallback(async (): Promise<
     'Active' | 'Inactive'
@@ -412,6 +440,8 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     updateAssetCapacity,
     updateAssetPrice,
     getAssetAttributes,
+    packageSign,
+    startJourney,
   };
 
   return (

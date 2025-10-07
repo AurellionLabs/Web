@@ -334,6 +334,15 @@ export const GET_ORDERS_BY_NODE = gql`
   }
 `;
 
+// Fetch journeys associated to an order by order ID
+export const GET_JOURNEYS_BY_ORDER_ID = gql`
+  query GetJourneysByOrderId($orderId: String!) {
+    journeys(where: { order: $orderId }) {
+      id
+    }
+  }
+`;
+
 // =====================
 // ASSET QUERIES (existing, kept for compatibility)
 // =====================
@@ -593,7 +602,7 @@ export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
     }
   };
 
-  return {
+  const domainOrder: any = {
     id: graphOrder.id,
     token: graphOrder.token,
     tokenId: graphOrder.tokenId,
@@ -620,6 +629,7 @@ export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
     currentStatus: convertStatusToEnum(graphOrder.currentStatus),
     contractualAgreement: '', // Default empty string for now
   };
+  return domainOrder;
 }
 
 // Optional: Node converter for convenience

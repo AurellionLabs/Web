@@ -58,6 +58,7 @@ export default function DriverDashboard() {
     completeDelivery,
     confirmPickup,
     packageSign,
+    startJourney,
   } = useDriver();
   const [activeTab, setActiveTab] = useState<TabType>('available');
   const [waitingForSignature, setWaitingForSignature] = useState<{
@@ -191,9 +192,28 @@ export default function DriverDashboard() {
   const handlePickupDelivery = async (jobId: string) => {
     try {
       setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
-      await packageSign(jobId);
-      // 1. Call confirmPickup first (attempts to initiate signature process on contract)
+      // 1. Sign the pickup (packageSign)
       await confirmPickup(jobId);
+
+      // 2. Attempt to start the journey (handOn). If SenderNotSigned, surface a friendly message.
+      try {
+        await startJourney(jobId);
+        toast({
+          title: 'Journey Started',
+          description:
+            'Pickup signatures confirmed. The journey is now In Progress.',
+        });
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('SenderNotSigned')) {
+          toast({
+            title: 'Waiting on Sender',
+            description:
+              'Pickup started on your side. Waiting for the sender to sign.',
+          });
+        } else {
+          throw err;
+        }
+      }
 
       // 2. If confirmPickup succeeds without error indicating immediate signature,
       //    start listening for the confirmation event.
@@ -218,7 +238,8 @@ export default function DriverDashboard() {
       );
       toast({
         title: 'Pickup Initiated',
-        description: 'Pickup confirmed. Waiting for system update.',
+        description:
+          'Your pickup signature is recorded. If the sender has also signed, the journey will start.',
       });
       // --- End Temporary Fix ---
 

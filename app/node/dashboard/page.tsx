@@ -80,6 +80,8 @@ export default function NodeDashboardPage() {
     updateAssetPrice,
     getAssetAttributes,
     refreshAssets,
+    packageSign,
+    startJourney,
   } = useSelectedNode();
 
   const { refreshNodes } = useNodes();
@@ -672,6 +674,7 @@ export default function NodeDashboardPage() {
                   <th className="h-12 px-4 text-left align-middle">Class</th>
                   <th className="h-12 px-4 text-left align-middle">Quantity</th>
                   <th className="h-12 px-4 text-left align-middle">Price</th>
+                  <th className="h-12 px-4 text-left align-middle">Actions</th>
                 </tr>
               </thead>
               <tbody>{renderAssetDetailsRows()}</tbody>
@@ -726,6 +729,9 @@ export default function NodeDashboardPage() {
                   <th className="h-12 px-4 text-left align-middle">Quantity</th>
                   <th className="h-12 px-4 text-left align-middle">Value</th>
                   <th className="h-12 px-4 text-left align-middle">Status</th>
+                  <th className="h-12 px-4 text-left align-middle">
+                    Sender Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -739,6 +745,83 @@ export default function NodeDashboardPage() {
                     <td className="p-4">{order.tokenQuantity}</td>
                     <td className="p-4">{order.price} USDT</td>
                     <td className="p-4 capitalize">{order.currentStatus}</td>
+                    <td className="p-4">
+                      <Button
+                        onClick={async () => {
+                          try {
+                            console.log(
+                              '[NodeDashboard] Confirm Pickup clicked for order',
+                              order.id,
+                            );
+                            const journeyId = order.journeyIds?.[0];
+                            if (!journeyId) {
+                              console.warn(
+                                '[NodeDashboard] No journeyIds on order (subgraph not linked yet)',
+                                order.id,
+                              );
+                              toast.error('No journey found for this order');
+                              return;
+                            }
+                            console.log(
+                              '[NodeDashboard] Calling packageSign for journey',
+                              journeyId,
+                            );
+                            await packageSign(journeyId);
+                            try {
+                              console.log(
+                                '[NodeDashboard] Calling startJourney (handOn) for journey',
+                                journeyId,
+                              );
+                              await startJourney(journeyId);
+                              toast.success(
+                                'Pickup confirmed and journey started',
+                              );
+                            } catch (e) {
+                              const err = e as Error;
+                              const errData = (err as any)?.data;
+                              // Check for DriverNotSigned (0x4b2c0751) or SenderNotSigned error codes
+                              if (
+                                err.message?.includes('DriverNotSigned') ||
+                                errData === '0x4b2c0751'
+                              ) {
+                                toast.success(
+                                  'Pickup signed. Waiting for driver to sign and accept.',
+                                );
+                                console.warn(
+                                  '[NodeDashboard] handOn blocked: DriverNotSigned (driver needs to accept journey and sign pickup)',
+                                );
+                              } else if (
+                                err.message?.includes('SenderNotSigned')
+                              ) {
+                                toast.success('Waiting for sender signature.');
+                                console.warn(
+                                  '[NodeDashboard] handOn blocked: SenderNotSigned',
+                                );
+                              } else {
+                                toast.error(
+                                  'Pickup signed, but failed to start journey',
+                                );
+                                console.error(
+                                  '[NodeDashboard] handOn failed',
+                                  err,
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            const err = e as Error;
+                            console.error(
+                              '[NodeDashboard] packageSign failed',
+                              err,
+                            );
+                            toast.error(
+                              err.message || 'Failed to confirm pickup',
+                            );
+                          }
+                        }}
+                      >
+                        Confirm Pickup
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

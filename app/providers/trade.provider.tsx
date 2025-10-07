@@ -147,13 +147,12 @@ export function TradeProvider({ children }: { children: ReactNode }) {
           const bounty =
             (totalOrderValue * BigInt(bountyPercentage)) / BigInt(100);
 
-          // TODO: For the first journey, the receiver should be the next node in the chain
-          // If there's only one node, we'll need to handle this differently
-          // For now, let's use the same node as receiver (this might need adjustment based on business logic)
+          // For direct orders (only one node), the receiver is the buyer (customer)
+          // For multi-hop orders, the receiver is the next node in the chain
           const receiverNodeAddress =
             orderWithBuyer.nodes.length > 1
               ? orderWithBuyer.nodes[1]
-              : firstNodeAddress; // Use same node if only one node in chain
+              : walletAddress; // Direct to customer for single-node orders
 
           await orderService.createOrderJourney(
             actualOrderId,

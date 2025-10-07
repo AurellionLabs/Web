@@ -374,8 +374,11 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     // this is to add to an aggregate tx fee from all the journeys being created
     Order storage O = idToOrder[orderId];
 
-    if (bytes1(nodeManager.getNode(receiver).validNode) != bytes1(uint8(1)))
-      revert InvalidNode();
+    // Receiver must be either a valid node OR the order's buyer (for final delivery)
+    bool isValidNode = bytes1(nodeManager.getNode(receiver).validNode) ==
+      bytes1(uint8(1));
+    bool isBuyer = receiver == O.buyer;
+    if (!isValidNode && !isBuyer) revert InvalidNode();
 
     if (msg.sender != O.buyer && !hasRole(ADMIN_ROLE, msg.sender))
       revert InvalidCaller();

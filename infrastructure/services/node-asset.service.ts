@@ -57,7 +57,7 @@ export class NodeAssetService implements INodeAssetService {
     priceWei: bigint,
   ): Promise<void> {
     console.log(
-      `[NodeAssetService] Minting asset ${JSON.stringify(asset)} amount ${amount} for node ${nodeAddress}`,
+      `[NodeAssetService] Minting asset "${asset.name}" (class: ${asset.assetClass}) amount ${amount} for node ${nodeAddress}`,
     );
 
     const nodeContract = this.context.getAurumNodeContract(nodeAddress);
