@@ -8,7 +8,7 @@ dataSources:
     name: AuraAsset
     network: base-sepolia
     source:
-      address: "0xbFEe57fdFd137e0E38C224b79475c35b9B277C41" # Will be updated by deploy script
+      address: '0xbFEe57fdFd137e0E38C224b79475c35b9B277C41' # Will be updated by deploy script
       abi: AuraAsset
       startBlock: 32056875 # Will be updated by deploy script
     mapping:
