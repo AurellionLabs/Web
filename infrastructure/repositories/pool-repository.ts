@@ -13,7 +13,10 @@ import {
   AuStake__factory,
 } from '@/typechain-types';
 import { BigNumberish, BytesLike, ethers, Provider, Signer } from 'ethers';
-import { NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_AUSTAKE_ADDRESS,
+  NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL,
+} from '@/chain-constants';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 import { readContract } from 'viem/actions';
 import { gql, request } from 'graphql-request';
@@ -39,8 +42,7 @@ export class PoolRepository implements IPoolRepository {
   private userProvider: Provider;
   private contractAddress: string;
   private isInitialized = false;
-  private graphqlEndpoint =
-    'https://api.studio.thegraph.com/query/112596/austake-base-sepolia/version/latest';
+  private graphqlEndpoint = NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL;
 
   // NodeCache for GraphQL responses (30 second TTL)
   private cache = new NodeCache({

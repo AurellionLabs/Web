@@ -314,6 +314,28 @@ export class OrderSettled__Params {
   }
 }
 
+export class OrderStatusUpdated extends ethereum.Event {
+  get params(): OrderStatusUpdated__Params {
+    return new OrderStatusUpdated__Params(this);
+  }
+}
+
+export class OrderStatusUpdated__Params {
+  _event: OrderStatusUpdated;
+
+  constructor(event: OrderStatusUpdated) {
+    this._event = event;
+  }
+
+  get orderId(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get newStatus(): i32 {
+    return this._event.parameters[1].value.toI32();
+  }
+}
+
 export class OwnershipTransferred extends ethereum.Event {
   get params(): OwnershipTransferred__Params {
     return new OwnershipTransferred__Params(this);

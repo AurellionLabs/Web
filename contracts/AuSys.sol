@@ -37,12 +37,20 @@ error DriverMaxAssignment();
 error InvalidCaller();
 
 contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
-  enum Status {
-    Pending,
-    InProgress,
-    Completed,
-    Settled,
-    Canceled
+  // Journey status - tracks physical delivery progress
+  enum JourneyStatus {
+    Pending, // Waiting for pickup signatures
+    InTransit, // Package picked up, in transit
+    Delivered, // Package delivered to receiver
+    Canceled // Journey cancelled
+  }
+
+  // Order status - tracks overall order and payment status
+  enum OrderStatus {
+    Created, // Order placed, no journeys started (0)
+    Processing, // At least one journey is active (1)
+    Settled, // Payments distributed, order complete (2)
+    Canceled // Order cancelled (3)
   }
   struct Location {
     string lat;
@@ -72,13 +80,13 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     bytes32[] journeyIds;
     address[] nodes;
     ParcelData locationData;
-    Status currentStatus;
+    OrderStatus currentStatus;
     bytes32 contractualAgreement;
   }
   struct Journey {
     ParcelData parcelData;
     bytes32 journeyId;
-    Status currentStatus;
+    JourneyStatus currentStatus;
     address sender;
     address receiver;
     address driver;
@@ -122,17 +130,17 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     _;
   }
   modifier isInProgress(bytes32 id) {
-    if (idToJourney[id].currentStatus != Status.InProgress)
+    if (idToJourney[id].currentStatus != JourneyStatus.InTransit)
       revert JourneyNotInProgress();
     _;
   }
   modifier isPending(bytes32 id) {
-    if (idToJourney[id].currentStatus != Status.Pending)
+    if (idToJourney[id].currentStatus != JourneyStatus.Pending)
       revert JourneyNotPending();
     _;
   }
   modifier isCompleted(bytes32 id) {
-    if (idToJourney[id].currentStatus != Status.Completed)
+    if (idToJourney[id].currentStatus != JourneyStatus.Delivered)
       revert JourneyIncomplete();
     _;
   }
@@ -174,6 +182,11 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
   event AdminSet(address indexed admin);
   event emitSig(address indexed user, bytes32 indexed id);
   event OrderSettled(bytes32 indexed orderId);
+  event OrderStatusUpdated(bytes32 indexed orderId, OrderStatus newStatus);
+  event JourneyStatusUpdated(
+    bytes32 indexed journeyId,
+    JourneyStatus newStatus
+  );
   event JourneyCanceled(
     bytes32 indexed journeyId,
     address indexed sender,
@@ -236,9 +249,16 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     J.journeyStart = block.timestamp;
     driverHandOn[J.driver][id] = false;
     customerHandOff[J.sender][id] = false;
-    J.currentStatus = Status.InProgress;
+    J.currentStatus = JourneyStatus.InTransit;
+    emit JourneyStatusUpdated(id, JourneyStatus.InTransit);
 
     Order storage O = idToOrder[journeyToOrderId[id]];
+    // Update order status to Processing when first journey starts
+    if (O.currentStatus == OrderStatus.Created) {
+      O.currentStatus = OrderStatus.Processing;
+      emit OrderStatusUpdated(journeyToOrderId[id], OrderStatus.Processing);
+    }
+
     if (J.sender == O.seller) {
       IERC1155(O.token).safeTransferFrom(
         //sender should always be a node
@@ -271,15 +291,19 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
   {
     Journey storage J = idToJourney[id];
     Order storage O = idToOrder[journeyToOrderId[id]];
-    if (O.currentStatus == Status.Settled) revert AlreadySettled();
+    if (O.currentStatus == OrderStatus.Settled) revert AlreadySettled();
     if (!driverHandOn[J.driver][id]) revert DriverNotSigned();
     if (!customerHandOff[J.receiver][id]) revert ReceiverNotSigned();
-    J.currentStatus = Status.Completed;
+    J.currentStatus = JourneyStatus.Delivered;
     J.journeyEnd = block.timestamp;
+    emit JourneyStatusUpdated(id, JourneyStatus.Delivered);
     generateReward(id);
 
     if (J.receiver == O.buyer) {
-      O.currentStatus = Status.Settled;
+      // Final delivery - settle the order
+      O.currentStatus = OrderStatus.Settled;
+      emit OrderStatusUpdated(journeyToOrderId[id], OrderStatus.Settled);
+
       IERC1155(O.token).safeTransferFrom(
         //sender should always be a node
         address(this),
@@ -323,7 +347,7 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     Journey memory journey = Journey({
       parcelData: _data,
       journeyId: getHashedJourneyId(),
-      currentStatus: Status.Pending,
+      currentStatus: JourneyStatus.Pending,
       sender: sender,
       driver: address(0),
       receiver: receiver,
@@ -343,7 +367,6 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     address indexed sender,
     address indexed receiver
   );
-  event JourneyStatusUpdated(bytes32 indexed journeyId, Status newStatus);
   event OrderCreated(
     bytes32 indexed orderId,
     address indexed buyer,
@@ -387,7 +410,7 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     Journey memory journey = Journey({
       parcelData: _data,
       journeyId: getHashedJourneyId(),
-      currentStatus: Status.Pending,
+      currentStatus: JourneyStatus.Pending,
       sender: sender,
       driver: address(0),
       receiver: receiver,
@@ -402,7 +425,10 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
 
     // add journeyId to global mapping of journeys
     idToOrder[orderId].journeyIds.push(journey.journeyId);
-    idToOrder[orderId].currentStatus = Status.Pending;
+    // Keep order as Created if this is first journey, otherwise already Processing
+    if (idToOrder[orderId].currentStatus == OrderStatus.Created) {
+      idToOrder[orderId].currentStatus = OrderStatus.Created;
+    }
     journeyToOrderId[journey.journeyId] = orderId;
 
     // +++ Call the new function on nodeManager +++
@@ -432,7 +458,7 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     if (order.tokenQuantity == 0) revert InvalidAmount();
     bytes32 id = getHashedOrderId();
     idToOrder[id] = order;
-    idToOrder[id].currentStatus = Status.Pending;
+    idToOrder[id].currentStatus = OrderStatus.Created;
     idToOrder[id].id = id;
     idToOrder[id].txFee = (order.price * 2) / 100;
     orderIds.push(id);

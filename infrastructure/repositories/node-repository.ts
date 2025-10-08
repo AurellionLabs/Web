@@ -88,6 +88,24 @@ export class BlockchainNodeRepository implements NodeRepository {
   }
 
   /**
+   * Get an AurumNode contract instance for a specific node address
+   * This allows calling node-specific functions like nodeSign, nodeHandOn, nodeHandOff
+   */
+  async getNodeContract(nodeAddress: string): Promise<AurumNode> {
+    return AurumNode__factory.connect(nodeAddress, this.signer);
+  }
+
+  /**
+   * Approve Ausys to transfer this node's ERC1155 tokens
+   * This must be called before the node can participate in handOn (journey start)
+   */
+  async approveAusysForTokens(nodeAddress: string): Promise<void> {
+    const nodeContract = await this.getNodeContract(nodeAddress);
+    const tx = await nodeContract.approveAusysForTokens();
+    await tx.wait();
+  }
+
+  /**
    * REFACTORED: Correctly maps contract Node struct with Asset[] to domain Node
    */
   async getNode(nodeAddress: string): Promise<Node | null> {

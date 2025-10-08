@@ -1,9 +1,7 @@
 import { ethers } from 'ethers';
+import AusysArtifact from '../../artifacts/contracts/AuSys.sol/Ausys.json';
 
 export const AUSYS_CONTRACT_ADDRESS = '0x...'; // This should be replaced with the actual deployed contract address
 
-export const AUSYS_ABI = [
-  'event emitSig(address indexed user, bytes32 indexed id)',
-  'function packageSign(address driver, address sender, bytes32 id) public',
-  // Add other necessary contract functions
-] as const;
+// Use the full ABI from the compiled contract
+export const AUSYS_ABI = AusysArtifact.abi;

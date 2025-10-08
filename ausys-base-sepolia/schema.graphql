@@ -3,7 +3,7 @@ type Journey @entity(immutable: false) {
   sender: Bytes! # address
   receiver: Bytes! # address
   driver: Bytes # address (can be null initially)
-  currentStatus: BigInt! # 0=Pending, 1=InProgress, 2=Completed, 3=Settled, 4=Canceled
+  currentStatus: BigInt! # JourneyStatus: 0=Pending, 1=InTransit, 2=Delivered, 3=Canceled
   bounty: BigInt! # uint256 (wei)
   journeyStart: BigInt! # uint256 (timestamp)
   journeyEnd: BigInt! # uint256 (timestamp)
@@ -38,7 +38,7 @@ type Order @entity(immutable: false) {
   requestedTokenQuantity: BigInt! # uint256
   price: BigInt! # uint256 (wei)
   txFee: BigInt! # uint256 (wei)
-  currentStatus: BigInt! # 0=Pending, 1=InProgress, 2=Completed, 3=Settled, 4=Canceled
+  currentStatus: BigInt! # OrderStatus: 0=Created, 1=Processing, 2=Settled, 3=Canceled
   # journeys: [Journey!]! # Query Journeys by order field instead
   nodes: [Bytes!]! # address[] - nodes involved
   locationData: ParcelData!
@@ -71,8 +71,18 @@ type DriverAssignment @entity(immutable: true) {
 type JourneyStatusUpdate @entity(immutable: true) {
   id: Bytes!
   journeyId: Bytes! # bytes32
-  oldStatus: BigInt! # uint256
-  newStatus: BigInt! # uint256
+  oldStatus: BigInt! # JourneyStatus
+  newStatus: BigInt! # JourneyStatus
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OrderStatusUpdate @entity(immutable: true) {
+  id: Bytes!
+  orderId: Bytes! # bytes32
+  oldStatus: BigInt! # OrderStatus
+  newStatus: BigInt! # OrderStatus
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!

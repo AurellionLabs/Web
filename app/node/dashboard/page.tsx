@@ -762,10 +762,13 @@ export default function NodeDashboardPage() {
                               toast.error('No journey found for this order');
                               return;
                             }
+
                             console.log(
-                              '[NodeDashboard] Calling packageSign for journey',
+                              '[NodeDashboard] Calling nodeSign via node contract for journey',
                               journeyId,
                             );
+                            // packageSign now calls nodeSign on the node contract
+                            // which ensures the call comes from the node address (sender)
                             await packageSign(journeyId);
                             try {
                               console.log(

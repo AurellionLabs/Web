@@ -1,5 +1,5 @@
 import { gql } from 'graphql-request';
-import { OrderStatus } from '@/domain/orders/order';
+import { OrderStatus, JourneyStatus } from '@/domain/orders/order';
 
 // =====================
 // NODE QUERIES
@@ -553,6 +553,29 @@ export function calculateCurrentBalances(
 /**
  * Convert Graph response to domain Journey
  */
+/**
+ * Helper: Convert contract/graph numeric status to JourneyStatus enum
+ * Exported for use in repositories
+ */
+export function convertNumericToJourneyStatus(
+  status: string | number | bigint,
+): JourneyStatus {
+  const statusNum = Number(status);
+  switch (statusNum) {
+    case 0:
+      return JourneyStatus.PENDING;
+    case 1:
+      return JourneyStatus.IN_TRANSIT;
+    case 2:
+      return JourneyStatus.DELIVERED;
+    case 3:
+      return JourneyStatus.CANCELLED;
+    default:
+      console.warn(`Unknown journey status: ${status}`);
+      return JourneyStatus.PENDING;
+  }
+}
+
 export function convertGraphJourneyToDomain(
   graphJourney: JourneyGraphResponse,
 ) {
@@ -570,7 +593,7 @@ export function convertGraphJourneyToDomain(
       endName: graphJourney.parcelData.endName,
     },
     journeyId: graphJourney.id,
-    currentStatus: BigInt(graphJourney.currentStatus),
+    currentStatus: convertNumericToJourneyStatus(graphJourney.currentStatus),
     sender: graphJourney.sender,
     receiver: graphJourney.receiver,
     driver: graphJourney.driver,
@@ -582,26 +605,32 @@ export function convertGraphJourneyToDomain(
 }
 
 /**
+ * Helper: Convert contract/graph numeric status to OrderStatus enum
+ * Exported for use in repositories
+ */
+export function convertNumericToOrderStatus(
+  status: string | number | bigint,
+): OrderStatus {
+  const statusNum = Number(status);
+  switch (statusNum) {
+    case 0:
+      return OrderStatus.CREATED;
+    case 1:
+      return OrderStatus.PROCESSING;
+    case 2:
+      return OrderStatus.SETTLED;
+    case 3:
+      return OrderStatus.CANCELLED;
+    default:
+      console.warn(`Unknown order status: ${status}`);
+      return OrderStatus.CREATED;
+  }
+}
+
+/**
  * Convert Graph response to domain Order
  */
 export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
-  // Helper function to convert numeric status string to OrderStatus enum
-  const convertStatusToEnum = (status: string): OrderStatus => {
-    switch (status) {
-      case '0':
-        return OrderStatus.PENDING;
-      case '1':
-        return OrderStatus.ACTIVE;
-      case '2':
-        return OrderStatus.COMPLETED;
-      case '3':
-        return OrderStatus.CANCELLED;
-      default:
-        console.warn(`Unknown order status from Graph: ${status}`);
-        return OrderStatus.PENDING;
-    }
-  };
-
   const domainOrder: any = {
     id: graphOrder.id,
     token: graphOrder.token,
@@ -626,7 +655,7 @@ export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
       startName: graphOrder.locationData.startName,
       endName: graphOrder.locationData.endName,
     },
-    currentStatus: convertStatusToEnum(graphOrder.currentStatus),
+    currentStatus: convertNumericToOrderStatus(graphOrder.currentStatus),
     contractualAgreement: '', // Default empty string for now
   };
   return domainOrder;

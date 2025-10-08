@@ -28,6 +28,8 @@ import {
   GET_JOURNEYS_BY_ORDER_ID,
   convertGraphJourneyToDomain,
   convertGraphOrderToDomain,
+  convertNumericToOrderStatus,
+  convertNumericToJourneyStatus,
   JourneyGraphResponse,
   OrderGraphResponse,
 } from '../shared/graph-queries';
@@ -238,7 +240,9 @@ export class OrderRepository implements IOrderRepository {
       return {
         parcelData: contractJourney.parcelData,
         journeyId: contractJourney.journeyId,
-        currentStatus: contractJourney.currentStatus,
+        currentStatus: convertNumericToJourneyStatus(
+          contractJourney.currentStatus,
+        ),
         sender: contractJourney.sender,
         receiver: contractJourney.receiver,
         driver: contractJourney.driver,
@@ -351,23 +355,6 @@ export class OrderRepository implements IOrderRepository {
       await this.waitForInitialization();
       const contractOrder = await this.readContract.getOrder(orderId);
 
-      // Helper function to convert contract status to OrderStatus enum
-      const convertContractStatusToEnum = (status: bigint): OrderStatus => {
-        switch (Number(status)) {
-          case 0:
-            return OrderStatus.PENDING;
-          case 1:
-            return OrderStatus.ACTIVE;
-          case 2:
-            return OrderStatus.COMPLETED;
-          case 3:
-            return OrderStatus.CANCELLED;
-          default:
-            console.warn(`Unknown contract status: ${status}`);
-            return OrderStatus.PENDING;
-        }
-      };
-
       return {
         id: contractOrder.id,
         token: contractOrder.token,
@@ -380,7 +367,7 @@ export class OrderRepository implements IOrderRepository {
         journeyIds: contractOrder.journeyIds,
         nodes: contractOrder.nodes,
         locationData: contractOrder.locationData,
-        currentStatus: convertContractStatusToEnum(contractOrder.currentStatus),
+        currentStatus: convertNumericToOrderStatus(contractOrder.currentStatus),
         contractualAgreement: '', // Default empty string for now
       };
     }

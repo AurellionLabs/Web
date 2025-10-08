@@ -8,9 +8,9 @@ dataSources:
     name: Ausys
     network: base-sepolia
     source:
-      address: '0xadee7CbA699fFD557714237A243395b0B666cD47'
+      address: "0x1FED07D8F981c312d44e17702aD843b6ee61c1F7"
       abi: Ausys
-      startBlock: 31968893
+      startBlock: 32056869
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -22,6 +22,7 @@ dataSources:
         - PackageSignature
         - DriverAssignment
         - JourneyStatusUpdate
+        - OrderStatusUpdate
         - OrderCreated
         - JourneyCreated
         - OrderSettled
@@ -43,6 +44,8 @@ dataSources:
         - event: OrderCreated(indexed bytes32,indexed address,indexed
             address,address,uint256,uint256,uint256,uint256,uint256,uint8,address[],((string,string),(string,string),string,string))
           handler: handleOrderCreated
+        - event: OrderStatusUpdated(indexed bytes32,uint8)
+          handler: handleOrderStatusUpdated
         - event: OrderSettled(indexed bytes32)
           handler: handleOrderSettled
         - event: DriverAssigned(indexed address,indexed bytes32)

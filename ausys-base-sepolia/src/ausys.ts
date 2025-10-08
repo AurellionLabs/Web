@@ -3,6 +3,7 @@ import {
   JourneyCreated as JourneyCreatedEvent,
   JourneyStatusUpdated as JourneyStatusUpdatedEvent,
   OrderCreated as OrderCreatedEvent,
+  OrderStatusUpdated as OrderStatusUpdatedEvent,
   OrderSettled as OrderSettledEvent,
   DriverAssigned as DriverAssignedEvent,
   emitSig as PackageSignatureEvent,
@@ -21,6 +22,7 @@ import {
   PackageSignature,
   DriverAssignment,
   JourneyStatusUpdate,
+  OrderStatusUpdate,
   OrderCreated,
   JourneyCreated,
   OrderSettled,
@@ -122,14 +124,38 @@ export function handleJourneyStatusUpdated(
 
     // Update journey start/end times based on status
     if (event.params.newStatus == 1) {
-      // InProgress
+      // InTransit (was InProgress)
       journey.journeyStart = event.block.timestamp;
     } else if (event.params.newStatus == 2) {
-      // Completed
+      // Delivered (was Completed)
       journey.journeyEnd = event.block.timestamp;
     }
 
     journey.save();
+  }
+}
+
+export function handleOrderStatusUpdated(event: OrderStatusUpdatedEvent): void {
+  let entity = new OrderStatusUpdate(
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
+  );
+  entity.orderId = event.params.orderId;
+  entity.newStatus = BigInt.fromI32(event.params.newStatus);
+  entity.oldStatus = BigInt.fromI32(0); // We don't have old status in event
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  // Update Order entity
+  let order = Order.load(event.params.orderId);
+  if (order) {
+    entity.oldStatus = order.currentStatus;
+    order.currentStatus = BigInt.fromI32(event.params.newStatus);
+    order.updatedAt = event.block.timestamp;
+    order.save();
   }
 }
 

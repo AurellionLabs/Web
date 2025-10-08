@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { toast } from '@/app/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import { OrderStatus } from '@/domain/orders/order';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
@@ -51,12 +51,12 @@ type SortConfig = {
 // Helper function to get display label for OrderStatus
 const getStatusLabel = (status: OrderStatus): string => {
   switch (status) {
-    case OrderStatus.PENDING:
-      return 'Pending';
-    case OrderStatus.ACTIVE:
-      return 'Active';
-    case OrderStatus.COMPLETED:
-      return 'Completed';
+    case OrderStatus.CREATED:
+      return 'Created';
+    case OrderStatus.PROCESSING:
+      return 'Processing';
+    case OrderStatus.SETTLED:
+      return 'Settled';
     case OrderStatus.CANCELLED:
       return 'Cancelled';
     default:
@@ -141,17 +141,17 @@ export default function CustomerDashboard() {
 
   // Calculate statistics from filtered orders
   const activeOrders = filteredOrders.filter(
-    (order) => order.currentStatus === OrderStatus.ACTIVE,
+    (order) => order.currentStatus === OrderStatus.PROCESSING,
   ).length;
   const completedOrders = filteredOrders.filter(
-    (order) => order.currentStatus === OrderStatus.COMPLETED,
+    (order) => order.currentStatus === OrderStatus.SETTLED,
   ).length;
   const pendingOrders = filteredOrders.filter(
-    (order) => order.currentStatus === OrderStatus.PENDING,
+    (order) => order.currentStatus === OrderStatus.CREATED,
   ).length;
 
   const totalSpent = filteredOrders
-    .filter((order) => order.currentStatus === OrderStatus.COMPLETED)
+    .filter((order) => order.currentStatus === OrderStatus.SETTLED)
     .reduce((total, order) => total + parseFloat(order.price), 0);
 
   // Calculate pagination values
@@ -475,14 +475,14 @@ export default function CustomerDashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value={OrderStatus.PENDING}>
-                      {getStatusLabel(OrderStatus.PENDING)}
+                    <SelectItem value={OrderStatus.CREATED}>
+                      {getStatusLabel(OrderStatus.CREATED)}
                     </SelectItem>
-                    <SelectItem value={OrderStatus.ACTIVE}>
-                      {getStatusLabel(OrderStatus.ACTIVE)}
+                    <SelectItem value={OrderStatus.PROCESSING}>
+                      {getStatusLabel(OrderStatus.PROCESSING)}
                     </SelectItem>
-                    <SelectItem value={OrderStatus.COMPLETED}>
-                      {getStatusLabel(OrderStatus.COMPLETED)}
+                    <SelectItem value={OrderStatus.SETTLED}>
+                      {getStatusLabel(OrderStatus.SETTLED)}
                     </SelectItem>
                     <SelectItem value={OrderStatus.CANCELLED}>
                       {getStatusLabel(OrderStatus.CANCELLED)}
@@ -537,16 +537,16 @@ export default function CustomerDashboard() {
                       <td className="p-4">{order.price} USDT</td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          {order.currentStatus === OrderStatus.COMPLETED && (
+                          {order.currentStatus === OrderStatus.SETTLED && (
                             <CheckCircle2 className="h-4 w-4 text-green-500" />
                           )}
                           {order.currentStatus === OrderStatus.CANCELLED && (
                             <XCircle className="h-4 w-4 text-red-500" />
                           )}
-                          {order.currentStatus === OrderStatus.ACTIVE && (
+                          {order.currentStatus === OrderStatus.PROCESSING && (
                             <Activity className="h-4 w-4 text-amber-500" />
                           )}
-                          {order.currentStatus === OrderStatus.PENDING && (
+                          {order.currentStatus === OrderStatus.CREATED && (
                             <Clock className="h-4 w-4 text-blue-500" />
                           )}
                           <span className="capitalize">
@@ -556,14 +556,14 @@ export default function CustomerDashboard() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          {order.currentStatus === OrderStatus.PENDING && (
+                          {order.currentStatus === OrderStatus.CREATED && (
                             <OrderActionDialog
                               order={order}
                               onConfirm={handleCancelOrder}
                               variant="cancel"
                             />
                           )}
-                          {order.currentStatus === OrderStatus.ACTIVE && (
+                          {order.currentStatus === OrderStatus.PROCESSING && (
                             <OrderActionDialog
                               order={order}
                               onConfirm={handleConfirmReceipt}

@@ -1,4 +1,4 @@
-import { Journey, ParcelData } from '@/domain/shared';
+import { Journey, ParcelData, JourneyStatus } from '@/domain/shared';
 import {
   BytesLike,
   ContractTransactionReceipt,
@@ -6,12 +6,23 @@ import {
   BigNumberish,
 } from 'ethers';
 
+/**
+ * Order status enum - matches Ausys contract OrderStatus
+ *
+ * Uses string values for readability. Repository layer converts between:
+ * - Contract values (0,1,2,3)
+ * - Domain strings ('created', 'processing', 'settled', 'cancelled')
+ */
 export enum OrderStatus {
-  PENDING = 'pending',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+  CREATED = 'created', // Order placed, no journeys started (contract: 0)
+  PROCESSING = 'processing', // At least one journey is active (contract: 1)
+  SETTLED = 'settled', // Payments distributed, order complete (contract: 2)
+  CANCELLED = 'cancelled', // Order cancelled (contract: 3)
 }
+
+// Note: JourneyStatus is now in @/domain/shared for better organization
+// Re-export it here for backwards compatibility
+export { JourneyStatus } from '@/domain/shared';
 
 export type Order = {
   id: string;
@@ -25,7 +36,7 @@ export type Order = {
   journeyIds: string[];
   nodes: string[];
   locationData: ParcelData;
-  currentStatus: OrderStatus;
+  currentStatus: OrderStatus; // Uses OrderStatus enum (numeric values)
   contractualAgreement: string;
 };
 /**

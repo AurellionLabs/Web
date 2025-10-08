@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { toast } from '@/app/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import {
   Tabs,
   TabsContent,
@@ -41,7 +41,6 @@ import {
   TabsTrigger,
 } from '@/app/components/ui/tabs';
 import { DeliveryActionDialog } from '@/app/components/ui/delivery-action-dialog';
-import { listenForSignature as setupSignatureListener } from '@/infrastructure/services/signature-listener.service';
 import { Delivery, DeliveryStatus } from '@/domain/driver';
 
 type TabType = 'available' | 'my-deliveries';
@@ -192,10 +191,12 @@ export default function DriverDashboard() {
   const handlePickupDelivery = async (jobId: string) => {
     try {
       setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
-      // 1. Sign the pickup (packageSign)
+
+      // Step 1: Driver signs the pickup (packageSign)
       await confirmPickup(jobId);
 
-      // 2. Attempt to start the journey (handOn). If SenderNotSigned, surface a friendly message.
+      // Step 2: Attempt to start the journey (handOn)
+      // This requires both sender and driver to have signed
       try {
         await startJourney(jobId);
         toast({
@@ -205,56 +206,23 @@ export default function DriverDashboard() {
         });
       } catch (err) {
         if (err instanceof Error && err.message.includes('SenderNotSigned')) {
+          // Sender hasn't signed yet - this is expected, show friendly message
           toast({
             title: 'Waiting on Sender',
             description:
-              'Pickup started on your side. Waiting for the sender to sign.',
+              'You have signed for pickup. Waiting for the sender to sign.',
           });
         } else {
+          // Unexpected error - propagate it
           throw err;
         }
       }
 
-      // 2. If confirmPickup succeeds without error indicating immediate signature,
-      //    start listening for the confirmation event.
-      //    We need the contract instance here.
-      //    TODO: Need a way to get the LocationContract instance (maybe from useDriver?)
-      //    Placeholder: Assume we have a `getContract` function or similar.
-      // const contract = await getContract(); // Replace with actual contract retrieval
-
-      console.log(`Starting signature listener for job ID: ${jobId}`);
-
-      // const signatureReceived = await setupSignatureListener(
-      //   contract, // Pass the contract instance
-      //   jobId, // Pass the job ID string
-      //   120000, // Optional timeout
-      // );
-
-      // --- TEMPORARY FIX: Remove listener call due to missing contract instance ---
-      // --- and unclear async flow ---
-      // --- Replace with a simple success toast for now ---
-      console.warn(
-        'Signature listener call temporarily removed. Need contract instance.',
-      );
-      toast({
-        title: 'Pickup Initiated',
-        description:
-          'Your pickup signature is recorded. If the sender has also signed, the journey will start.',
-      });
-      // --- End Temporary Fix ---
-
-      // if (signatureReceived) { // Original logic would be here
-      //   console.log(`Signature received for ${jobId}`);
-      //   setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
-      //   await refreshDeliveries();
-      //   toast({
-      //     title: 'Signature Received',
-      //     description: 'The customer has signed the pickup confirmation.',
-      //   });
-      // }
+      // Reset waiting state on success
+      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
     } catch (err) {
       setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
-      console.error('Error during pickup confirmation or listening:', err);
+      console.error('Error during pickup confirmation:', err);
       toast({
         title: 'Error',
         description:
@@ -263,8 +231,6 @@ export default function DriverDashboard() {
             : 'Failed to confirm pickup. Please try again.',
         variant: 'destructive',
       });
-    } finally {
-      // No explicit finally action needed here anymore
     }
   };
 

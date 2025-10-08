@@ -11,6 +11,7 @@ import { DriverProvider } from './providers/driver.provider';
 import { PlatformProvider } from './providers/platform.provider';
 import { RepositoryProvider } from './providers/RepositoryProvider';
 import { PrivyProviderWrapper } from './providers/privy.provider';
+import { Toaster } from './components/ui/toaster';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -37,6 +38,7 @@ export default function RootLayout({
                       <DriverProvider>
                         <TradeProvider>
                           <ClientLayout>{children}</ClientLayout>
+                          <Toaster />
                         </TradeProvider>
                       </DriverProvider>
                     </CustomerProvider>

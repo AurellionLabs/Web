@@ -10,10 +10,25 @@ export type ParcelData = {
   endName: string;
 };
 
+/**
+ * Journey status enum - matches Ausys contract JourneyStatus
+ * Tracks physical delivery progress for individual journey legs
+ *
+ * Uses string values for readability. Repository layer converts between:
+ * - Contract values (0,1,2,3)
+ * - Domain strings ('pending', 'in_transit', 'delivered', 'cancelled')
+ */
+export enum JourneyStatus {
+  PENDING = 'pending', // Waiting for pickup signatures (contract: 0)
+  IN_TRANSIT = 'in_transit', // Package picked up, in transit (contract: 1)
+  DELIVERED = 'delivered', // Package delivered to receiver (contract: 2)
+  CANCELLED = 'cancelled', // Journey cancelled (contract: 3)
+}
+
 export type Journey = {
   parcelData: ParcelData;
   journeyId: string;
-  currentStatus: bigint;
+  currentStatus: JourneyStatus; // Changed from bigint to JourneyStatus enum
   sender: string;
   receiver: string;
   driver: string;

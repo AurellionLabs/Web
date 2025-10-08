@@ -15,6 +15,7 @@ import {
   GET_JOURNEYS_BY_DRIVER,
   JourneyGraphResponse,
 } from '../shared/graph-queries';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
 /**
  * Infrastructure implementation of the IDriverRepository interface
@@ -26,8 +27,7 @@ export class DriverRepository implements IDriverRepository {
   private ausysContract: Ausys;
   private provider: BrowserProvider;
   private signer: Signer;
-  private graphQLEndpoint =
-    'https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest';
+  private graphQLEndpoint = NEXT_PUBLIC_AUSYS_SUBGRAPH_URL;
 
   constructor(ausysContract: Ausys, provider: BrowserProvider, signer: Signer) {
     if (!ausysContract) {

@@ -278,22 +278,55 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     async (journeyId: string) => {
       if (!repositoryContext)
         throw new Error('Repository context not initialized');
-      const ausys = repositoryContext.getAusysContract();
-      const tx = await (ausys as any).packageSign(journeyId as any);
+      if (!selectedNodeAddress) throw new Error('No node selected');
+
+      // Call nodeSign on the node contract (not packageSign on Ausys directly)
+      // This ensures the call comes FROM the node address, not the user's wallet
+      const nodeRepository = repositoryContext.getNodeRepository();
+      const nodeContract = await (nodeRepository as any).getNodeContract(
+        selectedNodeAddress,
+      );
+      const tx = await nodeContract.nodeSign(journeyId as any);
       await tx.wait();
     },
-    [repositoryContext],
+    [repositoryContext, selectedNodeAddress],
   );
 
   const startJourney = useCallback(
     async (journeyId: string) => {
       if (!repositoryContext)
         throw new Error('Repository context not initialized');
-      const ausys = repositoryContext.getAusysContract();
-      const tx = await (ausys as any).handOn(journeyId as any);
+      if (!selectedNodeAddress) throw new Error('No node selected');
+
+      // Call nodeHandOn on the node contract (not handOn on Ausys directly)
+      // This ensures the call comes FROM the node address
+      const nodeRepository = repositoryContext.getNodeRepository();
+      const nodeContract = await (nodeRepository as any).getNodeContract(
+        selectedNodeAddress,
+      );
+
+      // First, ensure Ausys has approval to transfer this node's tokens
+      // This is required for handOn to transfer tokens from node to Ausys
+      try {
+        console.log(
+          '[startJourney] Approving Ausys to transfer node tokens...',
+        );
+        await (nodeRepository as any).approveAusysForTokens(
+          selectedNodeAddress,
+        );
+        console.log('[startJourney] Approval granted');
+      } catch (approvalError) {
+        // If approval fails, it might already be approved, continue anyway
+        console.warn(
+          '[startJourney] Approval step failed (might already be approved):',
+          approvalError,
+        );
+      }
+
+      const tx = await nodeContract.nodeHandOn(journeyId as any);
       await tx.wait();
     },
-    [repositoryContext],
+    [repositoryContext, selectedNodeAddress],
   );
 
   // Removed getOrderJourneyIds - journeyIds now come from subgraph repository

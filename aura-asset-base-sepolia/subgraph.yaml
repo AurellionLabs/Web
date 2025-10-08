@@ -8,9 +8,9 @@ dataSources:
     name: AuraAsset
     network: base-sepolia
     source:
-      address: '0x59BAC507039e1ba533B0F2b3C3F102b45C129F67' # Will be updated by deploy script
+      address: "0xbFEe57fdFd137e0E38C224b79475c35b9B277C41" # Will be updated by deploy script
       abi: AuraAsset
-      startBlock: 32050936 # Will be updated by deploy script
+      startBlock: 32056875 # Will be updated by deploy script
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

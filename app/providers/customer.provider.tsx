@@ -136,7 +136,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.id === orderId
-              ? { ...order, currentStatus: OrderStatus.COMPLETED }
+              ? { ...order, currentStatus: OrderStatus.SETTLED }
               : order,
           ),
         );

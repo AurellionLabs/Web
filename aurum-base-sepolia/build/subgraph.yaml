@@ -8,9 +8,9 @@ dataSources:
     name: AurumNodeManager
     network: base-sepolia
     source:
-      address: '0xBD8892DbcEDe50827bd82248a49bC1A757c7a378'
+      address: "0x4c3558eE6774B4EaE661B0E2fE6e07842002Ce29"
       abi: AurumNodeManager
-      startBlock: 31968895
+      startBlock: 32056871
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

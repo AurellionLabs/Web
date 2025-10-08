@@ -32,9 +32,9 @@ import { OrderWithAsset } from '@/app/types/shared';
 
 const orderStatuses = [
   { value: 'all', label: 'All Statuses' },
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'created', label: 'Created' },
+  { value: 'processing', label: 'Processing' },
+  { value: 'settled', label: 'Settled' },
   { value: 'cancelled', label: 'Cancelled' },
 ] as const;
 

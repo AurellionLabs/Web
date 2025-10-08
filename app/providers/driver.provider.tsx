@@ -185,7 +185,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const receipt = await tx.wait();
       console.log(
         '[confirmPickup] packageSign tx mined:',
-        receipt.transactionHash,
+        receipt?.transactionHash,
       );
       await refreshDeliveries();
     } catch (err) {

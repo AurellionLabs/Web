@@ -216,7 +216,7 @@
       },
       {
         "indexed": false,
-        "internalType": "enum Ausys.Status",
+        "internalType": "enum Ausys.JourneyStatus",
         "name": "newStatus",
         "type": "uint8"
       }
@@ -379,6 +379,25 @@
       }
     ],
     "name": "OrderSettled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum Ausys.OrderStatus",
+        "name": "newStatus",
+        "type": "uint8"
+      }
+    ],
+    "name": "OrderStatusUpdated",
     "type": "event"
   },
   {
@@ -769,7 +788,7 @@
             "type": "tuple"
           },
           {
-            "internalType": "enum Ausys.Status",
+            "internalType": "enum Ausys.OrderStatus",
             "name": "currentStatus",
             "type": "uint8"
           },
@@ -875,7 +894,7 @@
             "type": "bytes32"
           },
           {
-            "internalType": "enum Ausys.Status",
+            "internalType": "enum Ausys.JourneyStatus",
             "name": "currentStatus",
             "type": "uint8"
           },
@@ -1070,7 +1089,7 @@
         "type": "bytes32"
       },
       {
-        "internalType": "enum Ausys.Status",
+        "internalType": "enum Ausys.JourneyStatus",
         "name": "currentStatus",
         "type": "uint8"
       },
@@ -1215,7 +1234,7 @@
         "type": "tuple"
       },
       {
-        "internalType": "enum Ausys.Status",
+        "internalType": "enum Ausys.OrderStatus",
         "name": "currentStatus",
         "type": "uint8"
       },
@@ -1523,7 +1542,7 @@
             "type": "tuple"
           },
           {
-            "internalType": "enum Ausys.Status",
+            "internalType": "enum Ausys.OrderStatus",
             "name": "currentStatus",
             "type": "uint8"
           },

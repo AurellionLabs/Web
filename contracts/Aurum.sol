@@ -15,6 +15,7 @@ error InsufficientCapacity();
 error AssetNotSupported();
 error AssetNotFound();
 error InvalidNewOwner();
+
 contract AurumNodeManager is Ownable {
   struct Location {
     string lat;
@@ -68,15 +69,17 @@ contract AurumNodeManager is Ownable {
   }
 
   event eventUpdateAdmin(address admin);
+
   function setAdmin(address _admin) public onlyOwner {
     isAdmin[_admin] = true;
     emit eventUpdateAdmin(_admin);
-
   }
+
   // operator management removed in this refactor (only owner acts as operator)
 
   function registerNode(Node memory node) public returns (address id) {
-    if (!(msg.sender == node.owner || isAdmin[msg.sender])) revert NotOwnerOrAdmin();
+    if (!(msg.sender == node.owner || isAdmin[msg.sender]))
+      revert NotOwnerOrAdmin();
     if (node.owner == address(0)) revert InvalidOwnerAddress();
     aurumNode NodeContract = new aurumNode(node.owner, ausys, auraAsset, this);
     id = address(NodeContract);
@@ -111,7 +114,10 @@ contract AurumNodeManager is Ownable {
 
   event eventUpdateOwner(address owner, address node);
 
-  function updateOwner(address newOwner, address node) public onlyNodeOwner(node) {
+  function updateOwner(
+    address newOwner,
+    address node
+  ) public onlyNodeOwner(node) {
     if (newOwner == address(0)) revert InvalidNewOwner();
     address oldOwner = AllNodes[node].owner;
     if (oldOwner == newOwner) return;
@@ -131,7 +137,12 @@ contract AurumNodeManager is Ownable {
     emit eventUpdateOwner(newOwner, node);
   }
 
-  event eventUpdateLocation(string addressName, string lat, string lng, address node);
+  event eventUpdateLocation(
+    string addressName,
+    string lat,
+    string lng,
+    address node
+  );
 
   function updateLocation(
     NodeLocationData memory newLocation,
@@ -150,6 +161,7 @@ contract AurumNodeManager is Ownable {
 
   event SupportedAssetsUpdated(address indexed node, Asset[] supportedAssets);
   event SupportedAssetAdded(address indexed node, Asset asset);
+
   function updateSupportedAssets(
     address node,
     Asset[] memory supportedAssets
@@ -186,7 +198,8 @@ contract AurumNodeManager is Ownable {
         n.supportedAssets[i].token == supportedAsset.token &&
         n.supportedAssets[i].tokenId == supportedAsset.tokenId
       ) {
-        if (n.supportedAssets[i].capacity < quantityToReduce) revert InsufficientCapacity();
+        if (n.supportedAssets[i].capacity < quantityToReduce)
+          revert InsufficientCapacity();
         n.supportedAssets[i].capacity -= quantityToReduce;
         // Optionally update supplyPerResource mapping if needed (logic from updateSupportedAssets)
         // supplyPerResource[assetId] = ??? // Need careful calculation based on old/new capacity
@@ -202,7 +215,6 @@ contract AurumNodeManager is Ownable {
     AllNodes[node].status = status;
     emit eventUpdateStatus(status, node);
   }
-
 
   event NodeRegistered(address indexed nodeAddress, address indexed owner);
   event NodeCapacityUpdated(address indexed node, uint256[] quantities);
@@ -252,6 +264,17 @@ contract aurumNode is ERC1155Holder, Ownable {
 
   function nodeSign(bytes32 id) public onlyOwner {
     ausys.packageSign(id);
+  }
+
+  // Approve Ausys to transfer this node's ERC1155 tokens
+  // This is required before handOn can transfer tokens from the node
+  function approveAusysForTokens() public onlyOwner {
+    auraAsset.setApprovalForAll(address(ausys), true);
+  }
+
+  // Revoke Ausys approval (for security)
+  function revokeAusysApproval() public onlyOwner {
+    auraAsset.setApprovalForAll(address(ausys), false);
   }
 
   function addItem(
