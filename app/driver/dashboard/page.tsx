@@ -221,115 +221,64 @@ export default function DriverDashboard() {
   };
 
   const handleCompleteDelivery = async (jobId: string) => {
-    console.log(
-      '[DriverDashboard] handleCompleteDelivery called for jobId:',
-      jobId,
-    );
-
     try {
-      // 1. Sign the delivery (driver confirms delivery)
-      console.log('[DriverDashboard] Calling packageSign...');
+      // Step 1: Sign the delivery
       await packageSign(jobId);
-      console.log('[DriverDashboard] packageSign completed successfully');
 
+      // Step 2: Try to complete (works if receiver also signed)
+      await completeDelivery(jobId);
+
+      // Success! Both parties have signed
       toast({
-        title: 'Delivery Signed',
+        title: 'Delivery Completed',
         description:
-          'Your signature has been recorded. Waiting for receiver to confirm receipt.',
+          'The delivery has been successfully completed and payment has been processed.',
       });
 
-      // Small delay to ensure signature is confirmed on-chain
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await refreshDeliveries();
+    } catch (err) {
+      console.error('[DriverDashboard] Delivery completion error:', err);
 
-      // 2. Attempt to complete the delivery (handOff). If ReceiverNotSigned, just notify and exit gracefully.
-      try {
-        console.log('[DriverDashboard] Calling completeDelivery (handOff)...');
-        await completeDelivery(jobId);
-        console.log('[DriverDashboard] completeDelivery succeeded');
+      if (err instanceof Error) {
+        const errorMessage = err.message;
 
-        toast({
-          title: 'Delivery Completed',
-          description:
-            'The delivery has been successfully completed and payment has been processed.',
-        });
-      } catch (err) {
-        console.error('[DriverDashboard] handOff error:', err);
-        console.error(
-          '[DriverDashboard] Full error object:',
-          JSON.stringify(err, null, 2),
-        );
-
-        // Check for specific contract errors
-        if (err instanceof Error) {
-          const errorMessage = err.message;
-          console.log('[DriverDashboard] Error message:', errorMessage);
-
-          // ReceiverNotSigned error (0x04d27bc2) - This is expected, just inform user
-          if (errorMessage.includes('0x04d27bc2')) {
-            console.log(
-              '[DriverDashboard] Receiver has not signed yet - this is expected',
-            );
-            // Refresh to show updated delivery status
-            await refreshDeliveries();
-            // Don't show error - the "Delivery Signed" toast above already informs them
-            return;
-          }
-
-          // DriverNotSigned error (0x9651c947) - Shouldn't happen since we just signed
-          if (errorMessage.includes('0x9651c947')) {
-            toast({
-              title: 'Waiting for Signature',
-              description:
-                'Your signature is being confirmed. Please wait a moment and try again.',
-            });
-            return;
-          }
-
-          // NotJourneyParticipant error (0x2cde802e)
-          if (errorMessage.includes('0x2cde802e')) {
-            toast({
-              title: 'Error',
-              description:
-                'You are not authorized to complete this delivery. Please contact support.',
-              variant: 'destructive',
-            });
-            return;
-          }
-
-          // JourneyNotInProgress error (0xd4d48a2a)
-          if (errorMessage.includes('0xd4d48a2a')) {
-            toast({
-              title: 'Error',
-              description:
-                'This delivery is not in progress. Please ensure pickup is confirmed first.',
-              variant: 'destructive',
-            });
-            return;
-          }
-
-          // Missing revert data - could be various issues
-          if (errorMessage.includes('missing revert data')) {
-            toast({
-              title: 'Transaction Error',
-              description:
-                'Unable to complete delivery. Please ensure pickup is confirmed and try again in a moment.',
-              variant: 'destructive',
-            });
-            return;
-          }
+        // Receiver hasn't signed yet - this is expected
+        if (errorMessage.includes('0x04d27bc2')) {
+          toast({
+            title: 'Signature Recorded',
+            description:
+              'Your signature has been recorded. Waiting for receiver to confirm receipt.',
+          });
+          await refreshDeliveries();
+          return;
         }
 
-        // Re-throw for generic handling
-        throw err;
+        // Not in progress - need to confirm pickup first
+        if (errorMessage.includes('0xd4d48a2a')) {
+          toast({
+            title: 'Error',
+            description:
+              'This delivery is not in progress. Please confirm pickup first.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Not authorized
+        if (errorMessage.includes('0x2cde802e')) {
+          toast({
+            title: 'Error',
+            description: 'You are not authorized to complete this delivery.',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
-    } catch (err) {
-      console.error('Error during delivery confirmation:', err);
+
+      // Generic error
       toast({
         title: 'Error',
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Failed to confirm delivery. Please try again.',
+        description: 'Failed to confirm delivery. Please try again.',
         variant: 'destructive',
       });
     }

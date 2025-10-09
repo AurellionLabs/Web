@@ -266,34 +266,31 @@ export default function CustomerDashboard() {
       setLoading(true);
       await confirmReceipt(orderId);
 
-      toast({
-        title: 'Receipt Confirmed',
-        description:
-          'Your signature has been recorded. The driver can now complete the delivery.',
-      });
-
-      // Refresh orders to show updated status
+      // Refresh to get updated status
       await refreshOrders();
+
+      // Check if order was settled (delivery completed)
+      const order = orders.find((o) => o.id === orderId);
+      if (order?.currentStatus === OrderStatus.SETTLED) {
+        toast({
+          title: 'Delivery Completed',
+          description:
+            'The delivery has been completed and payment has been processed.',
+        });
+      } else {
+        toast({
+          title: 'Signature Recorded',
+          description:
+            'Your signature has been recorded. Waiting for driver to complete delivery.',
+        });
+      }
     } catch (error) {
       console.error('Error confirming receipt:', error);
-      if (error instanceof Error) {
-        if (
-          error.message.includes('Customer can only sign for the final leg')
-        ) {
-          toast({
-            title: 'Cannot Sign Yet',
-            description:
-              'You can only sign for the final leg of the journey when the package arrives at your location.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Error',
-            description: 'Failed to confirm receipt. Please try again.',
-            variant: 'destructive',
-          });
-        }
-      }
+      toast({
+        title: 'Error',
+        description: 'Failed to confirm receipt. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
