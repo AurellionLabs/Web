@@ -33,7 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/app/components/ui/card';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { useWallet } from '@/hooks/useWallet';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
@@ -172,6 +172,7 @@ export default function CreatePoolPage() {
   const { address } = useWallet();
   const { createPool, loading } = usePoolsProvider();
   const router = useRouter();
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -191,7 +192,11 @@ export default function CreatePoolPage() {
     try {
       // Check if wallet is connected
       if (!address) {
-        toast.error('Please connect your wallet first.');
+        toast({
+          title: 'Error',
+          description: 'Please connect your wallet first.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -227,12 +232,17 @@ export default function CreatePoolPage() {
       };
 
       const result = await createPool(poolCreationData);
-      toast.success('Pool created successfully!');
+      toast({ title: 'Success', description: 'Pool created successfully!' });
 
       // Redirect to the new pool
       router.push(`/customer/pools/${result.poolId}`);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create pool. Please try again.');
+      toast({
+        title: 'Error',
+        description:
+          error.message || 'Failed to create pool. Please try again.',
+        variant: 'destructive',
+      });
       console.error('Error creating pool:', error);
     }
   }

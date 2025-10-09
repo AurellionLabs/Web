@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from './button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { formatAddress } from '@/lib/utils';
 import { ethers } from 'ethers';
 import { SUPPORTED_CHAINS, NETWORK_CONFIGS } from '@/config/network';
@@ -46,6 +46,7 @@ export function WalletConnection() {
   const { wallets, ready: walletsReady } = useWallets();
   const { connect, disconnect, address, error, repository, isInitialized } =
     useWallet();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number>();
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
@@ -171,10 +172,17 @@ export function WalletConnection() {
     try {
       const accounts = await provider.listAccounts();
       if (accounts.length === 0) {
-        toast.error('Wallet disconnected');
+        toast({
+          title: 'Error',
+          description: 'Wallet disconnected',
+          variant: 'destructive',
+        });
       } else {
         const newAddress = await accounts[0].getAddress();
-        toast.success(`Switched to account ${formatAddress(newAddress)}`);
+        toast({
+          title: 'Success',
+          description: `Switched to account ${formatAddress(newAddress)}`,
+        });
         // Potentially re-fetch balances or rely on address change to trigger useEffect
       }
     } catch (error) {
@@ -201,9 +209,17 @@ export function WalletConnection() {
     } catch (error: any) {
       console.error('Wallet connection error:', error);
       if (error.code === 4001) {
-        toast.error('Please connect to MetaMask');
+        toast({
+          title: 'Error',
+          description: 'Please connect to MetaMask',
+          variant: 'destructive',
+        });
       } else {
-        toast.error('Error connecting wallet');
+        toast({
+          title: 'Error',
+          description: 'Error connecting wallet',
+          variant: 'destructive',
+        });
       }
       setIsWalletConnected(false);
     }
@@ -213,7 +229,11 @@ export function WalletConnection() {
     // ... (existing logic, ensure it uses the correct chain ID format for Privy if applicable)
     const wallet = wallets?.[0];
     if (!wallet) {
-      toast.error('No wallet connected to switch network.');
+      toast({
+        title: 'Error',
+        description: 'No wallet connected to switch network.',
+        variant: 'destructive',
+      });
       return;
     }
     try {
@@ -224,7 +244,11 @@ export function WalletConnection() {
       // checkConnection will be called due to wallets dependency update
     } catch (error: any) {
       // ... (error handling)
-      toast.error('Error switching network');
+      toast({
+        title: 'Error',
+        description: 'Error switching network',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -233,7 +257,11 @@ export function WalletConnection() {
     // ... (existing logic)
     const wallet = wallets?.[0];
     if (!wallet) {
-      toast.error('No wallet connected to add network.');
+      toast({
+        title: 'Error',
+        description: 'No wallet connected to add network.',
+        variant: 'destructive',
+      });
       return;
     }
     try {
@@ -245,11 +273,15 @@ export function WalletConnection() {
       }
       const chainIdHex = `0x${chainIdToAdd.toString(16)}` as `0x${string}`;
       await wallet.switchChain(chainIdHex); // switchChain can also add the chain if not present
-      toast.success('Network action completed.'); // More generic message
+      toast({ title: 'Success', description: 'Network action completed.' }); // More generic message
       // checkConnection will update network status
     } catch (error) {
       console.error('Error adding/switching network:', error);
-      toast.error('Failed to add/switch network');
+      toast({
+        title: 'Error',
+        description: 'Failed to add/switch network',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -344,7 +376,11 @@ export function WalletConnection() {
       console.error(
         `Moonpay funding not configured for ${assetType} on chain ID ${fundingChainIdForMoonpay}.`,
       );
-      toast.error(`Funding not available for ${assetType} on this network.`);
+      toast({
+        title: 'Error',
+        description: `Funding not available for ${assetType} on this network.`,
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -364,7 +400,11 @@ export function WalletConnection() {
         `Error initiating MoonPay for ${currencyCode} to ${address}:`,
         e,
       );
-      toast.error('Could not start funding process.');
+      toast({
+        title: 'Error',
+        description: 'Could not start funding process.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -456,7 +496,10 @@ export function WalletConnection() {
                   size="sm"
                   onClick={() => {
                     navigator.clipboard.writeText(address);
-                    toast.success('Address copied to clipboard');
+                    toast({
+                      title: 'Success',
+                      description: 'Address copied to clipboard',
+                    });
                   }}
                   className="w-full"
                 >

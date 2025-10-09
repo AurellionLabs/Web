@@ -265,29 +265,15 @@ export default function CustomerDashboard() {
     try {
       setLoading(true);
       await confirmReceipt(orderId);
-      setWaitingForSignature((prev) => ({ ...prev, [orderId]: true }));
-
-      // Set a timeout to stop waiting after some time
-      const timeoutId = setTimeout(() => {
-        setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
-        toast({
-          title: 'Signature Timeout',
-          description:
-            'The driver did not sign within the time limit. Please try again.',
-          variant: 'destructive',
-        });
-      }, 120000); // 2 minutes timeout
-
-      // Store cleanup function
-      setSignatureCleanups((prev) => ({
-        ...prev,
-        [orderId]: () => clearTimeout(timeoutId),
-      }));
 
       toast({
-        title: 'Receipt Confirmation Sent',
-        description: 'Waiting for driver signature confirmation.',
+        title: 'Receipt Confirmed',
+        description:
+          'Your signature has been recorded. The driver can now complete the delivery.',
       });
+
+      // Refresh orders to show updated status
+      await refreshOrders();
     } catch (error) {
       console.error('Error confirming receipt:', error);
       if (error instanceof Error) {

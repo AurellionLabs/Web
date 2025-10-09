@@ -147,6 +147,14 @@ export function TradeProvider({ children }: { children: ReactNode }) {
           const bounty =
             (totalOrderValue * BigInt(bountyPercentage)) / BigInt(100);
 
+          console.log('[TradeProvider] Bounty calculation:', {
+            price: orderWithBuyer.price,
+            priceAsBigInt: totalOrderValue.toString(),
+            bountyPercentage,
+            calculatedBounty: bounty.toString(),
+            bountyType: typeof bounty,
+          });
+
           // For direct orders (only one node), the receiver is the buyer (customer)
           // For multi-hop orders, the receiver is the next node in the chain
           const receiverNodeAddress =

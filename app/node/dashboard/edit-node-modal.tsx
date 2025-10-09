@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from '@/app/components/ui/dialog';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
   Tabs,
   TabsContent,
@@ -39,6 +39,7 @@ export function EditNodeModal({
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('assets');
   const { updateNodeStatus } = useSelectedNode();
+  const { toast } = useToast();
 
   // Asset capacity and price states
   const [capacities, setCapacities] = useState<Record<number, string>>({});
@@ -90,10 +91,17 @@ export function EditNodeModal({
       const newStatus = nodeData.status === 'Active' ? 'Inactive' : 'Active';
       await updateNodeStatus(nodeAddress, newStatus);
       // await onNodeUpdated(); // Remove this immediate refresh
-      toast.success('Node status updated successfully');
+      toast({
+        title: 'Success',
+        description: 'Node status updated successfully',
+      });
     } catch (error) {
       console.error('Error updating node status:', error);
-      toast.error('Failed to update node status');
+      toast({
+        title: 'Error',
+        description: 'Failed to update node status',
+        variant: 'destructive',
+      });
     } finally {
       setIsUpdating(false);
     }
@@ -125,11 +133,18 @@ export function EditNodeModal({
       );
 
       await onNodeUpdated(); // Refresh node data
-      toast.success('Node assets updated successfully');
+      toast({
+        title: 'Success',
+        description: 'Node assets updated successfully',
+      });
       setIsOpen(false);
     } catch (error) {
       console.error('Error updating node assets:', error);
-      toast.error('Failed to update node assets');
+      toast({
+        title: 'Error',
+        description: 'Failed to update node assets',
+        variant: 'destructive',
+      });
     } finally {
       setIsUpdating(false);
     }

@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
   Tabs,
   TabsContent,
@@ -59,13 +59,8 @@ export default function DriverDashboard() {
     packageSign,
     startJourney,
   } = useDriver();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('available');
-  const [waitingForSignature, setWaitingForSignature] = useState<{
-    [key: string]: boolean;
-  }>({});
-  const [signatureCleanups, setSignatureCleanups] = useState<{
-    [key: string]: () => void;
-  }>({});
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -190,13 +185,10 @@ export default function DriverDashboard() {
 
   const handlePickupDelivery = async (jobId: string) => {
     try {
-      setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
-
-      // Step 1: Driver signs the pickup (packageSign)
+      // 1. Sign the pickup (packageSign)
       await confirmPickup(jobId);
 
-      // Step 2: Attempt to start the journey (handOn)
-      // This requires both sender and driver to have signed
+      // 2. Attempt to start the journey (handOn). If SenderNotSigned, surface a friendly message.
       try {
         await startJourney(jobId);
         toast({
@@ -206,22 +198,16 @@ export default function DriverDashboard() {
         });
       } catch (err) {
         if (err instanceof Error && err.message.includes('SenderNotSigned')) {
-          // Sender hasn't signed yet - this is expected, show friendly message
           toast({
             title: 'Waiting on Sender',
             description:
-              'You have signed for pickup. Waiting for the sender to sign.',
+              'Pickup started on your side. Waiting for the sender to sign.',
           });
         } else {
-          // Unexpected error - propagate it
           throw err;
         }
       }
-
-      // Reset waiting state on success
-      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
     } catch (err) {
-      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
       console.error('Error during pickup confirmation:', err);
       toast({
         title: 'Error',
@@ -235,39 +221,119 @@ export default function DriverDashboard() {
   };
 
   const handleCompleteDelivery = async (jobId: string) => {
+    console.log(
+      '[DriverDashboard] handleCompleteDelivery called for jobId:',
+      jobId,
+    );
+
     try {
-      setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
+      // 1. Sign the delivery (driver confirms delivery)
+      console.log('[DriverDashboard] Calling packageSign...');
       await packageSign(jobId);
-      await completeDelivery(jobId);
+      console.log('[DriverDashboard] packageSign completed successfully');
+
       toast({
-        title: 'Delivery Confirmed',
-        description: 'You have successfully delivered the parcel.',
+        title: 'Delivery Signed',
+        description:
+          'Your signature has been recorded. Waiting for receiver to confirm receipt.',
       });
-      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
-    } catch (err) {
-      setWaitingForSignature((prev) => ({ ...prev, [jobId]: false }));
-      if (
-        err instanceof Error &&
-        err.message.includes('wait for customer to sign')
-      ) {
-        // Keep the waiting state active if we're waiting for customer signature
-        setWaitingForSignature((prev) => ({ ...prev, [jobId]: true }));
-      } else {
+
+      // Small delay to ensure signature is confirmed on-chain
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // 2. Attempt to complete the delivery (handOff). If ReceiverNotSigned, just notify and exit gracefully.
+      try {
+        console.log('[DriverDashboard] Calling completeDelivery (handOff)...');
+        await completeDelivery(jobId);
+        console.log('[DriverDashboard] completeDelivery succeeded');
+
         toast({
-          title: 'Error',
-          description: 'Failed to confirm delivery. Please try again.',
-          variant: 'destructive',
+          title: 'Delivery Completed',
+          description:
+            'The delivery has been successfully completed and payment has been processed.',
         });
+      } catch (err) {
+        console.error('[DriverDashboard] handOff error:', err);
+        console.error(
+          '[DriverDashboard] Full error object:',
+          JSON.stringify(err, null, 2),
+        );
+
+        // Check for specific contract errors
+        if (err instanceof Error) {
+          const errorMessage = err.message;
+          console.log('[DriverDashboard] Error message:', errorMessage);
+
+          // ReceiverNotSigned error (0x04d27bc2) - This is expected, just inform user
+          if (errorMessage.includes('0x04d27bc2')) {
+            console.log(
+              '[DriverDashboard] Receiver has not signed yet - this is expected',
+            );
+            // Refresh to show updated delivery status
+            await refreshDeliveries();
+            // Don't show error - the "Delivery Signed" toast above already informs them
+            return;
+          }
+
+          // DriverNotSigned error (0x9651c947) - Shouldn't happen since we just signed
+          if (errorMessage.includes('0x9651c947')) {
+            toast({
+              title: 'Waiting for Signature',
+              description:
+                'Your signature is being confirmed. Please wait a moment and try again.',
+            });
+            return;
+          }
+
+          // NotJourneyParticipant error (0x2cde802e)
+          if (errorMessage.includes('0x2cde802e')) {
+            toast({
+              title: 'Error',
+              description:
+                'You are not authorized to complete this delivery. Please contact support.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          // JourneyNotInProgress error (0xd4d48a2a)
+          if (errorMessage.includes('0xd4d48a2a')) {
+            toast({
+              title: 'Error',
+              description:
+                'This delivery is not in progress. Please ensure pickup is confirmed first.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          // Missing revert data - could be various issues
+          if (errorMessage.includes('missing revert data')) {
+            toast({
+              title: 'Transaction Error',
+              description:
+                'Unable to complete delivery. Please ensure pickup is confirmed and try again in a moment.',
+              variant: 'destructive',
+            });
+            return;
+          }
+        }
+
+        // Re-throw for generic handling
+        throw err;
       }
+    } catch (err) {
+      console.error('Error during delivery confirmation:', err);
+      toast({
+        title: 'Error',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Failed to confirm delivery. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
-
-  // Add cleanup effect
-  useEffect(() => {
-    return () => {
-      Object.values(signatureCleanups).forEach((cleanup) => cleanup());
-    };
-  }, [signatureCleanups]);
 
   if (isLoading) {
     return (
@@ -391,8 +457,6 @@ export default function DriverDashboard() {
                   onConfirm={handlePickupDelivery}
                   variant="pickup"
                   isLoading={isLoading}
-                  isWaitingForSignature={waitingForSignature[delivery.jobId]}
-                  waitingForRole="customer"
                 />
               )}
               {delivery.currentStatus === DeliveryStatus.PICKED_UP && (
@@ -401,8 +465,6 @@ export default function DriverDashboard() {
                   onConfirm={handleCompleteDelivery}
                   variant="complete"
                   isLoading={isLoading}
-                  isWaitingForSignature={waitingForSignature[delivery.jobId]}
-                  waitingForRole="customer"
                 />
               )}
             </>

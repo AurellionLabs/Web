@@ -400,6 +400,14 @@ export class OrderService implements IOrderService {
     console.log(
       `[OrderService] Creating journey for order ${orderId} from ${senderNodeAddress} to ${receiverAddress}`,
     );
+    console.log('[OrderService] Journey parameters:', {
+      orderId: orderId.toString(),
+      bountyWei: bountyWei.toString(),
+      bountyType: typeof bountyWei,
+      etaTimestamp: etaTimestamp.toString(),
+      tokenQuantity: tokenQuantity.toString(),
+      assetId: assetId.toString(),
+    });
     try {
       const contract = this.contract.connect(this.currentSigner);
 

@@ -28,7 +28,7 @@ import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { useNodes } from '@/app/providers/nodes.provider';
 import type { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { MapView } from '@/app/components/ui/map-view';
 import { EditNodeModal } from './edit-node-modal';
@@ -86,6 +86,7 @@ export default function NodeDashboardPage() {
 
   const { refreshNodes } = useNodes();
   const router = useRouter();
+  const { toast } = useToast();
 
   // Get nodeId from URL params
   const searchParams = new URLSearchParams(window.location.search);
@@ -137,9 +138,12 @@ export default function NodeDashboardPage() {
         } catch (error) {
           console.error('Error selecting node from URL:', error);
           // If selection fails, show error and provide retry option
-          toast.error(
-            'Failed to load node data. Please ensure your wallet is connected and try again.',
-          );
+          toast({
+            title: 'Error',
+            description:
+              'Failed to load node data. Please ensure your wallet is connected and try again.',
+            variant: 'destructive',
+          });
         }
       };
 
@@ -206,7 +210,7 @@ export default function NodeDashboardPage() {
       // Reload asset attributes (assets are automatically refreshed by provider)
       await loadAssetAttributes(assets);
 
-      toast.success('Asset tokenized successfully');
+      toast({ title: 'Success', description: 'Asset tokenized successfully' });
       setIsAddAssetOpen(false);
       form.reset();
       setCapacityError(null);
@@ -384,9 +388,16 @@ export default function NodeDashboardPage() {
       const newStatus =
         currentNodeData.status === 'Active' ? 'Inactive' : 'Active';
       await updateNodeStatus(newStatus);
-      toast.success('Node status updated successfully');
+      toast({
+        title: 'Success',
+        description: 'Node status updated successfully',
+      });
     } catch (error) {
-      toast.error('Failed to update node status');
+      toast({
+        title: 'Error',
+        description: 'Failed to update node status',
+        variant: 'destructive',
+      });
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -404,10 +415,14 @@ export default function NodeDashboardPage() {
       );
 
       setEditingCapacity(null);
-      toast.success('Capacity updated successfully');
+      toast({ title: 'Success', description: 'Capacity updated successfully' });
     } catch (error) {
       console.error('Error updating capacity:', error);
-      toast.error('Failed to update capacity');
+      toast({
+        title: 'Error',
+        description: 'Failed to update capacity',
+        variant: 'destructive',
+      });
     } finally {
       setIsUpdatingCapacity(false);
     }
@@ -424,10 +439,14 @@ export default function NodeDashboardPage() {
       );
 
       setEditingPrice(null);
-      toast.success('Price updated successfully');
+      toast({ title: 'Success', description: 'Price updated successfully' });
     } catch (error) {
       console.error('Error updating price:', error);
-      toast.error('Failed to update price');
+      toast({
+        title: 'Error',
+        description: 'Failed to update price',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -698,7 +717,11 @@ export default function NodeDashboardPage() {
               setIsViewingOrders(true);
               try {
                 if (!selectedNodeAddress) {
-                  toast.error('No node selected to view orders.');
+                  toast({
+                    title: 'Error',
+                    description: 'No node selected to view orders.',
+                    variant: 'destructive',
+                  });
                   return;
                 }
                 await router.push(`/node/${selectedNodeAddress}/orders`);
@@ -759,7 +782,11 @@ export default function NodeDashboardPage() {
                                 '[NodeDashboard] No journeyIds on order (subgraph not linked yet)',
                                 order.id,
                               );
-                              toast.error('No journey found for this order');
+                              toast({
+                                title: 'Error',
+                                description: 'No journey found for this order',
+                                variant: 'destructive',
+                              });
                               return;
                             }
 
@@ -776,34 +803,60 @@ export default function NodeDashboardPage() {
                                 journeyId,
                               );
                               await startJourney(journeyId);
-                              toast.success(
-                                'Pickup confirmed and journey started',
-                              );
+                              toast({
+                                title: 'Success',
+                                description:
+                                  'Pickup confirmed and journey started',
+                              });
                             } catch (e) {
                               const err = e as Error;
                               const errData = (err as any)?.data;
-                              // Check for DriverNotSigned (0x4b2c0751) or SenderNotSigned error codes
+                              const errCode = (err as any)?.code;
+
+                              console.log(
+                                '[NodeDashboard] handOn error details:',
+                                {
+                                  message: err.message,
+                                  data: errData,
+                                  code: errCode,
+                                  fullError: err,
+                                },
+                              );
+
+                              // Check for DriverNotSigned (0x9651c947) or SenderNotSigned (0xa4ca90f5) error codes
                               if (
                                 err.message?.includes('DriverNotSigned') ||
-                                errData === '0x4b2c0751'
+                                err.message?.includes('0x9651c947') ||
+                                errData === '0x9651c947'
                               ) {
-                                toast.success(
-                                  'Pickup signed. Waiting for driver to sign and accept.',
-                                );
+                                toast({
+                                  title: 'Pickup Confirmed',
+                                  description:
+                                    'Waiting for driver to accept and sign.',
+                                });
                                 console.warn(
                                   '[NodeDashboard] handOn blocked: DriverNotSigned (driver needs to accept journey and sign pickup)',
                                 );
                               } else if (
-                                err.message?.includes('SenderNotSigned')
+                                err.message?.includes('SenderNotSigned') ||
+                                err.message?.includes('0xa4ca90f5') ||
+                                errData === '0xa4ca90f5'
                               ) {
-                                toast.success('Waiting for sender signature.');
+                                toast({
+                                  title: 'Pickup Confirmed',
+                                  description: 'Waiting for sender signature.',
+                                });
                                 console.warn(
                                   '[NodeDashboard] handOn blocked: SenderNotSigned',
                                 );
                               } else {
-                                toast.error(
-                                  'Pickup signed, but failed to start journey',
-                                );
+                                toast({
+                                  title: 'Error',
+                                  description:
+                                    'Pickup signed, but failed to start journey. ' +
+                                    (err.message || ''),
+                                  variant: 'destructive',
+                                });
                                 console.error(
                                   '[NodeDashboard] handOn failed',
                                   err,
@@ -816,9 +869,12 @@ export default function NodeDashboardPage() {
                               '[NodeDashboard] packageSign failed',
                               err,
                             );
-                            toast.error(
-                              err.message || 'Failed to confirm pickup',
-                            );
+                            toast({
+                              title: 'Error',
+                              description:
+                                err.message || 'Failed to confirm pickup',
+                              variant: 'destructive',
+                            });
                           }
                         }}
                       >
@@ -883,7 +939,11 @@ export default function NodeDashboardPage() {
                         editingPrice.value,
                       );
                     } catch (error) {
-                      toast.error('Failed to update price');
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to update price',
+                        variant: 'destructive',
+                      });
                     }
                   }}
                 >

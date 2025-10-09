@@ -129,21 +129,96 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setError(null);
         const ausys = repoContext.getAusysContract();
-        const tx = await ausys.packageSign(orderToConfirm.journeyIds[0] as any);
-        const receipt = await tx.wait();
-        console.log('Confirmation Receipt:', receipt);
+        const journeyId = orderToConfirm.journeyIds[0];
 
-        setOrders((prevOrders) =>
-          prevOrders.map((order) =>
-            order.id === orderId
-              ? { ...order, currentStatus: OrderStatus.SETTLED }
-              : order,
-          ),
-        );
+        // Check journey status before signing
+        try {
+          const journey = await ausys.idToJourney(journeyId as any);
+          const isReceiverSigned = await ausys.customerHandOff(
+            journey.receiver,
+            journeyId as any,
+          );
+          console.log('[CustomerProvider] Status before receiver signs:', {
+            journeyId,
+            journeyStatus: journey.currentStatus.toString(),
+            receiver: journey.receiver,
+            receiverAlreadySigned: isReceiverSigned,
+          });
+        } catch (e) {
+          console.warn(
+            '[CustomerProvider] Could not check status before signing:',
+            e,
+          );
+        }
+
+        // 1. Sign the package (receiver confirms receipt)
+        const signTx = await ausys.packageSign(journeyId as any);
+        await signTx.wait();
+        console.log('[CustomerProvider] Receipt signature confirmed');
+
+        // Verify signature was recorded
+        try {
+          const journey = await ausys.idToJourney(journeyId as any);
+          const isReceiverSigned = await ausys.customerHandOff(
+            journey.receiver,
+            journeyId as any,
+          );
+          const isDriverSigned = await ausys.driverHandOn(
+            journey.driver,
+            journeyId as any,
+          );
+          console.log('[CustomerProvider] Status after receiver signs:', {
+            receiverSigned: isReceiverSigned,
+            driverSigned: isDriverSigned,
+          });
+        } catch (e) {
+          console.warn('[CustomerProvider] Could not verify signature:', e);
+        }
+
+        // 2. Attempt to complete delivery (handOff) - will succeed if driver has also signed
+        try {
+          const handOffTx = await ausys.handOff(journeyId as any);
+          await handOffTx.wait();
+          console.log(
+            '[CustomerProvider] Delivery completed successfully via handOff',
+          );
+
+          // Update order status to settled
+          setOrders((prevOrders) =>
+            prevOrders.map((order) =>
+              order.id === orderId
+                ? { ...order, currentStatus: OrderStatus.SETTLED }
+                : order,
+            ),
+          );
+        } catch (handOffErr) {
+          console.log(
+            '[CustomerProvider] handOff failed (expected if driver has not signed yet):',
+            handOffErr,
+          );
+
+          // Check if it's the expected DriverNotSigned error
+          if (
+            handOffErr instanceof Error &&
+            handOffErr.message.includes('0x9651c947')
+          ) {
+            console.log(
+              '[CustomerProvider] Driver has not signed yet - this is expected',
+            );
+            // Not an error - just means we need to wait for driver
+          } else {
+            // Log unexpected errors but don't throw - the signature was successful
+            console.warn(
+              '[CustomerProvider] Unexpected error during handOff:',
+              handOffErr,
+            );
+          }
+        }
       } catch (err) {
         console.error('Error confirming receipt:', err);
         setError('Failed to confirm receipt');
         handleContractError(err, 'confirm receipt');
+        throw err;
       } finally {
         setIsLoading(false);
       }

@@ -19,7 +19,7 @@ import { colors } from '@/lib/constants/colors';
 import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { Pool, PoolDynamicData, PoolStatus } from '@/domain/pool';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useWallet } from '@/hooks/useWallet';
 import { formatWeiToCurrency, formatWeiToEther } from '@/lib/utils';
@@ -39,6 +39,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     getGroupedStakeHistory,
     loading,
   } = usePoolsProvider();
+  const { toast } = useToast();
 
   const [timeRange, setTimeRange] = useState('1D');
   const [pool, setPool] = useState<Pool | null>(null);
@@ -80,7 +81,11 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         }
       } catch (error) {
         console.error('Error loading pool data:', error);
-        toast.error('Failed to load pool data');
+        toast({
+          title: 'Error',
+          description: 'Failed to load pool data',
+          variant: 'destructive',
+        });
       }
     };
 
@@ -127,7 +132,11 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
 
   const handleRewardClaim = async () => {
     if (!pool || !address) {
-      toast.error('Pool data not loaded or wallet not connected');
+      toast({
+        title: 'Error',
+        description: 'Pool data not loaded or wallet not connected',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -140,7 +149,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
 
       if (pool.status === PoolStatus.COMPLETE) {
         await claimReward(pool.id);
-        toast.success('Reward claimed successfully');
+        toast({ title: 'Success', description: 'Reward claimed successfully' });
         return;
       }
 
@@ -150,13 +159,23 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
 
       if (isProvider && pool.status === PoolStatus.ACTIVE) {
         await unlockReward(pool.id);
-        toast.success('Reward unlocked successfully');
+        toast({
+          title: 'Success',
+          description: 'Reward unlocked successfully',
+        });
       } else {
-        toast('Pool is not ready for reward claiming');
+        toast({
+          title: 'Info',
+          description: 'Pool is not ready for reward claiming',
+        });
       }
     } catch (error: any) {
       console.error('Error claiming reward:', error);
-      toast.error(error.message || 'Failed to claim reward');
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to claim reward',
+        variant: 'destructive',
+      });
     } finally {
       setIsClaimingReward(false);
     }

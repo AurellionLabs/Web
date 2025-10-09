@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, HelpCircle, X, Info } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { z } from 'zod';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { Pool } from '@/domain/pool';
 import { useWallet } from '@/hooks/useWallet';
@@ -28,6 +28,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { address } = useWallet();
   const { selectedPool, getPoolById, stake, loading } = usePoolsProvider();
+  const { toast } = useToast();
 
   const [assetAmount, setAssetAmount] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
@@ -46,7 +47,11 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
         setPool(poolData);
       } catch (error) {
         console.error('Error loading pool:', error);
-        toast.error('Failed to load pool data');
+        toast({
+          title: 'Error',
+          description: 'Failed to load pool data',
+          variant: 'destructive',
+        });
       }
     };
 
@@ -103,17 +108,29 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     e.preventDefault();
 
     if (!address) {
-      toast.error('Please connect your wallet first.');
+      toast({
+        title: 'Error',
+        description: 'Please connect your wallet first.',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (!pool) {
-      toast.error('Pool data not loaded.');
+      toast({
+        title: 'Error',
+        description: 'Pool data not loaded.',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (!totalAmount || parseFloat(totalAmount) <= 0) {
-      toast.error('Please enter a valid amount.');
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid amount.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -121,13 +138,21 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     try {
       // Use total amount (including fee) for the transaction
       await stake(pool.id, totalAmount);
-      toast.success('Successfully added liquidity');
+      toast({ title: 'Success', description: 'Successfully added liquidity' });
       router.push(`/customer/pools/${params.id}`);
     } catch (error: any) {
       if (error.message?.includes('rejected')) {
-        toast.error('Transaction rejected by user');
+        toast({
+          title: 'Error',
+          description: 'Transaction rejected by user',
+          variant: 'destructive',
+        });
       } else {
-        toast.error(error.message || 'Failed to add liquidity');
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to add liquidity',
+          variant: 'destructive',
+        });
       }
       setError(error.message || 'An error occurred when adding liquidity');
     } finally {

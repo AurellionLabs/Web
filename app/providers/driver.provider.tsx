@@ -232,10 +232,44 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
+
+      // Check journey and signature status before calling handOff
+      try {
+        const journey = await ausys.idToJourney(jobId as any);
+        const isDriverSigned = await ausys.driverHandOn(
+          driverWalletAddress,
+          jobId as any,
+        );
+        const isReceiverSigned = await ausys.customerHandOff(
+          journey.receiver,
+          jobId as any,
+        );
+
+        console.log('[DriverProvider] Status before handOff:', {
+          jobId,
+          journeyStatus: journey.currentStatus.toString(),
+          sender: journey.sender,
+          receiver: journey.receiver,
+          driver: journey.driver,
+          driverSigned: isDriverSigned,
+          receiverSigned: isReceiverSigned,
+          callerAddress: driverWalletAddress,
+        });
+      } catch (e) {
+        console.warn(
+          '[DriverProvider] Could not fetch status before handOff:',
+          e,
+        );
+      }
+
+      console.log('[DriverProvider] Calling handOff for jobId:', jobId);
       const tx = await ausys.handOff(jobId as any);
+      console.log('[DriverProvider] handOff tx hash:', tx.hash);
       await tx.wait();
+      console.log('[DriverProvider] Delivery completed via handOff');
       await refreshDeliveries();
     } catch (err) {
+      console.error('[DriverProvider] handOff error:', err);
       setError(
         err instanceof Error ? err.message : 'Failed to complete delivery',
       );
@@ -256,10 +290,47 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
+
+      // Check journey status before signing
+      try {
+        const journey = await ausys.idToJourney(jobId as any);
+        console.log('[DriverProvider] Journey status before packageSign:', {
+          jobId,
+          currentStatus: journey.currentStatus.toString(),
+          sender: journey.sender,
+          receiver: journey.receiver,
+          driver: journey.driver,
+        });
+      } catch (e) {
+        console.warn('[DriverProvider] Could not fetch journey details:', e);
+      }
+
+      console.log('[DriverProvider] Calling packageSign for jobId:', jobId);
       const tx = await ausys.packageSign(jobId as any);
-      await tx.wait();
+      console.log('[DriverProvider] packageSign tx hash:', tx.hash);
+      const receipt = await tx.wait();
+      console.log(
+        '[DriverProvider] packageSign confirmed in block:',
+        receipt?.blockNumber,
+      );
+
+      // Check signature status after signing
+      try {
+        const isDriverSigned = await ausys.driverHandOn(
+          driverWalletAddress,
+          jobId as any,
+        );
+        console.log(
+          '[DriverProvider] Driver signature status after packageSign:',
+          isDriverSigned,
+        );
+      } catch (e) {
+        console.warn('[DriverProvider] Could not check signature status:', e);
+      }
+
       await refreshDeliveries();
     } catch (err) {
+      console.error('[DriverProvider] packageSign error:', err);
       setError(err instanceof Error ? err.message : 'Failed to sign package');
       throw err;
     } finally {

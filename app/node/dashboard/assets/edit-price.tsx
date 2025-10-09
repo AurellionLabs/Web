@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from '@/app/components/ui/dialog';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface EditPriceProps {
   nodeAddress: string;
@@ -35,6 +35,7 @@ export function EditPrice({
   const [newPrice, setNewPrice] = useState(currentPrice);
   const [isUpdating, setIsUpdating] = useState(false);
   const { updateAssetPrice } = useSelectedNode();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,12 +48,19 @@ export function EditPrice({
         BigInt(newPrice), // newPrice as bigint
       );
 
-      toast.success('Asset price updated successfully');
+      toast({
+        title: 'Success',
+        description: 'Asset price updated successfully',
+      });
       setIsOpen(false);
       onPriceUpdated();
     } catch (error) {
       console.error('Error updating asset price:', error);
-      toast.error('Failed to update asset price');
+      toast({
+        title: 'Error',
+        description: 'Failed to update asset price',
+        variant: 'destructive',
+      });
     } finally {
       setIsUpdating(false);
     }

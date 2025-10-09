@@ -22,7 +22,7 @@ import {
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
-import { Order } from '@/domain/orders';
+import { Order, OrderStatus } from '@/domain/orders';
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -148,14 +148,28 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   const randomBytes = ethers.randomBytes(32);
                   const orderId = ethers.hexlify(randomBytes);
 
+                  // Convert price to USDT units (6 decimals)
+                  // asset.price is stored as a human-readable number (e.g., "2" for $2.00)
+                  // We need to convert it to USDT units: 2 * 10^6 = 2000000
+                  const priceInUSDT = BigInt(
+                    Math.floor(parseFloat(asset.price || '0') * 1_000_000),
+                  );
+                  const totalPrice = priceInUSDT * BigInt(data.quantity);
+
+                  console.log('[OrderPage] Asset price calculation:', {
+                    assetPrice: asset.price,
+                    assetPriceType: typeof asset.price,
+                    quantity: data.quantity,
+                    priceInUSDT: priceInUSDT.toString(),
+                    totalPrice: totalPrice.toString(),
+                  });
+
                   const orderData: Order = {
                     id: orderId,
                     token: NEXT_PUBLIC_AURA_GOAT_ADDRESS, // TODO: Not sure why this is here
                     tokenId: asset.id,
                     tokenQuantity: String(data.quantity),
-                    price: String(
-                      parseFloat(asset.price || '0') * data.quantity,
-                    ), // asset.price is already in wei, so no conversion needed
+                    price: totalPrice.toString(), // Price in USDT units (6 decimals)
                     txFee: String(0),
                     journeyIds: [],
                     nodes: [ethers.getAddress(asset.nodeAddress)],
@@ -171,7 +185,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                       startName: asset.nodeLocation.addressName,
                       endName: data.deliveryLocation,
                     },
-                    currentStatus: String(0),
+                    currentStatus: OrderStatus.CREATED,
                     buyer: '0x0000000000000000000000000000000000000000', // Will be set by the trade.provider
                     seller: ethers.getAddress(asset.nodeAddress), // The node is the seller
                     contractualAgreement: '', // Empty for now, can be populated later

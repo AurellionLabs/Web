@@ -128,10 +128,22 @@ export class DriverRepository implements IDriverRepository {
       ? (journey as JourneyGraphResponse).currentStatus
       : (journey as Ausys.JourneyStructOutput).currentStatus;
 
+    // Debug bounty conversion
+    const bountyRaw = bounty as any;
+    const bountyFormatted = ethers.formatUnits(bountyRaw, 6);
+    const bountyNumber = Number(bountyFormatted);
+    console.log('[DriverRepository] Bounty conversion:', {
+      jobId,
+      bountyRaw: bountyRaw.toString(),
+      bountyFormatted,
+      bountyNumber,
+      bountyType: typeof bountyRaw,
+    });
+
     return {
       jobId,
       customer: sender,
-      fee: Number(ethers.formatEther(bounty as any)),
+      fee: bountyNumber, // USDT has 6 decimals
       ETA: Number(eta as any),
       deliveryETA: Number(eta as any),
       currentStatus: this.mapContractStatusToDomain(

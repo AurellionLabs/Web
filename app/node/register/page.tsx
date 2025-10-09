@@ -46,7 +46,7 @@ import {
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 import CapacityInput from './CapacityInput';
 
 const formSchema = z.object({
@@ -126,6 +126,7 @@ export default function NodeRegistrationPage() {
   const { connected } = useMainProvider();
   const { registerNode } = useNodes();
   const { supportedAssetClasses, isLoading } = usePlatform();
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -167,13 +168,21 @@ export default function NodeRegistrationPage() {
     console.log('on Submit');
     try {
       if (!connected) {
-        toast.error('Please connect your wallet first');
+        toast({
+          title: 'Error',
+          description: 'Please connect your wallet first',
+          variant: 'destructive',
+        });
         return;
       }
 
       const walletAddress = await getCurrentWalletAddress();
       if (!walletAddress) {
-        toast.error('No wallet address found');
+        toast({
+          title: 'Error',
+          description: 'No wallet address found',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -194,11 +203,15 @@ export default function NodeRegistrationPage() {
       };
 
       await registerNode(nodeData);
-      toast.success('Node registered successfully');
+      toast({ title: 'Success', description: 'Node registered successfully' });
       router.push('/node/overview');
     } catch (error) {
       console.error('Error registering node:', error);
-      toast.error('Failed to register node');
+      toast({
+        title: 'Error',
+        description: 'Failed to register node',
+        variant: 'destructive',
+      });
     }
   }
 
