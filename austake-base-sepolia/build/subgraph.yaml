@@ -8,9 +8,9 @@ dataSources:
     name: AuStake
     network: base-sepolia
     source:
-      address: '0x88092906735Ef21851CA26C803075A216052eb20'
+      address: "0x35f1e8495dE0433F3512bbC651b405d1Bf49B781"
       abi: AuStake
-      startBlock: 32056873
+      startBlock: 32137024
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

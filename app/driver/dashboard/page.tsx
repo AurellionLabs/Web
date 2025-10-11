@@ -222,63 +222,19 @@ export default function DriverDashboard() {
 
   const handleCompleteDelivery = async (jobId: string) => {
     try {
-      // Step 1: Sign the delivery
       await packageSign(jobId);
-
-      // Step 2: Try to complete (works if receiver also signed)
       await completeDelivery(jobId);
-
-      // Success! Both parties have signed
       toast({
-        title: 'Delivery Completed',
-        description:
-          'The delivery has been successfully completed and payment has been processed.',
+        title: 'Delivery Confirmed',
+        description: 'You have successfully delivered the parcel.',
       });
-
-      await refreshDeliveries();
     } catch (err) {
-      console.error('[DriverDashboard] Delivery completion error:', err);
-
-      if (err instanceof Error) {
-        const errorMessage = err.message;
-
-        // Receiver hasn't signed yet - this is expected
-        if (errorMessage.includes('0x04d27bc2')) {
-          toast({
-            title: 'Signature Recorded',
-            description:
-              'Your signature has been recorded. Waiting for receiver to confirm receipt.',
-          });
-          await refreshDeliveries();
-          return;
-        }
-
-        // Not in progress - need to confirm pickup first
-        if (errorMessage.includes('0xd4d48a2a')) {
-          toast({
-            title: 'Error',
-            description:
-              'This delivery is not in progress. Please confirm pickup first.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        // Not authorized
-        if (errorMessage.includes('0x2cde802e')) {
-          toast({
-            title: 'Error',
-            description: 'You are not authorized to complete this delivery.',
-            variant: 'destructive',
-          });
-          return;
-        }
-      }
-
-      // Generic error
       toast({
         title: 'Error',
-        description: 'Failed to confirm delivery. Please try again.',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Failed to confirm delivery. Please try again.',
         variant: 'destructive',
       });
     }

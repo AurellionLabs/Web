@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import { OrderStatus } from '@/domain/orders/order';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
@@ -74,6 +74,7 @@ export default function CustomerDashboard() {
     cancelOrder,
     confirmReceipt,
   } = useCustomer();
+  const { toast } = useToast();
   // Filter states
   const [filters, setFilters] = useState({
     orderId: '',
@@ -279,9 +280,9 @@ export default function CustomerDashboard() {
         });
       } else {
         toast({
-          title: 'Signature Recorded',
+          title: 'Receipt Confirmed',
           description:
-            'Your signature has been recorded. Waiting for driver to complete delivery.',
+            'Your receipt confirmation has been recorded. The delivery will be completed once the driver signs for delivery.',
         });
       }
     } catch (error) {

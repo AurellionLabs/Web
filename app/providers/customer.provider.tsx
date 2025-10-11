@@ -110,12 +110,19 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const confirmReceipt = useCallback(
     async (orderId: string) => {
+      console.log(
+        '[CustomerProvider] confirmReceipt called for orderId:',
+        orderId,
+      );
       const orderToConfirm = orders.find((o) => o.id === orderId);
 
       if (!orderToConfirm) {
+        console.error('[CustomerProvider] Order not found:', orderId);
         setError(`Order with ID ${orderId} not found.`);
         return;
       }
+
+      console.log('[CustomerProvider] Order found:', orderToConfirm);
 
       if (
         !orderToConfirm.journeyIds ||
@@ -131,11 +138,35 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const ausys = repoContext.getAusysContract();
         const journeyId = orderToConfirm.journeyIds[0];
 
-        // Step 1: Sign the package (receiver confirms receipt)
+        // 1. Sign the receipt (receiver confirms receipt) - this sets customerHandOff[receiver][id] = true
+        const journey = await ausys.idToJourney(journeyId as any);
+        console.log(
+          '[CustomerProvider] confirmReceipt - Journey status before signing:',
+          {
+            journeyId: journeyId.toString(),
+            journeyStatus: journey.currentStatus.toString(),
+            receiver: journey.receiver,
+          },
+        );
+
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
 
-        // Step 2: Try to complete delivery (works if driver also signed)
+        // Verify receiver signature was recorded
+        const isReceiverSigned = await ausys.customerHandOff(
+          journey.receiver,
+          journeyId as any,
+        );
+        const isDriverDeliverySigned = await ausys.driverDeliverySigned(
+          journey.driver,
+          journeyId as any,
+        );
+        console.log('[CustomerProvider] After receiver signs:', {
+          receiverSigned: isReceiverSigned,
+          driverDeliverySigned: isDriverDeliverySigned,
+        });
+
+        // 2. Try to complete delivery (handOff) - this will work if driver has also signed for delivery
         try {
           const handOffTx = await ausys.handOff(journeyId as any);
           await handOffTx.wait();
@@ -149,9 +180,20 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             ),
           );
         } catch (handOffErr) {
-          // handOff failed - driver hasn't signed yet, which is fine
-          // The signature was still recorded successfully
-          console.log('[CustomerProvider] Waiting for driver to sign');
+          // handOff failed - driver hasn't signed for delivery yet
+          if (
+            handOffErr instanceof Error &&
+            handOffErr.message.includes('0x9651c947')
+          ) {
+            console.log(
+              '[CustomerProvider] Driver has not signed for delivery yet',
+            );
+            // Don't throw error - just inform user that receipt is confirmed
+            return;
+          }
+
+          // Other errors should be thrown
+          throw handOffErr;
         }
       } catch (err) {
         console.error('Error confirming receipt:', err);

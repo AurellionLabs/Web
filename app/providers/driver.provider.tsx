@@ -232,6 +232,30 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
+
+      // Log signature status before calling handOff
+      const journey = await ausys.idToJourney(jobId as any);
+      const isDriverDeliverySigned = await ausys.driverDeliverySigned(
+        journey.driver,
+        jobId as any,
+      );
+      const isReceiverSigned = await ausys.customerHandOff(
+        journey.receiver,
+        jobId as any,
+      );
+
+      console.log(
+        '[DriverProvider] completeDelivery - Status before handOff:',
+        {
+          jobId,
+          journeyStatus: journey.currentStatus.toString(),
+          driverDeliverySigned: isDriverDeliverySigned,
+          receiverSigned: isReceiverSigned,
+          driver: journey.driver,
+          receiver: journey.receiver,
+        },
+      );
+
       const tx = await ausys.handOff(jobId as any);
       await tx.wait();
       await refreshDeliveries();
@@ -257,8 +281,43 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
+
+      // Log journey status before signing
+      const journey = await ausys.idToJourney(jobId as any);
+      console.log(
+        '[DriverProvider] packageSign - Journey status before signing:',
+        {
+          jobId,
+          journeyStatus: journey.currentStatus.toString(),
+          driver: journey.driver,
+          caller: driverWalletAddress,
+        },
+      );
+
       const tx = await ausys.packageSign(jobId as any);
       await tx.wait();
+
+      // Verify signature was recorded
+      if (journey.currentStatus.toString() === '0') {
+        const isPickupSigned = await ausys.driverPickupSigned(
+          journey.driver,
+          jobId as any,
+        );
+        console.log(
+          '[DriverProvider] Pickup signature status:',
+          isPickupSigned,
+        );
+      } else if (journey.currentStatus.toString() === '1') {
+        const isDeliverySigned = await ausys.driverDeliverySigned(
+          journey.driver,
+          jobId as any,
+        );
+        console.log(
+          '[DriverProvider] Delivery signature status:',
+          isDeliverySigned,
+        );
+      }
+
       await refreshDeliveries();
     } catch (err) {
       console.error('[DriverProvider] packageSign error:', err);

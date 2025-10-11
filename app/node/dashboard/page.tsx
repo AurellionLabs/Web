@@ -847,28 +847,29 @@ export default function NodeDashboardPage() {
                                 },
                               );
 
-                              // Check for DriverNotSigned (0x9651c947) or SenderNotSigned (0xa4ca90f5) error codes
+                              // Check for DriverNotSigned (0x9651c947) or SenderNotSigned (0x4b2c0751) error codes
                               if (
                                 err.message?.includes('DriverNotSigned') ||
                                 err.message?.includes('0x9651c947') ||
                                 errData === '0x9651c947'
                               ) {
                                 toast({
-                                  title: 'Pickup Confirmed',
+                                  title: 'Pickup Signature Recorded',
                                   description:
-                                    'Waiting for driver to accept and sign.',
+                                    'Your pickup signature has been recorded. Waiting for driver to sign pickup.',
                                 });
                                 console.warn(
                                   '[NodeDashboard] handOn blocked: DriverNotSigned (driver needs to accept journey and sign pickup)',
                                 );
                               } else if (
                                 err.message?.includes('SenderNotSigned') ||
-                                err.message?.includes('0xa4ca90f5') ||
-                                errData === '0xa4ca90f5'
+                                err.message?.includes('0x4b2c0751') ||
+                                errData === '0x4b2c0751'
                               ) {
                                 toast({
-                                  title: 'Pickup Confirmed',
-                                  description: 'Waiting for sender signature.',
+                                  title: 'Pickup Signature Recorded',
+                                  description:
+                                    'Your pickup signature has been recorded. Waiting for sender to sign.',
                                 });
                                 console.warn(
                                   '[NodeDashboard] handOn blocked: SenderNotSigned',

@@ -1,5 +1,6 @@
 import { gql } from 'graphql-request';
 import { OrderStatus, JourneyStatus } from '@/domain/orders/order';
+import { ethers } from 'ethers';
 
 // =====================
 // NODE QUERIES
@@ -635,10 +636,10 @@ export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
     id: graphOrder.id,
     token: graphOrder.token,
     tokenId: graphOrder.tokenId,
-    tokenQuantity: graphOrder.tokenQuantity,
+    tokenQuantity: graphOrder.tokenQuantity, // This is a count, not a USDT value
     requestedTokenQuantity: graphOrder.requestedTokenQuantity,
-    price: graphOrder.price,
-    txFee: graphOrder.txFee,
+    price: ethers.formatUnits(graphOrder.price, 6), // USDT has 6 decimals
+    txFee: ethers.formatUnits(graphOrder.txFee, 6), // USDT has 6 decimals
     buyer: graphOrder.buyer,
     seller: graphOrder.seller,
     journeyIds: [],

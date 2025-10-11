@@ -289,7 +289,7 @@ export function handlePackageSignature(event: PackageSignatureEvent): void {
   entity.journey = event.params.id.toHexString();
   entity.signer = event.params.user;
 
-  // Determine signature type based on journey participants
+  // Determine signature type based on journey participants and journey status
   let journey = Journey.load(event.params.id);
   let signatureType = 'unknown';
   if (journey) {
@@ -301,7 +301,17 @@ export function handlePackageSignature(event: PackageSignatureEvent): void {
       journey.driver &&
       event.params.user.equals(journey.driver as Bytes)
     ) {
-      signatureType = 'driver';
+      // Driver signature type depends on journey status
+      // JourneyStatus: 0=Pending, 1=InTransit, 2=Delivered, 3=Canceled
+      if (journey.currentStatus.equals(BigInt.fromI32(0))) {
+        // Pending - pickup signature
+        signatureType = 'driver_pickup';
+      } else if (journey.currentStatus.equals(BigInt.fromI32(1))) {
+        // InTransit - delivery signature
+        signatureType = 'driver_delivery';
+      } else {
+        signatureType = 'driver';
+      }
     }
   }
   entity.signatureType = signatureType;

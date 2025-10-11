@@ -1,8 +1,8 @@
 {
   "base-sepolia": {
     "Ausys": {
-      "address": "0x1FED07D8F981c312d44e17702aD843b6ee61c1F7",
-      "startBlock": 32056869
+      "address": "0x177Ae4A085C0dc2ce6f4BF7aF902CA4Bbe283Adb",
+      "startBlock": 32137020
     }
   }
 }

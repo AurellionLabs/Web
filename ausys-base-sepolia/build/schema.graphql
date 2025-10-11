@@ -52,7 +52,7 @@ type PackageSignature @entity(immutable: true) {
   id: Bytes!
   journey: String! # journeyId as string
   signer: Bytes! # address
-  signatureType: String! # "sender", "receiver", "driver"
+  signatureType: String! # "sender", "receiver", "driver_pickup", "driver_delivery"
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!

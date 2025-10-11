@@ -104,7 +104,9 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
   mapping(address => bytes32[]) public driverToJourneyId;
   mapping(bytes32 => Journey) public idToJourney;
   mapping(address => mapping(bytes32 => bool)) public customerHandOff;
-  mapping(address => mapping(bytes32 => bool)) public driverHandOn;
+  // Separate signature mappings for pickup and delivery phases
+  mapping(address => mapping(bytes32 => bool)) public driverPickupSigned; // For handOn
+  mapping(address => mapping(bytes32 => bool)) public driverDeliverySigned; // For handOff
   mapping(bytes32 => bool) rewardPaid;
   // RBAC roles
   bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
@@ -218,7 +220,6 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     emit DriverAssigned(driver, journeyID);
   }
 
-  //sender can be both receiver and sender
   function packageSign(bytes32 id) public customerDriverCheck(id) {
     Journey storage J = idToJourney[id];
     if (msg.sender == J.sender) {
@@ -228,7 +229,12 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
       customerHandOff[J.receiver][id] = true;
       emit emitSig(J.receiver, id);
     } else if (msg.sender == J.driver) {
-      driverHandOn[J.driver][id] = true;
+      // Driver signs for current phase based on journey status
+      if (J.currentStatus == JourneyStatus.Pending) {
+        driverPickupSigned[J.driver][id] = true;
+      } else if (J.currentStatus == JourneyStatus.InTransit) {
+        driverDeliverySigned[J.driver][id] = true;
+      }
       emit emitSig(J.driver, id);
     }
   }
@@ -244,10 +250,11 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     bytes32 id
   ) public customerDriverCheck(id) isPending(id) nonReentrant returns (bool) {
     Journey storage J = idToJourney[id];
-    if (!driverHandOn[J.driver][id]) revert DriverNotSigned();
+    if (!driverPickupSigned[J.driver][id]) revert DriverNotSigned();
     if (!customerHandOff[J.sender][id]) revert SenderNotSigned();
     J.journeyStart = block.timestamp;
-    driverHandOn[J.driver][id] = false;
+    // Reset sender signature after pickup (sender's role is done)
+    // Driver pickup signature persists as separate phase
     customerHandOff[J.sender][id] = false;
     J.currentStatus = JourneyStatus.InTransit;
     emit JourneyStatusUpdated(id, JourneyStatus.InTransit);
@@ -292,7 +299,7 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
     Journey storage J = idToJourney[id];
     Order storage O = idToOrder[journeyToOrderId[id]];
     if (O.currentStatus == OrderStatus.Settled) revert AlreadySettled();
-    if (!driverHandOn[J.driver][id]) revert DriverNotSigned();
+    if (!driverDeliverySigned[J.driver][id]) revert DriverNotSigned();
     if (!customerHandOff[J.receiver][id]) revert ReceiverNotSigned();
     J.currentStatus = JourneyStatus.Delivered;
     J.journeyEnd = block.timestamp;

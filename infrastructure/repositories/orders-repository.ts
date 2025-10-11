@@ -122,15 +122,29 @@ export class OrderRepository implements IOrderRepository {
       const results = await Promise.all(
         response.orders.map(async (order: OrderGraphResponse) => {
           try {
+            console.log(
+              '[OrderRepository] Fetching journeys for orderId:',
+              order.id,
+            );
             const jRes = await graphqlRequest<{ journeys: { id: string }[] }>(
               this.graphQLEndpoint,
               GET_JOURNEYS_BY_ORDER_ID,
               { orderId: order.id },
             );
+            console.log('[OrderRepository] Journeys response:', jRes);
             const mapped = convertGraphOrderToDomain(order);
             mapped.journeyIds = (jRes?.journeys || []).map((j) => j.id);
+            console.log(
+              '[OrderRepository] Mapped journeyIds:',
+              mapped.journeyIds,
+            );
             return mapped;
           } catch (e) {
+            console.error(
+              '[OrderRepository] Error fetching journeys for order:',
+              order.id,
+              e,
+            );
             const mapped = convertGraphOrderToDomain(order);
             mapped.journeyIds = [];
             return mapped;
@@ -291,9 +305,40 @@ export class OrderRepository implements IOrderRepository {
         return [];
       }
 
-      return response.orders.map((order: OrderGraphResponse) =>
-        convertGraphOrderToDomain(order),
+      // Also fetch journey ids per order (same as getNodeOrders)
+      const results = await Promise.all(
+        response.orders.map(async (order: OrderGraphResponse) => {
+          try {
+            console.log(
+              '[OrderRepository] Fetching journeys for buyer orderId:',
+              order.id,
+            );
+            const jRes = await graphqlRequest<{ journeys: { id: string }[] }>(
+              this.graphQLEndpoint,
+              GET_JOURNEYS_BY_ORDER_ID,
+              { orderId: order.id },
+            );
+            console.log('[OrderRepository] Journeys response:', jRes);
+            const mapped = convertGraphOrderToDomain(order);
+            mapped.journeyIds = (jRes?.journeys || []).map((j) => j.id);
+            console.log(
+              '[OrderRepository] Mapped journeyIds:',
+              mapped.journeyIds,
+            );
+            return mapped;
+          } catch (e) {
+            console.error(
+              '[OrderRepository] Error fetching journeys for buyer order:',
+              order.id,
+              e,
+            );
+            const mapped = convertGraphOrderToDomain(order);
+            mapped.journeyIds = [];
+            return mapped;
+          }
+        }),
       );
+      return results;
     } catch (error) {
       console.error('Error fetching buyer orders from Graph:', error);
       return [];
@@ -359,9 +404,9 @@ export class OrderRepository implements IOrderRepository {
         id: contractOrder.id,
         token: contractOrder.token,
         tokenId: String(contractOrder.tokenId),
-        tokenQuantity: String(contractOrder.tokenQuantity),
-        price: String(contractOrder.price),
-        txFee: String(contractOrder.txFee),
+        tokenQuantity: String(contractOrder.tokenQuantity), // This is a count, not a USDT value
+        price: ethers.formatUnits(contractOrder.price, 6), // USDT has 6 decimals
+        txFee: ethers.formatUnits(contractOrder.txFee, 6), // USDT has 6 decimals
         buyer: contractOrder.buyer,
         seller: contractOrder.seller,
         journeyIds: contractOrder.journeyIds,
