@@ -1,5 +1,6 @@
 node_modules/
-artifacts/
+artifacts/@openzeppelin/
+artifacts/build-info/
 cache/
 typechain-types/
 .next/
