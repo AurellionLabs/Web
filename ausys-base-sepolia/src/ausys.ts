@@ -242,7 +242,7 @@ export function handleOrderSettled(event: OrderSettledEvent): void {
   // Update Order entity
   let order = Order.load(event.params.orderId);
   if (order) {
-    order.currentStatus = BigInt.fromI32(3); // Settled
+    order.currentStatus = BigInt.fromI32(2); // Settled
     order.updatedAt = event.block.timestamp;
     order.save();
 
@@ -389,7 +389,7 @@ export function handleJourneyCanceled(event: JourneyCanceledEvent): void {
   // Update Journey entity to canceled status
   let journey = Journey.load(event.params.journeyId);
   if (journey) {
-    journey.currentStatus = BigInt.fromI32(4); // Canceled
+    journey.currentStatus = BigInt.fromI32(3); // Canceled
     journey.updatedAt = event.block.timestamp;
     journey.save();
   }
