@@ -14,7 +14,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useRouter } from 'next/navigation';
-import { checkIfNodeExists } from '@/dapp-connectors/aurum-controller';
 import { useNodes } from '@/app/providers/nodes.provider';
 
 const roles = [

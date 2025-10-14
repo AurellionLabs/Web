@@ -8,9 +8,9 @@ dataSources:
     name: AurumNodeManager
     network: base-sepolia
     source:
-      address: '0x1c38dD7FB7760294fd9652959a199ee8ca67A9DA' # Will be updated by deploy script
+      address: "0x5Dd5881fFa8fb3c4fAD112ffc4a37f0300dd1835" # Will be updated by deploy script
       abi: AurumNodeManager
-      startBlock: 32137022 # Will be updated by deploy script
+      startBlock: 32311127 # Will be updated by deploy script
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
