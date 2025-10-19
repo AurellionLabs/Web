@@ -5,7 +5,7 @@
  * refactored smart contracts (Asset struct instead of separate arrays)
  */
 
-import { Asset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 import { Order } from '@/domain/orders/order';
 /**
  * Asset as stored on a node - matches contract Asset struct
