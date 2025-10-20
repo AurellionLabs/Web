@@ -235,3 +235,24 @@ export interface UserBalancesAuraResponse {
 export interface AssetsAuraResponse {
   assets: AssetAura[];
 }
+
+// Paginated list of all assets from AuraAsset subgraph
+export const GET_ALL_ASSETS = gql`
+  query GetAllAssets($first: Int!, $skip: Int!) {
+    assets(first: $first, skip: $skip, orderBy: tokenId, orderDirection: asc) {
+      id
+      hash
+      tokenId
+      name
+      assetClass
+      className
+      account
+      amount
+      attributes {
+        name
+        values
+        description
+      }
+    }
+  }
+`;

@@ -12,6 +12,7 @@ import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { PinataSDK } from 'pinata';
 import { Asset } from '@/domain/platform';
 import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/Aurum.sol/AurumNode';
+import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 
 /**
  * Concrete implementation of the INodeAssetService interface - REFACTORED
@@ -100,13 +101,13 @@ export class NodeAssetService implements INodeAssetService {
       }
 
       // Call addItem on the node contract
-      const tx = await nodeContract.addItem(
-        nodeAddress,
-        bigIntAmount,
-        contractAsset,
-        asset.assetClass,
-        '0x',
-      );
+      const { receipt: addItemReceipt } =
+        await sendContractTxWithReadEstimation(
+          nodeContract as unknown as ethers.Contract,
+          'addItem',
+          [nodeAddress, bigIntAmount, contractAsset, asset.assetClass, '0x'],
+          { from: await this.context.getSigner().getAddress() },
+        );
 
       // FIXED: Use correct addSupportedAsset signature with Asset struct
       const assetStruct = {
@@ -138,9 +139,15 @@ export class NodeAssetService implements INodeAssetService {
         console.error('[NodeAssetService] Diagnostic check failed:', diagError);
       }
 
-      let tx2: any | null = null;
+      let tx2Receipt: any | null = null;
       try {
-        tx2 = await aurumContract.addSupportedAsset(nodeAddress, assetStruct);
+        const { receipt } = await sendContractTxWithReadEstimation(
+          aurumContract as unknown as ethers.Contract,
+          'addSupportedAsset',
+          [nodeAddress, assetStruct],
+          { from: await this.context.getSigner().getAddress() },
+        );
+        tx2Receipt = receipt;
       } catch (e) {
         console.error(
           '[NodeAssetService] addSupportedAsset failed with error:',
@@ -171,11 +178,7 @@ export class NodeAssetService implements INodeAssetService {
         }
       }
 
-      console.log(`[NodeAssetService] addItem transaction sent: ${tx.hash}`);
-      await tx.wait();
-      if (tx2) {
-        await tx2.wait();
-      }
+      console.log('[NodeAssetService] addItem and addSupportedAsset confirmed');
 
       // Upload metadata to IPFS
       await this.uploadMetadataToIPFS(

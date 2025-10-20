@@ -3,6 +3,7 @@ import { NodeAssetConverters } from '@/domain/node';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import type { AurumNodeManager } from '@/typechain-types';
 import { ethers } from 'ethers';
+import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 import { handleContractError } from '@/utils/error-handler';
 
 export interface INodeService {
@@ -77,8 +78,12 @@ export class NodeService implements INodeService {
         assetPrices: prices,
       } as unknown as Parameters<AurumNodeManager['registerNode']>[0];
 
-      const tx = await aurum.registerNode(contractNodeStruct);
-      const receipt = await tx.wait();
+      const { receipt } = await sendContractTxWithReadEstimation(
+        aurum as unknown as ethers.Contract,
+        'registerNode',
+        [contractNodeStruct],
+        { from: nodeData.owner, gasHeadroomRatio: 1.2 },
+      );
 
       const nodeRegisteredEvent = receipt?.logs?.find(
         (log: any) =>

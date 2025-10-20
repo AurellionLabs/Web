@@ -16,6 +16,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { PinataSDK } from 'pinata';
+import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 
 interface RepositoryProviderProps {
   children: ReactNode;
@@ -80,6 +81,9 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       const provider = new ethers.BrowserProvider(ethereumProvider);
 
       const signer = await provider.getSigner();
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      const readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
       const aurumContract = AurumNodeManager__factory.connect(
         NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
         signer,
@@ -92,7 +96,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
 
       const auraAssetContract = AuraAsset__factory.connect(
         NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-        signer,
+        readProvider,
       );
       const repoContext = RepositoryContext.getInstance();
       const pinata = new PinataSDK({

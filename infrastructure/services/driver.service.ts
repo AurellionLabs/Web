@@ -3,6 +3,7 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 import { LocationContract } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
 import { ethers } from 'ethers';
+import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 
 /**
  * Concrete implementation of the IDriverService interface.
@@ -36,11 +37,12 @@ export class DriverService implements IDriverService {
     );
     try {
       // Reference: ausys-controller.ts#assignDriverToJobId
-      const tx = await contract.assignDriverToJourneyId(
-        driverAddress,
-        journeyId,
+      await sendContractTxWithReadEstimation(
+        contract as unknown as ethers.Contract,
+        'assignDriverToJourneyId',
+        [driverAddress, journeyId],
+        { from: driverAddress },
       );
-      await tx.wait();
       console.log(
         `[DriverService] Journey ${journeyId} accepted successfully by ${driverAddress}`,
       );
@@ -66,8 +68,12 @@ export class DriverService implements IDriverService {
       }
       const customerAddress = journey.sender;
 
-      const tx = await contract.handOn(journeyId);
-      await tx.wait();
+      await sendContractTxWithReadEstimation(
+        contract as unknown as ethers.Contract,
+        'handOn',
+        [journeyId],
+        { from: driverAddress },
+      );
       console.log(
         `[DriverService] Pickup confirmed successfully for journey ${journeyId}`,
       );
@@ -91,8 +97,12 @@ export class DriverService implements IDriverService {
       if (!journey || journey.sender === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no sender.`);
       }
-      const tx = await contract.packageSign(journeyId);
-      await tx.wait();
+      await sendContractTxWithReadEstimation(
+        contract as unknown as ethers.Contract,
+        'packageSign',
+        [journeyId],
+        { from: driverAddress },
+      );
       console.log(
         `[DriverService] Package signed successfully for journey ${journeyId} by driver ${driverAddress}`,
       );
@@ -118,8 +128,12 @@ export class DriverService implements IDriverService {
       if (!journey || journey.receiver === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no receiver.`);
       }
-      const tx = await contract.handOff(journeyId);
-      await tx.wait();
+      await sendContractTxWithReadEstimation(
+        contract as unknown as ethers.Contract,
+        'handOff',
+        [journeyId],
+        { from: driverAddress },
+      );
       console.log(
         `[DriverService] Delivery completed successfully for journey ${journeyId}`,
       );

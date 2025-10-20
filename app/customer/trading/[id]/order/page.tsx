@@ -27,6 +27,9 @@ import { Order, OrderStatus } from '@/domain/orders';
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
+// Keep libraries as a stable constant to prevent LoadScript reloads
+const GOOGLE_LIBRARIES: 'places'[] = ['places'];
+
 // Force dynamic rendering to avoid static generation issues with wallet libraries
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +49,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
   // Load Google Maps script
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: ['places'],
+    libraries: GOOGLE_LIBRARIES,
   });
 
   const asset = getAssetById(params.id);

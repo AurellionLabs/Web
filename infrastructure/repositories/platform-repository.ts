@@ -1,93 +1,53 @@
 import { IPlatformRepository, Asset } from '@/domain/platform';
 import { AuraAsset } from '@/typechain-types';
 import { PinataSDK } from 'pinata';
+import { graphqlRequest } from './shared/graph';
+import { GET_ALL_ASSETS } from './shared/graph-queries';
+import { NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL } from '@/chain-constants';
 
 export class PlatformRepository implements IPlatformRepository {
   contract: AuraAsset;
   pinata: PinataSDK;
+  private graphEndpoint = NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL;
   constructor(_contract: AuraAsset, _pinata: PinataSDK) {
     this.contract = _contract;
     this.pinata = _pinata;
   }
   async getSupportedAssets(): Promise<Asset[]> {
-    const ipfsKeys: string[] = [];
-    // Probe sequentially until the contract getter reverts (no on-chain length available)
-    for (let i = 0; ; i++) {
-      try {
-        console.log('before push', i);
-        const key = await this.contract.ipfsID(i);
-        console.log('ipfs key:', key);
-        ipfsKeys.push(key);
-      } catch (err) {
-        console.log('likely end of supported assets', err);
-        break;
+    const PAGE = 500;
+    let skip = 0;
+    const out: Asset[] = [];
+
+    while (true) {
+      const res = await graphqlRequest<{ assets: any[] }>(
+        this.graphEndpoint,
+        GET_ALL_ASSETS,
+        { first: PAGE, skip },
+      );
+      const items = res.assets || [];
+      if (items.length === 0) break;
+
+      for (const a of items) {
+        out.push({
+          assetClass: a.className ?? a.assetClass ?? 'Unknown',
+          tokenId: String(a.tokenId),
+          name: a.name ?? 'Unknown Asset',
+          attributes: (a.attributes || [])
+            .map((attr: any) => ({
+              name: String(attr?.name ?? ''),
+              values: Array.isArray(attr?.values)
+                ? attr.values.map((v: any) => String(v))
+                : [],
+              description: String(attr?.description ?? ''),
+            }))
+            .filter((x: any) => x.name.length > 0),
+        });
       }
+      if (items.length < PAGE) break;
+      skip += PAGE;
     }
 
-    if (ipfsKeys.length === 0) return [];
-
-    const assets = await Promise.all(
-      ipfsKeys.map(async (key) => {
-        try {
-          console.log('getting key to ipfs', key);
-          const { data } = await this.pinata.gateways.public.get(`${key}`);
-          const json = typeof data === 'string' ? JSON.parse(data) : data;
-
-          const contractAsset = json.asset as {
-            id?: string | number | bigint;
-            name?: string;
-            attributes?:
-              | Array<{
-                  name?: string;
-                  values?: string[];
-                  description?: string;
-                }>
-              | { name?: string; values?: string[]; description?: string };
-          };
-
-          const attributesArrayRaw = Array.isArray(contractAsset?.attributes)
-            ? (contractAsset?.attributes as Array<{
-                name?: string;
-                values?: string[];
-                description?: string;
-              }>)
-            : contractAsset?.attributes &&
-                typeof contractAsset.attributes === 'object'
-              ? [
-                  contractAsset.attributes as {
-                    name?: string;
-                    values?: string[];
-                    description?: string;
-                  },
-                ]
-              : [];
-          const attributesArray = attributesArrayRaw.map((attr) => ({
-            name: attr?.name ?? '',
-            values: Array.isArray(attr?.values)
-              ? (attr?.values as string[]).map((v) => String(v))
-              : [],
-            description: attr?.description ?? '',
-          }));
-
-          const asset: Asset = {
-            assetClass: json.className ?? (json.class as string) ?? 'Unknown',
-            tokenId: String(
-              (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
-            ),
-            name: contractAsset?.name ?? 'Unknown Asset',
-            attributes: attributesArray.filter(
-              (a) => typeof a.name === 'string' && a.name.length > 0,
-            ),
-          };
-          return asset;
-        } catch (err) {
-          console.error(err);
-          return null;
-        }
-      }),
-    );
-
-    return assets.filter((a): a is Asset => a !== null);
+    return out;
   }
 
   async getSupportedAssetClasses(): Promise<string[]> {

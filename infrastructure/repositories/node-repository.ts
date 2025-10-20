@@ -197,8 +197,15 @@ export class BlockchainNodeRepository implements NodeRepository {
 
   async getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'> {
     try {
-      const statusBytes = await this.aurumContract.getNodeStatus(nodeAddress);
-      return NodeAssetConverters.bytes1ToStatus(statusBytes);
+      const response = await graphqlRequest<{ node: NodeGraphResponse | null }>(
+        this.graphQLEndpoint,
+        GET_NODE_BY_ADDRESS,
+        { nodeAddress: nodeAddress.toLowerCase() },
+      );
+      const raw = (response.node?.status || '').toLowerCase();
+      if (raw === 'active' || raw === '1' || raw === '0x01' || raw === 'true')
+        return 'Active';
+      return 'Inactive';
     } catch (error) {
       handleContractError(error, `get node status for ${nodeAddress}`);
       return 'Inactive';
@@ -501,9 +508,15 @@ export class BlockchainNodeRepository implements NodeRepository {
     attributes: string[],
   ): Promise<number> {
     try {
-      const auraAssetContract = await this.getAuraAssetContract();
-      const balance = await auraAssetContract.balanceOf(ownerAddress, assetId);
-      return Number(balance);
+      const balancesResp: UserBalancesAuraResponse = await graphqlRequest(
+        NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+        GET_USER_BALANCES_AURA,
+        { userAddress: ownerAddress.toLowerCase() },
+      );
+      const found = (balancesResp.userBalances || []).find(
+        (b) => String(b.tokenId) === String(assetId),
+      );
+      return Number(found?.balance || '0');
     } catch (error) {
       handleContractError(error, `get asset balance for ${ownerAddress}`);
       return 0;

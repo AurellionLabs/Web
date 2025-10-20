@@ -12,6 +12,7 @@ import {
 } from 'ethers';
 import { handleContractError } from '@/utils/error-handler';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
+import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 
 /**
  * Implements domain service operations for orders by interacting directly with the blockchain contract.
@@ -159,14 +160,18 @@ export class OrderService implements IOrderService {
       // Handle token approval for bounty payment
       await this.handleTokenApproval(bounty);
 
-      const tx = await contractWithSigner.journeyCreation(
-        connectedSignerAddress,
-        recipientWalletAddress,
-        parcelData,
-        bounty,
-        eta,
+      const { receipt } = await sendContractTxWithReadEstimation(
+        contractWithSigner as unknown as ethers.Contract,
+        'journeyCreation',
+        [
+          connectedSignerAddress,
+          recipientWalletAddress,
+          parcelData,
+          bounty,
+          eta,
+        ],
+        { from: connectedSignerAddress },
       );
-      const receipt = await tx.wait();
       if (!receipt) {
         throw new Error('Job creation transaction failed to return a receipt.');
       }
@@ -208,8 +213,12 @@ export class OrderService implements IOrderService {
       }
 
       // packageSign only takes the journey ID - signatures are tracked by msg.sender
-      const tx = await contractWithSigner.packageSign(journeyId);
-      const receipt = await tx.wait();
+      const { receipt } = await sendContractTxWithReadEstimation(
+        contractWithSigner as unknown as ethers.Contract,
+        'packageSign',
+        [journeyId],
+        { from: signerAddress },
+      );
       if (!receipt) {
         throw new Error(
           'Customer sign package transaction failed to return a receipt.',
@@ -304,8 +313,12 @@ export class OrderService implements IOrderService {
       });
 
       // Call the contract's orderCreation with mapped struct
-      const tx = await contractWithSigner.orderCreation(contractOrder);
-      const receipt = await tx.wait();
+      const { receipt } = await sendContractTxWithReadEstimation(
+        contractWithSigner as unknown as ethers.Contract,
+        'orderCreation',
+        [contractOrder],
+        { from: signerAddress },
+      );
       if (!receipt) {
         throw new Error(
           'Order creation transaction failed to return a receipt.',
@@ -414,19 +427,21 @@ export class OrderService implements IOrderService {
       // Handle token approval for bounty payment
       await this.handleTokenApproval(bountyWei);
 
-      const tx = await contract.orderJourneyCreation(
-        orderId,
-        senderNodeAddress,
-        receiverAddress,
-        parcelData,
-        bountyWei,
-        etaTimestamp,
-        tokenQuantity,
-        assetId,
+      const { receipt } = await sendContractTxWithReadEstimation(
+        contract as unknown as ethers.Contract,
+        'orderJourneyCreation',
+        [
+          orderId,
+          senderNodeAddress,
+          receiverAddress,
+          parcelData,
+          bountyWei,
+          etaTimestamp,
+          tokenQuantity,
+          assetId,
+        ],
+        { from: await this.currentSigner.getAddress() },
       );
-
-      console.log(`[OrderService] orderJourneyCreation tx sent: ${tx.hash}`);
-      const receipt = await tx.wait();
       console.log(
         `[OrderService] orderJourneyCreation tx confirmed. Status: ${receipt?.status}`,
       );
