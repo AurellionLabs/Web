@@ -333,6 +333,10 @@ export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${auraTokenAddress}";
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
 export const NEXT_PUBLIC_AUSYS_ADDRESS = "${auSysAddress}";
 export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${await auraAsset.getAddress()}";
+export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112595/aura-asset-base-sepolia/${deploymentVersion};
+export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112595/austake-base-sepolia/${deploymentVersion}";
+export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112595/aurum-base-sepoliapolia/${deploymentVersion}";
+export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/query/112595/ausys-base-sepoliaapolia/${deploymentVersion}";
 `;
 
     await fs.promises.writeFile('chain-constants.ts', constants);
@@ -538,6 +542,7 @@ export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/q
 
     // Print deployment summary
     console.log('\nDeployment Summary');
+    console.log(constants);
     console.log('==================');
     console.log(`Deployer: ${deployer.address}`);
     console.log(`Aura Token: ${auraTokenAddress}`);
