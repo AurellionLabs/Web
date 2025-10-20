@@ -41,6 +41,7 @@ import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
 import type { Asset } from '@/domain/shared';
+import { Order } from '@/domain/orders';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -426,6 +427,98 @@ export default function NodeDashboardPage() {
       setIsUpdatingStatus(false);
     }
   };
+  const handleConfirmPickup = async (order: Order) => {
+    try {
+      console.log('[NodeDashboard] Confirm Pickup clicked for order', order.id);
+      const journeyId = order.journeyIds?.[0];
+      if (!journeyId) {
+        console.warn(
+          '[NodeDashboard] No journeyIds on order (subgraph not linked yet)',
+          order.id,
+        );
+        toast({
+          title: 'Error',
+          description: 'No journey found for this order',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      console.log(
+        '[NodeDashboard] Calling nodeSign via node contract for journey',
+        journeyId,
+      );
+      // packageSign now calls nodeSign on the node contract
+      // which ensures the call comes from the node address (sender)
+      await packageSign(journeyId);
+      try {
+        console.log(
+          '[NodeDashboard] Calling startJourney (handOn) for journey',
+          journeyId,
+        );
+        await startJourney(journeyId);
+        toast({
+          title: 'Success',
+          description: 'Pickup confirmed and journey started',
+        });
+      } catch (e) {
+        const err = e as Error;
+        const errData = (err as any)?.data;
+        const errCode = (err as any)?.code;
+
+        console.log('[NodeDashboard] handOn error details:', {
+          message: err.message,
+          data: errData,
+          code: errCode,
+          fullError: err,
+        });
+
+        // Check for DriverNotSigned (0x9651c947) or SenderNotSigned (0x4b2c0751) error codes
+        if (
+          err.message?.includes('DriverNotSigned') ||
+          err.message?.includes('0x9651c947') ||
+          errData === '0x9651c947'
+        ) {
+          toast({
+            title: 'Pickup Signature Recorded',
+            description:
+              'Your pickup signature has been recorded. Waiting for driver to sign pickup.',
+          });
+          console.warn(
+            '[NodeDashboard] handOn blocked: DriverNotSigned (driver needs to accept journey and sign pickup)',
+          );
+        } else if (
+          err.message?.includes('SenderNotSigned') ||
+          err.message?.includes('0x4b2c0751') ||
+          errData === '0x4b2c0751'
+        ) {
+          toast({
+            title: 'Pickup Signature Recorded',
+            description:
+              'Your pickup signature has been recorded. Waiting for sender to sign.',
+          });
+          console.warn('[NodeDashboard] handOn blocked: SenderNotSigned');
+        } else {
+          toast({
+            title: 'Error',
+            description:
+              'Pickup signed, but failed to start journey. ' +
+              (err.message || ''),
+            variant: 'destructive',
+          });
+          console.error('[NodeDashboard] handOn failed', err);
+        }
+      }
+    } catch (e) {
+      const err = e as Error;
+      console.error('[NodeDashboard] packageSign failed', err);
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to confirm pickup',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleCapacityUpdate = async (assetId: number, newValue: string) => {
     if (!currentNodeData) return;
@@ -793,116 +886,7 @@ export default function NodeDashboardPage() {
                     <td className="p-4">{order.price} USDT</td>
                     <td className="p-4 capitalize">{order.currentStatus}</td>
                     <td className="p-4">
-                      <Button
-                        onClick={async () => {
-                          try {
-                            console.log(
-                              '[NodeDashboard] Confirm Pickup clicked for order',
-                              order.id,
-                            );
-                            const journeyId = order.journeyIds?.[0];
-                            if (!journeyId) {
-                              console.warn(
-                                '[NodeDashboard] No journeyIds on order (subgraph not linked yet)',
-                                order.id,
-                              );
-                              toast({
-                                title: 'Error',
-                                description: 'No journey found for this order',
-                                variant: 'destructive',
-                              });
-                              return;
-                            }
-
-                            console.log(
-                              '[NodeDashboard] Calling nodeSign via node contract for journey',
-                              journeyId,
-                            );
-                            // packageSign now calls nodeSign on the node contract
-                            // which ensures the call comes from the node address (sender)
-                            await packageSign(journeyId);
-                            try {
-                              console.log(
-                                '[NodeDashboard] Calling startJourney (handOn) for journey',
-                                journeyId,
-                              );
-                              await startJourney(journeyId);
-                              toast({
-                                title: 'Success',
-                                description:
-                                  'Pickup confirmed and journey started',
-                              });
-                            } catch (e) {
-                              const err = e as Error;
-                              const errData = (err as any)?.data;
-                              const errCode = (err as any)?.code;
-
-                              console.log(
-                                '[NodeDashboard] handOn error details:',
-                                {
-                                  message: err.message,
-                                  data: errData,
-                                  code: errCode,
-                                  fullError: err,
-                                },
-                              );
-
-                              // Check for DriverNotSigned (0x9651c947) or SenderNotSigned (0x4b2c0751) error codes
-                              if (
-                                err.message?.includes('DriverNotSigned') ||
-                                err.message?.includes('0x9651c947') ||
-                                errData === '0x9651c947'
-                              ) {
-                                toast({
-                                  title: 'Pickup Signature Recorded',
-                                  description:
-                                    'Your pickup signature has been recorded. Waiting for driver to sign pickup.',
-                                });
-                                console.warn(
-                                  '[NodeDashboard] handOn blocked: DriverNotSigned (driver needs to accept journey and sign pickup)',
-                                );
-                              } else if (
-                                err.message?.includes('SenderNotSigned') ||
-                                err.message?.includes('0x4b2c0751') ||
-                                errData === '0x4b2c0751'
-                              ) {
-                                toast({
-                                  title: 'Pickup Signature Recorded',
-                                  description:
-                                    'Your pickup signature has been recorded. Waiting for sender to sign.',
-                                });
-                                console.warn(
-                                  '[NodeDashboard] handOn blocked: SenderNotSigned',
-                                );
-                              } else {
-                                toast({
-                                  title: 'Error',
-                                  description:
-                                    'Pickup signed, but failed to start journey. ' +
-                                    (err.message || ''),
-                                  variant: 'destructive',
-                                });
-                                console.error(
-                                  '[NodeDashboard] handOn failed',
-                                  err,
-                                );
-                              }
-                            }
-                          } catch (e) {
-                            const err = e as Error;
-                            console.error(
-                              '[NodeDashboard] packageSign failed',
-                              err,
-                            );
-                            toast({
-                              title: 'Error',
-                              description:
-                                err.message || 'Failed to confirm pickup',
-                              variant: 'destructive',
-                            });
-                          }
-                        }}
-                      >
+                      <Button onClick={() => handleConfirmPickup(order)}>
                         Confirm Pickup
                       </Button>
                     </td>
