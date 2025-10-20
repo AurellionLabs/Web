@@ -41,7 +41,7 @@ import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
 import type { Asset } from '@/domain/shared';
-import { Order } from '@/domain/orders';
+import { Order, OrderStatus } from '@/domain/orders';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -886,9 +886,23 @@ export default function NodeDashboardPage() {
                     <td className="p-4">{order.price} USDT</td>
                     <td className="p-4 capitalize">{order.currentStatus}</td>
                     <td className="p-4">
-                      <Button onClick={() => handleConfirmPickup(order)}>
-                        Confirm Pickup
-                      </Button>
+                      {order.currentStatus === OrderStatus.CREATED ? (
+                        <Button onClick={() => handleConfirmPickup(order)}>
+                          Confirm Pickup
+                        </Button>
+                      ) : order.currentStatus === OrderStatus.PROCESSING ? (
+                        <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                          In Transit
+                        </span>
+                      ) : order.currentStatus === OrderStatus.SETTLED ? (
+                        <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                          Order Completed
+                        </span>
+                      ) : order.currentStatus === OrderStatus.CANCELLED ? (
+                        <span className="text-sm text-red-600 dark:text-red-400 font-medium">
+                          Order Cancelled
+                        </span>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
