@@ -275,13 +275,6 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
         O.tokenQuantity,
         '0x'
       );
-      AurumNodeManager.Asset memory a = AurumNodeManager.Asset({
-        token: O.token,
-        tokenId: O.tokenId,
-        price: 0,
-        capacity: 0
-      });
-      nodeManager.reduceCapacityForOrder(O.seller, a, O.tokenQuantity);
     }
     emit JourneyStatusUpdated(id, J.currentStatus);
     return true;
@@ -445,6 +438,8 @@ contract Ausys is ReentrancyGuard, ERC1155Holder, Ownable, AccessControl {
       price: 0,
       capacity: 0
     });
+    // Reserve capacity immediately upon journey creation so UI reflects reduced quantity
+    nodeManager.reduceCapacityForOrder(O.seller, a, tokenQuantity);
     // Also update the order's tracked token quantity
     // This assumes the reduceCapacityForOrder call above did not revert
     idToOrder[orderId].tokenQuantity += tokenQuantity;

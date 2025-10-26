@@ -95,12 +95,15 @@ export class OrderService implements IOrderService {
         `[OrderService] Current allowance: ${currentAllowance.toString()}, Required: ${amount.toString()}`,
       );
 
-      // Approve if insufficient allowance
+      // Approve unlimited once if insufficient allowance
       if (BigInt(currentAllowance.toString()) < BigInt(amount.toString())) {
         console.log(
-          `[OrderService] Approving token spend for amount: ${amount.toString()}`,
+          `[OrderService] Insufficient allowance. Approving unlimited (MaxUint256). Requested: ${amount.toString()}`,
         );
-        const approveTx = await tokenContract.approve(contractAddress, amount);
+        const approveTx = await tokenContract.approve(
+          contractAddress,
+          ethers.MaxUint256,
+        );
         const approveReceipt = await approveTx.wait();
         if (!approveReceipt || approveReceipt.status !== 1) {
           throw new Error('Token approval transaction failed');
