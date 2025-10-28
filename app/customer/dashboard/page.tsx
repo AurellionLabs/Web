@@ -42,6 +42,7 @@ import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract } from 'ethers';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
+import { formatTokenAmount } from '@/lib/formatters';
 
 type SortConfig = {
   key: 'tokenQuantity' | 'price' | null;
@@ -518,7 +519,9 @@ export default function CustomerDashboard() {
                       <td className="p-4">{order.id}</td>
                       <td className="p-4 capitalize">{order.asset?.name}</td>
                       <td className="p-4">{order.tokenQuantity}</td>
-                      <td className="p-4">{order.price} USDT</td>
+                      <td className="p-4">
+                        ${formatTokenAmount(order.price, 6, 2)}
+                      </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           {order.currentStatus === OrderStatus.SETTLED && (

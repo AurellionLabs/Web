@@ -22,7 +22,7 @@ import { Pool, PoolDynamicData, PoolStatus } from '@/domain/pool';
 import { useToast } from '@/hooks/use-toast';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useWallet } from '@/hooks/useWallet';
-import { formatWeiToCurrency, formatWeiToEther } from '@/lib/utils';
+import { formatTokenAmount } from '@/lib/formatters';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
 
@@ -59,25 +59,37 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
           const {
             progressPercentage,
             timeRemainingSeconds,
-            tvlFormatted,
-            fundingGoalFormatted,
-            rewardFormatted,
             volume24h,
             volumeChangePercentage,
-            ...poolData
           } = poolWithDynamics;
-          setPool(poolData);
+
+          setPool({
+            id: poolWithDynamics.id,
+            name: poolWithDynamics.name,
+            description: poolWithDynamics.description,
+            assetName: poolWithDynamics.assetName,
+            tokenAddress: poolWithDynamics.tokenAddress,
+            providerAddress: poolWithDynamics.providerAddress,
+            fundingGoal: poolWithDynamics.fundingGoal,
+            totalValueLocked: poolWithDynamics.totalValueLocked,
+            startDate: poolWithDynamics.startDate,
+            durationDays: poolWithDynamics.durationDays,
+            rewardRate: poolWithDynamics.rewardRate,
+            assetPrice: poolWithDynamics.assetPrice,
+            status: poolWithDynamics.status,
+            supportingDocuments: poolWithDynamics.supportingDocuments,
+          });
+
           setPoolDynamics({
             progressPercentage,
             timeRemainingSeconds,
-            tvlFormatted,
-            fundingGoalFormatted,
-            rewardFormatted,
+            tvl: poolWithDynamics.tvl,
+            fundingGoal: poolWithDynamics.fundingGoal,
+            reward: poolWithDynamics.rewardRate ?? 0,
             volume24h,
             volumeChangePercentage,
           });
           setDailyPercentageChange(volumeChangePercentage || '+0.0%');
-          selectPool(poolData);
         }
       } catch (error) {
         console.error('Error loading pool data:', error);
@@ -113,21 +125,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
 
   const getTotalDailyVolume = () => {
     if (!poolDynamics?.volume24h) return '0.00';
-    // Convert wei to ether, then format
-    const etherValue = formatWeiToEther(poolDynamics.volume24h);
-    const value = parseFloat(etherValue);
-    if (isNaN(value)) return '0.00';
-
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(2)}M`;
-    } else if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`;
-    } else {
-      return value.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-    }
+    return formatTokenAmount(poolDynamics.volume24h, 18, 2);
   };
 
   const handleRewardClaim = async () => {
@@ -143,7 +141,10 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     setIsClaimingReward(true);
     try {
       if (pool.status === PoolStatus.PAID) {
-        toast('Rewards have already been paid out');
+        toast({
+          title: 'Info',
+          description: 'Rewards have already been paid out',
+        });
         return;
       }
 
@@ -210,15 +211,19 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     name: pool?.name || '',
     description: pool?.description || '',
     supportingDocuments: pool?.supportingDocuments || [],
-    tvl: poolDynamics?.tvlFormatted || '$0',
+    tvl: poolDynamics?.tvl
+      ? formatTokenAmount(poolDynamics.tvl, 18, 2)
+      : '0.00',
     completionPercentage: `${poolDynamics?.progressPercentage || 0}%`,
-    fundingGoal: poolDynamics?.fundingGoalFormatted || '$0',
+    fundingGoal: poolDynamics?.fundingGoal
+      ? formatTokenAmount(poolDynamics.fundingGoal, 18, 2)
+      : '0.00',
     volume24h: `$${getTotalDailyVolume()}`,
     volumeChange: dailyPercentageChange,
     token0Balance: pool?.assetName || '',
     token1Balance: 'Funding',
     lockupPeriod: pool ? pool.startDate + pool.durationDays * 24 * 60 * 60 : 0,
-    reward: poolDynamics?.rewardFormatted || '0%',
+    reward: poolDynamics?.reward ? `${poolDynamics.reward.toFixed(2)}%` : '0%',
     timeRemaining: poolDynamics?.timeRemainingSeconds || 0,
     status: pool ? getStatusText(pool.status) : 'Unknown',
   };

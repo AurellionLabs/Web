@@ -29,6 +29,7 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { OrderWithAsset } from '@/app/types/shared';
+import { formatTokenAmount } from '@/lib/formatters';
 
 const orderStatuses = [
   { value: 'all', label: 'All Statuses' },
@@ -334,7 +335,9 @@ function OrdersContent({
                       {order.asset?.name || 'Unknown Asset'}
                     </td>
                     <td className="p-4">{order.tokenQuantity}</td>
-                    <td className="p-4">{order.price} USDT</td>
+                    <td className="p-4">
+                      {formatTokenAmount(order.price, 6, 2)} USDT
+                    </td>
                     <td className="p-4 capitalize">{order.currentStatus}</td>
                   </tr>
                 ))}

@@ -2,6 +2,7 @@ import { Button } from './button';
 import { ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
+import { formatTokenAmount } from '@/lib/formatters';
 
 type SortConfig = {
   key: 'name' | 'class' | 'amount' | 'price' | 'totalValue' | null;
@@ -20,13 +21,6 @@ export function TokenizedAssetTable({
   sortConfig,
 }: TokenizedAssetTableProps) {
   const router = useRouter();
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
-  };
 
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800">
@@ -112,10 +106,10 @@ export function TokenizedAssetTable({
                 </td>
                 <td className="py-4 px-4">{parseInt(asset.capacity)}</td>
                 <td className="py-4 px-4">
-                  {formatCurrency(parseFloat(asset.price))}
+                  ${formatTokenAmount(asset.price, 0, 2)}
                 </td>
                 <td className="py-4 px-4">
-                  {formatCurrency(asset.totalValue)}
+                  ${formatTokenAmount(String(asset.totalValue), 0, 2)}
                 </td>
               </tr>
             ))}

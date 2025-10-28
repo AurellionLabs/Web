@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { Pool } from '@/domain/pool';
 import { useWallet } from '@/hooks/useWallet';
+import { formatTokenAmount } from '@/lib/formatters';
 
 const assetSchema = z.object({
   amount: z.string().refine(
@@ -63,7 +64,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     assetPrice: pool
       ? `1 ${pool.assetName} = $${parseFloat(pool.assetPrice).toLocaleString()}`
       : '1 Asset = $0',
-    supplyAPY: pool ? `${pool.rewardRate.toFixed(2)}%` : '0%',
+    supplyAPY: pool ? `${pool.rewardRate?.toFixed(2) || '0.00'}%` : '0%',
   };
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -166,16 +167,6 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     } catch (error) {
       return false;
     }
-  };
-
-  const formatAmount = (amount: string) => {
-    if (!amount) return '0.00';
-    const num = parseFloat(amount);
-    if (isNaN(num)) return '0.00';
-    return num.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
   };
 
   if (loading || !pool) {
@@ -295,7 +286,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   <div className="flex items-center justify-between">
                     <span className="text-gray-400">Liquidity Amount</span>
                     <span className="font-medium">
-                      ${formatAmount(tokenAmount)} AURA
+                      ${formatTokenAmount(tokenAmount, 0, 2)} AURA
                     </span>
                   </div>
 
@@ -305,7 +296,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                       Platform Fee ({PLATFORM_FEE_PERCENTAGE}%)
                     </span>
                     <span className="font-medium text-amber-400">
-                      ${formatAmount(platformFee)} AURA
+                      ${formatTokenAmount(platformFee, 0, 2)} AURA
                     </span>
                   </div>
 
@@ -316,7 +307,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold">Total Amount</span>
                     <span className="text-lg font-semibold text-white">
-                      ${formatAmount(totalAmount)} AURA
+                      ${formatTokenAmount(totalAmount, 0, 2)} AURA
                     </span>
                   </div>
                 </div>
@@ -343,7 +334,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                 Adding Liquidity...
               </div>
             ) : (
-              `Add Liquidity - $${formatAmount(totalAmount)} AURA`
+              `Add Liquidity - $${formatTokenAmount(totalAmount, 0, 2)} AURA`
             )}
           </Button>
         </form>

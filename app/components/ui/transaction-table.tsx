@@ -21,28 +21,7 @@ const formatDateTime = (timestamp: number) => {
   }
 };
 
-const formatAmount = (amount: string) => {
-  if (!amount || amount === '0') return '0';
-
-  try {
-    // Convert from wei to tokens (divide by 10^18)
-    const amountInWei = parseFloat(amount);
-    if (isNaN(amountInWei)) return '0';
-
-    const num = amountInWei / 1e18;
-
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(2)}M`;
-    } else if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    } else {
-      return num.toFixed(2);
-    }
-  } catch (error) {
-    console.error('Error formatting amount:', error);
-    return '0';
-  }
-};
+import { formatTokenAmount } from '@/lib/formatters';
 
 const formatAddress = (address: string | undefined) => {
   if (!address || typeof address !== 'string' || address.length < 10) {
@@ -109,7 +88,7 @@ export function TransactionTable({
                     {formatAddress(tx.stakerAddress)}
                   </td>
                   <td className="py-4 px-4 text-right font-semibold">
-                    ${formatAmount(tx.amount)}
+                    ${formatTokenAmount(tx.amount, 18, 2)}
                   </td>
                   <td className="py-4 px-4 text-right">
                     {formatTransactionHash(tx.transactionHash) ? (

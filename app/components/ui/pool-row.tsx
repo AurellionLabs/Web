@@ -17,7 +17,7 @@ const formatDaysLeft = (startDate: number, durationDays: number) => {
   return daysLeft.toString();
 };
 
-import { formatWeiToCurrency } from '@/lib/utils';
+import { formatTokenAmount } from '@/lib/formatters';
 
 export function PoolRow({ pool, index }: PoolRowProps) {
   const { selectPool } = usePoolsProvider();
@@ -33,8 +33,8 @@ export function PoolRow({ pool, index }: PoolRowProps) {
 
   useEffect(() => {
     setFormattedValues({
-      tvl: formatWeiToCurrency(pool.totalValueLocked),
-      reward: pool.rewardRate.toFixed(2),
+      tvl: formatTokenAmount(pool.totalValueLocked, 18, 2),
+      reward: pool.rewardRate?.toFixed(2) || '0.00',
       daysLeft: formatDaysLeft(pool.startDate, pool.durationDays),
     });
   }, [pool]);

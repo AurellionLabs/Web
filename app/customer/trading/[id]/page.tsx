@@ -21,6 +21,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { TokenizedAssetAttribute } from '@/domain/node';
+import { formatTokenAmount } from '@/lib/formatters';
 
 ChartJS.register(
   CategoryScale,
@@ -265,7 +266,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             >
               <div className="mb-6">
                 <div className="text-2xl sm:text-3xl font-bold mb-1">
-                  ${parseFloat(asset.price).toFixed(2)}
+                  ${formatTokenAmount(asset.price, 0, 2)}
                 </div>
                 <p className="text-sm text-gray-400">Current Price</p>
               </div>

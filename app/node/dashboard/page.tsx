@@ -42,7 +42,7 @@ import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
 import type { Asset } from '@/domain/shared';
 import { Order, OrderStatus } from '@/domain/orders';
-
+import { formatTokenAmount } from '@/lib/formatters';
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
   assetId: z.string({
@@ -883,7 +883,9 @@ export default function NodeDashboardPage() {
                       {order.asset?.name || 'Unknown Asset'}
                     </td>
                     <td className="p-4">{order.tokenQuantity}</td>
-                    <td className="p-4">{order.price} USDT</td>
+                    <td className="p-4">
+                      ${formatTokenAmount(order.price, 6, 2)}{' '}
+                    </td>
                     <td className="p-4 capitalize">{order.currentStatus}</td>
                     <td className="p-4">
                       {order.currentStatus === OrderStatus.CREATED ? (

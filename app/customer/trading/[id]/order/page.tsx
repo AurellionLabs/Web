@@ -23,6 +23,7 @@ import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { Order, OrderStatus } from '@/domain/orders';
+import { formatTokenAmount, parseTokenAmount } from '@/lib/formatters';
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -154,9 +155,8 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   // Convert price to USDT units (6 decimals)
                   // asset.price is stored as a human-readable number (e.g., "2" for $2.00)
                   // We need to convert it to USDT units: 2 * 10^6 = 2000000
-                  const priceInUSDT = BigInt(
-                    Math.floor(parseFloat(asset.price || '0') * 1_000_000),
-                  );
+                  const assetPrice = asset.price || '0';
+                  const priceInUSDT = parseTokenAmount(assetPrice, 6);
                   const totalPrice = priceInUSDT * BigInt(data.quantity);
 
                   console.log('[OrderPage] Asset price calculation:', {
@@ -287,7 +287,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   </h3>
                   <div className="flex justify-between mb-2">
                     <span>Price per unit:</span>
-                    <span>${parseFloat(asset.price || '0').toFixed(2)}</span>
+                    <span>${formatTokenAmount(asset.price || '0', 0, 2)}</span>
                   </div>
                   <div className="flex justify-between mb-2">
                     <span>Quantity:</span>
