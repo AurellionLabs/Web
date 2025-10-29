@@ -16,9 +16,9 @@ import {
   Package,
   Truck,
 } from 'lucide-react';
-import { Delivery } from '@/app/providers/driver.provider';
 import { useState } from 'react';
-
+import { Delivery } from '@/domain/driver';
+import { formatAddress, formatTokenAmount } from '@/lib/formatters';
 interface DeliveryActionDialogProps {
   delivery: Delivery;
   onConfirm: (jobId: string) => Promise<void>;
@@ -117,13 +117,13 @@ export function DeliveryActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Job ID</span>
                 <span className="text-base font-medium text-right">
-                  {delivery.jobId}
+                  {formatAddress(delivery.jobId)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Customer</span>
                 <span className="text-base font-medium text-right">
-                  {delivery.customer}
+                  {formatAddress(delivery.customer)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -131,7 +131,7 @@ export function DeliveryActionDialog({
                 <span
                   className={`text-base font-medium text-right ${config.accentColor}`}
                 >
-                  ${delivery.fee.toFixed(2)}
+                  ${formatTokenAmount(delivery.fee, 0, 2)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">

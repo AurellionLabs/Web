@@ -3,6 +3,7 @@
 import { StakeEvent } from '@/domain/pool';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { useEffect } from 'react';
+import { formatTokenAmount, formatAddress } from '@/lib/formatters';
 
 const formatDateTime = (timestamp: number) => {
   if (!timestamp || isNaN(timestamp)) {
@@ -19,15 +20,6 @@ const formatDateTime = (timestamp: number) => {
     console.error('Error formatting date:', error);
     return 'Invalid Date';
   }
-};
-
-import { formatTokenAmount } from '@/lib/formatters';
-
-const formatAddress = (address: string | undefined) => {
-  if (!address || typeof address !== 'string' || address.length < 10) {
-    return 'Unknown';
-  }
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
 const formatTransactionHash = (hash: string | undefined) => {

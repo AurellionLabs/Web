@@ -86,3 +86,12 @@ export function parseTokenAmount(
     return 0n;
   }
 }
+
+/**
+ * Format Ethereum address to shortened format
+ * @param address - Full Ethereum address
+ * @returns Shortened address like "0x1234...5678"
+ */
+export const formatAddress = (address: string): string => {
+  return address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+};

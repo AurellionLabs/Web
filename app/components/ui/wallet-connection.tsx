@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from './button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { useToast } from '@/hooks/use-toast';
-import { formatAddress } from '@/lib/utils';
+import { formatAddress } from '@/lib/formatters';
 import { ethers } from 'ethers';
 import { SUPPORTED_CHAINS, NETWORK_CONFIGS } from '@/config/network';
 import { useMainProvider } from '@/app/providers/main.provider';
