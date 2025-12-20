@@ -7,6 +7,8 @@ import { IOrderService } from '@/domain/orders/order';
 import { NodeAssetService } from '../services/node-asset.service';
 import { RepositoryContext } from './repository-context';
 import { OrderService } from '@/infrastructure/services/order-service';
+import { IPoolService } from '@/domain/pool';
+import { PoolService } from '../services/pool.service';
 
 /**
  * Context that manages all services and their dependencies - UPDATED
@@ -17,6 +19,7 @@ export class ServiceContext {
   private repositoryContext: RepositoryContext | null = null;
   private orderService: IOrderService | null = null;
   private nodeService: INodeService | null = null;
+  private poolService: IPoolService | null = null;
 
   private constructor() {}
 
@@ -50,6 +53,19 @@ export class ServiceContext {
         e,
       );
       this.orderService = null;
+    }
+
+    // Wire PoolService using provider + signer from RepositoryContext
+    try {
+      const signer = repositoryContext.getSigner();
+      const provider = signer.provider;
+      if (!provider) {
+        throw new Error('Provider not available from signer');
+      }
+      this.poolService = new PoolService(provider, signer, repositoryContext);
+    } catch (e) {
+      console.warn('[ServiceContext] Unable to initialize PoolService yet:', e);
+      this.poolService = null;
     }
 
     console.log('[ServiceContext] Successfully created refactored services');
@@ -92,6 +108,18 @@ export class ServiceContext {
   }
 
   /**
+   * Get the pool service instance
+   */
+  public getPoolService(): IPoolService {
+    if (!this.poolService) {
+      throw new Error(
+        'PoolService not initialized. Ensure RepositoryContext is initialized before ServiceContext.',
+      );
+    }
+    return this.poolService;
+  }
+
+  /**
    * Clean up resources
    */
   public cleanup(): void {
@@ -99,5 +127,6 @@ export class ServiceContext {
     this.repositoryContext = null;
     this.orderService = null;
     this.nodeService = null;
+    this.poolService = null;
   }
 }
