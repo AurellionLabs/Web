@@ -1,18 +1,18 @@
 export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
-  '0xD3BCC97E95aAc74de1Daeb6bEd55a16D4CF7C6eD';
+  '0x22c9A480C90981c1ee775FEfed9A5Ad571aDC572';
 export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
-  '0xBa94D518861a0461D4B9751dc875fB8bB26eC23B';
+  '0x769888Fff928a02aA848D60BcDA1BC8be97b8D33';
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
-  '0x2a04e043B7cEdE2902480D2b06e17028A62353Cc';
+  '0x4C87ee5F93A57db9CCaD56D9B4CFbfa39d16eFD9';
 export const NEXT_PUBLIC_AUSYS_ADDRESS =
-  '0x11BEd7709f1b1DE06C5769774174d4e052aE2cFC';
+  '0x770E9fBAAa70EadCd413fc1b501A572D127120d5';
 export const NEXT_PUBLIC_AURA_GOAT_ADDRESS =
-  '0x45ef184BfDd42cccF542754656dCAc2637012894';
+  '0x2175A331a50Df9Dd8e1488737bE25D8406ABa76f';
 export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/aura-asset-base-sepolia/version/latest';
+  'https://api.studio.thegraph.com/query/112595/aura-asset-base-sepolia/1.20251221.936';
 export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/austake-base-sepolia/version/latest';
+  'https://api.studio.thegraph.com/query/112595/austake-base-sepolia/1.20251221.936';
 export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/aurum-base-sepolia/version/latest';
+  'https://api.studio.thegraph.com/query/112595/aurum-base-sepoliapolia/1.20251221.936';
 export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest';
+  'https://api.studio.thegraph.com/query/112595/ausys-base-sepoliaapolia/1.20251221.936';

@@ -2,6 +2,7 @@ import { newMockEvent } from 'matchstick-as';
 import { ethereum, Address, Bytes, BigInt } from '@graphprotocol/graph-ts';
 import {
   ApprovalForAll,
+  AssetAttributeAdded,
   MintedAsset,
   OwnershipTransferred,
   TransferBatch,
@@ -31,11 +32,50 @@ export function createApprovalForAllEvent(
   return approvalForAllEvent;
 }
 
+export function createAssetAttributeAddedEvent(
+  hash: Bytes,
+  attributeIndex: BigInt,
+  name: string,
+  values: Array<string>,
+  description: string,
+): AssetAttributeAdded {
+  let assetAttributeAddedEvent =
+    changetype<AssetAttributeAdded>(newMockEvent());
+
+  assetAttributeAddedEvent.parameters = new Array();
+
+  assetAttributeAddedEvent.parameters.push(
+    new ethereum.EventParam('hash', ethereum.Value.fromFixedBytes(hash)),
+  );
+  assetAttributeAddedEvent.parameters.push(
+    new ethereum.EventParam(
+      'attributeIndex',
+      ethereum.Value.fromUnsignedBigInt(attributeIndex),
+    ),
+  );
+  assetAttributeAddedEvent.parameters.push(
+    new ethereum.EventParam('name', ethereum.Value.fromString(name)),
+  );
+  assetAttributeAddedEvent.parameters.push(
+    new ethereum.EventParam('values', ethereum.Value.fromStringArray(values)),
+  );
+  assetAttributeAddedEvent.parameters.push(
+    new ethereum.EventParam(
+      'description',
+      ethereum.Value.fromString(description),
+    ),
+  );
+
+  return assetAttributeAddedEvent;
+}
+
 export function createMintedAssetEvent(
   account: Address,
   hash: Bytes,
   tokenId: BigInt,
-  asset: ethereum.Tuple,
+  name: string,
+  assetClass: string,
+  className: string,
 ): MintedAsset {
   let mintedAssetEvent = changetype<MintedAsset>(newMockEvent());
 
@@ -54,7 +94,16 @@ export function createMintedAssetEvent(
     ),
   );
   mintedAssetEvent.parameters.push(
-    new ethereum.EventParam('asset', ethereum.Value.fromTuple(asset)),
+    new ethereum.EventParam('name', ethereum.Value.fromString(name)),
+  );
+  mintedAssetEvent.parameters.push(
+    new ethereum.EventParam(
+      'assetClass',
+      ethereum.Value.fromString(assetClass),
+    ),
+  );
+  mintedAssetEvent.parameters.push(
+    new ethereum.EventParam('className', ethereum.Value.fromString(className)),
   );
 
   return mintedAssetEvent;

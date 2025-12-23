@@ -1,7 +1,6 @@
 import { ethers } from 'hardhat';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 import * as dotenv from 'dotenv';
-import { locationContract } from '../typechain-types';
 
 // Import the constants directly
 import {

@@ -1,8 +1,0 @@
-{
-  "base-sepolia": {
-    "AurumNodeManager": {
-      "address": "0x5Dd5881fFa8fb3c4fAD112ffc4a37f0300dd1835",
-      "startBlock": 32311127
-    }
-  }
-}
