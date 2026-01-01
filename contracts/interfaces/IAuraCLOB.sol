@@ -96,26 +96,33 @@ interface IAuraCLOB {
     }
     
     // ==========================================================================
-    // EVENTS - Order Book
+    // EVENTS - Buyer Orders
     // ==========================================================================
     
-    event OrderPlaced(
+    event BuyOrderPlaced(
         bytes32 indexed orderId,
-        address indexed maker,
+        address indexed buyer,
         address baseToken,
         uint256 baseTokenId,
         address quoteToken,
         uint256 price,
-        uint256 quantity,
-        bool isBuy,
-        OrderType orderType
+        uint256 quantity
     );
     
-    event OrderCancelled(
+    event BuyOrderCancelled(
         bytes32 indexed orderId,
-        address indexed maker,
-        uint256 remainingQuantity
+        address indexed buyer
     );
+    
+    event BuyOrderUpdated(
+        bytes32 indexed orderId,
+        address indexed buyer,
+        uint256 newPrice
+    );
+    
+    // ==========================================================================
+    // EVENTS - Order Matching
+    // ==========================================================================
     
     event OrderMatched(
         bytes32 indexed tradeId,
@@ -212,37 +219,44 @@ interface IAuraCLOB {
     );
     
     // ==========================================================================
-    // ORDER BOOK FUNCTIONS
+    // BUYER ORDER FUNCTIONS
     // ==========================================================================
     
     /**
-     * @notice Place a limit or market order
+     * @notice Buyer places a limit buy order at their chosen price
      * @param baseToken The asset token contract (AuraAsset)
-     * @param baseTokenId The specific token ID
+     * @param baseTokenId The specific token ID to buy
      * @param quoteToken The payment token (USDC, etc.)
-     * @param price Price per unit (0 for market orders)
-     * @param quantity Number of tokens to buy/sell
-     * @param isBuy True for buy order, false for sell
-     * @param orderType LIMIT or MARKET
-     * @param deliveryLocation Where to deliver (for buy orders)
+     * @param price Maximum price willing to pay per unit
+     * @param quantity Number of tokens to buy
+     * @param deliveryLocation Where to deliver when matched
      * @return orderId The unique order identifier
      */
-    function placeOrder(
+    function placeBuyOrder(
         address baseToken,
         uint256 baseTokenId,
         address quoteToken,
         uint256 price,
         uint256 quantity,
-        bool isBuy,
-        OrderType orderType,
         Location calldata deliveryLocation
     ) external returns (bytes32 orderId);
     
     /**
-     * @notice Cancel an open order
+     * @notice Buyer cancels their buy order
      * @param orderId The order to cancel
      */
-    function cancelOrder(bytes32 orderId) external;
+    function cancelBuyOrder(bytes32 orderId) external;
+    
+    /**
+     * @notice Buyer updates price on existing buy order
+     * @param orderId The order to update
+     * @param newPrice The new maximum price willing to pay
+     */
+    function updateBuyOrderPrice(bytes32 orderId, uint256 newPrice) external;
+    
+    // ==========================================================================
+    // ORDER BOOK VIEW FUNCTIONS
+    // ==========================================================================
     
     /**
      * @notice Get order details
@@ -263,41 +277,84 @@ interface IAuraCLOB {
         uint256 askDepth
     );
     
+    /**
+     * @notice Get all open buy orders for a trading pair (sorted by price desc)
+     */
+    function getBuyOrders(
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint256 limit
+    ) external view returns (MarketOrder[] memory);
+    
+    /**
+     * @notice Get all open sell orders for a trading pair (sorted by price asc)
+     */
+    function getSellOrders(
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint256 limit
+    ) external view returns (MarketOrder[] memory);
+    
+    // ==========================================================================
+    // NODE SELL ORDER EVENTS
+    // ==========================================================================
+    
+    event NodeSellOrderPlaced(
+        bytes32 indexed orderId,
+        address indexed node,
+        address token,
+        uint256 tokenId,
+        address quoteToken,
+        uint256 price,
+        uint256 quantity
+    );
+    
+    event NodeSellOrderCancelled(
+        bytes32 indexed orderId,
+        address indexed node
+    );
+    
+    event NodeSellOrderUpdated(
+        bytes32 indexed orderId,
+        address indexed node,
+        uint256 newPrice
+    );
+    
     // ==========================================================================
     // NODE INVENTORY FUNCTIONS
     // ==========================================================================
     
     /**
-     * @notice Node lists inventory (creates sell order automatically)
-     * @dev Called by AurumNodeManager when SupportedAssetAdded
+     * @notice Node places a sell order for their inventory at chosen price
+     * @param token The asset token contract (AuraAsset)
+     * @param tokenId The specific token ID
+     * @param quoteToken The payment token (USDC, etc.)
+     * @param price Price per unit set by the node
+     * @param quantity Number of tokens to sell
+     * @return orderId The unique order identifier
      */
-    function listNodeInventory(
-        address node,
+    function placeNodeSellOrder(
         address token,
         uint256 tokenId,
+        address quoteToken,
         uint256 price,
         uint256 quantity
     ) external returns (bytes32 orderId);
     
     /**
-     * @notice Update node inventory price
+     * @notice Node cancels their sell order, returning inventory
+     * @param orderId The order to cancel
      */
-    function updateNodePrice(
-        address node,
-        address token,
-        uint256 tokenId,
-        uint256 newPrice
-    ) external;
+    function cancelNodeSellOrder(bytes32 orderId) external;
     
     /**
-     * @notice Update node inventory quantity
+     * @notice Node updates price on existing sell order
+     * @param orderId The order to update
+     * @param newPrice The new price per unit
      */
-    function updateNodeQuantity(
-        address node,
-        address token,
-        uint256 tokenId,
-        uint256 newQuantity
-    ) external;
+    function updateNodeSellOrderPrice(bytes32 orderId, uint256 newPrice) external;
     
     // ==========================================================================
     // DRIVER FUNCTIONS

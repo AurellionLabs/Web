@@ -58,47 +58,101 @@ The integrated system combines a Central Limit Order Book (CLOB) for price disco
 
 ## Complete Flow
 
-### Phase 1: Inventory Listing
+### Phase 0: Asset Tokenization
 
 ```
-Node                    AurumNodeManager              AuraCLOB
+Asset Owner             AuraAsset
+ │                           │
+ │  mintAsset()              │
+ │──────────────────────────▶│
+ │                           │
+ │                           │  MintedAsset event
+ │                           │  (tokenId created)
+ │                           │
+ │◀──────────────────────────│
+ │   Token minted            │
+ │                           │
+```
+
+### Phase 1: Node Inventory Setup
+
+```
+Node                    AurumNodeManager
+ │                           │
+ │  addSupportedAsset()      │
+ │──────────────────────────▶│
+ │                           │
+ │                           │  SupportedAssetAdded
+ │                           │  (inventory recorded)
+ │                           │
+ │◀──────────────────────────│
+ │   Inventory updated       │
+ │   (NO sell order yet)     │
+ │                           │
+```
+
+### Phase 1b: Node Lists on CLOB (Manual)
+
+```
+Node                    AuraCLOB                     Order Book
  │                           │                           │
- │  addSupportedAsset()      │                           │
+ │  placeNodeSellOrder()     │                           │
+ │  (price set by node)      │                           │
  │──────────────────────────▶│                           │
  │                           │                           │
- │                           │  SupportedAssetAdded      │
+ │                           │  NodeSellOrderPlaced      │
+ │                           │  - Validate inventory     │
+ │                           │  - Reserve quantity       │
+ │                           │  - Create sell order      │
  │                           │──────────────────────────▶│
  │                           │                           │
- │                           │                           │  Create sell order
- │                           │                           │  at node's price
- │                           │                           │
- │                           │◀──────────────────────────│
- │                           │    OrderPlaced event      │
+ │◀──────────────────────────│                           │
+ │   Order ID returned       │                           │
  │                           │                           │
 ```
 
-### Phase 2: Order Matching
+### Phase 2: Buyer Places Buy Order
 
 ```
 Buyer                   AuraCLOB                     Order Book
  │                         │                            │
- │  placeOrder(BUY)        │                            │
+ │  placeBuyOrder()        │                            │
+ │  (price set by buyer)   │                            │
  │────────────────────────▶│                            │
  │                         │                            │
- │                         │  Find matching sell        │
+ │                         │  Check for matching asks   │
  │                         │────────────────────────────▶
  │                         │                            │
- │                         │◀────────────────────────────
- │                         │  Best ask from Node X      │
- │                         │                            │
- │                         │  Execute trade             │
- │                         │  - Update buyer order      │
- │                         │  - Update seller order     │
- │                         │  - Reserve node inventory  │
+ │                         │  If buyer.price >= ask:    │
+ │                         │    → Immediate match!      │
+ │                         │  Else:                     │
+ │                         │    → Rest on book as bid   │
  │                         │                            │
  │◀────────────────────────│                            │
- │   OrderMatched event    │                            │
+ │   BuyOrderPlaced event  │                            │
  │                         │                            │
+
+Buyer can also:
+  • updateBuyOrderPrice() - raise/lower bid
+  • cancelBuyOrder() - remove from book
+```
+
+### Phase 2b: Order Matching
+
+```
+                        AuraCLOB                     Order Book
+                           │                            │
+When buyer.price >= ask:   │                            │
+                           │  Match orders              │
+                           │────────────────────────────▶
+                           │                            │
+                           │  Execute trade             │
+                           │  - Fill buy order          │
+                           │  - Fill sell order         │
+                           │  - Reserve node inventory  │
+                           │                            │
+                           │  OrderMatched event        │
+                           │                            │
 ```
 
 ### Phase 3: Logistics Order Creation

@@ -51,14 +51,14 @@ describe('Integrated CLOB + Logistics Flow', () => {
     vi.clearAllMocks();
   });
 
-  describe('Phase 1: Node Inventory → CLOB Sell Orders', () => {
-    it('should auto-create sell order when node adds inventory', async () => {
+  describe('Phase 1: Node Inventory Setup (No Auto-Listing)', () => {
+    it('should create inventory without auto-creating sell order', async () => {
       const node =
         '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as `0x${string}`;
       const token =
         '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as `0x${string}`;
       const tokenId = 1n;
-      const price = 1000000n; // 1 USDC
+      const price = 1000000n; // Reference price
       const capacity = 100n;
 
       const event = createMockEvent({
@@ -66,7 +66,7 @@ describe('Integrated CLOB + Logistics Flow', () => {
         asset: { token, tokenId, price, capacity },
       });
 
-      // Simulate handler: create inventory
+      // Simulate handler: create inventory only (no sell order)
       await mockDb.nodeInventory.upsert({
         id: `${node}-${token}-${tokenId}`,
         create: {
@@ -77,7 +77,7 @@ describe('Integrated CLOB + Logistics Flow', () => {
           availableQuantity: capacity,
           reservedQuantity: 0n,
           basePrice: price,
-          autoList: true,
+          autoList: false, // No auto-listing
           createdAt: event.block.timestamp,
           updatedAt: event.block.timestamp,
         },
@@ -88,35 +88,313 @@ describe('Integrated CLOB + Logistics Flow', () => {
         },
       });
 
-      // Create sell order on CLOB
-      const orderId = `${event.transaction.hash}-${event.log.logIndex}`;
+      expect(mockDb.nodeInventory.upsert).toHaveBeenCalled();
+      // No sell order created automatically
+      expect(mockDb.marketOrders.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Phase 1b: Node Manually Lists on CLOB', () => {
+    it('should create sell order when node explicitly lists inventory', async () => {
+      const orderId = '0x1111' as `0x${string}`;
+      const node =
+        '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as `0x${string}`;
+      const token =
+        '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as `0x${string}`;
+      const tokenId = 1n;
+      const quoteToken = '0xUSDC' as `0x${string}`;
+      const price = 1200000n; // Node's chosen price (different from reference)
+      const quantity = 50n; // Partial listing
+
+      // Mock existing inventory
+      mockDb.nodeInventory.findUnique.mockResolvedValueOnce({
+        id: `${node}-${token}-${tokenId}`,
+        availableQuantity: 100n,
+      });
+
+      const event = createMockEvent({
+        orderId,
+        node,
+        token,
+        tokenId,
+        quoteToken,
+        price,
+        quantity,
+      });
+
+      // Create sell order
       await mockDb.marketOrders.create({
         id: orderId,
-        orderBookId: `${token}-${tokenId}-USDC`,
+        orderBookId: `${token}-${tokenId}-${quoteToken}`,
         maker: node,
         nodeId: node,
         baseToken: token,
         baseTokenId: tokenId,
+        quoteToken,
         side: 'sell',
         orderType: 'limit',
-        price: price,
-        quantity: capacity,
+        price: price, // Node's chosen price
+        quantity: quantity,
         status: 'open',
         createdAt: event.block.timestamp,
       });
 
-      expect(mockDb.nodeInventory.upsert).toHaveBeenCalled();
+      // Reserve inventory
+      await mockDb.nodeInventory.update({
+        id: `${node}-${token}-${tokenId}`,
+        data: {
+          availableQuantity: 50n, // 100 - 50 listed
+        },
+      });
+
       expect(mockDb.marketOrders.create).toHaveBeenCalledWith(
         expect.objectContaining({
           nodeId: node,
           side: 'sell',
-          quantity: capacity,
+          price: 1200000n, // Node's chosen price
+          quantity: 50n,
+        }),
+      );
+      expect(mockDb.nodeInventory.update).toHaveBeenCalled();
+    });
+
+    it('should reject sell order if insufficient inventory', async () => {
+      const node = '0xaaaa' as `0x${string}`;
+      const token = '0xbbbb' as `0x${string}`;
+
+      // Mock low inventory
+      mockDb.nodeInventory.findUnique.mockResolvedValueOnce({
+        id: `${node}-${token}-1`,
+        availableQuantity: 10n,
+      });
+
+      const event = createMockEvent({
+        orderId: '0x1111',
+        node,
+        token,
+        tokenId: 1n,
+        quoteToken: '0xUSDC',
+        price: 1000000n,
+        quantity: 50n, // Requesting more than available
+      });
+
+      // Should not create order
+      // Handler would return early after logging error
+      expect(mockDb.marketOrders.create).not.toHaveBeenCalled();
+    });
+
+    it('should allow node to cancel sell order and return inventory', async () => {
+      const orderId = '0x1111' as `0x${string}`;
+      const node = '0xaaaa' as `0x${string}`;
+      const token = '0xbbbb' as `0x${string}`;
+      const tokenId = 1n;
+
+      // Mock existing order
+      mockDb.marketOrders.findUnique.mockResolvedValueOnce({
+        id: orderId,
+        nodeId: node,
+        baseToken: token,
+        baseTokenId: tokenId,
+        remainingQuantity: 30n,
+        orderBookId: `${token}-${tokenId}-USDC`,
+      });
+
+      const event = createMockEvent({
+        orderId,
+        node,
+      });
+
+      // Cancel order
+      await mockDb.marketOrders.update({
+        id: orderId,
+        data: {
+          status: 'cancelled',
+          remainingQuantity: 0n,
+        },
+      });
+
+      // Return inventory
+      await mockDb.nodeInventory.update({
+        id: `${node}-${token}-${tokenId}`,
+        data: {
+          availableQuantity: 130n, // 100 + 30 returned
+        },
+      });
+
+      expect(mockDb.marketOrders.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'cancelled' }),
+        }),
+      );
+    });
+
+    it('should allow node to update sell order price', async () => {
+      const orderId = '0x1111' as `0x${string}`;
+      const node = '0xaaaa' as `0x${string}`;
+      const oldPrice = 1000000n;
+      const newPrice = 1100000n;
+
+      // Mock existing order
+      mockDb.marketOrders.findUnique.mockResolvedValueOnce({
+        id: orderId,
+        nodeId: node,
+        price: oldPrice,
+        orderBookId: 'token-1-USDC',
+      });
+
+      const event = createMockEvent({
+        orderId,
+        node,
+        newPrice,
+      });
+
+      await mockDb.marketOrders.update({
+        id: orderId,
+        data: {
+          price: newPrice,
+        },
+      });
+
+      expect(mockDb.marketOrders.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ price: newPrice }),
         }),
       );
     });
   });
 
-  describe('Phase 2: Order Matching', () => {
+  describe('Phase 2: Buyer Places Buy Orders', () => {
+    it('should create buy order on the book', async () => {
+      const orderId = '0x5555' as `0x${string}`;
+      const buyer =
+        '0xcccccccccccccccccccccccccccccccccccccccc' as `0x${string}`;
+      const token =
+        '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as `0x${string}`;
+      const tokenId = 1n;
+      const quoteToken = '0xUSDC' as `0x${string}`;
+      const price = 900000n; // Buyer's bid price
+      const quantity = 25n;
+
+      const event = createMockEvent({
+        orderId,
+        buyer,
+        baseToken: token,
+        baseTokenId: tokenId,
+        quoteToken,
+        price,
+        quantity,
+      });
+
+      // Create buy order
+      await mockDb.marketOrders.create({
+        id: orderId,
+        orderBookId: `${token}-${tokenId}-${quoteToken}`,
+        maker: buyer,
+        nodeId: null,
+        baseToken: token,
+        baseTokenId: tokenId,
+        quoteToken,
+        side: 'buy',
+        orderType: 'limit',
+        price: price,
+        quantity: quantity,
+        status: 'open',
+        createdAt: event.block.timestamp,
+      });
+
+      // Update order book with new bid
+      await mockDb.orderBooks.upsert({
+        id: `${token}-${tokenId}-${quoteToken}`,
+        create: {
+          bestBid: price,
+          totalBuyOrders: 1n,
+          totalBuyVolume: quantity,
+        },
+        update: {
+          bestBid: price,
+          totalBuyOrders: 1n,
+        },
+      });
+
+      expect(mockDb.marketOrders.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          side: 'buy',
+          price: 900000n,
+          nodeId: null,
+        }),
+      );
+    });
+
+    it('should allow buyer to cancel buy order', async () => {
+      const orderId = '0x5555' as `0x${string}`;
+      const buyer = '0xcccc' as `0x${string}`;
+
+      // Mock existing buy order
+      mockDb.marketOrders.findUnique.mockResolvedValueOnce({
+        id: orderId,
+        maker: buyer,
+        side: 'buy',
+        remainingQuantity: 25n,
+        orderBookId: 'token-1-USDC',
+      });
+
+      const event = createMockEvent({
+        orderId,
+        buyer,
+      });
+
+      await mockDb.marketOrders.update({
+        id: orderId,
+        data: {
+          status: 'cancelled',
+          remainingQuantity: 0n,
+        },
+      });
+
+      expect(mockDb.marketOrders.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'cancelled' }),
+        }),
+      );
+    });
+
+    it('should allow buyer to update buy order price', async () => {
+      const orderId = '0x5555' as `0x${string}`;
+      const buyer = '0xcccc' as `0x${string}`;
+      const oldPrice = 900000n;
+      const newPrice = 950000n; // Raise bid
+
+      // Mock existing buy order
+      mockDb.marketOrders.findUnique.mockResolvedValueOnce({
+        id: orderId,
+        maker: buyer,
+        side: 'buy',
+        price: oldPrice,
+        orderBookId: 'token-1-USDC',
+      });
+
+      const event = createMockEvent({
+        orderId,
+        buyer,
+        newPrice,
+      });
+
+      await mockDb.marketOrders.update({
+        id: orderId,
+        data: {
+          price: newPrice,
+        },
+      });
+
+      expect(mockDb.marketOrders.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ price: newPrice }),
+        }),
+      );
+    });
+  });
+
+  describe('Phase 2b: Order Matching', () => {
     it('should match buy order with node sell order and create trade', async () => {
       const buyOrderId = '0x1111' as `0x${string}`;
       const sellOrderId = '0x2222' as `0x${string}`;

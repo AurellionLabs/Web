@@ -10,11 +10,11 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ponder_indexer
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - ponder_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,11 +28,10 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@aurellion.local
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "5050:80"
+      - '5050:80'
     depends_on:
       - postgres
 
 volumes:
   ponder_postgres_data:
     driver: local
-

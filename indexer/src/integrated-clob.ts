@@ -36,7 +36,8 @@ function getInventoryId(
 // =============================================================================
 
 /**
- * When a node adds/updates supported assets, create inventory and auto-list on CLOB
+ * When a node adds supported assets, only update inventory capacity
+ * Node must explicitly place sell orders at their chosen price
  */
 ponder.on(
   'AurumNodeManager:SupportedAssetAdded',
@@ -46,7 +47,7 @@ ponder.on(
 
     const inventoryId = getInventoryId(node, token, tokenId);
 
-    // Create or update inventory
+    // Create or update inventory (no auto-listing)
     await context.db.nodeInventory.upsert({
       id: inventoryId,
       create: {
@@ -56,8 +57,8 @@ ponder.on(
         totalCapacity: capacity,
         availableQuantity: capacity,
         reservedQuantity: 0n,
-        basePrice: price,
-        autoList: true,
+        basePrice: price, // Reference price, node can list at different price
+        autoList: false, // No auto-listing
         minOrderSize: 1n,
         maxOrderSize: null,
         createdAt: event.block.timestamp,
@@ -70,86 +71,21 @@ ponder.on(
       },
     });
 
-    // Get quote token from config (could be from contract or config)
-    const quoteToken =
-      '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as `0x${string}`; // USDC
-    const orderBookId = getOrderBookId(token, tokenId, quoteToken);
-
-    // Ensure order book exists
-    await context.db.orderBooks.upsert({
-      id: orderBookId,
-      create: {
-        baseToken: token,
-        baseTokenId: tokenId,
-        quoteToken: quoteToken,
-        bestBid: null,
-        bestAsk: price,
-        spread: null,
-        totalBuyOrders: 0n,
-        totalSellOrders: 1n,
-        totalBuyVolume: 0n,
-        totalSellVolume: capacity,
-        volume24h: 0n,
-        trades24h: 0n,
-        high24h: null,
-        low24h: null,
-        lastPrice: null,
-        isActive: true,
-        createdAt: event.block.timestamp,
-        updatedAt: event.block.timestamp,
-      },
-      update: {
-        updatedAt: event.block.timestamp,
-      },
-    });
-
-    // Auto-create sell order for node inventory
-    const orderId =
-      `${event.transaction.hash}-${event.log.logIndex}` as `0x${string}`;
-
-    await context.db.marketOrders.create({
-      id: orderId,
-      orderBookId: orderBookId,
-      maker: node,
-      nodeId: node,
-      baseToken: token,
-      baseTokenId: tokenId,
-      quoteToken: quoteToken,
-      side: 'sell',
-      orderType: 'limit',
-      price: price,
-      quantity: capacity,
-      filledQuantity: 0n,
-      remainingQuantity: capacity,
-      status: 'open',
-      expiresAt: null,
-      createdAt: event.block.timestamp,
-      updatedAt: event.block.timestamp,
-      blockNumber: event.block.number,
-      transactionHash: event.transaction.hash,
-    });
-
-    // Update node stats
-    await context.db.nodes.update({
-      id: node,
-      data: {
-        totalListings: (existing) => (existing?.totalListings ?? 0n) + 1n,
-        updatedAt: event.block.timestamp,
-      },
-    });
-
-    // Log event
-    await context.db.orderBookEvents.create({
-      id: `${event.transaction.hash}-${event.log.logIndex}-list`,
-      orderBookId: orderBookId,
-      eventType: 'order_placed',
-      orderId: orderId,
-      tradeId: null,
+    // Log inventory update event (no sell order created yet)
+    await context.db.logisticsEvents.create({
+      id: `${event.transaction.hash}-${event.log.logIndex}-inventory`,
+      orderId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      eventType: 'inventory_updated',
+      actor: node,
+      actorRole: 'node',
+      lat: null,
+      lng: null,
       eventData: JSON.stringify({
-        nodeId: node,
-        price: price.toString(),
-        quantity: capacity.toString(),
-        autoListed: true,
+        token,
+        tokenId: tokenId.toString(),
+        capacity: capacity.toString(),
+        referencePrice: price.toString(),
       }),
       createdAt: event.block.timestamp,
       blockNumber: event.block.number,
@@ -158,39 +94,77 @@ ponder.on(
   },
 );
 
-// =============================================================================
-// CLOB ORDER PLACEMENT
-// =============================================================================
-
 /**
- * Buy order placed - could match against node inventory
+ * Node explicitly places a sell order at their chosen price
+ * This is called when node decides to list inventory on the CLOB
  */
-ponder.on('AuraCLOB:OrderPlaced', async ({ event, context }) => {
-  const {
-    orderId,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    quantity,
-    isBuy,
-    orderType,
-  } = event.args;
+ponder.on('AuraCLOB:NodeSellOrderPlaced', async ({ event, context }) => {
+  const { orderId, node, token, tokenId, quoteToken, price, quantity } =
+    event.args;
 
-  const orderBookId = getOrderBookId(baseToken, baseTokenId, quoteToken);
+  const inventoryId = getInventoryId(node, token, tokenId);
+  const orderBookId = getOrderBookId(token, tokenId, quoteToken);
 
-  // Create the order
+  // Verify node has sufficient inventory
+  const inventory = await context.db.nodeInventory.findUnique({
+    id: inventoryId,
+  });
+
+  if (!inventory || inventory.availableQuantity < quantity) {
+    console.error('Insufficient inventory for node sell order:', {
+      node,
+      requested: quantity,
+      available: inventory?.availableQuantity ?? 0n,
+    });
+    return;
+  }
+
+  // Ensure order book exists
+  await context.db.orderBooks.upsert({
+    id: orderBookId,
+    create: {
+      baseToken: token,
+      baseTokenId: tokenId,
+      quoteToken: quoteToken,
+      bestBid: null,
+      bestAsk: price,
+      spread: null,
+      totalBuyOrders: 0n,
+      totalSellOrders: 1n,
+      totalBuyVolume: 0n,
+      totalSellVolume: quantity,
+      volume24h: 0n,
+      trades24h: 0n,
+      high24h: null,
+      low24h: null,
+      lastPrice: null,
+      isActive: true,
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+    },
+    update: {
+      totalSellOrders: (existing) => (existing?.totalSellOrders ?? 0n) + 1n,
+      totalSellVolume: (existing) =>
+        (existing?.totalSellVolume ?? 0n) + quantity,
+      bestAsk: (existing) => {
+        const current = existing?.bestAsk;
+        return current === null || price < current ? price : current;
+      },
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Create sell order
   await context.db.marketOrders.create({
     id: orderId,
     orderBookId: orderBookId,
-    maker: maker,
-    nodeId: null, // Not from a node
-    baseToken: baseToken,
-    baseTokenId: baseTokenId,
+    maker: node,
+    nodeId: node,
+    baseToken: token,
+    baseTokenId: tokenId,
     quoteToken: quoteToken,
-    side: isBuy ? 'buy' : 'sell',
-    orderType: orderType === 0 ? 'limit' : 'market',
+    side: 'sell',
+    orderType: 'limit',
     price: price,
     quantity: quantity,
     filledQuantity: 0n,
@@ -203,36 +177,347 @@ ponder.on('AuraCLOB:OrderPlaced', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Update order book stats
-  await context.db.orderBooks.update({
-    id: orderBookId,
+  // Reserve inventory (reduce available, track as listed)
+  await context.db.nodeInventory.update({
+    id: inventoryId,
     data: {
-      totalBuyOrders: isBuy
-        ? (existing) => (existing?.totalBuyOrders ?? 0n) + 1n
-        : undefined,
-      totalSellOrders: !isBuy
-        ? (existing) => (existing?.totalSellOrders ?? 0n) + 1n
-        : undefined,
-      totalBuyVolume: isBuy
-        ? (existing) => (existing?.totalBuyVolume ?? 0n) + quantity
-        : undefined,
-      totalSellVolume: !isBuy
-        ? (existing) => (existing?.totalSellVolume ?? 0n) + quantity
-        : undefined,
-      bestBid: isBuy
-        ? (existing) => {
-            const current = existing?.bestBid ?? 0n;
-            return price > current ? price : current;
-          }
-        : undefined,
-      bestAsk: !isBuy
-        ? (existing) => {
-            const current = existing?.bestAsk;
-            return current === null || price < current ? price : current;
-          }
-        : undefined,
+      availableQuantity: (existing) =>
+        (existing?.availableQuantity ?? 0n) - quantity,
       updatedAt: event.block.timestamp,
     },
+  });
+
+  // Update node stats
+  await context.db.nodes.update({
+    id: node,
+    data: {
+      totalListings: (existing) => (existing?.totalListings ?? 0n) + 1n,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Log event
+  await context.db.orderBookEvents.create({
+    id: `${event.transaction.hash}-${event.log.logIndex}-list`,
+    orderBookId: orderBookId,
+    eventType: 'order_placed',
+    orderId: orderId,
+    tradeId: null,
+    eventData: JSON.stringify({
+      nodeId: node,
+      price: price.toString(),
+      quantity: quantity.toString(),
+      manualListing: true,
+    }),
+    createdAt: event.block.timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+/**
+ * Node cancels a sell order - returns inventory to available
+ */
+ponder.on('AuraCLOB:NodeSellOrderCancelled', async ({ event, context }) => {
+  const { orderId, node } = event.args;
+
+  const order = await context.db.marketOrders.findUnique({ id: orderId });
+
+  if (!order || order.nodeId !== node) {
+    console.error('Order not found or not owned by node:', { orderId, node });
+    return;
+  }
+
+  const remainingQuantity = order.remainingQuantity;
+  const inventoryId = getInventoryId(node, order.baseToken, order.baseTokenId);
+
+  // Return remaining quantity to inventory
+  await context.db.nodeInventory.update({
+    id: inventoryId,
+    data: {
+      availableQuantity: (existing) =>
+        (existing?.availableQuantity ?? 0n) + remainingQuantity,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Update order status
+  await context.db.marketOrders.update({
+    id: orderId,
+    data: {
+      status: 'cancelled',
+      remainingQuantity: 0n,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Update order book
+  await context.db.orderBooks.update({
+    id: order.orderBookId,
+    data: {
+      totalSellOrders: (existing) =>
+        Math.max(0, Number((existing?.totalSellOrders ?? 1n) - 1n)),
+      totalSellVolume: (existing) =>
+        (existing?.totalSellVolume ?? 0n) - remainingQuantity,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Log event
+  await context.db.orderBookEvents.create({
+    id: `${event.transaction.hash}-${event.log.logIndex}-cancel`,
+    orderBookId: order.orderBookId,
+    eventType: 'order_cancelled',
+    orderId: orderId,
+    tradeId: null,
+    eventData: JSON.stringify({
+      nodeId: node,
+      returnedQuantity: remainingQuantity.toString(),
+    }),
+    createdAt: event.block.timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+/**
+ * Node updates price on existing sell order
+ */
+ponder.on('AuraCLOB:NodeSellOrderUpdated', async ({ event, context }) => {
+  const { orderId, node, newPrice } = event.args;
+
+  const order = await context.db.marketOrders.findUnique({ id: orderId });
+
+  if (!order || order.nodeId !== node) {
+    console.error('Order not found or not owned by node:', { orderId, node });
+    return;
+  }
+
+  // Update order price
+  await context.db.marketOrders.update({
+    id: orderId,
+    data: {
+      price: newPrice,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Log event
+  await context.db.orderBookEvents.create({
+    id: `${event.transaction.hash}-${event.log.logIndex}-update`,
+    orderBookId: order.orderBookId,
+    eventType: 'order_updated',
+    orderId: orderId,
+    tradeId: null,
+    eventData: JSON.stringify({
+      nodeId: node,
+      oldPrice: order.price.toString(),
+      newPrice: newPrice.toString(),
+    }),
+    createdAt: event.block.timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+// =============================================================================
+// BUYER ORDER MANAGEMENT
+// =============================================================================
+
+/**
+ * Buyer places a buy order (limit order on the book)
+ * Can match immediately if price >= best ask, otherwise rests on book
+ */
+ponder.on('AuraCLOB:BuyOrderPlaced', async ({ event, context }) => {
+  const {
+    orderId,
+    buyer,
+    baseToken,
+    baseTokenId,
+    quoteToken,
+    price,
+    quantity,
+  } = event.args;
+
+  const orderBookId = getOrderBookId(baseToken, baseTokenId, quoteToken);
+
+  // Ensure order book exists
+  await context.db.orderBooks.upsert({
+    id: orderBookId,
+    create: {
+      baseToken: baseToken,
+      baseTokenId: baseTokenId,
+      quoteToken: quoteToken,
+      bestBid: price,
+      bestAsk: null,
+      spread: null,
+      totalBuyOrders: 1n,
+      totalSellOrders: 0n,
+      totalBuyVolume: quantity,
+      totalSellVolume: 0n,
+      volume24h: 0n,
+      trades24h: 0n,
+      high24h: null,
+      low24h: null,
+      lastPrice: null,
+      isActive: true,
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+    },
+    update: {
+      totalBuyOrders: (existing) => (existing?.totalBuyOrders ?? 0n) + 1n,
+      totalBuyVolume: (existing) => (existing?.totalBuyVolume ?? 0n) + quantity,
+      bestBid: (existing) => {
+        const current = existing?.bestBid ?? 0n;
+        return price > current ? price : current;
+      },
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Create buy order
+  await context.db.marketOrders.create({
+    id: orderId,
+    orderBookId: orderBookId,
+    maker: buyer,
+    nodeId: null, // Not from a node
+    baseToken: baseToken,
+    baseTokenId: baseTokenId,
+    quoteToken: quoteToken,
+    side: 'buy',
+    orderType: 'limit',
+    price: price,
+    quantity: quantity,
+    filledQuantity: 0n,
+    remainingQuantity: quantity,
+    status: 'open',
+    expiresAt: null,
+    createdAt: event.block.timestamp,
+    updatedAt: event.block.timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
+  });
+
+  // Log event
+  await context.db.orderBookEvents.create({
+    id: `${event.transaction.hash}-${event.log.logIndex}-buy`,
+    orderBookId: orderBookId,
+    eventType: 'order_placed',
+    orderId: orderId,
+    tradeId: null,
+    eventData: JSON.stringify({
+      buyer,
+      side: 'buy',
+      price: price.toString(),
+      quantity: quantity.toString(),
+    }),
+    createdAt: event.block.timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+/**
+ * Buyer cancels their buy order
+ */
+ponder.on('AuraCLOB:BuyOrderCancelled', async ({ event, context }) => {
+  const { orderId, buyer } = event.args;
+
+  const order = await context.db.marketOrders.findUnique({ id: orderId });
+
+  if (!order || order.maker !== buyer || order.side !== 'buy') {
+    console.error('Buy order not found or not owned by buyer:', {
+      orderId,
+      buyer,
+    });
+    return;
+  }
+
+  const remainingQuantity = order.remainingQuantity;
+
+  // Update order status
+  await context.db.marketOrders.update({
+    id: orderId,
+    data: {
+      status: 'cancelled',
+      remainingQuantity: 0n,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Update order book
+  await context.db.orderBooks.update({
+    id: order.orderBookId,
+    data: {
+      totalBuyOrders: (existing) =>
+        (existing?.totalBuyOrders ?? 1n) > 0n
+          ? (existing?.totalBuyOrders ?? 1n) - 1n
+          : 0n,
+      totalBuyVolume: (existing) =>
+        (existing?.totalBuyVolume ?? 0n) - remainingQuantity,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Log event
+  await context.db.orderBookEvents.create({
+    id: `${event.transaction.hash}-${event.log.logIndex}-cancel`,
+    orderBookId: order.orderBookId,
+    eventType: 'order_cancelled',
+    orderId: orderId,
+    tradeId: null,
+    eventData: JSON.stringify({
+      buyer,
+      side: 'buy',
+      cancelledQuantity: remainingQuantity.toString(),
+    }),
+    createdAt: event.block.timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+/**
+ * Buyer updates price on existing buy order
+ */
+ponder.on('AuraCLOB:BuyOrderUpdated', async ({ event, context }) => {
+  const { orderId, buyer, newPrice } = event.args;
+
+  const order = await context.db.marketOrders.findUnique({ id: orderId });
+
+  if (!order || order.maker !== buyer || order.side !== 'buy') {
+    console.error('Buy order not found or not owned by buyer:', {
+      orderId,
+      buyer,
+    });
+    return;
+  }
+
+  // Update order price
+  await context.db.marketOrders.update({
+    id: orderId,
+    data: {
+      price: newPrice,
+      updatedAt: event.block.timestamp,
+    },
+  });
+
+  // Log event
+  await context.db.orderBookEvents.create({
+    id: `${event.transaction.hash}-${event.log.logIndex}-update`,
+    orderBookId: order.orderBookId,
+    eventType: 'order_updated',
+    orderId: orderId,
+    tradeId: null,
+    eventData: JSON.stringify({
+      buyer,
+      side: 'buy',
+      oldPrice: order.price.toString(),
+      newPrice: newPrice.toString(),
+    }),
+    createdAt: event.block.timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
   });
 });
 
