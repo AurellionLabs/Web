@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "paths": {
+      "@/*": ["./*"],
+      "@/generated": ["./generated/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "ponder.config.ts", "ponder.schema.ts"],
+  "exclude": ["node_modules", "dist"]
+}
