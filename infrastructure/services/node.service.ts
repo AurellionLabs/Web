@@ -34,7 +34,7 @@ export class NodeService implements INodeService {
       // Normalize assets: support new Node.assets or legacy arrays
       const hasNewAssets = Array.isArray((nodeData as any).assets);
       const legacyIds = (nodeData as any).supportedAssets as
-        | number[]
+        | (number | string)[]
         | undefined;
       const legacyCaps = (nodeData as any).capacity as number[] | undefined;
       const legacyPrices = (nodeData as any).assetPrices as
@@ -56,9 +56,23 @@ export class NodeService implements INodeService {
         legacyIds.length === legacyCaps.length &&
         legacyIds.length === legacyPrices.length
       ) {
-        assetIds = legacyIds.map((id) => BigInt(id));
+        // Handle both numeric IDs and string class names
+        // For initial registration with class names, use placeholder IDs (0)
+        // Assets can be added later via updateSupportedAssets
+        assetIds = legacyIds.map((id) => {
+          if (typeof id === 'string') {
+            // String class names - use 0 as placeholder for initial registration
+            // TODO: Convert class names to actual asset IDs if needed
+            console.warn(`[NodeService] Class name "${id}" provided, using placeholder ID 0. Assets should be added after registration.`);
+            return 0n;
+          }
+          return BigInt(id);
+        });
         capacities = legacyCaps.map((c) => BigInt(c));
         prices = legacyPrices.map((p) => BigInt(p));
+      } else {
+        // Allow empty arrays for initial registration
+        console.log('[NodeService] No assets provided for initial registration. Node can be registered and assets added later.');
       }
 
       const contractNodeStruct = {
@@ -77,6 +91,13 @@ export class NodeService implements INodeService {
         capacity: capacities,
         assetPrices: prices,
       } as unknown as Parameters<AurumNodeManager['registerNode']>[0];
+
+      console.log('[NodeService] Registering node with data:', {
+        owner: nodeData.owner,
+        location: nodeData.location.addressName,
+        assetCount: assetIds.length,
+        assetIds: assetIds.map(id => id.toString()),
+      });
 
       const { receipt } = await sendContractTxWithReadEstimation(
         aurum as unknown as ethers.Contract,

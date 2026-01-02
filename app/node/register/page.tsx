@@ -200,6 +200,7 @@ export default function NodeRegistrationPage() {
         status: 'Active' as const,
         supportedAssets: values.supportedAssets,
         capacity: values.capacity.map((v) => parseInt(v, 10)),
+        assetPrices: values.supportedAssets.map(() => 0), // Default prices to 0 if not provided
       };
 
       await registerNode(nodeData);
