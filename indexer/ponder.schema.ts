@@ -649,7 +649,7 @@ export const stakes = onchainTable(
   'stakes',
   (t) => ({
     id: t.text().primaryKey(), // operationId-userAddress
-    operationId: t.hex().notNull(),
+    stakeOperationId: t.hex().notNull(),
     user: t.hex().notNull(),
     token: t.hex().notNull(),
     amount: t.bigint().notNull(), // wei
@@ -661,11 +661,6 @@ export const stakes = onchainTable(
     blockNumber: t.bigint().notNull(),
     transactionHash: t.hex().notNull(),
   }),
-  (table) => ({
-    operationIdx: index().on(table.operationId),
-    userIdx: index().on(table.user),
-    tokenIdx: index().on(table.token),
-  }),
 );
 
 /**
@@ -675,7 +670,7 @@ export const operationCreatedEvents = onchainTable(
   'operation_created_events',
   (t) => ({
     id: t.text().primaryKey(), // txHash-logIndex
-    operationId: t.hex().notNull(),
+    opCreatedOperationId: t.hex().notNull(),
     name: t.text().notNull(),
     token: t.hex().notNull(),
     blockNumber: t.bigint().notNull(),
@@ -694,16 +689,12 @@ export const stakedEvents = onchainTable(
     token: t.hex().notNull(),
     user: t.hex().notNull(),
     amount: t.bigint().notNull(),
-    operationId: t.hex().notNull(),
+    stakedOperationId: t.hex().notNull(),
     eType: t.text().notNull(),
     time: t.bigint().notNull(),
     blockNumber: t.bigint().notNull(),
     blockTimestamp: t.bigint().notNull(),
     transactionHash: t.hex().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-    operationIdx: index().on(table.operationId),
   }),
 );
 
@@ -717,16 +708,12 @@ export const unstakedEvents = onchainTable(
     token: t.hex().notNull(),
     user: t.hex().notNull(),
     amount: t.bigint().notNull(),
-    operationId: t.hex().notNull(),
+    unstakedOperationId: t.hex().notNull(),
     eType: t.text().notNull(),
     time: t.bigint().notNull(),
     blockNumber: t.bigint().notNull(),
     blockTimestamp: t.bigint().notNull(),
     transactionHash: t.hex().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-    operationIdx: index().on(table.operationId),
   }),
 );
 
@@ -739,14 +726,10 @@ export const rewardPaidEvents = onchainTable(
     id: t.text().primaryKey(), // txHash-logIndex
     user: t.hex().notNull(),
     amount: t.bigint().notNull(),
-    operationId: t.hex().notNull(),
+    rewardOperationId: t.hex().notNull(),
     blockNumber: t.bigint().notNull(),
     blockTimestamp: t.bigint().notNull(),
     transactionHash: t.hex().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-    operationIdx: index().on(table.operationId),
   }),
 );
 

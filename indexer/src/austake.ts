@@ -80,7 +80,7 @@ ponder.on('AuStake:OperationCreated', async ({ event, context }) => {
   // Create OperationCreated event
   await context.db.operationCreatedEvents.create({
     id: eventId,
-    operationId,
+    opCreatedOperationId: operationId,
     name,
     token,
     blockNumber: event.block.number,
@@ -127,7 +127,7 @@ ponder.on('AuStake:Staked', async ({ event, context }) => {
     token,
     user,
     amount,
-    operationId,
+    stakedOperationId: operationId,
     eType,
     time,
     blockNumber: event.block.number,
@@ -152,7 +152,7 @@ ponder.on('AuStake:Staked', async ({ event, context }) => {
   } else {
     await context.db.stakes.create({
       id: stakeId,
-      operationId,
+      stakeOperationId: operationId,
       user,
       token,
       amount,
@@ -245,7 +245,7 @@ ponder.on('AuStake:Unstaked', async ({ event, context }) => {
     token,
     user,
     amount,
-    operationId,
+    unstakedOperationId: operationId,
     eType,
     time,
     blockNumber: event.block.number,
@@ -324,7 +324,7 @@ ponder.on('AuStake:RewardPaid', async ({ event, context }) => {
     id: eventId,
     user,
     amount,
-    operationId,
+    rewardOperationId: operationId,
     blockNumber: event.block.number,
     blockTimestamp: event.block.timestamp,
     transactionHash: event.transaction.hash,

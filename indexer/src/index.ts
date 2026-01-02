@@ -5,8 +5,7 @@ import './ausys';
 import './aurum';
 import './aura-asset';
 import './austake';
-// CLOB handlers - uncomment after CLOB contract is deployed
-// import "./clob";
+import './clob';
 
 // Export for TypeScript module resolution
 export {};

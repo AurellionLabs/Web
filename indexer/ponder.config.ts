@@ -8,14 +8,31 @@ import { AuraAssetAbi } from './abis/AuraAssetAbi';
 import { AuStakeAbi } from './abis/AuStakeAbi';
 import { CLOBAbi } from './abis/CLOBAbi';
 
-// Base Sepolia Chain ID: 84532
+// Base Sepolia Chain ID
 const BASE_SEPOLIA_CHAIN_ID = 84532;
+
+// Contract addresses - Updated with fresh deployment (Jan 1, 2026)
+const CONTRACTS = {
+  ausys: '0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde' as `0x${string}`,
+  aurumNodeManager: '0xc50F6505BcBb00Af8f1086d9121525695Bf09D30' as `0x${string}`,
+  auraAsset: '0xdc1B355885ba73EFf0f0a5A72F12D87e785581a8' as `0x${string}`,
+  auStake: '0xd41b6Dc779558bbe674B13F6996BFD5679f75074' as `0x${string}`,
+  clob: '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc' as `0x${string}`,
+};
+
+const START_BLOCKS = {
+  ausys: 35771321,
+  aurumNodeManager: 35771324,
+  auraAsset: 35771330,
+  auStake: 35771327,
+  clob: 35771333,
+};
 
 export default createConfig({
   networks: {
     baseSepolia: {
       chainId: BASE_SEPOLIA_CHAIN_ID,
-      transport: http(process.env.PONDER_RPC_URL_84532),
+      transport: http(process.env.NEXT_PUBLIC_RPC_URL_84532 || process.env.BASE_TEST_RPC_URL || 'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c'),
     },
   },
   contracts: {
@@ -23,37 +40,36 @@ export default createConfig({
     Ausys: {
       network: 'baseSepolia',
       abi: AusysAbi,
-      address: '0x986dC5647390e40AB9c0429ceE017034D42CB3bA' as `0x${string}`,
-      startBlock: 32311125,
+      address: CONTRACTS.ausys,
+      startBlock: START_BLOCKS.ausys,
     },
     // AurumNodeManager Contract - Nodes, NodeAssets, Capacity
     AurumNodeManager: {
       network: 'baseSepolia',
       abi: AurumNodeManagerAbi,
-      address: '0x5Dd5881fFa8fb3c4fAD112ffc4a37f0300dd1835' as `0x${string}`,
-      startBlock: 32311127,
+      address: CONTRACTS.aurumNodeManager,
+      startBlock: START_BLOCKS.aurumNodeManager,
     },
     // AuraAsset Contract - ERC1155 Assets, Transfers, Balances
     AuraAsset: {
       network: 'baseSepolia',
       abi: AuraAssetAbi,
-      address: '0x510fD569817b442318537f36F936e0F1719478a6' as `0x${string}`,
-      startBlock: 32311131,
+      address: CONTRACTS.auraAsset,
+      startBlock: START_BLOCKS.auraAsset,
     },
     // AuStake Contract - Operations, Stakes, Rewards
     AuStake: {
       network: 'baseSepolia',
       abi: AuStakeAbi,
-      address: '0xCBfb27e1c7d74e1c0E865ec47C1DBC0016C0bc07' as `0x${string}`,
-      startBlock: 32311129,
+      address: CONTRACTS.auStake,
+      startBlock: START_BLOCKS.auStake,
     },
-    // CLOB Contract - Central Limit Order Book (to be deployed)
-    // Uncomment and update address after deployment
-    // CLOB: {
-    //   network: "baseSepolia",
-    //   abi: CLOBAbi,
-    //   address: "0x..." as `0x${string}`,
-    //   startBlock: 0,
-    // },
+    // CLOB Contract - Central Limit Order Book
+    CLOB: {
+      network: 'baseSepolia',
+      abi: CLOBAbi,
+      address: CONTRACTS.clob,
+      startBlock: START_BLOCKS.clob,
+    },
   },
 });
