@@ -1,4 +1,15 @@
 import { ponder } from '@/generated';
+import {
+  assets,
+  assetAttributes,
+  supportedAssets,
+  supportedClasses,
+  mintedAssetEvents,
+  transferEvents,
+  transferBatchEvents,
+  tokenStats,
+  userBalances,
+} from '../ponder.schema';
 
 // =============================================================================
 // AURA ASSET EVENT HANDLERS - ERC1155 Mints, Transfers, Balances
@@ -15,8 +26,8 @@ ponder.on('AuraAsset:MintedAsset', async ({ event, context }) => {
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
   const hashString = hash.toLowerCase();
 
-  // Create MintedAsset event
-  await context.db.mintedAssetEvents.create({
+  // Insert MintedAsset event
+  await context.db.insert(mintedAssetEvents).values({
     id: eventId,
     account,
     hash,
@@ -30,116 +41,119 @@ ponder.on('AuraAsset:MintedAsset', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Create Asset entity
-  await context.db.assets.create({
-    id: hashString,
-    hash,
-    tokenId,
-    name,
-    assetClass,
-    className,
-    account,
-    amount: 1n, // Default amount
-    createdAt: event.block.timestamp,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  // Insert Asset entity
+  await context.db
+    .insert(assets)
+    .values({
+      id: hashString,
+      hash,
+      tokenId,
+      name,
+      assetClass,
+      className,
+      account,
+      amount: 1n, // Default amount
+      createdAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 
   // Update or create SupportedAsset
-  const existingSupportedAsset = await context.db.supportedAssets.findUnique({
+  const existingSupportedAsset = await context.db.find(supportedAssets, {
     id: name,
   });
   if (existingSupportedAsset) {
-    await context.db.supportedAssets.update({
-      id: name,
-      data: {
-        updatedAt: event.block.timestamp,
-      },
-    });
-  } else {
-    await context.db.supportedAssets.create({
-      id: name,
-      name,
-      index: 0n, // Would need to get from contract
-      asset: hashString,
-      isActive: true,
-      createdAt: event.block.timestamp,
+    await context.db.update(supportedAssets, { id: name }).set({
       updatedAt: event.block.timestamp,
     });
+  } else {
+    await context.db
+      .insert(supportedAssets)
+      .values({
+        id: name,
+        name,
+        index: 0n, // Would need to get from contract
+        asset: hashString,
+        isActive: true,
+        createdAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+      })
+      .onConflictDoNothing();
   }
 
   // Update or create SupportedClass
   if (className !== '') {
-    const existingClass = await context.db.supportedClasses.findUnique({
+    const existingClass = await context.db.find(supportedClasses, {
       id: className,
     });
     if (existingClass) {
-      await context.db.supportedClasses.update({
-        id: className,
-        data: {
-          updatedAt: event.block.timestamp,
-        },
-      });
-    } else {
-      await context.db.supportedClasses.create({
-        id: className,
-        name: className,
-        index: 0n, // Would need to get from contract
-        isActive: true,
-        createdAt: event.block.timestamp,
+      await context.db.update(supportedClasses, { id: className }).set({
         updatedAt: event.block.timestamp,
       });
+    } else {
+      await context.db
+        .insert(supportedClasses)
+        .values({
+          id: className,
+          name: className,
+          index: 0n, // Would need to get from contract
+          isActive: true,
+          createdAt: event.block.timestamp,
+          updatedAt: event.block.timestamp,
+        })
+        .onConflictDoNothing();
     }
   }
 
   // Create or update TokenStats
   const tokenStatsId = tokenId.toString();
-  const existingTokenStats = await context.db.tokenStats.findUnique({
+  const existingTokenStats = await context.db.find(tokenStats, {
     id: tokenStatsId,
   });
   if (existingTokenStats) {
-    await context.db.tokenStats.update({
-      id: tokenStatsId,
-      data: {
-        updatedAt: event.block.timestamp,
-      },
-    });
-  } else {
-    await context.db.tokenStats.create({
-      id: tokenStatsId,
-      tokenId,
-      totalSupply: 0n,
-      holders: 0n,
-      transfers: 0n,
-      asset: hashString,
-      createdAt: event.block.timestamp,
+    await context.db.update(tokenStats, { id: tokenStatsId }).set({
       updatedAt: event.block.timestamp,
     });
+  } else {
+    await context.db
+      .insert(tokenStats)
+      .values({
+        id: tokenStatsId,
+        tokenId,
+        totalSupply: 0n,
+        holders: 0n,
+        transfers: 0n,
+        asset: hashString,
+        createdAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+      })
+      .onConflictDoNothing();
   }
 
   // Create or update UserBalance
   const balanceId = `${account.toLowerCase()}-${tokenId.toString()}`;
-  const existingBalance = await context.db.userBalances.findUnique({
+  const existingBalance = await context.db.find(userBalances, {
     id: balanceId,
   });
   if (existingBalance) {
-    await context.db.userBalances.update({
-      id: balanceId,
-      data: {
-        balance: existingBalance.balance + 1n,
-        lastUpdated: event.block.timestamp,
-      },
-    });
-  } else {
-    await context.db.userBalances.create({
-      id: balanceId,
-      user: account,
-      tokenId,
-      balance: 1n,
-      asset: hashString,
-      firstReceived: event.block.timestamp,
+    await context.db.update(userBalances, { id: balanceId }).set({
+      balance: existingBalance.balance + 1n,
       lastUpdated: event.block.timestamp,
     });
+  } else {
+    await context.db
+      .insert(userBalances)
+      .values({
+        id: balanceId,
+        user: account,
+        tokenId,
+        balance: 1n,
+        asset: hashString,
+        firstReceived: event.block.timestamp,
+        lastUpdated: event.block.timestamp,
+      })
+      .onConflictDoNothing();
   }
 });
 
@@ -150,7 +164,7 @@ ponder.on('AuraAsset:AssetAttributeAdded', async ({ event, context }) => {
   const { hash, attributeIndex, name, values, description } = event.args;
   const attributeId = `${hash.toLowerCase()}-${attributeIndex.toString()}`;
 
-  await context.db.assetAttributes.create({
+  await context.db.insert(assetAttributes).values({
     id: attributeId,
     assetId: hash.toLowerCase(),
     name,
@@ -166,8 +180,8 @@ ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
   const { operator, from, to, id: tokenId, value } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  // Create Transfer event
-  await context.db.transferEvents.create({
+  // Insert Transfer event
+  await context.db.insert(transferEvents).values({
     id: eventId,
     operator,
     from,
@@ -181,32 +195,26 @@ ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
 
   // Update TokenStats
   const tokenStatsId = tokenId.toString();
-  const tokenStats = await context.db.tokenStats.findUnique({
+  const tokenStatsRecord = await context.db.find(tokenStats, {
     id: tokenStatsId,
   });
-  if (tokenStats) {
-    await context.db.tokenStats.update({
-      id: tokenStatsId,
-      data: {
-        transfers: tokenStats.transfers + 1n,
-        updatedAt: event.block.timestamp,
-      },
+  if (tokenStatsRecord) {
+    await context.db.update(tokenStats, { id: tokenStatsId }).set({
+      transfers: tokenStatsRecord.transfers + 1n,
+      updatedAt: event.block.timestamp,
     });
   }
 
   // Update UserBalances - subtract from sender
   if (from !== ZERO_ADDRESS) {
     const fromBalanceId = `${from.toLowerCase()}-${tokenId.toString()}`;
-    const fromBalance = await context.db.userBalances.findUnique({
+    const fromBalance = await context.db.find(userBalances, {
       id: fromBalanceId,
     });
     if (fromBalance) {
-      await context.db.userBalances.update({
-        id: fromBalanceId,
-        data: {
-          balance: fromBalance.balance - value,
-          lastUpdated: event.block.timestamp,
-        },
+      await context.db.update(userBalances, { id: fromBalanceId }).set({
+        balance: fromBalance.balance - value,
+        lastUpdated: event.block.timestamp,
       });
     }
   }
@@ -214,27 +222,27 @@ ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
   // Update UserBalances - add to receiver
   if (to !== ZERO_ADDRESS) {
     const toBalanceId = `${to.toLowerCase()}-${tokenId.toString()}`;
-    const toBalance = await context.db.userBalances.findUnique({
+    const toBalance = await context.db.find(userBalances, {
       id: toBalanceId,
     });
     if (toBalance) {
-      await context.db.userBalances.update({
-        id: toBalanceId,
-        data: {
-          balance: toBalance.balance + value,
-          lastUpdated: event.block.timestamp,
-        },
-      });
-    } else {
-      await context.db.userBalances.create({
-        id: toBalanceId,
-        user: to,
-        tokenId,
-        balance: value,
-        asset: '', // Would need to look up from tokenId
-        firstReceived: event.block.timestamp,
+      await context.db.update(userBalances, { id: toBalanceId }).set({
+        balance: toBalance.balance + value,
         lastUpdated: event.block.timestamp,
       });
+    } else {
+      await context.db
+        .insert(userBalances)
+        .values({
+          id: toBalanceId,
+          user: to,
+          tokenId,
+          balance: value,
+          asset: '', // Would need to look up from tokenId
+          firstReceived: event.block.timestamp,
+          lastUpdated: event.block.timestamp,
+        })
+        .onConflictDoNothing();
     }
   }
 });
@@ -246,8 +254,8 @@ ponder.on('AuraAsset:TransferBatch', async ({ event, context }) => {
   const { operator, from, to, ids, values } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  // Create TransferBatch event
-  await context.db.transferBatchEvents.create({
+  // Insert TransferBatch event
+  await context.db.insert(transferBatchEvents).values({
     id: eventId,
     operator,
     from,
@@ -266,32 +274,26 @@ ponder.on('AuraAsset:TransferBatch', async ({ event, context }) => {
 
     // Update TokenStats
     const tokenStatsId = tokenId.toString();
-    const tokenStats = await context.db.tokenStats.findUnique({
+    const tokenStatsRecord = await context.db.find(tokenStats, {
       id: tokenStatsId,
     });
-    if (tokenStats) {
-      await context.db.tokenStats.update({
-        id: tokenStatsId,
-        data: {
-          transfers: tokenStats.transfers + 1n,
-          updatedAt: event.block.timestamp,
-        },
+    if (tokenStatsRecord) {
+      await context.db.update(tokenStats, { id: tokenStatsId }).set({
+        transfers: tokenStatsRecord.transfers + 1n,
+        updatedAt: event.block.timestamp,
       });
     }
 
     // Update UserBalances - subtract from sender
     if (from !== ZERO_ADDRESS) {
       const fromBalanceId = `${from.toLowerCase()}-${tokenId.toString()}`;
-      const fromBalance = await context.db.userBalances.findUnique({
+      const fromBalance = await context.db.find(userBalances, {
         id: fromBalanceId,
       });
       if (fromBalance) {
-        await context.db.userBalances.update({
-          id: fromBalanceId,
-          data: {
-            balance: fromBalance.balance - amount,
-            lastUpdated: event.block.timestamp,
-          },
+        await context.db.update(userBalances, { id: fromBalanceId }).set({
+          balance: fromBalance.balance - amount,
+          lastUpdated: event.block.timestamp,
         });
       }
     }
@@ -299,27 +301,27 @@ ponder.on('AuraAsset:TransferBatch', async ({ event, context }) => {
     // Update UserBalances - add to receiver
     if (to !== ZERO_ADDRESS) {
       const toBalanceId = `${to.toLowerCase()}-${tokenId.toString()}`;
-      const toBalance = await context.db.userBalances.findUnique({
+      const toBalance = await context.db.find(userBalances, {
         id: toBalanceId,
       });
       if (toBalance) {
-        await context.db.userBalances.update({
-          id: toBalanceId,
-          data: {
-            balance: toBalance.balance + amount,
-            lastUpdated: event.block.timestamp,
-          },
-        });
-      } else {
-        await context.db.userBalances.create({
-          id: toBalanceId,
-          user: to,
-          tokenId,
-          balance: amount,
-          asset: '', // Would need to look up from tokenId
-          firstReceived: event.block.timestamp,
+        await context.db.update(userBalances, { id: toBalanceId }).set({
+          balance: toBalance.balance + amount,
           lastUpdated: event.block.timestamp,
         });
+      } else {
+        await context.db
+          .insert(userBalances)
+          .values({
+            id: toBalanceId,
+            user: to,
+            tokenId,
+            balance: amount,
+            asset: '', // Would need to look up from tokenId
+            firstReceived: event.block.timestamp,
+            lastUpdated: event.block.timestamp,
+          })
+          .onConflictDoNothing();
       }
     }
   }

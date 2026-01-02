@@ -1,4 +1,19 @@
 import { ponder } from '@/generated';
+import {
+  clobOrders,
+  clobTrades,
+  clobPools,
+  clobLiquidityPositions,
+  orderPlacedEvents,
+  orderMatchedEvents,
+  orderCancelledEvents,
+  tradeExecutedEvents,
+  liquidityAddedEvents,
+  liquidityRemovedEvents,
+  poolCreatedEvents,
+  marketData,
+  userTradingStats,
+} from '../ponder.schema';
 
 // =============================================================================
 // CLOB EVENT HANDLERS - Central Limit Order Book
@@ -21,28 +36,31 @@ ponder.on('CLOB:OrderPlaced', async ({ event, context }) => {
   } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  // Create CLOB Order entity
-  await context.db.clobOrders.create({
-    id: orderId,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    amount,
-    filledAmount: 0n,
-    remainingAmount: amount,
-    isBuy,
-    orderType,
-    status: 0, // Open
-    createdAt: event.block.timestamp,
-    updatedAt: event.block.timestamp,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  // Insert CLOB Order entity
+  await context.db
+    .insert(clobOrders)
+    .values({
+      id: orderId,
+      maker,
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      price,
+      amount,
+      filledAmount: 0n,
+      remainingAmount: amount,
+      isBuy,
+      orderType,
+      status: 0, // Open
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 
-  // Create OrderPlaced event
-  await context.db.orderPlacedEvents.create({
+  // Insert OrderPlaced event
+  await context.db.insert(orderPlacedEvents).values({
     id: eventId,
     orderId,
     maker,
@@ -90,8 +108,8 @@ ponder.on('CLOB:OrderMatched', async ({ event, context }) => {
   } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  // Create OrderMatched event
-  await context.db.orderMatchedEvents.create({
+  // Insert OrderMatched event
+  await context.db.insert(orderMatchedEvents).values({
     id: eventId,
     takerOrderId,
     makerOrderId,
@@ -113,17 +131,14 @@ ponder.on('CLOB:OrderCancelled', async ({ event, context }) => {
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
   // Update CLOB Order entity
-  await context.db.clobOrders.update({
-    id: orderId,
-    data: {
-      status: 3, // Cancelled
-      remainingAmount: 0n,
-      updatedAt: event.block.timestamp,
-    },
+  await context.db.update(clobOrders, { id: orderId }).set({
+    status: 3, // Cancelled
+    remainingAmount: 0n,
+    updatedAt: event.block.timestamp,
   });
 
-  // Create OrderCancelled event
-  await context.db.orderCancelledEvents.create({
+  // Insert OrderCancelled event
+  await context.db.insert(orderCancelledEvents).values({
     id: eventId,
     orderId,
     maker,
@@ -149,20 +164,17 @@ ponder.on('CLOB:OrderUpdated', async ({ event, context }) => {
   const { orderId, newStatus, filledAmount, remainingAmount } = event.args;
 
   // Update CLOB Order entity
-  await context.db.clobOrders.update({
-    id: orderId,
-    data: {
-      status: newStatus,
-      filledAmount,
-      remainingAmount,
-      updatedAt: event.block.timestamp,
-    },
+  await context.db.update(clobOrders, { id: orderId }).set({
+    status: newStatus,
+    filledAmount,
+    remainingAmount,
+    updatedAt: event.block.timestamp,
   });
 
   // If order is fully filled, update user stats
   if (newStatus === 2) {
     // Filled
-    const order = await context.db.clobOrders.findUnique({ id: orderId });
+    const order = await context.db.find(clobOrders, { id: orderId });
     if (order) {
       await updateUserTradingStats(
         context,
@@ -196,8 +208,8 @@ ponder.on('CLOB:TradeExecuted', async ({ event, context }) => {
   let quoteToken =
     '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
-  // Create CLOB Trade entity
-  await context.db.clobTrades.create({
+  // Insert CLOB Trade entity
+  await context.db.insert(clobTrades).values({
     id: tradeId,
     takerOrderId:
       '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`, // Would need to track
@@ -216,8 +228,8 @@ ponder.on('CLOB:TradeExecuted', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Create TradeExecuted event
-  await context.db.tradeExecutedEvents.create({
+  // Insert TradeExecuted event
+  await context.db.insert(tradeExecutedEvents).values({
     id: eventId,
     tradeId,
     taker,
@@ -271,44 +283,41 @@ ponder.on('CLOB:LiquidityAdded', async ({ event, context }) => {
   const positionId = `${poolId}-${provider.toLowerCase()}`;
 
   // Update pool reserves
-  const pool = await context.db.clobPools.findUnique({ id: poolId });
+  const pool = await context.db.find(clobPools, { id: poolId });
   if (pool) {
-    await context.db.clobPools.update({
-      id: poolId,
-      data: {
-        baseReserve: pool.baseReserve + baseAmount,
-        quoteReserve: pool.quoteReserve + quoteAmount,
-        totalLpTokens: pool.totalLpTokens + lpTokensMinted,
-        updatedAt: event.block.timestamp,
-      },
-    });
-  }
-
-  // Update or create liquidity position
-  const position = await context.db.clobLiquidityPositions.findUnique({
-    id: positionId,
-  });
-  if (position) {
-    await context.db.clobLiquidityPositions.update({
-      id: positionId,
-      data: {
-        lpTokens: position.lpTokens + lpTokensMinted,
-        updatedAt: event.block.timestamp,
-      },
-    });
-  } else {
-    await context.db.clobLiquidityPositions.create({
-      id: positionId,
-      poolId,
-      provider,
-      lpTokens: lpTokensMinted,
-      depositedAt: event.block.timestamp,
+    await context.db.update(clobPools, { id: poolId }).set({
+      baseReserve: pool.baseReserve + baseAmount,
+      quoteReserve: pool.quoteReserve + quoteAmount,
+      totalLpTokens: pool.totalLpTokens + lpTokensMinted,
       updatedAt: event.block.timestamp,
     });
   }
 
-  // Create LiquidityAdded event
-  await context.db.liquidityAddedEvents.create({
+  // Update or create liquidity position
+  const position = await context.db.find(clobLiquidityPositions, {
+    id: positionId,
+  });
+  if (position) {
+    await context.db.update(clobLiquidityPositions, { id: positionId }).set({
+      lpTokens: position.lpTokens + lpTokensMinted,
+      updatedAt: event.block.timestamp,
+    });
+  } else {
+    await context.db
+      .insert(clobLiquidityPositions)
+      .values({
+        id: positionId,
+        poolId,
+        provider,
+        lpTokens: lpTokensMinted,
+        depositedAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+      })
+      .onConflictDoNothing();
+  }
+
+  // Insert LiquidityAdded event
+  await context.db.insert(liquidityAddedEvents).values({
     id: eventId,
     poolId,
     provider,
@@ -331,35 +340,29 @@ ponder.on('CLOB:LiquidityRemoved', async ({ event, context }) => {
   const positionId = `${poolId}-${provider.toLowerCase()}`;
 
   // Update pool reserves
-  const pool = await context.db.clobPools.findUnique({ id: poolId });
+  const pool = await context.db.find(clobPools, { id: poolId });
   if (pool) {
-    await context.db.clobPools.update({
-      id: poolId,
-      data: {
-        baseReserve: pool.baseReserve - baseAmount,
-        quoteReserve: pool.quoteReserve - quoteAmount,
-        totalLpTokens: pool.totalLpTokens - lpTokensBurned,
-        updatedAt: event.block.timestamp,
-      },
+    await context.db.update(clobPools, { id: poolId }).set({
+      baseReserve: pool.baseReserve - baseAmount,
+      quoteReserve: pool.quoteReserve - quoteAmount,
+      totalLpTokens: pool.totalLpTokens - lpTokensBurned,
+      updatedAt: event.block.timestamp,
     });
   }
 
   // Update liquidity position
-  const position = await context.db.clobLiquidityPositions.findUnique({
+  const position = await context.db.find(clobLiquidityPositions, {
     id: positionId,
   });
   if (position) {
-    await context.db.clobLiquidityPositions.update({
-      id: positionId,
-      data: {
-        lpTokens: position.lpTokens - lpTokensBurned,
-        updatedAt: event.block.timestamp,
-      },
+    await context.db.update(clobLiquidityPositions, { id: positionId }).set({
+      lpTokens: position.lpTokens - lpTokensBurned,
+      updatedAt: event.block.timestamp,
     });
   }
 
-  // Create LiquidityRemoved event
-  await context.db.liquidityRemovedEvents.create({
+  // Insert LiquidityRemoved event
+  await context.db.insert(liquidityRemovedEvents).values({
     id: eventId,
     poolId,
     provider,
@@ -379,24 +382,27 @@ ponder.on('CLOB:PoolCreated', async ({ event, context }) => {
   const { poolId, baseToken, baseTokenId, quoteToken } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  // Create pool entity
-  await context.db.clobPools.create({
-    id: poolId,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    baseReserve: 0n,
-    quoteReserve: 0n,
-    totalLpTokens: 0n,
-    isActive: true,
-    createdAt: event.block.timestamp,
-    updatedAt: event.block.timestamp,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  // Insert pool entity
+  await context.db
+    .insert(clobPools)
+    .values({
+      id: poolId,
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      baseReserve: 0n,
+      quoteReserve: 0n,
+      totalLpTokens: 0n,
+      isActive: true,
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 
-  // Create PoolCreated event
-  await context.db.poolCreatedEvents.create({
+  // Insert PoolCreated event
+  await context.db.insert(poolCreatedEvents).values({
     id: eventId,
     poolId,
     baseToken,
@@ -422,7 +428,7 @@ async function updateUserTradingStats(
   action: string,
   volume?: bigint,
 ) {
-  const stats = await context.db.userTradingStats.findUnique({ id: user });
+  const stats = await context.db.find(userTradingStats, { id: user });
 
   if (stats) {
     const update: any = {
@@ -450,25 +456,25 @@ async function updateUserTradingStats(
         break;
     }
 
-    await context.db.userTradingStats.update({
-      id: user,
-      data: update,
-    });
+    await context.db.update(userTradingStats, { id: user }).set(update);
   } else {
-    await context.db.userTradingStats.create({
-      id: user,
-      user,
-      totalOrdersPlaced: action === 'orderPlaced' ? 1n : 0n,
-      totalOrdersFilled: action === 'orderFilled' ? 1n : 0n,
-      totalOrdersCancelled: action === 'orderCancelled' ? 1n : 0n,
-      totalTradesAsMaker: action === 'tradeAsMaker' ? 1n : 0n,
-      totalTradesAsTaker: action === 'tradeAsTaker' ? 1n : 0n,
-      totalVolumeQuote: volume ?? 0n,
-      totalFeesPaid: 0n,
-      firstTradeAt: timestamp,
-      lastTradeAt: timestamp,
-      updatedAt: timestamp,
-    });
+    await context.db
+      .insert(userTradingStats)
+      .values({
+        id: user,
+        user,
+        totalOrdersPlaced: action === 'orderPlaced' ? 1n : 0n,
+        totalOrdersFilled: action === 'orderFilled' ? 1n : 0n,
+        totalOrdersCancelled: action === 'orderCancelled' ? 1n : 0n,
+        totalTradesAsMaker: action === 'tradeAsMaker' ? 1n : 0n,
+        totalTradesAsTaker: action === 'tradeAsTaker' ? 1n : 0n,
+        totalVolumeQuote: volume ?? 0n,
+        totalFeesPaid: 0n,
+        firstTradeAt: timestamp,
+        lastTradeAt: timestamp,
+        updatedAt: timestamp,
+      })
+      .onConflictDoNothing();
   }
 }
 
@@ -484,28 +490,28 @@ async function updateMarketData(
 ) {
   const marketId = `${baseToken}-${baseTokenId.toString()}-${quoteToken}`;
 
-  const existing = await context.db.marketData.findUnique({ id: marketId });
+  const existing = await context.db.find(marketData, { id: marketId });
   if (!existing) {
-    await context.db.marketData.create({
-      id: marketId,
-      baseToken,
-      baseTokenId,
-      quoteToken,
-      bestBidPrice: 0n,
-      bestBidAmount: 0n,
-      bestAskPrice: 0n,
-      bestAskAmount: 0n,
-      lastTradePrice: 0n,
-      volume24h: 0n,
-      tradeCount24h: 0n,
-      updatedAt: timestamp,
-    });
-  } else {
-    await context.db.marketData.update({
-      id: marketId,
-      data: {
+    await context.db
+      .insert(marketData)
+      .values({
+        id: marketId,
+        baseToken,
+        baseTokenId,
+        quoteToken,
+        bestBidPrice: 0n,
+        bestBidAmount: 0n,
+        bestAskPrice: 0n,
+        bestAskAmount: 0n,
+        lastTradePrice: 0n,
+        volume24h: 0n,
+        tradeCount24h: 0n,
         updatedAt: timestamp,
-      },
+      })
+      .onConflictDoNothing();
+  } else {
+    await context.db.update(marketData, { id: marketId }).set({
+      updatedAt: timestamp,
     });
   }
 }
@@ -524,31 +530,31 @@ async function updateMarketDataWithTrade(
 ) {
   const marketId = `${baseToken}-${baseTokenId.toString()}-${quoteToken}`;
 
-  const existing = await context.db.marketData.findUnique({ id: marketId });
+  const existing = await context.db.find(marketData, { id: marketId });
   if (existing) {
-    await context.db.marketData.update({
-      id: marketId,
-      data: {
-        lastTradePrice: price,
-        volume24h: existing.volume24h + quoteAmount,
-        tradeCount24h: existing.tradeCount24h + 1n,
-        updatedAt: timestamp,
-      },
-    });
-  } else {
-    await context.db.marketData.create({
-      id: marketId,
-      baseToken,
-      baseTokenId,
-      quoteToken,
-      bestBidPrice: 0n,
-      bestBidAmount: 0n,
-      bestAskPrice: 0n,
-      bestAskAmount: 0n,
+    await context.db.update(marketData, { id: marketId }).set({
       lastTradePrice: price,
-      volume24h: quoteAmount,
-      tradeCount24h: 1n,
+      volume24h: existing.volume24h + quoteAmount,
+      tradeCount24h: existing.tradeCount24h + 1n,
       updatedAt: timestamp,
     });
+  } else {
+    await context.db
+      .insert(marketData)
+      .values({
+        id: marketId,
+        baseToken,
+        baseTokenId,
+        quoteToken,
+        bestBidPrice: 0n,
+        bestBidAmount: 0n,
+        bestAskPrice: 0n,
+        bestAskAmount: 0n,
+        lastTradePrice: price,
+        volume24h: quoteAmount,
+        tradeCount24h: 1n,
+        updatedAt: timestamp,
+      })
+      .onConflictDoNothing();
   }
 }

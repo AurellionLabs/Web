@@ -1,4 +1,20 @@
 import { ponder } from '@/generated';
+import {
+  journeys,
+  orders,
+  packageSignatures,
+  driverAssignments,
+  journeyStatusUpdates,
+  orderStatusUpdates,
+  orderCreatedEvents,
+  journeyCreatedEvents,
+  orderSettledEvents,
+  fundsEscrowedEvents,
+  sellerPaidEvents,
+  nodeFeeDistributedEvents,
+  driverStats,
+  nodeStats,
+} from '../ponder.schema';
 
 // =============================================================================
 // AUSYS EVENT HANDLERS - Orders, Journeys, Signatures, Settlements
@@ -54,32 +70,35 @@ ponder.on('Ausys:JourneyCreated', async ({ event, context }) => {
     // Journey not linked to order
   }
 
-  // Create Journey entity
-  await context.db.journeys.create({
-    id: journeyId,
-    sender,
-    receiver,
-    driver: null,
-    currentStatus: 0, // Pending
-    bounty,
-    journeyStart: 0n,
-    journeyEnd: 0n,
-    eta,
-    startLocationLat: parcelData.startLocation.lat,
-    startLocationLng: parcelData.startLocation.lng,
-    endLocationLat: parcelData.endLocation.lat,
-    endLocationLng: parcelData.endLocation.lng,
-    startName: parcelData.startName,
-    endName: parcelData.endName,
-    orderId,
-    createdAt: event.block.timestamp,
-    updatedAt: event.block.timestamp,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  // Insert Journey entity
+  await context.db
+    .insert(journeys)
+    .values({
+      id: journeyId,
+      sender,
+      receiver,
+      driver: null,
+      currentStatus: 0, // Pending
+      bounty,
+      journeyStart: 0n,
+      journeyEnd: 0n,
+      eta,
+      startLocationLat: parcelData.startLocation.lat,
+      startLocationLng: parcelData.startLocation.lng,
+      endLocationLat: parcelData.endLocation.lat,
+      endLocationLng: parcelData.endLocation.lng,
+      startName: parcelData.startName,
+      endName: parcelData.endName,
+      orderId,
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 
-  // Create JourneyCreated event
-  await context.db.journeyCreatedEvents.create({
+  // Insert JourneyCreated event
+  await context.db.insert(journeyCreatedEvents).values({
     id: eventId,
     journeyId,
     sender,
@@ -100,7 +119,7 @@ ponder.on('Ausys:JourneyStatusUpdated', async ({ event, context }) => {
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
   // Get current journey to capture old status
-  const journey = await context.db.journeys.findUnique({ id: journeyId });
+  const journey = await context.db.find(journeys, { id: journeyId });
   const oldStatus = journey?.currentStatus ?? 0;
 
   // Update Journey entity
@@ -123,13 +142,10 @@ ponder.on('Ausys:JourneyStatusUpdated', async ({ event, context }) => {
     updateData.journeyEnd = event.block.timestamp;
   }
 
-  await context.db.journeys.update({
-    id: journeyId,
-    data: updateData,
-  });
+  await context.db.update(journeys, { id: journeyId }).set(updateData);
 
-  // Create JourneyStatusUpdate event
-  await context.db.journeyStatusUpdates.create({
+  // Insert JourneyStatusUpdate event
+  await context.db.insert(journeyStatusUpdates).values({
     id: eventId,
     journeyId,
     oldStatus,
@@ -147,12 +163,9 @@ ponder.on('Ausys:JourneyCanceled', async ({ event, context }) => {
   const { journeyId } = event.args;
 
   // Update Journey entity to canceled status
-  await context.db.journeys.update({
-    id: journeyId,
-    data: {
-      currentStatus: 3, // Canceled
-      updatedAt: event.block.timestamp,
-    },
+  await context.db.update(journeys, { id: journeyId }).set({
+    currentStatus: 3, // Canceled
+    updatedAt: event.block.timestamp,
   });
 });
 
@@ -176,33 +189,36 @@ ponder.on('Ausys:OrderCreated', async ({ event, context }) => {
   } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  // Create Order entity
-  await context.db.orders.create({
-    id: orderId,
-    buyer,
-    seller,
-    token,
-    tokenId,
-    tokenQuantity,
-    requestedTokenQuantity,
-    price,
-    txFee,
-    currentStatus,
-    startLocationLat: locationData.startLocation.lat,
-    startLocationLng: locationData.startLocation.lng,
-    endLocationLat: locationData.endLocation.lat,
-    endLocationLng: locationData.endLocation.lng,
-    startName: locationData.startName,
-    endName: locationData.endName,
-    nodes: JSON.stringify(nodes),
-    createdAt: event.block.timestamp,
-    updatedAt: event.block.timestamp,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  // Insert Order entity
+  await context.db
+    .insert(orders)
+    .values({
+      id: orderId,
+      buyer,
+      seller,
+      token,
+      tokenId,
+      tokenQuantity,
+      requestedTokenQuantity,
+      price,
+      txFee,
+      currentStatus,
+      startLocationLat: locationData.startLocation.lat,
+      startLocationLng: locationData.startLocation.lng,
+      endLocationLat: locationData.endLocation.lat,
+      endLocationLng: locationData.endLocation.lng,
+      startName: locationData.startName,
+      endName: locationData.endName,
+      nodes: JSON.stringify(nodes),
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 
-  // Create OrderCreated event
-  await context.db.orderCreatedEvents.create({
+  // Insert OrderCreated event
+  await context.db.insert(orderCreatedEvents).values({
     id: eventId,
     orderId,
     buyer,
@@ -223,20 +239,17 @@ ponder.on('Ausys:OrderStatusUpdated', async ({ event, context }) => {
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
   // Get current order to capture old status
-  const order = await context.db.orders.findUnique({ id: orderId });
+  const order = await context.db.find(orders, { id: orderId });
   const oldStatus = order?.currentStatus ?? 0;
 
   // Update Order entity
-  await context.db.orders.update({
-    id: orderId,
-    data: {
-      currentStatus: newStatus,
-      updatedAt: event.block.timestamp,
-    },
+  await context.db.update(orders, { id: orderId }).set({
+    currentStatus: newStatus,
+    updatedAt: event.block.timestamp,
   });
 
-  // Create OrderStatusUpdate event
-  await context.db.orderStatusUpdates.create({
+  // Insert OrderStatusUpdate event
+  await context.db.insert(orderStatusUpdates).values({
     id: eventId,
     orderId,
     oldStatus,
@@ -271,16 +284,13 @@ ponder.on('Ausys:OrderSettled', async ({ event, context }) => {
   }
 
   // Update Order entity
-  await context.db.orders.update({
-    id: orderId,
-    data: {
-      currentStatus: 2, // Settled
-      updatedAt: event.block.timestamp,
-    },
+  await context.db.update(orders, { id: orderId }).set({
+    currentStatus: 2, // Settled
+    updatedAt: event.block.timestamp,
   });
 
-  // Create OrderSettled event
-  await context.db.orderSettledEvents.create({
+  // Insert OrderSettled event
+  await context.db.insert(orderSettledEvents).values({
     id: eventId,
     orderId,
     totalPrice,
@@ -291,7 +301,7 @@ ponder.on('Ausys:OrderSettled', async ({ event, context }) => {
   });
 
   // Update NodeStats for involved nodes
-  const order = await context.db.orders.findUnique({ id: orderId });
+  const order = await context.db.find(orders, { id: orderId });
   if (order) {
     const nodes = JSON.parse(order.nodes) as `0x${string}`[];
     const nodeCount = nodes.length;
@@ -299,32 +309,32 @@ ponder.on('Ausys:OrderSettled', async ({ event, context }) => {
       const feePerNode = totalFee / BigInt(nodeCount);
       for (let i = 0; i < nodeCount; i++) {
         const nodeAddress = nodes[i];
-        const nodeStats = await context.db.nodeStats.findUnique({
+        const nodeStatsRecord = await context.db.find(nodeStats, {
           id: nodeAddress,
         });
-        if (nodeStats) {
-          await context.db.nodeStats.update({
-            id: nodeAddress,
-            data: {
-              totalOrders: nodeStats.totalOrders + 1n,
-              completedOrders: nodeStats.completedOrders + 1n,
-              totalRevenue: nodeStats.totalRevenue + totalPrice,
-              totalFeesEarned: nodeStats.totalFeesEarned + feePerNode,
-              lastActiveAt: event.block.timestamp,
-              updatedAt: event.block.timestamp,
-            },
-          });
-        } else {
-          await context.db.nodeStats.create({
-            id: nodeAddress,
-            node: nodeAddress,
-            totalOrders: 1n,
-            completedOrders: 1n,
-            totalRevenue: totalPrice,
-            totalFeesEarned: feePerNode,
+        if (nodeStatsRecord) {
+          await context.db.update(nodeStats, { id: nodeAddress }).set({
+            totalOrders: nodeStatsRecord.totalOrders + 1n,
+            completedOrders: nodeStatsRecord.completedOrders + 1n,
+            totalRevenue: nodeStatsRecord.totalRevenue + totalPrice,
+            totalFeesEarned: nodeStatsRecord.totalFeesEarned + feePerNode,
             lastActiveAt: event.block.timestamp,
             updatedAt: event.block.timestamp,
           });
+        } else {
+          await context.db
+            .insert(nodeStats)
+            .values({
+              id: nodeAddress,
+              node: nodeAddress,
+              totalOrders: 1n,
+              completedOrders: 1n,
+              totalRevenue: totalPrice,
+              totalFeesEarned: feePerNode,
+              lastActiveAt: event.block.timestamp,
+              updatedAt: event.block.timestamp,
+            })
+            .onConflictDoNothing();
         }
       }
     }
@@ -339,16 +349,13 @@ ponder.on('Ausys:DriverAssigned', async ({ event, context }) => {
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
   // Update Journey entity with driver
-  await context.db.journeys.update({
-    id: journeyId,
-    data: {
-      driver,
-      updatedAt: event.block.timestamp,
-    },
+  await context.db.update(journeys, { id: journeyId }).set({
+    driver,
+    updatedAt: event.block.timestamp,
   });
 
-  // Create DriverAssignment event
-  await context.db.driverAssignments.create({
+  // Insert DriverAssignment event
+  await context.db.insert(driverAssignments).values({
     id: eventId,
     driver,
     journeyId,
@@ -359,28 +366,28 @@ ponder.on('Ausys:DriverAssigned', async ({ event, context }) => {
   });
 
   // Update DriverStats
-  const driverStats = await context.db.driverStats.findUnique({ id: driver });
-  if (driverStats) {
-    await context.db.driverStats.update({
-      id: driver,
-      data: {
-        totalJourneys: driverStats.totalJourneys + 1n,
-        lastActiveAt: event.block.timestamp,
-        updatedAt: event.block.timestamp,
-      },
-    });
-  } else {
-    await context.db.driverStats.create({
-      id: driver,
-      driver,
-      totalJourneys: 1n,
-      completedJourneys: 0n,
-      canceledJourneys: 0n,
-      totalEarnings: 0n,
-      averageRating: 0n,
+  const driverStatsRecord = await context.db.find(driverStats, { id: driver });
+  if (driverStatsRecord) {
+    await context.db.update(driverStats, { id: driver }).set({
+      totalJourneys: driverStatsRecord.totalJourneys + 1n,
       lastActiveAt: event.block.timestamp,
       updatedAt: event.block.timestamp,
     });
+  } else {
+    await context.db
+      .insert(driverStats)
+      .values({
+        id: driver,
+        driver,
+        totalJourneys: 1n,
+        completedJourneys: 0n,
+        canceledJourneys: 0n,
+        totalEarnings: 0n,
+        averageRating: 0n,
+        lastActiveAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+      })
+      .onConflictDoNothing();
   }
 });
 
@@ -392,7 +399,7 @@ ponder.on('Ausys:emitSig', async ({ event, context }) => {
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
   // Get journey to determine signature type
-  const journey = await context.db.journeys.findUnique({ id: journeyId });
+  const journey = await context.db.find(journeys, { id: journeyId });
   let signatureType = 'unknown';
 
   if (journey) {
@@ -417,8 +424,8 @@ ponder.on('Ausys:emitSig', async ({ event, context }) => {
     }
   }
 
-  // Create PackageSignature event
-  await context.db.packageSignatures.create({
+  // Insert PackageSignature event
+  await context.db.insert(packageSignatures).values({
     id: eventId,
     journeyId,
     signer: user,
@@ -436,7 +443,7 @@ ponder.on('Ausys:FundsEscrowed', async ({ event, context }) => {
   const { from, amount } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  await context.db.fundsEscrowedEvents.create({
+  await context.db.insert(fundsEscrowedEvents).values({
     id: eventId,
     from,
     amount,
@@ -454,7 +461,7 @@ ponder.on('Ausys:SellerPaid', async ({ event, context }) => {
   const { seller, amount } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  await context.db.sellerPaidEvents.create({
+  await context.db.insert(sellerPaidEvents).values({
     id: eventId,
     seller,
     amount,
@@ -472,7 +479,7 @@ ponder.on('Ausys:NodeFeeDistributed', async ({ event, context }) => {
   const { node, amount } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  await context.db.nodeFeeDistributedEvents.create({
+  await context.db.insert(nodeFeeDistributedEvents).values({
     id: eventId,
     node,
     amount,
