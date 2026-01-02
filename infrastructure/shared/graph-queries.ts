@@ -58,9 +58,15 @@ export const GET_ALL_NODE_ASSETS = gql`
 `;
 
 // Node assets for Aurum (used in TradeProvider)
+// Note: Ponder uses cursor-based pagination with limit/after
 export const GET_ALL_NODE_ASSETS_AURUM = gql`
-  query GetAllNodeAssetsAurum($first: Int!, $skip: Int!) {
-    nodeAssetss(limit: $first) {
+  query GetAllNodeAssetsAurum($limit: Int!, $after: String) {
+    nodeAssetss(
+      limit: $limit
+      after: $after
+      orderBy: "createdAt"
+      orderDirection: "desc"
+    ) {
       items {
         id
         node
@@ -70,6 +76,10 @@ export const GET_ALL_NODE_ASSETS_AURUM = gql`
         capacity
         createdAt
         updatedAt
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -413,6 +423,7 @@ export const GET_NODE_ASSETS_COMPLETE = gql`
 
 // =====================
 // ASSET METADATA QUERIES (for assets table)
+// Updated for Ponder schema: uses hash, assetClass, className, account, amount
 // =====================
 
 export const GET_ALL_ASSETS = gql`
@@ -425,15 +436,20 @@ export const GET_ALL_ASSETS = gql`
     ) {
       items {
         id
+        hash
         tokenId
         name
-        class
-        unit
-        description
-        imageUri
-        totalSupply
-        createdAt
-        updatedAt
+        assetClass
+        className
+        account
+        amount
+        attributes {
+          items {
+            name
+            values
+            description
+          }
+        }
       }
       pageInfo {
         hasNextPage
@@ -445,17 +461,24 @@ export const GET_ALL_ASSETS = gql`
 
 export const GET_ASSET_BY_TOKEN_ID = gql`
   query GetAssetByTokenId($tokenId: String!) {
-    assets(id: $tokenId) {
-      id
-      tokenId
-      name
-      class
-      unit
-      description
-      imageUri
-      totalSupply
-      createdAt
-      updatedAt
+    assetss(where: { tokenId: $tokenId }, limit: 1) {
+      items {
+        id
+        hash
+        tokenId
+        name
+        assetClass
+        className
+        account
+        amount
+        attributes {
+          items {
+            name
+            values
+            description
+          }
+        }
+      }
     }
   }
 `;

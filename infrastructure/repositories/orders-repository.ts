@@ -34,10 +34,11 @@ import {
   OrderGraphResponse,
   extractPonderItems,
 } from '../shared/graph-queries';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
 /**
  * Infrastructure implementation of the IOrderRepository interface - REFACTORED
- * Uses The Graph for all read operations instead of on-chain iteration
+ * Uses Ponder indexer for all read operations instead of The Graph
  */
 export class OrderRepository implements IOrderRepository {
   private readContract: Ausys;
@@ -47,8 +48,7 @@ export class OrderRepository implements IOrderRepository {
   private signer: Signer;
   private contractAddress: string;
   private isInitialized = false;
-  private graphQLEndpoint =
-    'https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest';
+  private graphQLEndpoint = NEXT_PUBLIC_AUSYS_SUBGRAPH_URL;
 
   constructor(contract: Ausys, userProvider: BrowserProvider, signer: Signer) {
     if (!contract) {
