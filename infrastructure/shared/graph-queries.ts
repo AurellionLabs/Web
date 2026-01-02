@@ -512,6 +512,214 @@ export const GET_DRIVER_STATISTICS = gql`
 `;
 
 // =====================
+// CLOB / TRADING QUERIES (Ponder schema)
+// =====================
+
+// Get open orders for a specific market (baseToken + baseTokenId)
+export const GET_CLOB_OPEN_ORDERS = gql`
+  query GetCLOBOpenOrders(
+    $baseToken: String!
+    $baseTokenId: String!
+    $limit: Int = 50
+  ) {
+    clobOrderss(
+      where: { baseToken: $baseToken, baseTokenId: $baseTokenId, status: 0 }
+      limit: $limit
+      orderBy: "price"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        filledAmount
+        remainingAmount
+        isBuy
+        orderType
+        status
+        createdAt
+      }
+    }
+  }
+`;
+
+// Get recent trades for a market
+export const GET_CLOB_TRADES = gql`
+  query GetCLOBTrades(
+    $baseToken: String!
+    $baseTokenId: String!
+    $limit: Int = 50
+  ) {
+    clobTradess(
+      where: { baseToken: $baseToken, baseTokenId: $baseTokenId }
+      limit: $limit
+      orderBy: "timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        takerOrderId
+        makerOrderId
+        taker
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        quoteAmount
+        timestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// Get order history for a user
+export const GET_CLOB_USER_ORDERS = gql`
+  query GetCLOBUserOrders($maker: String!, $limit: Int = 50) {
+    clobOrderss(
+      where: { maker: $maker }
+      limit: $limit
+      orderBy: "createdAt"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        filledAmount
+        remainingAmount
+        isBuy
+        orderType
+        status
+        createdAt
+      }
+    }
+  }
+`;
+
+// Get user's trade history
+export const GET_CLOB_USER_TRADES = gql`
+  query GetCLOBUserTrades($user: String!, $limit: Int = 50) {
+    clobTradess(
+      where: { OR: [{ taker: $user }, { maker: $user }] }
+      limit: $limit
+      orderBy: "timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        takerOrderId
+        makerOrderId
+        taker
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        quoteAmount
+        timestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// Get best bid and ask for a market
+export const GET_CLOB_BEST_PRICES = gql`
+  query GetCLOBBestPrices($baseToken: String!, $baseTokenId: String!) {
+    # Best bid (highest buy price)
+    bestBids: clobOrderss(
+      where: {
+        baseToken: $baseToken
+        baseTokenId: $baseTokenId
+        isBuy: true
+        status: 0
+      }
+      limit: 1
+      orderBy: "price"
+      orderDirection: "desc"
+    ) {
+      items {
+        price
+        amount
+        remainingAmount
+      }
+    }
+    # Best ask (lowest sell price)
+    bestAsks: clobOrderss(
+      where: {
+        baseToken: $baseToken
+        baseTokenId: $baseTokenId
+        isBuy: false
+        status: 0
+      }
+      limit: 1
+      orderBy: "price"
+      orderDirection: "asc"
+    ) {
+      items {
+        price
+        amount
+        remainingAmount
+      }
+    }
+  }
+`;
+
+// CLOB response types
+export interface CLOBOrderGraphResponse {
+  id: string;
+  maker: string;
+  baseToken: string;
+  baseTokenId: string;
+  quoteToken: string;
+  price: string;
+  amount: string;
+  filledAmount: string;
+  remainingAmount: string;
+  isBuy: boolean;
+  orderType: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface CLOBTradeGraphResponse {
+  id: string;
+  takerOrderId: string;
+  makerOrderId: string;
+  taker: string;
+  maker: string;
+  baseToken: string;
+  baseTokenId: string;
+  quoteToken: string;
+  price: string;
+  amount: string;
+  quoteAmount: string;
+  timestamp: string;
+  transactionHash: string;
+}
+
+export interface CLOBBestPricesResponse {
+  bestBids: {
+    items: { price: string; amount: string; remainingAmount: string }[];
+  };
+  bestAsks: {
+    items: { price: string; amount: string; remainingAmount: string }[];
+  };
+}
+
+// =====================
 // RESPONSE TYPES (Updated for Ponder's flat structure)
 // =====================
 

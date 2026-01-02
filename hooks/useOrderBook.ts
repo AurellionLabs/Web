@@ -1,38 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-
-/**
- * Represents a single order level in the order book
- */
-export interface OrderLevel {
-  /** Price at this level */
-  price: number;
-  /** Total quantity at this price */
-  quantity: number;
-  /** Cumulative quantity from best price to this level */
-  total: number;
-  /** Percentage of max quantity (for depth bar visualization) */
-  depthPercent: number;
-}
-
-/**
- * Order book data structure
- */
-export interface OrderBookData {
-  /** Bid (buy) orders sorted by price descending */
-  bids: OrderLevel[];
-  /** Ask (sell) orders sorted by price ascending */
-  asks: OrderLevel[];
-  /** Current spread between best bid and ask */
-  spread: number;
-  /** Spread as a percentage of mid price */
-  spreadPercent: number;
-  /** Mid price between best bid and ask */
-  midPrice: number;
-  /** Last update timestamp */
-  lastUpdate: number;
-}
+import {
+  clobRepository,
+  type OrderBookData,
+} from '@/infrastructure/repositories/clob-repository';
 
 /**
  * Configuration options for the order book hook
@@ -42,12 +14,14 @@ export interface UseOrderBookOptions {
   levels?: number;
   /** Update interval in milliseconds */
   updateInterval?: number;
-  /** Base price for generating mock data */
-  basePrice?: number;
+  /** Base token address */
+  baseToken?: string;
+  /** Base token ID */
+  baseTokenId?: string;
 }
 
 /**
- * Generate mock order book data
+ * Generate mock order book data (fallback when no real data)
  */
 const generateMockOrderBook = (
   basePrice: number,
@@ -98,23 +72,56 @@ const generateMockOrderBook = (
 };
 
 /**
- * useOrderBook - Hook for managing order book state
+ * Convert CLOB repository order book to hook format
+ */
+const convertToHookFormat = (
+  repoOrderBook: OrderBookData,
+  levels: number,
+): OrderBookData => {
+  // Take only the requested number of levels
+  const bids = repoOrderBook.bids.slice(0, levels);
+  const asks = repoOrderBook.asks.slice(0, levels);
+
+  // Calculate depth percentages
+  const maxBid = bids[bids.length - 1]?.total || 0;
+  const maxAsk = asks[asks.length - 1]?.total || 0;
+  const maxTotal = Math.max(maxBid, maxAsk);
+
+  bids.forEach((bid) => {
+    bid.depthPercent = maxTotal > 0 ? (bid.total / maxTotal) * 100 : 0;
+  });
+
+  asks.forEach((ask) => {
+    ask.depthPercent = maxTotal > 0 ? (ask.total / maxTotal) * 100 : 0;
+  });
+
+  return {
+    ...repoOrderBook,
+    bids,
+    asks,
+  };
+};
+
+/**
+ * useOrderBook - Hook for fetching and managing order book data
  *
- * Provides real-time (mocked) order book data with:
- * - Bid and ask levels
+ * Fetches real order book data from CLOB repository with:
+ * - Bid and ask levels from Ponder indexer
  * - Spread calculation
  * - Depth visualization data
  * - Auto-updates at specified interval
+ * - Mock data fallback when no real data available
  *
- * @param assetId - The asset to get order book for
+ * @param assetId - The asset identifier (baseToken-baseTokenId)
  * @param options - Configuration options
  *
  * @example
  * ```tsx
- * const { orderBook, isLoading, refresh } = useOrderBook('asset-123', {
+ * const { orderBook, isLoading, refresh } = useOrderBook('0x...-123', {
  *   levels: 10,
- *   updateInterval: 1000,
- *   basePrice: 100,
+ *   updateInterval: 5000,
+ *   baseToken: '0x...',
+ *   baseTokenId: '123',
  * });
  * ```
  */
@@ -122,18 +129,46 @@ export function useOrderBook(
   assetId: string,
   options: UseOrderBookOptions = {},
 ) {
-  const { levels = 10, updateInterval = 2000, basePrice = 100 } = options;
+  const {
+    levels = 10,
+    updateInterval = 5000,
+    baseToken,
+    baseTokenId,
+  } = options;
 
   const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Generate and set order book data
+   * Fetch and update order book data
    */
-  const updateOrderBook = useCallback(() => {
+  const updateOrderBook = useCallback(async () => {
     try {
-      const { bids, asks } = generateMockOrderBook(basePrice, levels);
+      // If we have real market data, fetch from repository
+      if (baseToken && baseTokenId) {
+        const repoOrderBook = await clobRepository.getOrderBook(
+          baseToken,
+          baseTokenId,
+          levels * 2, // Fetch extra levels for better aggregation
+        );
+
+        // Check if we have real data
+        const hasRealData =
+          repoOrderBook.bids.length > 0 || repoOrderBook.asks.length > 0;
+
+        if (hasRealData) {
+          const formatted = convertToHookFormat(repoOrderBook, levels);
+          setOrderBook(formatted);
+          setIsLoading(false);
+          setError(null);
+          return;
+        }
+      }
+
+      // Fallback to mock data if no real data available
+      const mockBasePrice = 100; // Default mock price
+      const { bids, asks } = generateMockOrderBook(mockBasePrice, levels);
 
       const bestBid = bids[0]?.price || 0;
       const bestAsk = asks[0]?.price || 0;
@@ -152,10 +187,11 @@ export function useOrderBook(
       setIsLoading(false);
       setError(null);
     } catch (err) {
-      setError('Failed to update order book');
+      console.error('[useOrderBook] Failed to update order book:', err);
+      setError('Failed to fetch order book data');
       setIsLoading(false);
     }
-  }, [basePrice, levels]);
+  }, [baseToken, baseTokenId, levels]);
 
   /**
    * Refresh order book data manually
