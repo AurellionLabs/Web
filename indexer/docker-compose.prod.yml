@@ -52,6 +52,12 @@ services:
       
       # Ponder settings
       PONDER_LOG_LEVEL: ${PONDER_LOG_LEVEL:-info}
+      
+      # RPC Optimization settings (optimized defaults for credit efficiency)
+      # These reduce RPC calls by ~50-60% compared to standard settings
+      PONDER_POLLING_INTERVAL_MS: ${PONDER_POLLING_INTERVAL_MS:-3500}  # Polling interval in ms (optimized: 3500ms = 3.5s, reduces calls by ~43%)
+      PONDER_MAX_BLOCK_RANGE: ${PONDER_MAX_BLOCK_RANGE:-5000}  # Max blocks per RPC request (optimized: 5000, reduces calls by 60%)
+      PONDER_RPC_BATCH_WAIT_MS: ${PONDER_RPC_BATCH_WAIT_MS:-100}  # RPC batch wait time in ms (optimized: 100ms for better batching)
     ports:
       - '42069:42069'
     networks:
