@@ -12,12 +12,13 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+} from '@/app/components/ui/glass-card';
+import { GlowButton } from '@/app/components/ui/glow-button';
+import { StatusBadge } from '@/app/components/ui/status-badge';
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,11 +26,13 @@ import {
   ChevronsRight,
   ArrowUpDown,
   RefreshCw,
+  Package,
+  Filter,
 } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { OrderWithAsset } from '@/app/types/shared';
 import { formatTokenAmount } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 const orderStatuses = [
   { value: 'all', label: 'All Statuses' },
@@ -54,7 +57,6 @@ export default function OrdersPage() {
 
   useEffect(() => {
     setCurrentUserRole('node');
-    // Select the node if it's not already selected
     if (nodeId && nodeId !== selectedNodeAddress) {
       selectNode(nodeId);
     }
@@ -64,14 +66,22 @@ export default function OrdersPage() {
     setIsRefreshing(true);
     try {
       await refreshOrders();
-      console.log('orders for node', nodeId, '>>>>>>>>>', orders);
     } finally {
       setIsRefreshing(false);
     }
   };
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <RefreshCw className="w-8 h-8 text-accent animate-spin" />
+            <span className="text-muted-foreground">Loading...</span>
+          </div>
+        </div>
+      }
+    >
       <OrdersContent
         nodeId={nodeId}
         orders={orders}
@@ -119,7 +129,6 @@ function OrdersContent({
     }));
   };
 
-  // Get unique assets from orders for filtering
   const uniqueAssets = Array.from(
     new Map(
       orders
@@ -132,7 +141,6 @@ function OrdersContent({
   );
 
   useEffect(() => {
-    // Apply filters
     let result = orders;
 
     if (filters.orderId) {
@@ -157,7 +165,6 @@ function OrdersContent({
       result = result.filter((order) => order.currentStatus === filters.status);
     }
 
-    // Apply sorting
     if (sortConfig.key) {
       result = [...result].sort((a, b) => {
         if (sortConfig.key === 'quantity') {
@@ -167,7 +174,6 @@ function OrdersContent({
             ? aQuantity - bQuantity
             : bQuantity - aQuantity;
         }
-        // For value, convert string to number
         if (sortConfig.key === 'value') {
           const aValue = parseFloat(a.price);
           const bValue = parseFloat(b.price);
@@ -180,11 +186,10 @@ function OrdersContent({
     }
 
     setFilteredOrders(result);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [filters, sortConfig, orders]);
 
   useEffect(() => {
-    // Apply pagination
     const startIndex = (currentPage - 1) * ordersPerPage;
     const endIndex = startIndex + ordersPerPage;
     setDisplayedOrders(filteredOrders.slice(startIndex, endIndex));
@@ -192,46 +197,69 @@ function OrdersContent({
 
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
-  return (
-    <div className="container mx-auto py-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-bold">Orders</h1>
-        <Button variant="outline" onClick={onRefresh} disabled={isRefreshing}>
-          {isRefreshing ? (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh Orders
-            </>
-          )}
-        </Button>
-      </div>
+  const getStatusBadgeStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'settled':
+        return 'success';
+      case 'cancelled':
+        return 'error';
+      case 'processing':
+        return 'warning';
+      default:
+        return 'pending';
+    }
+  };
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter Orders</CardTitle>
-          <CardDescription>
-            Use the filters below to find specific orders
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+  return (
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Orders</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              View and manage all orders for this node
+            </p>
+          </div>
+          <GlowButton
+            variant="outline"
+            onClick={onRefresh}
+            loading={isRefreshing}
+            leftIcon={<RefreshCw className="w-4 h-4" />}
+          >
+            Refresh Orders
+          </GlowButton>
+        </div>
+
+        {/* Filters */}
+        <GlassCard>
+          <GlassCardHeader>
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-accent" />
+              <GlassCardTitle>Filter Orders</GlassCardTitle>
+            </div>
+            <GlassCardDescription>
+              Use the filters below to find specific orders
+            </GlassCardDescription>
+          </GlassCardHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Order ID</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Order ID
+              </label>
               <Input
                 placeholder="Search by order ID"
                 value={filters.orderId}
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, orderId: e.target.value }))
                 }
+                className="bg-surface-overlay border-glass-border"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Customer ID</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Customer ID
+              </label>
               <Input
                 placeholder="Search by customer ID"
                 value={filters.customerId}
@@ -241,17 +269,20 @@ function OrdersContent({
                     customerId: e.target.value,
                   }))
                 }
+                className="bg-surface-overlay border-glass-border"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Asset Type</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Asset Type
+              </label>
               <Select
                 value={filters.assetType}
                 onValueChange={(value) =>
                   setFilters((prev) => ({ ...prev, assetType: value }))
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-surface-overlay border-glass-border">
                   <SelectValue placeholder="Select asset type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -265,14 +296,16 @@ function OrdersContent({
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Status
+              </label>
               <Select
                 value={filters.status}
                 onValueChange={(value) =>
                   setFilters((prev) => ({ ...prev, status: value }))
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-surface-overlay border-glass-border">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -285,117 +318,145 @@ function OrdersContent({
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Orders List</CardTitle>
-          <CardDescription>
-            All orders matching your filter criteria
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative w-full overflow-auto">
-            <table className="w-full caption-bottom text-sm">
+        {/* Orders Table */}
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Orders List</GlassCardTitle>
+            <GlassCardDescription>
+              All orders matching your filter criteria
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="h-12 px-4 text-left align-middle">Order ID</th>
-                  <th className="h-12 px-4 text-left align-middle">Customer</th>
-                  <th className="h-12 px-4 text-left align-middle">Asset</th>
-                  <th className="h-12 px-4 text-left align-middle">
-                    Quantity
-                    <Button
-                      variant="ghost"
+                <tr className="border-b border-glass-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Order ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Asset
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <button
                       onClick={() => handleSort('quantity')}
-                      className="h-8 px-2"
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      <ArrowUpDown className="h-4 w-4" />
-                    </Button>
+                      Quantity
+                      <ArrowUpDown className="w-3 h-3" />
+                    </button>
                   </th>
-                  <th className="h-12 px-4 text-left align-middle">
-                    Value
-                    <Button
-                      variant="ghost"
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <button
                       onClick={() => handleSort('value')}
-                      className="h-8 px-2"
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      <ArrowUpDown className="h-4 w-4" />
-                    </Button>
+                      Value
+                      <ArrowUpDown className="w-3 h-3" />
+                    </button>
                   </th>
-                  <th className="h-12 px-4 text-left align-middle">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Status
+                  </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-glass-border">
                 {displayedOrders.map((order) => (
-                  <tr key={order.id} className="border-b">
-                    <td className="p-4">{order.id}</td>
-                    <td className="p-4">{order.buyer}</td>
-                    <td className="p-4 capitalize">
+                  <tr
+                    key={order.id}
+                    className="hover:bg-glass-hover transition-colors"
+                  >
+                    <td className="px-4 py-4 font-mono text-sm text-foreground">
+                      {order.id}
+                    </td>
+                    <td className="px-4 py-4 font-mono text-sm text-foreground">
+                      {order.buyer.slice(0, 8)}...{order.buyer.slice(-6)}
+                    </td>
+                    <td className="px-4 py-4 capitalize text-foreground">
                       {order.asset?.name || 'Unknown Asset'}
                     </td>
-                    <td className="p-4">{order.tokenQuantity}</td>
-                    <td className="p-4">
+                    <td className="px-4 py-4 font-mono text-foreground">
+                      {order.tokenQuantity}
+                    </td>
+                    <td className="px-4 py-4 font-mono text-foreground">
                       {formatTokenAmount(order.price, 6, 2)} USDT
                     </td>
-                    <td className="p-4 capitalize">{order.currentStatus}</td>
+                    <td className="px-4 py-4">
+                      <StatusBadge
+                        status={getStatusBadgeStatus(order.currentStatus)}
+                        label={order.currentStatus}
+                        size="sm"
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {displayedOrders.length === 0 && (
+              <div className="text-center py-12">
+                <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  No orders found matching your criteria
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between px-2 py-4">
-            <div className="text-sm text-muted-foreground">
-              Showing{' '}
-              {Math.min(
-                filteredOrders.length,
-                (currentPage - 1) * ordersPerPage + 1,
-              )}{' '}
-              to {Math.min(filteredOrders.length, currentPage * ordersPerPage)}{' '}
-              of {filteredOrders.length} entries
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="text-sm">
-                Page {currentPage} of {totalPages}
+          {filteredOrders.length > ordersPerPage && (
+            <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-glass-border">
+              <div className="text-sm text-muted-foreground">
+                Showing{' '}
+                {Math.min(
+                  filteredOrders.length,
+                  (currentPage - 1) * ordersPerPage + 1,
+                )}{' '}
+                to{' '}
+                {Math.min(filteredOrders.length, currentPage * ordersPerPage)}{' '}
+                of {filteredOrders.length} entries
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronsLeft className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <span className="px-4 text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </GlassCard>
+      </div>
     </div>
   );
 }

@@ -1,70 +1,71 @@
 'use client';
-import Link from 'next/link';
-import { colors } from '@/lib/constants/colors';
+
 import { Pool } from '@/domain/pool';
-import { useState, useEffect } from 'react';
-import { usePoolsProvider } from '@/app/providers/pools.provider';
+import { formatTokenAmount } from '@/lib/formatters';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface PoolRowProps {
   pool: Pool;
   index: number;
 }
 
-const formatDaysLeft = (startDate: number, durationDays: number) => {
-  const now = Math.floor(Date.now() / 1000);
-  const endDate = startDate + durationDays * 24 * 60 * 60;
-  const daysLeft = Math.max(0, Math.floor((endDate - now) / 86400));
-  return daysLeft.toString();
-};
-
-import { formatTokenAmount } from '@/lib/formatters';
-
 export function PoolRow({ pool, index }: PoolRowProps) {
-  const { selectPool } = usePoolsProvider();
-  const [formattedValues, setFormattedValues] = useState({
-    tvl: '0',
-    reward: '0',
-    daysLeft: '0',
-  });
-
-  const handleClick = () => {
-    selectPool(pool);
-  };
-
-  useEffect(() => {
-    setFormattedValues({
-      tvl: formatTokenAmount(pool.totalValueLocked, 18, 2),
-      reward: pool.rewardRate?.toFixed(2) || '0.00',
-      daysLeft: formatDaysLeft(pool.startDate, pool.durationDays),
-    });
-  }, [pool]);
+  // Mock data for demonstration
+  const tvl = parseFloat(pool.totalValueLocked);
+  const mockVolume24h = tvl * 0.05;
+  const mockVolumeChange = Math.random() * 20 - 10;
+  const isVolumePositive = mockVolumeChange > 0;
 
   return (
-    <tr
-      className={`border-b border-[${colors.neutral[800]}] hover:bg-[${colors.neutral[800]}]/50 transition-colors`}
-    >
-      <td className={`py-4 px-4 text-[${colors.text.secondary}]`}>{index}</td>
+    <tr className="border-b border-neutral-800/50 hover:bg-neutral-900/50 transition-colors cursor-pointer group">
+      <td className="py-4 px-4 text-neutral-500 font-mono text-sm">{index}</td>
       <td className="py-4 px-4">
         <Link
           href={`/customer/pools/${pool.id}`}
-          className={`flex items-center gap-2 hover:text-[${colors.primary[500]}]`}
-          onClick={handleClick}
+          className="flex items-center gap-3"
         >
-          <div className="flex -space-x-1">
-            <div className="w-6 h-6 rounded-full bg-amber-600 border-2 border-gray-900" />
-            <div className="w-6 h-6 rounded-full bg-red-700 border-2 border-gray-900" />
+          {/* Pool icon with gold accent */}
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-lg group-hover:border-amber-500/50 group-hover:shadow-glow-sm transition-all duration-300">
+            {pool.assetName.charAt(0)}
           </div>
-          <span>{pool.name}</span>
-          <span className="text-green-500 text-sm">
-            {formattedValues.reward}%
-          </span>
+          <div>
+            <div className="font-medium text-white group-hover:text-amber-400 transition-colors">
+              {pool.name}
+            </div>
+            <div className="text-sm text-neutral-500">{pool.assetName}</div>
+          </div>
         </Link>
       </td>
-      <td className="py-4 px-4 text-right">{formattedValues.tvl}</td>
-      <td className="py-4 px-4 text-right text-green-500">
-        {formattedValues.reward}%
+      <td className="py-4 px-4 text-right font-mono text-neutral-300">
+        ${formatTokenAmount(tvl, 0, 2)}
       </td>
-      <td className="py-4 px-4 text-right">{formattedValues.tvl}</td>
+      <td className="py-4 px-4 text-right font-mono">
+        <span
+          className="text-amber-400"
+          style={{
+            textShadow: '0 0 10px rgba(245, 158, 11, 0.3)',
+          }}
+        >
+          {pool.rewardRate}%
+        </span>
+      </td>
+      <td className="py-4 px-4 text-right">
+        <div className="flex flex-col items-end font-mono">
+          <span className="text-neutral-300">
+            ${formatTokenAmount(mockVolume24h, 0, 2)}
+          </span>
+          <span
+            className={cn(
+              'text-xs',
+              isVolumePositive ? 'text-green-400' : 'text-red-400',
+            )}
+          >
+            {isVolumePositive ? '+' : ''}
+            {mockVolumeChange.toFixed(2)}%
+          </span>
+        </div>
+      </td>
     </tr>
   );
 }

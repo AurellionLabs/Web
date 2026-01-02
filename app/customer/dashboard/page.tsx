@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
-import { colors } from '@/lib/constants/colors';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { useRouter } from 'next/navigation';
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+} from '@/app/components/ui/glass-card';
+import { GlowButton } from '@/app/components/ui/glow-button';
+import { StatusBadge } from '@/app/components/ui/status-badge';
+import { AnimatedNumber } from '@/app/components/ui/animated-number';
+import { cn } from '@/lib/utils';
 import {
   Activity,
   Package,
@@ -26,6 +26,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  TrendingUp,
 } from 'lucide-react';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -49,7 +50,9 @@ type SortConfig = {
   direction: 'asc' | 'desc';
 };
 
-// Helper function to get display label for OrderStatus
+/**
+ * Get display label for OrderStatus
+ */
 const getStatusLabel = (status: OrderStatus): string => {
   switch (status) {
     case OrderStatus.CREATED:
@@ -65,6 +68,95 @@ const getStatusLabel = (status: OrderStatus): string => {
   }
 };
 
+/**
+ * StatCard - Glowing stat card component
+ */
+interface StatCardProps {
+  title: string;
+  value: number | string;
+  icon: React.ElementType;
+  iconColor: string;
+  prefix?: string;
+  suffix?: string;
+  trend?: number;
+}
+
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon: Icon,
+  iconColor,
+  prefix,
+  suffix,
+  trend,
+}) => (
+  <GlassCard hover className="relative overflow-hidden">
+    {/* Background glow */}
+    <div
+      className={cn(
+        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
+        iconColor,
+      )}
+    />
+
+    <div className="relative flex items-start justify-between">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground mb-1">
+          {title}
+        </p>
+        <div className="flex items-baseline gap-1">
+          {prefix && (
+            <span className="text-2xl font-bold text-foreground">{prefix}</span>
+          )}
+          {typeof value === 'number' ? (
+            <AnimatedNumber
+              value={value}
+              fixed={0}
+              className="text-2xl font-bold text-foreground"
+            />
+          ) : (
+            <span className="text-2xl font-bold text-foreground">{value}</span>
+          )}
+          {suffix && (
+            <span className="text-lg text-muted-foreground">{suffix}</span>
+          )}
+        </div>
+        {trend !== undefined && (
+          <div
+            className={cn(
+              'flex items-center gap-1 mt-2 text-xs font-medium',
+              trend >= 0 ? 'text-trading-buy' : 'text-trading-sell',
+            )}
+          >
+            <TrendingUp className={cn('w-3 h-3', trend < 0 && 'rotate-180')} />
+            <span>
+              {trend >= 0 ? '+' : ''}
+              {trend.toFixed(1)}%
+            </span>
+            <span className="text-muted-foreground">vs last week</span>
+          </div>
+        )}
+      </div>
+      <div
+        className={cn(
+          'p-3 rounded-xl',
+          iconColor.replace('bg-', 'bg-opacity-20 '),
+        )}
+      >
+        <Icon
+          className={cn(
+            'w-6 h-6',
+            iconColor.replace('bg-', 'text-').replace('-500', '-400'),
+          )}
+        />
+      </div>
+    </div>
+  </GlassCard>
+);
+
+/**
+ * CustomerDashboard - Dashboard with terminal styling
+ */
 export default function CustomerDashboard() {
   const { setCurrentUserRole } = useMainProvider();
   const {
@@ -76,6 +168,7 @@ export default function CustomerDashboard() {
     confirmReceipt,
   } = useCustomer();
   const { toast } = useToast();
+
   // Filter states
   const [filters, setFilters] = useState({
     orderId: '',
@@ -151,7 +244,6 @@ export default function CustomerDashboard() {
   const pendingOrders = filteredOrders.filter(
     (order) => order.currentStatus === OrderStatus.CREATED,
   ).length;
-
   const totalSpent = filteredOrders
     .filter((order) => order.currentStatus === OrderStatus.SETTLED)
     .reduce((total, order) => total + parseFloat(order.price), 0);
@@ -199,79 +291,11 @@ export default function CustomerDashboard() {
     }
   };
 
-  const handleSignatureTimeout = (orderId: string) => {
-    setWaitingForSignature((prev) => ({ ...prev, [orderId]: false }));
-    toast({
-      title: 'Signature Timeout',
-      description:
-        'The driver did not sign within the time limit. Please try again.',
-      variant: 'destructive',
-    });
-  };
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      console.error('Ethereum provider not found');
-      return;
-    }
-
-    const setupEventListener = async () => {
-      try {
-        const provider = new BrowserProvider(window.ethereum as any);
-        const contract = new Contract(
-          NEXT_PUBLIC_AUSYS_ADDRESS,
-          AUSYS_ABI,
-          provider,
-        );
-
-        const filter = contract.filters.emitSig();
-
-        const handleSignatureEvent = async (user: string, id: string) => {
-          if (waitingForSignature[id]) {
-            if (signatureCleanups[id]) {
-              signatureCleanups[id]();
-              setSignatureCleanups((prev) => {
-                const newCleanups = { ...prev };
-                delete newCleanups[id];
-                return newCleanups;
-              });
-            }
-
-            const customerAddress = getWalletAddress();
-            if (user.toLowerCase() !== customerAddress.toLowerCase()) {
-              setWaitingForSignature((prev) => ({ ...prev, [id]: false }));
-              await refreshOrders();
-              toast({
-                title: 'Signature Received',
-                description: 'The driver has signed the receipt confirmation.',
-              });
-            }
-          }
-        };
-
-        contract.on(filter, handleSignatureEvent);
-
-        return () => {
-          contract.off(filter, handleSignatureEvent);
-          Object.values(signatureCleanups).forEach((cleanup) => cleanup());
-        };
-      } catch (error) {
-        console.error('Error setting up event listener:', error);
-      }
-    };
-
-    setupEventListener();
-  }, [waitingForSignature, signatureCleanups, refreshOrders]);
-
   const handleConfirmReceipt = async (orderId: string) => {
     try {
       setLoading(true);
       await confirmReceipt(orderId);
-
-      // Refresh to get updated status
       await refreshOrders();
-
-      // Check if order was settled (delivery completed)
       const order = orders.find((o) => o.id === orderId);
       if (order?.currentStatus === OrderStatus.SETTLED) {
         toast({
@@ -282,12 +306,10 @@ export default function CustomerDashboard() {
       } else {
         toast({
           title: 'Receipt Confirmed',
-          description:
-            'Your receipt confirmation has been recorded. The delivery will be completed once the driver signs for delivery.',
+          description: 'Your receipt confirmation has been recorded.',
         });
       }
     } catch (error) {
-      console.error('Error confirming receipt:', error);
       toast({
         title: 'Error',
         description: 'Failed to confirm receipt. Please try again.',
@@ -298,21 +320,12 @@ export default function CustomerDashboard() {
     }
   };
 
-  // Cleanup signature listeners on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(signatureCleanups).forEach((cleanup) => cleanup());
-    };
-  }, [signatureCleanups]);
-
   if (isLoading) {
     return (
-      <div
-        className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6 flex items-center justify-center`}
-      >
-        <div className="flex items-center gap-2">
-          <RefreshCw className="h-6 w-6 animate-spin" />
-          <span>Loading orders...</span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
+          <span className="text-muted-foreground">Loading orders...</span>
         </div>
       </div>
     );
@@ -320,303 +333,280 @@ export default function CustomerDashboard() {
 
   if (error) {
     return (
-      <div
-        className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
-      >
+      <div className="min-h-screen p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-            <h2 className="text-lg font-semibold text-red-500">
+          <GlassCard className="border-trading-sell/30">
+            <h2 className="text-lg font-semibold text-trading-sell mb-2">
               Error Loading Orders
             </h2>
-            <p className="text-gray-400 mt-1">{error}</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => refreshOrders()}
-            >
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <GlowButton variant="outline" onClick={() => refreshOrders()}>
               Try Again
-            </Button>
-          </div>
+            </GlowButton>
+          </GlassCard>
         </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
-    >
+    <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Customer Dashboard</h1>
-            <p className="text-gray-400 mt-1">
-              Welcome back! Here's an overview of your orders and activities.
+            <h1 className="text-2xl font-display font-bold text-foreground">
+              Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Overview of your orders and trading activity
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
+          <GlowButton
+            variant="secondary"
             onClick={() => refreshOrders()}
-            className="h-10 w-10"
+            leftIcon={<RefreshCw className="w-4 h-4" />}
           >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+            Refresh
+          </GlowButton>
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className={`bg-[${colors.background.secondary}]`}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    In Progress Orders
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">{activeOrders}</h3>
-                </div>
-                <Activity className="h-8 w-8 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`bg-[${colors.background.secondary}]`}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Completed Orders
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">{completedOrders}</h3>
-                </div>
-                <Package className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`bg-[${colors.background.secondary}]`}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Pending Orders
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">{pendingOrders}</h3>
-                </div>
-                <Clock className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`bg-[${colors.background.secondary}]`}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Total Spent
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">
-                    ${totalSpent.toFixed(2)}
-                  </h3>
-                </div>
-                <ShoppingCart className="h-8 w-8 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="In Progress"
+            value={activeOrders}
+            icon={Activity}
+            iconColor="bg-yellow-500"
+          />
+          <StatCard
+            title="Completed"
+            value={completedOrders}
+            icon={Package}
+            iconColor="bg-green-500"
+            trend={12.5}
+          />
+          <StatCard
+            title="Pending"
+            value={pendingOrders}
+            icon={Clock}
+            iconColor="bg-blue-500"
+          />
+          <StatCard
+            title="Total Spent"
+            value={totalSpent / 1000000} // Convert from USDT units
+            icon={ShoppingCart}
+            iconColor="bg-purple-500"
+            prefix="$"
+          />
         </div>
 
         {/* Recent Orders */}
-        <Card className={`bg-[${colors.background.secondary}]`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <CardTitle>Recent Orders</CardTitle>
-              <CardDescription>Your latest order activity</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Order ID</label>
-                <Input
-                  placeholder="Search by order ID"
-                  value={filters.orderId}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, orderId: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, status: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value={OrderStatus.CREATED}>
-                      {getStatusLabel(OrderStatus.CREATED)}
-                    </SelectItem>
-                    <SelectItem value={OrderStatus.PROCESSING}>
-                      {getStatusLabel(OrderStatus.PROCESSING)}
-                    </SelectItem>
-                    <SelectItem value={OrderStatus.SETTLED}>
-                      {getStatusLabel(OrderStatus.SETTLED)}
-                    </SelectItem>
-                    <SelectItem value={OrderStatus.CANCELLED}>
-                      {getStatusLabel(OrderStatus.CANCELLED)}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Recent Orders</GlassCardTitle>
+            <GlassCardDescription>
+              Your latest order activity
+            </GlassCardDescription>
+          </GlassCardHeader>
 
-            <div className="relative w-full overflow-auto">
-              <table className="w-full caption-bottom text-sm">
-                <thead>
-                  <tr className="border-b border-gray-800">
-                    <th className="h-12 px-4 text-left align-middle">
-                      Order ID
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle">Asset</th>
-                    <th className="h-12 px-4 text-left align-middle">
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Order ID
+              </label>
+              <Input
+                placeholder="Search by order ID"
+                value={filters.orderId}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, orderId: e.target.value }))
+                }
+                className="bg-surface-overlay border-glass-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Status
+              </label>
+              <Select
+                value={filters.status}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, status: value }))
+                }
+              >
+                <SelectTrigger className="bg-surface-overlay border-glass-border">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value={OrderStatus.CREATED}>
+                    {getStatusLabel(OrderStatus.CREATED)}
+                  </SelectItem>
+                  <SelectItem value={OrderStatus.PROCESSING}>
+                    {getStatusLabel(OrderStatus.PROCESSING)}
+                  </SelectItem>
+                  <SelectItem value={OrderStatus.SETTLED}>
+                    {getStatusLabel(OrderStatus.SETTLED)}
+                  </SelectItem>
+                  <SelectItem value={OrderStatus.CANCELLED}>
+                    {getStatusLabel(OrderStatus.CANCELLED)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Orders table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-glass-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Order ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Asset
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('tokenQuantity')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
                       Quantity
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-2"
-                        onClick={() => handleSort('tokenQuantity')}
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
-                      </Button>
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle">
+                      <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('price')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
                       Value
-                      <Button
-                        variant="ghost"
+                      <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-glass-border">
+                {currentOrders.map((order) => (
+                  <tr
+                    key={order.id}
+                    className="hover:bg-glass-hover transition-colors"
+                  >
+                    <td className="px-4 py-4 text-sm font-mono text-foreground">
+                      {order.id.slice(0, 8)}...
+                    </td>
+                    <td className="px-4 py-4 text-sm text-foreground capitalize">
+                      {order.asset?.name || 'Unknown'}
+                    </td>
+                    <td className="px-4 py-4 text-sm font-mono text-foreground">
+                      {order.tokenQuantity}
+                    </td>
+                    <td className="px-4 py-4 text-sm font-mono text-foreground">
+                      ${formatTokenAmount(order.price, 6, 2)}
+                    </td>
+                    <td className="px-4 py-4">
+                      <StatusBadge
+                        status={
+                          order.currentStatus === OrderStatus.SETTLED
+                            ? 'connected'
+                            : order.currentStatus === OrderStatus.CANCELLED
+                              ? 'disconnected'
+                              : order.currentStatus === OrderStatus.PROCESSING
+                                ? 'warning'
+                                : 'pending'
+                        }
+                        label={getStatusLabel(order.currentStatus)}
                         size="sm"
-                        className="ml-2"
-                        onClick={() => handleSort('price')}
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
-                      </Button>
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle">Status</th>
-                    <th className="h-12 px-4 text-left align-middle">
-                      Actions
-                    </th>
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        {order.currentStatus === OrderStatus.CREATED && (
+                          <OrderActionDialog
+                            order={order}
+                            onConfirm={handleCancelOrder}
+                            variant="cancel"
+                          />
+                        )}
+                        {order.currentStatus === OrderStatus.PROCESSING && (
+                          <OrderActionDialog
+                            order={order}
+                            onConfirm={handleConfirmReceipt}
+                            variant="confirm"
+                            isLoading={loading}
+                            isWaitingForSignature={
+                              waitingForSignature[order.id]
+                            }
+                            waitingForRole="driver"
+                          />
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {currentOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-800">
-                      <td className="p-4">{order.id}</td>
-                      <td className="p-4 capitalize">{order.asset?.name}</td>
-                      <td className="p-4">{order.tokenQuantity}</td>
-                      <td className="p-4">
-                        ${formatTokenAmount(order.price, 6, 2)}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          {order.currentStatus === OrderStatus.SETTLED && (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          )}
-                          {order.currentStatus === OrderStatus.CANCELLED && (
-                            <XCircle className="h-4 w-4 text-red-500" />
-                          )}
-                          {order.currentStatus === OrderStatus.PROCESSING && (
-                            <Activity className="h-4 w-4 text-amber-500" />
-                          )}
-                          {order.currentStatus === OrderStatus.CREATED && (
-                            <Clock className="h-4 w-4 text-blue-500" />
-                          )}
-                          <span className="capitalize">
-                            {getStatusLabel(order.currentStatus)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          {order.currentStatus === OrderStatus.CREATED && (
-                            <OrderActionDialog
-                              order={order}
-                              onConfirm={handleCancelOrder}
-                              variant="cancel"
-                            />
-                          )}
-                          {order.currentStatus === OrderStatus.PROCESSING && (
-                            <OrderActionDialog
-                              order={order}
-                              onConfirm={handleConfirmReceipt}
-                              variant="confirm"
-                              isLoading={loading}
-                              isWaitingForSignature={
-                                waitingForSignature[order.id]
-                              }
-                              waitingForRole="driver"
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </tbody>
+            </table>
 
-              {/* Pagination Controls */}
-              <div className="mt-4 flex items-center justify-between px-2">
-                <div className="text-sm text-gray-400">
+            {currentOrders.length === 0 && (
+              <div className="text-center py-12">
+                <Package className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                <p className="text-muted-foreground">No orders found</p>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-glass-border">
+                <div className="text-sm text-muted-foreground">
                   Showing {startIndex + 1} to{' '}
                   {Math.min(endIndex, sortedOrders.length)} of{' '}
                   {sortedOrders.length} orders
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="flex items-center gap-1">
+                  <button
                     onClick={goToFirstPage}
                     disabled={currentPage === 1}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                    <ChevronsLeft className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button
                     onClick={goToPreviousPage}
                     disabled={currentPage === 1}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm text-gray-400">
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <span className="px-4 text-sm text-muted-foreground">
                     Page {currentPage} of {totalPages}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={goToNextPage}
                     disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button
                     onClick={goToLastPage}
                     disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
+                    <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
+        </GlassCard>
       </div>
     </div>
   );

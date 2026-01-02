@@ -7,24 +7,90 @@ import {
   RefreshCw,
   Share2,
   FileText,
-  Download,
   ExternalLink,
+  Droplets,
+  TrendingUp,
+  Clock,
+  Zap,
 } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { StatCard } from '@/app/components/ui/stat-card';
+import {
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+} from '@/app/components/ui/glass-card';
+import { GlowButton } from '@/app/components/ui/glow-button';
+import { StatusBadge } from '@/app/components/ui/status-badge';
+import { AnimatedNumber } from '@/app/components/ui/animated-number';
 import { TransactionTable } from '@/app/components/ui/transaction-table';
-import { PoolBalance } from '@/app/components/ui/pool-balance';
-import { Progress } from '@/app/components/ui/progress';
-import { colors } from '@/lib/constants/colors';
 import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { Pool, PoolDynamicData, PoolStatus } from '@/domain/pool';
 import { useToast } from '@/hooks/use-toast';
-import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useWallet } from '@/hooks/useWallet';
 import { formatTokenAmount } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
+
+/**
+ * StatCard - Pool stat card component
+ */
+interface StatCardProps {
+  title: string;
+  value: string;
+  change?: string;
+  icon: React.ElementType;
+  iconColor: string;
+}
+
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  change,
+  icon: Icon,
+  iconColor,
+}) => (
+  <GlassCard hover className="relative overflow-hidden">
+    <div
+      className={cn(
+        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
+        iconColor,
+      )}
+    />
+    <div className="relative">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <div
+          className={cn(
+            'p-2 rounded-lg',
+            iconColor.replace('bg-', 'bg-opacity-20 '),
+          )}
+        >
+          <Icon
+            className={cn(
+              'w-4 h-4',
+              iconColor.replace('bg-', 'text-').replace('-500', '-400'),
+            )}
+          />
+        </div>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-bold text-foreground">{value}</span>
+        {change && (
+          <span
+            className={cn(
+              'text-sm font-medium',
+              change.startsWith('+') ? 'text-trading-buy' : 'text-trading-sell',
+            )}
+          >
+            {change}
+          </span>
+        )}
+      </div>
+    </div>
+  </GlassCard>
+);
 
 export default function PoolDetails({ params }: { params: { id: string } }) {
   const { address } = useWallet();
@@ -49,6 +115,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const [isClaimingReward, setIsClaimingReward] = useState(false);
   const [groupedStake, setGroupedStake] = useState<any>();
   const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load pool data on mount
   useEffect(() => {
@@ -113,7 +180,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
           params.id,
           timeRange as '1H' | '1D' | '1W' | '1M' | '1Y',
         );
-
         setGroupedStake(grouped);
       } catch (error) {
         console.error('Error loading stake history:', error);
@@ -126,6 +192,29 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const getTotalDailyVolume = () => {
     if (!poolDynamics?.volume24h) return '0.00';
     return formatTokenAmount(poolDynamics.volume24h, 18, 2);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const poolWithDynamics = await getPoolWithDynamicData(params.id);
+      if (poolWithDynamics) {
+        setPool(poolWithDynamics);
+        setPoolDynamics({
+          progressPercentage: poolWithDynamics.progressPercentage,
+          timeRemainingSeconds: poolWithDynamics.timeRemainingSeconds,
+          tvl: poolWithDynamics.tvl,
+          fundingGoal: poolWithDynamics.fundingGoal,
+          reward: poolWithDynamics.rewardRate ?? 0,
+          volume24h: poolWithDynamics.volume24h,
+          volumeChangePercentage: poolWithDynamics.volumeChangePercentage,
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing pool data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleRewardClaim = async () => {
@@ -154,7 +243,6 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         return;
       }
 
-      // Check if user is provider
       const isProvider =
         pool.providerAddress.toLowerCase() === address.toLowerCase();
 
@@ -192,6 +280,21 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     return `${minutes}m`;
   };
 
+  const getStatusBadgeStatus = (status: PoolStatus) => {
+    switch (status) {
+      case PoolStatus.PENDING:
+        return 'pending';
+      case PoolStatus.ACTIVE:
+        return 'success';
+      case PoolStatus.COMPLETE:
+        return 'info';
+      case PoolStatus.PAID:
+        return 'success';
+      default:
+        return 'neutral';
+    }
+  };
+
   const getStatusText = (status: PoolStatus) => {
     switch (status) {
       case PoolStatus.PENDING:
@@ -214,55 +317,74 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     tvl: poolDynamics?.tvl
       ? formatTokenAmount(poolDynamics.tvl, 18, 2)
       : '0.00',
-    completionPercentage: `${poolDynamics?.progressPercentage || 0}%`,
+    completionPercentage: poolDynamics?.progressPercentage || 0,
     fundingGoal: poolDynamics?.fundingGoal
       ? formatTokenAmount(poolDynamics.fundingGoal, 18, 2)
       : '0.00',
-    volume24h: `$${getTotalDailyVolume()}`,
+    volume24h: getTotalDailyVolume(),
     volumeChange: dailyPercentageChange,
     token0Balance: pool?.assetName || '',
-    token1Balance: 'Funding',
     lockupPeriod: pool ? pool.startDate + pool.durationDays * 24 * 60 * 60 : 0,
     reward: poolDynamics?.reward ? `${poolDynamics.reward.toFixed(2)}%` : '0%',
     timeRemaining: poolDynamics?.timeRemainingSeconds || 0,
-    status: pool ? getStatusText(pool.status) : 'Unknown',
+    status: pool ? pool.status : PoolStatus.PENDING,
   };
 
   if (loading || !pool) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center py-8">
-            <div className="text-gray-400">Loading pool details...</div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
+          <span className="text-muted-foreground">Loading pool details...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/customer/pools">
-                <ArrowLeft className="h-6 w-6" />
-              </Link>
-            </Button>
+            <Link
+              href="/customer/pools"
+              className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+            </Link>
             <div>
-              <h1 className="text-3xl font-bold">{poolData.name}</h1>
-              <p className="text-gray-400 mt-1">{poolData.description}</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-foreground">
+                  {poolData.name}
+                </h1>
+                <StatusBadge
+                  status={getStatusBadgeStatus(poolData.status)}
+                  label={getStatusText(poolData.status)}
+                  size="sm"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {poolData.description}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="icon">
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon">
-              <Share2 className="h-4 w-4" />
-            </Button>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+            >
+              <RefreshCw
+                className={cn(
+                  'w-4 h-4 text-muted-foreground',
+                  isRefreshing && 'animate-spin',
+                )}
+              />
+            </button>
+            <button className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors">
+              <Share2 className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
         </div>
 
@@ -271,39 +393,52 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
           {/* Left Content - Takes 3 columns */}
           <div className="xl:col-span-3 space-y-8">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 title="Total Value Locked"
-                value={poolData.tvl}
+                value={`$${poolData.tvl}`}
                 change={poolData.volumeChange}
+                icon={Droplets}
+                iconColor="bg-accent"
               />
               <StatCard
                 title="Volume (24h)"
-                value={poolData.volume24h}
+                value={`$${poolData.volume24h}`}
                 change={poolData.volumeChange}
+                icon={TrendingUp}
+                iconColor="bg-green-500"
               />
-              <StatCard title="Total Rewards" value={'$ToDo'} />
+              <StatCard
+                title="Time Remaining"
+                value={formatTime(poolData.timeRemaining)}
+                icon={Clock}
+                iconColor="bg-blue-500"
+              />
               <StatCard
                 title="APR"
                 value={poolData.reward}
-                description="Current reward rate"
+                icon={Zap}
+                iconColor="bg-purple-500"
               />
             </div>
 
             {/* Chart */}
-            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+            <GlassCard>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Pool Activity</h2>
-                <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-foreground">
+                  Pool Activity
+                </h2>
+                <div className="flex gap-1 p-1 rounded-lg bg-surface-overlay">
                   {['1H', '1D', '1W', '1M'].map((range) => (
                     <button
                       key={range}
                       onClick={() => setTimeRange(range)}
-                      className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                      className={cn(
+                        'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
                         timeRange === range
-                          ? 'bg-amber-500 text-black'
-                          : 'text-gray-400 hover:text-white'
-                      }`}
+                          ? 'bg-accent/20 text-accent'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
                     >
                       {range}
                     </button>
@@ -311,104 +446,86 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 </div>
               </div>
               <Chart timeRange={timeRange} groupedStakes={groupedStake} />
-            </div>
+            </GlassCard>
 
             {/* Transactions */}
-            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
-              <h2 className="text-xl font-semibold mb-6">
-                Recent Transactions
-              </h2>
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle>Recent Transactions</GlassCardTitle>
+              </GlassCardHeader>
               <TransactionTable poolId={params.id} />
-            </div>
+            </GlassCard>
           </div>
 
-          {/* Right Sidebar - Takes 1 column */}
+          {/* Right Sidebar */}
           <div className="xl:col-span-1 space-y-6">
             {/* Completion Progress */}
-            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
-              <h3 className="text-lg font-semibold mb-4">
+            <GlassCard>
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Completion Progress
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Progress</span>
-                  <span className="text-green-500 font-semibold">
-                    {poolData.completionPercentage}
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="text-trading-buy font-semibold">
+                    {poolData.completionPercentage.toFixed(1)}%
                   </span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-3">
+                <div className="w-full bg-glass-bg rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-amber-600 to-red-700 h-3 rounded-full transition-all duration-300"
-                    style={{ width: poolData.completionPercentage }}
+                    className="bg-gradient-to-r from-accent to-secondary h-3 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(poolData.completionPercentage, 100)}%`,
+                    }}
                   />
                 </div>
-                <div className="text-sm text-gray-400 text-center">
-                  {poolData.tvl} of {poolData.fundingGoal} raised
+                <div className="text-sm text-muted-foreground text-center">
+                  ${poolData.tvl} of ${poolData.fundingGoal} raised
                 </div>
               </div>
-            </div>
+            </GlassCard>
 
             {/* Pool Details */}
-            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
-              <h3 className="text-lg font-semibold mb-4">Pool Details</h3>
+            <GlassCard>
+              <h3 className="text-lg font-semibold text-foreground mb-4">
+                Pool Details
+              </h3>
               <div className="space-y-4">
-                {/* Description */}
-                {poolData.description && (
-                  <div className="pb-4 border-b border-zinc-800">
-                    <span className="text-gray-400 text-sm block mb-2">
-                      Description
-                    </span>
-                    <p className="text-gray-300 text-sm leading-relaxed">
-                      {poolData.description}
-                    </p>
-                  </div>
-                )}
-
                 {/* Supporting Documents */}
                 {poolData.supportingDocuments.length > 0 && (
-                  <div className="pb-4 border-b border-zinc-800">
-                    <span className="text-gray-400 text-sm block mb-3">
+                  <div className="pb-4 border-b border-glass-border">
+                    <span className="text-muted-foreground text-sm block mb-3">
                       Supporting Documents
                     </span>
                     <div className="space-y-2">
                       {poolData.supportingDocuments.map((doc, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-3 p-2 bg-zinc-800 rounded-lg"
+                          className="flex items-center gap-3 p-2 bg-glass-bg rounded-lg border border-glass-border"
                         >
-                          <div className="flex-shrink-0">
-                            <div className="p-1.5 bg-zinc-700 rounded-md">
-                              <FileText className="w-3 h-3 text-gray-400" />
-                            </div>
+                          <div className="p-1.5 bg-glass-bg rounded-md">
+                            <FileText className="w-3 h-3 text-muted-foreground" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p
-                              className="text-sm font-medium text-gray-300 truncate"
-                              title={doc.name}
-                            >
+                            <p className="text-sm font-medium text-foreground truncate">
                               {doc.name}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               {doc.ipfsHash ? 'Available' : 'Processing...'}
                             </p>
                           </div>
                           {doc.ipfsHash && (
-                            <div className="flex-shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0 text-gray-400 hover:text-white"
-                                onClick={() => {
-                                  // TODO: Open IPFS document
-                                  window.open(
-                                    `https://ipfs.io/ipfs/${doc.ipfsHash}`,
-                                    '_blank',
-                                  );
-                                }}
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                              </Button>
-                            </div>
+                            <button
+                              className="p-1.5 rounded-lg hover:bg-glass-hover text-muted-foreground hover:text-foreground transition-colors"
+                              onClick={() => {
+                                window.open(
+                                  `https://ipfs.io/ipfs/${doc.ipfsHash}`,
+                                  '_blank',
+                                );
+                              }}
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </button>
                           )}
                         </div>
                       ))}
@@ -417,69 +534,75 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 )}
 
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                    <span className="text-gray-400">Asset</span>
-                    <span className="font-medium">
+                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
+                    <span className="text-muted-foreground text-sm">Asset</span>
+                    <span className="font-medium text-foreground">
                       {poolData.token0Balance}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                    <span className="text-gray-400">Funding Goal</span>
-                    <span className="font-medium">{poolData.fundingGoal}</span>
+                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
+                    <span className="text-muted-foreground text-sm">
+                      Funding Goal
+                    </span>
+                    <span className="font-medium text-foreground">
+                      ${poolData.fundingGoal}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                    <span className="text-gray-400">Current TVL</span>
-                    <span className="font-medium">{poolData.tvl}</span>
+                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
+                    <span className="text-muted-foreground text-sm">
+                      Current TVL
+                    </span>
+                    <span className="font-medium text-foreground">
+                      ${poolData.tvl}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-b-0">
-                    <span className="text-gray-400">Time Remaining</span>
-                    <span className="font-medium">
+                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
+                    <span className="text-muted-foreground text-sm">
+                      Time Remaining
+                    </span>
+                    <span className="font-medium text-foreground">
                       {formatTime(poolData.timeRemaining)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-400">Status</span>
-                    <span
-                      className={`font-medium px-3 py-1 text-xs rounded-full ${
-                        poolData.status === 'Active'
-                          ? 'bg-green-500/20 text-green-400'
-                          : poolData.status === 'Complete'
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : poolData.status === 'Paid'
-                              ? 'bg-purple-500/20 text-purple-400'
-                              : 'bg-yellow-500/20 text-yellow-400'
-                      }`}
-                    >
-                      {poolData.status}
+                    <span className="text-muted-foreground text-sm">
+                      Status
                     </span>
+                    <StatusBadge
+                      status={getStatusBadgeStatus(poolData.status)}
+                      label={getStatusText(poolData.status)}
+                      size="sm"
+                    />
                   </div>
                 </div>
               </div>
-            </div>
+            </GlassCard>
 
             {/* Action Buttons */}
             <div className="space-y-3">
               {pool?.status === PoolStatus.ACTIVE && (
-                <Button
-                  className="w-full h-12 text-base font-semibold bg-amber-600 hover:bg-amber-700"
+                <GlowButton
+                  variant="primary"
+                  className="w-full"
+                  glow
                   onClick={() => {
                     window.location.href = `/customer/pools/${params.id}/add-liquidity`;
                   }}
                 >
                   Add Liquidity
-                </Button>
+                </GlowButton>
               )}
 
               {(pool?.status === PoolStatus.COMPLETE ||
                 pool?.status === PoolStatus.ACTIVE) && (
-                <Button
+                <GlowButton
                   variant="outline"
-                  className="w-full h-12 text-base font-semibold border-zinc-700 hover:bg-zinc-800"
+                  className="w-full"
                   onClick={handleRewardClaim}
-                  disabled={isClaimingReward}
+                  loading={isClaimingReward}
                 >
-                  {isClaimingReward ? 'Processing...' : 'Claim Reward'}
-                </Button>
+                  Claim Reward
+                </GlowButton>
               )}
             </div>
           </div>

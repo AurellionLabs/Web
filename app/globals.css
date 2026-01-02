@@ -2,85 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
+/* ============================================
+   AURELLION PROTOCOL - DESIGN SYSTEM
+   Red & Gold blockchain protocol aesthetic
+   ============================================ */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
+    /* === Surface Colors === */
+    --surface-base: 0 0% 2%;
+    --surface-elevated: 0 0% 5%;
+    --surface-overlay: 0 0% 8%;
+
+    /* === Primary Accent - Gold/Amber === */
+    --accent-50: 48 100% 96%;
+    --accent-100: 48 96% 89%;
+    --accent-200: 48 97% 77%;
+    --accent-300: 46 97% 65%;
+    --accent-400: 43 96% 56%;
+    --accent-500: 38 92% 50%;
+    --accent-600: 32 95% 44%;
+    --accent-700: 26 90% 37%;
+    --accent-800: 23 83% 31%;
+    --accent-900: 22 78% 26%;
+
+    /* === Secondary Accent - Red === */
+    --red-50: 0 86% 97%;
+    --red-100: 0 93% 94%;
+    --red-200: 0 96% 89%;
+    --red-300: 0 94% 82%;
+    --red-400: 0 91% 71%;
+    --red-500: 0 84% 60%;
+    --red-600: 0 72% 51%;
+    --red-700: 0 74% 42%;
+    --red-800: 0 70% 35%;
+    --red-900: 0 63% 31%;
+
+    /* === Trading Colors === */
+    --trading-buy: 142 71% 45%;
+    --trading-sell: 0 84% 60%;
+    --trading-buy-muted: 142 71% 45% / 0.15;
+    --trading-sell-muted: 0 84% 60% / 0.15;
+
+    /* === Glass Morphism === */
+    --glass-bg: 0 0% 100% / 0.03;
+    --glass-border: 0 0% 100% / 0.08;
+    --glass-hover: 0 0% 100% / 0.06;
+
+    /* === Semantic Tokens === */
+    --background: var(--surface-base);
     --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
+    --card: var(--surface-elevated);
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
+    --popover: var(--surface-overlay);
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
+    --primary: var(--accent-500);
+    --primary-foreground: 0 0% 2%;
+    --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+    --accent: var(--accent-500);
+    --accent-foreground: 0 0% 2%;
+    --destructive: var(--red-500);
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: var(--accent-500);
+
+    /* === Chart Colors === */
+    --chart-1: var(--accent-500);
+    --chart-2: var(--trading-buy);
+    --chart-3: var(--red-500);
+    --chart-4: 262 83% 58%;
+    --chart-5: 189 94% 43%;
+
+    /* === Layout === */
+    --radius: 0.5rem;
+    --header-height: 64px;
+
+    /* === Sidebar === */
+    --sidebar-background: var(--surface-elevated);
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: var(--accent-500);
+    --sidebar-primary-foreground: 0 0% 2%;
+    --sidebar-accent: var(--accent-500) / 0.1;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--accent-500);
+  }
+
+  .dark {
+    --background: var(--surface-base);
+    --foreground: 0 0% 98%;
   }
 }
 
@@ -88,7 +102,501 @@ body {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  html {
+    scroll-behavior: smooth;
   }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      var(--font-sans),
+      'Plus Jakarta Sans',
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+
+  /* Plus Jakarta Sans for all headings - clean, geometric, rounded */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--surface-base));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  /* === Text Utilities === */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .font-mono-trading {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* === Gradient Text === */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--accent-300)) 0%,
+      hsl(var(--red-400)) 50%,
+      hsl(var(--accent-500)) 100%
+    );
+  }
+
+  .gradient-text-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      #fcd34d 0%,
+      #f59e0b 50%,
+      #d97706 100%
+    );
+  }
+
+  .gradient-text-red-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      #fbbf24 0%,
+      #ef4444 50%,
+      #f59e0b 100%
+    );
+  }
+
+  /* === Glass Morphism === */
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border));
+  }
+
+  .glass-hover {
+    @apply glass transition-all duration-300;
+  }
+
+  .glass-hover:hover {
+    background: hsl(var(--glass-hover));
+    border-color: hsl(var(--accent-500) / 0.3);
+  }
+
+  .glass-card {
+    @apply glass rounded-xl p-6;
+  }
+
+  /* === Glow Effects === */
+  .glow-accent {
+    box-shadow:
+      0 0 20px hsl(var(--accent-500) / 0.4),
+      0 0 40px hsl(var(--accent-500) / 0.2);
+  }
+
+  .glow-accent-sm {
+    box-shadow:
+      0 0 10px hsl(var(--accent-500) / 0.3),
+      0 0 20px hsl(var(--accent-500) / 0.15);
+  }
+
+  .glow-accent-lg {
+    box-shadow:
+      0 0 40px hsl(var(--accent-500) / 0.5),
+      0 0 80px hsl(var(--accent-500) / 0.25);
+  }
+
+  .glow-red {
+    box-shadow:
+      0 0 20px hsl(var(--red-500) / 0.4),
+      0 0 40px hsl(var(--red-500) / 0.2);
+  }
+
+  .glow-buy {
+    box-shadow:
+      0 0 20px hsl(var(--trading-buy) / 0.3),
+      0 0 40px hsl(var(--trading-buy) / 0.1);
+  }
+
+  .glow-sell {
+    box-shadow:
+      0 0 20px hsl(var(--trading-sell) / 0.3),
+      0 0 40px hsl(var(--trading-sell) / 0.1);
+  }
+
+  .text-glow-accent {
+    text-shadow: 0 0 20px hsl(var(--accent-500) / 0.5);
+  }
+
+  .text-glow-red {
+    text-shadow: 0 0 20px hsl(var(--red-500) / 0.5);
+  }
+
+  /* === Background Gradients === */
+  .bg-gradient-radial {
+    background: radial-gradient(
+      ellipse at center,
+      hsl(var(--accent-900) / 0.3) 0%,
+      transparent 70%
+    );
+  }
+
+  .bg-gradient-mesh {
+    background: radial-gradient(
+        at 40% 20%,
+        hsl(var(--red-900) / 0.3) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 80% 0%,
+        hsl(var(--accent-800) / 0.3) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 0% 50%,
+        hsl(var(--red-800) / 0.15) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 80% 50%,
+        hsl(var(--accent-700) / 0.2) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 0% 100%,
+        hsl(var(--accent-900) / 0.3) 0px,
+        transparent 50%
+      ),
+      hsl(var(--surface-base));
+  }
+
+  .bg-grid-pattern {
+    background-image: linear-gradient(
+        hsl(var(--glass-border)) 1px,
+        transparent 1px
+      ),
+      linear-gradient(90deg, hsl(var(--glass-border)) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* === Surface Styles === */
+  .surface-base {
+    background: hsl(var(--surface-base));
+  }
+
+  .surface-elevated {
+    background: hsl(var(--surface-elevated));
+  }
+
+  .surface-overlay {
+    background: hsl(var(--surface-overlay));
+  }
+
+  /* === Trading Specific === */
+  .price-up {
+    @apply text-green-500;
+  }
+
+  .price-down {
+    @apply text-red-500;
+  }
+
+  .price-flash-up {
+    animation: flash-green 0.5s ease-out;
+  }
+
+  .price-flash-down {
+    animation: flash-red 0.5s ease-out;
+  }
+
+  .orderbook-bid-depth {
+    background: linear-gradient(
+      to left,
+      hsl(var(--trading-buy) / var(--depth-opacity, 0.15)) 0%,
+      transparent 100%
+    );
+  }
+
+  .orderbook-ask-depth {
+    background: linear-gradient(
+      to right,
+      hsl(var(--trading-sell) / var(--depth-opacity, 0.15)) 0%,
+      transparent 100%
+    );
+  }
+
+  /* === Border Utilities === */
+  .border-glow {
+    border: 1px solid hsl(var(--accent-500) / 0.3);
+  }
+
+  .border-glass {
+    border: 1px solid hsl(var(--glass-border));
+  }
+
+  /* === Focus States === */
+  .focus-glow:focus {
+    @apply outline-none ring-2 ring-offset-2;
+    ring-color: hsl(var(--accent-500));
+    ring-offset-color: hsl(var(--surface-base));
+  }
+
+  /* === Status Indicators === */
+  .status-live {
+    @apply relative;
+  }
+
+  .status-live::before {
+    content: '';
+    @apply absolute -left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-500;
+    animation: pulse-status 2s ease-in-out infinite;
+  }
+
+  /* === Hover Effects === */
+  .hover-lift {
+    @apply transition-transform duration-300;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .hover-glow {
+    @apply transition-shadow duration-300;
+  }
+
+  .hover-glow:hover {
+    @apply glow-accent-sm;
+  }
+}
+
+@layer components {
+  /* === Button Variants === */
+  .btn-glow {
+    @apply relative overflow-hidden;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--red-600)) 0%,
+      hsl(var(--accent-500)) 100%
+    );
+  }
+
+  .btn-glow::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--red-500)) 0%,
+      hsl(var(--accent-400)) 100%
+    );
+  }
+
+  .btn-glow:hover::before {
+    @apply opacity-100;
+  }
+
+  .btn-glow:hover {
+    @apply glow-accent;
+  }
+
+  /* === Card Variants === */
+  .card-trading {
+    @apply glass rounded-lg border-glass;
+  }
+
+  .card-elevated {
+    @apply surface-elevated rounded-xl border border-glass;
+  }
+
+  /* === Table Styles === */
+  .table-trading {
+    @apply w-full font-mono-trading text-sm;
+  }
+
+  .table-trading th {
+    @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider;
+  }
+
+  .table-trading td {
+    @apply px-4 py-3 border-t border-glass;
+  }
+
+  .table-trading tr:hover {
+    @apply bg-white/[0.02];
+  }
+
+  /* === Input Styles === */
+  .input-trading {
+    @apply w-full px-4 py-3 rounded-lg font-mono-trading;
+    @apply surface-elevated border border-glass;
+    @apply focus:outline-none focus:border-accent-500/50 focus:glow-accent-sm;
+    @apply transition-all duration-200;
+  }
+
+  /* === Tab Styles === */
+  .tabs-trading {
+    @apply flex gap-1 p-1 rounded-lg surface-elevated;
+  }
+
+  .tab-trading {
+    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200;
+    @apply text-muted-foreground hover:text-foreground;
+  }
+
+  .tab-trading[data-state='active'],
+  .tab-trading.active {
+    @apply bg-accent/10 text-amber-400;
+  }
+}
+
+/* === Keyframe Animations === */
+@keyframes flash-green {
+  0% {
+    background-color: hsl(var(--trading-buy) / 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes flash-red {
+  0% {
+    background-color: hsl(var(--trading-sell) / 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes pulse-status {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(1.2);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* === Animation Utilities === */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background-size: 200% 100%;
+}
+
+.animate-gradient {
+  animation: gradient-shift 8s ease infinite;
+  background-size: 200% 200%;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+/* Staggered animation delays */
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+.stagger-4 {
+  animation-delay: 0.4s;
+}
+.stagger-5 {
+  animation-delay: 0.5s;
 }

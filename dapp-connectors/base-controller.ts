@@ -1,5 +1,4 @@
 import { BrowserProvider, JsonRpcSigner } from 'ethers';
-import { toast } from 'sonner';
 import { SUPPORTED_CHAINS } from '@/config/network';
 
 let provider: BrowserProvider | null = null;

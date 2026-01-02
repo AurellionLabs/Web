@@ -34,10 +34,7 @@ export interface Pool {
   totalValueLocked: BigNumberString; // The current amount funded/staked in the pool
   startDate: number; // Unix timestamp (in seconds) when the pool operation began or will begin
   durationDays: number; // The intended duration of the pool operation in days
-  /**
-   * Reward rate, potentially stored in basis points (e.g., 500 for 5.00%).
-   * The exact interpretation (permille, basis points, etc.) depends on the contract implementation.
-   */
+  rewardRate: number; // Reward rate as a number (e.g., 5.0 for 5%)
   assetPrice: BigNumberString; // Price of the underlying asset (set during creation)
   status: PoolStatus;
   supportingDocuments?: SupportingDocument[]; // Supporting documents uploaded to IPFS
@@ -65,6 +62,7 @@ export interface PoolCreationData {
   // providerAddress might be implicit (msg.sender in contract)
   fundingGoal: BigNumberString;
   durationDays: number;
+  rewardRate: BigNumberString; // Reward rate in basis points as string
   assetPrice: BigNumberString; // Price of the underlying asset at creation
   supportingDocuments?: SupportingDocument[]; // Optional supporting documents
 }

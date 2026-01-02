@@ -29,8 +29,8 @@ export type Order = {
   token: string;
   tokenId: string;
   tokenQuantity: string;
-  price: string; // USDT units (6 decimals) - e.g., "200000000" = $200.00
-  txFee: string; // USDT units (6 decimals) - e.g., "5000000" = $5.00
+  price: string;
+  txFee: string;
   buyer: string;
   seller: string;
   journeyIds: string[];

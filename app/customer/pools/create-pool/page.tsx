@@ -7,8 +7,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import Link from 'next/link';
-import { ArrowLeft, Upload, X, FileText, Image, FileCheck } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
+import {
+  ArrowLeft,
+  Upload,
+  X,
+  FileText,
+  Image,
+  FileCheck,
+  Plus,
+  Zap,
+} from 'lucide-react';
 import { Input } from '@/app/components/ui/input';
 import {
   Form,
@@ -27,12 +35,12 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+} from '@/app/components/ui/glass-card';
+import { GlowButton } from '@/app/components/ui/glow-button';
 import { useToast } from '@/hooks/use-toast';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { useWallet } from '@/hooks/useWallet';
@@ -69,26 +77,26 @@ const getFileIcon = (fileType: string) => {
   if (fileType.startsWith('image/')) {
     return {
       icon: Image,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10',
     };
   } else if (fileType === 'application/pdf') {
     return {
       icon: FileText,
-      color: 'text-red-500',
-      bgColor: 'bg-red-50 dark:bg-red-900/20',
+      color: 'text-red-400',
+      bgColor: 'bg-red-500/10',
     };
   } else if (fileType.includes('word') || fileType.includes('document')) {
     return {
       icon: FileCheck,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10',
     };
   } else {
     return {
       icon: FileText,
-      color: 'text-gray-500',
-      bgColor: 'bg-gray-50 dark:bg-gray-900/20',
+      color: 'text-muted-foreground',
+      bgColor: 'bg-glass-bg',
     };
   }
 };
@@ -190,7 +198,6 @@ export default function CreatePoolPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Check if wallet is connected
       if (!address) {
         toast({
           title: 'Error',
@@ -200,13 +207,11 @@ export default function CreatePoolPage() {
         return;
       }
 
-      // Find the selected asset details
       const selectedAsset = SUPPORTED_ASSETS.find(
         (asset) => asset.name === values.assetName,
       );
       const assetDisplayName = selectedAsset?.label || values.assetName;
 
-      // Prepare supporting documents
       const supportingDocuments: SupportingDocument[] =
         values.supportingDocuments
           ? values.supportingDocuments.map((file) => ({
@@ -217,7 +222,6 @@ export default function CreatePoolPage() {
             }))
           : [];
 
-      // Prepare pool creation data according to domain interface
       const poolCreationData: PoolCreationData = {
         name: values.name,
         description: values.description,
@@ -225,7 +229,7 @@ export default function CreatePoolPage() {
         tokenAddress: NEXT_PUBLIC_AURA_TOKEN_ADDRESS as `0x${string}`,
         fundingGoal: values.fundingGoal,
         durationDays: parseInt(values.durationDays),
-        rewardRate: parseFloat(values.rewardRate) * 100, // Convert to basis points
+        rewardRate: String(parseFloat(values.rewardRate) * 100),
         assetPrice: values.assetPrice,
         supportingDocuments:
           supportingDocuments.length > 0 ? supportingDocuments : undefined,
@@ -233,8 +237,6 @@ export default function CreatePoolPage() {
 
       const result = await createPool(poolCreationData);
       toast({ title: 'Success', description: 'Pool created successfully!' });
-
-      // Redirect to the new pool
       router.push(`/customer/pools/${result.poolId}`);
     } catch (error: any) {
       toast({
@@ -248,358 +250,402 @@ export default function CreatePoolPage() {
   }
 
   return (
-    <div className="container max-w-2xl mx-auto py-10">
-      <div className="mb-6">
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Back link */}
         <Link
           href="/customer/pools"
-          className="inline-flex items-center text-sm text-primary-500 hover:text-primary-600"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Pools
         </Link>
-      </div>
 
-      <Card className="border-primary-200 dark:border-primary-800">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary-700 dark:text-primary-300">
+        {/* Header */}
+        <div className="text-center">
+          <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Plus className="w-8 h-8 text-accent" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">
             Create New Pool
-          </CardTitle>
-          <CardDescription>
-            Set up a new pool by providing the required details below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Set up a new yield pool by providing the required details below
+          </p>
+        </div>
+
+        <GlassCard>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pool Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter pool name" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Choose a descriptive name for your pool.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Basic Info Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Zap className="w-4 h-4 text-accent" />
+                  <span>Basic Information</span>
+                </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pool Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter pool description" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Describe the pool and its purpose.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="assetName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Asset</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground">
+                        Pool Name
+                      </FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an asset" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder="Enter pool name"
+                          className="bg-surface-overlay border-glass-border"
+                          {...field}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {SUPPORTED_ASSETS.map((asset) => (
-                          <SelectItem key={asset.id} value={asset.name}>
-                            {asset.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Select the asset that will be used in the pool.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormDescription className="text-muted-foreground/70">
+                        Choose a descriptive name for your pool
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="durationDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration (Days)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        step="1"
-                        placeholder="Enter number of days"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Specify the duration of the pool in days (whole numbers
-                      only).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground">
+                        Description
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter pool description"
+                          className="bg-surface-overlay border-glass-border"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-muted-foreground/70">
+                        Describe the pool and its purpose
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="rewardRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>APY (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="any"
-                        min="1"
-                        max="100"
-                        placeholder="0.00"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the APY (as a percentage between 1 and 100)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="assetName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground">
+                        Asset
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="bg-surface-overlay border-glass-border">
+                            <SelectValue placeholder="Select an asset" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {SUPPORTED_ASSETS.map((asset) => (
+                            <SelectItem key={asset.id} value={asset.name}>
+                              {asset.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-muted-foreground/70">
+                        Select the asset for this pool
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="fundingGoal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Funding Goal</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="any"
-                        min="0"
-                        placeholder="0.00"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the funding goal in tokens (decimals allowed).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Pool Parameters Section */}
+              <div className="space-y-4 pt-4 border-t border-glass-border">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Zap className="w-4 h-4 text-accent" />
+                  <span>Pool Parameters</span>
+                </div>
 
-              <FormField
-                control={form.control}
-                name="assetPrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Asset Price</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="any"
-                        min="0"
-                        placeholder="0.00"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the asset price in tokens (decimals allowed).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="durationDays"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Duration (Days)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            placeholder="e.g., 30"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="supportingDocuments"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Supporting Documents (Optional)</FormLabel>
-                    <FormControl>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-center w-full">
-                          <label
-                            htmlFor="file-upload"
-                            className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors ${
-                              (field.value?.length || 0) >= MAX_FILES_ALLOWED
-                                ? 'border-gray-200 bg-gray-50 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800'
-                                : 'border-gray-300 cursor-pointer bg-gray-50 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500'
-                            }`}
-                          >
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Upload
-                                className={`w-8 h-8 mb-4 ${
+                  <FormField
+                    control={form.control}
+                    name="rewardRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          APY (%)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="1"
+                            max="100"
+                            placeholder="e.g., 12.5"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="fundingGoal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Funding Goal
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0"
+                            placeholder="e.g., 10000"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="assetPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Asset Price
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0"
+                            placeholder="e.g., 100"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Documents Section */}
+              <div className="space-y-4 pt-4 border-t border-glass-border">
+                <FormField
+                  control={form.control}
+                  name="supportingDocuments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground">
+                        Supporting Documents (Optional)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-center w-full">
+                            <label
+                              htmlFor="file-upload"
+                              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl transition-colors ${
+                                (field.value?.length || 0) >= MAX_FILES_ALLOWED
+                                  ? 'border-glass-border bg-glass-bg cursor-not-allowed opacity-50'
+                                  : 'border-glass-border cursor-pointer bg-glass-bg hover:bg-glass-hover hover:border-accent/30'
+                              }`}
+                            >
+                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Upload
+                                  className={`w-8 h-8 mb-4 ${
+                                    (field.value?.length || 0) >=
+                                    MAX_FILES_ALLOWED
+                                      ? 'text-muted-foreground/30'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                />
+                                {(field.value?.length || 0) >=
+                                MAX_FILES_ALLOWED ? (
+                                  <>
+                                    <p className="mb-2 text-sm text-muted-foreground/50">
+                                      Maximum {MAX_FILES_ALLOWED} files reached
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/50">
+                                      Remove a file to upload more
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="mb-2 text-sm text-muted-foreground">
+                                      <span className="font-semibold text-foreground">
+                                        Click to upload
+                                      </span>{' '}
+                                      or drag and drop
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      PDF, Word documents, or images (MAX. 4MB
+                                      each)
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/70 mt-1">
+                                      {field.value?.length || 0} of{' '}
+                                      {MAX_FILES_ALLOWED} files
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                              <Input
+                                id="file-upload"
+                                type="file"
+                                multiple
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                                className="hidden"
+                                disabled={
                                   (field.value?.length || 0) >=
                                   MAX_FILES_ALLOWED
-                                    ? 'text-gray-300 dark:text-gray-600'
-                                    : 'text-gray-500 dark:text-gray-400'
-                                }`}
+                                }
+                                onChange={(e) => {
+                                  const newFiles = Array.from(
+                                    e.target.files || [],
+                                  );
+                                  const existingFiles = field.value || [];
+                                  const remainingSlots =
+                                    MAX_FILES_ALLOWED - existingFiles.length;
+                                  const filesToAdd = newFiles.slice(
+                                    0,
+                                    remainingSlots,
+                                  );
+                                  const allFiles = [
+                                    ...existingFiles,
+                                    ...filesToAdd,
+                                  ];
+                                  field.onChange(allFiles);
+                                  e.target.value = '';
+                                }}
                               />
-                              {(field.value?.length || 0) >=
-                              MAX_FILES_ALLOWED ? (
-                                <>
-                                  <p className="mb-2 text-sm text-gray-400 dark:text-gray-600">
-                                    Maximum {MAX_FILES_ALLOWED} files reached
-                                  </p>
-                                  <p className="text-xs text-gray-400 dark:text-gray-600">
-                                    Remove a file to upload more
-                                  </p>
-                                </>
-                              ) : (
-                                <>
-                                  <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                                    <span className="font-semibold">
-                                      Click to upload
-                                    </span>{' '}
-                                    or drag and drop
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    PDF, Word documents, or images (MAX. 4MB
-                                    each)
-                                  </p>
-                                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                    {field.value?.length || 0} of{' '}
-                                    {MAX_FILES_ALLOWED} files
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                            <Input
-                              id="file-upload"
-                              type="file"
-                              multiple
-                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
-                              className="hidden"
-                              disabled={
-                                (field.value?.length || 0) >= MAX_FILES_ALLOWED
-                              }
-                              onChange={(e) => {
-                                const newFiles = Array.from(
-                                  e.target.files || [],
-                                );
-                                const existingFiles = field.value || [];
-                                const remainingSlots =
-                                  MAX_FILES_ALLOWED - existingFiles.length;
-                                const filesToAdd = newFiles.slice(
-                                  0,
-                                  remainingSlots,
-                                );
-                                const allFiles = [
-                                  ...existingFiles,
-                                  ...filesToAdd,
-                                ];
-                                field.onChange(allFiles);
-                                // Reset the input so the same file can be selected again if needed
-                                e.target.value = '';
-                              }}
-                            />
-                          </label>
-                        </div>
-
-                        {field.value && field.value.length > 0 && (
-                          <div className="space-y-3">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              {field.value.length} file
-                              {field.value.length > 1 ? 's' : ''} selected
-                            </p>
-                            <div className="grid gap-2">
-                              {field.value.map((file, index) => {
-                                const {
-                                  icon: Icon,
-                                  color,
-                                  bgColor,
-                                } = getFileIcon(file.type);
-                                return (
-                                  <div
-                                    key={index}
-                                    className={`flex items-center justify-between p-3 rounded-lg border ${bgColor} border-gray-200 dark:border-gray-700 transition-colors`}
-                                  >
-                                    <div className="flex items-center space-x-3">
-                                      <div
-                                        className={`p-2 rounded-lg ${bgColor}`}
-                                      >
-                                        <Icon className={`w-4 h-4 ${color}`} />
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                          {file.name}
-                                        </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                                          {(file.size / (1024 * 1024)).toFixed(
-                                            2,
-                                          )}{' '}
-                                          MB
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                      onClick={() => {
-                                        const newFiles =
-                                          field.value?.filter(
-                                            (_, i) => i !== index,
-                                          ) || [];
-                                        field.onChange(newFiles);
-                                      }}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                            </label>
                           </div>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Upload up to {MAX_FILES_ALLOWED} supporting documents such
-                      as PDFs, Word documents, or images to provide additional
-                      context for your pool.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
-              <Button
-                type="submit"
-                variant={'default'}
-                className="w-full text-stone-900"
-                disabled={form.formState.isSubmitting || loading}
-              >
-                {form.formState.isSubmitting || loading
-                  ? 'Creating...'
-                  : 'Create Pool'}
-              </Button>
+                          {field.value && field.value.length > 0 && (
+                            <div className="space-y-3">
+                              <p className="text-sm font-medium text-foreground">
+                                {field.value.length} file
+                                {field.value.length > 1 ? 's' : ''} selected
+                              </p>
+                              <div className="grid gap-2">
+                                {field.value.map((file, index) => {
+                                  const {
+                                    icon: Icon,
+                                    color,
+                                    bgColor,
+                                  } = getFileIcon(file.type);
+                                  return (
+                                    <div
+                                      key={index}
+                                      className={`flex items-center justify-between p-3 rounded-lg ${bgColor} border border-glass-border transition-colors`}
+                                    >
+                                      <div className="flex items-center space-x-3">
+                                        <div
+                                          className={`p-2 rounded-lg ${bgColor}`}
+                                        >
+                                          <Icon
+                                            className={`w-4 h-4 ${color}`}
+                                          />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-sm font-medium text-foreground truncate">
+                                            {file.name}
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {(
+                                              file.size /
+                                              (1024 * 1024)
+                                            ).toFixed(2)}{' '}
+                                            MB
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="p-1.5 rounded-lg hover:bg-glass-hover text-muted-foreground hover:text-foreground transition-colors"
+                                        onClick={() => {
+                                          const newFiles =
+                                            field.value?.filter(
+                                              (_, i) => i !== index,
+                                            ) || [];
+                                          field.onChange(newFiles);
+                                        }}
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription className="text-muted-foreground/70">
+                        Upload up to {MAX_FILES_ALLOWED} supporting documents
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="pt-4">
+                <GlowButton
+                  type="submit"
+                  variant="primary"
+                  className="w-full"
+                  glow
+                  loading={form.formState.isSubmitting || loading}
+                >
+                  {form.formState.isSubmitting || loading
+                    ? 'Creating...'
+                    : 'Create Pool'}
+                </GlowButton>
+              </div>
             </form>
           </Form>
-        </CardContent>
-      </Card>
+        </GlassCard>
+      </div>
     </div>
   );
 }

@@ -18,13 +18,11 @@ import {
   MoonpayCurrencyCode,
 } from '@privy-io/react-auth';
 
-// Copied from FundWalletButton.tsx
 const erc20Abi = [
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
 ];
 
-// Use viem/chains for IDs
 import {
   base,
   mainnet as ethMainnet,
@@ -50,15 +48,13 @@ export function WalletConnection() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number>();
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Keep for general loading
+  const [isLoading, setIsLoading] = useState(false);
   const [lastTx, setLastTx] = useState<string | null>(null);
 
-  // State for new balances
   const [ethBalance, setEthBalance] = useState<string | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [isFetchingBalances, setIsFetchingBalances] = useState(false);
 
-  // Initial setup and synchronization effect
   useEffect(() => {
     if (ready) {
       setIsWalletConnected(authenticated);
@@ -95,7 +91,6 @@ export function WalletConnection() {
     }
   }, [authenticated, wallets]);
 
-  // Combined useEffect for fetching balances when modal opens or dependencies change
   useEffect(() => {
     const fetchAllBalances = async () => {
       if (!isOpen || !address || !walletsReady || !wallets[0]) {
@@ -119,7 +114,6 @@ export function WalletConnection() {
         const eip1193Provider = await privyWallet.getEthereumProvider();
         const provider = new ethers.BrowserProvider(eip1193Provider);
 
-        // Use currentChainId from state, which should be set by checkConnection
         const numericChainId = currentChainId;
         if (numericChainId === undefined) {
           console.warn('Chain ID not available for fetching balances.');
@@ -128,11 +122,9 @@ export function WalletConnection() {
           return;
         }
 
-        // Fetch ETH balance
         const rawEthBalance = await provider.getBalance(address);
         setEthBalance(ethers.formatEther(rawEthBalance));
 
-        // Fetch USDC balance
         const usdcAddress = usdcContractAddresses[numericChainId];
         if (usdcAddress) {
           const usdcContract = new ethers.Contract(
@@ -156,15 +148,11 @@ export function WalletConnection() {
     };
 
     if (isOpen) {
-      // Only fetch when modal is open
       fetchAllBalances();
     }
-  }, [isOpen, address, walletsReady, wallets, currentChainId]); // Added currentChainId
-
-  // Removed old fetchWalletInfo as its logic is now in fetchAllBalances or separate
+  }, [isOpen, address, walletsReady, wallets, currentChainId]);
 
   const handleAccountsChanged = async () => {
-    // ... (existing logic)
     if (!repository) return;
     const provider = repository.getProvider();
     if (!provider) return;
@@ -183,7 +171,6 @@ export function WalletConnection() {
           title: 'Success',
           description: `Switched to account ${formatAddress(newAddress)}`,
         });
-        // Potentially re-fetch balances or rely on address change to trigger useEffect
       }
     } catch (error) {
       console.error('Error handling account change:', error);
@@ -191,21 +178,15 @@ export function WalletConnection() {
   };
 
   const handleChainChanged = async () => {
-    // ... (existing logic)
-    if (!repository) return; // Keep this if repository is still used for other things
-    // For chain changes detected via Privy's wallet object, checkConnection will handle it.
-    // This handler might be for provider-emitted events if using ethers directly for listeners.
-    // Let's assume checkConnection via wallets dependency is the primary way.
+    if (!repository) return;
     checkConnection();
-    // toast.success('Network switched successfully'); // This might be optimistic, checkConnection sets state
   };
 
   const connectWallet = async () => {
-    // ... (existing logic)
     try {
       await connect();
       setIsWalletConnected(true);
-      setIsOpen(true); // Open modal on successful connection
+      setIsOpen(true);
     } catch (error: any) {
       console.error('Wallet connection error:', error);
       if (error.code === 4001) {
@@ -226,7 +207,6 @@ export function WalletConnection() {
   };
 
   const switchNetwork = async () => {
-    // ... (existing logic, ensure it uses the correct chain ID format for Privy if applicable)
     const wallet = wallets?.[0];
     if (!wallet) {
       toast({
@@ -237,13 +217,10 @@ export function WalletConnection() {
       return;
     }
     try {
-      // Switch to the first supported chain as an example
       const targetChainId = SUPPORTED_CHAINS[0];
       const chainIdHex = `0x${targetChainId.toString(16)}` as `0x${string}`;
       await wallet.switchChain(chainIdHex);
-      // checkConnection will be called due to wallets dependency update
     } catch (error: any) {
-      // ... (error handling)
       toast({
         title: 'Error',
         description: 'Error switching network',
@@ -253,8 +230,6 @@ export function WalletConnection() {
   };
 
   const addNetwork = async (chainIdToAdd: number) => {
-    // Renamed param to avoid conflict
-    // ... (existing logic)
     const wallet = wallets?.[0];
     if (!wallet) {
       toast({
@@ -272,9 +247,8 @@ export function WalletConnection() {
         );
       }
       const chainIdHex = `0x${chainIdToAdd.toString(16)}` as `0x${string}`;
-      await wallet.switchChain(chainIdHex); // switchChain can also add the chain if not present
-      toast({ title: 'Success', description: 'Network action completed.' }); // More generic message
-      // checkConnection will update network status
+      await wallet.switchChain(chainIdHex);
+      toast({ title: 'Success', description: 'Network action completed.' });
     } catch (error) {
       console.error('Error adding/switching network:', error);
       toast({
@@ -287,25 +261,21 @@ export function WalletConnection() {
 
   const handleButtonClick = async () => {
     if (address && wallets[0]) {
-      // Check for privy wallet presence too
       setIsOpen(true);
     } else {
-      await connectWallet(); // This will set isOpen(true) on success
+      await connectWallet();
     }
   };
 
   const getExplorerUrl = (chainIdParam: number | undefined, path: string) => {
-    // Renamed param
     if (!chainIdParam || !NETWORK_CONFIGS[chainIdParam]) {
       return '#';
     }
     return `${NETWORK_CONFIGS[chainIdParam].blockExplorer}/${path}`;
   };
 
-  // Copied and adapted from FundWalletButton.tsx
   const handleFundAsset = async (assetType: 'native-currency' | 'USDC') => {
     if (!address) {
-      // address from useWallet()
       console.warn('Cannot fund wallet: No address available.');
       return;
     }
@@ -314,22 +284,18 @@ export function WalletConnection() {
     const connectedWallet = wallets?.[0];
 
     if (connectedWallet && connectedWallet.chainId) {
-      const chainIdParts = connectedWallet.chainId.split(':'); // e.g., "eip155:42161"
+      const chainIdParts = connectedWallet.chainId.split(':');
       const parsedChainId = parseInt(chainIdParts[1]);
 
-      // Check if parsedChainId is one of the chains we have specific MoonPay currency codes for
       if (
         parsedChainId &&
-        (parsedChainId === base.id || // Base Mainnet
-          parsedChainId === bSepolia.id || // Base Sepolia
-          parsedChainId === ethMainnet.id || // Ethereum Mainnet
-          parsedChainId === arbMainnet.id) // Arbitrum Mainnet
-        // Add any other chains here for which you have explicit Moonpay currency codes
+        (parsedChainId === base.id ||
+          parsedChainId === bSepolia.id ||
+          parsedChainId === ethMainnet.id ||
+          parsedChainId === arbMainnet.id)
       ) {
         fundingChainIdForMoonpay = parsedChainId;
       } else {
-        // If connected to a chain not explicitly handled by Moonpay config,
-        // default the MoonPay configuration logic to Arbitrum.
         fundingChainIdForMoonpay = arbMainnet.id;
         if (parsedChainId) {
           console.warn(
@@ -342,7 +308,6 @@ export function WalletConnection() {
         }
       }
     } else {
-      // No wallet connected, or chainId is not present, default MoonPay configuration logic to Arbitrum.
       fundingChainIdForMoonpay = arbMainnet.id;
       console.log(
         '[WalletConnection] No connected wallet or chainId for MoonPay. Defaulting MoonPay config to Arbitrum.',
@@ -394,7 +359,7 @@ export function WalletConnection() {
     };
 
     try {
-      await fundWallet(address, config); // fundWallet from usePrivy
+      await fundWallet(address, config);
     } catch (e) {
       console.error(
         `Error initiating MoonPay for ${currencyCode} to ${address}:`,
@@ -415,10 +380,10 @@ export function WalletConnection() {
     isFundable: boolean,
     isLoading: boolean,
   ) => (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-3 border-b border-neutral-800 last:border-b-0">
       <div>
-        <p className="text-sm text-gray-400">{assetName}</p>
-        <p className="text-lg font-semibold">
+        <p className="text-sm text-neutral-400">{assetName}</p>
+        <p className="text-lg font-medium text-white">
           {isLoading
             ? 'Loading...'
             : balance !== null
@@ -429,7 +394,7 @@ export function WalletConnection() {
       {isFundable && (
         <button
           onClick={() => handleFundAsset(assetType)}
-          className="text-sm font-medium text-yellow-500 hover:text-yellow-400 disabled:text-gray-500 disabled:cursor-not-allowed"
+          className="text-sm font-medium text-amber-400 hover:text-amber-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-colors"
           disabled={isLoading || balance === null || !walletsReady || !address}
         >
           Fund
@@ -438,62 +403,64 @@ export function WalletConnection() {
     </div>
   );
 
+  // Don't show if not authenticated
+  if (!authenticated || !address) {
+    return null;
+  }
+
   return (
     <div className="relative">
-      <Button
+      <button
         onClick={handleButtonClick}
-        variant={!isCorrectNetwork && address ? 'destructive' : 'default'}
+        className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ${
+          !isCorrectNetwork
+            ? 'border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+            : 'border-amber-500/50 bg-transparent text-amber-400 hover:bg-amber-500/10 hover:border-amber-400 hover:text-amber-300'
+        }`}
       >
-        {
-          !authenticated
-            ? 'Connect Wallet'
-            : !isCorrectNetwork
-              ? 'Wrong Network'
-              : address
-                ? formatAddress(address)
-                : 'Connect Wallet' // Fallback if address is somehow null despite auth
-        }
-      </Button>
+        {!isCorrectNetwork ? 'Wrong Network' : formatAddress(address)}
+      </button>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[400px] bg-neutral-900 border-neutral-800">
           <DialogHeader>
-            <DialogTitle>Wallet Details</DialogTitle>
+            <DialogTitle className="text-white">Wallet Details</DialogTitle>
           </DialogHeader>
-          {(isLoading || isFetchingBalances) && !address ? ( // Show main loading if no address and fetching
-            <p className="text-center py-4">Loading wallet details...</p>
+          {(isLoading || isFetchingBalances) && !address ? (
+            <p className="text-center py-4 text-neutral-400">
+              Loading wallet details...
+            </p>
           ) : address ? (
-            <div className="space-y-3">
-              <div className="text-sm text-muted-foreground text-center pb-2">
-                {/* Simplified ENS display - just show formatted address for now */}
+            <div className="space-y-4">
+              <div className="text-sm text-neutral-400 text-center py-2 px-4 bg-neutral-800/50 rounded-lg font-mono">
                 {formatAddress(address)}
               </div>
 
-              {renderBalanceRow(
-                'Ethereum',
-                ethBalance,
-                'native-currency',
-                true,
-                isFetchingBalances,
-              )}
-              {renderBalanceRow(
-                'USDC',
-                usdcBalance,
-                'USDC',
-                !!usdcContractAddresses[currentChainId || 0],
-                isFetchingBalances,
-              )}
+              <div className="space-y-1">
+                {renderBalanceRow(
+                  'Ethereum',
+                  ethBalance,
+                  'native-currency',
+                  true,
+                  isFetchingBalances,
+                )}
+                {renderBalanceRow(
+                  'USDC',
+                  usdcBalance,
+                  'USDC',
+                  !!usdcContractAddresses[currentChainId || 0],
+                  isFetchingBalances,
+                )}
+              </div>
 
               {currentChainId !== undefined &&
                 !usdcContractAddresses[currentChainId] && (
-                  <p className="text-xs text-center text-yellow-500 pt-1">
+                  <p className="text-xs text-center text-amber-400 py-2">
                     USDC is not available on the current network.
                   </p>
                 )}
 
-              <div className="pt-3 space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+              <div className="pt-2 space-y-2">
+                <button
                   onClick={() => {
                     navigator.clipboard.writeText(address);
                     toast({
@@ -501,46 +468,48 @@ export function WalletConnection() {
                       description: 'Address copied to clipboard',
                     });
                   }}
-                  className="w-full"
+                  className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-transparent text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all"
                 >
                   Copy Address
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
+                </button>
+                <button
                   onClick={() =>
                     window.open(
                       getExplorerUrl(currentChainId, `address/${address}`),
                       '_blank',
                     )
                   }
-                  className="w-full"
                   disabled={!currentChainId || !NETWORK_CONFIGS[currentChainId]}
+                  className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-transparent text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   View on Explorer
-                </Button>
+                </button>
               </div>
 
               {!isCorrectNetwork && currentChainId && (
-                <Button onClick={switchNetwork} className="w-full mt-2">
+                <button
+                  onClick={switchNetwork}
+                  className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all"
+                >
                   Switch to a Supported Network
-                </Button>
+                </button>
               )}
 
-              <Button
-                variant="destructive"
+              <button
                 onClick={async () => {
                   await disconnect();
                   setIsOpen(false);
-                  setIsWalletConnected(false); // Explicitly set connection state
+                  setIsWalletConnected(false);
                 }}
-                className="w-full mt-2"
+                className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
               >
                 Disconnect
-              </Button>
+              </button>
             </div>
           ) : (
-            <p className="text-center py-4">Please connect your wallet.</p> // Fallback if no address
+            <p className="text-center py-4 text-neutral-400">
+              Please connect your wallet.
+            </p>
           )}
         </DialogContent>
       </Dialog>

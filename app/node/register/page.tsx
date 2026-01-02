@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import {
   Form,
@@ -16,12 +15,12 @@ import {
   FormMessage,
 } from '@/app/components/ui/form';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+} from '@/app/components/ui/glass-card';
+import { GlowButton } from '@/app/components/ui/glow-button';
 import {
   Command,
   CommandEmpty,
@@ -34,7 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/ui/popover';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Server, MapPin, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useNodes } from '@/app/providers/nodes.provider';
@@ -85,13 +84,20 @@ const LocationInput = ({
 }) => {
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: GOOGLE_LIBRARIES, // Use the static array
+    libraries: GOOGLE_LIBRARIES,
   });
 
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
 
-  if (!isLoaded) return <Input placeholder="Loading..." disabled />;
+  if (!isLoaded)
+    return (
+      <Input
+        placeholder="Loading..."
+        disabled
+        className="bg-surface-overlay border-glass-border"
+      />
+    );
 
   return (
     <Autocomplete
@@ -115,11 +121,15 @@ const LocationInput = ({
         id="location-input"
         placeholder="Search for a location"
         defaultValue={defaultValue}
+        className="bg-surface-overlay border-glass-border"
       />
     </Autocomplete>
   );
 };
 
+/**
+ * NodeRegistrationPage - Register a new node with Aurellion theme
+ */
 export default function NodeRegistrationPage() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -139,8 +149,7 @@ export default function NodeRegistrationPage() {
     },
   });
 
-  // Keep capacity array aligned to selected assets; preserve existing values by asset label
-  // Simple sync: ensure capacity length matches selected assets; no defaults
+  // Keep capacity array aligned to selected assets
   useEffect(() => {
     const assets = form.watch('supportedAssets');
     const capacities = form.getValues('capacity');
@@ -165,7 +174,6 @@ export default function NodeRegistrationPage() {
   }, []);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log('on Submit');
     try {
       if (!connected) {
         toast({
@@ -187,7 +195,7 @@ export default function NodeRegistrationPage() {
       }
 
       const nodeData = {
-        address: '', // This will be set by the contract
+        address: '',
         owner: walletAddress,
         location: {
           addressName: values.addressName,
@@ -216,152 +224,183 @@ export default function NodeRegistrationPage() {
   }
 
   return (
-    <div className="container max-w-2xl mx-auto py-10">
-      <Card className="border-primary-200 dark:border-primary-800">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary-700 dark:text-primary-300">
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="max-w-2xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Server className="w-8 h-8 text-accent" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">
             Register as a Node
-          </CardTitle>
-          <CardDescription>
-            Provide your details to register as a node in the network.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Provide your details to register as a node in the network
+          </p>
+        </div>
+
+        <GlassCard>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField
-                control={form.control}
-                name="addressName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <LocationInput
-                        defaultValue={field.value}
-                        onLocationSelect={(address, lat, lng) => {
-                          field.onChange(address);
-                          form.setValue('lat', lat);
-                          form.setValue('lng', lng);
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>Search for your location</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Location Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <MapPin className="w-4 h-4 text-accent" />
+                  <span>Location Details</span>
+                </div>
 
-              <FormField
-                control={form.control}
-                name="supportedAssets"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Supported Asset Classes</FormLabel>
-                    <FormControl>
-                      <Popover open={open} onOpenChange={setOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-full justify-between"
-                          >
-                            {field.value.length > 0
-                              ? `${field.value.length} asset${field.value.length === 1 ? '' : 's'} selected`
-                              : 'Select assets...'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-full p-0">
-                          <Command>
-                            <CommandInput placeholder="Search assets..." />
-                            {isLoading ? (
-                              <div className="p-4 text-center text-sm text-muted-foreground">
-                                Loading assets...
-                              </div>
-                            ) : (
-                              <>
-                                <CommandEmpty>No assets found.</CommandEmpty>
-                                <CommandGroup>
-                                  {supportedAssetClasses.map((assetClass) => (
-                                    <CommandItem
-                                      key={assetClass}
-                                      onSelect={() => {
-                                        const currentValue = new Set(
-                                          field.value,
-                                        );
-                                        if (currentValue.has(assetClass)) {
-                                          currentValue.delete(assetClass);
-                                        } else {
-                                          currentValue.add(assetClass);
-                                        }
-                                        const newValue =
-                                          Array.from(currentValue);
-                                        field.onChange(newValue);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          'mr-2 h-4 w-4',
-                                          field.value.includes(assetClass)
-                                            ? 'opacity-100'
-                                            : 'opacity-0',
-                                        )}
-                                      />
-                                      {assetClass}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </>
-                            )}
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </FormControl>
-                    <FormDescription>
-                      Select the assets you can support in your operations.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="addressName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground">
+                        Location
+                      </FormLabel>
+                      <FormControl>
+                        <LocationInput
+                          defaultValue={field.value}
+                          onLocationSelect={(address, lat, lng) => {
+                            field.onChange(address);
+                            form.setValue('lat', lat);
+                            form.setValue('lng', lng);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-muted-foreground/70">
+                        Search for your location
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="capacity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <CapacityInput
-                        capacities={field.value}
-                        onCapacityChange={field.onChange}
-                        selectedAssets={form.watch('supportedAssets')}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Enter the capacity for each selected asset.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Assets Section */}
+              <div className="space-y-4 pt-4 border-t border-glass-border">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Package className="w-4 h-4 text-accent" />
+                  <span>Supported Assets</span>
+                </div>
 
-              <Button
-                type="submit"
-                variant="default"
-                className="w-full"
-                disabled={form.formState.isSubmitting || isLoading}
-              >
-                {form.formState.isSubmitting
-                  ? 'Registering...'
-                  : isLoading
-                    ? 'Loading assets...'
-                    : 'Register as Node'}
-              </Button>
+                <FormField
+                  control={form.control}
+                  name="supportedAssets"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground">
+                        Asset Classes
+                      </FormLabel>
+                      <FormControl>
+                        <Popover open={open} onOpenChange={setOpen}>
+                          <PopoverTrigger asChild>
+                            <GlowButton
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={open}
+                              className="w-full justify-between"
+                              type="button"
+                            >
+                              {field.value.length > 0
+                                ? `${field.value.length} asset${field.value.length === 1 ? '' : 's'} selected`
+                                : 'Select assets...'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </GlowButton>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search assets..." />
+                              {isLoading ? (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                  Loading assets...
+                                </div>
+                              ) : (
+                                <>
+                                  <CommandEmpty>No assets found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {supportedAssetClasses.map((assetClass) => (
+                                      <CommandItem
+                                        key={assetClass}
+                                        onSelect={() => {
+                                          const currentValue = new Set(
+                                            field.value,
+                                          );
+                                          if (currentValue.has(assetClass)) {
+                                            currentValue.delete(assetClass);
+                                          } else {
+                                            currentValue.add(assetClass);
+                                          }
+                                          const newValue =
+                                            Array.from(currentValue);
+                                          field.onChange(newValue);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            'mr-2 h-4 w-4',
+                                            field.value.includes(assetClass)
+                                              ? 'opacity-100'
+                                              : 'opacity-0',
+                                          )}
+                                        />
+                                        {assetClass}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </>
+                              )}
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </FormControl>
+                      <FormDescription className="text-muted-foreground/70">
+                        Select the assets you can support in your operations
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <CapacityInput
+                          capacities={field.value}
+                          onCapacityChange={field.onChange}
+                          selectedAssets={form.watch('supportedAssets')}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-muted-foreground/70">
+                        Enter the capacity for each selected asset
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="pt-4">
+                <GlowButton
+                  type="submit"
+                  variant="primary"
+                  className="w-full"
+                  glow
+                  loading={form.formState.isSubmitting || isLoading}
+                >
+                  {form.formState.isSubmitting
+                    ? 'Registering...'
+                    : isLoading
+                      ? 'Loading assets...'
+                      : 'Register as Node'}
+                </GlowButton>
+              </div>
             </form>
           </Form>
-        </CardContent>
-      </Card>
+        </GlassCard>
+      </div>
     </div>
   );
 }

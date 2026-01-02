@@ -45,85 +45,27 @@ function parseGraphDeployQueryEndpoint(output: string): string | null {
   return match?.[1] ?? null;
 }
 
-function ensureSubgraphExists(subgraphName: string, subgraphDir: string): void {
-  try {
-    console.log(`\n🔍 Checking if subgraph '${subgraphName}' exists...`);
-    // Try to create the subgraph - this will fail gracefully if it already exists
-    // or if authentication is needed
-    try {
-      runCapture(`graph create --studio ${subgraphName}`, subgraphDir);
-      console.log(`✅ Subgraph '${subgraphName}' created successfully!`);
-    } catch (createError: any) {
-      const errorMsg = createError?.message || createError?.toString() || '';
-      // If subgraph already exists, that's fine - we can proceed with deploy
-      if (
-        errorMsg.includes('already exists') ||
-        errorMsg.includes('Subgraph name already taken')
-      ) {
-        console.log(
-          `ℹ️  Subgraph '${subgraphName}' already exists, proceeding with deploy...`,
-        );
-      } else if (
-        errorMsg.includes('authentication') ||
-        errorMsg.includes('auth')
-      ) {
-        console.log(
-          `⚠️  Authentication required. Please run: graph auth --studio <DEPLOY_KEY>`,
-        );
-        console.log(
-          `   Then the subgraph will be created automatically on first deploy.`,
-        );
-      } else {
-        // For other errors, log but continue - deploy might still work
-        console.log(
-          `⚠️  Could not create subgraph (may already exist): ${errorMsg}`,
-        );
-        console.log(`   Attempting to deploy anyway...`);
-      }
-    }
-  } catch (error) {
-    // If anything goes wrong, just continue - deploy might still work
-    console.log(
-      `⚠️  Could not verify subgraph creation, proceeding with deploy...`,
-    );
-  }
-}
-
 async function waitForUserToPublish(
   subgraphName: string,
   subgraphDir: string,
   version: string,
-  queryUrl?: string,
 ): Promise<void> {
-  // If we got a query URL, deployment was successful - no need to wait
-  if (queryUrl) {
-    console.log(`\n✅ ${subgraphName} deployed successfully!`);
-    console.log(`📊 Query URL: ${queryUrl}`);
-    console.log(`📝 Version: ${version}`);
-    return;
-  }
-
-  // Otherwise, deployment might have failed or needs manual intervention
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  console.log(`\n⚠️  ${subgraphName} deployment may need manual intervention`);
+  console.log(`\n🚀 ${subgraphName} is ready for manual publishing!`);
   console.log(`==========================================`);
   console.log(`📁 Directory: ${subgraphDir}`);
   console.log(`📝 Version: ${version}`);
   console.log(`\n📋 Next Steps:`);
   console.log(`1. Visit: https://thegraph.com/studio/`);
-  console.log(`2. Check if subgraph '${subgraphName}' exists`);
-  console.log(`3. If not, create it in The Graph Studio`);
-  console.log(
-    `4. Ensure you're authenticated: graph auth --studio <DEPLOY_KEY>`,
-  );
-  console.log(`5. Navigate to: ${subgraphDir}`);
-  console.log(
-    `6. Deploy: graph deploy --studio ${subgraphName} --version-label ${version}`,
-  );
+  console.log(`2. Create a new subgraph named: ${subgraphName}`);
+  console.log(`3. Navigate to: ${subgraphDir}`);
+  console.log(`4. Follow the CLI commands shown in The Graph Studio:`);
+  console.log(`   - graph auth --studio <DEPLOY_KEY>`);
+  console.log(`   - graph deploy --studio ${subgraphName}`);
   console.log(`\n⏸️  PAUSED: Please complete the publishing steps above.`);
 
   return new Promise((resolve) => {
@@ -498,49 +440,44 @@ export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/q
     );
 
     console.log('\nRedeploying subgraph: aura-asset-base-sepolia');
-    ensureSubgraphExists('aura-asset-base-sepolia', auraAssetSubgraphDir);
     run('graph codegen', auraAssetSubgraphDir);
     fixClassKeywordInGeneratedCode(auraAssetSubgraphDir);
     fixMappingFile(auraAssetSubgraphDir);
     run('graph build', auraAssetSubgraphDir);
     const auraAssetVersion = deploymentVersion;
     const auraAssetDeployOut = runCapture(
-      `graph deploy --studio aura-asset-base-sepolia --version-label ${auraAssetVersion}`,
+      `graph deploy aura-asset-base-sepolia --version-label ${auraAssetVersion}`,
       auraAssetSubgraphDir,
     );
     const auraAssetQueryUrl =
       parseGraphDeployQueryEndpoint(auraAssetDeployOut) || '';
 
-    // Wait for user to manually publish if needed
+    // Wait for user to manually publish
     await waitForUserToPublish(
       'aura-asset-base-sepolia',
       auraAssetSubgraphDir,
       auraAssetVersion,
-      auraAssetQueryUrl,
     );
 
     console.log('\nRedeploying subgraph: austake-base-sepolia');
-    ensureSubgraphExists('austake-base-sepolia', auStakeSubgraphDir);
     run('graph codegen', auStakeSubgraphDir);
     run('graph build', auStakeSubgraphDir);
     const auStakeVersion = deploymentVersion;
     const auStakeDeployOut = runCapture(
-      `graph deploy --studio austake-base-sepolia --version-label ${auStakeVersion}`,
+      `graph deploy austake-base-sepolia --version-label ${auStakeVersion}`,
       auStakeSubgraphDir,
     );
     const auStakeQueryUrl =
       parseGraphDeployQueryEndpoint(auStakeDeployOut) || '';
 
-    // Wait for user to manually publish if needed
+    // Wait for user to manually publish
     await waitForUserToPublish(
       'austake-base-sepolia',
       auStakeSubgraphDir,
       auStakeVersion,
-      auStakeQueryUrl,
     );
 
     console.log('\nDeploying subgraph: aurum-base-sepolia');
-    ensureSubgraphExists('aurum-base-sepolia', aurumSubgraphDir);
     // Sync latest ABI from Hardhat artifacts to subgraph abis to avoid stale signatures
     const artifactAbiPath = path.resolve(
       './artifacts/contracts/Aurum.sol/AurumNodeManager.json',
@@ -560,37 +497,34 @@ export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/q
     run('graph build', aurumSubgraphDir);
     const aurumVersion = deploymentVersion;
     const aurumDeployOut = runCapture(
-      `graph deploy --studio aurum-base-sepolia --version-label ${aurumVersion}`,
+      `graph deploy aurum-base-sepolia --version-label ${aurumVersion}`,
       aurumSubgraphDir,
     );
     const aurumQueryUrl = parseGraphDeployQueryEndpoint(aurumDeployOut) || '';
 
-    // Wait for user to manually publish if needed
+    // Wait for user to manually publish
     await waitForUserToPublish(
       'aurum-base-sepolia',
       aurumSubgraphDir,
       aurumVersion,
-      aurumQueryUrl,
     );
 
     console.log('\nDeploying subgraph: ausys-base-sepolia');
-    ensureSubgraphExists('ausys-base-sepolia', ausysSubgraphDir);
     run('npm install', ausysSubgraphDir);
     run('graph codegen', ausysSubgraphDir);
     run('graph build', ausysSubgraphDir);
     const ausysVersion = deploymentVersion;
     const ausysDeployOut = runCapture(
-      `graph deploy --studio ausys-base-sepolia --version-label ${ausysVersion}`,
+      `graph deploy ausys-base-sepolia --version-label ${ausysVersion}`,
       ausysSubgraphDir,
     );
     const ausysQueryUrl = parseGraphDeployQueryEndpoint(ausysDeployOut) || '';
 
-    // Wait for user to manually publish if needed
+    // Wait for user to manually publish
     await waitForUserToPublish(
       'ausys-base-sepolia',
       ausysSubgraphDir,
       ausysVersion,
-      ausysQueryUrl,
     );
 
     // Update chain constants with subgraph endpoints so the app always uses latest

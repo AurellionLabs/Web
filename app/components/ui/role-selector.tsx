@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from './button';
 import {
   Command,
   CommandEmpty,
@@ -51,14 +50,7 @@ export function RoleSelector() {
     setOpen(false);
 
     if (currentValue === 'node') {
-      // Always redirect Node role selections to overview first
       router.push('/node/overview');
-      // const isRegisteredNode = await checkNodeRegistration();
-      // if (isRegisteredNode) {
-      //   router.push('/node/overview');
-      // } else {
-      //   router.push('/node/register');
-      // }
     } else if (currentValue === 'customer') {
       router.push('/customer/dashboard');
     } else if (currentValue === 'driver') {
@@ -69,33 +61,40 @@ export function RoleSelector() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
+        <button
           role="combobox"
           aria-expanded={open}
-          className="w-[200px] justify-between"
+          className="w-[140px] px-3 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-neutral-900/50 text-neutral-300 hover:bg-neutral-800 hover:text-white hover:border-neutral-600 transition-all duration-200 flex items-center justify-between"
         >
           {currentUserRole
             ? roles.find((r) => r.value === currentUserRole)?.label
             : 'Select role...'}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+        </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command>
-          <CommandInput placeholder="Search role..." />
-          <CommandEmpty>No role found.</CommandEmpty>
+      <PopoverContent className="w-[140px] p-0 bg-neutral-900 border-neutral-800">
+        <Command className="bg-transparent">
+          <CommandInput
+            placeholder="Search role..."
+            className="border-neutral-800"
+          />
+          <CommandEmpty className="text-neutral-400 text-sm py-3">
+            No role found.
+          </CommandEmpty>
           <CommandGroup>
             {roles.map((r) => (
               <CommandItem
                 key={r.value}
                 value={r.value}
                 onSelect={handleRoleSelect}
+                className="text-neutral-300 hover:bg-neutral-800 hover:text-white aria-selected:bg-amber-500/10 aria-selected:text-amber-400"
               >
                 <Check
                   className={cn(
                     'mr-2 h-4 w-4',
-                    currentUserRole === r.value ? 'opacity-100' : 'opacity-0',
+                    currentUserRole === r.value
+                      ? 'opacity-100 text-amber-400'
+                      : 'opacity-0',
                   )}
                 />
                 {r.label}

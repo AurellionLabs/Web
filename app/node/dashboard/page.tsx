@@ -7,15 +7,22 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  RefreshCw,
+  Server,
+  Package,
+  DollarSign,
+  Activity,
+  MapPin,
 } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+} from '@/app/components/ui/glass-card';
+import { GlowButton } from '@/app/components/ui/glow-button';
+import { StatusBadge } from '@/app/components/ui/status-badge';
+import { AnimatedNumber } from '@/app/components/ui/animated-number';
 import {
   Dialog,
   DialogContent,
@@ -29,20 +36,19 @@ import { Form } from '@/app/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { StatCard } from '@/app/components/ui/stat-card';
 import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { useNodes } from '@/app/providers/nodes.provider';
 import type { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
 import { useToast } from '@/hooks/use-toast';
-import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { MapView } from '@/app/components/ui/map-view';
-import { EditNodeModal } from './edit-node-modal';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
 import type { Asset } from '@/domain/shared';
 import { Order, OrderStatus } from '@/domain/orders';
 import { formatTokenAmount } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
+
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
   assetId: z.string({
@@ -73,6 +79,66 @@ interface EditingPrice {
   value: string;
 }
 
+/**
+ * StatCard - Protocol stat card component
+ */
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  iconColor: string;
+  description?: string;
+}
+
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon: Icon,
+  iconColor,
+  description,
+}) => (
+  <GlassCard hover className="relative overflow-hidden">
+    <div
+      className={cn(
+        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
+        iconColor,
+      )}
+    />
+    <div className="relative flex items-start justify-between">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground mb-1">
+          {title}
+        </p>
+        {typeof value === 'number' ? (
+          <AnimatedNumber
+            value={value}
+            size="lg"
+            className="font-bold text-foreground"
+          />
+        ) : (
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+        )}
+        {description && (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
+      </div>
+      <div
+        className={cn(
+          'p-3 rounded-xl',
+          iconColor.replace('bg-', 'bg-opacity-20 '),
+        )}
+      >
+        <Icon
+          className={cn(
+            'w-6 h-6',
+            iconColor.replace('bg-', 'text-').replace('-500', '-400'),
+          )}
+        />
+      </div>
+    </div>
+  </GlassCard>
+);
+
 export default function NodeDashboardPage() {
   const {
     selectedNodeAddress,
@@ -95,23 +161,17 @@ export default function NodeDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Get nodeId from URL params
   const searchParams = new URLSearchParams(window.location.search);
   const nodeIdFromUrl = searchParams.get('nodeId');
 
-  // Form and dialog states
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
   const [isViewingOrders, setIsViewingOrders] = useState(false);
-
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 5;
 
-  // Use assets from provider instead of local state
   const assets = nodeAssets;
   const [capacityError, setCapacityError] = useState<string | null>(null);
-  // Available assets state removed; assets now loaded per selected class inside the form
   const [assetAttributes, setAssetAttributes] = useState<
     Record<string, Record<string, any>>
   >({});
@@ -120,7 +180,6 @@ export default function NodeDashboardPage() {
   >({});
   const [loadingAttributes, setLoadingAttributes] = useState<boolean>(false);
 
-  // Status and capacity states
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUpdatingCapacity, setIsUpdatingCapacity] = useState(false);
   const [editingCapacity, setEditingCapacity] =
@@ -128,7 +187,7 @@ export default function NodeDashboardPage() {
   const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
   const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
-  // Form handling
+
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
     defaultValues: {
@@ -140,7 +199,6 @@ export default function NodeDashboardPage() {
     },
   });
 
-  // Select node when page loads
   useEffect(() => {
     if (nodeIdFromUrl && nodeIdFromUrl !== selectedNodeAddress) {
       const attemptSelection = async () => {
@@ -148,7 +206,6 @@ export default function NodeDashboardPage() {
           await selectNode(nodeIdFromUrl);
         } catch (error) {
           console.error('Error selecting node from URL:', error);
-          // If selection fails, show error and provide retry option
           toast({
             title: 'Error',
             description:
@@ -172,7 +229,6 @@ export default function NodeDashboardPage() {
       const assetId = Number(assetIdStr);
       const quantity = Number(values.quantity);
 
-      // --- Capacity Check (Optional) ---
       const assetInfo = currentNodeData.assets?.find(
         (a) => Number(a.tokenId) === assetId,
       );
@@ -194,10 +250,6 @@ export default function NodeDashboardPage() {
           return;
         }
       }
-      // --- End Optional Capacity Check ---
-
-      // Log the attributes for debugging
-      console.log('Asset Attributes:', assetAttributes);
 
       const selectedValues = assetAttributes[assetIdStr] || {};
       const normalizedAttributes = Object.entries(selectedValues)
@@ -218,15 +270,12 @@ export default function NodeDashboardPage() {
       const priceWei = BigInt(values.price || '0');
       await mintAsset(assetPayload, quantity, priceWei);
 
-      // Reload asset attributes (assets are automatically refreshed by provider)
       await loadAssetAttributes(assets);
 
       toast({ title: 'Success', description: 'Asset tokenized successfully' });
       setIsAddAssetOpen(false);
       form.reset();
       setCapacityError(null);
-
-      // Clear attributes after successful tokenization
       setAssetAttributes({});
     } catch (error) {
       console.error('Error tokenizing asset:', error);
@@ -236,9 +285,7 @@ export default function NodeDashboardPage() {
     }
   };
 
-  // Computed values
-  // Use loaded tokenized assets for the count rather than currentNodeData (Graph node doesn't embed assets)
-  const supportedAssets = assets.length;
+  const supportedAssetsCount = assets.length;
   const tokenizedValue = assets
     .reduce(
       (total, asset) => total + Number(asset.price) * Number(asset.capacity),
@@ -246,7 +293,6 @@ export default function NodeDashboardPage() {
     )
     .toFixed(2);
 
-  // Group assets by class and calculate total quantities and values
   const getAssetsSummaryByClass = () => {
     const summary: Record<string, { quantity: number; value: number }> = {};
 
@@ -271,13 +317,11 @@ export default function NodeDashboardPage() {
     }));
   };
 
-  // Calculate pagination values
   const totalPages = Math.ceil(orders.length / ordersPerPage);
   const startIndex = (currentPage - 1) * ordersPerPage;
   const endIndex = startIndex + ordersPerPage;
   const currentOrders = orders.slice(startIndex, endIndex);
 
-  // Pagination controls
   const goToFirstPage = () => setCurrentPage(1);
   const goToLastPage = () => setCurrentPage(totalPages);
   const goToPreviousPage = () =>
@@ -285,7 +329,6 @@ export default function NodeDashboardPage() {
   const goToNextPage = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
 
-  // Function to load asset attributes
   const loadAssetAttributes = async (assets: TokenizedAsset[]) => {
     if (assets.length === 0) return;
 
@@ -293,7 +336,6 @@ export default function NodeDashboardPage() {
     const attributesMap: Record<string, TokenizedAssetAttribute[]> = {};
 
     try {
-      // Load attributes for each asset in parallel
       await Promise.all(
         assets.map(async (asset) => {
           try {
@@ -319,16 +361,12 @@ export default function NodeDashboardPage() {
     }
   };
 
-  // Load asset attributes when assets change
   useEffect(() => {
     if (assets.length > 0) {
       loadAssetAttributes(assets);
     }
   }, [assets]);
 
-  // Removed: legacy merging of supported assets; selection now uses platform provider
-
-  // Handle asset attribute changes
   const handleAssetAttributeChange = (
     assetId: string,
     attributeName: string,
@@ -344,12 +382,11 @@ export default function NodeDashboardPage() {
     });
   };
 
-  // Render asset details with attributes
   const renderAssetDetailsRows = () => {
     if (!assets || assets.length === 0) {
       return (
         <tr>
-          <td colSpan={5} className="p-4 text-center text-gray-500">
+          <td colSpan={5} className="p-4 text-center text-muted-foreground">
             No assets found
           </td>
         </tr>
@@ -362,37 +399,45 @@ export default function NodeDashboardPage() {
 
       return (
         <React.Fragment key={asset.id}>
-          <tr>
-            <td className="p-4 font-medium">{truncateId(asset.id)}</td>
-            <td className="p-4">{asset.name}</td>
-            <td className="p-4 capitalize">{asset.class}</td>
-            <td className="p-4">{Number(asset.capacity ?? '0')}</td>
-            <td className="p-4">${Number(asset.price ?? '0').toFixed(2)}</td>
+          <tr className="border-b border-glass-border hover:bg-glass-hover transition-colors">
+            <td className="p-4 font-mono text-sm text-foreground">
+              {truncateId(asset.id)}
+            </td>
+            <td className="p-4 text-foreground">{asset.name}</td>
+            <td className="p-4 capitalize text-foreground">{asset.class}</td>
+            <td className="p-4 font-mono text-foreground">
+              {Number(asset.capacity ?? '0')}
+            </td>
+            <td className="p-4 font-mono text-foreground">
+              ${Number(asset.price ?? '0').toFixed(2)}
+            </td>
           </tr>
           {/* Attributes row */}
-          <tr className="border-b">
+          <tr className="border-b border-glass-border">
             <td colSpan={5} className="px-4 pb-4 pt-2">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {loadingAttributes ? (
                   <div className="flex items-center gap-2">
-                    <LoadingSpinner />
+                    <RefreshCw className="w-3 h-3 animate-spin" />
                     <span className="text-xs">Loading...</span>
                   </div>
                 ) : hasAttributes ? (
                   <div className="flex flex-wrap gap-2">
                     {attributes.map((attr, index) => (
-                      <div
+                      <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-xs"
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent rounded-full text-xs"
                         title={attr.description || undefined}
                       >
                         <span className="font-medium">{attr.name}:</span>
                         <span>{attr.value}</span>
-                      </div>
+                      </span>
                     ))}
                   </div>
                 ) : (
-                  <span className="text-xs text-gray-400">No attributes</span>
+                  <span className="text-xs text-muted-foreground/50">
+                    No attributes
+                  </span>
                 )}
               </div>
             </td>
@@ -427,15 +472,11 @@ export default function NodeDashboardPage() {
       setIsUpdatingStatus(false);
     }
   };
+
   const handleConfirmPickup = async (order: Order) => {
     try {
-      console.log('[NodeDashboard] Confirm Pickup clicked for order', order.id);
       const journeyId = order.journeyIds?.[0];
       if (!journeyId) {
-        console.warn(
-          '[NodeDashboard] No journeyIds on order (subgraph not linked yet)',
-          order.id,
-        );
         toast({
           title: 'Error',
           description: 'No journey found for this order',
@@ -444,18 +485,8 @@ export default function NodeDashboardPage() {
         return;
       }
 
-      console.log(
-        '[NodeDashboard] Calling nodeSign via node contract for journey',
-        journeyId,
-      );
-      // packageSign now calls nodeSign on the node contract
-      // which ensures the call comes from the node address (sender)
       await packageSign(journeyId);
       try {
-        console.log(
-          '[NodeDashboard] Calling startJourney (handOn) for journey',
-          journeyId,
-        );
         await startJourney(journeyId);
         toast({
           title: 'Success',
@@ -464,16 +495,7 @@ export default function NodeDashboardPage() {
       } catch (e) {
         const err = e as Error;
         const errData = (err as any)?.data;
-        const errCode = (err as any)?.code;
 
-        console.log('[NodeDashboard] handOn error details:', {
-          message: err.message,
-          data: errData,
-          code: errCode,
-          fullError: err,
-        });
-
-        // Check for DriverNotSigned (0x9651c947) or SenderNotSigned (0x4b2c0751) error codes
         if (
           err.message?.includes('DriverNotSigned') ||
           err.message?.includes('0x9651c947') ||
@@ -484,9 +506,6 @@ export default function NodeDashboardPage() {
             description:
               'Your pickup signature has been recorded. Waiting for driver to sign pickup.',
           });
-          console.warn(
-            '[NodeDashboard] handOn blocked: DriverNotSigned (driver needs to accept journey and sign pickup)',
-          );
         } else if (
           err.message?.includes('SenderNotSigned') ||
           err.message?.includes('0x4b2c0751') ||
@@ -497,7 +516,6 @@ export default function NodeDashboardPage() {
             description:
               'Your pickup signature has been recorded. Waiting for sender to sign.',
           });
-          console.warn('[NodeDashboard] handOn blocked: SenderNotSigned');
         } else {
           toast({
             title: 'Error',
@@ -506,12 +524,10 @@ export default function NodeDashboardPage() {
               (err.message || ''),
             variant: 'destructive',
           });
-          console.error('[NodeDashboard] handOn failed', err);
         }
       }
     } catch (e) {
       const err = e as Error;
-      console.error('[NodeDashboard] packageSign failed', err);
       toast({
         title: 'Error',
         description: err.message || 'Failed to confirm pickup',
@@ -567,60 +583,62 @@ export default function NodeDashboardPage() {
     }
   };
 
-  // Show loading spinner while node is being loaded
   if (nodeLoading || (!currentNodeData && nodeIdFromUrl)) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen space-y-4">
-        <LoadingSpinner />
-        <p className="text-gray-500">Loading node data...</p>
-        {nodeIdFromUrl && (
-          <p className="text-sm text-gray-400">
-            Node ID: {nodeIdFromUrl.slice(0, 10)}...
-          </p>
-        )}
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
+          <p className="text-muted-foreground">Loading node data...</p>
+          {nodeIdFromUrl && (
+            <p className="text-sm text-muted-foreground/50 font-mono">
+              Node ID: {nodeIdFromUrl.slice(0, 10)}...
+            </p>
+          )}
+        </div>
       </div>
     );
   }
 
-  // Show error state if no node data and no nodeId from URL
   if (!currentNodeData && !nodeIdFromUrl) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen space-y-4">
-        <p className="text-gray-500">No node selected</p>
-        <Button onClick={() => router.push('/node/overview')}>
-          Go to Node Overview
-        </Button>
+      <div className="min-h-screen flex items-center justify-center">
+        <GlassCard className="text-center py-12 px-8">
+          <Server className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            No Node Selected
+          </h3>
+          <p className="text-muted-foreground mb-6">
+            Please select a node to view its dashboard
+          </p>
+          <GlowButton
+            variant="primary"
+            onClick={() => router.push('/node/overview')}
+          >
+            Go to Node Overview
+          </GlowButton>
+        </GlassCard>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-4xl font-bold">Node Dashboard</h1>
-          <p className="text-gray-500">Manage your node and its assets</p>
-        </div>
-        <div className="flex gap-2">
-          {/* {currentNodeData && (
-              <EditNodeModal
-              nodeAddress={selectedNode!}
-                nodeData={currentNodeData as any}
-                assetNames={Object.fromEntries(
-                  (currentNodeData.assets || []).map((a) => [
-                    Number(a.tokenId),
-                    getAssetName(Number(a.tokenId)),
-                  ]),
-                )}
-              onNodeUpdated={refreshNodes}
-            />
-          )} */}
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              Node Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your node and its assets
+            </p>
+          </div>
           <Dialog
             open={isAddAssetOpen}
             onOpenChange={(open) => {
               setIsAddAssetOpen(open);
               if (!open) {
-                // Reset form and attributes when dialog is closed
                 form.reset();
                 setAssetAttributes({});
                 setCapacityError(null);
@@ -628,21 +646,15 @@ export default function NodeDashboardPage() {
             }}
           >
             <DialogTrigger asChild>
-              <Button disabled={isTokenizing}>
-                {isTokenizing ? (
-                  <>
-                    <LoadingSpinner />
-                    Adding...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Asset
-                  </>
-                )}
-              </Button>
+              <GlowButton
+                variant="primary"
+                leftIcon={<Plus className="w-4 h-4" />}
+                loading={isTokenizing}
+              >
+                Add Asset
+              </GlowButton>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Tokenize New Asset</DialogTitle>
                 <DialogDescription>
@@ -677,102 +689,91 @@ export default function NodeDashboardPage() {
                     }
                   />
                   {capacityError && (
-                    <p className="text-sm font-medium text-red-500 dark:text-red-400">
+                    <p className="text-sm font-medium text-trading-sell">
                       {capacityError}
                     </p>
                   )}
-                  <Button
+                  <GlowButton
                     type="submit"
+                    variant="primary"
                     className="w-full"
-                    disabled={isTokenizing}
+                    glow
+                    loading={isTokenizing}
                   >
-                    {isTokenizing ? (
-                      <>
-                        <LoadingSpinner />
-                        Tokenizing...
-                      </>
-                    ) : (
-                      'Tokenize Asset'
-                    )}
-                  </Button>
+                    Tokenize Asset
+                  </GlowButton>
                 </form>
               </Form>
             </DialogContent>
           </Dialog>
         </div>
-      </div>
 
-      {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          title="Supported Assets"
-          value={supportedAssets.toString()}
-          description="Total number of assets supported"
-          icon={
-            <div className="h-8 w-8 bg-blue-500/20 text-blue-500 flex items-center justify-center rounded-full">
-              A
-            </div>
-          }
-        />
-        <StatCard
-          title="Tokenized Value"
-          value={`$${tokenizedValue}`}
-          description="Total value of tokenized assets"
-          icon={
-            <div className="h-8 w-8 bg-green-500/20 text-green-500 flex items-center justify-center rounded-full">
-              $
-            </div>
-          }
-        />
-        <StatCard
-          title="Node Status"
-          value={currentNodeData?.status || 'Unknown'}
-          description="Current operational status"
-          icon={
-            <div
-              className={`h-8 w-8 ${
-                currentNodeData?.status === 'Active'
-                  ? 'bg-green-500/20 text-green-500'
-                  : 'bg-red-500/20 text-red-500'
-              } flex items-center justify-center rounded-full`}
-            >
-              S
-            </div>
-          }
-        />
-      </div>
+        {/* Stats Overview */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard
+            title="Supported Assets"
+            value={supportedAssetsCount}
+            icon={Package}
+            iconColor="bg-accent"
+            description="Total assets tokenized"
+          />
+          <StatCard
+            title="Tokenized Value"
+            value={`$${tokenizedValue}`}
+            icon={DollarSign}
+            iconColor="bg-green-500"
+            description="Total value of assets"
+          />
+          <StatCard
+            title="Node Status"
+            value={currentNodeData?.status || 'Unknown'}
+            icon={Activity}
+            iconColor={
+              currentNodeData?.status === 'Active'
+                ? 'bg-green-500'
+                : 'bg-red-500'
+            }
+            description="Current operational status"
+          />
+        </div>
 
-      {/* Tokenized Assets Summary Table - Shows assets grouped by class */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tokenized Assets</CardTitle>
-          <CardDescription>Summary of tokenized assets</CardDescription>
-        </CardHeader>
-        <CardContent>
+        {/* Tokenized Assets Summary */}
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Tokenized Assets</GlassCardTitle>
+            <GlassCardDescription>
+              Summary of tokenized assets by class
+            </GlassCardDescription>
+          </GlassCardHeader>
           <div className="overflow-x-auto">
-            <table className="min-w-full bg-white dark:bg-gray-800 shadow-md rounded-lg">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-glass-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Asset Class
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Quantity
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Total Value
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+              <tbody className="divide-y divide-glass-border">
                 {getAssetsSummaryByClass().length > 0 ? (
                   getAssetsSummaryByClass().map((summary) => (
-                    <tr key={summary.assetClass} className="border-b">
-                      <td className="px-6 py-4 capitalize font-medium">
+                    <tr
+                      key={summary.assetClass}
+                      className="hover:bg-glass-hover transition-colors"
+                    >
+                      <td className="px-4 py-4 capitalize font-medium text-foreground">
                         {summary.assetClass}
                       </td>
-                      <td className="px-6 py-4">{summary.totalQuantity}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4 font-mono text-foreground">
+                        {summary.totalQuantity}
+                      </td>
+                      <td className="px-4 py-4 font-mono text-foreground">
                         ${summary.totalValue.toFixed(2)}
                       </td>
                     </tr>
@@ -781,7 +782,7 @@ export default function NodeDashboardPage() {
                   <tr>
                     <td
                       colSpan={3}
-                      className="px-6 py-4 text-center text-gray-500"
+                      className="px-4 py-8 text-center text-muted-foreground"
                     >
                       No tokenized assets found
                     </td>
@@ -790,119 +791,157 @@ export default function NodeDashboardPage() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Asset Details</CardTitle>
-          <CardDescription>
-            Capacity and attributes for each tokenized asset
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative w-full overflow-auto">
-            <table className="w-full caption-bottom text-sm">
+        {/* Asset Details */}
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Asset Details</GlassCardTitle>
+            <GlassCardDescription>
+              Capacity and attributes for each tokenized asset
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="h-12 px-4 text-left align-middle">ID</th>
-                  <th className="h-12 px-4 text-left align-middle">Asset</th>
-                  <th className="h-12 px-4 text-left align-middle">Class</th>
-                  <th className="h-12 px-4 text-left align-middle">Quantity</th>
-                  <th className="h-12 px-4 text-left align-middle">Price</th>
-                  <th className="h-12 px-4 text-left align-middle">Actions</th>
+                <tr className="border-b border-glass-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Asset
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Class
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Quantity
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Price
+                  </th>
                 </tr>
               </thead>
               <tbody>{renderAssetDetailsRows()}</tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCard>
 
-      {/* Orders */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle>Orders</CardTitle>
-            <CardDescription>
-              Track your accepted orders and their status
-            </CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              setIsViewingOrders(true);
-              try {
-                if (!selectedNodeAddress) {
-                  toast({
-                    title: 'Error',
-                    description: 'No node selected to view orders.',
-                    variant: 'destructive',
-                  });
-                  return;
+        {/* Orders */}
+        <GlassCard>
+          <GlassCardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <GlassCardTitle>Orders</GlassCardTitle>
+              <GlassCardDescription>
+                Track your accepted orders and their status
+              </GlassCardDescription>
+            </div>
+            <GlowButton
+              variant="outline"
+              onClick={async () => {
+                setIsViewingOrders(true);
+                try {
+                  if (!selectedNodeAddress) {
+                    toast({
+                      title: 'Error',
+                      description: 'No node selected to view orders.',
+                      variant: 'destructive',
+                    });
+                    return;
+                  }
+                  await router.push(`/node/${selectedNodeAddress}/orders`);
+                } finally {
+                  setIsViewingOrders(false);
                 }
-                await router.push(`/node/${selectedNodeAddress}/orders`);
-              } finally {
-                setIsViewingOrders(false);
-              }
-            }}
-            disabled={isViewingOrders}
-          >
-            {isViewingOrders ? (
-              <>
-                <LoadingSpinner />
-                Loading Orders...
-              </>
-            ) : (
-              'View All Orders'
-            )}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="relative w-full overflow-auto">
-            <table className="w-full caption-bottom text-sm">
+              }}
+              loading={isViewingOrders}
+            >
+              View All Orders
+            </GlowButton>
+          </GlassCardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="h-12 px-4 text-left align-middle">Order ID</th>
-                  <th className="h-12 px-4 text-left align-middle">Buyer</th>
-                  <th className="h-12 px-4 text-left align-middle">Asset</th>
-                  <th className="h-12 px-4 text-left align-middle">Quantity</th>
-                  <th className="h-12 px-4 text-left align-middle">Value</th>
-                  <th className="h-12 px-4 text-left align-middle">Status</th>
-                  <th className="h-12 px-4 text-left align-middle">
-                    Sender Actions
+                <tr className="border-b border-glass-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Order ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Buyer
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Asset
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Quantity
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Value
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-glass-border">
                 {currentOrders.map((order) => (
-                  <tr key={order.id} className="border-b">
-                    <td className="p-4">{order.id}</td>
-                    <td className="p-4">{order.buyer}</td>
-                    <td className="p-4 capitalize">
+                  <tr
+                    key={order.id}
+                    className="hover:bg-glass-hover transition-colors"
+                  >
+                    <td className="px-4 py-4 font-mono text-sm text-foreground">
+                      {order.id}
+                    </td>
+                    <td className="px-4 py-4 font-mono text-sm text-foreground">
+                      {truncateId(order.buyer, 12)}
+                    </td>
+                    <td className="px-4 py-4 capitalize text-foreground">
                       {order.asset?.name || 'Unknown Asset'}
                     </td>
-                    <td className="p-4">{order.tokenQuantity}</td>
-                    <td className="p-4">
-                      ${formatTokenAmount(order.price, 6, 2)}{' '}
+                    <td className="px-4 py-4 font-mono text-foreground">
+                      {order.tokenQuantity}
                     </td>
-                    <td className="p-4 capitalize">{order.currentStatus}</td>
-                    <td className="p-4">
+                    <td className="px-4 py-4 font-mono text-foreground">
+                      ${formatTokenAmount(order.price, 6, 2)}
+                    </td>
+                    <td className="px-4 py-4">
+                      <StatusBadge
+                        status={
+                          order.currentStatus === OrderStatus.SETTLED
+                            ? 'success'
+                            : order.currentStatus === OrderStatus.CANCELLED
+                              ? 'error'
+                              : order.currentStatus === OrderStatus.PROCESSING
+                                ? 'warning'
+                                : 'pending'
+                        }
+                        label={order.currentStatus}
+                        size="sm"
+                      />
+                    </td>
+                    <td className="px-4 py-4">
                       {order.currentStatus === OrderStatus.CREATED ? (
-                        <Button onClick={() => handleConfirmPickup(order)}>
+                        <GlowButton
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleConfirmPickup(order)}
+                        >
                           Confirm Pickup
-                        </Button>
+                        </GlowButton>
                       ) : order.currentStatus === OrderStatus.PROCESSING ? (
-                        <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                        <span className="text-sm text-accent font-medium">
                           In Transit
                         </span>
                       ) : order.currentStatus === OrderStatus.SETTLED ? (
-                        <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                          Order Completed
+                        <span className="text-sm text-trading-buy font-medium">
+                          Completed
                         </span>
                       ) : order.currentStatus === OrderStatus.CANCELLED ? (
-                        <span className="text-sm text-red-600 dark:text-red-400 font-medium">
-                          Order Cancelled
+                        <span className="text-sm text-trading-sell font-medium">
+                          Cancelled
                         </span>
                       ) : null}
                     </td>
@@ -911,65 +950,69 @@ export default function NodeDashboardPage() {
               </tbody>
             </table>
 
+            {orders.length === 0 && (
+              <div className="text-center py-12">
+                <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">No orders found</p>
+              </div>
+            )}
+
             {/* Pagination Controls */}
             {orders.length > ordersPerPage && (
-              <div className="mt-4 flex items-center justify-between px-2">
-                <div className="text-sm text-gray-400">
+              <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-glass-border">
+                <div className="text-sm text-muted-foreground">
                   Showing {startIndex + 1} to{' '}
                   {Math.min(endIndex, orders.length)} of {orders.length} orders
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="flex items-center gap-1">
+                  <button
                     onClick={goToFirstPage}
                     disabled={currentPage === 1}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                    <ChevronsLeft className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button
                     onClick={goToPreviousPage}
                     disabled={currentPage === 1}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm text-gray-400">
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <span className="px-4 text-sm text-muted-foreground">
                     Page {currentPage} of {totalPages}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={goToNextPage}
                     disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button
                     onClick={goToLastPage}
                     disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
+                    <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
                 </div>
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </GlassCard>
 
-      {/* Node Location (full width) */}
-      <div className="col-span-full">
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle>Node Location</CardTitle>
-            <CardDescription>
+        {/* Node Location */}
+        <GlassCard className="overflow-hidden">
+          <GlassCardHeader>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-accent" />
+              <GlassCardTitle>Node Location</GlassCardTitle>
+            </div>
+            <GlassCardDescription>
               Physical location of your node in the network
-            </CardDescription>
-          </CardHeader>
+            </GlassCardDescription>
+          </GlassCardHeader>
           <MapView
             lat={currentNodeData?.location?.location?.lat || '0'}
             lng={currentNodeData?.location?.location?.lng || '0'}
@@ -977,55 +1020,65 @@ export default function NodeDashboardPage() {
               currentNodeData?.location?.addressName || 'Unknown Location'
             }
           />
-        </Card>
-      </div>
+        </GlassCard>
 
-      {editingPrice && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg w-96">
-            <h3 className="text-lg font-medium mb-4">Edit Asset Price</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Price (in wei)
-                </label>
-                <Input
-                  type="number"
-                  value={editingPrice.value}
-                  onChange={(e) =>
-                    setEditingPrice({ ...editingPrice, value: e.target.value })
-                  }
-                  className="w-full"
-                  placeholder="Enter new price"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditingPrice(null)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      await handlePriceUpdate(
-                        editingPrice.id,
-                        editingPrice.value,
-                      );
-                    } catch (error) {
-                      toast({
-                        title: 'Error',
-                        description: 'Failed to update price',
-                        variant: 'destructive',
-                      });
+        {/* Edit Price Modal */}
+        {editingPrice && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <GlassCard className="w-96">
+              <h3 className="text-lg font-medium text-foreground mb-4">
+                Edit Asset Price
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
+                    Price (in wei)
+                  </label>
+                  <Input
+                    type="number"
+                    value={editingPrice.value}
+                    onChange={(e) =>
+                      setEditingPrice({
+                        ...editingPrice,
+                        value: e.target.value,
+                      })
                     }
-                  }}
-                >
-                  Save
-                </Button>
+                    className="w-full bg-surface-overlay border-glass-border"
+                    placeholder="Enter new price"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <GlowButton
+                    variant="outline"
+                    onClick={() => setEditingPrice(null)}
+                  >
+                    Cancel
+                  </GlowButton>
+                  <GlowButton
+                    variant="primary"
+                    onClick={async () => {
+                      try {
+                        await handlePriceUpdate(
+                          editingPrice.id,
+                          editingPrice.value,
+                        );
+                      } catch (error) {
+                        toast({
+                          title: 'Error',
+                          description: 'Failed to update price',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  >
+                    Save
+                  </GlowButton>
+                </div>
               </div>
-            </div>
+            </GlassCard>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

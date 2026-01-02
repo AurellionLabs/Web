@@ -3,27 +3,27 @@
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useDriver } from '@/app/providers/driver.provider';
-import { colors } from '@/lib/constants/colors';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+} from '@/app/components/ui/glass-card';
+import { GlowButton } from '@/app/components/ui/glow-button';
+import { StatusBadge } from '@/app/components/ui/status-badge';
+import { AnimatedNumber } from '@/app/components/ui/animated-number';
 import {
   Activity,
   Package,
   Clock,
   CheckCircle2,
-  XCircle,
-  ArrowRight,
   RefreshCw,
   MapPin,
   Truck,
   Navigation,
-  CheckCircle,
+  DollarSign,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -42,9 +42,205 @@ import {
 } from '@/app/components/ui/tabs';
 import { DeliveryActionDialog } from '@/app/components/ui/delivery-action-dialog';
 import { Delivery, DeliveryStatus } from '@/domain/driver';
+import { cn } from '@/lib/utils';
 
 type TabType = 'available' | 'my-deliveries';
 
+/**
+ * StatCard - Protocol stat card component
+ */
+interface StatCardProps {
+  title: string;
+  value: number | string;
+  icon: React.ElementType;
+  iconColor: string;
+  onClick?: () => void;
+  isClickable?: boolean;
+}
+
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon: Icon,
+  iconColor,
+  onClick,
+  isClickable = false,
+}) => (
+  <GlassCard
+    hover={isClickable}
+    className={cn(
+      'relative overflow-hidden',
+      isClickable &&
+        'cursor-pointer transition-all duration-300 hover:scale-[1.02]',
+    )}
+    onClick={onClick}
+  >
+    <div
+      className={cn(
+        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
+        iconColor,
+      )}
+    />
+    <div className="relative flex items-start justify-between">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground mb-1">
+          {title}
+        </p>
+        {typeof value === 'number' ? (
+          <AnimatedNumber
+            value={value}
+            size="lg"
+            className="font-bold text-foreground"
+          />
+        ) : (
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+        )}
+      </div>
+      <div
+        className={cn(
+          'p-3 rounded-xl',
+          iconColor.replace('bg-', 'bg-opacity-20 '),
+        )}
+      >
+        <Icon
+          className={cn(
+            'w-6 h-6',
+            iconColor.replace('bg-', 'text-').replace('-500', '-400'),
+          )}
+        />
+      </div>
+    </div>
+  </GlassCard>
+);
+
+/**
+ * DeliveryCard - Card for displaying delivery information
+ */
+interface DeliveryCardProps {
+  delivery: Delivery;
+  onAccept?: (jobId: string) => void;
+  onPickup?: (jobId: string) => void;
+  onComplete?: (jobId: string) => void;
+  isLoading?: boolean;
+}
+
+const DeliveryCard: React.FC<DeliveryCardProps> = ({
+  delivery,
+  onAccept,
+  onPickup,
+  onComplete,
+  isLoading,
+}) => {
+  const getStatusBadge = () => {
+    switch (delivery.currentStatus) {
+      case DeliveryStatus.PENDING:
+        return <StatusBadge status="info" label="Available" size="sm" />;
+      case DeliveryStatus.ACCEPTED:
+        return <StatusBadge status="warning" label="Accepted" size="sm" />;
+      case DeliveryStatus.PICKED_UP:
+        return <StatusBadge status="warning" label="Picked Up" size="sm" />;
+      case DeliveryStatus.COMPLETED:
+        return <StatusBadge status="success" label="Completed" size="sm" />;
+      default:
+        return <StatusBadge status="neutral" label="Unknown" size="sm" />;
+    }
+  };
+
+  return (
+    <GlassCard hover className="transition-all duration-300">
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        <div className="space-y-4 flex-1">
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Job ID:</span>
+            <span className="font-mono font-medium text-foreground">
+              {delivery.jobId}
+            </span>
+            {getStatusBadge()}
+          </div>
+
+          {/* Locations */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-start gap-2">
+              <MapPin className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Pickup Location</p>
+                <p className="text-sm text-foreground">
+                  {delivery.parcelData.startName}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Navigation className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Delivery Location
+                </p>
+                <p className="text-sm text-foreground">
+                  {delivery.parcelData.endName}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Meta info */}
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              <span>ETA: {delivery.ETA} mins</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              <span className="font-mono truncate max-w-[120px]">
+                {delivery.customer.slice(0, 6)}...{delivery.customer.slice(-4)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Fee and Action */}
+        <div className="flex flex-col items-end justify-between gap-4">
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Fee</p>
+            <p className="text-2xl font-bold text-accent">
+              ${delivery.fee.toFixed(2)}
+            </p>
+          </div>
+
+          {delivery.currentStatus === DeliveryStatus.PENDING && onAccept && (
+            <DeliveryActionDialog
+              delivery={delivery}
+              onConfirm={onAccept}
+              variant="accept"
+              isLoading={isLoading}
+            />
+          )}
+          {delivery.currentStatus === DeliveryStatus.ACCEPTED && onPickup && (
+            <DeliveryActionDialog
+              delivery={delivery}
+              onConfirm={onPickup}
+              variant="pickup"
+              isLoading={isLoading}
+            />
+          )}
+          {delivery.currentStatus === DeliveryStatus.PICKED_UP &&
+            onComplete && (
+              <DeliveryActionDialog
+                delivery={delivery}
+                onConfirm={onComplete}
+                variant="complete"
+                isLoading={isLoading}
+              />
+            )}
+        </div>
+      </div>
+    </GlassCard>
+  );
+};
+
+/**
+ * DriverDashboard - Driver dashboard with Aurellion theme
+ */
 export default function DriverDashboard() {
   const { setCurrentUserRole } = useMainProvider();
   const {
@@ -62,7 +258,6 @@ export default function DriverDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('available');
 
-  // Filter states
   const [filters, setFilters] = useState({
     jobId: '',
     pickupLocation: '',
@@ -70,7 +265,6 @@ export default function DriverDashboard() {
     status: 'all',
   });
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const deliveriesPerPage = 5;
 
@@ -78,7 +272,7 @@ export default function DriverDashboard() {
     setCurrentUserRole('driver');
   }, [setCurrentUserRole]);
 
-  // Filter my deliveries based on status and search
+  // Filter deliveries
   const filteredMyDeliveries = myDeliveries.filter((delivery: Delivery) => {
     if (
       filters.jobId &&
@@ -86,18 +280,15 @@ export default function DriverDashboard() {
     ) {
       return false;
     }
-
     if (
       filters.status !== 'all' &&
       delivery.currentStatus !== parseInt(filters.status as string)
     ) {
       return false;
     }
-
     return true;
   });
 
-  // Filter available deliveries based on location search
   const filteredAvailableDeliveries = availableDeliveries.filter(
     (delivery: Delivery) => {
       if (
@@ -106,7 +297,6 @@ export default function DriverDashboard() {
       ) {
         return false;
       }
-
       if (
         filters.pickupLocation &&
         (!delivery.parcelData?.startName ||
@@ -116,7 +306,6 @@ export default function DriverDashboard() {
       ) {
         return false;
       }
-
       if (
         filters.dropOffLocation &&
         (!delivery.parcelData?.endName ||
@@ -126,15 +315,9 @@ export default function DriverDashboard() {
       ) {
         return false;
       }
-
       return true;
     },
   );
-
-  // Add logging
-  console.log('Raw availableDeliveries:', availableDeliveries);
-  console.log('Current filters:', filters);
-  console.log('Filtered availableDeliveries:', filteredAvailableDeliveries);
 
   // Calculate statistics
   const availableCount = availableDeliveries.length;
@@ -148,7 +331,6 @@ export default function DriverDashboard() {
     (delivery: Delivery) => delivery.currentStatus === DeliveryStatus.COMPLETED,
   ).length;
 
-  // Calculate total earnings from completed deliveries
   const totalEarnings = myDeliveries
     .filter(
       (delivery: Delivery) =>
@@ -156,7 +338,7 @@ export default function DriverDashboard() {
     )
     .reduce((total: number, delivery: Delivery) => total + delivery.fee, 0);
 
-  // Calculate pagination
+  // Pagination
   const currentDeliveries =
     activeTab === 'available'
       ? filteredAvailableDeliveries
@@ -166,6 +348,7 @@ export default function DriverDashboard() {
   const endIndex = startIndex + deliveriesPerPage;
   const paginatedDeliveries = currentDeliveries.slice(startIndex, endIndex);
 
+  // Handlers
   const handleAcceptDelivery = async (jobId: string) => {
     try {
       await acceptDelivery(jobId);
@@ -185,10 +368,7 @@ export default function DriverDashboard() {
 
   const handlePickupDelivery = async (jobId: string) => {
     try {
-      // 1. Sign the pickup (packageSign)
       await confirmPickup(jobId);
-
-      // 2. Attempt to start the journey (handOn). If SenderNotSigned, surface a friendly message.
       try {
         await startJourney(jobId);
         toast({
@@ -208,7 +388,6 @@ export default function DriverDashboard() {
         }
       }
     } catch (err) {
-      console.error('Error during pickup confirmation:', err);
       toast({
         title: 'Error',
         description:
@@ -242,12 +421,10 @@ export default function DriverDashboard() {
 
   if (isLoading) {
     return (
-      <div
-        className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6 flex items-center justify-center`}
-      >
-        <div className="flex items-center gap-2">
-          <RefreshCw className="h-6 w-6 animate-spin" />
-          <span>Loading deliveries...</span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
+          <span className="text-muted-foreground">Loading deliveries...</span>
         </div>
       </div>
     );
@@ -255,158 +432,51 @@ export default function DriverDashboard() {
 
   if (error) {
     return (
-      <div
-        className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
-      >
+      <div className="min-h-screen p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-            <h2 className="text-lg font-semibold text-red-500">
+          <GlassCard className="border-trading-sell/30">
+            <h2 className="text-lg font-semibold text-trading-sell mb-2">
               Error Loading Deliveries
             </h2>
-            <p className="text-gray-400 mt-1">{error}</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => refreshDeliveries()}
-            >
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <GlowButton variant="outline" onClick={() => refreshDeliveries()}>
               Try Again
-            </Button>
-          </div>
+            </GlowButton>
+          </GlassCard>
         </div>
       </div>
     );
   }
 
-  const renderDeliveryCard = (delivery: Delivery) => (
-    <Card key={delivery.jobId} className="bg-[#1a1f2d] border-0">
-      <CardContent className="pt-6">
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-400">Job ID:</span>
-              <span className="font-medium">{delivery.jobId}</span>
-              <span className="ml-4">
-                {delivery.currentStatus === DeliveryStatus.PENDING && (
-                  <span className="bg-blue-500/10 text-blue-500 text-xs px-2 py-1 rounded-full">
-                    Available
-                  </span>
-                )}
-                {delivery.currentStatus === DeliveryStatus.ACCEPTED && (
-                  <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
-                    Accepted
-                  </span>
-                )}
-                {delivery.currentStatus === DeliveryStatus.PICKED_UP && (
-                  <span className="bg-amber-500/10 text-amber-500 text-xs px-2 py-1 rounded-full">
-                    Picked Up
-                  </span>
-                )}
-                {delivery.currentStatus === DeliveryStatus.COMPLETED && (
-                  <span className="bg-green-500/10 text-green-500 text-xs px-2 py-1 rounded-full">
-                    Completed
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-gray-400 mt-1" />
-                  <div>
-                    <div className="text-sm font-medium">Pickup Location</div>
-                    <div className="text-sm text-gray-400">
-                      {delivery.parcelData.startName}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <Navigation className="h-4 w-4 text-gray-400 mt-1" />
-                  <div>
-                    <div className="text-sm font-medium">Delivery Location</div>
-                    <div className="text-sm text-gray-400">
-                      {delivery.parcelData.endName}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">ETA: {delivery.ETA} mins</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">Customer: {delivery.customer}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-col justify-between items-end">
-            <div className="text-2xl font-bold text-amber-500">
-              ${delivery.fee.toFixed(2)}
-            </div>
-            <>
-              {delivery.currentStatus === DeliveryStatus.PENDING && (
-                <DeliveryActionDialog
-                  delivery={delivery}
-                  onConfirm={handleAcceptDelivery}
-                  variant="accept"
-                  isLoading={isLoading}
-                />
-              )}
-              {delivery.currentStatus === DeliveryStatus.ACCEPTED && (
-                <DeliveryActionDialog
-                  delivery={delivery}
-                  onConfirm={handlePickupDelivery}
-                  variant="pickup"
-                  isLoading={isLoading}
-                />
-              )}
-              {delivery.currentStatus === DeliveryStatus.PICKED_UP && (
-                <DeliveryActionDialog
-                  delivery={delivery}
-                  onConfirm={handleCompleteDelivery}
-                  variant="complete"
-                  isLoading={isLoading}
-                />
-              )}
-            </>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <div
-      className={`min-h-screen bg-[${colors.background.primary}] text-white p-4 sm:p-6`}
-    >
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Driver Dashboard</h1>
-            <p className="text-gray-400 mt-1">
-              Welcome back! Here's an overview of your deliveries and available
-              jobs.
+            <h1 className="text-2xl font-bold text-foreground">
+              Driver Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Welcome back! Here's an overview of your deliveries
             </p>
           </div>
-          <Button
+          <GlowButton
             variant="outline"
-            size="icon"
             onClick={() => refreshDeliveries()}
-            className="h-10 w-10"
+            leftIcon={<RefreshCw className="w-4 h-4" />}
           >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+            Refresh
+          </GlowButton>
         </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <Card
-            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+          <StatCard
+            title="Available"
+            value={availableCount}
+            icon={Package}
+            iconColor="bg-blue-500"
             onClick={() => {
               setActiveTab('available');
               setFilters({
@@ -417,22 +487,13 @@ export default function DriverDashboard() {
               });
               setCurrentPage(1);
             }}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Available Deliveries
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">{availableCount}</h3>
-                </div>
-                <Package className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+            isClickable
+          />
+          <StatCard
+            title="To Pick Up"
+            value={toPickupCount}
+            icon={MapPin}
+            iconColor="bg-amber-500"
             onClick={() => {
               setActiveTab('my-deliveries');
               setFilters({
@@ -443,22 +504,13 @@ export default function DriverDashboard() {
               });
               setCurrentPage(1);
             }}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    To Pick Up
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">{toPickupCount}</h3>
-                </div>
-                <MapPin className="h-8 w-8 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+            isClickable
+          />
+          <StatCard
+            title="To Complete"
+            value={toCompleteCount}
+            icon={Navigation}
+            iconColor="bg-accent"
             onClick={() => {
               setActiveTab('my-deliveries');
               setFilters({
@@ -469,22 +521,13 @@ export default function DriverDashboard() {
               });
               setCurrentPage(1);
             }}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    To Complete
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">{toCompleteCount}</h3>
-                </div>
-                <Navigation className="h-8 w-8 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`bg-[${colors.background.secondary}] cursor-pointer transition-colors hover:bg-[#1f2437]`}
+            isClickable
+          />
+          <StatCard
+            title="Completed"
+            value={completedDeliveries}
+            icon={CheckCircle2}
+            iconColor="bg-green-500"
             onClick={() => {
               setActiveTab('my-deliveries');
               setFilters({
@@ -495,198 +538,231 @@ export default function DriverDashboard() {
               });
               setCurrentPage(1);
             }}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Completed Deliveries
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">
-                    {completedDeliveries}
-                  </h3>
-                </div>
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`bg-[${colors.background.secondary}]`}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Total Earnings
-                  </p>
-                  <h3 className="text-2xl font-bold mt-2">
-                    ${totalEarnings.toFixed(2)}
-                  </h3>
-                </div>
-                <Truck className="h-8 w-8 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
+            isClickable
+          />
+          <StatCard
+            title="Total Earnings"
+            value={`$${totalEarnings.toFixed(2)}`}
+            icon={DollarSign}
+            iconColor="bg-purple-500"
+          />
         </div>
 
-        {/* Tabbed Interface */}
+        {/* Tabs */}
         <Tabs
           value={activeTab}
           defaultValue="available"
           className="w-full"
-          onValueChange={(value) => setActiveTab(value as TabType)}
+          onValueChange={(value) => {
+            setActiveTab(value as TabType);
+            setCurrentPage(1);
+          }}
         >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="available">Available Deliveries</TabsTrigger>
-            <TabsTrigger value="my-deliveries">My Deliveries</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-surface-overlay border border-glass-border">
+            <TabsTrigger
+              value="available"
+              className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
+            >
+              Available Deliveries
+            </TabsTrigger>
+            <TabsTrigger
+              value="my-deliveries"
+              className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
+            >
+              My Deliveries
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="available">
-            <Card className={`bg-[${colors.background.secondary}]`}>
-              <CardHeader>
-                <CardDescription>
+          <TabsContent value="available" className="mt-6">
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle>Available Deliveries</GlassCardTitle>
+                <GlassCardDescription>
                   Browse and accept delivery requests
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Location-based filters */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Job ID</label>
-                    <Input
-                      placeholder="Search by job ID"
-                      value={filters.jobId}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          jobId: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Pickup Location
-                    </label>
-                    <Input
-                      placeholder="Search by pickup location"
-                      value={filters.pickupLocation}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          pickupLocation: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Drop-off Location
-                    </label>
-                    <Input
-                      placeholder="Search by drop-off location"
-                      value={filters.dropOffLocation}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          dropOffLocation: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
+                </GlassCardDescription>
+              </GlassCardHeader>
 
-                {/* Delivery List */}
-                <div className="space-y-4">
-                  {paginatedDeliveries.map(renderDeliveryCard)}
+              {/* Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Job ID
+                  </label>
+                  <Input
+                    placeholder="Search by job ID"
+                    value={filters.jobId}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        jobId: e.target.value,
+                      }))
+                    }
+                    className="bg-surface-overlay border-glass-border"
+                  />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Pickup Location
+                  </label>
+                  <Input
+                    placeholder="Search by pickup location"
+                    value={filters.pickupLocation}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        pickupLocation: e.target.value,
+                      }))
+                    }
+                    className="bg-surface-overlay border-glass-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Drop-off Location
+                  </label>
+                  <Input
+                    placeholder="Search by drop-off location"
+                    value={filters.dropOffLocation}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        dropOffLocation: e.target.value,
+                      }))
+                    }
+                    className="bg-surface-overlay border-glass-border"
+                  />
+                </div>
+              </div>
+
+              {/* Delivery List */}
+              <div className="space-y-4">
+                {paginatedDeliveries.length > 0 ? (
+                  paginatedDeliveries.map((delivery) => (
+                    <DeliveryCard
+                      key={delivery.jobId}
+                      delivery={delivery}
+                      onAccept={handleAcceptDelivery}
+                      isLoading={isLoading}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <Truck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      No available deliveries
+                    </p>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
           </TabsContent>
 
-          <TabsContent value="my-deliveries">
-            <Card className={`bg-[${colors.background.secondary}]`}>
-              <CardHeader>
-                <CardDescription>
+          <TabsContent value="my-deliveries" className="mt-6">
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle>My Deliveries</GlassCardTitle>
+                <GlassCardDescription>
                   Manage your accepted deliveries
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Status-based filters */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Job ID</label>
-                    <Input
-                      placeholder="Search by job ID"
-                      value={filters.jobId}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          jobId: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Status</label>
-                    <Select
-                      value={filters.status}
-                      onValueChange={(value) =>
-                        setFilters((prev) => ({ ...prev, status: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value={DeliveryStatus.ACCEPTED.toString()}>
-                          Accepted
-                        </SelectItem>
-                        <SelectItem value={DeliveryStatus.PICKED_UP.toString()}>
-                          Picked Up
-                        </SelectItem>
-                        <SelectItem value={DeliveryStatus.COMPLETED.toString()}>
-                          Completed
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                </GlassCardDescription>
+              </GlassCardHeader>
 
-                {/* Delivery List */}
-                <div className="space-y-4">
-                  {paginatedDeliveries.map(renderDeliveryCard)}
+              {/* Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Job ID
+                  </label>
+                  <Input
+                    placeholder="Search by job ID"
+                    value={filters.jobId}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        jobId: e.target.value,
+                      }))
+                    }
+                    className="bg-surface-overlay border-glass-border"
+                  />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Status
+                  </label>
+                  <Select
+                    value={filters.status}
+                    onValueChange={(value) =>
+                      setFilters((prev) => ({ ...prev, status: value }))
+                    }
+                  >
+                    <SelectTrigger className="bg-surface-overlay border-glass-border">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value={DeliveryStatus.ACCEPTED.toString()}>
+                        Accepted
+                      </SelectItem>
+                      <SelectItem value={DeliveryStatus.PICKED_UP.toString()}>
+                        Picked Up
+                      </SelectItem>
+                      <SelectItem value={DeliveryStatus.COMPLETED.toString()}>
+                        Completed
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Delivery List */}
+              <div className="space-y-4">
+                {paginatedDeliveries.length > 0 ? (
+                  paginatedDeliveries.map((delivery) => (
+                    <DeliveryCard
+                      key={delivery.jobId}
+                      delivery={delivery}
+                      onPickup={handlePickupDelivery}
+                      onComplete={handleCompleteDelivery}
+                      isLoading={isLoading}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <Truck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                    <p className="text-muted-foreground">No deliveries found</p>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
           </TabsContent>
         </Tabs>
 
         {/* Pagination */}
         {currentDeliveries.length > deliveriesPerPage && (
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-sm text-gray-400">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-muted-foreground">
               Showing {startIndex + 1} to{' '}
               {Math.min(endIndex, currentDeliveries.length)} of{' '}
               {currentDeliveries.length} deliveries
             </div>
             <div className="flex gap-2">
-              <Button
+              <GlowButton
                 variant="outline"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
+                leftIcon={<ChevronLeft className="w-4 h-4" />}
               >
                 Previous
-              </Button>
-              <Button
+              </GlowButton>
+              <GlowButton
                 variant="outline"
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
                 disabled={currentPage === totalPages}
+                rightIcon={<ChevronRight className="w-4 h-4" />}
               >
                 Next
-              </Button>
+              </GlowButton>
             </div>
           </div>
         )}
