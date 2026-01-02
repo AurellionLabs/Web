@@ -111,39 +111,47 @@ export const GET_ALL_NODE_ASSETS_AURUM = gql`
 
 /**
  * Query AuraAsset subgraph for user balances and asset metadata
+ * Updated for Ponder API - uses plural table names and limit instead of first/skip
  */
 export const GET_USER_BALANCES_AURA = gql`
-  query GetUserBalancesAura($userAddress: Bytes!) {
-    userBalances(where: { user: $userAddress }) {
-      id
-      user
-      tokenId
-      balance
-      asset
-      firstReceived
-      lastUpdated
+  query GetUserBalancesAura($userAddress: String!) {
+    userBalancess(where: { user: $userAddress }, limit: 100) {
+      items {
+        id
+        user
+        tokenId
+        balance
+        asset
+        firstReceived
+        lastUpdated
+      }
     }
   }
 `;
 
 /**
  * Query AuraAsset subgraph for asset metadata by hashes
+ * Updated for Ponder API - uses plural table names with items wrapper
  */
 export const GET_ASSETS_BY_HASHES = gql`
   query GetAssetsByHashes($hashes: [String!]!) {
-    assets(where: { hash_in: $hashes }) {
-      id
-      hash
-      tokenId
-      name
-      assetClass
-      className
-      account
-      amount
-      attributes {
+    assetss(where: { hash_in: $hashes }, limit: 100) {
+      items {
+        id
+        hash
+        tokenId
         name
-        values
-        description
+        assetClass
+        className
+        account
+        amount
+        attributes {
+          items {
+            name
+            values
+            description
+          }
+        }
       }
     }
   }
@@ -151,22 +159,27 @@ export const GET_ASSETS_BY_HASHES = gql`
 
 /**
  * Query AuraAsset subgraph for asset metadata by tokenIds
+ * Updated for Ponder API - uses plural table names with items wrapper
  */
 export const GET_ASSETS_BY_TOKEN_IDS = gql`
-  query GetAssetsByTokenIds($tokenIds: [BigInt!]!) {
-    assets(where: { tokenId_in: $tokenIds }) {
-      id
-      hash
-      tokenId
-      name
-      assetClass
-      className
-      account
-      amount
-      attributes {
+  query GetAssetsByTokenIds($tokenIds: [String!]!) {
+    assetss(where: { tokenId_in: $tokenIds }, limit: 100) {
+      items {
+        id
+        hash
+        tokenId
         name
-        values
-        description
+        assetClass
+        className
+        account
+        amount
+        attributes {
+          items {
+            name
+            values
+            description
+          }
+        }
       }
     }
   }
@@ -228,11 +241,13 @@ export interface AssetAura {
   className: string;
   account: string;
   amount: string;
-  attributes: Array<{
-    name: string;
-    values: string[];
-    description: string;
-  }>;
+  attributes: {
+    items: Array<{
+      name: string;
+      values: string;
+      description: string;
+    }>;
+  };
 }
 
 // Ponder returns { nodeAssetss: { items: [...] } } for list queries
@@ -248,29 +263,43 @@ export function extractPonderNodeAssets(response: {
 }
 
 export interface UserBalancesAuraResponse {
-  userBalances: UserBalanceAura[];
+  userBalancess: { items: UserBalanceAura[] };
 }
 
 export interface AssetsAuraResponse {
-  assets: AssetAura[];
+  assetss: { items: AssetAura[] };
 }
 
 // Paginated list of all assets from AuraAsset subgraph
+// Updated for Ponder API - uses cursor-based pagination with limit/after
 export const GET_ALL_ASSETS = gql`
-  query GetAllAssets($first: Int!, $skip: Int!) {
-    assets(first: $first, skip: $skip, orderBy: tokenId, orderDirection: asc) {
-      id
-      hash
-      tokenId
-      name
-      assetClass
-      className
-      account
-      amount
-      attributes {
+  query GetAllAssets($limit: Int!, $after: String) {
+    assetss(
+      limit: $limit
+      after: $after
+      orderBy: "tokenId"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        hash
+        tokenId
         name
-        values
-        description
+        assetClass
+        className
+        account
+        amount
+        attributes {
+          items {
+            name
+            values
+            description
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }

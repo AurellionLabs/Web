@@ -238,7 +238,9 @@ export class BlockchainNodeRepository implements NodeRepository {
       }
 
       // Step 2: Get user balances from AuraAsset subgraph
-      let auraBalanceResponse: UserBalancesAuraResponse = { userBalances: [] };
+      let auraBalanceResponse: UserBalancesAuraResponse = {
+        userBalancess: { items: [] },
+      };
       try {
         auraBalanceResponse = await graphqlRequest(
           NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
@@ -252,7 +254,7 @@ export class BlockchainNodeRepository implements NodeRepository {
 
       // Step 3: Try to get asset metadata directly by tokenIds first
       const tokenIds = nodeAssetsData.map((asset) => asset.tokenId);
-      let assetsMetadata: AssetsAuraResponse = { assets: [] };
+      let assetsMetadata: AssetsAuraResponse = { assetss: { items: [] } };
 
       if (tokenIds.length > 0) {
         try {
@@ -263,7 +265,7 @@ export class BlockchainNodeRepository implements NodeRepository {
           );
           console.log(
             '[NodeRepository] Found assets by tokenIds:',
-            assetsMetadata.assets.length,
+            assetsMetadata.assetss.items.length,
           );
         } catch (error) {
           console.warn(
@@ -273,7 +275,7 @@ export class BlockchainNodeRepository implements NodeRepository {
 
           // Fallback: try to get by hashes from user balances
           const balanceMap = new Map<string, UserBalanceAura>();
-          auraBalanceResponse.userBalances?.forEach((balance) => {
+          auraBalanceResponse.userBalancess?.items?.forEach((balance) => {
             balanceMap.set(balance.tokenId, balance);
           });
 
@@ -289,7 +291,7 @@ export class BlockchainNodeRepository implements NodeRepository {
               );
               console.log(
                 '[NodeRepository] Found assets by hashes:',
-                assetsMetadata.assets.length,
+                assetsMetadata.assetss.items.length,
               );
             } catch (hashError) {
               console.warn(
@@ -303,12 +305,12 @@ export class BlockchainNodeRepository implements NodeRepository {
 
       // Step 4: Create maps for lookups
       const balanceMap = new Map<string, UserBalanceAura>();
-      auraBalanceResponse.userBalances?.forEach((balance) => {
+      auraBalanceResponse.userBalancess?.items?.forEach((balance) => {
         balanceMap.set(balance.tokenId, balance);
       });
 
       const metadataMap = new Map<string, AssetAura>();
-      assetsMetadata.assets.forEach((asset) => {
+      assetsMetadata.assetss?.items?.forEach((asset) => {
         metadataMap.set(asset.tokenId, asset);
       });
 
@@ -413,7 +415,7 @@ export class BlockchainNodeRepository implements NodeRepository {
       }
 
       const metadataMap = new Map<string, AssetAura>();
-      assetsMetadata.assets.forEach((asset) => {
+      assetsMetadata.assetss?.items?.forEach((asset) => {
         metadataMap.set(asset.tokenId, asset);
       });
 
@@ -435,7 +437,7 @@ export class BlockchainNodeRepository implements NodeRepository {
             { userAddress: nodeAddr.toLowerCase() },
           );
           const map = new Map<string, string>();
-          (balancesResp.userBalances || []).forEach((b) => {
+          (balancesResp.userBalancess?.items || []).forEach((b) => {
             map.set(b.tokenId, b.balance);
           });
           nodeBalanceMap.set(nodeAddr, map);
@@ -538,7 +540,7 @@ export class BlockchainNodeRepository implements NodeRepository {
         GET_USER_BALANCES_AURA,
         { userAddress: ownerAddress.toLowerCase() },
       );
-      const found = (balancesResp.userBalances || []).find(
+      const found = (balancesResp.userBalancess?.items || []).find(
         (b) => String(b.tokenId) === String(assetId),
       );
       return Number(found?.balance || '0');
