@@ -16,7 +16,9 @@
 
 import { Contract } from 'ethers';
 import { sendContractTxWithReadEstimation, SendTxOptions } from './tx-helper';
-import { queryOne } from '@/infrastructure/repositories/shared/ponder-db';
+
+// Note: Database imports are done dynamically in waitForIndexedEntity
+// to avoid bundling pg (PostgreSQL client) in client-side code
 
 /**
  * Metadata defining how to wait for an indexed entity after a transaction
@@ -51,6 +53,7 @@ export interface WaitOptions {
 
 /**
  * Generic function to wait for any indexed entity by transaction hash
+ * Works on both server-side (direct DB) and client-side (via API route)
  */
 async function waitForIndexedEntity<T = string>(
   transactionHash: string,
@@ -58,6 +61,19 @@ async function waitForIndexedEntity<T = string>(
   txArgs: unknown[] = [],
   options: WaitOptions = {},
 ): Promise<T | null> {
+  const isBrowser = typeof window !== 'undefined';
+
+  // Client-side: use API route
+  if (isBrowser) {
+    return waitForIndexedEntityViaAPI<T>(
+      transactionHash,
+      metadata,
+      txArgs,
+      options,
+    );
+  }
+
+  // Server-side: use direct database access
   const {
     timeoutMs = 60000,
     pollIntervalMs = 1000,
@@ -67,10 +83,15 @@ async function waitForIndexedEntity<T = string>(
   const startTime = Date.now();
   const normalizedTxHash = transactionHash.toLowerCase();
 
+  // Dynamically import on server-side to avoid bundling pg in client
+  const { queryOne: serverQueryOne } = await import(
+    '@/infrastructure/repositories/shared/ponder-db'
+  );
+
   while (Date.now() - startTime < timeoutMs) {
     try {
       // First, try event table
-      const event = await queryOne<Record<string, any>>(
+      const event = await serverQueryOne<Record<string, any>>(
         `SELECT ${metadata.eventIdColumn} 
          FROM ${metadata.eventTable} 
          WHERE transaction_hash = $1 
@@ -108,7 +129,7 @@ async function waitForIndexedEntity<T = string>(
           params = [normalizedTxHash];
         }
 
-        const entity = await queryOne<Record<string, any>>(query, params);
+        const entity = await serverQueryOne<Record<string, any>>(query, params);
 
         if (entity) {
           if (metadata.waitForConfirmation) {
@@ -132,6 +153,77 @@ async function waitForIndexedEntity<T = string>(
       );
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
+  }
+
+  throw new Error(timeoutMessage);
+}
+
+/**
+ * Client-side version that uses API route
+ */
+async function waitForIndexedEntityViaAPI<T = string>(
+  transactionHash: string,
+  metadata: IndexerWaitMetadata,
+  txArgs: unknown[] = [],
+  options: WaitOptions = {},
+): Promise<T | null> {
+  const {
+    timeoutMs = 60000,
+    pollIntervalMs = 1000,
+    timeoutMessage = `Timeout waiting for entity (tx: ${transactionHash})`,
+  } = options;
+
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      const response = await fetch('/api/wait-for-indexer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactionHash,
+          metadata,
+          txArgs,
+          options: {
+            timeoutMs: pollIntervalMs + 1000, // Short timeout for each API call
+            pollIntervalMs: 100, // Fast polling for API calls
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.result !== undefined) {
+          return data.result as T;
+        }
+      } else if (response.status === 408) {
+        // Timeout from API - continue polling
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        continue;
+      } else {
+        // Error from API
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to wait for indexed entity');
+      }
+    } catch (error) {
+      // Network errors - continue polling
+      if (
+        error instanceof TypeError ||
+        (error instanceof Error && error.message.includes('fetch'))
+      ) {
+        console.warn(
+          `[waitForIndexedEntity API] Network error, retrying:`,
+          error,
+        );
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        continue;
+      }
+      throw error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
   throw new Error(timeoutMessage);
