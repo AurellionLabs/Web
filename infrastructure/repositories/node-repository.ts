@@ -352,22 +352,33 @@ export class BlockchainNodeRepository implements NodeRepository {
 
   async getAllNodeAssets(): Promise<TokenizedAsset[]> {
     try {
-      // Page through Ponder nodeAssets to avoid overfetch
+      // Page through Ponder nodeAssets using cursor-based pagination
       const PAGE_SIZE = 500;
       let allNodeAssets: NodeAssetAurum[] = [];
+      let after: string | undefined = undefined;
+      let hasNextPage = true;
 
-      // Fetch pages until fewer than PAGE_SIZE results are returned
-      // Cap pages to avoid runaway loops (e.g., 10k assets)
-      const MAX_PAGES = 50;
-      for (let page = 0; page < MAX_PAGES; page++) {
+      // Fetch pages until no more pages available
+      // Cap iterations to avoid runaway loops (e.g., 10k assets)
+      const MAX_ITERATIONS = 50;
+      let iterations = 0;
+
+      while (hasNextPage && iterations < MAX_ITERATIONS) {
         const pageResp = await graphqlRequest<{
-          nodeAssetss: { items: NodeAssetAurum[] };
+          nodeAssetss: {
+            items: NodeAssetAurum[];
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          };
         }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_ALL_NODE_ASSETS_AURUM, {
-          first: PAGE_SIZE,
-          skip: page * PAGE_SIZE,
+          limit: PAGE_SIZE,
+          after: after,
         });
         const pageItems = extractPonderNodeAssets(pageResp);
         allNodeAssets = allNodeAssets.concat(pageItems);
+        hasNextPage = pageResp.nodeAssetss?.pageInfo?.hasNextPage || false;
+        after = pageResp.nodeAssetss?.pageInfo?.endCursor || undefined;
+        iterations++;
+
         if (pageItems.length < PAGE_SIZE) break;
       }
 

@@ -52,12 +52,28 @@ export class PlatformRepository implements IPlatformRepository {
 
   async getSupportedAssetClasses(): Promise<string[]> {
     const supportedClasses: string[] = [];
-    for (let i = 0; ; i++) {
+    // Cap iterations to avoid infinite loops
+    const MAX_ITERATIONS = 100;
+
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
       try {
-        supportedClasses.push(await this.contract.supportedClasses(i));
-      } catch (err) {
-        console.log('likely end of supported asset classes list', err);
-        break;
+        const className = await this.contract.supportedClasses(i);
+        // Filter out empty strings (tombstoned entries)
+        if (className && className.length > 0) {
+          supportedClasses.push(className);
+        }
+      } catch (err: any) {
+        // Check if this is a BAD_DATA error (end of array) or other error
+        if (err?.code === 'BAD_DATA' || err?.info?.code === 'BAD_DATA') {
+          // End of array reached - this is expected, not an error
+          break;
+        }
+        // For other errors, log a warning but continue
+        console.warn(`Error reading supportedClasses[${i}]:`, err);
+        // If we've read at least one class, assume we've hit the end
+        if (supportedClasses.length > 0) {
+          break;
+        }
       }
     }
     return supportedClasses;

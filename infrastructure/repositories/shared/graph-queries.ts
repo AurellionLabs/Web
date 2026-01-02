@@ -81,10 +81,16 @@ export const GET_NODE_ASSETS_AURUM = gql`
 /**
  * Query Ponder indexer for ALL node assets (pricing and capacity)
  * Updated for Ponder's response format
+ * Note: Ponder uses cursor-based pagination with before/after, not skip
  */
 export const GET_ALL_NODE_ASSETS_AURUM = gql`
-  query GetAllNodeAssetsAurum($first: Int!, $skip: Int!) {
-    nodeAssetss(limit: $first, orderBy: "createdAt", orderDirection: "desc") {
+  query GetAllNodeAssetsAurum($limit: Int!, $after: String) {
+    nodeAssetss(
+      limit: $limit
+      after: $after
+      orderBy: "createdAt"
+      orderDirection: "desc"
+    ) {
       items {
         id
         node
@@ -94,6 +100,10 @@ export const GET_ALL_NODE_ASSETS_AURUM = gql`
         capacity
         createdAt
         updatedAt
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
