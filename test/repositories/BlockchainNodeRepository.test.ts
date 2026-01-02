@@ -3,11 +3,13 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { AurumNodeManager, AuraGoat, AurumNode } from '../../typechain-types'; // Import AurumNode
+import { AurumNodeManager, AuraAsset, AurumNode, Ausys, Aura } from '../../typechain-types';
 import {
   AurumNodeManager__factory,
-  AuraGoat__factory,
+  AuraAsset__factory,
   AurumNode__factory,
+  Ausys__factory,
+  Aura__factory,
 } from '../../typechain-types';
 import { BlockchainNodeRepository } from '../../infrastructure/repositories/node-repository'; // Adjust path
 import { Node } from '../../domain/node'; // Adjust path
@@ -19,7 +21,9 @@ describe('BlockchainNodeRepository', () => {
   let owner: HardhatEthersSigner;
   let otherAccount: HardhatEthersSigner;
   let aurumNodeManager: AurumNodeManager;
-  let auraGoat: AuraGoat;
+  let auraAsset: AuraAsset;
+  let ausys: Ausys;
+  let auraToken: Aura;
   let nodeRepository: BlockchainNodeRepository;
   let testProvider: BrowserProvider;
   let aurumNodeInstanceForTesting: AurumNode; // Renamed - Instance attached to the registered address
@@ -29,38 +33,55 @@ describe('BlockchainNodeRepository', () => {
     // Get signers
     [owner, otherAccount] = await ethers.getSigners();
 
-    // Deploy AurumNodeManager
+    // 1. Deploy Aura Token first
+    const AuraFactory = (await ethers.getContractFactory(
+      'Aura',
+    )) as unknown as Aura__factory;
+    auraToken = (await AuraFactory.deploy()) as unknown as Aura;
+    await auraToken.waitForDeployment();
+    const auraTokenAddress = await auraToken.getAddress();
+    console.log(`Deployed Aura Token at: ${auraTokenAddress}`);
+
+    // 2. Deploy Ausys with Aura token
+    const AusysFactory = (await ethers.getContractFactory(
+      'Ausys',
+    )) as unknown as Ausys__factory;
+    ausys = (await AusysFactory.deploy(auraTokenAddress)) as unknown as Ausys;
+    await ausys.waitForDeployment();
+    const ausysAddress = await ausys.getAddress();
+    console.log(`Deployed Ausys at: ${ausysAddress}`);
+
+    // 3. Deploy AurumNodeManager with Ausys
     const AurumNodeManagerFactory = (await ethers.getContractFactory(
       'AurumNodeManager',
-    )) as unknown as AurumNodeManager__factory; // Cast via unknown
+    )) as unknown as AurumNodeManager__factory;
     aurumNodeManager = (await AurumNodeManagerFactory.deploy(
-      ethers.ZeroAddress,
-      owner.address,
-    )) as unknown as AurumNodeManager; // Cast via unknown
+      ausysAddress,
+    )) as unknown as AurumNodeManager;
     await aurumNodeManager.waitForDeployment();
     const managerAddress = await aurumNodeManager.getAddress();
+    console.log(`Deployed AurumNodeManager at: ${managerAddress}`);
 
-    // Deploy AuraGoat
-    const AuraGoatFactory = (await ethers.getContractFactory(
-      'AuraGoat',
-    )) as unknown as AuraGoat__factory; // Cast via unknown
-    auraGoat = (await AuraGoatFactory.deploy(
+    // 4. Deploy AuraAsset (formerly AuraGoat) with manager
+    const AuraAssetFactory = (await ethers.getContractFactory(
+      'AuraAsset',
+    )) as unknown as AuraAsset__factory;
+    auraAsset = (await AuraAssetFactory.deploy(
       owner.address,
       'test-uri/',
       managerAddress,
-    )) as unknown as AuraGoat; // Cast via unknown
-    await auraGoat.waitForDeployment();
-    const auraGoatAddress = await auraGoat.getAddress();
-    console.log(`Deployed AuraGoat for test at: ${auraGoatAddress}`);
+    )) as unknown as AuraAsset;
+    await auraAsset.waitForDeployment();
+    const auraAssetAddress = await auraAsset.getAddress();
+    console.log(`Deployed AuraAsset at: ${auraAssetAddress}`);
 
-    // ** Call addToken on manager to link AuraGoat **
-    await expect(aurumNodeManager.addToken(auraGoatAddress)).to.not.be.reverted;
+    // 5. Call addToken on manager to link AuraAsset
+    await expect(aurumNodeManager.addToken(auraAssetAddress)).to.not.be.reverted;
     console.log(`Called addToken on AurumNodeManager.`);
 
-    // ** Important Note on NEXT_PUBLIC_AURA_GOAT_ADDRESS **
-    console.log(
-      `Ensure NEXT_PUBLIC_AURA_GOAT_ADDRESS matches ${auraGoatAddress} for balance tests.`,
-    );
+    // 6. Set NodeManager in Ausys
+    await expect(ausys.setNodeManager(managerAddress)).to.not.be.reverted;
+    console.log(`Set NodeManager in Ausys.`);
 
     // Instantiate Repository
     if (!owner.provider) {
@@ -71,30 +92,47 @@ describe('BlockchainNodeRepository', () => {
       aurumNodeManager,
       testProvider,
       owner,
-      auraGoatAddress,
+      auraAssetAddress,
     );
 
-    // **Register a node VIA THE REPOSITORY/MANAGER first**
-    const nodeDataToRegister: Node = {
-      address: ethers.ZeroAddress, // Address field ignored by manager.registerNode anyway
+    // **Register a node VIA THE CONTRACT directly**
+    const nodeDataToRegister = {
       location: {
         addressName: 'Test Node For Minting',
         location: { lat: '0.0', lng: '0.0' },
       },
-      validNode: '0x01', // Will be set by manager
+      validNode: '0x01',
       owner: owner.address,
-      supportedAssets: [1, 2, 3, 4, 5],
-      status: 'Active', // Will be set by manager
-      capacity: [1000, 1000, 1000, 1000, 1000],
-      assetPrices: [1, 1, 1, 1, 1],
+      supportedAssets: [], // Empty array - assets will be added later
+      status: '0x01', // Active status
     };
     try {
       console.log(
-        `Registering node via repository to get its actual address...`,
+        `Registering node via contract to get its actual address...`,
       );
-      // Capture the address returned by the repository/event
-      registeredManualNodeAddress =
-        await nodeRepository.registerNode(nodeDataToRegister);
+      // Register node directly on the contract
+      const tx = await aurumNodeManager.registerNode(nodeDataToRegister);
+      const receipt = await tx.wait();
+      
+      // Find the NodeRegistered event to get the node address
+      const event = receipt?.logs.find((log: any) => {
+        try {
+          const parsed = aurumNodeManager.interface.parseLog(log);
+          return parsed?.name === 'NodeRegistered';
+        } catch {
+          return false;
+        }
+      });
+      
+      if (event) {
+        const parsed = aurumNodeManager.interface.parseLog(event);
+        registeredManualNodeAddress = parsed?.args[1] as string; // args[1] is the nodeAddress
+      } else {
+        // Fallback: get the last node from the nodeList
+        const nodeList = await aurumNodeManager.nodeList();
+        registeredManualNodeAddress = nodeList[nodeList.length - 1];
+      }
+      
       console.log(
         `Node registration successful. Manager knows it as: ${registeredManualNodeAddress}`,
       );
@@ -132,8 +170,43 @@ describe('BlockchainNodeRepository', () => {
         assetPrices: [10, 25],
       };
 
-      // Register using the repository and get the actual address
-      const registeredNodeAddress = await nodeRepository.registerNode(nodeData);
+      // Register using the contract directly and get the actual address
+      const nodeDataToRegister = {
+        location: {
+          addressName: nodeData.location.addressName,
+          location: {
+            lat: nodeData.location.location.lat,
+            lng: nodeData.location.location.lng,
+          },
+        },
+        validNode: '0x01',
+        owner: nodeData.owner,
+        supportedAssets: [], // Empty array - assets will be added later
+        status: '0x01', // Active status
+      };
+      
+      const tx = await aurumNodeManager.registerNode(nodeDataToRegister);
+      const receipt = await tx.wait();
+      
+      // Find the NodeRegistered event to get the node address
+      const event = receipt?.logs.find((log: any) => {
+        try {
+          const parsed = aurumNodeManager.interface.parseLog(log);
+          return parsed?.name === 'NodeRegistered';
+        } catch {
+          return false;
+        }
+      });
+      
+      let registeredNodeAddress: string;
+      if (event) {
+        const parsed = aurumNodeManager.interface.parseLog(event);
+        registeredNodeAddress = parsed?.args[0] as string; // args[0] is the nodeAddress
+      } else {
+        // Fallback: get the last node from the nodeList
+        const nodeList = await aurumNodeManager.nodeList();
+        registeredNodeAddress = nodeList[nodeList.length - 1];
+      }
       expect(registeredNodeAddress).to.be.a('string');
       expect(registeredNodeAddress).to.not.equal(ethers.ZeroAddress);
 
@@ -266,7 +339,7 @@ describe('BlockchainNodeRepository', () => {
 
     it('should return the correct balance after an asset is added via addItem', async () => {
       console.log(
-        `Calling addItem on registered aurumNode ${registeredManualNodeAddress} to mint AuraGoat...`,
+        `Calling addItem on registered aurumNode ${registeredManualNodeAddress} to mint AuraAsset...`,
       );
       // itemOwner is registeredManualNodeAddress
       const tx = await aurumNodeInstanceForTesting.connect(owner).addItem(
@@ -274,7 +347,7 @@ describe('BlockchainNodeRepository', () => {
         paddedId,
         weight,
         quantity,
-        await auraGoat.getAddress(), // item address (AuraGoat contract)
+        await auraAsset.getAddress(), // item address (AuraAsset contract)
         'GOAT', // Use canonical name for assetId 1
         [],
         '0x',
@@ -287,7 +360,7 @@ describe('BlockchainNodeRepository', () => {
       // --- Check for TransferSingle event ---
       const transferEvent = receipt?.logs?.find((log: any) => {
         try {
-          const parsedLog = auraGoat.interface.parseLog(
+          const parsedLog = auraAsset.interface.parseLog(
             log as unknown as { topics: ReadonlyArray<string>; data: string },
           );
           return parsedLog?.name === 'TransferSingle';
@@ -296,7 +369,7 @@ describe('BlockchainNodeRepository', () => {
         }
       });
       if (transferEvent) {
-        const parsed = auraGoat.interface.parseLog(
+        const parsed = auraAsset.interface.parseLog(
           transferEvent as unknown as {
             topics: ReadonlyArray<string>;
             data: string;
@@ -313,11 +386,11 @@ describe('BlockchainNodeRepository', () => {
 
       // --- Direct Balance Check ---
       // Use lookupHash to match the contract's ID calculation method
-      const directTokenId = await auraGoat.lookupHash(
+      const directTokenId = await auraAsset.lookupHash(
         'GOAT',
         [], // Use canonical name
       );
-      const directBalance = await auraGoat.balanceOf(
+      const directBalance = await auraAsset.balanceOf(
         registeredManualNodeAddress,
         directTokenId,
       );
@@ -361,7 +434,7 @@ describe('BlockchainNodeRepository', () => {
             paddedId, // Corresponds to assetId 1
             weight, // Corresponds to assetId 1
             quantity,
-            await auraGoat.getAddress(),
+            await auraAsset.getAddress(),
             'GOAT', // Use canonical name for assetId 1
             [],
             '0x',
@@ -414,7 +487,7 @@ describe('BlockchainNodeRepository', () => {
             paddedId1,
             weight1,
             quantity1,
-            await auraGoat.getAddress(),
+            await auraAsset.getAddress(),
             mintAssetName1, // Use canonical name SHEEP
             [],
             '0x',
@@ -435,7 +508,7 @@ describe('BlockchainNodeRepository', () => {
             paddedId2,
             weight2,
             quantity2,
-            await auraGoat.getAddress(),
+            await auraAsset.getAddress(),
             mintAssetName2, // Use canonical name CHICKEN
             [],
             '0x',

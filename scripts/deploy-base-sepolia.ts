@@ -244,6 +244,9 @@ async function main() {
   fs.writeFileSync(latestPath, JSON.stringify(deployment, null, 2));
 
   // Update chain-constants.ts
+  // Indexer URL - defaults to localhost for dev, can be overridden via NEXT_PUBLIC_INDEXER_URL env var
+  const indexerBaseUrl = process.env.NEXT_PUBLIC_INDEXER_URL || "http://localhost:42069";
+  
   const chainConstants = `// Auto-generated deployment constants for ${network.name}
 // Deployed: ${deployment.timestamp}
 // Chain ID: ${chainId}
@@ -253,7 +256,16 @@ export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "${auraTokenAddress}";
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "${aurumNodeManagerAddress}";
 export const NEXT_PUBLIC_AUSYS_ADDRESS = "${auSysAddress}";
 export const NEXT_PUBLIC_AURA_ASSET_ADDRESS = "${auraAssetAddress}";
+export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = "${auraAssetAddress}"; // AuraAsset is the GOAT contract
 export const NEXT_PUBLIC_CLOB_ADDRESS = "${clobAddress}";
+
+// Indexer GraphQL endpoint (Ponder indexer replaces The Graph subgraphs)
+// All subgraphs point to the same indexer GraphQL endpoint
+const INDEXER_BASE_URL = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_INDEXER_URL || "${indexerBaseUrl}";
+export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = \`\${INDEXER_BASE_URL}/graphql\`;
+export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = \`\${INDEXER_BASE_URL}/graphql\`;
+export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = \`\${INDEXER_BASE_URL}/graphql\`;
+export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = \`\${INDEXER_BASE_URL}/graphql\`;
 
 // Deployment blocks (for indexer configuration)
 export const DEPLOYMENT_BLOCKS = {

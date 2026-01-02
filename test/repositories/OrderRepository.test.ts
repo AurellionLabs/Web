@@ -16,8 +16,10 @@ import {
   Aura__factory,
   AurumNodeManager,
   AurumNodeManager__factory,
-  AuraGoat, // Assuming needed if orders involve specific tokens
-  AuraGoat__factory, // Assuming needed
+  AuraAsset,
+  AuraAsset__factory,
+  Ausys,
+  Ausys__factory,
 } from '../../typechain-types'; // Adjust path as necessary
 import { IOrderRepository } from '../../domain/orders/order'; // Adjust path
 import { Node } from '../../domain/node'; // Import Node domain type
@@ -64,9 +66,10 @@ describe('OrderRepository', () => {
 
   let locationContract: LocationContract; // Instance of deployed AuSys.sol
   let auraToken: Aura;
+  let ausys: Ausys;
   let nodeManager: AurumNodeManager;
-  let auraGoat: AuraGoat; // If needed for tests
-  let auraGoatAddress: string;
+  let auraAsset: AuraAsset;
+  let auraAssetAddress: string;
 
   let orderRepository: IOrderRepository; // Instance of the class we are testing
   let nodeRepository: BlockchainNodeRepository; // For registering nodes
@@ -281,40 +284,46 @@ describe('OrderRepository', () => {
     );
     expect(ownerBalanceCheck).to.be.gte(initialMintAmount); // Verify minting worked
 
-    // --- Deploy Dependencies ---
+    // --- Deploy Dependencies in correct order ---
+    // 1. Deploy Ausys with Aura token
+    const AusysFactory = (await ethers.getContractFactory(
+      'Ausys',
+    )) as Ausys__factory;
+    ausys = await AusysFactory.deploy(auraTokenAddress);
+    await ausys.waitForDeployment();
+    const ausysAddress = await ausys.getAddress();
+    console.log(`Deployed Ausys at: ${ausysAddress}`);
+
+    // 2. Deploy AurumNodeManager with Ausys
     const NodeManagerFactory = (await ethers.getContractFactory(
       'AurumNodeManager',
     )) as AurumNodeManager__factory;
-    // Deploy with constructor args (_ausys, _admin) and explicit empty overrides object
-    nodeManager = await NodeManagerFactory.deploy(
-      ethers.ZeroAddress,
-      owner.address,
-      {},
-    );
+    nodeManager = await NodeManagerFactory.deploy(ausysAddress);
     await nodeManager.waitForDeployment();
     const nodeManagerAddress = await nodeManager.getAddress();
+    console.log(`Deployed AurumNodeManager at: ${nodeManagerAddress}`);
 
-    const GoatFactory = (await ethers.getContractFactory(
-      'AuraGoat',
-    )) as AuraGoat__factory;
-    auraGoat = await GoatFactory.deploy(
+    // 3. Deploy AuraAsset (formerly AuraGoat) with manager
+    const AuraAssetFactory = (await ethers.getContractFactory(
+      'AuraAsset',
+    )) as AuraAsset__factory;
+    auraAsset = await AuraAssetFactory.deploy(
       owner.address,
       'test-uri/',
       nodeManagerAddress,
     );
-    await auraGoat.waitForDeployment();
-    auraGoatAddress = await auraGoat.getAddress();
+    await auraAsset.waitForDeployment();
+    auraAssetAddress = await auraAsset.getAddress();
+    console.log(`Deployed AuraAsset at: ${auraAssetAddress}`);
 
-    // Deploy LocationContract (AuSys)
-    const LocationContractFactory = (await ethers.getContractFactory(
-      'locationContract',
-    )) as LocationContract__factory;
-    locationContract = await LocationContractFactory.deploy(auraTokenAddress);
-    await locationContract.waitForDeployment();
+    // 4. Use the deployed Ausys as LocationContract (they're the same contract)
+    locationContract = ausys as unknown as LocationContract;
     const locationContractAddress = await locationContract.getAddress();
+    console.log(`Using Ausys as LocationContract at: ${locationContractAddress}`);
 
     // Post-deployment setup: Link contracts
     await locationContract.setNodeManager(nodeManagerAddress);
+    await nodeManager.addToken(auraAssetAddress);
 
     // Setup provider and signer
     if (!owner.provider) {
@@ -327,14 +336,49 @@ describe('OrderRepository', () => {
       nodeManager,
       testProvider,
       owner, // Use owner to register nodes
-      auraGoatAddress,
+      auraAssetAddress,
     );
 
     // Set owner for sampleNode1Data used in integration tests
     sampleNode1Data.owner = nodeSigner1.address;
 
-    // Register Node 1 owned by nodeSigner1
-    registeredNode1Address = await nodeRepository.registerNode(sampleNode1Data);
+    // Register Node 1 owned by nodeSigner1 directly on the contract
+    const nodeDataToRegister = {
+      location: {
+        addressName: sampleNode1Data.location.addressName,
+        location: {
+          lat: sampleNode1Data.location.location.lat,
+          lng: sampleNode1Data.location.location.lng,
+        },
+      },
+      validNode: '0x01',
+      owner: nodeSigner1.address,
+      supportedAssets: [], // Empty array - assets will be added later
+      status: '0x01', // Active status
+    };
+    
+    const tx = await nodeManager.connect(nodeSigner1).registerNode(nodeDataToRegister);
+    const receipt = await tx.wait();
+    
+    // Find the NodeRegistered event to get the node address
+    const event = receipt?.logs.find((log: any) => {
+      try {
+        const parsed = nodeManager.interface.parseLog(log);
+        return parsed?.name === 'NodeRegistered';
+      } catch {
+        return false;
+      }
+    });
+    
+    if (event) {
+      const parsed = nodeManager.interface.parseLog(event);
+      registeredNode1Address = parsed?.args[0] as string; // args[0] is the nodeAddress
+    } else {
+      // Fallback: get the last node from the nodeList
+      const nodeList = await nodeManager.nodeList();
+      registeredNode1Address = nodeList[nodeList.length - 1];
+    }
+    
     console.log(`Registered Node 1 at address: ${registeredNode1Address}`);
 
     // Instantiate OrderRepository
@@ -363,7 +407,7 @@ describe('OrderRepository', () => {
       const { orderId } = await createTestOrder(
         customer1,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         1,
         10,
       ); // Request 10 GOAT
@@ -403,7 +447,7 @@ describe('OrderRepository', () => {
       const { orderId: createdOrderId } = await createTestOrder(
         customer1,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         1, // GOAT
         15, // quantity
       );
@@ -584,7 +628,7 @@ describe('OrderRepository', () => {
       const { orderId } = await createTestOrder(
         customer1,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         1,
         5,
       ); // Request 5 GOAT
@@ -618,21 +662,21 @@ describe('OrderRepository', () => {
       const { orderId: orderId1 } = await createTestOrder(
         customer1,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         1,
         10,
       );
       const { orderId: orderId2 } = await createTestOrder(
         customer1,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         2,
         20,
       ); // Another order
       await createTestOrder(
         customer2,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         1,
         5,
       ); // Order for different customer
@@ -648,7 +692,7 @@ describe('OrderRepository', () => {
       const { orderId } = await createTestOrder(
         owner,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         1,
         7,
       );
@@ -675,7 +719,7 @@ describe('OrderRepository', () => {
       const { orderId } = await createTestOrder(
         customer1,
         registeredNode1Address,
-        auraGoatAddress,
+        auraAssetAddress,
         1,
         15,
       );
