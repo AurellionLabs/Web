@@ -94,7 +94,26 @@ export async function sendContractTxWithReadEstimation(
     throw new Error(`Failed to encode transaction data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
-  const network = await provider.getNetwork();
+  // Add timeout for network detection
+  let network: ethers.Network;
+  try {
+    network = await Promise.race([
+      provider.getNetwork(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Network detection timeout: Unable to detect network from provider')),
+          10000, // 10 second timeout for network detection
+        ),
+      ),
+    ]);
+  } catch (error: any) {
+    console.error('[tx-helper] Failed to get network:', error);
+    // Try to get chainId from the provider directly if available
+    if (error?.message?.includes?.('timeout')) {
+      throw new Error('Network detection timed out. Please check your wallet connection and try again.');
+    }
+    throw error;
+  }
   const chainId = Number(network.chainId);
 
   const readProvider =
@@ -118,12 +137,67 @@ export async function sendContractTxWithReadEstimation(
   const gasLimit = (est * BigInt(Math.floor(headroom * 100))) / 100n;
   console.log(`[tx-helper] Gas limit with ${headroom}x headroom: ${gasLimit.toString()}`);
 
+  // Check wallet responsiveness before sending transaction
+  console.log(`[tx-helper] Checking wallet connection...`);
+  try {
+    const walletCheck = await Promise.race([
+      (runner as Signer).getAddress(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Wallet connection check timeout')),
+          5000, // 5 second timeout
+        ),
+      ),
+    ]);
+    console.log(`[tx-helper] Wallet connected: ${walletCheck}`);
+  } catch (error: any) {
+    console.error('[tx-helper] Wallet connection check failed:', error);
+    throw new Error(
+      'Wallet is not responding. Please ensure your wallet is unlocked and connected, then try again.',
+    );
+  }
+
   console.log(`[tx-helper] Sending transaction to wallet...`);
-  const tx = await (contract as any)[method](...(args as any), {
-    gasLimit,
-    value: options.value,
-  });
-  console.log(`[tx-helper] Transaction sent, hash: ${tx.hash}, waiting for confirmation...`);
+  
+  // Add timeout for wallet interaction (60 seconds should be enough for user to approve)
+  const WALLET_TX_TIMEOUT = 60000;
+  
+  let tx: ethers.ContractTransactionResponse;
+  try {
+    tx = await Promise.race([
+      (contract as any)[method](...(args as any), {
+        gasLimit,
+        value: options.value,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Transaction send timeout: Wallet did not respond within 60 seconds. Please check your wallet and try again.')),
+          WALLET_TX_TIMEOUT,
+        ),
+      ),
+    ]) as ethers.ContractTransactionResponse;
+    
+    console.log(`[tx-helper] Transaction sent, hash: ${tx.hash}, waiting for confirmation...`);
+  } catch (error: any) {
+    // Check for wallet-specific errors
+    if (error?.message?.includes?.('timeout') || error?.message?.includes?.('Wallet timeout')) {
+      console.error('[tx-helper] Wallet timeout error:', error);
+      throw new Error(
+        'Wallet timeout: Your wallet did not respond. Please ensure your wallet is unlocked and connected, then try again.',
+      );
+    }
+    if (error?.code === 'ACTION_REJECTED' || error?.message?.includes?.('rejected')) {
+      console.error('[tx-helper] Transaction rejected by user:', error);
+      throw new Error('Transaction was rejected by user');
+    }
+    if (error?.code === 'UNSUPPORTED_OPERATION' || error?.message?.includes?.('not connected')) {
+      console.error('[tx-helper] Wallet not connected:', error);
+      throw new Error('Wallet is not connected. Please connect your wallet and try again.');
+    }
+    console.error('[tx-helper] Error sending transaction:', error);
+    throw error;
+  }
+  
   const receipt = await tx.wait();
   console.log(`[tx-helper] Transaction confirmed in block ${receipt.blockNumber}`);
   return { tx, receipt };
