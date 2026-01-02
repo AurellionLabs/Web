@@ -36,7 +36,8 @@ const config: HardhatUserConfig = {
         : [],
     },
     arbitrumSepolia: {
-      url: process.env.ARB_SEP_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
+      url:
+        process.env.ARB_SEP_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
       accounts: process.env.ARB_SEP_PRIVATE_KEY
         ? [process.env.ARB_SEP_PRIVATE_KEY]
         : [],

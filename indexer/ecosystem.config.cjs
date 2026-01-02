@@ -8,9 +8,12 @@ module.exports = {
       interpreter: 'none',
       env: {
         NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://postgres:9h11059y!Aur31110n!@localhost:5432/ponder_indexer',
-        NEXT_PUBLIC_RPC_URL_84532: 'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c',
-        BASE_TEST_RPC_URL: 'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c',
+        DATABASE_URL:
+          'postgresql://postgres:9h11059y!Aur31110n!@localhost:5432/ponder_indexer',
+        NEXT_PUBLIC_RPC_URL_84532:
+          'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c',
+        BASE_TEST_RPC_URL:
+          'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c',
         PONDER_NETWORK: 'baseSepolia',
         PONDER_LOG_LEVEL: 'info',
       },
@@ -29,4 +32,3 @@ module.exports = {
     },
   ],
 };
-

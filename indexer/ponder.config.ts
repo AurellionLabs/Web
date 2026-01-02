@@ -14,7 +14,8 @@ const BASE_SEPOLIA_CHAIN_ID = 84532;
 // Contract addresses - Updated with fresh deployment (Jan 1, 2026)
 const CONTRACTS = {
   ausys: '0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde' as `0x${string}`,
-  aurumNodeManager: '0xc50F6505BcBb00Af8f1086d9121525695Bf09D30' as `0x${string}`,
+  aurumNodeManager:
+    '0xc50F6505BcBb00Af8f1086d9121525695Bf09D30' as `0x${string}`,
   auraAsset: '0xdc1B355885ba73EFf0f0a5A72F12D87e785581a8' as `0x${string}`,
   auStake: '0xd41b6Dc779558bbe674B13F6996BFD5679f75074' as `0x${string}`,
   clob: '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc' as `0x${string}`,
@@ -32,7 +33,11 @@ export default createConfig({
   networks: {
     baseSepolia: {
       chainId: BASE_SEPOLIA_CHAIN_ID,
-      transport: http(process.env.NEXT_PUBLIC_RPC_URL_84532 || process.env.BASE_TEST_RPC_URL || 'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c'),
+      transport: http(
+        process.env.NEXT_PUBLIC_RPC_URL_84532 ||
+          process.env.BASE_TEST_RPC_URL ||
+          'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c',
+      ),
     },
   },
   contracts: {

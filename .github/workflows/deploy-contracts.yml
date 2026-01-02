@@ -16,7 +16,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -51,4 +51,3 @@ jobs:
         with:
           name: deployment-${{ github.event.inputs.network }}-${{ github.sha }}
           path: deployments/
-

@@ -645,23 +645,20 @@ export const operations = onchainTable(
 /**
  * Stake entity - individual stakes
  */
-export const stakes = onchainTable(
-  'stakes',
-  (t) => ({
-    id: t.text().primaryKey(), // operationId-userAddress
-    stakeOperationId: t.hex().notNull(),
-    user: t.hex().notNull(),
-    token: t.hex().notNull(),
-    amount: t.bigint().notNull(), // wei
-    timestamp: t.bigint().notNull(),
-    isActive: t.boolean().notNull().default(true),
-    // Metadata
-    createdAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-    blockNumber: t.bigint().notNull(),
-    transactionHash: t.hex().notNull(),
-  }),
-);
+export const stakes = onchainTable('stakes', (t) => ({
+  id: t.text().primaryKey(), // operationId-userAddress
+  stakeOperationId: t.hex().notNull(),
+  user: t.hex().notNull(),
+  token: t.hex().notNull(),
+  amount: t.bigint().notNull(), // wei
+  timestamp: t.bigint().notNull(),
+  isActive: t.boolean().notNull().default(true),
+  // Metadata
+  createdAt: t.bigint().notNull(),
+  updatedAt: t.bigint().notNull(),
+  blockNumber: t.bigint().notNull(),
+  transactionHash: t.hex().notNull(),
+}));
 
 /**
  * Operation created events (immutable)
@@ -682,56 +679,47 @@ export const operationCreatedEvents = onchainTable(
 /**
  * Staked events (immutable)
  */
-export const stakedEvents = onchainTable(
-  'staked_events',
-  (t) => ({
-    id: t.text().primaryKey(), // txHash-logIndex
-    token: t.hex().notNull(),
-    user: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    stakedOperationId: t.hex().notNull(),
-    eType: t.text().notNull(),
-    time: t.bigint().notNull(),
-    blockNumber: t.bigint().notNull(),
-    blockTimestamp: t.bigint().notNull(),
-    transactionHash: t.hex().notNull(),
-  }),
-);
+export const stakedEvents = onchainTable('staked_events', (t) => ({
+  id: t.text().primaryKey(), // txHash-logIndex
+  token: t.hex().notNull(),
+  user: t.hex().notNull(),
+  amount: t.bigint().notNull(),
+  stakedOperationId: t.hex().notNull(),
+  eType: t.text().notNull(),
+  time: t.bigint().notNull(),
+  blockNumber: t.bigint().notNull(),
+  blockTimestamp: t.bigint().notNull(),
+  transactionHash: t.hex().notNull(),
+}));
 
 /**
  * Unstaked events (immutable)
  */
-export const unstakedEvents = onchainTable(
-  'unstaked_events',
-  (t) => ({
-    id: t.text().primaryKey(), // txHash-logIndex
-    token: t.hex().notNull(),
-    user: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    unstakedOperationId: t.hex().notNull(),
-    eType: t.text().notNull(),
-    time: t.bigint().notNull(),
-    blockNumber: t.bigint().notNull(),
-    blockTimestamp: t.bigint().notNull(),
-    transactionHash: t.hex().notNull(),
-  }),
-);
+export const unstakedEvents = onchainTable('unstaked_events', (t) => ({
+  id: t.text().primaryKey(), // txHash-logIndex
+  token: t.hex().notNull(),
+  user: t.hex().notNull(),
+  amount: t.bigint().notNull(),
+  unstakedOperationId: t.hex().notNull(),
+  eType: t.text().notNull(),
+  time: t.bigint().notNull(),
+  blockNumber: t.bigint().notNull(),
+  blockTimestamp: t.bigint().notNull(),
+  transactionHash: t.hex().notNull(),
+}));
 
 /**
  * Reward paid events (immutable)
  */
-export const rewardPaidEvents = onchainTable(
-  'reward_paid_events',
-  (t) => ({
-    id: t.text().primaryKey(), // txHash-logIndex
-    user: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    rewardOperationId: t.hex().notNull(),
-    blockNumber: t.bigint().notNull(),
-    blockTimestamp: t.bigint().notNull(),
-    transactionHash: t.hex().notNull(),
-  }),
-);
+export const rewardPaidEvents = onchainTable('reward_paid_events', (t) => ({
+  id: t.text().primaryKey(), // txHash-logIndex
+  user: t.hex().notNull(),
+  amount: t.bigint().notNull(),
+  rewardOperationId: t.hex().notNull(),
+  blockNumber: t.bigint().notNull(),
+  blockTimestamp: t.bigint().notNull(),
+  transactionHash: t.hex().notNull(),
+}));
 
 /**
  * Admin status changed events (immutable)

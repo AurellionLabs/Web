@@ -8,17 +8,18 @@ import * as path from 'path';
  */
 function updatePonderConfig(deployment: DeploymentResult) {
   const ponderConfigPath = path.resolve('./indexer/ponder.config.ts');
-  
+
   if (!fs.existsSync(ponderConfigPath)) {
     console.warn('⚠️  Ponder config not found at', ponderConfigPath);
     return;
   }
 
   let content = fs.readFileSync(ponderConfigPath, 'utf8');
-  
+
   // Update Base Sepolia contract addresses
-  const networkName = deployment.network === 'baseSepolia' ? 'baseSepolia' : deployment.network;
-  
+  const networkName =
+    deployment.network === 'baseSepolia' ? 'baseSepolia' : deployment.network;
+
   // Create the new contracts block for the network
   const contractsBlock = `  ${networkName}: {
     ausys: '${deployment.contracts.auSys}' as \`0x\${string}\`,
@@ -36,8 +37,9 @@ function updatePonderConfig(deployment: DeploymentResult) {
   },`;
 
   // Replace the baseSepolia block using regex
-  const baseSepoliaRegex = /baseSepolia:\s*\{[\s\S]*?startBlocks:\s*\{[\s\S]*?\},\s*\},/;
-  
+  const baseSepoliaRegex =
+    /baseSepolia:\s*\{[\s\S]*?startBlocks:\s*\{[\s\S]*?\},\s*\},/;
+
   if (baseSepoliaRegex.test(content)) {
     content = content.replace(baseSepoliaRegex, contractsBlock);
     fs.writeFileSync(ponderConfigPath, content);
@@ -87,7 +89,9 @@ async function waitForConfirmations(tx: any, confirmations: number = 2) {
     await tx.wait(confirmations);
     console.log('  ✓ Confirmed');
   } catch (error) {
-    console.warn('  Warning: Could not wait for all confirmations, continuing...');
+    console.warn(
+      '  Warning: Could not wait for all confirmations, continuing...',
+    );
   }
 }
 
@@ -95,14 +99,14 @@ async function main() {
   console.log('🚀 Starting Full Contract Deployment (including CLOB)');
   console.log('=====================================================');
   console.log(`Network: ${network.name}`);
-  
+
   const chainId = (await ethers.provider.getNetwork()).chainId;
   console.log(`Chain ID: ${chainId}`);
 
   // Get signers
   const [deployer]: HardhatEthersSigner[] = await ethers.getSigners();
   console.log(`Deployer: ${deployer.address}`);
-  
+
   const balance = await deployer.provider.getBalance(deployer.address);
   console.log(`Balance: ${ethers.formatEther(balance)} ETH`);
 
@@ -122,7 +126,9 @@ async function main() {
   const auraToken = await AuraFactory.deploy();
   await waitForConfirmations(auraToken.deploymentTransaction());
   const auraTokenAddress = await auraToken.getAddress();
-  const auraTokenBlock = await getDeploymentBlock(auraToken.deploymentTransaction());
+  const auraTokenBlock = await getDeploymentBlock(
+    auraToken.deploymentTransaction(),
+  );
   console.log(`   ✓ Aura Token: ${auraTokenAddress} (block ${auraTokenBlock})`);
 
   // Mint initial tokens
@@ -146,8 +152,12 @@ async function main() {
   const aurumNodeManager = await AurumNodeManager.deploy(auSysAddress);
   await waitForConfirmations(aurumNodeManager.deploymentTransaction());
   const aurumNodeManagerAddress = await aurumNodeManager.getAddress();
-  const aurumNodeManagerBlock = await getDeploymentBlock(aurumNodeManager.deploymentTransaction());
-  console.log(`   ✓ AurumNodeManager: ${aurumNodeManagerAddress} (block ${aurumNodeManagerBlock})`);
+  const aurumNodeManagerBlock = await getDeploymentBlock(
+    aurumNodeManager.deploymentTransaction(),
+  );
+  console.log(
+    `   ✓ AurumNodeManager: ${aurumNodeManagerAddress} (block ${aurumNodeManagerBlock})`,
+  );
 
   // 4. Deploy AuStake
   console.log('\n4. Deploying AuStake...');
@@ -155,7 +165,9 @@ async function main() {
   const auStake = await AuStake.deploy(projectWallet, initialOwner);
   await waitForConfirmations(auStake.deploymentTransaction());
   const auStakeAddress = await auStake.getAddress();
-  const auStakeBlock = await getDeploymentBlock(auStake.deploymentTransaction());
+  const auStakeBlock = await getDeploymentBlock(
+    auStake.deploymentTransaction(),
+  );
   console.log(`   ✓ AuStake: ${auStakeAddress} (block ${auStakeBlock})`);
 
   // 5. Deploy AuraAsset
@@ -164,11 +176,13 @@ async function main() {
   const auraAsset = await AuraAssetFactory.deploy(
     deployer.address,
     'https://aurellion.io/metadata/',
-    aurumNodeManagerAddress
+    aurumNodeManagerAddress,
   );
   await waitForConfirmations(auraAsset.deploymentTransaction());
   const auraAssetAddress = await auraAsset.getAddress();
-  const auraAssetBlock = await getDeploymentBlock(auraAsset.deploymentTransaction());
+  const auraAssetBlock = await getDeploymentBlock(
+    auraAsset.deploymentTransaction(),
+  );
   console.log(`   ✓ AuraAsset: ${auraAssetAddress} (block ${auraAssetBlock})`);
 
   // 6. Deploy CLOB
@@ -235,7 +249,10 @@ async function main() {
   }
 
   // Save deployment JSON
-  const deploymentPath = path.join(deploymentsDir, `${network.name}-${Date.now()}.json`);
+  const deploymentPath = path.join(
+    deploymentsDir,
+    `${network.name}-${Date.now()}.json`,
+  );
   fs.writeFileSync(deploymentPath, JSON.stringify(deployment, null, 2));
   console.log(`\n📄 Deployment saved to: ${deploymentPath}`);
 
@@ -304,4 +321,3 @@ main()
     console.error('Deployment failed:', error);
     process.exit(1);
   });
-

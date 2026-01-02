@@ -29,27 +29,27 @@ services:
     environment:
       # Database
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ponder_indexer}
-      
+
       # RPC URLs - Using NEXT_PUBLIC naming convention
       NEXT_PUBLIC_RPC_URL_84532: ${NEXT_PUBLIC_RPC_URL_84532:?Base Sepolia RPC URL is required}
       BASE_TEST_RPC_URL: ${BASE_TEST_RPC_URL:-}
       NEXT_PUBLIC_RPC_URL_421614: ${NEXT_PUBLIC_RPC_URL_421614:-}
-      
+
       # Contract addresses
       NEXT_PUBLIC_AUSYS_ADDRESS: ${NEXT_PUBLIC_AUSYS_ADDRESS:-}
       NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS: ${NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS:-}
       NEXT_PUBLIC_AURA_ASSET_ADDRESS: ${NEXT_PUBLIC_AURA_ASSET_ADDRESS:-}
       NEXT_PUBLIC_AUSTAKE_ADDRESS: ${NEXT_PUBLIC_AUSTAKE_ADDRESS:-}
-      
+
       # Start blocks
       AUSYS_START_BLOCK: ${AUSYS_START_BLOCK:-0}
       AURUM_START_BLOCK: ${AURUM_START_BLOCK:-0}
       AURA_ASSET_START_BLOCK: ${AURA_ASSET_START_BLOCK:-0}
       AUSTAKE_START_BLOCK: ${AUSTAKE_START_BLOCK:-0}
-      
+
       # Network selection (default to Base Sepolia)
       PONDER_NETWORK: ${PONDER_NETWORK:-baseSepolia}
-      
+
       # Ponder settings
       PONDER_LOG_LEVEL: ${PONDER_LOG_LEVEL:-info}
     ports:
@@ -57,11 +57,11 @@ services:
     networks:
       - indexer_network
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.indexer.rule=Host(`indexer.${DOMAIN:-localhost}`)"
-      - "traefik.http.routers.indexer.entrypoints=websecure"
-      - "traefik.http.routers.indexer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.indexer.loadbalancer.server.port=42069"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.indexer.rule=Host(`indexer.${DOMAIN:-localhost}`)'
+      - 'traefik.http.routers.indexer.entrypoints=websecure'
+      - 'traefik.http.routers.indexer.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.indexer.loadbalancer.server.port=42069'
 
   # Optional: Traefik reverse proxy
   traefik:
@@ -69,20 +69,20 @@ services:
     container_name: aurellion_traefik
     restart: always
     command:
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - '--api.dashboard=true'
+      - '--providers.docker=true'
+      - '--providers.docker.exposedbydefault=false'
+      - '--entrypoints.web.address=:80'
+      - '--entrypoints.websecure.address=:443'
+      - '--certificatesresolvers.letsencrypt.acme.httpchallenge=true'
+      - '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web'
+      - '--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}'
+      - '--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json'
+      - '--entrypoints.web.http.redirections.entrypoint.to=websecure'
+      - '--entrypoints.web.http.redirections.entrypoint.scheme=https'
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_letsencrypt:/letsencrypt
@@ -100,4 +100,3 @@ volumes:
     driver: local
   traefik_letsencrypt:
     driver: local
-
