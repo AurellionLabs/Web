@@ -28,8 +28,8 @@ export const NEXT_PUBLIC_RPC_URL_8453 = "https://base-mainnet.infura.io/v3/281df
 // SUBGRAPH / INDEXER URLS
 // =============================================================================
 
-// Ponder indexer GraphQL endpoint (running on this server)
-export const NEXT_PUBLIC_INDEXER_URL = "http://localhost:42069/graphql";
+// Ponder indexer GraphQL endpoint (public via nginx reverse proxy)
+export const NEXT_PUBLIC_INDEXER_URL = "http://103.253.145.132/indexer/graphql";
 export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 
