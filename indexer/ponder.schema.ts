@@ -452,6 +452,10 @@ export const assets = onchainTable(
   }),
 );
 
+export const assetsRelations = relations(assets, ({ many }) => ({
+  attributes: many(assetAttributes),
+}));
+
 /**
  * Asset attribute entity
  */
@@ -466,6 +470,16 @@ export const assetAttributes = onchainTable(
   }),
   (table) => ({
     assetIdx: index().on(table.assetId),
+  }),
+);
+
+export const assetAttributesRelations = relations(
+  assetAttributes,
+  ({ one }) => ({
+    asset: one(assets, {
+      fields: [assetAttributes.assetId],
+      references: [assets.id],
+    }),
   }),
 );
 
