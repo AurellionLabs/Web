@@ -14,6 +14,7 @@ import {
   GET_AVAILABLE_JOURNEYS,
   GET_JOURNEYS_BY_DRIVER,
   JourneyGraphResponse,
+  extractPonderItems,
 } from '../shared/graph-queries';
 import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
@@ -67,64 +68,76 @@ export class DriverRepository implements IDriverRepository {
   }
 
   // --- Helper to map Journey (graph or contract) to domain Delivery model ---
-  // Accepts either Graph response or Contract struct shape
+  // Accepts either Graph response (Ponder flat structure) or Contract struct shape
   private mapJourneyToDelivery(
     journey:
       | Ausys.JourneyStructOutput
       | (JourneyGraphResponse & { id: string }),
   ): Delivery {
-    // Normalize fields between graph and contract outputs
-    const isGraph =
-      (journey as JourneyGraphResponse).parcelData?.startLocationLat !==
-      undefined;
+    // Ponder returns flat structure - check for flat field (startLocationLat) vs nested (parcelData)
+    const isPonderGraph =
+      (journey as JourneyGraphResponse).startLocationLat !== undefined;
+    const isContractStruct =
+      (journey as Ausys.JourneyStructOutput).parcelData !== undefined;
 
-    const parcelData: ParcelData = isGraph
-      ? {
-          startLocation: {
-            lat: (journey as JourneyGraphResponse).parcelData.startLocationLat,
-            lng: (journey as JourneyGraphResponse).parcelData.startLocationLng,
-          },
-          endLocation: {
-            lat: (journey as JourneyGraphResponse).parcelData.endLocationLat,
-            lng: (journey as JourneyGraphResponse).parcelData.endLocationLng,
-          },
-          startName: (journey as JourneyGraphResponse).parcelData.startName,
-          endName: (journey as JourneyGraphResponse).parcelData.endName,
-        }
-      : {
-          startLocation: {
-            lat: (journey as Ausys.JourneyStructOutput).parcelData.startLocation
-              .lat,
-            lng: (journey as Ausys.JourneyStructOutput).parcelData.startLocation
-              .lng,
-          },
-          endLocation: {
-            lat: (journey as Ausys.JourneyStructOutput).parcelData.endLocation
-              .lat,
-            lng: (journey as Ausys.JourneyStructOutput).parcelData.endLocation
-              .lng,
-          },
-          startName: (journey as Ausys.JourneyStructOutput).parcelData
-            .startName,
-          endName: (journey as Ausys.JourneyStructOutput).parcelData.endName,
-        };
+    let parcelData: ParcelData;
 
-    const jobId = isGraph
+    if (isPonderGraph) {
+      // Ponder returns flat structure
+      const j = journey as JourneyGraphResponse;
+      parcelData = {
+        startLocation: {
+          lat: j.startLocationLat,
+          lng: j.startLocationLng,
+        },
+        endLocation: {
+          lat: j.endLocationLat,
+          lng: j.endLocationLng,
+        },
+        startName: j.startName,
+        endName: j.endName,
+      };
+    } else if (isContractStruct) {
+      // Contract struct has nested parcelData
+      const j = journey as Ausys.JourneyStructOutput;
+      parcelData = {
+        startLocation: {
+          lat: j.parcelData.startLocation.lat,
+          lng: j.parcelData.startLocation.lng,
+        },
+        endLocation: {
+          lat: j.parcelData.endLocation.lat,
+          lng: j.parcelData.endLocation.lng,
+        },
+        startName: j.parcelData.startName,
+        endName: j.parcelData.endName,
+      };
+    } else {
+      // Fallback for unknown format
+      parcelData = {
+        startLocation: { lat: '0', lng: '0' },
+        endLocation: { lat: '0', lng: '0' },
+        startName: '',
+        endName: '',
+      };
+    }
+
+    const jobId = isPonderGraph
       ? (journey as JourneyGraphResponse).id
       : (journey as Ausys.JourneyStructOutput).journeyId;
-    const sender = isGraph
+    const sender = isPonderGraph
       ? (journey as JourneyGraphResponse).sender
       : (journey as Ausys.JourneyStructOutput).sender;
-    const driver = isGraph
+    const driver = isPonderGraph
       ? (journey as JourneyGraphResponse).driver
       : (journey as Ausys.JourneyStructOutput).driver;
-    const bounty = isGraph
+    const bounty = isPonderGraph
       ? (journey as JourneyGraphResponse).bounty
       : (journey as Ausys.JourneyStructOutput).bounty;
-    const eta = isGraph
+    const eta = isPonderGraph
       ? (journey as JourneyGraphResponse).eta
       : (journey as Ausys.JourneyStructOutput).ETA;
-    const currentStatus = isGraph
+    const currentStatus = isPonderGraph
       ? (journey as JourneyGraphResponse).currentStatus
       : (journey as Ausys.JourneyStructOutput).currentStatus;
 
@@ -159,12 +172,12 @@ export class DriverRepository implements IDriverRepository {
   async getAvailableDeliveries(): Promise<Delivery[]> {
     console.log('[DriverRepository] Getting available deliveries (Graph)...');
     try {
+      // Ponder returns { journeyss: { items: [...] } } for list queries
       const response = await graphqlRequest<{
-        journeys: JourneyGraphResponse[];
-      }>(this.graphQLEndpoint, GET_AVAILABLE_JOURNEYS, { first: 200, skip: 0 });
-      const deliveries = (response.journeys || []).map((j) =>
-        this.mapJourneyToDelivery(j as any),
-      );
+        journeyss: { items: JourneyGraphResponse[] };
+      }>(this.graphQLEndpoint, GET_AVAILABLE_JOURNEYS, { limit: 200 });
+      const items = extractPonderItems(response.journeyss || { items: [] });
+      const deliveries = items.map((j) => this.mapJourneyToDelivery(j as any));
       console.log(
         `[DriverRepository] Found ${deliveries.length} available deliveries (Graph).`,
       );
@@ -187,14 +200,14 @@ export class DriverRepository implements IDriverRepository {
     }
 
     try {
+      // Ponder returns { journeyss: { items: [...] } } for list queries
       const response = await graphqlRequest<{
-        journeys: JourneyGraphResponse[];
+        journeyss: { items: JourneyGraphResponse[] };
       }>(this.graphQLEndpoint, GET_JOURNEYS_BY_DRIVER, {
         driverAddress: driverWalletAddress.toLowerCase(),
       });
-      const deliveries = (response.journeys || []).map((j) =>
-        this.mapJourneyToDelivery(j as any),
-      );
+      const items = extractPonderItems(response.journeyss || { items: [] });
+      const deliveries = items.map((j) => this.mapJourneyToDelivery(j as any));
       console.log(
         `[DriverRepository] Found ${deliveries.length} deliveries for driver (Graph).`,
       );

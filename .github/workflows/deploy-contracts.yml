@@ -1,0 +1,53 @@
+name: Deploy Contracts
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to deploy to'
+        required: true
+        default: 'arbitrumSepolia'
+        type: choice
+        options:
+          - arbitrumSepolia
+          - baseSepolia
+          - sepolia
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile contracts
+        run: npx hardhat compile
+
+      - name: Deploy contracts
+        env:
+          ARB_SEP_RPC_URL: ${{ secrets.ARB_SEP_RPC_URL }}
+          ARB_SEP_PRIVATE_KEY: ${{ secrets.ARB_SEP_PRIVATE_KEY }}
+          BASE_TEST_RPC_URL: ${{ secrets.BASE_TEST_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
+          SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
+          ARBISCAN_API_KEY: ${{ secrets.ARBISCAN_API_KEY }}
+          BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+        run: |
+          npx hardhat run scripts/deploy-all.ts --network ${{ github.event.inputs.network }}
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-${{ github.event.inputs.network }}-${{ github.sha }}
+          path: deployments/

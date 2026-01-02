@@ -32,6 +32,7 @@ import {
   convertNumericToJourneyStatus,
   JourneyGraphResponse,
   OrderGraphResponse,
+  extractPonderItems,
 } from '../shared/graph-queries';
 
 /**
@@ -96,14 +97,16 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * REFACTORED: Uses GraphQL query instead of on-chain iteration
+   * Updated for Ponder's response format
    */
   async getNodeOrders(address: string): Promise<Order[]> {
     try {
-      const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
-        this.graphQLEndpoint,
-        GET_ORDERS_BY_NODE,
-        { nodeAddress: address.toLowerCase() },
-      );
+      // Ponder returns { orderss: { items: [...] } } for list queries
+      const response = await graphqlRequest<{
+        orderss: { items: OrderGraphResponse[] };
+      }>(this.graphQLEndpoint, GET_ORDERS_BY_NODE, {
+        nodeAddress: address.toLowerCase(),
+      });
 
       // Add null checks to prevent TypeError
       if (!response) {
@@ -111,29 +114,31 @@ export class OrderRepository implements IOrderRepository {
         return [];
       }
 
-      if (!response.orders) {
-        console.warn(
-          'GraphQL response.orders is null/undefined for getNodeOrders',
-        );
+      const orders = extractPonderItems(response.orderss || { items: [] });
+      if (orders.length === 0) {
         return [];
       }
 
       // Also fetch journey ids per order (subgraph exposes journeys by order relation)
       const results = await Promise.all(
-        response.orders.map(async (order: OrderGraphResponse) => {
+        orders.map(async (order: OrderGraphResponse) => {
           try {
             console.log(
               '[OrderRepository] Fetching journeys for orderId:',
               order.id,
             );
-            const jRes = await graphqlRequest<{ journeys: { id: string }[] }>(
-              this.graphQLEndpoint,
-              GET_JOURNEYS_BY_ORDER_ID,
-              { orderId: order.id },
-            );
+            // Ponder returns { journeyss: { items: [...] } }
+            const jRes = await graphqlRequest<{
+              journeyss: { items: { id: string }[] };
+            }>(this.graphQLEndpoint, GET_JOURNEYS_BY_ORDER_ID, {
+              orderId: order.id,
+            });
             console.log('[OrderRepository] Journeys response:', jRes);
             const mapped = convertGraphOrderToDomain(order);
-            mapped.journeyIds = (jRes?.journeys || []).map((j) => j.id);
+            const journeyItems = extractPonderItems(
+              jRes?.journeyss || { items: [] },
+            );
+            mapped.journeyIds = journeyItems.map((j) => j.id);
             console.log(
               '[OrderRepository] Mapped journeyIds:',
               mapped.journeyIds,
@@ -161,6 +166,7 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * REFACTORED: Uses GraphQL query instead of on-chain iteration
+   * Updated for Ponder's response format
    */
   async getCustomerJourneys(address?: string): Promise<Journey[]> {
     try {
@@ -168,13 +174,15 @@ export class OrderRepository implements IOrderRepository {
         address = await this.signer.getAddress();
       }
 
+      // Ponder returns { journeyss: { items: [...] } } for list queries
       const response = await graphqlRequest<{
-        journeys: JourneyGraphResponse[];
+        journeyss: { items: JourneyGraphResponse[] };
       }>(this.graphQLEndpoint, GET_JOURNEYS_BY_SENDER, {
         senderAddress: address.toLowerCase(),
       });
 
-      return response.journeys.map((journey: JourneyGraphResponse) =>
+      const journeys = extractPonderItems(response.journeyss || { items: [] });
+      return journeys.map((journey: JourneyGraphResponse) =>
         convertGraphJourneyToDomain(journey),
       );
     } catch (error) {
@@ -185,6 +193,7 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * REFACTORED: Uses GraphQL query instead of on-chain iteration
+   * Updated for Ponder's response format
    */
   async getReceiverJourneys(address?: string): Promise<Journey[]> {
     try {
@@ -192,13 +201,15 @@ export class OrderRepository implements IOrderRepository {
         address = await this.signer.getAddress();
       }
 
+      // Ponder returns { journeyss: { items: [...] } } for list queries
       const response = await graphqlRequest<{
-        journeys: JourneyGraphResponse[];
+        journeyss: { items: JourneyGraphResponse[] };
       }>(this.graphQLEndpoint, GET_JOURNEYS_BY_RECEIVER, {
         receiverAddress: address.toLowerCase(),
       });
 
-      return response.journeys.map((journey: JourneyGraphResponse) =>
+      const journeys = extractPonderItems(response.journeyss || { items: [] });
+      return journeys.map((journey: JourneyGraphResponse) =>
         convertGraphJourneyToDomain(journey),
       );
     } catch (error) {
@@ -209,18 +220,21 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * REFACTORED: Uses GraphQL query with pagination
+   * Updated for Ponder's response format
    */
   async fetchAllJourneys(): Promise<Journey[]> {
     try {
+      // Ponder returns { journeyss: { items: [...] } } for list queries
       const response = await graphqlRequest<{
-        journeys: JourneyGraphResponse[];
+        journeyss: { items: JourneyGraphResponse[] };
       }>(
         this.graphQLEndpoint,
         GET_ALL_JOURNEYS,
-        { first: 1000, skip: 0 }, // Can be made configurable
+        { limit: 1000 }, // Can be made configurable
       );
 
-      return response.journeys.map((journey: JourneyGraphResponse) =>
+      const journeys = extractPonderItems(response.journeyss || { items: [] });
+      return journeys.map((journey: JourneyGraphResponse) =>
         convertGraphJourneyToDomain(journey),
       );
     } catch (error) {
@@ -231,20 +245,22 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * REFACTORED: Uses GraphQL query for single journey lookup
+   * Updated for Ponder's response format (single entity returns directly)
    */
   async getJourneyById(journeyId: BytesLike): Promise<Journey> {
     try {
+      // Ponder returns single entity directly for singular queries
       const response = await graphqlRequest<{
-        journey: JourneyGraphResponse | null;
+        journeys: JourneyGraphResponse | null;
       }>(this.graphQLEndpoint, GET_JOURNEY_BY_ID, {
         journeyId: journeyId.toString(),
       });
 
-      if (!response.journey) {
+      if (!response.journeys) {
         throw new Error(`Journey ${journeyId} not found`);
       }
 
-      return convertGraphJourneyToDomain(response.journey);
+      return convertGraphJourneyToDomain(response.journeys);
     } catch (error) {
       console.error('Error fetching journey by ID from Graph:', error);
       // Fallback to on-chain call for critical path
@@ -283,14 +299,16 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * REFACTORED: Uses GraphQL query (renamed from getCustomerOrders to getBuyerOrders)
+   * Updated for Ponder's response format
    */
   async getBuyerOrders(address: string): Promise<Order[]> {
     try {
-      const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
-        this.graphQLEndpoint,
-        GET_ORDERS_BY_BUYER,
-        { buyerAddress: address.toLowerCase() },
-      );
+      // Ponder returns { orderss: { items: [...] } } for list queries
+      const response = await graphqlRequest<{
+        orderss: { items: OrderGraphResponse[] };
+      }>(this.graphQLEndpoint, GET_ORDERS_BY_BUYER, {
+        buyerAddress: address.toLowerCase(),
+      });
 
       // Add null checks to prevent TypeError
       if (!response) {
@@ -298,29 +316,31 @@ export class OrderRepository implements IOrderRepository {
         return [];
       }
 
-      if (!response.orders) {
-        console.warn(
-          'GraphQL response.orders is null/undefined for getBuyerOrders',
-        );
+      const orders = extractPonderItems(response.orderss || { items: [] });
+      if (orders.length === 0) {
         return [];
       }
 
       // Also fetch journey ids per order (same as getNodeOrders)
       const results = await Promise.all(
-        response.orders.map(async (order: OrderGraphResponse) => {
+        orders.map(async (order: OrderGraphResponse) => {
           try {
             console.log(
               '[OrderRepository] Fetching journeys for buyer orderId:',
               order.id,
             );
-            const jRes = await graphqlRequest<{ journeys: { id: string }[] }>(
-              this.graphQLEndpoint,
-              GET_JOURNEYS_BY_ORDER_ID,
-              { orderId: order.id },
-            );
+            // Ponder returns { journeyss: { items: [...] } }
+            const jRes = await graphqlRequest<{
+              journeyss: { items: { id: string }[] };
+            }>(this.graphQLEndpoint, GET_JOURNEYS_BY_ORDER_ID, {
+              orderId: order.id,
+            });
             console.log('[OrderRepository] Journeys response:', jRes);
             const mapped = convertGraphOrderToDomain(order);
-            mapped.journeyIds = (jRes?.journeys || []).map((j) => j.id);
+            const journeyItems = extractPonderItems(
+              jRes?.journeyss || { items: [] },
+            );
+            mapped.journeyIds = journeyItems.map((j) => j.id);
             console.log(
               '[OrderRepository] Mapped journeyIds:',
               mapped.journeyIds,
@@ -347,14 +367,16 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * NEW: Uses GraphQL query for seller orders
+   * Updated for Ponder's response format
    */
   async getSellerOrders(address: string): Promise<Order[]> {
     try {
-      const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
-        this.graphQLEndpoint,
-        GET_ORDERS_BY_SELLER,
-        { sellerAddress: address.toLowerCase() },
-      );
+      // Ponder returns { orderss: { items: [...] } } for list queries
+      const response = await graphqlRequest<{
+        orderss: { items: OrderGraphResponse[] };
+      }>(this.graphQLEndpoint, GET_ORDERS_BY_SELLER, {
+        sellerAddress: address.toLowerCase(),
+      });
 
       // Add null checks to prevent TypeError
       if (!response) {
@@ -362,14 +384,8 @@ export class OrderRepository implements IOrderRepository {
         return [];
       }
 
-      if (!response.orders) {
-        console.warn(
-          'GraphQL response.orders is null/undefined for getSellerOrders',
-        );
-        return [];
-      }
-
-      return response.orders.map((order: OrderGraphResponse) =>
+      const orders = extractPonderItems(response.orderss || { items: [] });
+      return orders.map((order: OrderGraphResponse) =>
         convertGraphOrderToDomain(order),
       );
     } catch (error) {
@@ -380,20 +396,22 @@ export class OrderRepository implements IOrderRepository {
 
   /**
    * REFACTORED: Uses GraphQL query for single order lookup
+   * Updated for Ponder's response format (single entity returns directly)
    */
   async getOrderById(orderId: BytesLike): Promise<Order> {
     try {
+      // Ponder returns single entity directly for singular queries
       const response = await graphqlRequest<{
-        order: OrderGraphResponse | null;
+        orders: OrderGraphResponse | null;
       }>(this.graphQLEndpoint, GET_ORDER_BY_ID, {
         orderId: orderId.toString(),
       });
 
-      if (!response.order) {
+      if (!response.orders) {
         throw new Error(`Order ${orderId} not found`);
       }
 
-      return convertGraphOrderToDomain(response.order);
+      return convertGraphOrderToDomain(response.orders);
     } catch (error) {
       console.error('Error fetching order by ID from Graph:', error);
       // Fallback to on-chain call for critical path

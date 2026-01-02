@@ -2,7 +2,7 @@ import { IPlatformRepository, Asset } from '@/domain/platform';
 import { AuraAsset } from '@/typechain-types';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
-import { GET_ALL_ASSETS } from './shared/graph-queries';
+import { GET_ALL_ASSETS, extractPonderItems } from './shared/graph-queries';
 import { NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL } from '@/chain-constants';
 
 export class PlatformRepository implements IPlatformRepository {
@@ -15,21 +15,29 @@ export class PlatformRepository implements IPlatformRepository {
   }
   async getSupportedAssets(): Promise<Asset[]> {
     const PAGE = 500;
-    let skip = 0;
     const out: Asset[] = [];
+    let after: string | undefined = undefined;
+    let hasNextPage = true;
+    const MAX_ITERATIONS = 50; // Cap to avoid infinite loops
+    let iterations = 0;
 
-    while (true) {
-      const res = await graphqlRequest<{ assets: any[] }>(
-        this.graphEndpoint,
-        GET_ALL_ASSETS,
-        { first: PAGE, skip },
-      );
-      const items = res.assets || [];
+    while (hasNextPage && iterations < MAX_ITERATIONS) {
+      const res = await graphqlRequest<{
+        assetss: {
+          items: any[];
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        };
+      }>(this.graphEndpoint, GET_ALL_ASSETS, {
+        limit: PAGE,
+        after: after,
+      });
+
+      const items = extractPonderItems(res.assetss || { items: [] });
       if (items.length === 0) break;
 
       for (const a of items) {
         out.push({
-          assetClass: a.className ?? a.assetClass ?? 'Unknown',
+          assetClass: a.class ?? a.className ?? a.assetClass ?? 'Unknown',
           tokenId: String(a.tokenId),
           name: a.name ?? 'Unknown Asset',
           attributes: (a.attributes || [])
@@ -43,23 +51,89 @@ export class PlatformRepository implements IPlatformRepository {
             .filter((x: any) => x.name.length > 0),
         });
       }
+
+      hasNextPage = res.assetss?.pageInfo?.hasNextPage || false;
+      after = res.assetss?.pageInfo?.endCursor || undefined;
+      iterations++;
+
       if (items.length < PAGE) break;
-      skip += PAGE;
     }
 
     return out;
   }
 
   async getSupportedAssetClasses(): Promise<string[]> {
+    console.log('[PlatformRepository] getSupportedAssetClasses: Starting...');
     const supportedClasses: string[] = [];
-    for (let i = 0; ; i++) {
+    // Cap iterations to avoid infinite loops
+    const MAX_ITERATIONS = 100;
+
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
       try {
-        supportedClasses.push(await this.contract.supportedClasses(i));
-      } catch (err) {
-        console.log('likely end of supported asset classes list', err);
-        break;
+        const className = await this.contract.supportedClasses(i);
+        console.log(
+          `[PlatformRepository] Successfully read supportedClasses[${i}]: "${className}"`,
+        );
+        // Filter out empty strings (tombstoned entries)
+        if (className && className.length > 0) {
+          supportedClasses.push(className);
+          console.log(
+            `[PlatformRepository] Added class "${className}" to array. Total: ${supportedClasses.length}`,
+          );
+        } else {
+          console.log(
+            `[PlatformRepository] Index ${i} returned empty string, skipping`,
+          );
+        }
+      } catch (err: any) {
+        // Check if this is an end-of-array error (expected when reaching the end)
+        const isEndOfArray =
+          err?.code === 'BAD_DATA' ||
+          err?.info?.code === 'BAD_DATA' ||
+          err?.code === 'CALL_EXCEPTION' ||
+          err?.code === 'UNPREDICTABLE_GAS_LIMIT' ||
+          err?.message?.includes('could not decode') ||
+          err?.message?.includes('execution reverted') ||
+          err?.message?.includes('missing revert data');
+
+        console.log(`[PlatformRepository] Error at index ${i}:`, {
+          code: err?.code,
+          message: err?.message,
+          isEndOfArray,
+          currentClassesCount: supportedClasses.length,
+          errorStructure: {
+            code: err?.code,
+            info: err?.info,
+            reason: err?.reason,
+            data: err?.data,
+          },
+        });
+
+        if (isEndOfArray) {
+          // End of array reached - this is expected, not an error
+          console.log(
+            `[PlatformRepository] Detected end of array at index ${i}. Breaking loop.`,
+          );
+          break;
+        }
+        // For other unexpected errors, log a warning but continue
+        console.warn(
+          `[PlatformRepository] Error reading supportedClasses[${i}]:`,
+          err,
+        );
+        // If we've read at least one class, assume we've hit the end
+        if (supportedClasses.length > 0) {
+          console.log(
+            `[PlatformRepository] Have ${supportedClasses.length} classes, breaking on error at index ${i}`,
+          );
+          break;
+        }
       }
     }
+    console.log(
+      `[PlatformRepository] getSupportedAssetClasses: Returning ${supportedClasses.length} classes:`,
+      supportedClasses,
+    );
     return supportedClasses;
   }
 

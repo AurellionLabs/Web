@@ -38,30 +38,56 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const [assets, assetClasses] = await Promise.all([
-        repository.getSupportedAssets(),
-        repository.getSupportedAssetClasses(),
-      ]);
+    // Handle each promise separately so one failure doesn't block the other
+    const results = await Promise.allSettled([
+      repository.getSupportedAssets(),
+      repository.getSupportedAssetClasses(),
+    ]);
 
+    const [assetsResult, assetClassesResult] = results;
+
+    // Handle assets result
+    if (assetsResult.status === 'fulfilled') {
       console.log(
         '[PlatformProvider] Raw data from repository.getSupportedAssets():',
-        assets,
+        assetsResult.value,
       );
+      setSupportedAssets(assetsResult.value);
+    } else {
+      console.error(
+        '[PlatformProvider] Error loading supported assets:',
+        assetsResult.reason,
+      );
+      setError(
+        assetsResult.reason instanceof Error
+          ? assetsResult.reason.message
+          : 'Failed to load supported assets',
+      );
+    }
+
+    // Handle asset classes result
+    if (assetClassesResult.status === 'fulfilled') {
       console.log(
         '[PlatformProvider] Raw data from repository.getSupportedAssetClasses():',
-        assetClasses,
+        assetClassesResult.value,
       );
-
-      setSupportedAssets(assets);
-      setSupportedAssetClasses(assetClasses);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to load platform data',
+      setSupportedAssetClasses(assetClassesResult.value);
+    } else {
+      console.error(
+        '[PlatformProvider] Error loading supported asset classes:',
+        assetClassesResult.reason,
       );
-    } finally {
-      setIsLoading(false);
+      // Set error for asset classes failure
+      const assetClassesError =
+        assetClassesResult.reason instanceof Error
+          ? assetClassesResult.reason.message
+          : 'Failed to load supported asset classes';
+      setError((prevError) =>
+        prevError ? `${prevError}; ${assetClassesError}` : assetClassesError,
+      );
     }
+
+    setIsLoading(false);
   };
 
   const getClassTokenizableAssets = async (

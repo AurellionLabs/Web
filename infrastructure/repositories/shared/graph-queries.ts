@@ -58,42 +58,53 @@ export const GET_NODE_MINTED_ASSETS = gql`
 `;
 
 /**
- * Query Aurum subgraph for node assets (pricing and capacity)
+ * Query Ponder indexer for node assets (pricing and capacity)
+ * Updated for Ponder's response format
  */
 export const GET_NODE_ASSETS_AURUM = gql`
   query GetNodeAssetsAurum($nodeAddress: String!) {
-    nodeAssets(where: { node: $nodeAddress }) {
-      id
-      node
-      token
-      tokenId
-      price
-      capacity
-      createdAt
-      updatedAt
+    nodeAssetss(where: { node: $nodeAddress }) {
+      items {
+        id
+        node
+        token
+        tokenId
+        price
+        capacity
+        createdAt
+        updatedAt
+      }
     }
   }
 `;
 
 /**
- * Query Aurum subgraph for ALL node assets (pricing and capacity)
+ * Query Ponder indexer for ALL node assets (pricing and capacity)
+ * Updated for Ponder's response format
+ * Note: Ponder uses cursor-based pagination with before/after, not skip
  */
 export const GET_ALL_NODE_ASSETS_AURUM = gql`
-  query GetAllNodeAssetsAurum($first: Int!, $skip: Int!) {
-    nodeAssets(
-      first: $first
-      skip: $skip
-      orderBy: createdAt
-      orderDirection: desc
+  query GetAllNodeAssetsAurum($limit: Int!, $after: String) {
+    nodeAssetss(
+      limit: $limit
+      after: $after
+      orderBy: "createdAt"
+      orderDirection: "desc"
     ) {
-      id
-      node
-      token
-      tokenId
-      price
-      capacity
-      createdAt
-      updatedAt
+      items {
+        id
+        node
+        token
+        tokenId
+        price
+        capacity
+        createdAt
+        updatedAt
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
@@ -224,8 +235,16 @@ export interface AssetAura {
   }>;
 }
 
+// Ponder returns { nodeAssetss: { items: [...] } } for list queries
 export interface NodeAssetsAurumResponse {
-  nodeAssets: NodeAssetAurum[];
+  nodeAssets: NodeAssetAurum[]; // Legacy format for compatibility
+}
+
+// Helper to extract items from Ponder's paginated response
+export function extractPonderNodeAssets(response: {
+  nodeAssetss?: { items: NodeAssetAurum[] };
+}): NodeAssetAurum[] {
+  return response?.nodeAssetss?.items || [];
 }
 
 export interface UserBalancesAuraResponse {

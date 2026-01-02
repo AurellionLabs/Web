@@ -36,6 +36,8 @@ import {
   AssetsAuraResponse,
   UserBalanceAura,
   AssetAura,
+  NodeAssetAurum,
+  extractPonderNodeAssets,
 } from './shared/graph-queries';
 import { graphqlRequest } from './shared/graph';
 import {
@@ -47,6 +49,7 @@ import {
   GET_ORDERS_BY_NODE,
   type OrderGraphResponse,
   convertGraphOrderToDomain,
+  extractPonderItems,
 } from '../shared/graph-queries';
 
 /**
@@ -110,47 +113,49 @@ export class BlockchainNodeRepository implements NodeRepository {
    */
   async getNode(nodeAddress: string): Promise<Node | null> {
     try {
-      // Basic node info from Aurum subgraph (no embedded assets)
-      const response = await graphqlRequest<{ node: NodeGraphResponse | null }>(
-        this.graphQLEndpoint,
-        GET_NODE_BY_ADDRESS,
-        { nodeAddress: nodeAddress.toLowerCase() },
-      );
-      if (!response.node) return null;
+      // Basic node info from Aurum subgraph (Ponder returns flat structure)
+      const response = await graphqlRequest<{
+        nodes: NodeGraphResponse | null;
+      }>(this.graphQLEndpoint, GET_NODE_BY_ADDRESS, {
+        nodeAddress: nodeAddress.toLowerCase(),
+      });
+      if (!response.nodes) return null;
 
-      // Fetch node asset capacities/prices from nodeAssets table
-      const aurumAssetsResp: NodeAssetsAurumResponse = await graphqlRequest(
-        NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
-        GET_NODE_ASSETS_AURUM,
-        { nodeAddress: nodeAddress.toLowerCase() },
-      );
+      const node = response.nodes;
 
-      const nodeAssets: NodeAsset[] = (aurumAssetsResp.nodeAssets || []).map(
-        (a) => ({
-          token: a.token,
-          tokenId: a.tokenId,
-          price: BigInt(a.price || '0'),
-          capacity: Number(a.capacity || '0'),
-        }),
-      );
+      // Fetch node asset capacities/prices from nodeAssets table (Ponder format)
+      const aurumAssetsResp = await graphqlRequest<{
+        nodeAssetss: { items: NodeAssetAurum[] };
+      }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_NODE_ASSETS_AURUM, {
+        nodeAddress: nodeAddress.toLowerCase(),
+      });
+
+      const aurumAssets = extractPonderNodeAssets(aurumAssetsResp);
+      const nodeAssets: NodeAsset[] = aurumAssets.map((a) => ({
+        token: a.token,
+        tokenId: a.tokenId,
+        price: BigInt(a.price || '0'),
+        capacity: Number(a.capacity || '0'),
+      }));
 
       return {
-        address: response.node.id,
-        owner: response.node.owner,
+        address: node.id,
+        owner: node.owner,
         location: {
-          addressName: response.node.location.addressName,
+          // Ponder uses flat structure - no nested location object
+          addressName: node.addressName,
           location: {
-            lat: response.node.location.lat,
-            lng: response.node.location.lng,
+            lat: node.lat,
+            lng: node.lng,
           },
         },
-        validNode: Boolean(response.node.validNode),
+        validNode: Boolean(node.validNode),
         status: ((s: string) => {
           const x = (s || '').toLowerCase();
           if (x === 'active' || x === '1' || x === 'true' || x === '0x01')
             return 'Active';
           return 'Inactive';
-        })(response.node.status),
+        })(node.status),
         assets: nodeAssets,
       } as Node;
     } catch (error) {
@@ -165,13 +170,15 @@ export class BlockchainNodeRepository implements NodeRepository {
    */
   async getOwnedNodes(ownerAddress: string): Promise<string[]> {
     try {
-      const response = await graphqlRequest<{ nodes: NodeGraphResponse[] }>(
-        this.graphQLEndpoint,
-        GET_NODES_BY_OWNER,
-        { ownerAddress: ownerAddress },
-      );
+      // Ponder returns { nodess: { items: [...] } } for list queries
+      const response = await graphqlRequest<{
+        nodess: { items: NodeGraphResponse[] };
+      }>(this.graphQLEndpoint, GET_NODES_BY_OWNER, {
+        ownerAddress: ownerAddress,
+      });
       console.log('response for getOwnedNodes', response);
-      return (response.nodes || []).map((n) => n.id);
+      const items = extractPonderItems(response.nodess || { items: [] });
+      return items.map((n) => n.id);
     } catch (error) {
       handleContractError(error, `get owned nodes for ${ownerAddress}`);
       return [];
@@ -197,12 +204,13 @@ export class BlockchainNodeRepository implements NodeRepository {
 
   async getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'> {
     try {
-      const response = await graphqlRequest<{ node: NodeGraphResponse | null }>(
-        this.graphQLEndpoint,
-        GET_NODE_BY_ADDRESS,
-        { nodeAddress: nodeAddress.toLowerCase() },
-      );
-      const raw = (response.node?.status || '').toLowerCase();
+      // Ponder returns single entity directly
+      const response = await graphqlRequest<{
+        nodes: NodeGraphResponse | null;
+      }>(this.graphQLEndpoint, GET_NODE_BY_ADDRESS, {
+        nodeAddress: nodeAddress.toLowerCase(),
+      });
+      const raw = (response.nodes?.status || '').toLowerCase();
       if (raw === 'active' || raw === '1' || raw === '0x01' || raw === 'true')
         return 'Active';
       return 'Inactive';
@@ -217,14 +225,15 @@ export class BlockchainNodeRepository implements NodeRepository {
    */
   async getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]> {
     try {
-      // Step 1: Get node pricing/capacity from Aurum subgraph
-      const aurumResponse: NodeAssetsAurumResponse = await graphqlRequest(
-        NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
-        GET_NODE_ASSETS_AURUM,
-        { nodeAddress: nodeAddress.toLowerCase() },
-      );
+      // Step 1: Get node pricing/capacity from Ponder indexer
+      const aurumResponse = await graphqlRequest<{
+        nodeAssetss: { items: NodeAssetAurum[] };
+      }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_NODE_ASSETS_AURUM, {
+        nodeAddress: nodeAddress.toLowerCase(),
+      });
 
-      if (!aurumResponse.nodeAssets || aurumResponse.nodeAssets.length === 0) {
+      const nodeAssetsData = extractPonderNodeAssets(aurumResponse);
+      if (nodeAssetsData.length === 0) {
         return [];
       }
 
@@ -242,7 +251,7 @@ export class BlockchainNodeRepository implements NodeRepository {
       }
 
       // Step 3: Try to get asset metadata directly by tokenIds first
-      const tokenIds = aurumResponse.nodeAssets.map((asset) => asset.tokenId);
+      const tokenIds = nodeAssetsData.map((asset) => asset.tokenId);
       let assetsMetadata: AssetsAuraResponse = { assets: [] };
 
       if (tokenIds.length > 0) {
@@ -307,7 +316,7 @@ export class BlockchainNodeRepository implements NodeRepository {
       const node = await this.getNode(nodeAddress);
 
       // Step 6: Combine all data
-      return aurumResponse.nodeAssets.map((nodeAsset) => {
+      return nodeAssetsData.map((nodeAsset) => {
         // Find balance for this token
         const balance = balanceMap.get(nodeAsset.tokenId);
 
@@ -343,24 +352,34 @@ export class BlockchainNodeRepository implements NodeRepository {
 
   async getAllNodeAssets(): Promise<TokenizedAsset[]> {
     try {
-      // Page through Aurum nodeAssets to avoid overfetch
+      // Page through Ponder nodeAssets using cursor-based pagination
       const PAGE_SIZE = 500;
-      let skip = 0;
-      let allNodeAssets: NodeAssetsAurumResponse['nodeAssets'] = [];
+      let allNodeAssets: NodeAssetAurum[] = [];
+      let after: string | undefined = undefined;
+      let hasNextPage = true;
 
-      // Fetch pages until fewer than PAGE_SIZE results are returned
-      // Cap pages to avoid runaway loops (e.g., 10k assets)
-      const MAX_PAGES = 50;
-      for (let page = 0; page < MAX_PAGES; page++) {
-        const pageResp = await graphqlRequest<NodeAssetsAurumResponse>(
-          NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
-          GET_ALL_NODE_ASSETS_AURUM,
-          { first: PAGE_SIZE, skip },
-        );
-        const pageItems = pageResp.nodeAssets || [];
+      // Fetch pages until no more pages available
+      // Cap iterations to avoid runaway loops (e.g., 10k assets)
+      const MAX_ITERATIONS = 50;
+      let iterations = 0;
+
+      while (hasNextPage && iterations < MAX_ITERATIONS) {
+        const pageResp = await graphqlRequest<{
+          nodeAssetss: {
+            items: NodeAssetAurum[];
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          };
+        }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_ALL_NODE_ASSETS_AURUM, {
+          limit: PAGE_SIZE,
+          after: after,
+        });
+        const pageItems = extractPonderNodeAssets(pageResp);
         allNodeAssets = allNodeAssets.concat(pageItems);
+        hasNextPage = pageResp.nodeAssetss?.pageInfo?.hasNextPage || false;
+        after = pageResp.nodeAssetss?.pageInfo?.endCursor || undefined;
+        iterations++;
+
         if (pageItems.length < PAGE_SIZE) break;
-        skip += PAGE_SIZE;
       }
 
       if (allNodeAssets.length === 0) return [];
@@ -463,12 +482,14 @@ export class BlockchainNodeRepository implements NodeRepository {
     nodeAddress: string,
   ): Promise<import('@/domain/orders/order').Order[]> {
     try {
-      const response = await graphqlRequest<{ orders: OrderGraphResponse[] }>(
-        this.graphQLEndpoint,
-        GET_ORDERS_BY_NODE,
-        { nodeAddress: nodeAddress.toLowerCase() },
-      );
-      return (response.orders || []).map((o) => convertGraphOrderToDomain(o));
+      // Ponder returns { orderss: { items: [...] } } for list queries
+      const response = await graphqlRequest<{
+        orderss: { items: OrderGraphResponse[] };
+      }>(this.graphQLEndpoint, GET_ORDERS_BY_NODE, {
+        nodeAddress: nodeAddress.toLowerCase(),
+      });
+      const items = extractPonderItems(response.orderss || { items: [] });
+      return items.map((o) => convertGraphOrderToDomain(o));
     } catch (error) {
       handleContractError(error, `get orders for node ${nodeAddress}`);
       return [];
@@ -481,12 +502,16 @@ export class BlockchainNodeRepository implements NodeRepository {
    */
   async loadAvailableAssets(): Promise<AggregateAssetAmount[]> {
     try {
+      // Ponder returns { nodeAssetss: { items: [...] } } for list queries
       const response = await graphqlRequest<{
-        nodeAssets: { token: string; tokenId: string; capacity: string }[];
+        nodeAssetss: {
+          items: { token: string; tokenId: string; capacity: string }[];
+        };
       }>(this.graphQLEndpoint, GET_ALL_NODE_ASSETS);
 
+      const items = extractPonderItems(response.nodeAssetss || { items: [] });
       const assetAmounts: { [key: string]: number } = {};
-      (response.nodeAssets || []).forEach((a) => {
+      items.forEach((a) => {
         const key = `${a.token}-${a.tokenId}`;
         assetAmounts[key] = (assetAmounts[key] || 0) + Number(a.capacity);
       });

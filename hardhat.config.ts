@@ -35,11 +35,33 @@ const config: HardhatUserConfig = {
         ? [process.env.ARB_PRIVATE_KEY]
         : [],
     },
+    arbitrumSepolia: {
+      url:
+        process.env.ARB_SEP_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
+      accounts: process.env.ARB_SEP_PRIVATE_KEY
+        ? [process.env.ARB_SEP_PRIVATE_KEY]
+        : [],
+      chainId: 421614,
+    },
     baseTest: {
       url: process.env.BASE_TEST_RPC_URL || '',
       accounts: process.env.SEP_PRIVATE_KEY
         ? [process.env.SEP_PRIVATE_KEY]
         : [],
+    },
+    baseSepolia: {
+      url: process.env.BASE_TEST_RPC_URL || 'https://sepolia.base.org',
+      accounts: process.env.SEP_PRIVATE_KEY
+        ? [process.env.SEP_PRIVATE_KEY]
+        : [],
+      chainId: 84532,
+    },
+  },
+  etherscan: {
+    apiKey: {
+      arbitrumSepolia: process.env.ARBISCAN_API_KEY || '',
+      baseSepolia: process.env.BASESCAN_API_KEY || '',
+      sepolia: process.env.ETHERSCAN_API_KEY || '',
     },
   },
 };
