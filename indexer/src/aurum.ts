@@ -11,6 +11,19 @@ ponder.on('AurumNodeManager:NodeRegistered', async ({ event, context }) => {
   const { nodeAddress, owner } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
+  // Safety check: ensure db and nodes table are available
+  if (!context.db) {
+    console.error('[NodeRegistered] context.db is undefined');
+    return;
+  }
+  if (!context.db.nodes) {
+    console.error(
+      '[NodeRegistered] context.db.nodes is undefined. Available tables:',
+      Object.keys(context.db || {}),
+    );
+    return;
+  }
+
   // Try to get additional node data from contract
   let locationData = {
     addressName: '',
@@ -72,6 +85,14 @@ ponder.on(
   async ({ event, context }) => {
     const { addressName, lat, lng, node } = event.args;
 
+    // Safety check: ensure nodes table is available
+    if (!context.db?.nodes) {
+      console.warn(
+        '[eventUpdateLocation] context.db.nodes not available, skipping',
+      );
+      return;
+    }
+
     // Update Node entity
     await context.db.nodes.update({
       id: node,
@@ -87,37 +108,60 @@ ponder.on(
 
 /**
  * Handle eventUpdateOwner event
+ * TODO: Temporarily disabled due to context.db.nodes being undefined - needs investigation
  */
-ponder.on('AurumNodeManager:eventUpdateOwner', async ({ event, context }) => {
-  const { owner, node } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+// ponder.on('AurumNodeManager:eventUpdateOwner', async ({ event, context }) => {
+//   const { owner, node } = event.args;
+//   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  // Get old owner before update
-  const nodeEntity = await context.db.nodes.findUnique({ id: node });
-  const oldOwner =
-    nodeEntity?.owner ??
-    ('0x0000000000000000000000000000000000000000' as `0x${string}`);
+//   // Safety check: ensure db and nodes table are available
+//   if (!context.db?.nodes) {
+//     console.error('context.db.nodes is not available in eventUpdateOwner handler');
+//     return;
+//   }
 
-  // Update Node entity
-  await context.db.nodes.update({
-    id: node,
-    data: {
-      owner,
-      updatedAt: event.block.timestamp,
-    },
-  });
+//   // Get old owner before update, or create node if it doesn't exist
+//   let oldOwner = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+//   const existingNode = await context.db.nodes.findUnique({ id: node });
 
-  // Create NodeOwnershipTransferred event
-  await context.db.nodeOwnershipTransferredEvents.create({
-    id: eventId,
-    nodeAddress: node,
-    oldOwner,
-    newOwner: owner,
-    blockNumber: event.block.number,
-    blockTimestamp: event.block.timestamp,
-    transactionHash: event.transaction.hash,
-  });
-});
+//   if (existingNode) {
+//     oldOwner = existingNode.owner;
+//     // Update Node entity
+//     await context.db.nodes.update({
+//       id: node,
+//       data: {
+//         owner,
+//         updatedAt: event.block.timestamp,
+//       },
+//     });
+//   } else {
+//     // Node doesn't exist yet (events processed out of order), create it with minimal data
+//     await context.db.nodes.create({
+//       id: node,
+//       owner,
+//       addressName: '',
+//       lat: '0',
+//       lng: '0',
+//       validNode: true,
+//       status: 'Active',
+//       createdAt: event.block.timestamp,
+//       updatedAt: event.block.timestamp,
+//       blockNumber: event.block.number,
+//       transactionHash: event.transaction.hash,
+//     });
+//   }
+
+//   // Create NodeOwnershipTransferred event
+//   await context.db.nodeOwnershipTransferredEvents.create({
+//     id: eventId,
+//     nodeAddress: node,
+//     oldOwner,
+//     newOwner: owner,
+//     blockNumber: event.block.number,
+//     blockTimestamp: event.block.timestamp,
+//     transactionHash: event.transaction.hash,
+//   });
+// });
 
 /**
  * Handle eventUpdateStatus event
@@ -125,6 +169,14 @@ ponder.on('AurumNodeManager:eventUpdateOwner', async ({ event, context }) => {
 ponder.on('AurumNodeManager:eventUpdateStatus', async ({ event, context }) => {
   const { status, node } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+  // Safety check: ensure nodes table is available
+  if (!context.db?.nodes) {
+    console.warn(
+      '[eventUpdateStatus] context.db.nodes not available, skipping',
+    );
+    return;
+  }
 
   const statusString = status === '0x01' ? 'Active' : 'Inactive';
 
