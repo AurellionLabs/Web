@@ -13,7 +13,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@ponder/core": "^0.6.0",
+    "@ponder/core": "^0.7.17",
     "hono": "^4.0.0",
     "viem": "^2.28.0"
   },

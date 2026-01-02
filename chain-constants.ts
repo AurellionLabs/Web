@@ -1,37 +1,20 @@
-export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
-  '0xD3BCC97E95aAc74de1Daeb6bEd55a16D4CF7C6eD';
-export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
-  '0xBa94D518861a0461D4B9751dc875fB8bB26eC23B';
-export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
-  '0x2a04e043B7cEdE2902480D2b06e17028A62353Cc';
-export const NEXT_PUBLIC_AUSYS_ADDRESS =
-  '0x11BEd7709f1b1DE06C5769774174d4e052aE2cFC';
-export const NEXT_PUBLIC_AURA_GOAT_ADDRESS =
-  '0x45ef184BfDd42cccF542754656dCAc2637012894';
+// Auto-generated deployment constants for baseSepolia
+// Deployed: 2026-01-01T23:43:02.813Z
+// Chain ID: 84532
 
-// =============================================================================
-// The Graph Subgraph URLs (legacy - to be deprecated)
-// =============================================================================
-export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/aura-asset-base-sepolia/version/latest';
-export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/austake-base-sepolia/version/latest';
-export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/aurum-base-sepolia/version/latest';
-export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL =
-  'https://api.studio.thegraph.com/query/112596/ausys-base-sepolia/version/latest';
+export const NEXT_PUBLIC_AUSTAKE_ADDRESS = "0xd41b6Dc779558bbe674B13F6996BFD5679f75074";
+export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS = "0x838Cb08335Ab4121CE4f438F38A002C9A62F69C1";
+export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS = "0xc50F6505BcBb00Af8f1086d9121525695Bf09D30";
+export const NEXT_PUBLIC_AUSYS_ADDRESS = "0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde";
+export const NEXT_PUBLIC_AURA_ASSET_ADDRESS = "0xdc1B355885ba73EFf0f0a5A72F12D87e785581a8";
+export const NEXT_PUBLIC_CLOB_ADDRESS = "0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc";
 
-// =============================================================================
-// Ponder Indexer Configuration (new - preferred)
-// =============================================================================
-export const PONDER_DATABASE_URL =
-  process.env.PONDER_DATABASE_URL ||
-  'postgresql://postgres:postgres@localhost:5432/ponder_indexer';
-
-// Feature flag to switch between The Graph and Ponder
-// Set to 'true' to use Ponder, 'false' to use The Graph
-export const USE_PONDER_DATABASE = process.env.USE_PONDER_DATABASE === 'true';
-
-// CLOB Contract Address (to be deployed)
-export const NEXT_PUBLIC_CLOB_ADDRESS =
-  process.env.NEXT_PUBLIC_CLOB_ADDRESS || '';
+// Deployment blocks (for indexer configuration)
+export const DEPLOYMENT_BLOCKS = {
+  auraToken: 35771316,
+  auSys: 35771321,
+  aurumNodeManager: 35771324,
+  auStake: 35771327,
+  auraAsset: 35771330,
+  clob: 35771333,
+};
