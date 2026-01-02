@@ -230,7 +230,7 @@ export class OrderRepository implements IOrderRepository {
       }>(
         this.graphQLEndpoint,
         GET_ALL_JOURNEYS,
-        { first: 1000, skip: 0 }, // Can be made configurable
+        { limit: 1000 }, // Can be made configurable
       );
 
       const journeys = extractPonderItems(response.journeyss || { items: [] });

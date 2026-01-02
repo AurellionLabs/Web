@@ -43,8 +43,8 @@ export const GET_NODES_BY_OWNER = gql`
 
 // All node assets
 export const GET_ALL_NODE_ASSETS = gql`
-  query GetAllNodeAssets($first: Int = 1000) {
-    nodeAssetss(limit: $first) {
+  query GetAllNodeAssets($limit: Int = 1000) {
+    nodeAssetss(limit: $limit) {
       items {
         id
         node
@@ -158,12 +158,12 @@ export const GET_JOURNEYS_BY_DRIVER = gql`
 `;
 
 // Journeys available to accept: no driver assigned and status Pending (0)
-// Note: Ponder uses string comparison for null checks
+// Note: Ponder uses integer comparison for status
 export const GET_AVAILABLE_JOURNEYS = gql`
-  query GetAvailableJourneys($first: Int = 100, $skip: Int = 0) {
+  query GetAvailableJourneys($limit: Int = 100) {
     journeyss(
-      limit: $first
-      where: { currentStatus: "0" }
+      limit: $limit
+      where: { currentStatus: 0 }
       orderBy: "createdAt"
       orderDirection: "desc"
     ) {
@@ -216,8 +216,8 @@ export const GET_JOURNEY_BY_ID = gql`
 `;
 
 export const GET_ALL_JOURNEYS = gql`
-  query GetAllJourneys($first: Int = 100, $skip: Int = 0) {
-    journeyss(limit: $first, orderBy: "createdAt", orderDirection: "desc") {
+  query GetAllJourneys($limit: Int = 100) {
+    journeyss(limit: $limit, orderBy: "createdAt", orderDirection: "desc") {
       items {
         id
         sender
@@ -416,8 +416,13 @@ export const GET_NODE_ASSETS_COMPLETE = gql`
 // =====================
 
 export const GET_ALL_ASSETS = gql`
-  query GetAllAssets($first: Int!, $skip: Int!) {
-    assetss(limit: $first, orderBy: "tokenId", orderDirection: "asc") {
+  query GetAllAssets($limit: Int!, $after: String) {
+    assetss(
+      limit: $limit
+      after: $after
+      orderBy: "tokenId"
+      orderDirection: "asc"
+    ) {
       items {
         id
         tokenId
@@ -429,6 +434,10 @@ export const GET_ALL_ASSETS = gql`
         totalSupply
         createdAt
         updatedAt
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }

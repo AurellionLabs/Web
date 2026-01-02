@@ -175,7 +175,7 @@ export class DriverRepository implements IDriverRepository {
       // Ponder returns { journeyss: { items: [...] } } for list queries
       const response = await graphqlRequest<{
         journeyss: { items: JourneyGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_AVAILABLE_JOURNEYS, { first: 200, skip: 0 });
+      }>(this.graphQLEndpoint, GET_AVAILABLE_JOURNEYS, { limit: 200 });
       const items = extractPonderItems(response.journeyss || { items: [] });
       const deliveries = items.map((j) => this.mapJourneyToDelivery(j as any));
       console.log(

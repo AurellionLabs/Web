@@ -2,7 +2,7 @@ import { IPlatformRepository, Asset } from '@/domain/platform';
 import { AuraAsset } from '@/typechain-types';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
-import { GET_ALL_ASSETS } from './shared/graph-queries';
+import { GET_ALL_ASSETS, extractPonderItems } from './shared/graph-queries';
 import { NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL } from '@/chain-constants';
 
 export class PlatformRepository implements IPlatformRepository {
@@ -15,21 +15,29 @@ export class PlatformRepository implements IPlatformRepository {
   }
   async getSupportedAssets(): Promise<Asset[]> {
     const PAGE = 500;
-    let skip = 0;
     const out: Asset[] = [];
+    let after: string | undefined = undefined;
+    let hasNextPage = true;
+    const MAX_ITERATIONS = 50; // Cap to avoid infinite loops
+    let iterations = 0;
 
-    while (true) {
-      const res = await graphqlRequest<{ assets: any[] }>(
-        this.graphEndpoint,
-        GET_ALL_ASSETS,
-        { first: PAGE, skip },
-      );
-      const items = res.assets || [];
+    while (hasNextPage && iterations < MAX_ITERATIONS) {
+      const res = await graphqlRequest<{
+        assetss: {
+          items: any[];
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        };
+      }>(this.graphEndpoint, GET_ALL_ASSETS, {
+        limit: PAGE,
+        after: after,
+      });
+
+      const items = extractPonderItems(res.assetss || { items: [] });
       if (items.length === 0) break;
 
       for (const a of items) {
         out.push({
-          assetClass: a.className ?? a.assetClass ?? 'Unknown',
+          assetClass: a.class ?? a.className ?? a.assetClass ?? 'Unknown',
           tokenId: String(a.tokenId),
           name: a.name ?? 'Unknown Asset',
           attributes: (a.attributes || [])
@@ -43,8 +51,12 @@ export class PlatformRepository implements IPlatformRepository {
             .filter((x: any) => x.name.length > 0),
         });
       }
+
+      hasNextPage = res.assetss?.pageInfo?.hasNextPage || false;
+      after = res.assetss?.pageInfo?.endCursor || undefined;
+      iterations++;
+
       if (items.length < PAGE) break;
-      skip += PAGE;
     }
 
     return out;
