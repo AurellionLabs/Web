@@ -63,12 +63,20 @@ export class PlatformRepository implements IPlatformRepository {
           supportedClasses.push(className);
         }
       } catch (err: any) {
-        // Check if this is a BAD_DATA error (end of array) or other error
-        if (err?.code === 'BAD_DATA' || err?.info?.code === 'BAD_DATA') {
+        // Check if this is an end-of-array error (expected when reaching the end)
+        const isEndOfArray =
+          err?.code === 'BAD_DATA' ||
+          err?.info?.code === 'BAD_DATA' ||
+          err?.code === 'CALL_EXCEPTION' ||
+          err?.code === 'UNPREDICTABLE_GAS_LIMIT' ||
+          err?.message?.includes('could not decode') ||
+          err?.message?.includes('execution reverted');
+
+        if (isEndOfArray) {
           // End of array reached - this is expected, not an error
           break;
         }
-        // For other errors, log a warning but continue
+        // For other unexpected errors, log a warning but continue
         console.warn(`Error reading supportedClasses[${i}]:`, err);
         // If we've read at least one class, assume we've hit the end
         if (supportedClasses.length > 0) {
