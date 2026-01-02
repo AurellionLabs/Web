@@ -6,7 +6,7 @@ type BackoffOptions = {
   baseDelayMs?: number;
 };
 
-type SendTxOptions = BackoffOptions & {
+export type SendTxOptions = BackoffOptions & {
   from?: string;
   value?: bigint;
   gasHeadroomRatio?: number; // e.g. 1.2 for +20%
@@ -88,6 +88,9 @@ export async function sendContractTxWithReadEstimation(
     gasLimit,
     value: options.value,
   });
-  const receipt = await tx.wait();
-  return { tx, receipt };
+
+  // Always return immediately without waiting for receipt.
+  // We use the Ponder indexer for event-driven transaction confirmation
+  // via sendContractTxAndWaitForIndexer() wrapper.
+  return { tx, receipt: null };
 }

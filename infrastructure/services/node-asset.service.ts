@@ -12,7 +12,7 @@ import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { PinataSDK } from 'pinata';
 import { Asset } from '@/domain/platform';
 import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/Aurum.sol/AurumNode';
-import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 
 /**
  * Concrete implementation of the INodeAssetService interface - REFACTORED
@@ -101,13 +101,13 @@ export class NodeAssetService implements INodeAssetService {
       }
 
       // Call addItem on the node contract
-      const { receipt: addItemReceipt } =
-        await sendContractTxWithReadEstimation(
-          nodeContract as unknown as ethers.Contract,
-          'addItem',
-          [nodeAddress, bigIntAmount, contractAsset, asset.assetClass, '0x'],
-          { from: await this.context.getSigner().getAddress() },
-        );
+      await sendContractTxAndWaitForIndexer(
+        nodeContract as unknown as ethers.Contract,
+        'addItem',
+        [nodeAddress, bigIntAmount, contractAsset, asset.assetClass, '0x'],
+        'AuraAsset.addItem',
+        { from: await this.context.getSigner().getAddress() },
+      );
 
       // FIXED: Use correct addSupportedAsset signature with Asset struct
       const assetStruct = {
@@ -139,15 +139,14 @@ export class NodeAssetService implements INodeAssetService {
         console.error('[NodeAssetService] Diagnostic check failed:', diagError);
       }
 
-      let tx2Receipt: any | null = null;
       try {
-        const { receipt } = await sendContractTxWithReadEstimation(
+        await sendContractTxAndWaitForIndexer(
           aurumContract as unknown as ethers.Contract,
           'addSupportedAsset',
           [nodeAddress, assetStruct],
+          'AurumNodeManager.addSupportedAsset',
           { from: await this.context.getSigner().getAddress() },
         );
-        tx2Receipt = receipt;
       } catch (e) {
         console.error(
           '[NodeAssetService] addSupportedAsset failed with error:',
@@ -297,11 +296,13 @@ export class NodeAssetService implements INodeAssetService {
       );
 
       // FIXED: Call with correct signature: updateSupportedAssets(node, Asset[] memory)
-      const tx = await contract.updateSupportedAssets(
-        nodeAddress,
-        contractAssets,
+      await sendContractTxAndWaitForIndexer(
+        contract as unknown as ethers.Contract,
+        'updateSupportedAssets',
+        [nodeAddress, contractAssets],
+        'AurumNodeManager.updateSupportedAssets',
+        { from: await this.context.getSigner().getAddress() },
       );
-      await tx.wait();
 
       console.log(
         `[NodeAssetService] Supported assets updated successfully for node ${nodeAddress}`,

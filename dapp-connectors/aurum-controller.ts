@@ -22,6 +22,7 @@ import {
 } from '@/chain-constants';
 import { ethers } from 'ethers';
 import { AuraAsset__factory } from '@/typechain-types';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 
 export type ResourceData = {
   id: bigint;
@@ -179,13 +180,13 @@ export const registerNode = async (nodeData: AurumNodeManager.NodeStruct) => {
       status: '0x01', // Simple hex for bytes1
     };
 
-    const tx = await contract.registerNode(formattedNodeData);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    console.log(
-      'Node registered successfully. Transaction hash:',
-      receipt.hash,
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'registerNode',
+      [formattedNodeData],
+      'AurumNodeManager.registerNode',
     );
-    return receipt;
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     console.error('Error registering node:', error);
     throw error;
@@ -221,15 +222,13 @@ export const getOwnedNodeAddressList = async (): Promise<string[]> => {
 export const updateNodeStatus = async (node: string, status: BytesLike) => {
   const contract = await getAurumContract();
   try {
-    const tx = await contract.updateStatus(status, node);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    if (receipt) {
-      console.log('Transaction completed', {
-        transactionHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-      });
-    }
-    return receipt;
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'updateStatus',
+      [status, node],
+      'AurumNodeManager.updateStatus',
+    );
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     console.error(`unable to updateStatus for node${node}`);
     throw error;
@@ -248,18 +247,13 @@ export const nodeHandOff = async (
 ) => {
   const contract = await getAurumNodeContract(node);
   try {
-    const tx = await contract.nodeHandoff(
-      node,
-      driver,
-      receiver,
-      id,
-      tokenIds,
-      token,
-      quantities,
-      data,
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'nodeHandoff',
+      [node, driver, receiver, id, tokenIds, token, quantities, data],
+      { eventTable: 'transfer_events', eventIdColumn: 'token_id', waitForConfirmation: true },
     );
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    return receipt;
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     console.error(
       `unable nodeHandoff for node${node} driver: ${driver}, receiver: ${receiver}, id:${id}`,
@@ -277,9 +271,13 @@ export const nodeHandOn = async (
 ) => {
   const contract = await getAurumNodeContract(node);
   try {
-    const tx = await contract.nodeHandOn(driver, receiver, id);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    return receipt;
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'nodeHandOn',
+      [driver, receiver, id],
+      { eventTable: 'transfer_events', eventIdColumn: 'token_id', waitForConfirmation: true },
+    );
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     console.error(
       `unable to updateStatus for node: ${driver} receiver: ${receiver} id: ${id}`,
@@ -311,9 +309,13 @@ export const getNode = async (nodeAddress: string): Promise<NodeStruct> => {
 export const addToken = async (auraGoatAddress: string) => {
   const contract = await getAurumContract();
   try {
-    const tx = await contract.addToken(auraGoatAddress);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    return receipt;
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'addToken',
+      [auraGoatAddress],
+      { eventTable: 'nodes', eventIdColumn: 'id', waitForConfirmation: true },
+    );
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     handleContractError(error, 'add token');
   }
@@ -322,9 +324,13 @@ export const addToken = async (auraGoatAddress: string) => {
 export const setAurumAdmin = async (admin: string) => {
   const contract = await getAurumContract();
   try {
-    const tx = await contract.setAdmin(admin);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    return receipt;
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'setAdmin',
+      [admin],
+      { eventTable: 'admin_status_changed_events', eventIdColumn: 'admin', waitForConfirmation: true },
+    );
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     handleContractError(error, 'set aurum admin');
   }
@@ -337,13 +343,13 @@ export const expensiveFuzzyUpdateCapacity = async (
 ) => {
   const contract = await getAurumContract();
   try {
-    const tx = await contract.expensiveFuzzyUpdateCapacity(
-      node,
-      quantities,
-      assets,
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'expensiveFuzzyUpdateCapacity',
+      [node, quantities, assets],
+      'AurumNodeManager.updateSupportedAssets',
     );
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    return receipt;
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     handleContractError(error, 'update capacity');
   }
@@ -477,15 +483,14 @@ export const updateSupportedAssets = async (
 ) => {
   const contract = await getAurumContract();
   try {
-    const tx = await contract.updateSupportedAssets(
-      node,
-      quantities,
-      assets,
-      prices,
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'updateSupportedAssets',
+      [node, quantities, assets, prices],
+      'AurumNodeManager.updateSupportedAssets',
     );
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    console.log('Assets updated successfully. Transaction hash:', receipt.hash);
-    return receipt;
+    console.log('Assets updated successfully. Transaction hash:', tx.hash);
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     console.error('Error updating supported assets:', error);
     throw error;
@@ -537,15 +542,12 @@ export const nodeMintAsset = async (
   try {
     const paddedId = ethers.zeroPadValue(ethers.toBeHex(assetId), 32);
 
-    const tx = await contract.addItem(
-      nodeAddress,
-      paddedId,
-      BigInt(assetId),
-      BigInt(amount),
-      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-      '0x',
+    await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'addItem',
+      [nodeAddress, paddedId, BigInt(assetId), BigInt(amount), NEXT_PUBLIC_AURA_GOAT_ADDRESS, '0x'],
+      'AuraAsset.addItem',
     );
-    await tx.wait();
 
     // Check node's balance with correct tokenId
     const auraGoat = await getAuraGoatContract(NEXT_PUBLIC_AURA_GOAT_ADDRESS);
@@ -600,15 +602,19 @@ export const updateAssetPrice = async (
     );
 
     // Update using existing contract function
-    const tx = await contract.updateSupportedAssets(
-      nodeAddress,
-      Array.from(supportedAssets).map((a) => a), // Keep capacities the same
-      Array.from(supportedAssets).map((a) => a), // Keep assets the same
-      newPrices, // Update prices
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'updateSupportedAssets',
+      [
+        nodeAddress,
+        Array.from(supportedAssets).map((a) => a), // Keep capacities the same
+        Array.from(supportedAssets).map((a) => a), // Keep assets the same
+        newPrices, // Update prices
+      ],
+      'AurumNodeManager.updateSupportedAssets',
     );
 
-    const receipt = await tx.wait();
-    return receipt;
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     console.error('Error updating asset price:', error);
     throw error;

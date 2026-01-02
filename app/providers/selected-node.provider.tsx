@@ -20,6 +20,8 @@ import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
 import { useNodes } from './nodes.provider';
 import { usePlatform } from './platform.provider';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
+import { ethers } from 'ethers';
 import { OrderWithAsset } from '@/app/types/shared';
 
 type SelectedNodeContextType = {
@@ -286,8 +288,12 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       const nodeContract = await (nodeRepository as any).getNodeContract(
         selectedNodeAddress,
       );
-      const tx = await nodeContract.nodeSign(journeyId as any);
-      await tx.wait();
+      await sendContractTxAndWaitForIndexer(
+        nodeContract as unknown as ethers.Contract,
+        'nodeSign',
+        [journeyId],
+        { eventTable: 'package_signatures', eventIdColumn: 'journey_id', waitForConfirmation: true },
+      );
     },
     [repositoryContext, selectedNodeAddress],
   );
@@ -323,8 +329,12 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      const tx = await nodeContract.nodeHandOn(journeyId as any);
-      await tx.wait();
+      await sendContractTxAndWaitForIndexer(
+        nodeContract as unknown as ethers.Contract,
+        'nodeHandOn',
+        [journeyId],
+        { eventTable: 'journey_status_updates', eventIdColumn: 'journey_id', waitForConfirmation: true },
+      );
     },
     [repositoryContext, selectedNodeAddress],
   );

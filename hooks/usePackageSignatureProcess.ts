@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { encodeBytes32String } from 'ethers';
+import { encodeBytes32String, ethers } from 'ethers';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 
 type SignatureStatus = 'idle' | 'signing' | 'waiting' | 'complete' | 'error';
 
@@ -79,7 +80,12 @@ export function usePackageSignatureProcess({
         senderAddress,
         jobIdBytes32,
       );
-      await tx.wait(); // Wait for transaction confirmation
+      await sendContractTxAndWaitForIndexer(
+        contract as unknown as ethers.Contract,
+        'packageSign',
+        [driverAddress, senderAddress, jobIdBytes32],
+        'Ausys.packageSign',
+      );
       console.log(
         '[usePackageSignatureProcess] packageSign transaction confirmed.',
       );

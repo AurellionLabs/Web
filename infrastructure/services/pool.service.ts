@@ -16,6 +16,7 @@ import {
 import { ContractTransactionResponse, ethers, Provider, Signer } from 'ethers';
 import { NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 
 /**
  * Business logic service for Pool operations.
@@ -56,8 +57,10 @@ export class PoolService implements IPoolService {
       );
 
       // Create operation on smart contract
-      const txResponse: ContractTransactionResponse =
-        await this.contract.createOperation(
+      const { tx, result: poolId } = await sendContractTxAndWaitForIndexer<string>(
+        this.contract as unknown as ethers.Contract,
+        'createOperation',
+        [
           data.name,
           data.description,
           data.tokenAddress,
@@ -67,18 +70,18 @@ export class PoolService implements IPoolService {
           data.assetName,
           BigInt(data.fundingGoal),
           BigInt(data.assetPrice),
-        );
-      const txReceipt = await txResponse.wait();
-      if (!txReceipt) {
-        throw new Error('Transaction receipt not found for pool creation');
-      }
+        ],
+        'AuStake.createPool',
+        { from: creatorAddress },
+      );
 
-      // Extract pool ID from OperationCreated event
-      const poolId = await this.extractPoolIdFromReceipt(txReceipt);
+      if (!poolId) {
+        throw new Error('Failed to get pool ID from pool creation transaction');
+      }
 
       return {
         poolId,
-        transactionHash: txReceipt.hash,
+        transactionHash: tx.hash,
       };
     } catch (error) {
       console.error('[PoolService.createPool] Error creating pool:', error);
@@ -99,17 +102,15 @@ export class PoolService implements IPoolService {
       // Note: The current contract doesn't have a specific closePool function
       // This would need to be implemented based on the actual contract functionality
       // For now, we'll use unlockReward as a proxy for closing
-      const txResponse = await this.contract.unlockReward(
-        ethers.ZeroAddress, // token address (needs to be determined)
-        poolId,
+      const { tx } = await sendContractTxAndWaitForIndexer(
+        this.contract as unknown as ethers.Contract,
+        'unlockReward',
+        [ethers.ZeroAddress, poolId],
+        'AuStake.unlockReward',
+        { from: providerAddress },
       );
 
-      const txReceipt = await txResponse.wait();
-      if (!txReceipt) {
-        throw new Error('Transaction receipt not found for pool closing');
-      }
-
-      return txReceipt.hash;
+      return tx.hash;
     } catch (error) {
       console.error('[PoolService.closePool] Error closing pool:', error);
       throw new Error(
@@ -148,18 +149,15 @@ export class PoolService implements IPoolService {
       await this.handleTokenApproval(tokenAddress, amountInWei.toString());
 
       // Execute stake transaction
-      const txResponse = await this.contract.stake(
-        tokenAddress,
-        poolId,
-        amountInWei,
+      const { tx } = await sendContractTxAndWaitForIndexer(
+        this.contract as unknown as ethers.Contract,
+        'stake',
+        [tokenAddress, poolId, amountInWei],
+        'AuStake.stake',
+        { from: investorAddress },
       );
 
-      const txReceipt = await txResponse.wait();
-      if (!txReceipt) {
-        throw new Error('Transaction receipt not found for stake');
-      }
-
-      return txReceipt.hash;
+      return tx.hash;
     } catch (error) {
       console.error('[PoolService.stake] Error staking:', error);
       throw new Error(
@@ -185,18 +183,15 @@ export class PoolService implements IPoolService {
       const tokenAddress = operation.token;
 
       // Execute claim reward transaction
-      const txResponse = await this.contract.claimReward(
-        tokenAddress,
-        poolId,
-        address,
+      const { tx } = await sendContractTxAndWaitForIndexer(
+        this.contract as unknown as ethers.Contract,
+        'claimReward',
+        [tokenAddress, poolId, address],
+        'AuStake.claimReward',
+        { from: address },
       );
 
-      const txReceipt = await txResponse.wait();
-      if (!txReceipt) {
-        throw new Error('Transaction receipt not found for claim reward');
-      }
-
-      return txReceipt.hash;
+      return tx.hash;
     } catch (error) {
       console.error('[PoolService.claimReward] Error claiming reward:', error);
       throw new Error(
@@ -225,14 +220,15 @@ export class PoolService implements IPoolService {
       const tokenAddress = operation.token;
 
       // Execute unlock reward transaction
-      const txResponse = await this.contract.unlockReward(tokenAddress, poolId);
+      const { tx } = await sendContractTxAndWaitForIndexer(
+        this.contract as unknown as ethers.Contract,
+        'unlockReward',
+        [tokenAddress, poolId],
+        'AuStake.unlockReward',
+        { from: providerAddress },
+      );
 
-      const txReceipt = await txResponse.wait();
-      if (!txReceipt) {
-        throw new Error('Transaction receipt not found for unlock reward');
-      }
-
-      return txReceipt.hash;
+      return tx.hash;
     } catch (error) {
       console.error(
         '[PoolService.unlockReward] Error unlocking reward:',
@@ -521,31 +517,4 @@ export class PoolService implements IPoolService {
     }
   }
 
-  private async extractPoolIdFromReceipt(txReceipt: any): Promise<string> {
-    try {
-      // Look for OperationCreated event
-      const eventSignature =
-        this.contract.interface.getEvent('OperationCreated').topicHash;
-      const eventLog = txReceipt.logs?.find(
-        (log: any) => log.topics[0] === eventSignature,
-      );
-
-      if (eventLog) {
-        const parsedLog = this.contract.interface.parseLog(eventLog);
-        if (parsedLog && parsedLog.args.operationId) {
-          return parsedLog.args.operationId;
-        }
-      }
-
-      throw new Error('Could not extract pool ID from transaction receipt');
-    } catch (error) {
-      console.error(
-        '[PoolService.extractPoolIdFromReceipt] Error extracting pool ID:',
-        error,
-      );
-      throw new Error(
-        `Failed to extract pool ID: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
-  }
 }

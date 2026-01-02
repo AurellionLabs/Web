@@ -13,6 +13,7 @@ import {
 import { handleContractError } from '@/utils/error-handler';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 
 /**
  * Implements domain service operations for orders by interacting directly with the blockchain contract.
@@ -163,7 +164,7 @@ export class OrderService implements IOrderService {
       // Handle token approval for bounty payment
       await this.handleTokenApproval(bounty);
 
-      const { receipt } = await sendContractTxWithReadEstimation(
+      const { tx } = await sendContractTxAndWaitForIndexer(
         contractWithSigner as unknown as ethers.Contract,
         'journeyCreation',
         [
@@ -173,15 +174,12 @@ export class OrderService implements IOrderService {
           bounty,
           eta,
         ],
+        'Ausys.journeyCreation',
         { from: connectedSignerAddress },
       );
-      if (!receipt) {
-        throw new Error('Job creation transaction failed to return a receipt.');
-      }
-      console.log(
-        `[OrderService] Job created successfully, tx: ${receipt.hash}`,
-      );
-      return receipt;
+      
+      // For jobCreation, we return a receipt-like object for compatibility
+      return { hash: tx.hash } as ContractTransactionReceipt;
     } catch (error) {
       handleContractError(error, 'job creation service');
       throw error;
@@ -216,21 +214,15 @@ export class OrderService implements IOrderService {
       }
 
       // packageSign only takes the journey ID - signatures are tracked by msg.sender
-      const { receipt } = await sendContractTxWithReadEstimation(
+      const { tx } = await sendContractTxAndWaitForIndexer(
         contractWithSigner as unknown as ethers.Contract,
         'packageSign',
         [journeyId],
+        'Ausys.packageSign',
         { from: signerAddress },
       );
-      if (!receipt) {
-        throw new Error(
-          'Customer sign package transaction failed to return a receipt.',
-        );
-      }
-      console.log(
-        `[OrderService] Customer package sign successful, tx: ${receipt.hash}`,
-      );
-      return receipt;
+      
+      return { hash: tx.hash } as ContractTransactionReceipt;
     } catch (error) {
       handleContractError(error, 'customer sign package service');
       throw error;
@@ -316,62 +308,16 @@ export class OrderService implements IOrderService {
       });
 
       // Call the contract's orderCreation with mapped struct
-      const { receipt } = await sendContractTxWithReadEstimation(
+      const { result: createdOrderId } = await sendContractTxAndWaitForIndexer<string>(
         contractWithSigner as unknown as ethers.Contract,
         'orderCreation',
         [contractOrder],
+        'Ausys.orderCreation',
         { from: signerAddress },
       );
-      if (!receipt) {
-        throw new Error(
-          'Order creation transaction failed to return a receipt.',
-        );
-      }
-      if (receipt.status !== 1) {
-        console.error('Order creation transaction reverted. Receipt:', receipt);
-        throw new Error(
-          `Order creation transaction failed. Hash: ${receipt.hash}`,
-        );
-      }
-      console.log(
-        '[OrderService] Order created successfully, tx: ',
-        receipt.hash,
-      );
 
-      // Parse event to get orderId
-      console.log(
-        '[OrderService] Raw receipt logs:',
-        JSON.stringify(receipt.logs, null, 2),
-      );
-      let createdOrderId: string = String(ethers.ZeroHash);
-      const eventFragment = this.contract.interface.getEvent('OrderCreated');
-      if (receipt.logs && eventFragment) {
-        for (const log of receipt.logs) {
-          try {
-            const parsedLog = this.contract.interface.parseLog(
-              log as unknown as { topics: string[]; data: string },
-            );
-            if (parsedLog && parsedLog.name === 'OrderCreated') {
-              createdOrderId = String(parsedLog.args.orderId);
-              console.log(
-                `[OrderService] Found OrderCreated event, orderId: ${createdOrderId}`,
-              );
-              break;
-            }
-          } catch (e) {
-            /* Ignore logs that don't match */
-          }
-        }
-      }
-
-      if (createdOrderId === ethers.ZeroHash) {
-        console.error(
-          'Could not find OrderCreated event in transaction logs',
-          receipt.logs,
-        );
-        throw new Error(
-          'Failed to parse OrderCreated event from transaction receipt.',
-        );
+      if (!createdOrderId) {
+        throw new Error('Failed to get order ID from order creation transaction');
       }
 
       return createdOrderId;
@@ -430,7 +376,7 @@ export class OrderService implements IOrderService {
       // Handle token approval for bounty payment
       await this.handleTokenApproval(bountyWei);
 
-      const { receipt } = await sendContractTxWithReadEstimation(
+      const { result: journeyId } = await sendContractTxAndWaitForIndexer<string>(
         contract as unknown as ethers.Contract,
         'orderJourneyCreation',
         [
@@ -443,43 +389,13 @@ export class OrderService implements IOrderService {
           tokenQuantity,
           assetId,
         ],
+        'Ausys.orderJourneyCreation',
         { from: await this.currentSigner.getAddress() },
       );
-      console.log(
-        `[OrderService] orderJourneyCreation tx confirmed. Status: ${receipt?.status}`,
-      );
 
-      if (!receipt || receipt.status !== 1) {
+      if (!journeyId) {
         throw new Error(
-          `orderJourneyCreation transaction failed or reverted. Hash: ${tx.hash}`,
-        );
-      }
-
-      // Parse JourneyCreated event to get the journeyId
-      let journeyId: string = String(ethers.ZeroHash);
-      const eventFragment = contract.interface.getEvent('JourneyCreated');
-      if (receipt.logs && eventFragment) {
-        for (const log of receipt.logs) {
-          try {
-            const parsedLog = contract.interface.parseLog(
-              log as unknown as { topics: string[]; data: string },
-            );
-            if (parsedLog && parsedLog.name === 'JourneyCreated') {
-              journeyId = String(parsedLog.args.journeyId);
-              console.log(
-                `[OrderService] Found JourneyCreated event, journeyId: ${journeyId}`,
-              );
-              break;
-            }
-          } catch (e) {
-            // Ignore other logs
-          }
-        }
-      }
-
-      if (journeyId === String(ethers.ZeroHash)) {
-        console.warn(
-          `[OrderService] Could not find JourneyCreated event in transaction logs for order ${orderId}.`,
+          `Failed to get journey ID from orderJourneyCreation transaction for order ${orderId}`,
         );
       }
 

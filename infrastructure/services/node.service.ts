@@ -3,8 +3,8 @@ import { NodeAssetConverters } from '@/domain/node';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import type { AurumNodeManager } from '@/typechain-types';
 import { ethers } from 'ethers';
-import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 import { handleContractError } from '@/utils/error-handler';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 
 export interface INodeService {
   registerNode(nodeData: Node): Promise<string>;
@@ -78,27 +78,22 @@ export class NodeService implements INodeService {
         assetPrices: prices,
       } as unknown as Parameters<AurumNodeManager['registerNode']>[0];
 
-      const { receipt } = await sendContractTxWithReadEstimation(
+      const { result: nodeAddress } = await sendContractTxAndWaitForIndexer<string>(
         aurum as unknown as ethers.Contract,
         'registerNode',
         [contractNodeStruct],
-        { from: nodeData.owner, gasHeadroomRatio: 1.2 },
+        'AurumNodeManager.registerNode',
+        {
+          from: nodeData.owner,
+          gasHeadroomRatio: 1.2,
+        },
       );
 
-      const nodeRegisteredEvent = receipt?.logs?.find(
-        (log: any) =>
-          log.topics[0] === ethers.id('NodeRegistered(address,address)'),
-      );
-
-      if (nodeRegisteredEvent) {
-        return ethers.getAddress(
-          `0x${nodeRegisteredEvent.topics[1].slice(26)}`,
-        );
+      if (!nodeAddress) {
+        throw new Error('Failed to get node address from registration transaction');
       }
 
-      throw new Error(
-        'Could not extract node address from registration transaction',
-      );
+      return nodeAddress;
     } catch (error) {
       handleContractError(error, `register node for owner ${nodeData.owner}`);
       throw error;
@@ -112,8 +107,13 @@ export class NodeService implements INodeService {
     try {
       const aurum = this.getAurumContractOrThrow();
       const statusBytes = NodeAssetConverters.statusToBytes1(status);
-      const tx = await aurum.updateStatus(statusBytes, nodeAddress);
-      await tx.wait();
+      
+      await sendContractTxAndWaitForIndexer(
+        aurum as unknown as ethers.Contract,
+        'updateStatus',
+        [statusBytes, nodeAddress],
+        'AurumNodeManager.updateStatus',
+      );
     } catch (error) {
       handleContractError(error, `update node status for ${nodeAddress}`);
       throw error;

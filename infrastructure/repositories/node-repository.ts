@@ -17,6 +17,7 @@ import {
   AuraAsset,
 } from '@/typechain-types';
 import { handleContractError } from '@/utils/error-handler';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 import { PinataSDK } from 'pinata';
 import { hashToAssets, tokenIdToAssets } from './shared/ipfs';
 import { AssetIpfsRecord } from '@/domain/platform';
@@ -101,8 +102,12 @@ export class BlockchainNodeRepository implements NodeRepository {
    */
   async approveAusysForTokens(nodeAddress: string): Promise<void> {
     const nodeContract = await this.getNodeContract(nodeAddress);
-    const tx = await nodeContract.approveAusysForTokens();
-    await tx.wait();
+    await sendContractTxAndWaitForIndexer(
+      nodeContract as unknown as ethers.Contract,
+      'approveAusysForTokens',
+      [],
+      { eventTable: 'transfer_events', eventIdColumn: 'token_id', waitForConfirmation: true },
+    );
   }
 
   /**

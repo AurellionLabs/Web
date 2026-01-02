@@ -5,6 +5,8 @@ import { Delivery } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { calculateETA } from '../utils/maps';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
+import { ethers } from 'ethers';
 
 export interface DriverContextType {
   availableDeliveries: Delivery[];
@@ -121,7 +123,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
               driverWalletAddress,
               true,
             );
-            await tx.wait();
+            await sendContractTxAndWaitForIndexer(
+              ausys as unknown as ethers.Contract,
+              'setDriver',
+              [driverWalletAddress, true],
+              { eventTable: 'driver_assignments', eventIdColumn: 'journey_id', waitForConfirmation: true },
+            );
             console.log('[Accept] Driver role granted successfully');
           } catch (roleErr) {
             console.warn('[Accept] Could not auto-grant driver role:', roleErr);
@@ -180,13 +187,13 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         console.warn('[confirmPickup] Could not fetch journey details:', e);
       }
 
-      const tx = await ausys.packageSign(jobId as any);
-      console.log('[confirmPickup] packageSign tx sent:', tx.hash);
-      const receipt = await tx.wait();
-      console.log(
-        '[confirmPickup] packageSign tx mined:',
-        receipt?.transactionHash,
+      const { tx } = await sendContractTxAndWaitForIndexer(
+        ausys as unknown as ethers.Contract,
+        'packageSign',
+        [jobId],
+        'Ausys.packageSign',
       );
+      console.log('[confirmPickup] packageSign tx confirmed:', tx.hash);
       await refreshDeliveries();
     } catch (err) {
       console.error('[confirmPickup] Error:', err);
@@ -208,8 +215,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = repoContext.getAusysContract();
-      const tx = await ausys.handOn(jobId as any);
-      await tx.wait();
+      await sendContractTxAndWaitForIndexer(
+        ausys as unknown as ethers.Contract,
+        'handOn',
+        [jobId],
+        'Ausys.handOn',
+      );
       await refreshDeliveries();
     } catch (err) {
       setError(
@@ -256,8 +267,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         },
       );
 
-      const tx = await ausys.handOff(jobId as any);
-      await tx.wait();
+      await sendContractTxAndWaitForIndexer(
+        ausys as unknown as ethers.Contract,
+        'handOff',
+        [jobId],
+        'Ausys.handOff',
+      );
       await refreshDeliveries();
     } catch (err) {
       console.error('[DriverProvider] handOff error:', err);
@@ -294,8 +309,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         },
       );
 
-      const tx = await ausys.packageSign(jobId as any);
-      await tx.wait();
+      await sendContractTxAndWaitForIndexer(
+        ausys as unknown as ethers.Contract,
+        'packageSign',
+        [jobId],
+        'Ausys.packageSign',
+      );
 
       // Verify signature was recorded
       if (journey.currentStatus.toString() === '0') {

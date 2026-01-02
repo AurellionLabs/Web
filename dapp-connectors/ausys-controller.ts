@@ -15,6 +15,7 @@ import {
   getWalletAddress,
   handleContractError,
 } from './base-controller';
+import { sendContractTxAndWaitForIndexer } from '@/infrastructure/shared/tx-with-indexer-wait';
 
 export enum Status {
   PENDING = 0,
@@ -76,17 +77,15 @@ export const jobCreation = async (
 ) => {
   try {
     const contract = await getAusysContract();
-    const tx = await contract.journeyCreation(
-      senderAddress,
-      recipientWalletAddress,
-      locationData,
-      bounty,
-      eta,
-      { ...overrides },
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'journeyCreation',
+      [senderAddress, recipientWalletAddress, locationData, bounty, eta],
+      'Ausys.journeyCreation',
+      overrides,
     );
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    console.log('Job Creation Transaction Hash:', receipt.hash);
-    return receipt;
+    console.log('Job Creation Transaction Hash:', tx.hash);
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     handleContractError(error, 'job creation');
   }
@@ -108,14 +107,14 @@ export const customerPackageSign = async (
       );
     }
 
-    const tx = await contract.packageSign(
-      journey.driver,
-      currentUser,
-      journeyId,
-      { ...overrides },
+    const { tx } = await sendContractTxAndWaitForIndexer(
+      contract as unknown as ethers.Contract,
+      'packageSign',
+      [journey.driver, currentUser, journeyId],
+      'Ausys.packageSign',
+      overrides,
     );
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    return receipt;
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     handleContractError(error, 'customer package sign');
   }
@@ -554,14 +553,15 @@ export const contractCreateOrderTransaction = async (
   try {
     const contract = await getAusysContract();
     console.log('Executing orderCreation transaction...');
-    const tx = await contract.orderCreation(orderData, { ...overrides });
-    const receipt = await tx.wait(); // Initial wait
-    // Add another wait just in case state propagation is slow (unlikely but worth trying)
-    if (receipt) {
-      await tx.wait(1); // Wait for 1 confirmation block
-    }
-    console.log('orderCreation transaction successful:', receipt?.hash);
-    return receipt as ContractTransactionReceipt;
+    const { tx, result: orderId } = await sendContractTxAndWaitForIndexer<string>(
+      contract as unknown as ethers.Contract,
+      'orderCreation',
+      [orderData],
+      'Ausys.orderCreation',
+      overrides,
+    );
+    console.log('orderCreation transaction successful:', tx.hash, 'orderId:', orderId);
+    return { hash: tx.hash } as ContractTransactionReceipt;
   } catch (error) {
     handleContractError(error, 'order creation transaction');
   }
