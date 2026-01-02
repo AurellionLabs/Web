@@ -88,6 +88,75 @@ export async function sendContractTxWithReadEstimation(
     gasLimit,
     value: options.value,
   });
-  const receipt = await tx.wait();
+
+  // Wait for transaction with retry logic for rate limits
+  // Use provider.waitForTransaction with polling interval to reduce RPC calls
+  let receipt;
+  try {
+    // Wait with 1 confirmation and a longer polling interval to reduce RPC calls
+    receipt = await tx.wait(1);
+  } catch (error: any) {
+    // If tx.wait fails due to rate limiting, try using provider.waitForTransaction
+    // which gives us more control over polling
+    const isRateLimit =
+      error?.code === -32005 ||
+      error?.error?.code === -32005 ||
+      error?.message?.includes?.('Too Many Requests') ||
+      error?.message?.includes?.('rate limit');
+
+    if (isRateLimit) {
+      console.warn(
+        '[tx-helper] Rate limit hit during tx.wait(), using provider.waitForTransaction with backoff',
+      );
+      // Use provider.waitForTransaction with a custom polling interval
+      receipt = await waitForTransactionWithBackoff(provider, tx.hash, {
+        maxRetries: 10,
+        baseDelayMs: 2000,
+      });
+    } else {
+      throw error;
+    }
+  }
+
   return { tx, receipt };
+}
+
+async function waitForTransactionWithBackoff(
+  provider: Provider,
+  txHash: string,
+  { maxRetries = 10, baseDelayMs = 2000 }: BackoffOptions = {},
+): Promise<any> {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      const receipt = await provider.getTransactionReceipt(txHash);
+      if (receipt) {
+        return receipt;
+      }
+      // Transaction not mined yet, wait before next poll
+      const delay = baseDelayMs * Math.pow(1.5, attempt);
+      await new Promise((r) => setTimeout(r, delay));
+      attempt++;
+    } catch (error: any) {
+      const isRateLimit =
+        error?.code === -32005 ||
+        error?.error?.code === -32005 ||
+        error?.message?.includes?.('Too Many Requests') ||
+        error?.message?.includes?.('rate limit');
+
+      if (isRateLimit && attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        console.warn(
+          `[tx-helper] Rate limit hit, waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`,
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        attempt++;
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error(
+    `Transaction ${txHash} not found after ${maxRetries} attempts`,
+  );
 }
