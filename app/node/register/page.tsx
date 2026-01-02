@@ -186,6 +186,9 @@ export default function NodeRegistrationPage() {
         return;
       }
 
+      // Note: The contract expects Asset[] structs, not class names
+      // For initial registration, we'll use empty arrays and add assets after registration
+      // The selected asset classes are stored for reference but won't be used in registration
       const nodeData = {
         address: '', // This will be set by the contract
         owner: walletAddress,
@@ -198,9 +201,11 @@ export default function NodeRegistrationPage() {
         },
         validNode: '0x01',
         status: 'Active' as const,
-        supportedAssets: values.supportedAssets,
-        capacity: values.capacity.map((v) => parseInt(v, 10)),
-        assetPrices: values.supportedAssets.map(() => 0), // Default prices to 0 if not provided
+        // Use empty arrays for initial registration - assets can be added after registration
+        // The selected asset classes are for UI purposes only
+        supportedAssets: [],
+        capacity: [],
+        assetPrices: [],
       };
 
       await registerNode(nodeData);
