@@ -29,7 +29,7 @@ export const NEXT_PUBLIC_RPC_URL_8453 = "https://base-mainnet.infura.io/v3/281df
 // =============================================================================
 
 // Ponder indexer GraphQL endpoint (via Cloudflare Tunnel for HTTPS)
-export const NEXT_PUBLIC_INDEXER_URL = "https://subsidiary-speaking-extras-rising.trycloudflare.com/graphql";
+export const NEXT_PUBLIC_INDEXER_URL = "https://bend-domains-induced-tmp.trycloudflare.com/graphql";
 export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 
