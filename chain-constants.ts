@@ -19,6 +19,7 @@ export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
 export const NEXT_PUBLIC_CLOB_ADDRESS =
   '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc';
 
+//
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
 export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 
