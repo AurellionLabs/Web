@@ -63,6 +63,7 @@ export class PlatformRepository implements IPlatformRepository {
   }
 
   async getSupportedAssetClasses(): Promise<string[]> {
+    console.log('[PlatformRepository] getSupportedAssetClasses: Starting...');
     const supportedClasses: string[] = [];
     // Cap iterations to avoid infinite loops
     const MAX_ITERATIONS = 100;
@@ -70,9 +71,19 @@ export class PlatformRepository implements IPlatformRepository {
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       try {
         const className = await this.contract.supportedClasses(i);
+        console.log(
+          `[PlatformRepository] Successfully read supportedClasses[${i}]: "${className}"`,
+        );
         // Filter out empty strings (tombstoned entries)
         if (className && className.length > 0) {
           supportedClasses.push(className);
+          console.log(
+            `[PlatformRepository] Added class "${className}" to array. Total: ${supportedClasses.length}`,
+          );
+        } else {
+          console.log(
+            `[PlatformRepository] Index ${i} returned empty string, skipping`,
+          );
         }
       } catch (err: any) {
         // Check if this is an end-of-array error (expected when reaching the end)
@@ -82,20 +93,47 @@ export class PlatformRepository implements IPlatformRepository {
           err?.code === 'CALL_EXCEPTION' ||
           err?.code === 'UNPREDICTABLE_GAS_LIMIT' ||
           err?.message?.includes('could not decode') ||
-          err?.message?.includes('execution reverted');
+          err?.message?.includes('execution reverted') ||
+          err?.message?.includes('missing revert data');
+
+        console.log(`[PlatformRepository] Error at index ${i}:`, {
+          code: err?.code,
+          message: err?.message,
+          isEndOfArray,
+          currentClassesCount: supportedClasses.length,
+          errorStructure: {
+            code: err?.code,
+            info: err?.info,
+            reason: err?.reason,
+            data: err?.data,
+          },
+        });
 
         if (isEndOfArray) {
           // End of array reached - this is expected, not an error
+          console.log(
+            `[PlatformRepository] Detected end of array at index ${i}. Breaking loop.`,
+          );
           break;
         }
         // For other unexpected errors, log a warning but continue
-        console.warn(`Error reading supportedClasses[${i}]:`, err);
+        console.warn(
+          `[PlatformRepository] Error reading supportedClasses[${i}]:`,
+          err,
+        );
         // If we've read at least one class, assume we've hit the end
         if (supportedClasses.length > 0) {
+          console.log(
+            `[PlatformRepository] Have ${supportedClasses.length} classes, breaking on error at index ${i}`,
+          );
           break;
         }
       }
     }
+    console.log(
+      `[PlatformRepository] getSupportedAssetClasses: Returning ${supportedClasses.length} classes:`,
+      supportedClasses,
+    );
     return supportedClasses;
   }
 
