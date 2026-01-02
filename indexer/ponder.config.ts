@@ -30,6 +30,14 @@ const START_BLOCKS = {
 };
 
 export default createConfig({
+  cors: {
+    origins: [
+      'https://aurellionlabs.com',
+      'https://www.aurellionlabs.com',
+      'https://web-gk8i9h3wk-aurellion.vercel.app',
+      'https://indexer.aurellionlabs.com',
+    ],
+  },
   networks: {
     baseSepolia: {
       chainId: BASE_SEPOLIA_CHAIN_ID,

@@ -192,7 +192,7 @@ ponder.on(
     // Insert node asset
     await context.db.insert(nodeAssets).values({
       id: assetId,
-      nodeAddress: node,
+      node: node,
       token: asset.token,
       tokenId: asset.tokenId,
       price: asset.price,
@@ -243,7 +243,7 @@ ponder.on(
         // Insert new asset
         await context.db.insert(nodeAssets).values({
           id: assetId,
-          nodeAddress: node,
+          node: node,
           token: asset.token,
           tokenId: asset.tokenId,
           price: asset.price,

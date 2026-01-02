@@ -37,9 +37,9 @@ export const NEXT_PUBLIC_RPC_URL_8453 =
 // =============================================================================
 // SUBGRAPH / INDEXER URLS
 // =============================================================================
-// Ponder indexer GraphQL endpoint (via Cloudflare Tunnel for HTTPS)
+// Ponder indexer GraphQL endpoint (custom domain with SSL)
 export const NEXT_PUBLIC_INDEXER_URL =
-  'https://lafayette-picked-cities-sold.trycloudflare.com/graphql';
+  'https://indexer.aurellionlabs.com/graphql';
 export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
