@@ -2,19 +2,18 @@ import { gql } from 'graphql-request';
 import { OrderStatus, JourneyStatus } from '@/domain/orders/order';
 
 // =====================
-// NODE QUERIES
+// NODE QUERIES (Ponder schema)
 // =====================
 
+// Single node by ID
 export const GET_NODE_BY_ADDRESS = gql`
   query GetNodeByAddress($nodeAddress: String!) {
-    node(id: $nodeAddress) {
+    nodes(id: $nodeAddress) {
       id
       owner
-      location {
-        addressName
-        lat
-        lng
-      }
+      addressName
+      lat
+      lng
       validNode
       status
       createdAt
@@ -23,148 +22,177 @@ export const GET_NODE_BY_ADDRESS = gql`
   }
 `;
 
+// Multiple nodes by owner (use nodess for list queries with filters)
 export const GET_NODES_BY_OWNER = gql`
   query GetNodesByOwner($ownerAddress: String!) {
-    nodes(where: { owner: $ownerAddress }) {
-      id
-      owner
-      location {
+    nodess(where: { owner: $ownerAddress }) {
+      items {
+        id
+        owner
         addressName
         lat
         lng
+        validNode
+        status
+        createdAt
+        updatedAt
       }
-      validNode
-      status
-      createdAt
-      updatedAt
     }
   }
 `;
 
+// All node assets
 export const GET_ALL_NODE_ASSETS = gql`
-  query GetAllNodeAssets {
-    nodeAssets(first: 1000) {
-      token
-      tokenId
-      capacity
+  query GetAllNodeAssets($first: Int = 1000) {
+    nodeAssetss(limit: $first) {
+      items {
+        id
+        node
+        token
+        tokenId
+        price
+        capacity
+      }
+    }
+  }
+`;
+
+// Node assets for Aurum (used in TradeProvider)
+export const GET_ALL_NODE_ASSETS_AURUM = gql`
+  query GetAllNodeAssetsAurum($first: Int!, $skip: Int!) {
+    nodeAssetss(limit: $first) {
+      items {
+        id
+        node
+        token
+        tokenId
+        price
+        capacity
+        createdAt
+        updatedAt
+      }
     }
   }
 `;
 
 // =====================
-// JOURNEY QUERIES
+// JOURNEY QUERIES (Ponder schema)
 // =====================
 
 export const GET_JOURNEYS_BY_SENDER = gql`
   query GetJourneysBySender($senderAddress: String!) {
-    journeys(where: { sender: $senderAddress }) {
-      id
-      sender
-      receiver
-      driver
-      currentStatus
-      bounty
-      journeyStart
-      journeyEnd
-      eta
-      parcelData {
+    journeyss(where: { sender: $senderAddress }) {
+      items {
+        id
+        sender
+        receiver
+        driver
+        currentStatus
+        bounty
+        journeyStart
+        journeyEnd
+        eta
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        orderId
+        createdAt
       }
-      createdAt
     }
   }
 `;
 
 export const GET_JOURNEYS_BY_RECEIVER = gql`
   query GetJourneysByReceiver($receiverAddress: String!) {
-    journeys(where: { receiver: $receiverAddress }) {
-      id
-      sender
-      receiver
-      driver
-      currentStatus
-      bounty
-      journeyStart
-      journeyEnd
-      eta
-      parcelData {
+    journeyss(where: { receiver: $receiverAddress }) {
+      items {
+        id
+        sender
+        receiver
+        driver
+        currentStatus
+        bounty
+        journeyStart
+        journeyEnd
+        eta
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        orderId
+        createdAt
       }
-      createdAt
     }
   }
 `;
 
 export const GET_JOURNEYS_BY_DRIVER = gql`
   query GetJourneysByDriver($driverAddress: String!) {
-    journeys(where: { driver: $driverAddress }) {
-      id
-      sender
-      receiver
-      driver
-      currentStatus
-      bounty
-      journeyStart
-      journeyEnd
-      eta
-      parcelData {
+    journeyss(where: { driver: $driverAddress }) {
+      items {
+        id
+        sender
+        receiver
+        driver
+        currentStatus
+        bounty
+        journeyStart
+        journeyEnd
+        eta
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        orderId
+        createdAt
       }
-      createdAt
     }
   }
 `;
 
 // Journeys available to accept: no driver assigned and status Pending (0)
+// Note: Ponder uses string comparison for null checks
 export const GET_AVAILABLE_JOURNEYS = gql`
   query GetAvailableJourneys($first: Int = 100, $skip: Int = 0) {
-    journeys(
-      first: $first
-      skip: $skip
-      where: { driver: null, currentStatus: 0 }
-      orderBy: createdAt
-      orderDirection: desc
+    journeyss(
+      limit: $first
+      where: { currentStatus: "0" }
+      orderBy: "createdAt"
+      orderDirection: "desc"
     ) {
-      id
-      sender
-      receiver
-      driver
-      currentStatus
-      bounty
-      journeyStart
-      journeyEnd
-      eta
-      parcelData {
+      items {
+        id
+        sender
+        receiver
+        driver
+        currentStatus
+        bounty
+        journeyStart
+        journeyEnd
+        eta
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        orderId
+        createdAt
       }
-      createdAt
     }
   }
 `;
 
 export const GET_JOURNEY_BY_ID = gql`
   query GetJourneyById($journeyId: String!) {
-    journey(id: $journeyId) {
+    journeys(id: $journeyId) {
       id
       sender
       receiver
@@ -174,14 +202,13 @@ export const GET_JOURNEY_BY_ID = gql`
       journeyStart
       journeyEnd
       eta
-      parcelData {
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-      }
+      startLocationLat
+      startLocationLng
+      endLocationLat
+      endLocationLng
+      startName
+      endName
+      orderId
       createdAt
       updatedAt
     }
@@ -190,97 +217,93 @@ export const GET_JOURNEY_BY_ID = gql`
 
 export const GET_ALL_JOURNEYS = gql`
   query GetAllJourneys($first: Int = 100, $skip: Int = 0) {
-    journeys(
-      first: $first
-      skip: $skip
-      orderBy: createdAt
-      orderDirection: desc
-    ) {
-      id
-      sender
-      receiver
-      driver
-      currentStatus
-      bounty
-      journeyStart
-      journeyEnd
-      eta
-      parcelData {
+    journeyss(limit: $first, orderBy: "createdAt", orderDirection: "desc") {
+      items {
+        id
+        sender
+        receiver
+        driver
+        currentStatus
+        bounty
+        journeyStart
+        journeyEnd
+        eta
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        orderId
+        createdAt
       }
-      createdAt
     }
   }
 `;
 
 // =====================
-// ORDER QUERIES
+// ORDER QUERIES (Ponder schema)
 // =====================
 
 export const GET_ORDERS_BY_BUYER = gql`
   query GetOrdersByBuyer($buyerAddress: String!) {
-    orders(where: { buyer: $buyerAddress }) {
-      id
-      buyer
-      seller
-      token
-      tokenId
-      tokenQuantity
-      requestedTokenQuantity
-      price
-      txFee
-      currentStatus
-      locationData {
+    orderss(where: { buyer: $buyerAddress }) {
+      items {
+        id
+        buyer
+        seller
+        token
+        tokenId
+        tokenQuantity
+        requestedTokenQuantity
+        price
+        txFee
+        currentStatus
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        nodes
+        createdAt
+        updatedAt
       }
-      nodes
-      createdAt
-      updatedAt
     }
   }
 `;
 
 export const GET_ORDERS_BY_SELLER = gql`
   query GetOrdersBySeller($sellerAddress: String!) {
-    orders(where: { seller: $sellerAddress }) {
-      id
-      buyer
-      seller
-      token
-      tokenId
-      tokenQuantity
-      requestedTokenQuantity
-      price
-      txFee
-      currentStatus
-      locationData {
+    orderss(where: { seller: $sellerAddress }) {
+      items {
+        id
+        buyer
+        seller
+        token
+        tokenId
+        tokenQuantity
+        requestedTokenQuantity
+        price
+        txFee
+        currentStatus
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        nodes
+        createdAt
+        updatedAt
       }
-      nodes
-      createdAt
-      updatedAt
     }
   }
 `;
 
 export const GET_ORDER_BY_ID = gql`
   query GetOrderById($orderId: String!) {
-    order(id: $orderId) {
+    orders(id: $orderId) {
       id
       buyer
       seller
@@ -291,14 +314,12 @@ export const GET_ORDER_BY_ID = gql`
       price
       txFee
       currentStatus
-      locationData {
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-      }
+      startLocationLat
+      startLocationLng
+      endLocationLat
+      endLocationLng
+      startName
+      endName
       nodes
       createdAt
       updatedAt
@@ -308,28 +329,28 @@ export const GET_ORDER_BY_ID = gql`
 
 export const GET_ORDERS_BY_NODE = gql`
   query GetOrdersByNode($nodeAddress: String!) {
-    orders(where: { nodes_contains: [$nodeAddress] }) {
-      id
-      buyer
-      seller
-      token
-      tokenId
-      tokenQuantity
-      requestedTokenQuantity
-      price
-      txFee
-      currentStatus
-      locationData {
+    orderss(where: { nodes_contains: $nodeAddress }) {
+      items {
+        id
+        buyer
+        seller
+        token
+        tokenId
+        tokenQuantity
+        requestedTokenQuantity
+        price
+        txFee
+        currentStatus
         startLocationLat
         startLocationLng
         endLocationLat
         endLocationLng
         startName
         endName
+        nodes
+        createdAt
+        updatedAt
       }
-      nodes
-      createdAt
-      updatedAt
     }
   }
 `;
@@ -337,34 +358,37 @@ export const GET_ORDERS_BY_NODE = gql`
 // Fetch journeys associated to an order by order ID
 export const GET_JOURNEYS_BY_ORDER_ID = gql`
   query GetJourneysByOrderId($orderId: String!) {
-    journeys(where: { order: $orderId }) {
-      id
+    journeyss(where: { orderId: $orderId }) {
+      items {
+        id
+      }
     }
   }
 `;
 
 // =====================
-// ASSET QUERIES (existing, kept for compatibility)
+// ASSET QUERIES (Ponder schema)
 // =====================
 
 export const GET_NODE_TOKENIDS = gql`
   query GetNodeTokenIds($nodeAddress: String!) {
-    nodeAssets(where: { nodeAddress: $nodeAddress }) {
-      tokenId
+    nodeAssetss(where: { node: $nodeAddress }) {
+      items {
+        tokenId
+      }
     }
   }
 `;
 
 export const GET_NODE_MINTED_ASSETS = gql`
   query GetNodeMintedAssets($nodeAddress: String!) {
-    nodeAssets(where: { nodeAddress: $nodeAddress }) {
-      tokenId
-      name
-      class
-      fileHash
-      mintEvents {
-        amount
-        blockTimestamp
+    nodeAssetss(where: { node: $nodeAddress }) {
+      items {
+        id
+        tokenId
+        token
+        capacity
+        price
       }
     }
   }
@@ -372,40 +396,73 @@ export const GET_NODE_MINTED_ASSETS = gql`
 
 export const GET_NODE_ASSETS_COMPLETE = gql`
   query GetNodeAssetsComplete($nodeAddress: String!) {
-    nodeAssets(where: { nodeAddress: $nodeAddress }) {
-      tokenId
-      name
-      class
-      fileHash
-      mintEvents {
-        amount
-        blockTimestamp
-      }
-      transferEvents {
-        from
-        to
-        amount
-        blockTimestamp
+    nodeAssetss(where: { node: $nodeAddress }) {
+      items {
+        id
+        node
+        token
+        tokenId
+        capacity
+        price
+        createdAt
+        updatedAt
       }
     }
   }
 `;
 
 // =====================
-// AGGREGATION QUERIES
+// ASSET METADATA QUERIES (for assets table)
+// =====================
+
+export const GET_ALL_ASSETS = gql`
+  query GetAllAssets($first: Int!, $skip: Int!) {
+    assetss(limit: $first, orderBy: "tokenId", orderDirection: "asc") {
+      items {
+        id
+        tokenId
+        name
+        class
+        unit
+        description
+        imageUri
+        totalSupply
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+export const GET_ASSET_BY_TOKEN_ID = gql`
+  query GetAssetByTokenId($tokenId: String!) {
+    assets(id: $tokenId) {
+      id
+      tokenId
+      name
+      class
+      unit
+      description
+      imageUri
+      totalSupply
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// =====================
+// AGGREGATION QUERIES (Ponder schema)
 // =====================
 
 export const GET_ASSET_CAPACITY_AGGREGATION = gql`
   query GetAssetCapacityAggregation {
-    assetCapacities {
-      token
-      tokenId
-      totalCapacity
-      totalAllocated
-      availableCapacity
-      nodes {
+    assetCapacitys(limit: 1000) {
+      items {
         id
-        capacity
+        token
+        tokenId
+        totalCapacity
       }
     }
   }
@@ -413,41 +470,33 @@ export const GET_ASSET_CAPACITY_AGGREGATION = gql`
 
 export const GET_DRIVER_STATISTICS = gql`
   query GetDriverStatistics($driverAddress: String!) {
-    driver(id: $driverAddress) {
+    driverStats(id: $driverAddress) {
       id
       totalJourneys
       completedJourneys
       totalEarnings
-      averageRating
-      journeys(first: 10, orderBy: createdAt, orderDirection: desc) {
-        id
-        currentStatus
-        bounty
-        journeyStart
-        journeyEnd
-      }
     }
   }
 `;
 
 // =====================
-// RESPONSE TYPES
+// RESPONSE TYPES (Updated for Ponder's flat structure)
 // =====================
 
+// Ponder returns flat structure, no nested location object
 export interface NodeGraphResponse {
   id: string;
   owner: string;
-  location: {
-    addressName: string;
-    lat: string;
-    lng: string;
-  };
+  addressName: string;
+  lat: string;
+  lng: string;
   validNode: boolean;
   status: string;
   createdAt: string;
   updatedAt?: string;
 }
 
+// Ponder returns flat structure, no nested parcelData object
 export interface JourneyGraphResponse {
   id: string;
   sender: string;
@@ -458,18 +507,18 @@ export interface JourneyGraphResponse {
   journeyStart: string;
   journeyEnd: string;
   eta: string;
-  parcelData: {
-    startLocationLat: string;
-    startLocationLng: string;
-    endLocationLat: string;
-    endLocationLng: string;
-    startName: string;
-    endName: string;
-  };
+  startLocationLat: string;
+  startLocationLng: string;
+  endLocationLat: string;
+  endLocationLng: string;
+  startName: string;
+  endName: string;
+  orderId: string;
   createdAt: string;
   updatedAt?: string;
 }
 
+// Ponder returns flat structure, no nested locationData object
 export interface OrderGraphResponse {
   id: string;
   buyer: string;
@@ -481,20 +530,42 @@ export interface OrderGraphResponse {
   price: string;
   txFee: string;
   currentStatus: string;
-  locationData: {
-    startLocationLat: string;
-    startLocationLng: string;
-    endLocationLat: string;
-    endLocationLng: string;
-    startName: string;
-    endName: string;
-  };
+  startLocationLat: string;
+  startLocationLng: string;
+  endLocationLat: string;
+  endLocationLng: string;
+  startName: string;
+  endName: string;
   nodes: string[];
   createdAt: string;
   updatedAt?: string;
 }
 
-// Existing types for compatibility
+export interface NodeAssetGraphResponse {
+  id: string;
+  node: string;
+  token: string;
+  tokenId: string;
+  price: string;
+  capacity: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AssetGraphResponse {
+  id: string;
+  tokenId: string;
+  name: string;
+  class: string;
+  unit: string;
+  description: string;
+  imageUri: string;
+  totalSupply: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// Legacy types for compatibility (deprecated)
 export interface NodeAssetsGraphResponse {
   nodeAssets: {
     tokenId: string;
@@ -519,7 +590,7 @@ export interface NodeAssetsGraphResponse {
 // =====================
 
 /**
- * Calculate current balances from mint/transfer events (existing function, kept for compatibility)
+ * Calculate current balances from mint/transfer events (legacy, kept for compatibility)
  */
 export function calculateCurrentBalances(
   nodeAssets: NodeAssetsGraphResponse['nodeAssets'],
@@ -551,9 +622,6 @@ export function calculateCurrentBalances(
 }
 
 /**
- * Convert Graph response to domain Journey
- */
-/**
  * Helper: Convert contract/graph numeric status to JourneyStatus enum
  * Exported for use in repositories
  */
@@ -576,31 +644,34 @@ export function convertNumericToJourneyStatus(
   }
 }
 
+/**
+ * Convert Graph response to domain Journey (updated for Ponder's flat structure)
+ */
 export function convertGraphJourneyToDomain(
   graphJourney: JourneyGraphResponse,
 ) {
   return {
     parcelData: {
       startLocation: {
-        lat: graphJourney.parcelData.startLocationLat,
-        lng: graphJourney.parcelData.startLocationLng,
+        lat: graphJourney.startLocationLat,
+        lng: graphJourney.startLocationLng,
       },
       endLocation: {
-        lat: graphJourney.parcelData.endLocationLat,
-        lng: graphJourney.parcelData.endLocationLng,
+        lat: graphJourney.endLocationLat,
+        lng: graphJourney.endLocationLng,
       },
-      startName: graphJourney.parcelData.startName,
-      endName: graphJourney.parcelData.endName,
+      startName: graphJourney.startName,
+      endName: graphJourney.endName,
     },
     journeyId: graphJourney.id,
     currentStatus: convertNumericToJourneyStatus(graphJourney.currentStatus),
     sender: graphJourney.sender,
     receiver: graphJourney.receiver,
     driver: graphJourney.driver,
-    journeyStart: BigInt(graphJourney.journeyStart),
-    journeyEnd: BigInt(graphJourney.journeyEnd),
-    bounty: BigInt(graphJourney.bounty),
-    ETA: BigInt(graphJourney.eta),
+    journeyStart: BigInt(graphJourney.journeyStart || '0'),
+    journeyEnd: BigInt(graphJourney.journeyEnd || '0'),
+    bounty: BigInt(graphJourney.bounty || '0'),
+    ETA: BigInt(graphJourney.eta || '0'),
   };
 }
 
@@ -628,46 +699,48 @@ export function convertNumericToOrderStatus(
 }
 
 /**
- * Convert Graph response to domain Order
+ * Convert Graph response to domain Order (updated for Ponder's flat structure)
  */
 export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
   const domainOrder: any = {
     id: graphOrder.id,
     token: graphOrder.token,
     tokenId: graphOrder.tokenId,
-    tokenQuantity: graphOrder.tokenQuantity, // This is a count, not a USDT value
+    tokenQuantity: graphOrder.tokenQuantity,
     requestedTokenQuantity: graphOrder.requestedTokenQuantity,
     price: graphOrder.price,
     txFee: graphOrder.txFee,
     buyer: graphOrder.buyer,
     seller: graphOrder.seller,
     journeyIds: [],
-    nodes: graphOrder.nodes,
+    nodes: graphOrder.nodes || [],
     locationData: {
       startLocation: {
-        lat: graphOrder.locationData.startLocationLat,
-        lng: graphOrder.locationData.startLocationLng,
+        lat: graphOrder.startLocationLat,
+        lng: graphOrder.startLocationLng,
       },
       endLocation: {
-        lat: graphOrder.locationData.endLocationLat,
-        lng: graphOrder.locationData.endLocationLng,
+        lat: graphOrder.endLocationLat,
+        lng: graphOrder.endLocationLng,
       },
-      startName: graphOrder.locationData.startName,
-      endName: graphOrder.locationData.endName,
+      startName: graphOrder.startName,
+      endName: graphOrder.endName,
     },
     currentStatus: convertNumericToOrderStatus(graphOrder.currentStatus),
-    contractualAgreement: '', // Default empty string for now
+    contractualAgreement: '',
   };
   return domainOrder;
 }
 
-// Optional: Node converter for convenience
+/**
+ * Convert Graph response to domain Node (updated for Ponder's flat structure)
+ */
 export function convertGraphNodeToDomain(node: NodeGraphResponse) {
   return {
     address: node.id,
     location: {
-      addressName: node.location.addressName,
-      location: { lat: node.location.lat, lng: node.location.lng },
+      addressName: node.addressName,
+      location: { lat: node.lat, lng: node.lng },
     },
     validNode: Boolean(node.validNode),
     owner: node.owner,
@@ -679,4 +752,15 @@ export function convertGraphNodeToDomain(node: NodeGraphResponse) {
       return 'Inactive';
     })(node.status),
   } as any;
+}
+
+/**
+ * Extract items from Ponder's paginated response
+ * Ponder returns { items: [...] } for list queries
+ */
+export function extractPonderItems<T>(response: { items?: T[] } | T[]): T[] {
+  if (Array.isArray(response)) {
+    return response;
+  }
+  return response?.items || [];
 }
