@@ -15,9 +15,8 @@ interface IOwnership {
 
     function transferOwnership(address _newOwner) external;
 
-    function transferOwnershipWithAcceptance(
-        address _newOwner,
-        address _pendingOwner
-    ) external;
+    function acceptOwnership() external;
+
+    function renounceOwnership() external;
 }
 

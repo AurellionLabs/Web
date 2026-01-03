@@ -1,240 +1,302 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { AppStorage } from '../storage/AppStorage.sol';
+import { DiamondStorage } from '../libraries/DiamondStorage.sol';
+import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 /**
  * @title BridgeFacet
  * @notice Business logic facet for order bridging between CLOB and AuSys
- * @dev Combines OrderBridge functionality
+ * @dev Combines OrderBridge functionality with full logistics and settlement
  */
-contract BridgeFacet is AppStorage, Initializable {
+contract BridgeFacet is Initializable {
     event UnifiedOrderCreated(
-        bytes32 indexed orderId,
-        address indexed buyer,
+        bytes32 indexed unifiedOrderId,
+        bytes32 indexed clobOrderId,
+        address buyer,
+        address seller,
+        address token,
+        uint256 tokenId,
+        uint256 quantity,
+        uint256 price
+    );
+    event TradeMatched(
+        bytes32 indexed unifiedOrderId,
+        bytes32 clobTradeId,
         bytes32 clobOrderId,
+        address maker,
         uint256 price,
         uint256 amount
     );
-    event OrderBridged(bytes32 indexed orderId, bytes32 clobOrderId);
-    event LogisticsPhaseUpdated(
-        bytes32 indexed orderId,
-        string phase
+    event LogisticsOrderCreated(
+        bytes32 indexed unifiedOrderId,
+        bytes32 ausysOrderId,
+        bytes32[] journeyIds,
+        uint256 bounty,
+        address node
     );
-    event BountyPaid(bytes32 indexed orderId, uint256 amount);
+    event JourneyStatusUpdated(
+        bytes32 indexed unifiedOrderId,
+        bytes32 indexed journeyId,
+        uint8 phase
+    );
+    event OrderSettled(
+        bytes32 indexed unifiedOrderId,
+        address seller,
+        uint256 sellerAmount,
+        address driver,
+        uint256 driverAmount
+    );
+    event OrderCancelled(
+        bytes32 indexed unifiedOrderId,
+        uint8 previousStatus
+    );
+    event BountyPaid(bytes32 indexed unifiedOrderId, uint256 amount);
     event FeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
-    event FeePercentageUpdated(uint256 oldPercentage, uint256 newPercentage);
 
-    enum LogisticsPhase {
-        None,
-        Pending,
-        InTransit,
-        Delivered,
-        Completed
-    }
+    uint256 public constant BOUNTY_PERCENTAGE = 100; // 1%
+    uint256 public constant PROTOCOL_FEE_PERCENTAGE = 50; // 0.5%
 
-    enum UnifiedOrderStatus {
-        Created,
-        Bridged,
-        InTransit,
-        Delivered,
-        Completed,
-        Cancelled
-    }
-
-    struct UnifiedOrder {
-        address buyer;
-        bytes32 clobOrderId;
-        uint256 price;
-        uint256 amount;
-        UnifiedOrderStatus status;
-        LogisticsPhase logisticsPhase;
-        uint256 bountyAmount;
-        address feeRecipient;
-        uint256 createdAt;
-    }
-
-    mapping(bytes32 => UnifiedOrder) public unifiedOrders;
-    bytes32[] public unifiedOrderIds;
-    uint256 public totalOrders;
-
-    // Fee configuration
     address public feeRecipient;
-    uint256 public protocolFeePercentage; // Basis points
-    uint256 public bountyPercentage; // Basis points
-
-    // Location tracking
-    struct Location {
-        int256 lat;
-        int256 lng;
-    }
-
-    mapping(bytes32 => Location) public startLocations;
-    mapping(bytes32 => Location) public endLocations;
 
     function initialize() public initializer {
         feeRecipient = LibDiamond.contractOwner();
-        protocolFeePercentage = 50; // 0.5%
-        bountyPercentage = 100; // 1%
-        s.clobAddress = address(0);
-        s.ausysAddress = address(0);
-        s.quoteTokenAddress = address(0);
     }
 
     function createUnifiedOrder(
         bytes32 _clobOrderId,
+        address _sellerNode,
         uint256 _price,
-        uint256 _amount,
-        Location memory _startLocation,
-        Location memory _endLocation
-    ) external returns (bytes32 orderId) {
-        // Generate unique order ID
-        orderId = keccak256(
+        uint256 _quantity
+    ) external returns (bytes32 unifiedOrderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+
+        unifiedOrderId = keccak256(
             abi.encodePacked(_clobOrderId, msg.sender, block.timestamp)
         );
 
-        // Calculate fees
-        uint256 bounty = (_price * _amount * bountyPercentage) / 10000;
+        uint256 bounty = (_price * _quantity * BOUNTY_PERCENTAGE) / 10000;
 
-        unifiedOrders[orderId] = UnifiedOrder({
-            buyer: msg.sender,
+        s.unifiedOrders[unifiedOrderId] = DiamondStorage.UnifiedOrder({
             clobOrderId: _clobOrderId,
+            clobTradeId: bytes32(0),
+            ausysOrderId: bytes32(0),
+            buyer: msg.sender,
+            seller: address(0),
+            sellerNode: _sellerNode,
+            token: address(0),
+            tokenId: 0,
+            tokenQuantity: _quantity,
             price: _price,
-            amount: _amount,
-            status: UnifiedOrderStatus.Created,
-            logisticsPhase: LogisticsPhase.None,
-            bountyAmount: bounty,
-            feeRecipient: feeRecipient,
-            createdAt: block.timestamp
+            bounty: bounty,
+            status: 0,
+            logisticsStatus: 0,
+            createdAt: block.timestamp,
+            matchedAt: 0,
+            deliveredAt: 0,
+            settledAt: 0
         });
 
-        startLocations[orderId] = _startLocation;
-        endLocations[orderId] = _endLocation;
+        s.unifiedOrderIds.push(unifiedOrderId);
+        s.totalUnifiedOrders++;
 
-        unifiedOrderIds.push(orderId);
-        totalOrders++;
-
-        emit UnifiedOrderCreated(orderId, msg.sender, _clobOrderId, _price, _amount);
-
-        return orderId;
-    }
-
-    function bridgeOrder(bytes32 _orderId) external {
-        require(
-            unifiedOrders[_orderId].buyer == msg.sender,
-            'Not the buyer'
-        );
-        require(
-            unifiedOrders[_orderId].status == UnifiedOrderStatus.Created,
-            'Order not in created status'
+        emit UnifiedOrderCreated(
+            unifiedOrderId,
+            _clobOrderId,
+            msg.sender,
+            address(0),
+            address(0),
+            0,
+            _quantity,
+            _price
         );
 
-        unifiedOrders[_orderId].status = UnifiedOrderStatus.Bridged;
-        emit OrderBridged(_orderId, unifiedOrders[_orderId].clobOrderId);
+        return unifiedOrderId;
     }
 
-    function updateLogisticsPhase(bytes32 _orderId, LogisticsPhase _phase)
-        external
-    {
+    function bridgeTradeToLogistics(
+        bytes32 _unifiedOrderId,
+        bytes32 _clobTradeId,
+        bytes32 _ausysOrderId,
+        address _seller,
+        address _token,
+        uint256 _tokenId
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(
-            unifiedOrders[_orderId].buyer == msg.sender ||
-                unifiedOrders[_orderId].feeRecipient == msg.sender,
+            s.unifiedOrders[_unifiedOrderId].buyer == msg.sender ||
+            LibDiamond.contractOwner() == msg.sender,
             'Not authorized'
         );
+        require(s.unifiedOrders[_unifiedOrderId].status == 0, 'Order not in created status');
 
-        LogisticsPhase oldPhase = unifiedOrders[_orderId].logisticsPhase;
-        unifiedOrders[_orderId].logisticsPhase = _phase;
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
+        order.clobTradeId = _clobTradeId;
+        order.ausysOrderId = _ausysOrderId;
+        order.seller = _seller;
+        order.token = _token;
+        order.tokenId = _tokenId;
+        order.status = 1;
+        order.matchedAt = block.timestamp;
 
-        emit LogisticsPhaseUpdated(
-            _orderId,
-            _phase == LogisticsPhase.None
-                ? 'None'
-                : _phase == LogisticsPhase.Pending
-                ? 'Pending'
-                : _phase == LogisticsPhase.InTransit
-                ? 'InTransit'
-                : _phase == LogisticsPhase.Delivered
-                ? 'Delivered'
-                : 'Completed'
+        emit TradeMatched(
+            _unifiedOrderId,
+            _clobTradeId,
+            order.clobOrderId,
+            _seller,
+            order.price,
+            order.tokenQuantity
         );
     }
 
-    function completeOrder(bytes32 _orderId) external {
+    function createLogisticsOrder(bytes32 _unifiedOrderId) external returns (bytes32 journeyId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(
-            unifiedOrders[_orderId].buyer == msg.sender,
-            'Not the buyer'
+            s.unifiedOrders[_unifiedOrderId].seller == msg.sender ||
+            s.unifiedOrders[_unifiedOrderId].sellerNode == msg.sender,
+            'Not seller or node'
         );
-        require(
-            unifiedOrders[_orderId].logisticsPhase == LogisticsPhase.Delivered,
-            'Order not delivered'
+        require(s.unifiedOrders[_unifiedOrderId].status == 1, 'Order not bridged');
+
+        journeyId = keccak256(
+            abi.encodePacked(_unifiedOrderId, block.timestamp)
         );
 
-        unifiedOrders[_orderId].status = UnifiedOrderStatus.Completed;
-        emit LogisticsPhaseUpdated(_orderId, 'Completed');
+        s.journeys[journeyId] = DiamondStorage.Journey({
+            unifiedOrderId: _unifiedOrderId,
+            driver: address(0),
+            phase: 0,
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
+        });
+
+        s.orderJourneys[_unifiedOrderId].push(journeyId);
+        s.totalJourneys[_unifiedOrderId]++;
+
+        emit LogisticsOrderCreated(
+            _unifiedOrderId,
+            s.unifiedOrders[_unifiedOrderId].ausysOrderId,
+            s.orderJourneys[_unifiedOrderId],
+            s.unifiedOrders[_unifiedOrderId].bounty,
+            s.unifiedOrders[_unifiedOrderId].sellerNode
+        );
     }
 
-    function cancelOrder(bytes32 _orderId) external {
+    function updateJourneyStatus(bytes32 _journeyId, uint8 _phase) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(_phase <= 3, 'Invalid phase');
         require(
-            unifiedOrders[_orderId].buyer == msg.sender,
-            'Not the buyer'
-        );
-        require(
-            unifiedOrders[_orderId].status == UnifiedOrderStatus.Created ||
-                unifiedOrders[_orderId].status == UnifiedOrderStatus.Bridged,
-            'Cannot cancel in current status'
+            s.journeys[_journeyId].driver == msg.sender ||
+            LibDiamond.contractOwner() == msg.sender,
+            'Not driver or owner'
         );
 
-        unifiedOrders[_orderId].status = UnifiedOrderStatus.Cancelled;
+        DiamondStorage.Journey storage journey = s.journeys[_journeyId];
+        bytes32 unifiedOrderId = journey.unifiedOrderId;
+
+        journey.phase = _phase;
+        journey.updatedAt = block.timestamp;
+
+        emit JourneyStatusUpdated(unifiedOrderId, _journeyId, _phase);
+
+        s.unifiedOrders[unifiedOrderId].logisticsStatus = _phase;
+
+        if (_phase == 3) {
+            s.unifiedOrders[unifiedOrderId].deliveredAt = block.timestamp;
+        }
+    }
+
+    function settleOrder(bytes32 _unifiedOrderId) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.unifiedOrders[_unifiedOrderId].buyer == msg.sender, 'Not buyer');
+        require(s.unifiedOrders[_unifiedOrderId].logisticsStatus == 3, 'Order not delivered');
+        require(s.unifiedOrders[_unifiedOrderId].status == 1, 'Order not bridged');
+
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
+
+        uint256 orderValue = order.price * order.tokenQuantity;
+        uint256 protocolFee = (orderValue * PROTOCOL_FEE_PERCENTAGE) / 10000;
+        uint256 bounty = order.bounty;
+        uint256 sellerAmount = orderValue - protocolFee - bounty;
+
+        order.status = 4;
+        order.settledAt = block.timestamp;
+
+        emit OrderSettled(_unifiedOrderId, order.seller, sellerAmount, address(0), bounty);
+        emit BountyPaid(_unifiedOrderId, bounty);
+    }
+
+    function cancelUnifiedOrder(bytes32 _unifiedOrderId) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(
+            s.unifiedOrders[_unifiedOrderId].buyer == msg.sender ||
+            LibDiamond.contractOwner() == msg.sender,
+            'Not authorized'
+        );
+        require(s.unifiedOrders[_unifiedOrderId].status == 0, 'Can only cancel created orders');
+
+        uint8 previousStatus = s.unifiedOrders[_unifiedOrderId].status;
+        s.unifiedOrders[_unifiedOrderId].status = 5;
+
+        emit OrderCancelled(_unifiedOrderId, previousStatus);
     }
 
     function getUnifiedOrder(bytes32 _orderId)
         external
         view
         returns (
-            address buyer,
             bytes32 clobOrderId,
+            bytes32 clobTradeId,
+            bytes32 ausysOrderId,
+            address buyer,
+            address seller,
+            address sellerNode,
+            address token,
+            uint256 tokenId,
+            uint256 tokenQuantity,
             uint256 price,
-            uint256 amount,
+            uint256 bounty,
             string memory status,
-            string memory logisticsPhase,
-            uint256 bountyAmount,
-            uint256 createdAt
+            uint8 logisticsStatus,
+            uint256 createdAt,
+            uint256 matchedAt,
+            uint256 deliveredAt,
+            uint256 settledAt
         )
     {
-        UnifiedOrder storage order = unifiedOrders[_orderId];
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_orderId];
         return (
-            order.buyer,
             order.clobOrderId,
+            order.clobTradeId,
+            order.ausysOrderId,
+            order.buyer,
+            order.seller,
+            order.sellerNode,
+            order.token,
+            order.tokenId,
+            order.tokenQuantity,
             order.price,
-            order.amount,
-            order.status == UnifiedOrderStatus.Created
+            order.bounty,
+            order.status == 0
                 ? 'Created'
-                : order.status == UnifiedOrderStatus.Bridged
+                : order.status == 1
                 ? 'Bridged'
-                : order.status == UnifiedOrderStatus.InTransit
-                ? 'InTransit'
-                : order.status == UnifiedOrderStatus.Delivered
-                ? 'Delivered'
-                : order.status == UnifiedOrderStatus.Completed
+                : order.status == 4
                 ? 'Completed'
                 : 'Cancelled',
-            order.logisticsPhase == LogisticsPhase.None
-                ? 'None'
-                : order.logisticsPhase == LogisticsPhase.Pending
-                ? 'Pending'
-                : order.logisticsPhase == LogisticsPhase.InTransit
-                ? 'InTransit'
-                : order.logisticsPhase == LogisticsPhase.Delivered
-                ? 'Delivered'
-                : 'Completed',
-            order.bountyAmount,
-            order.createdAt
+            order.logisticsStatus,
+            order.createdAt,
+            order.matchedAt,
+            order.deliveredAt,
+            order.settledAt
         );
     }
 
-    function getTotalOrders() external view returns (uint256) {
-        return totalOrders;
+    function getTotalUnifiedOrders() external view returns (uint256) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.totalUnifiedOrders;
     }
 
     function setFeeRecipient(address _newRecipient) external {
@@ -243,28 +305,4 @@ contract BridgeFacet is AppStorage, Initializable {
         feeRecipient = _newRecipient;
         emit FeeRecipientUpdated(oldRecipient, _newRecipient);
     }
-
-    function setProtocolFeePercentage(uint256 _newPercentage) external {
-        LibDiamond.enforceIsContractOwner();
-        uint256 oldPercentage = protocolFeePercentage;
-        protocolFeePercentage = _newPercentage;
-        emit FeePercentageUpdated(oldPercentage, _newPercentage);
-    }
-
-    function setBountyPercentage(uint256 _newPercentage) external {
-        LibDiamond.enforceIsContractOwner();
-        bountyPercentage = _newPercentage;
-    }
-
-    function setAddresses(
-        address _clobAddress,
-        address _ausysAddress,
-        address _quoteTokenAddress
-    ) external {
-        LibDiamond.enforceIsContractOwner();
-        s.clobAddress = _clobAddress;
-        s.ausysAddress = _ausysAddress;
-        s.quoteTokenAddress = _quoteTokenAddress;
-    }
 }
-

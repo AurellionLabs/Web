@@ -1,16 +1,27 @@
-import { HardhatUserConfig } from 'hardhat/config';
+import { HardhatUserConfig, task } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
-import '@typechain/hardhat';
+import '@nomicfoundation/hardhat-verify';
+import '@openzeppelin/hardhat-upgrades';
 import 'dotenv/config';
-import 'tsconfig-paths/register';
+
+task('get-selectors', 'Print function selectors').setAction(async (args, hre) => {
+  const OrdersFacet = await hre.ethers.getContractFactory('OrdersFacet');
+  const CLOBFacet = await hre.ethers.getContractFactory('CLOBFacet');
+
+  console.log('OrdersFacet selectors:');
+  console.log('  createOrder:', OrdersFacet.interface.getFunction('createOrder').selector);
+  console.log('  cancelOrder:', OrdersFacet.interface.getFunction('cancelOrder').selector);
+  console.log('  getOrder:', OrdersFacet.interface.getFunction('getOrder').selector);
+  console.log('  updateOrderStatus:', OrdersFacet.interface.getFunction('updateOrderStatus').selector);
+
+  console.log('\nCLOBFacet selectors:');
+  console.log('  createMarket:', CLOBFacet.interface.getFunction('createMarket').selector);
+  console.log('  placeOrder:', CLOBFacet.interface.getFunction('placeOrder').selector);
+  console.log('  cancelOrder:', CLOBFacet.interface.getFunction('cancelOrder').selector);
+  console.log('  getOrder:', CLOBFacet.interface.getFunction('getOrder').selector);
+});
 
 const config: HardhatUserConfig = {
-  paths: {
-    sources: './contracts',
-    tests: './test/repositories',
-    cache: './cache',
-    artifacts: './artifacts',
-  },
   solidity: {
     version: '0.8.28',
     settings: {
@@ -21,48 +32,46 @@ const config: HardhatUserConfig = {
       },
     },
   },
+  defaultNetwork: 'baseSepolia',
   networks: {
-    hardhat: {},
-    sepolia: {
-      url: process.env.SEP_RPC_URL || '',
-      accounts: process.env.SEP_PRIVATE_KEY
-        ? [process.env.SEP_PRIVATE_KEY]
-        : [],
-    },
-    arbitrum: {
-      url: process.env.ARB_RPC_URL || '',
-      accounts: process.env.ARB_PRIVATE_KEY
-        ? [process.env.ARB_PRIVATE_KEY]
-        : [],
-    },
-    arbitrumSepolia: {
-      url:
-        process.env.ARB_SEP_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
-      accounts: process.env.ARB_SEP_PRIVATE_KEY
-        ? [process.env.ARB_SEP_PRIVATE_KEY]
-        : [],
-      chainId: 421614,
-    },
-    baseTest: {
-      url: process.env.BASE_TEST_RPC_URL || '',
-      accounts: process.env.SEP_PRIVATE_KEY
-        ? [process.env.SEP_PRIVATE_KEY]
-        : [],
+    hardhat: {
+      chainId: 84532,
     },
     baseSepolia: {
       url: process.env.BASE_TEST_RPC_URL || 'https://sepolia.base.org',
-      accounts: process.env.SEP_PRIVATE_KEY
-        ? [process.env.SEP_PRIVATE_KEY]
-        : [],
+      accounts: process.env.SEP_PRIVATE_KEY ? [process.env.SEP_PRIVATE_KEY] : process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 84532,
+      gas: 'auto',
+      gasPrice: 'auto',
     },
   },
   etherscan: {
     apiKey: {
-      arbitrumSepolia: process.env.ARBISCAN_API_KEY || '',
       baseSepolia: process.env.BASESCAN_API_KEY || '',
-      sepolia: process.env.ETHERSCAN_API_KEY || '',
+      base: process.env.BASESCAN_API_KEY || '',
     },
+    customChains: [
+      {
+        network: 'baseSepolia',
+        chainId: 84532,
+        urls: {
+          apiURL: 'https://api-sepolias.basescan.org/api',
+          browserURL: 'https://sepolia.basescan.org',
+        },
+      },
+      {
+        network: 'base',
+        chainId: 8453,
+        urls: {
+          apiURL: 'https://api.basescan.org/api',
+          browserURL: 'https://basescan.org',
+        },
+      },
+    ],
+  },
+  typechain: {
+    outDir: 'typechain-types',
+    target: 'ethers-v6',
   },
 };
 

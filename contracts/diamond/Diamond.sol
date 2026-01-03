@@ -2,8 +2,6 @@
 pragma solidity ^0.8.28;
 
 import { IDiamondCut } from './interfaces/IDiamondCut.sol';
-import { IDiamondLoupe } from './interfaces/IDiamondLoupe.sol';
-import { IOwnership } from './interfaces/IOwnership.sol';
 import { LibDiamond } from './libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
@@ -15,15 +13,22 @@ import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/I
 contract Diamond is Initializable {
     constructor(address _contractOwner, address _diamondCutFacet) payable {
         LibDiamond.setContractOwner(_contractOwner);
-        LibDiamond.diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: _diamondCutFacet,
-                action: IDiamondCut.FacetCutAction.Add,
-                functionSelectors: LibDiamond.generateSelectors('_DiamondCutFacet')
-            }),
-            address(0),
-            ''
-        );
+
+        // Add DiamondCutFacet
+        IDiamondCut.FacetCut[] memory facetCuts = new IDiamondCut.FacetCut[](1);
+        facetCuts[0] = IDiamondCut.FacetCut({
+            facetAddress: _diamondCutFacet,
+            action: IDiamondCut.FacetCutAction.Add,
+            functionSelectors: _getDiamondCutFacetSelectors()
+        });
+
+        LibDiamond.diamondCut(facetCuts, address(0), '');
+    }
+
+    function _getDiamondCutFacetSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = IDiamondCut.diamondCut.selector;
+        return selectors;
     }
 
     // Find facet for function that is called and execute the
@@ -32,7 +37,7 @@ contract Diamond is Initializable {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
 
         // Get facet from function selector
-        address facet = ds.selectorToFacetAndPosition[msg.sig].facetAddress;
+        address facet = ds.selectorToFacetAndPosition[msg.sig].facetAddr;
 
         require(facet != address(0), 'Diamond: Function does not exist');
 
@@ -53,4 +58,3 @@ contract Diamond is Initializable {
 
     receive() external payable {}
 }
-

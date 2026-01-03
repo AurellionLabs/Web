@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { AppStorage } from '../storage/AppStorage.sol';
+import { DiamondStorage } from '../libraries/DiamondStorage.sol';
+import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 /**
@@ -9,98 +10,76 @@ import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/I
  * @notice Business logic facet for staking operations
  * @dev Combines AuStake functionality
  */
-contract StakingFacet is AppStorage, Initializable {
-    event Staked(
-        address indexed user,
-        uint256 amount,
-        uint256 totalStaked
-    );
-    event Unstaked(
-        address indexed user,
-        uint256 amount,
-        uint256 remainingStaked
-    );
-    event RewardsClaimed(
-        address indexed user,
-        uint256 rewards
-    );
+contract StakingFacet is Initializable {
+    event Staked(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event RewardsClaimed(address indexed user, uint256 amount);
+    event RewardRateUpdated(uint256 oldRate, uint256 newRate);
 
-    // Reward rate (e.g., 100 = 10% APY)
-    uint256 public rewardRate; // Basis points (10000 = 100%)
-    uint256 public lastUpdateTime;
-    uint256 public rewardPerTokenStored;
+    uint256 public constant REWARD_DURATION = 7 days;
 
-    mapping(address => uint256) public userRewardPerTokenPaid;
-    mapping(address => uint256) public rewards;
-
-    function initialize() public initializer {
-        rewardRate = 1000; // 10% APY default
-        lastUpdateTime = block.timestamp;
-    }
+    function initialize() public initializer {}
 
     function stake(uint256 _amount) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(_amount > 0, 'Cannot stake 0');
 
-        updateReward(msg.sender);
+        // Update rewards before staking
+        _updateReward(msg.sender);
 
         s.stakes[msg.sender].amount += _amount;
+        s.stakes[msg.sender].stakedAt = block.timestamp;
         s.totalStaked += _amount;
 
-        emit Staked(msg.sender, _amount, s.totalStaked);
+        emit Staked(msg.sender, _amount);
     }
 
-    function unstake(uint256 _amount) external {
-        require(_amount > 0, 'Cannot unstake 0');
-        require(
-            s.stakes[msg.sender].amount >= _amount,
-            'Insufficient stake'
-        );
+    function withdraw(uint256 _amount) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.stakes[msg.sender].amount >= _amount, 'Insufficient stake');
 
-        updateReward(msg.sender);
+        _updateReward(msg.sender);
 
         s.stakes[msg.sender].amount -= _amount;
         s.totalStaked -= _amount;
 
-        emit Unstaked(msg.sender, _amount, s.totalStaked);
+        emit Withdrawn(msg.sender, _amount);
     }
 
     function claimRewards() external {
-        updateReward(msg.sender);
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        _updateReward(msg.sender);
 
-        uint256 reward = s.stakes[msg.sender].rewards;
+        uint256 reward = s.rewards[msg.sender];
         if (reward > 0) {
-            s.stakes[msg.sender].rewards = 0;
-            // Transfer rewards (would interact with token contract)
+            s.rewards[msg.sender] = 0;
             emit RewardsClaimed(msg.sender, reward);
         }
     }
 
-    function updateReward(address _account) internal {
-        rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = block.timestamp;
+    function _updateReward(address _account) internal {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
-        if (_account != address(0)) {
-            rewards[_account] = earned(_account);
-            userRewardPerTokenPaid[_account] = rewardPerTokenStored;
-        }
-    }
-
-    function rewardPerToken() public view returns (uint256) {
         if (s.totalStaked == 0) {
-            return rewardPerTokenStored;
+            return;
         }
-        return
-            rewardPerTokenStored +
-            ((block.timestamp - lastUpdateTime) * rewardRate * 1e18) /
-            s.totalStaked /
-            365 days;
+
+        s.rewards[_account] += earned(_account);
+        s.userRewardPerTokenPaid[_account] = s.rewardPerTokenStored;
     }
 
     function earned(address _account) public view returns (uint256) {
-        return
-            ((s.stakes[_account].amount *
-                (rewardPerToken() - userRewardPerTokenPaid[_account])) /
-                1e18) + rewards[_account];
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+
+        uint256 currentRewardPerToken = s.rewardPerTokenStored;
+        if (s.totalStaked == 0) {
+            return s.rewards[_account];
+        }
+
+        uint256 rewardPerToken = currentRewardPerToken - s.userRewardPerTokenPaid[_account];
+        uint256 pendingRewards = (s.stakes[_account].amount * rewardPerToken) / 1e18;
+
+        return s.rewards[_account] + pendingRewards;
     }
 
     function getStake(address _user)
@@ -108,10 +87,11 @@ contract StakingFacet is AppStorage, Initializable {
         view
         returns (
             uint256 amount,
-            uint256 rewards,
+            uint256 earnedRewards,
             uint256 stakedAt
         )
     {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return (
             s.stakes[_user].amount,
             s.stakes[_user].rewards + earned(_user),
@@ -120,13 +100,21 @@ contract StakingFacet is AppStorage, Initializable {
     }
 
     function getTotalStaked() external view returns (uint256) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.totalStaked;
     }
 
     function setRewardRate(uint256 _newRate) external {
         LibDiamond.enforceIsContractOwner();
-        updateReward(address(0));
-        rewardRate = _newRate;
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 oldRate = s.rewardRate;
+        s.rewardRate = _newRate;
+        s.lastUpdateTime = block.timestamp;
+        emit RewardRateUpdated(oldRate, _newRate);
+    }
+
+    function getRewardRate() external view returns (uint256) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.rewardRate;
     }
 }
-

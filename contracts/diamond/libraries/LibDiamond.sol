@@ -6,18 +6,17 @@ import { IDiamondCut } from '../interfaces/IDiamondCut.sol';
 library LibDiamond {
     bytes32 constant DIAMOND_STORAGE_POSITION = keccak256('diamond.standard.diamond.storage');
 
+    struct FacetAndPosition {
+        address facetAddr;
+        uint16 selectorPos;
+    }
+
     struct DiamondStorage {
-        // Maps function selectors to the facet addresses and selector position
-        mapping(bytes4 => bytes32) selectorToFacetAndPosition;
-        // Maps facet addresses to function selectors
+        mapping(bytes4 => FacetAndPosition) selectorToFacetAndPosition;
         mapping(address => bytes4[]) facetFunctionSelectors;
-        // Facet addresses
         address[] facetAddresses;
-        // Used to check if facets are initialized
         mapping(address => bool) facetsInitialized;
-        // Contract owner
         address contractOwner;
-        // Mapping from address to ERC173 owned contract
         mapping(address => address) ownership;
     }
 
@@ -32,9 +31,9 @@ library LibDiamond {
 
     function setContractOwner(address _newOwner) internal {
         DiamondStorage storage ds = diamondStorage();
-        address previousOwner = ds.contractOwner;
+        address prevOwner = ds.contractOwner;
         ds.contractOwner = _newOwner;
-        emit OwnershipTransferred(previousOwner, _newOwner);
+        emit OwnershipTransferred(prevOwner, _newOwner);
     }
 
     function contractOwner() internal view returns (address contractOwner_) {
@@ -64,26 +63,25 @@ library LibDiamond {
             'LibDiamond: No selectors provided'
         );
 
-        uint16 selectorPosition = uint16(
+        uint16 selPosition = uint16(
             ds.facetFunctionSelectors[_facetCut.facetAddress].length
         );
 
-        // Add facet address
         ds.facetAddresses.push(_facetCut.facetAddress);
 
-        // Add function selectors
         for (uint256 i; i < _facetCut.functionSelectors.length; i++) {
             bytes4 selector = _facetCut.functionSelectors[i];
-            address oldFacet = ds.selectorToFacetAndPosition[selector].facetAddress;
+            address oldFacet = ds.selectorToFacetAndPosition[selector].facetAddr;
 
             require(
                 oldFacet == address(0),
                 'LibDiamond: Selector already exists'
             );
 
-            ds.selectorToFacetAndPosition[selector] = bytes32(
-                uint256(uint160(_facetCut.facetAddress)) | selectorPosition
-            );
+            ds.selectorToFacetAndPosition[selector] = FacetAndPosition({
+                facetAddr: _facetCut.facetAddress,
+                selectorPos: selPosition
+            });
 
             ds.facetFunctionSelectors[_facetCut.facetAddress].push(selector);
         }
@@ -107,19 +105,14 @@ library LibDiamond {
 
         for (uint256 i; i < _facetCut.functionSelectors.length; i++) {
             bytes4 selector = _facetCut.functionSelectors[i];
-            uint16 oldSelectorPosition = uint16(
-                ds.selectorToFacetAndPosition[selector] & 0xFFFF
-            );
-            address oldFacetAddress = address(
-                uint160(uint256(ds.selectorToFacetAndPosition[selector] >> 16))
+            address oldFacet = ds.selectorToFacetAndPosition[selector].facetAddr;
+
+            require(
+                oldFacet != address(0),
+                'LibDiamond: Selector not found'
             );
 
-            // Only replace if different facet
-            if (oldFacetAddress != _facetCut.facetAddress) {
-                ds.selectorToFacetAndPosition[selector] = bytes32(
-                    uint256(uint160(_facetCut.facetAddress)) | oldSelectorPosition
-                );
-            }
+            ds.selectorToFacetAndPosition[selector].facetAddr = _facetCut.facetAddress;
         }
     }
 
@@ -141,39 +134,49 @@ library LibDiamond {
 
         for (uint256 i; i < _facetCut.functionSelectors.length; i++) {
             bytes4 selector = _facetCut.functionSelectors[i];
-            uint16 selectorPosition = uint16(
-                ds.selectorToFacetAndPosition[selector] & 0xFFFF
-            );
-            address facetAddress = address(
-                uint160(uint256(ds.selectorToFacetAndPosition[selector] >> 16))
-            );
+            address facetAddr = ds.selectorToFacetAndPosition[selector].facetAddr;
 
-            // Remove selector
-            uint256 lastSelectorIndex = ds
-                .facetFunctionSelectors[facetAddress].length - 1;
-            bytes4 lastSelector = ds.facetFunctionSelectors[facetAddress][
-                lastSelectorIndex
-            ];
-
-            ds.facetFunctionSelectors[facetAddress][selectorPosition] = lastSelector;
-            ds.facetFunctionSelectors[facetAddress].pop();
-
-            ds.selectorToFacetAndPosition[lastSelector] = bytes32(
-                uint256(uint160(facetAddress)) | selectorPosition
+            require(
+                facetAddr != address(0),
+                'LibDiamond: Selector not found'
             );
 
-            ds.selectorToFacetAndPosition[selector] = 0;
+            bytes4[] storage facetFuncSelectors = ds.facetFunctionSelectors[facetAddr];
+            uint256 selPos = ds.selectorToFacetAndPosition[selector].selectorPos;
+            uint256 lastSelPos = facetFuncSelectors.length - 1;
+
+            if (selPos != lastSelPos) {
+                bytes4 lastSelector = facetFuncSelectors[lastSelPos];
+                facetFuncSelectors[selPos] = lastSelector;
+                ds.selectorToFacetAndPosition[lastSelector].selectorPos = uint16(selPos);
+            }
+
+            facetFuncSelectors.pop();
+
+            delete ds.selectorToFacetAndPosition[selector];
+
+            if (facetFuncSelectors.length == 0) {
+                address[] storage facetAddrs = ds.facetAddresses;
+                for (uint256 j; j < facetAddrs.length; j++) {
+                    if (facetAddrs[j] == facetAddr) {
+                        facetAddrs[j] = facetAddrs[facetAddrs.length - 1];
+                        facetAddrs.pop();
+                        break;
+                    }
+                }
+                delete ds.facetFunctionSelectors[facetAddr];
+            }
         }
     }
 
     function diamondCut(
-        IDiamondCut.FacetCut[] calldata _diamondCut,
+        IDiamondCut.FacetCut[] memory _diamondCut,
         address _init,
-        bytes calldata _calldata
+        bytes memory _calldata
     ) internal {
+        IDiamondCut.FacetCutAction action = IDiamondCut.FacetCutAction.Add;
         for (uint256 i; i < _diamondCut.length; i++) {
-            IDiamondCut.FacetCutAction action = _diamondCut[i].action;
-
+            action = _diamondCut[i].action;
             if (action == IDiamondCut.FacetCutAction.Add) {
                 addFacet(_diamondCut[i]);
             } else if (action == IDiamondCut.FacetCutAction.Replace) {
@@ -183,26 +186,62 @@ library LibDiamond {
             }
         }
 
-        emit IDiamondCut.DiamondCut(_diamondCut, _init, _calldata);
+        initializeDiamondCut(_init, _calldata);
+    }
 
-        if (_init != address(0)) {
+    function initializeDiamondCut(address _init, bytes memory _calldata) internal {
+        if (_init == address(0)) {
             require(
-                _init.code.length > 0,
-                'LibDiamond: _init address has no code'
+                _calldata.length == 0,
+                'LibDiamond: _calldata has data but _init is address(0)'
+            );
+        } else {
+            require(
+                _calldata.length > 0,
+                'LibDiamond: _calldata is empty but _init is not address(0)'
             );
             (bool success, ) = _init.delegatecall(_calldata);
-            require(success, 'LibDiamond: _init function reverted');
+            require(
+                success,
+                'LibDiamond: _init function failed'
+            );
         }
     }
 
-    function generateSelectors(string memory _facetName)
-        internal
-        pure
-        returns (bytes4[] memory selectors)
-    {
-        // This would typically use a build script or external library
-        // For now, return empty array
-        selectors = new bytes4[](0);
+    function facetAddress(bytes4 _selector) internal view returns (address facetAddr_) {
+        facetAddr_ = diamondStorage().selectorToFacetAndPosition[_selector].facetAddr;
+    }
+
+    function facetFunctionSelectors(address _facetAddr) internal view returns (bytes4[] memory funcSelectors_) {
+        funcSelectors_ = diamondStorage().facetFunctionSelectors[_facetAddr];
+    }
+
+    function facetAddresses() internal view returns (address[] memory facetAddrs_) {
+        facetAddrs_ = diamondStorage().facetAddresses;
+    }
+
+    function selectorPosition(bytes4 _selector) internal view returns (uint16 selPos_) {
+        selPos_ = diamondStorage().selectorToFacetAndPosition[_selector].selectorPos;
+    }
+
+    function selectors() internal view returns (bytes4[] memory selrs_) {
+        DiamondStorage storage ds = diamondStorage();
+        uint256 numFacets = ds.facetAddresses.length;
+        uint256 totalSelectors;
+        
+        for (uint256 i; i < numFacets; i++) {
+            totalSelectors += ds.facetFunctionSelectors[ds.facetAddresses[i]].length;
+        }
+        
+        selrs_ = new bytes4[](totalSelectors);
+        uint256 index;
+        for (uint256 i; i < numFacets; i++) {
+            address facetAddr = ds.facetAddresses[i];
+            bytes4[] memory funcs = ds.facetFunctionSelectors[facetAddr];
+            for (uint256 j; j < funcs.length; j++) {
+                selrs_[index] = funcs[j];
+                index++;
+            }
+        }
     }
 }
-

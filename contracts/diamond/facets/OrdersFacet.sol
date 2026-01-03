@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { AppStorage } from '../storage/AppStorage.sol';
+import { DiamondStorage } from '../libraries/DiamondStorage.sol';
+import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 /**
@@ -9,96 +10,79 @@ import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/I
  * @notice Business logic facet for order management
  * @dev Combines AuSys order functionality
  */
-contract OrdersFacet is AppStorage, Initializable {
+contract OrdersFacet is Initializable {
     event OrderCreated(
         bytes32 indexed orderHash,
         address indexed buyer,
+        address indexed seller,
         uint256 price,
         uint256 amount
     );
-    event OrderFulfilled(bytes32 indexed orderHash);
-    event OrderCancelled(bytes32 indexed orderHash);
-    event OrderStatusChanged(
+    event OrderUpdated(
         bytes32 indexed orderHash,
-        string oldStatus,
-        string newStatus
+        string status
+    );
+    event OrderCancelled(
+        bytes32 indexed orderHash,
+        address indexed buyer
     );
 
-    string constant STATUS_PENDING = 'pending';
-    string constant STATUS_PARTIAL = 'partial';
-    string constant STATUS_FILLED = 'filled';
-    string constant STATUS_CANCELLED = 'cancelled';
-
-    function initialize() public initializer {
-        // Initialization if needed
-    }
+    function initialize() public initializer {}
 
     function createOrder(
-        bytes32 _orderHash,
+        address _buyer,
         address _seller,
         uint256 _price,
-        uint256 _amount
-    ) external returns (bytes32) {
-        // Generate order hash if not provided
-        if (_orderHash == bytes32(0)) {
-            _orderHash = keccak256(
-                abi.encodePacked(msg.sender, _seller, _price, _amount, block.timestamp, s.totalOrders)
-            );
-        }
+        uint256 _amount,
+        string memory _status
+    ) external returns (bytes32 orderHash) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
-        // Create order
-        s.orders[_orderHash] = Order({
-            buyer: msg.sender,
+        orderHash = keccak256(
+            abi.encodePacked(_buyer, _seller, _price, _amount, block.timestamp, s.totalOrders)
+        );
+
+        s.orders[orderHash] = DiamondStorage.Order({
+            buyer: _buyer,
             seller: _seller,
-            orderHash: _orderHash,
+            orderHash: orderHash,
             price: _price,
             amount: _amount,
-            status: STATUS_PENDING,
+            status: _status,
             createdAt: block.timestamp
         });
 
-        s.orderList.push(_orderHash);
+        s.orderList.push(_buyer);
         s.totalOrders++;
 
-        emit OrderCreated(_orderHash, msg.sender, _price, _amount);
+        emit OrderCreated(orderHash, _buyer, _seller, _price, _amount);
 
-        return _orderHash;
+        return orderHash;
     }
 
-    function fulfillOrder(bytes32 _orderHash) external {
+    function updateOrderStatus(bytes32 _orderHash, string memory _status) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(
+            s.orders[_orderHash].buyer == msg.sender ||
             s.orders[_orderHash].seller == msg.sender,
-            'Not the seller'
-        );
-        require(
-            keccak256(abi.encodePacked(s.orders[_orderHash].status)) ==
-                keccak256(abi.encodePacked(STATUS_PENDING)),
-            'Order not pending'
+            'Not order participant'
         );
 
-        string memory oldStatus = s.orders[_orderHash].status;
-        s.orders[_orderHash].status = STATUS_FILLED;
-
-        emit OrderFulfilled(_orderHash);
-        emit OrderStatusChanged(_orderHash, oldStatus, STATUS_FILLED);
+        s.orders[_orderHash].status = _status;
+        emit OrderUpdated(_orderHash, _status);
     }
 
     function cancelOrder(bytes32 _orderHash) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.orders[_orderHash].buyer == msg.sender, 'Not buyer');
         require(
-            s.orders[_orderHash].buyer == msg.sender,
-            'Not the buyer'
-        );
-        require(
-            keccak256(abi.encodePacked(s.orders[_orderHash].status)) ==
-                keccak256(abi.encodePacked(STATUS_PENDING)),
-            'Order not pending'
+            keccak256(abi.encodePacked(s.orders[_orderHash].status)) !=
+            keccak256(abi.encodePacked('CANCELLED')),
+            'Already cancelled'
         );
 
-        string memory oldStatus = s.orders[_orderHash].status;
-        s.orders[_orderHash].status = STATUS_CANCELLED;
-
-        emit OrderCancelled(_orderHash);
-        emit OrderStatusChanged(_orderHash, oldStatus, STATUS_CANCELLED);
+        s.orders[_orderHash].status = 'CANCELLED';
+        emit OrderCancelled(_orderHash, msg.sender);
     }
 
     function getOrder(bytes32 _orderHash)
@@ -113,7 +97,8 @@ contract OrdersFacet is AppStorage, Initializable {
             uint256 createdAt
         )
     {
-        Order storage order = s.orders[_orderHash];
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.Order storage order = s.orders[_orderHash];
         return (
             order.buyer,
             order.seller,
@@ -124,47 +109,26 @@ contract OrdersFacet is AppStorage, Initializable {
         );
     }
 
-    function getOrderStatus(bytes32 _orderHash)
-        external
-        view
-        returns (string memory)
-    {
-        return s.orders[_orderHash].status;
-    }
-
-    function getTotalOrders() external view returns (uint256) {
-        return s.totalOrders;
-    }
-
-    function getOrdersByStatus(string memory _status)
+    function getBuyerOrders(address _buyer)
         external
         view
         returns (bytes32[] memory)
     {
-        // Simple implementation - in production, maintain a separate mapping
-        uint256 count = 0;
-        for (uint256 i = 0; i < s.orderList.length; i++) {
-            if (
-                keccak256(abi.encodePacked(s.orders[s.orderList[i]].status)) ==
-                keccak256(abi.encodePacked(_status))
-            ) {
-                count++;
-            }
-        }
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.ownerNodes[_buyer];
+    }
 
-        bytes32[] memory result = new bytes32[](count);
-        uint256 index = 0;
-        for (uint256 i = 0; i < s.orderList.length; i++) {
-            if (
-                keccak256(abi.encodePacked(s.orders[s.orderList[i]].status)) ==
-                keccak256(abi.encodePacked(_status))
-            ) {
-                result[index] = s.orderList[i];
-                index++;
-            }
-        }
+    function getSellerOrders(address _seller)
+        external
+        view
+        returns (bytes32[] memory)
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.ownerNodes[_seller];
+    }
 
-        return result;
+    function getTotalOrders() external view returns (uint256) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.totalOrders;
     }
 }
-

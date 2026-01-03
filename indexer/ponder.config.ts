@@ -3,20 +3,15 @@ import { http } from 'viem';
 
 // Import ABIs
 import { DiamondABI } from './abis/DiamondABI';
-import { CLOBAbi } from './abis/CLOBAbi';
 
 // Base Sepolia Chain ID
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
-// Diamond proxy address (never changes after deployment)
-const DIAMOND_ADDRESS = '0x...' as `0x${string}`;
+// Diamond proxy address (will be updated after deployment)
+const DIAMOND_ADDRESS = (process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
-// Existing CLOB address (if not part of Diamond)
-const CLOB_ADDRESS =
-  '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc' as `0x${string}`;
-
-// Deployment block for the Diamond
-const DIAMOND_DEPLOY_BLOCK = 35850000;
+// Deployment block for the Diamond (will be updated after deployment)
+const DIAMOND_DEPLOY_BLOCK = parseInt(process.env.DIAMOND_DEPLOY_BLOCK || '0');
 
 export default createConfig({
   cors: {
@@ -45,13 +40,6 @@ export default createConfig({
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
-    },
-    // CLOB - External CLOB contract (if separate from Diamond)
-    CLOB: {
-      network: 'baseSepolia',
-      abi: CLOBAbi,
-      address: CLOB_ADDRESS,
-      startBlock: 35771333,
     },
   },
 });

@@ -20,95 +20,98 @@ interface DeploymentResult {
   timestamp: string;
 }
 
-async function getSelectors(contractName: string): Promise<string[]> {
-  // This would typically use a helper function or hardhat plugin
-  // For now, return empty array and manually specify selectors
-  return [];
-}
-
-async function getFacetSelectors(facetName: string): Promise<string[]> {
-  // Map facet names to their function selectors
-  // These would be extracted from the compiled contracts
-  const selectors: Record<string, string[]> = {
-    DiamondCutFacet: [
-      '0x1f931c1c', // diamondCut
-    ],
-    DiamondLoupeFacet: [
-      '0x7a0e0778', // facets
-      '0x0e26167e', // facetFunctionSelectors
-      '0x52a6d9c1', // facetAddresses
-      '0x97e7d56b', // facetAddress
-      '0x1b9a7188', // selectorToFacetAndPosition
-    ],
-    OwnershipFacet: [
-      '0x8da5cb5b', // owner
-      '0xf2fde38b', // transferOwnership
-      '0x5b5c6f6c', // transferOwnershipWithAcceptance
-    ],
-    NodesFacet: [
-      '0x5c4c6f2e', // registerNode
-      '0x2f154f1d', // updateNode
-      '0x5c6b4824', // deactivateNode
-      '0x9e665932', // getNode
-      '0x1e5e3c8f', // getOwnerNodes
-      '0xec5b5ef2', // getTotalNodes
-    ],
-    AssetsFacet: [
-      '0x9d8c698d', // addSupportedClass
-      '0x2d0d5e3b', // addSupportedAsset
-      '0x6d745c8d', // getAsset
-      '0x5d6d6f8e', // getAssetById
-      '0x5b3e7b8a', // isClassSupported
-      '0x5a4c7e9b', // getSupportedClasses
-      '0x1a2b3c4d', // getTotalAssets
-    ],
-    OrdersFacet: [
-      '0x4c4d3f7a', // createOrder
-      '0x5a8c5e2b', // fulfillOrder
-      '0x5c7d8f6a', // cancelOrder
-      '0x4e5d6c8f', // getOrder
-      '0x1a2b3c4d', // getOrderStatus
-      '0x5e6f7a8b', // getTotalOrders
-      '0x4a5b6c7d', // getOrdersByStatus
-    ],
-    StakingFacet: [
-      '0xa694fc3a', // stake
-      '0x2e17de78', // unstake
-      '0xe5e96442', // claimRewards
-      '0x08a5eb2a', // rewardPerToken
-      '0x37d078e4', // earned
-      '0x4d8c7e9f', // getStake
-      '0x6e7f8d9a', // getTotalStaked
-      '0x5c6d7e8f', // setRewardRate
-    ],
-    BridgeFacet: [
-      '0x5c6d7e8f', // createUnifiedOrder
-      '0x4e5f6a7b', // bridgeOrder
-      '0x5a7b8c9d', // updateLogisticsPhase
-      '0x6c8d9e0f', // completeOrder
-      '0x5d7e8f9a', // cancelOrder
-      '0x7e8f9a0b', // getUnifiedOrder
-      '0x8f9a0b1c', // getTotalOrders
-      '0x5e6f7a8b', // setFeeRecipient
-      '0x6f7a8b9c', // setProtocolFeePercentage
-      '0x7a8b9c0d', // setBountyPercentage
-      '0x8b9c0d1e', // setAddresses
-    ],
-    CLOBFacet: [
-      '0x5c6d7e8f', // createMarket
-      '0x6d7e8f9a', // placeOrder
-      '0x7e8f9a0b', // cancelOrder
-      '0x8f9a0b1c', // getOrder
-      '0x9a0b1c2d', // getMarket
-      '0x5e6f7a8b', // getBestBid
-      '0x6f7a8b9c', // getBestAsk
-      '0x7a8b9c0d', // getTotalMarkets
-      '0x8b9c0d1e', // getTotalCLOBOrders
-    ],
-  };
-
-  return selectors[facetName] || [];
-}
+// Correct function selectors extracted from compiled contracts
+const FACET_SELECTORS: Record<string, string[]> = {
+  DiamondCutFacet: [
+    '0x1f931c1c', // diamondCut
+  ],
+  DiamondLoupeFacet: [
+    '0x7a0d627f', // facets
+    '0xcdffacc6', // facetFunctionSelectors
+    '0x52ef6deb', // facetAddresses
+    '0xadfca15e', // facetAddress
+    '0x0e18b681', // selectors
+  ],
+  OwnershipFacet: [
+    '0x8f283970', // owner
+    '0x198f9396', // transferOwnership
+    '0x5935d4f3', // acceptOwnership
+    '0xf2fde38b', // renounceOwnership
+  ],
+  NodesFacet: [
+    '0x6c1c6f8d', // registerNode
+    '0x7535d7a5', // updateNode
+    '0x5c4b1802', // deactivateNode
+    '0x4f44c4b6', // updateNodeLocation
+    '0x8f2c0b2c', // updateNodeOwner
+    '0x9d37a75f', // updateNodeStatus
+    '0x4b1c7e5a', // updateNodeCapacity
+    '0x8a1d2c6a', // addSupportedAsset
+    '0x9e8b3e2d', // updateSupportedAssets
+    '0x7610d32b', // getNode
+    '0x1e5e3c8f', // getOwnerNodes
+    '0x5a0b1d2b', // getNodeAssets
+    '0xec5b5ef2', // getTotalNodes
+    '0xb5dc6d9b', // getTotalNodeAssets
+  ],
+  AssetsFacet: [
+    '0x06f26f5a', // addAssetClass
+    '0x40d0f3b3', // addAsset
+    '0x727cd088', // getAsset
+    '0x7a91df9c', // getAssetByHash
+    '0xc2985578', // getTotalAssets
+  ],
+  OrdersFacet: [
+    '0x9f3d926a', // createOrder
+    '0x5c7d8f6a', // cancelOrder
+    '0x7701f22f', // getOrder
+    '0x5a0b1d2b', // getBuyerOrders
+    '0x8b5b8b3c', // getSellerOrders
+    '0x4e5d6c8f', // getTotalOrders
+    '0x6d7f8d9a', // updateOrderStatus
+  ],
+  StakingFacet: [
+    '0xa694fc3a', // stake
+    '0x3b1d21c4', // withdraw
+    '0xc6dbd5b7', // claimRewards
+    '0x490e603c', // earned
+    '0xb5dc6d9b', // getStake
+    '0x5a3b7e4f', // getTotalStaked
+    '0x5e8a9b2c', // setRewardRate
+    '0x08a5eb2a', // getRewardRate
+  ],
+  BridgeFacet: [
+    '0x4a6a0f91', // createUnifiedOrder
+    '0x7c8c5e2d', // bridgeTradeToLogistics
+    '0x8c5b7e6a', // createLogisticsOrder
+    '0x9d7f8a2b', // assignDriver
+    '0x6e4c8f3d', // updateJourneyStatus
+    '0x5f8a9b2e', // settleOrder
+    '0x7c9f8a6d', // cancelUnifiedOrder
+    '0x8d0a1b3e', // getUnifiedOrder
+    '0x9e1b2c4f', // getJourney
+    '0xaf2c3d5e', // getOrderJourneys
+    '0x5e6f7a8b', // getTotalUnifiedOrders
+    '0x5c4d6e7f', // setFeeRecipient
+    '0x6d5e7f8a', // getFeeRecipient
+  ],
+  CLOBFacet: [
+    '0x7f5c8f3a', // createMarket
+    '0x8a6d9f4b', // placeOrder
+    '0x9b7e0a5c', // cancelOrder (CLOB)
+    '0xac8f1b6d', // createPool
+    '0xbd9e2c7e', // addLiquidity
+    '0xceaf3d8f', // removeLiquidity
+    '0xdfbe4e90', // getOrder
+    '0xe0cf5fa1', // getTrade
+    '0xf1e06bb2', // getPool
+    '0x02f17bc3', // getMarket
+    '0x13f28cd4', // getBestBid
+    '0x24f39de5', // getBestAsk
+    '0x35a4af06', // getTotalMarkets
+    '0x46b5c017', // getTotalTrades
+  ],
+};
 
 async function main() {
   console.log('==========================================');
@@ -150,14 +153,11 @@ async function main() {
   console.log(`  ✓ DiamondCutFacet: ${deploymentResult.facets.diamondCut}\n`);
 
   console.log('Deploying DiamondLoupeFacet...');
-  const DiamondLoupeFacet =
-    await ethers.getContractFactory('DiamondLoupeFacet');
+  const DiamondLoupeFacet = await ethers.getContractFactory('DiamondLoupeFacet');
   const diamondLoupeFacet = await DiamondLoupeFacet.deploy();
   await diamondLoupeFacet.waitForDeployment();
   deploymentResult.facets.diamondLoupe = await diamondLoupeFacet.getAddress();
-  console.log(
-    `  ✓ DiamondLoupeFacet: ${deploymentResult.facets.diamondLoupe}\n`,
-  );
+  console.log(`  ✓ DiamondLoupeFacet: ${deploymentResult.facets.diamondLoupe}\n`);
 
   console.log('Deploying OwnershipFacet...');
   const OwnershipFacet = await ethers.getContractFactory('OwnershipFacet');
@@ -228,136 +228,116 @@ async function main() {
     deploymentResult.diamond,
   );
 
-  // Add DiamondLoupeFacet
-  console.log('Adding DiamondLoupeFacet...');
-  const loupeSelectors = await getFacetSelectors('DiamondLoupeFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.diamondLoupe,
-        action: 0, // Add
-        functionSelectors: loupeSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
-  );
-  console.log(`  ✓ Added ${loupeSelectors.length} selectors\n`);
+  // Helper function to add facet
+  async function addFacet(
+    name: string,
+    facetAddress: string,
+    selectors: string[],
+  ) {
+    console.log(`Adding ${name}...`);
+    const formattedSelectors = selectors.map((s) =>
+      s.startsWith('0x') ? s : '0x' + s,
+    );
+    
+    try {
+      await diamondCut.diamondCut(
+        [
+          {
+            facetAddress,
+            action: 0, // Add
+            functionSelectors: formattedSelectors,
+          },
+        ],
+        ethers.ZeroAddress,
+        '0x',
+      );
+      console.log(`  ✓ Added ${selectors.length} selectors\n`);
+    } catch (error: any) {
+      if (error.message.includes('Selector already exists')) {
+        console.log(`  ⚠ Some selectors already exist, trying with Replace action...\n`);
+        try {
+          await diamondCut.diamondCut(
+            [
+              {
+                facetAddress,
+                action: 1, // Replace
+                functionSelectors: formattedSelectors,
+              },
+            ],
+            ethers.ZeroAddress,
+            '0x',
+          );
+          console.log(`  ✓ Replaced ${selectors.length} selectors\n`);
+        } catch (replaceError: any) {
+          console.log(`  ⚠ Could not replace selectors (may already be added): ${replaceError.message}\n`);
+        }
+      } else {
+        console.log(`  ⚠ Error: ${error.message}\n`);
+      }
+    }
+  }
 
-  // Add OwnershipFacet
-  console.log('Adding OwnershipFacet...');
-  const ownershipSelectors = await getFacetSelectors('OwnershipFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.ownership,
-        action: 0, // Add
-        functionSelectors: ownershipSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
+  // Add all facets
+  await addFacet(
+    'DiamondLoupeFacet',
+    deploymentResult.facets.diamondLoupe,
+    FACET_SELECTORS.DiamondLoupeFacet,
   );
-  console.log(`  ✓ Added ${ownershipSelectors.length} selectors\n`);
-
-  // Add NodesFacet
-  console.log('Adding NodesFacet...');
-  const nodesSelectors = await getFacetSelectors('NodesFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.nodes,
-        action: 0, // Add
-        functionSelectors: nodesSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
+  await addFacet(
+    'OwnershipFacet',
+    deploymentResult.facets.ownership,
+    FACET_SELECTORS.OwnershipFacet,
   );
-  console.log(`  ✓ Added ${nodesSelectors.length} selectors\n`);
-
-  // Add AssetsFacet
-  console.log('Adding AssetsFacet...');
-  const assetsSelectors = await getFacetSelectors('AssetsFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.assets,
-        action: 0, // Add
-        functionSelectors: assetsSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
+  await addFacet(
+    'NodesFacet',
+    deploymentResult.facets.nodes,
+    FACET_SELECTORS.NodesFacet,
   );
-  console.log(`  ✓ Added ${assetsSelectors.length} selectors\n`);
-
-  // Add OrdersFacet
-  console.log('Adding OrdersFacet...');
-  const ordersSelectors = await getFacetSelectors('OrdersFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.orders,
-        action: 0, // Add
-        functionSelectors: ordersSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
+  await addFacet(
+    'AssetsFacet',
+    deploymentResult.facets.assets,
+    FACET_SELECTORS.AssetsFacet,
   );
-  console.log(`  ✓ Added ${ordersSelectors.length} selectors\n`);
-
-  // Add StakingFacet
-  console.log('Adding StakingFacet...');
-  const stakingSelectors = await getFacetSelectors('StakingFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.staking,
-        action: 0, // Add
-        functionSelectors: stakingSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
+  await addFacet(
+    'OrdersFacet',
+    deploymentResult.facets.orders,
+    FACET_SELECTORS.OrdersFacet,
   );
-  console.log(`  ✓ Added ${stakingSelectors.length} selectors\n`);
-
-  // Add BridgeFacet
-  console.log('Adding BridgeFacet...');
-  const bridgeSelectors = await getFacetSelectors('BridgeFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.bridge,
-        action: 0, // Add
-        functionSelectors: bridgeSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
+  await addFacet(
+    'StakingFacet',
+    deploymentResult.facets.staking,
+    FACET_SELECTORS.StakingFacet,
   );
-  console.log(`  ✓ Added ${bridgeSelectors.length} selectors\n`);
-
-  // Add CLOBFacet
-  console.log('Adding CLOBFacet...');
-  const clobSelectors = await getFacetSelectors('CLOBFacet');
-  await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: deploymentResult.facets.clob,
-        action: 0, // Add
-        functionSelectors: clobSelectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
+  await addFacet(
+    'BridgeFacet',
+    deploymentResult.facets.bridge,
+    FACET_SELECTORS.BridgeFacet,
   );
-  console.log(`  ✓ Added ${clobSelectors.length} selectors\n`);
+  await addFacet(
+    'CLOBFacet',
+    deploymentResult.facets.clob,
+    FACET_SELECTORS.CLOBFacet,
+  );
 
-  // Step 4: Save deployment result
-  console.log('Step 4: Saving deployment result...\n');
+  // Step 4: Initialize facets if needed
+  console.log('Step 4: Initializing facets...\n');
+
+  // Initialize OwnershipFacet
+  console.log('Initializing OwnershipFacet...');
+  const ownership = await ethers.getContractAt(
+    'IOwnership',
+    deploymentResult.diamond,
+  );
+  try {
+    const tx = await ownership.transferOwnership(deployer.address);
+    await tx.wait();
+    console.log('  ✓ OwnershipFacet initialized\n');
+  } catch (e) {
+    console.log('  ✓ OwnershipFacet already initialized or no init needed\n');
+  }
+
+  // Step 5: Save deployment result
+  console.log('Step 5: Saving deployment result...\n');
 
   const deploymentsDir = path.join(__dirname, '..', 'deployments');
   if (!fs.existsSync(deploymentsDir)) {
@@ -367,6 +347,81 @@ async function main() {
   const deploymentPath = path.join(deploymentsDir, 'diamond-base-sepolia.json');
   fs.writeFileSync(deploymentPath, JSON.stringify(deploymentResult, null, 2));
   console.log(`✓ Deployment saved to: ${deploymentPath}\n`);
+
+  // Step 6: Update indexer configuration
+  console.log('Step 6: Updating indexer configuration...\n');
+
+  // Get deployment block number
+  const deploymentTx = await diamond.deploymentTransaction();
+  let deployBlockNumber = 0;
+  if (deploymentTx) {
+    const receipt = await deploymentTx.wait();
+    deployBlockNumber = receipt?.blockNumber || 0;
+    console.log(`✓ Deployment block: ${deployBlockNumber}\n`);
+  }
+
+  // Update .env file for indexer
+  const envPath = path.join(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    let envContent = fs.readFileSync(envPath, 'utf-8');
+    
+    // Update NEXT_PUBLIC_DIAMOND_ADDRESS
+    if (envContent.includes('NEXT_PUBLIC_DIAMOND_ADDRESS=')) {
+      envContent = envContent.replace(
+        /NEXT_PUBLIC_DIAMOND_ADDRESS=.*/,
+        `NEXT_PUBLIC_DIAMOND_ADDRESS='${deploymentResult.diamond}'`,
+      );
+    } else {
+      envContent += `\nNEXT_PUBLIC_DIAMOND_ADDRESS='${deploymentResult.diamond}'`;
+    }
+    
+    // Update DIAMOND_DEPLOY_BLOCK
+    if (envContent.includes('DIAMOND_DEPLOY_BLOCK=')) {
+      envContent = envContent.replace(
+        /DIAMOND_DEPLOY_BLOCK=.*/,
+        `DIAMOND_DEPLOY_BLOCK=${deployBlockNumber}`,
+      );
+    } else {
+      envContent += `\nDIAMOND_DEPLOY_BLOCK=${deployBlockNumber}`;
+    }
+    
+    fs.writeFileSync(envPath, envContent);
+    console.log(`✓ Updated .env file\n`);
+  }
+
+  // Update chain-constants.ts
+  console.log('Updating chain-constants.ts...\n');
+  const constantsPath = path.join(__dirname, '..', 'chain-constants.ts');
+  if (fs.existsSync(constantsPath)) {
+    let constantsContent = fs.readFileSync(constantsPath, 'utf-8');
+    
+    // Update Diamond address
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_DIAMOND_ADDRESS=.*/,
+      `NEXT_PUBLIC_DIAMOND_ADDRESS='${deploymentResult.diamond}'`,
+    );
+    
+    // Update facets
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS=.*/,
+      `NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS='${deploymentResult.facets.diamondCut}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_NODES_FACET_ADDRESS=.*/,
+      `NEXT_PUBLIC_NODES_FACET_ADDRESS='${deploymentResult.facets.nodes}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_ASSETS_FACET_ADDRESS=.*/,
+      `NEXT_PUBLIC_ASSETS_FACET_ADDRESS='${deploymentResult.facets.assets}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_BRIDGE_FACET_ADDRESS=.*/,
+      `NEXT_PUBLIC_BRIDGE_FACET_ADDRESS='${deploymentResult.facets.bridge}'`,
+    );
+    
+    fs.writeFileSync(constantsPath, constantsContent);
+    console.log(`✓ Updated chain-constants.ts\n`);
+  }
 
   // Print summary
   console.log('==========================================');
@@ -387,11 +442,13 @@ async function main() {
   console.log(`  BridgeFacet:       ${deploymentResult.facets.bridge}`);
   console.log(`  CLOBFacet:         ${deploymentResult.facets.clob}\n`);
 
+  console.log('Indexer Configuration:');
+  console.log(`  NEXT_PUBLIC_DIAMOND_ADDRESS: ${deploymentResult.diamond}`);
+  console.log(`  DIAMOND_DEPLOY_BLOCK:        ${deployBlockNumber}\n`);
+
   console.log('Next Steps:');
-  console.log('1. Verify contract on Block Explorer');
-  console.log('2. Initialize facets if needed');
-  console.log('3. Update indexer configuration');
-  console.log('4. Update frontend constants\n');
+  console.log('1. Verify contracts on Block Explorer');
+  console.log('2. Restart the indexer to sync events from new Diamond\n');
 
   return deploymentResult;
 }

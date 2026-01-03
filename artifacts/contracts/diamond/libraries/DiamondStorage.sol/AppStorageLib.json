@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "AppStorageLib",
+  "sourceName": "contracts/diamond/libraries/DiamondStorage.sol",
+  "abi": [],
+  "bytecode": "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea2646970667358221220d71ba1bd4598af468c9d32d2ae926ae6ec89d3d85af53ecf0e11f45e2627dcbb64736f6c634300081c0033",
+  "deployedBytecode": "0x600080fdfea2646970667358221220d71ba1bd4598af468c9d32d2ae926ae6ec89d3d85af53ecf0e11f45e2627dcbb64736f6c634300081c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
