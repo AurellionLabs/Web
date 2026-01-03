@@ -4,17 +4,11 @@ import { http } from 'viem';
 // Import ABIs
 import { DiamondABI } from './abis/DiamondABI';
 
-// Import Diamond address from chain-constants
-import { NEXT_PUBLIC_DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from '../chain-constants';
+// Import Diamond constants
+import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
 
 // Base Sepolia Chain ID
 const BASE_SEPOLIA_CHAIN_ID = 84532;
-
-// Diamond proxy address (from chain-constants)
-const DIAMOND_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS as `0x${string}`;
-
-// Deployment block for the Diamond (from chain-constants)
-const DIAMOND_DEPLOY_BLOCK = DIAMOND_DEPLOY_BLOCK;
 
 export default createConfig({
   cors: {
