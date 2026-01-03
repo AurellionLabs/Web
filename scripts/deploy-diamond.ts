@@ -348,79 +348,98 @@ async function main() {
   fs.writeFileSync(deploymentPath, JSON.stringify(deploymentResult, null, 2));
   console.log(`✓ Deployment saved to: ${deploymentPath}\n`);
 
-  // Step 6: Update indexer configuration
-  console.log('Step 6: Updating indexer configuration...\n');
-
   // Get deployment block number
   const deploymentTx = await diamond.deploymentTransaction();
   let deployBlockNumber = 0;
   if (deploymentTx) {
     const receipt = await deploymentTx.wait();
     deployBlockNumber = receipt?.blockNumber || 0;
-    console.log(`✓ Deployment block: ${deployBlockNumber}\n`);
   }
 
-  // Update .env file for indexer
-  const envPath = path.join(__dirname, '..', '.env');
-  if (fs.existsSync(envPath)) {
-    let envContent = fs.readFileSync(envPath, 'utf-8');
-    
-    // Update NEXT_PUBLIC_DIAMOND_ADDRESS
-    if (envContent.includes('NEXT_PUBLIC_DIAMOND_ADDRESS=')) {
-      envContent = envContent.replace(
-        /NEXT_PUBLIC_DIAMOND_ADDRESS=.*/,
-        `NEXT_PUBLIC_DIAMOND_ADDRESS='${deploymentResult.diamond}'`,
-      );
-    } else {
-      envContent += `\nNEXT_PUBLIC_DIAMOND_ADDRESS='${deploymentResult.diamond}'`;
-    }
-    
-    // Update DIAMOND_DEPLOY_BLOCK
-    if (envContent.includes('DIAMOND_DEPLOY_BLOCK=')) {
-      envContent = envContent.replace(
-        /DIAMOND_DEPLOY_BLOCK=.*/,
-        `DIAMOND_DEPLOY_BLOCK=${deployBlockNumber}`,
-      );
-    } else {
-      envContent += `\nDIAMOND_DEPLOY_BLOCK=${deployBlockNumber}`;
-    }
-    
-    fs.writeFileSync(envPath, envContent);
-    console.log(`✓ Updated .env file\n`);
-  }
-
-  // Update chain-constants.ts
-  console.log('Updating chain-constants.ts...\n');
+  // Step 6: Update chain-constants.ts
+  console.log('Step 6: Updating chain-constants.ts...\n');
   const constantsPath = path.join(__dirname, '..', 'chain-constants.ts');
   if (fs.existsSync(constantsPath)) {
     let constantsContent = fs.readFileSync(constantsPath, 'utf-8');
-    
+
     // Update Diamond address
     constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_DIAMOND_ADDRESS=.*/,
-      `NEXT_PUBLIC_DIAMOND_ADDRESS='${deploymentResult.diamond}'`,
+      /NEXT_PUBLIC_DIAMOND_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_DIAMOND_ADDRESS = '${deploymentResult.diamond}'`,
     );
-    
-    // Update facets
+
+    // Update all facet addresses
     constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS=.*/,
-      `NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS='${deploymentResult.facets.diamondCut}'`,
-    );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_NODES_FACET_ADDRESS=.*/,
-      `NEXT_PUBLIC_NODES_FACET_ADDRESS='${deploymentResult.facets.nodes}'`,
+      /NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS = '${deploymentResult.facets.diamondCut}'`,
     );
     constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_ASSETS_FACET_ADDRESS=.*/,
-      `NEXT_PUBLIC_ASSETS_FACET_ADDRESS='${deploymentResult.facets.assets}'`,
+      /NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS = '${deploymentResult.facets.diamondLoupe}'`,
     );
     constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_BRIDGE_FACET_ADDRESS=.*/,
-      `NEXT_PUBLIC_BRIDGE_FACET_ADDRESS='${deploymentResult.facets.bridge}'`,
+      /NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS = '${deploymentResult.facets.ownership}'`,
     );
-    
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_NODES_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_NODES_FACET_ADDRESS = '${deploymentResult.facets.nodes}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_ASSETS_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_ASSETS_FACET_ADDRESS = '${deploymentResult.facets.assets}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_ORDERS_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_ORDERS_FACET_ADDRESS = '${deploymentResult.facets.orders}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_STAKING_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_STAKING_FACET_ADDRESS = '${deploymentResult.facets.staking}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_BRIDGE_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_BRIDGE_FACET_ADDRESS = '${deploymentResult.facets.bridge}'`,
+    );
+    constantsContent = constantsContent.replace(
+      /NEXT_PUBLIC_CLOB_FACET_ADDRESS = '.*'/,
+      `NEXT_PUBLIC_CLOB_FACET_ADDRESS = '${deploymentResult.facets.clob}'`,
+    );
+
+    // Update deployment block
+    constantsContent = constantsContent.replace(
+      /export const DIAMOND_DEPLOY_BLOCK = \d+/,
+      `export const DIAMOND_DEPLOY_BLOCK = ${deployBlockNumber}`,
+    );
+
     fs.writeFileSync(constantsPath, constantsContent);
     console.log(`✓ Updated chain-constants.ts\n`);
+  }
+
+  // Step 7: Update indexer configuration to read from chain-constants
+  console.log('Step 7: Updating indexer configuration...\n');
+  const indexerConfigPath = path.join(__dirname, '..', 'indexer', 'ponder.config.ts');
+  if (fs.existsSync(indexerConfigPath)) {
+    let indexerContent = fs.readFileSync(indexerConfigPath, 'utf-8');
+
+    // Remove .env references and use chain-constants
+    indexerContent = indexerContent.replace(
+      /const DIAMOND_ADDRESS = \(process\.env\.NEXT_PUBLIC_DIAMOND_ADDRESS \|\| '0x0000000000000000000000000000000000000000'\) as `0x\$\{string\}`;/,
+      `import { NEXT_PUBLIC_DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from '../chain-constants';\nconst DIAMOND_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS as \`0x\${string}\`;`,
+    );
+
+    indexerContent = indexerContent.replace(
+      /const DIAMOND_DEPLOY_BLOCK = parseInt\(process\.env\.DIAMOND_DEPLOY_BLOCK \|\| '0'\);/,
+      `const DIAMOND_DEPLOY_BLOCK_NUM = DIAMOND_DEPLOY_BLOCK;`,
+    );
+
+    indexerContent = indexerContent.replace(
+      /startBlock: DIAMOND_DEPLOY_BLOCK,/,
+      `startBlock: DIAMOND_DEPLOY_BLOCK_NUM,`,
+    );
+
+    fs.writeFileSync(indexerConfigPath, indexerContent);
+    console.log(`✓ Updated indexer/ponder.config.ts to use chain-constants\n`);
   }
 
   // Print summary
