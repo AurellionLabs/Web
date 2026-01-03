@@ -1,7 +1,6 @@
 import { HardhatUserConfig, task } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
 import '@nomicfoundation/hardhat-verify';
-import '@openzeppelin/hardhat-upgrades';
 import 'dotenv/config';
 
 task('get-selectors', 'Print function selectors').setAction(async (args, hre) => {
