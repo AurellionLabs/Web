@@ -253,15 +253,39 @@ export class BlockchainNodeRepository implements NodeRepository {
       }
 
       // Step 3: Try to get asset metadata directly by tokenIds first
+      // Note: Using inline tokenIds because Ponder's BigInt filter requires [BigInt!]! not [String!]!
       const tokenIds = nodeAssetsData.map((asset) => asset.tokenId);
       let assetsMetadata: AssetsAuraResponse = { assetss: { items: [] } };
 
       if (tokenIds.length > 0) {
         try {
+          // Build inline tokenId list for the query (Ponder requires BigInt, not String)
+          const tokenIdList = tokenIds.map((id) => `"${id}"`).join(', ');
+          const query = `{
+            assetss(where: { tokenId_in: [${tokenIdList}] }, limit: 100) {
+              items {
+                id
+                hash
+                tokenId
+                name
+                assetClass
+                className
+                account
+                amount
+                attributes {
+                  items {
+                    name
+                    values
+                    description
+                  }
+                }
+              }
+            }
+          }`;
+
           assetsMetadata = await graphqlRequest(
             NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
-            GET_ASSETS_BY_TOKEN_IDS,
-            { tokenIds },
+            query,
           );
           console.log(
             '[NodeRepository] Found assets by tokenIds:',
@@ -392,21 +416,23 @@ export class BlockchainNodeRepository implements NodeRepository {
       const tokenIds = Array.from(tokenIdSet);
 
       // Fetch metadata for all tokenIds from AuraAsset subgraph
-      let assetsMetadata: AssetsAuraResponse = { assets: [] };
+      let assetsMetadata: AssetsAuraResponse = { assetss: { items: [] } };
       try {
         // Batch tokenIds to avoid exceeding Graph limits
         const BATCH = 500;
         const metadataAccum: AssetAura[] = [] as any;
         for (let i = 0; i < tokenIds.length; i += BATCH) {
           const batch = tokenIds.slice(i, i + BATCH);
+          // Convert tokenIds to BigInt format (Ponder requires BigInt, not String)
+          const tokenIdsBigInt = batch.map((id: string) => BigInt(id));
           const res: AssetsAuraResponse = await graphqlRequest(
             NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
             GET_ASSETS_BY_TOKEN_IDS,
-            { tokenIds: batch },
+            { tokenIds: tokenIdsBigInt },
           );
-          metadataAccum.push(...(res.assets || []));
+          metadataAccum.push(...(res.assetss?.items || []));
         }
-        assetsMetadata.assets = metadataAccum;
+        assetsMetadata.assetss.items = metadataAccum;
       } catch (error) {
         console.warn(
           '[NodeRepository] Failed to get assets metadata for all tokenIds:',
