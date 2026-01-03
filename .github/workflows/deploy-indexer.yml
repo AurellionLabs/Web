@@ -4,10 +4,20 @@ on:
   push:
     branches:
       - main
+      - dev
     paths:
       - 'indexer/**'
       - '.github/workflows/deploy-indexer.yml'
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        default: 'dev'
+        type: choice
+        options:
+          - main
+          - dev
 
 env:
   REGISTRY: ghcr.io
@@ -57,7 +67,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Deploy to server
