@@ -159,7 +159,7 @@ export class CLOBRepository {
   async getOpenOrders(
     baseToken: string,
     baseTokenId: string,
-    limit: number = 50,
+    limit = 50,
   ): Promise<CLOBOrder[]> {
     try {
       const response = await graphqlRequest<{
