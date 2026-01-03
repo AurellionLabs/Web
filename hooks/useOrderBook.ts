@@ -7,6 +7,20 @@ import {
 } from '@/infrastructure/repositories/clob-repository';
 
 /**
+ * Order level data structure
+ */
+export interface OrderLevel {
+  /** Price at this level */
+  price: number;
+  /** Quantity at this level */
+  quantity: number;
+  /** Cumulative total quantity */
+  total: number;
+  /** Depth percentage for visualization */
+  depthPercent: number;
+}
+
+/**
  * Configuration options for the order book hook
  */
 export interface UseOrderBookOptions {
@@ -18,6 +32,8 @@ export interface UseOrderBookOptions {
   baseToken?: string;
   /** Base token ID */
   baseTokenId?: string;
+  /** Base price for mock data generation */
+  basePrice?: number;
 }
 
 /**
@@ -72,28 +88,42 @@ const generateMockOrderBook = (
 };
 
 /**
- * Convert CLOB repository order book to hook format
+ * Extended order book data with depth percentages
+ */
+export interface ExtendedOrderBookData {
+  bids: OrderLevel[];
+  asks: OrderLevel[];
+  spread: number;
+  spreadPercent: number;
+  midPrice: number;
+  lastUpdate: number;
+}
+
+/**
+ * Convert CLOB repository order book to hook format with depth percentages
  */
 const convertToHookFormat = (
   repoOrderBook: OrderBookData,
   levels: number,
-): OrderBookData => {
+): ExtendedOrderBookData => {
   // Take only the requested number of levels
-  const bids = repoOrderBook.bids.slice(0, levels);
-  const asks = repoOrderBook.asks.slice(0, levels);
+  const rawBids = repoOrderBook.bids.slice(0, levels);
+  const rawAsks = repoOrderBook.asks.slice(0, levels);
 
   // Calculate depth percentages
-  const maxBid = bids[bids.length - 1]?.total || 0;
-  const maxAsk = asks[asks.length - 1]?.total || 0;
+  const maxBid = rawBids[rawBids.length - 1]?.total || 0;
+  const maxAsk = rawAsks[rawAsks.length - 1]?.total || 0;
   const maxTotal = Math.max(maxBid, maxAsk);
 
-  bids.forEach((bid) => {
-    bid.depthPercent = maxTotal > 0 ? (bid.total / maxTotal) * 100 : 0;
-  });
+  const bids: OrderLevel[] = rawBids.map((bid) => ({
+    ...bid,
+    depthPercent: maxTotal > 0 ? (bid.total / maxTotal) * 100 : 0,
+  }));
 
-  asks.forEach((ask) => {
-    ask.depthPercent = maxTotal > 0 ? (ask.total / maxTotal) * 100 : 0;
-  });
+  const asks: OrderLevel[] = rawAsks.map((ask) => ({
+    ...ask,
+    depthPercent: maxTotal > 0 ? (ask.total / maxTotal) * 100 : 0,
+  }));
 
   return {
     ...repoOrderBook,
@@ -134,9 +164,12 @@ export function useOrderBook(
     updateInterval = 5000,
     baseToken,
     baseTokenId,
+    basePrice = 100,
   } = options;
 
-  const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
+  const [orderBook, setOrderBook] = useState<ExtendedOrderBookData | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -167,8 +200,7 @@ export function useOrderBook(
       }
 
       // Fallback to mock data if no real data available
-      const mockBasePrice = 100; // Default mock price
-      const { bids, asks } = generateMockOrderBook(mockBasePrice, levels);
+      const { bids, asks } = generateMockOrderBook(basePrice, levels);
 
       const bestBid = bids[0]?.price || 0;
       const bestAsk = asks[0]?.price || 0;
@@ -191,7 +223,7 @@ export function useOrderBook(
       setError('Failed to fetch order book data');
       setIsLoading(false);
     }
-  }, [baseToken, baseTokenId, levels]);
+  }, [baseToken, baseTokenId, levels, basePrice]);
 
   /**
    * Refresh order book data manually
@@ -221,7 +253,7 @@ export function useOrderBook(
 /**
  * Hook for getting aggregated order book stats
  */
-export function useOrderBookStats(orderBook: OrderBookData | null) {
+export function useOrderBookStats(orderBook: ExtendedOrderBookData | null) {
   return useMemo(() => {
     if (!orderBook) {
       return {

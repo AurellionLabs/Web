@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Repeat, Coins, BarChart3 } from 'lucide-react';
+import { Award, Layers, BarChart3 } from 'lucide-react';
 import { GlassCard } from '../ui/glass-card';
 
 /**
@@ -10,27 +10,27 @@ import { GlassCard } from '../ui/glass-card';
  */
 const features = [
   {
-    title: 'Arbitrage & Trading',
+    title: 'Regulatory-First Issuance',
     description:
-      'Market inefficiency capture through hedged perp/spot positions and automated trading strategies.',
-    icon: Repeat,
-    allocation: '50%',
+      'Legal teams, custodian letters, and AML/KYC sequencing ensure every token adheres to jurisdictional requirements.',
+    icon: Award,
+    allocation: '40%',
     color: 'accent',
   },
   {
-    title: 'Staking & Restaking',
+    title: 'Fractional Liquidity',
     description:
-      'Yield from protocol revenue: USDe staking, sDAI, restaked LSTs and other yield-generating assets.',
-    icon: Coins,
-    allocation: '30%',
+      'Dynamic fractionalization pools knit large assets into tradable tranches with settlement rails and insurance.',
+    icon: Layers,
+    allocation: '35%',
     color: 'green',
   },
   {
-    title: 'Liquidity Provision',
+    title: 'Transparent Secondary Markets',
     description:
-      'Fee generation from market-making, AMM pools, and structured liquidity strategies.',
+      'Live reporting and compliance dashboards layer on-chain data so issuers and investors can trace ownership.',
     icon: BarChart3,
-    allocation: '20%',
+    allocation: '25%',
     color: 'purple',
   },
 ];
@@ -136,11 +136,11 @@ const FeaturesSection: React.FC = () => {
             Architecture
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-4">
-            Institutional-Grade Yield Sources
+            Tokenization Infrastructure
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Yield generated from three independent sources, designed to compound
-            regardless of market conditions.
+            A multi-tier platform aligning compliance, issuance, and liquidity
+            for real-world asset tokens.
           </p>
         </motion.div>
 

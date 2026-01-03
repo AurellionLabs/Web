@@ -2,13 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import {
-  Database,
-  ShoppingCart,
-  Truck,
-  FileCheck,
-  TrendingUp,
-} from 'lucide-react';
+import { FileCheck, Shield, Building, Globe, Sparkles } from 'lucide-react';
 import { GlassCard } from '../ui/glass-card';
 
 /**
@@ -17,38 +11,38 @@ import { GlassCard } from '../ui/glass-card';
 const steps = [
   {
     number: '01',
-    title: 'Deposit Assets',
+    title: 'Asset Intake',
     description:
-      'Tokenize real-world assets, creating verifiable digital twins (ERC1155) on the blockchain.',
-    icon: Database,
-  },
-  {
-    number: '02',
-    title: 'Receive Vault Shares',
-    description:
-      'You receive vault shares that represent your exact ownership percentage of the pool.',
-    icon: ShoppingCart,
-  },
-  {
-    number: '03',
-    title: 'Strategies Deploy',
-    description:
-      'Aurellion automatically runs arbitrage, yield farming, and liquidity provision strategies.',
-    icon: Truck,
-  },
-  {
-    number: '04',
-    title: 'Value Grows',
-    description:
-      'As yield is generated, the Price Per Share rises and your position grows automatically.',
+      'Gather audited documentation, valuations, and legal wrappers so every asset enters our system with a verified provenance trail.',
     icon: FileCheck,
   },
   {
-    number: '05',
-    title: 'Withdraw Anytime',
+    number: '02',
+    title: 'Compliance Tokenization',
     description:
-      'You can withdraw anytime, with a short waiting period before funds can be claimed.',
-    icon: TrendingUp,
+      'We mint regulated security tokens with embedded AML/KYC rules, investor caps, and custody controls.',
+    icon: Shield,
+  },
+  {
+    number: '03',
+    title: 'Fractional Pooling',
+    description:
+      'Assets are sliced into fractional ownership units that aggregate into diversified pools for broader access.',
+    icon: Building,
+  },
+  {
+    number: '04',
+    title: 'Global Market Access',
+    description:
+      'Tokens list on compliant liquidity venues with settlement rails that bridge fiat and crypto.',
+    icon: Globe,
+  },
+  {
+    number: '05',
+    title: 'Long-Term Stewardship',
+    description:
+      'Continuous reporting, insurance, and governance ensure the underlying asset performs and retains value.',
+    icon: Sparkles,
   },
 ];
 
@@ -130,11 +124,11 @@ const HowItWorksSection: React.FC = () => {
             How it works
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-4">
-            Inside The Vault
+            Tokenization Workflow
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Deposit assets, receive vault shares, and earn yield as the protocol
-            executes strategies automatically.
+            Every asset is vetted, tokenized with legal guardrails, and routed
+            to liquidity so issuers and investors collaborate with confidence.
           </p>
         </motion.div>
 

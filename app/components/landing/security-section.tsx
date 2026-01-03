@@ -10,27 +10,27 @@ import { GlassCard } from '../ui/glass-card';
  */
 const securityFeatures = [
   {
-    title: 'Oracle Safety',
+    title: 'Document Provenance',
     description:
-      'Oracle data is protected by safeguards to prevent manipulation and ensure accurate pricing.',
+      'Immutable hashes of legal documents and valuations anchor every token to a verifiable asset record.',
     icon: Eye,
   },
   {
-    title: 'Vault Protections',
+    title: 'Custodial Governance',
     description:
-      'Vault operations are secured through audits, access controls, and on-chain safeguards.',
+      'Multi-sig vaults, registered custodians, and surveillance monitor collateral at all times.',
     icon: Shield,
   },
   {
-    title: 'Role Restrictions',
+    title: 'Compliance Monitoring',
     description:
-      'Critical functions are gated by role restrictions and enforced timelocks.',
+      'Automated rule engines flag investor eligibility, trading caps, and regional restrictions before execution.',
     icon: Lock,
   },
   {
-    title: 'Timelocks',
+    title: 'Insurance & Timelocks',
     description:
-      'All administrative actions are subject to mandatory time delays for security.',
+      'Mandatory notice periods plus insured settlement pools give institutional counterparties peace of mind.',
     icon: Timer,
   },
 ];
@@ -59,14 +59,14 @@ const SecuritySection: React.FC = () => {
           className="text-center mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-accent/10 text-accent text-sm font-medium mb-4">
-            Layered Security
+            Tokenization Trust
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-4">
-            Your Capital Stays Untouchable
+            Custody and Compliance Guardrails
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Aurellion incorporates strict oracle controls, audit-driven
-            improvements, time-locked governance and withdrawal safeguards.
+            Every asset touches compliance checkpoints, insured custody, and
+            programmable controls before it becomes tradable.
           </p>
         </motion.div>
 
@@ -91,10 +91,10 @@ const SecuritySection: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground">
-                      External Layer
+                      Regulatory Gateways
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      Rate limiting, DDoS protection
+                      Legal partners, registrars, and compliance monitors.
                     </p>
                   </div>
                 </div>
@@ -110,10 +110,10 @@ const SecuritySection: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-semibold text-foreground">
-                        Smart Contract Layer
+                        Compliance Smart Contracts
                       </h4>
                       <p className="text-sm text-muted-foreground">
-                        Audited, verified contracts
+                        KYC gates, investor caps, and enforcement rules.
                       </p>
                     </div>
                   </div>
@@ -133,10 +133,10 @@ const SecuritySection: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-semibold text-foreground">
-                        Core Vault
+                        Token Vault
                       </h4>
                       <p className="text-sm text-muted-foreground">
-                        Multi-sig protected treasury
+                        Insured multi-sig custody for every issuance.
                       </p>
                     </div>
                   </div>

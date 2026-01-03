@@ -2,7 +2,13 @@ import { IPlatformRepository, Asset } from '@/domain/platform';
 import { AuraAsset } from '@/typechain-types';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
-import { GET_ALL_ASSETS, extractPonderItems } from './shared/graph-queries';
+import {
+  GET_ALL_ASSETS,
+  GET_SUPPORTED_CLASSES,
+  extractPonderItems,
+  extractPonderSupportedClasses,
+  SupportedClassesResponse,
+} from './shared/graph-queries';
 import { NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL } from '@/chain-constants';
 
 export class PlatformRepository implements IPlatformRepository {
@@ -64,8 +70,48 @@ export class PlatformRepository implements IPlatformRepository {
 
   async getSupportedAssetClasses(): Promise<string[]> {
     console.log('[PlatformRepository] getSupportedAssetClasses: Starting...');
+
+    // Try GraphQL first (faster and more efficient)
+    try {
+      const graphClasses = await this.getSupportedAssetClassesFromGraph();
+      if (graphClasses.length > 0) {
+        console.log(
+          `[PlatformRepository] Got ${graphClasses.length} classes from GraphQL`,
+        );
+        return graphClasses;
+      }
+      console.log(
+        '[PlatformRepository] GraphQL returned no classes, falling back to on-chain',
+      );
+    } catch (graphErr) {
+      console.warn(
+        '[PlatformRepository] GraphQL query failed, falling back to on-chain:',
+        graphErr,
+      );
+    }
+
+    // Fallback to on-chain query
+    return this.getSupportedAssetClassesFromChain();
+  }
+
+  /**
+   * Fetch supported asset classes from the indexer via GraphQL
+   */
+  private async getSupportedAssetClassesFromGraph(): Promise<string[]> {
+    const response = await graphqlRequest<SupportedClassesResponse>(
+      this.graphEndpoint,
+      GET_SUPPORTED_CLASSES,
+      {},
+    );
+    return extractPonderSupportedClasses(response);
+  }
+
+  /**
+   * Fetch supported asset classes directly from the smart contract (fallback)
+   */
+  private async getSupportedAssetClassesFromChain(): Promise<string[]> {
+    console.log('[PlatformRepository] getSupportedAssetClassesFromChain...');
     const supportedClasses: string[] = [];
-    // Cap iterations to avoid infinite loops
     const MAX_ITERATIONS = 100;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -85,43 +131,41 @@ export class PlatformRepository implements IPlatformRepository {
             `[PlatformRepository] Index ${i} returned empty string, skipping`,
           );
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = err as {
+          code?: string;
+          info?: { code?: string };
+          message?: string;
+          reason?: string;
+          data?: unknown;
+        };
         // Check if this is an end-of-array error (expected when reaching the end)
         const isEndOfArray =
-          err?.code === 'BAD_DATA' ||
-          err?.info?.code === 'BAD_DATA' ||
-          err?.code === 'CALL_EXCEPTION' ||
-          err?.code === 'UNPREDICTABLE_GAS_LIMIT' ||
-          err?.message?.includes('could not decode') ||
-          err?.message?.includes('execution reverted') ||
-          err?.message?.includes('missing revert data');
+          error?.code === 'BAD_DATA' ||
+          error?.info?.code === 'BAD_DATA' ||
+          error?.code === 'CALL_EXCEPTION' ||
+          error?.code === 'UNPREDICTABLE_GAS_LIMIT' ||
+          error?.message?.includes('could not decode') ||
+          error?.message?.includes('execution reverted') ||
+          error?.message?.includes('missing revert data');
 
         console.log(`[PlatformRepository] Error at index ${i}:`, {
-          code: err?.code,
-          message: err?.message,
+          code: error?.code,
+          message: error?.message,
           isEndOfArray,
           currentClassesCount: supportedClasses.length,
-          errorStructure: {
-            code: err?.code,
-            info: err?.info,
-            reason: err?.reason,
-            data: err?.data,
-          },
         });
 
         if (isEndOfArray) {
-          // End of array reached - this is expected, not an error
           console.log(
             `[PlatformRepository] Detected end of array at index ${i}. Breaking loop.`,
           );
           break;
         }
-        // For other unexpected errors, log a warning but continue
         console.warn(
           `[PlatformRepository] Error reading supportedClasses[${i}]:`,
           err,
         );
-        // If we've read at least one class, assume we've hit the end
         if (supportedClasses.length > 0) {
           console.log(
             `[PlatformRepository] Have ${supportedClasses.length} classes, breaking on error at index ${i}`,
@@ -131,7 +175,7 @@ export class PlatformRepository implements IPlatformRepository {
       }
     }
     console.log(
-      `[PlatformRepository] getSupportedAssetClasses: Returning ${supportedClasses.length} classes:`,
+      `[PlatformRepository] getSupportedAssetClassesFromChain: Returning ${supportedClasses.length} classes:`,
       supportedClasses,
     );
     return supportedClasses;

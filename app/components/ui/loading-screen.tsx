@@ -4,16 +4,16 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 const loadingMessages = [
-  'Tending to goats...',
-  'Trimming the hedges...',
-  'Tokenising the world...',
-  'Herding the sheep...',
-  'Feeding the chickens...',
-  'Planting digital seeds...',
-  'Cultivating blockchain gardens...',
-  'Milking the opportunities...',
-  'Building sustainable futures...',
-  'Growing decentralized dreams...',
+  'Verifying asset provenance...',
+  'Anchoring legal documents...',
+  'Tokenising real-world value...',
+  'Syncing with global registries...',
+  'Auditing collateral reserves...',
+  'Calibrating compliance engines...',
+  'Securing custodial vaults...',
+  'Fractionalising liquidity pools...',
+  'Bridging fiat and crypto rails...',
+  'Finalising on-chain settlement...',
 ];
 
 export function LoadingScreen() {
@@ -34,7 +34,7 @@ export function LoadingScreen() {
       <div className="text-center space-y-8">
         <div className="relative w-48 h-48 mx-auto">
           {/* Spinning border */}
-          <div className="absolute inset-0 border-8 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 border-8 border-white border-t-transparent rounded-full animate-spin"></div>
           {/* Centered logo */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Image
@@ -47,7 +47,7 @@ export function LoadingScreen() {
             />
           </div>
         </div>
-        <p className="text-2xl font-medium text-primary animate-pulse mt-8">
+        <p className="text-2xl font-medium text-white animate-pulse mt-8">
           {currentMessage}
         </p>
       </div>

@@ -304,3 +304,108 @@ export const GET_ALL_ASSETS = gql`
     }
   }
 `;
+
+// =============================================================================
+// SUPPORTED CLASSES QUERIES
+// =============================================================================
+
+/**
+ * Query for all supported asset classes
+ * Uses the supportedClasses table from AuraAsset indexer
+ */
+export const GET_SUPPORTED_CLASSES = gql`
+  query GetSupportedClasses {
+    supportedClassess(where: { isActive: true }, limit: 100) {
+      items {
+        id
+        name
+        index
+        isActive
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+/**
+ * Response interface for supported classes query
+ */
+export interface SupportedClassResponse {
+  id: string;
+  name: string;
+  index: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportedClassesResponse {
+  supportedClassess: { items: SupportedClassResponse[] };
+}
+
+/**
+ * Helper to extract supported classes from Ponder response
+ */
+export function extractPonderSupportedClasses(
+  response: SupportedClassesResponse | null | undefined,
+): string[] {
+  if (!response?.supportedClassess?.items) return [];
+  return response.supportedClassess.items
+    .filter((item) => item.isActive && item.name)
+    .map((item) => item.name);
+}
+
+// =============================================================================
+// ASSETS BY CLASS QUERY
+// =============================================================================
+
+/**
+ * Query for assets filtered by asset class
+ */
+export const GET_ASSETS_BY_CLASS = gql`
+  query GetAssetsByClass($assetClass: String!, $limit: Int!, $after: String) {
+    assetss(
+      where: { assetClass: $assetClass }
+      limit: $limit
+      after: $after
+      orderBy: "tokenId"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        hash
+        tokenId
+        name
+        assetClass
+        className
+        account
+        amount
+        attributes {
+          items {
+            name
+            values
+            description
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+// =============================================================================
+// PONDER ITEM EXTRACTION HELPERS
+// =============================================================================
+
+/**
+ * Generic helper to extract items from Ponder paginated responses
+ */
+export function extractPonderItems<T>(
+  response: { items: T[] } | null | undefined,
+): T[] {
+  return response?.items || [];
+}

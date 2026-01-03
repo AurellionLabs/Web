@@ -12,37 +12,37 @@ const faqs = [
   {
     question: 'What is Aurellion?',
     answer:
-      'Aurellion is a multi-strategy yield protocol for tokenized real-world assets. Users can trade, stake, and earn returns through our diversified, hedged, on-chain strategies designed to generate sustainable returns.',
+      'Aurellion tokenizes real-world assets by pairing legal diligence with programmable contracts so that private capital can trade on-chain with transparency.',
   },
   {
-    question: 'What assets can I trade?',
+    question: 'Which assets can be tokenized?',
     answer:
-      'You can trade a variety of tokenized real-world assets including commodities, collectibles, and other verified assets. Each asset class has different attributes and characteristics.',
+      'We work with commodities, private credit, real estate, and specialty assets where ownership can be legally documented and valued.',
   },
   {
-    question: 'How does Aurellion generate yield?',
+    question: 'How does the issuance process work?',
     answer:
-      'Aurellion generates yield through a combination of arbitrage, funding rate capture, staking, restaking, and structured liquidity provision strategies across multiple protocols.',
+      'Issuers submit documentation, valuations, and custodial agreements before Aurellion mints tokens with embedded compliance rules and investor caps.',
   },
   {
-    question: 'How are yields reflected in my balance?',
+    question: 'How can investors access tokenized assets?',
     answer:
-      'Yield is reflected through an increasing Price Per Share (PPS). Your share balance stays constant while its value grows automatically as strategies generate returns.',
+      'Token holders trade on regulated liquidity venues or participate in curated pools, with settlement rails bridging fiat, stablecoins, and wrapped assets.',
   },
   {
-    question: 'How do withdrawals work?',
+    question: 'How is compliance enforced?',
     answer:
-      'Withdrawals are requested on-chain and processed via a withdrawal queue, with a short waiting period before funds can be claimed. This ensures orderly liquidity management.',
+      'Our automated rule engine enforces AML/KYC, jurisdictional restrictions, cap tables, and distribution waterfalls before any transfer or dividend.',
   },
   {
-    question: 'What risks should users be aware of?',
+    question: 'What protects the underlying assets?',
     answer:
-      'Risks include smart contract risk, oracle risk, liquidity constraints, and broader market risks. Aurellion mitigates these through layered security and conservative strategy design.',
+      'Assets stay in insured custody, every document hash is stored on-chain, and independent oracles monitor performance and ownership.',
   },
   {
-    question: 'Does Aurellion rely on emissions or inflationary APY?',
+    question: 'How are cash flows distributed?',
     answer:
-      "No. Aurellion's yield is generated from real market activity and protocol revenue, not token emissions. This ensures sustainable returns over time.",
+      'Cash flows—rent, interest, royalties—are pooled and streamed through smart contracts so token holders receive pro rata payouts.',
   },
 ];
 

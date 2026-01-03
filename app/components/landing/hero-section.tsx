@@ -129,9 +129,9 @@ const HeroSection: React.FC = () => {
           transition={{ duration: 0.8, delay: 0.5 }}
           className="text-base md:text-lg lg:text-xl text-neutral-400 max-w-2xl mx-auto mb-12 leading-relaxed"
         >
-          Aurellion seamlessly integrates blockchain-verified assets,
-          transparent logistics, and RWA-backed staking into one powerful
-          ecosystem.
+          Aurellion orchestrates asset onboarding, compliance, and liquidity so
+          that commodities, real estate, and private credit can become tradable,
+          regulated tokens.
         </motion.p>
 
         {/* CTA buttons */}
@@ -141,23 +141,23 @@ const HeroSection: React.FC = () => {
           transition={{ duration: 0.8, delay: 0.7 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <Link href="/customer/trading">
+          <Link href="/tokenization">
             <GlowButton
               variant="primary"
               size="lg"
               glow
               rightIcon={<ArrowRight className="h-5 w-5" />}
             >
-              Start Trading
+              Launch Tokenization
             </GlowButton>
           </Link>
-          <Link href="/customer/pools">
+          <Link href="/assets">
             <GlowButton
               variant="outline"
               size="lg"
               leftIcon={<Zap className="h-5 w-5" />}
             >
-              Explore Yield
+              Explore Asset Universe
             </GlowButton>
           </Link>
         </motion.div>
@@ -170,10 +170,10 @@ const HeroSection: React.FC = () => {
           className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
         >
           {[
-            { label: 'Total Value Locked', value: '$12.5M' },
-            { label: 'Assets Tokenized', value: '2,450+' },
-            { label: 'Active Traders', value: '8,200+' },
-            { label: 'Avg. APY', value: '12.4%' },
+            { label: 'Assets Tokenized', value: '3,200+' },
+            { label: 'Partner Issuers', value: '120+' },
+            { label: 'Global Registries', value: '18' },
+            { label: 'Compliance Pass Rate', value: '99.8%' },
           ].map((stat, index) => (
             <motion.div
               key={stat.label}

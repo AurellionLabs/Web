@@ -19,6 +19,8 @@ export interface OrderBookProps {
   onPriceClick?: (price: number, side: 'bid' | 'ask') => void;
   /** Optional className for styling */
   className?: string;
+  /** Compact mode for sidebar display */
+  compact?: boolean;
 }
 
 /**
@@ -29,6 +31,7 @@ interface OrderBookRowProps {
   side: 'bid' | 'ask';
   maxDepth: number;
   onClick?: () => void;
+  compact?: boolean;
 }
 
 const OrderBookRow: React.FC<OrderBookRowProps> = ({
@@ -36,6 +39,7 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   side,
   maxDepth,
   onClick,
+  compact = false,
 }) => {
   const depthWidth = maxDepth > 0 ? (level.total / maxDepth) * 100 : 0;
 
@@ -45,9 +49,10 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
     <button
       onClick={onClick}
       className={cn(
-        'relative w-full grid grid-cols-3 gap-2 px-3 py-1.5 text-sm font-mono tabular-nums',
+        'relative w-full grid grid-cols-3 gap-2 font-mono tabular-nums',
         'hover:bg-white/5 transition-colors cursor-pointer',
         'focus:outline-none focus:ring-1 focus:ring-accent/50',
+        compact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm',
       )}
     >
       {/* Depth bar background */}
@@ -138,6 +143,7 @@ export const OrderBook: React.FC<OrderBookProps> = ({
   maxLevels = 10,
   onPriceClick,
   className,
+  compact = false,
 }) => {
   const { orderBook, isLoading } = useOrderBook(assetId, {
     levels: maxLevels,
@@ -154,12 +160,19 @@ export const OrderBook: React.FC<OrderBookProps> = ({
 
   if (isLoading || !orderBook) {
     return (
-      <GlassCard className={cn('h-full', className)}>
-        <GlassCardHeader>
-          <GlassCardTitle>Order Book</GlassCardTitle>
+      <GlassCard className={cn(compact ? '' : 'h-full', className)}>
+        <GlassCardHeader className={compact ? 'p-3' : undefined}>
+          <GlassCardTitle className={compact ? 'text-sm' : undefined}>
+            Order Book
+          </GlassCardTitle>
         </GlassCardHeader>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading...</div>
+        <div
+          className={cn(
+            'flex items-center justify-center',
+            compact ? 'h-32' : 'h-64',
+          )}
+        >
+          <div className="text-muted-foreground text-sm">Loading...</div>
         </div>
       </GlassCard>
     );
@@ -167,13 +180,21 @@ export const OrderBook: React.FC<OrderBookProps> = ({
 
   return (
     <GlassCard
-      padding={false}
-      className={cn('h-full flex flex-col', className)}
+      className={cn(compact ? '' : 'h-full', 'flex flex-col p-0', className)}
     >
       {/* Header */}
-      <div className="p-4 border-b border-glass-border">
+      <div
+        className={cn('border-b border-glass-border', compact ? 'p-3' : 'p-4')}
+      >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">Order Book</h3>
+          <h3
+            className={cn(
+              'font-semibold text-foreground',
+              compact ? 'text-sm' : 'text-lg',
+            )}
+          >
+            Order Book
+          </h3>
           <span className="text-xs font-mono tabular-nums text-muted-foreground">
             Mid: ${orderBook.midPrice.toFixed(2)}
           </span>
@@ -181,14 +202,19 @@ export const OrderBook: React.FC<OrderBookProps> = ({
       </div>
 
       {/* Column headers */}
-      <div className="grid grid-cols-3 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-glass-border">
+      <div
+        className={cn(
+          'grid grid-cols-3 gap-2 text-xs font-medium text-muted-foreground border-b border-glass-border',
+          compact ? 'px-2 py-1.5' : 'px-3 py-2',
+        )}
+      >
         <span className="text-left">Price</span>
         <span className="text-center">Size</span>
         <span className="text-right">Total</span>
       </div>
 
       {/* Asks (sell orders) - reversed so lowest ask is at bottom */}
-      <div className="flex-1 overflow-y-auto">
+      <div className={cn('overflow-y-auto', compact ? 'max-h-24' : 'flex-1')}>
         <div className="flex flex-col-reverse">
           {orderBook.asks.map((level, index) => (
             <OrderBookRow
@@ -197,6 +223,7 @@ export const OrderBook: React.FC<OrderBookProps> = ({
               side="ask"
               maxDepth={maxDepth}
               onClick={() => onPriceClick?.(level.price, 'ask')}
+              compact={compact}
             />
           ))}
         </div>
@@ -210,7 +237,7 @@ export const OrderBook: React.FC<OrderBookProps> = ({
       />
 
       {/* Bids (buy orders) */}
-      <div className="flex-1 overflow-y-auto">
+      <div className={cn('overflow-y-auto', compact ? 'max-h-24' : 'flex-1')}>
         {orderBook.bids.map((level, index) => (
           <OrderBookRow
             key={`bid-${index}`}
@@ -218,6 +245,7 @@ export const OrderBook: React.FC<OrderBookProps> = ({
             side="bid"
             maxDepth={maxDepth}
             onClick={() => onPriceClick?.(level.price, 'bid')}
+            compact={compact}
           />
         ))}
       </div>

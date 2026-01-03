@@ -1,147 +1,329 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import { Asset } from '@/domain/shared';
+import { AssetClass } from '@/domain/platform';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
+// =============================================================================
+// TYPES
+// =============================================================================
+
+/**
+ * Discriminated union for platform loading states
+ */
+type PlatformLoadState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; error: string }
+  | { status: 'success' };
+
+/**
+ * Cache entry with TTL
+ */
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+/**
+ * Platform context type with enhanced functionality
+ */
 export interface PlatformContextType {
+  // Data
   supportedAssets: Asset[];
   supportedAssetClasses: string[];
+  assetClasses: AssetClass[];
+
+  // State
+  loadState: PlatformLoadState;
   isLoading: boolean;
   error: string | null;
+
+  // Actions
   refreshPlatformData: () => Promise<void>;
+  getClassAssets: (assetClass: string) => Promise<Asset[]>;
   getClassTokenizableAssets: (assetClass: string) => Promise<Asset[]>;
   getAssetByTokenId: (tokenId: string) => Promise<Asset | null>;
+  invalidateCache: () => void;
 }
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
+// =============================================================================
+// CONTEXT
+// =============================================================================
 
 const PlatformContext = createContext<PlatformContextType | undefined>(
   undefined,
 );
 
+// =============================================================================
+// PROVIDER
+// =============================================================================
+
 export function PlatformProvider({ children }: { children: React.ReactNode }) {
+  // State
   const [supportedAssets, setSupportedAssets] = useState<Asset[]>([]);
   const [supportedAssetClasses, setSupportedAssetClasses] = useState<string[]>(
     [],
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const repository = RepositoryContext.getInstance().getPlatformRepository();
+  const [loadState, setLoadState] = useState<PlatformLoadState>({
+    status: 'idle',
+  });
 
-  const getAssetByTokenId = async (tokenId: string) => {
-    const asset = await repository.getAssetByTokenId(tokenId);
-    return asset;
-  };
+  // Cache for class assets
+  const classAssetsCache = useRef<Map<string, CacheEntry<Asset[]>>>(new Map());
 
-  const refreshPlatformData = async () => {
-    console.log('[PlatformProvider] Entering refreshPlatformData function...');
+  // Repository access
+  const repositoryRef = useRef(
+    RepositoryContext.getInstance().getPlatformRepository(),
+  );
 
-    setIsLoading(true);
-    setError(null);
+  // Computed: isLoading and error for backwards compatibility
+  const isLoading = loadState.status === 'loading';
+  const error = loadState.status === 'error' ? loadState.error : null;
 
-    // Handle each promise separately so one failure doesn't block the other
-    const results = await Promise.allSettled([
-      repository.getSupportedAssets(),
-      repository.getSupportedAssetClasses(),
-    ]);
+  /**
+   * Compute AssetClass objects with statistics from raw data
+   */
+  const assetClasses = useMemo<AssetClass[]>(() => {
+    if (supportedAssetClasses.length === 0) return [];
 
-    const [assetsResult, assetClassesResult] = results;
-
-    // Handle assets result
-    if (assetsResult.status === 'fulfilled') {
-      console.log(
-        '[PlatformProvider] Raw data from repository.getSupportedAssets():',
-        assetsResult.value,
+    return supportedAssetClasses.map((className) => {
+      // Filter assets belonging to this class
+      const classAssets = supportedAssets.filter(
+        (asset) => asset.assetClass?.toLowerCase() === className.toLowerCase(),
       );
-      setSupportedAssets(assetsResult.value);
-    } else {
-      console.error(
-        '[PlatformProvider] Error loading supported assets:',
-        assetsResult.reason,
-      );
-      setError(
-        assetsResult.reason instanceof Error
-          ? assetsResult.reason.message
-          : 'Failed to load supported assets',
-      );
-    }
 
-    // Handle asset classes result
-    if (assetClassesResult.status === 'fulfilled') {
-      console.log(
-        '[PlatformProvider] Raw data from repository.getSupportedAssetClasses():',
-        assetClassesResult.value,
-      );
-      setSupportedAssetClasses(assetClassesResult.value);
-    } else {
-      console.error(
-        '[PlatformProvider] Error loading supported asset classes:',
-        assetClassesResult.reason,
-      );
-      // Set error for asset classes failure
-      const assetClassesError =
-        assetClassesResult.reason instanceof Error
-          ? assetClassesResult.reason.message
-          : 'Failed to load supported asset classes';
-      setError((prevError) =>
-        prevError ? `${prevError}; ${assetClassesError}` : assetClassesError,
-      );
-    }
+      // Get unique asset types (names) within this class
+      const uniqueNames = new Set(classAssets.map((a) => a.name));
 
-    setIsLoading(false);
-  };
+      return {
+        name: className,
+        assetTypeCount: uniqueNames.size,
+        assetCount: classAssets.length,
+        totalVolume: '0', // TODO: Integrate with CLOB data when available
+        isActive: true,
+      };
+    });
+  }, [supportedAssetClasses, supportedAssets]);
 
-  const getClassTokenizableAssets = async (
-    assetClass: string,
-  ): Promise<Asset[]> => {
-    const key = assetClass.trim();
-    if (!key) return [];
-    try {
-      const assets = await repository.getClassAssets(key);
-      // Assets that are tokenizable are guaranteed to have at least 2 values for every attribute.
-      // So it is enough to only check the first attribute to determine if the asset is tokenizable.
-      return assets.filter(
-        (asset) =>
-          // Verify attributes array exists
-          asset.attributes &&
-          // Ensure attributes array is not empty
-          asset.attributes.length > 0 &&
-          // Validate that the first attribute has a values property
-          asset.attributes[0]?.values &&
-          // Confirm the attribute has multiple values (tokenizable requirement)
-          asset.attributes[0].values.length > 1,
-      );
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to load class assets';
-      setError(message);
-      throw err;
-    }
-  };
-
-  useEffect(() => {
-    console.log(
-      '[PlatformProvider] useEffect triggered, calling refreshPlatformData...',
-    );
-    refreshPlatformData();
+  /**
+   * Check if cache entry is still valid
+   */
+  const isCacheValid = useCallback((entry: CacheEntry<unknown> | undefined) => {
+    if (!entry) return false;
+    return Date.now() - entry.timestamp < CACHE_TTL_MS;
   }, []);
 
+  /**
+   * Invalidate all caches
+   */
+  const invalidateCache = useCallback(() => {
+    classAssetsCache.current.clear();
+    console.log('[PlatformProvider] Cache invalidated');
+  }, []);
+
+  /**
+   * Get asset by token ID
+   */
+  const getAssetByTokenId = useCallback(async (tokenId: string) => {
+    try {
+      const asset = await repositoryRef.current.getAssetByTokenId(tokenId);
+      return asset;
+    } catch (err) {
+      console.error('[PlatformProvider] Error fetching asset by tokenId:', err);
+      return null;
+    }
+  }, []);
+
+  /**
+   * Refresh all platform data
+   */
+  const refreshPlatformData = useCallback(async () => {
+    console.log('[PlatformProvider] Refreshing platform data...');
+    setLoadState({ status: 'loading' });
+
+    try {
+      // Fetch both in parallel
+      const results = await Promise.allSettled([
+        repositoryRef.current.getSupportedAssets(),
+        repositoryRef.current.getSupportedAssetClasses(),
+      ]);
+
+      const [assetsResult, classesResult] = results;
+      const errors: string[] = [];
+
+      // Handle assets result
+      if (assetsResult.status === 'fulfilled') {
+        console.log(
+          `[PlatformProvider] Loaded ${assetsResult.value.length} supported assets`,
+        );
+        setSupportedAssets(assetsResult.value);
+      } else {
+        const msg =
+          assetsResult.reason instanceof Error
+            ? assetsResult.reason.message
+            : 'Failed to load supported assets';
+        console.error('[PlatformProvider] Error loading assets:', msg);
+        errors.push(msg);
+      }
+
+      // Handle classes result
+      if (classesResult.status === 'fulfilled') {
+        console.log(
+          `[PlatformProvider] Loaded ${classesResult.value.length} asset classes:`,
+          classesResult.value,
+        );
+        setSupportedAssetClasses(classesResult.value);
+      } else {
+        const msg =
+          classesResult.reason instanceof Error
+            ? classesResult.reason.message
+            : 'Failed to load asset classes';
+        console.error('[PlatformProvider] Error loading classes:', msg);
+        errors.push(msg);
+      }
+
+      // Set final state
+      if (errors.length > 0) {
+        setLoadState({ status: 'error', error: errors.join('; ') });
+      } else {
+        setLoadState({ status: 'success' });
+      }
+
+      // Invalidate class assets cache on refresh
+      invalidateCache();
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to refresh platform data';
+      console.error('[PlatformProvider] Unexpected error:', err);
+      setLoadState({ status: 'error', error: msg });
+    }
+  }, [invalidateCache]);
+
+  /**
+   * Get assets for a specific class (with caching)
+   */
+  const getClassAssets = useCallback(
+    async (assetClass: string): Promise<Asset[]> => {
+      const key = assetClass.trim().toLowerCase();
+      if (!key) return [];
+
+      // Check cache first
+      const cached = classAssetsCache.current.get(key);
+      if (isCacheValid(cached)) {
+        console.log(`[PlatformProvider] Cache hit for class: ${assetClass}`);
+        return cached!.data;
+      }
+
+      try {
+        console.log(
+          `[PlatformProvider] Fetching assets for class: ${assetClass}`,
+        );
+        const assets = await repositoryRef.current.getClassAssets(assetClass);
+
+        // Update cache
+        classAssetsCache.current.set(key, {
+          data: assets,
+          timestamp: Date.now(),
+        });
+
+        return assets;
+      } catch (err) {
+        console.error(
+          `[PlatformProvider] Error fetching class assets for ${assetClass}:`,
+          err,
+        );
+        throw err;
+      }
+    },
+    [isCacheValid],
+  );
+
+  /**
+   * Get tokenizable assets for a class (assets with multiple attribute values)
+   */
+  const getClassTokenizableAssets = useCallback(
+    async (assetClass: string): Promise<Asset[]> => {
+      const assets = await getClassAssets(assetClass);
+
+      // Filter to tokenizable assets (those with multiple values for attributes)
+      return assets.filter(
+        (asset) =>
+          asset.attributes &&
+          asset.attributes.length > 0 &&
+          asset.attributes[0]?.values &&
+          asset.attributes[0].values.length > 1,
+      );
+    },
+    [getClassAssets],
+  );
+
+  // Initial data fetch
+  useEffect(() => {
+    console.log('[PlatformProvider] Initial mount, fetching platform data...');
+    refreshPlatformData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Context value
+  const contextValue = useMemo<PlatformContextType>(
+    () => ({
+      supportedAssets,
+      supportedAssetClasses,
+      assetClasses,
+      loadState,
+      isLoading,
+      error,
+      refreshPlatformData,
+      getClassAssets,
+      getClassTokenizableAssets,
+      getAssetByTokenId,
+      invalidateCache,
+    }),
+    [
+      supportedAssets,
+      supportedAssetClasses,
+      assetClasses,
+      loadState,
+      isLoading,
+      error,
+      refreshPlatformData,
+      getClassAssets,
+      getClassTokenizableAssets,
+      getAssetByTokenId,
+      invalidateCache,
+    ],
+  );
+
   return (
-    <PlatformContext.Provider
-      value={{
-        supportedAssets,
-        supportedAssetClasses,
-        isLoading,
-        error,
-        refreshPlatformData,
-        getClassTokenizableAssets,
-        getAssetByTokenId,
-      }}
-    >
+    <PlatformContext.Provider value={contextValue}>
       {children}
     </PlatformContext.Provider>
   );
 }
 
+// =============================================================================
+// HOOKS
+// =============================================================================
+
+/**
+ * Hook to access platform context
+ */
 export function usePlatform() {
   const context = useContext(PlatformContext);
   if (context === undefined) {
