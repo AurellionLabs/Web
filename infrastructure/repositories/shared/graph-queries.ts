@@ -160,9 +160,10 @@ export const GET_ASSETS_BY_HASHES = gql`
 /**
  * Query AuraAsset subgraph for asset metadata by tokenIds
  * Updated for Ponder API - uses plural table names with items wrapper
+ * Note: Ponder requires BigInt type for tokenId_in filter, not String
  */
 export const GET_ASSETS_BY_TOKEN_IDS = gql`
-  query GetAssetsByTokenIds($tokenIds: [String!]!) {
+  query GetAssetsByTokenIds($tokenIds: [BigInt!]!) {
     assetss(where: { tokenId_in: $tokenIds }, limit: 100) {
       items {
         id
