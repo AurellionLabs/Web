@@ -3,6 +3,7 @@
 
 import './ausys';
 import './aurum';
+import './aurum-diamond';
 import './aura-asset';
 import './austake';
 import './clob';
