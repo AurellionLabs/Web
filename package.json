@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "npx hardhat compile && next build",
+    "deploy": "npx hardhat run scripts/deploy.ts --network baseSepolia",
+    "deploy:order-bridge": "npx hardhat run scripts/deploy-order-bridge.ts --network baseSepolia",
     "start": "next start",
     "lint": "next lint",
     "prepare": "husky",
