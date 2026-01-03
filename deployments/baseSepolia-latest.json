@@ -8,7 +8,8 @@
     "aurumNodeManager": "0xc50F6505BcBb00Af8f1086d9121525695Bf09D30",
     "auStake": "0xd41b6Dc779558bbe674B13F6996BFD5679f75074",
     "auraAsset": "0xdc1B355885ba73EFf0f0a5A72F12D87e785581a8",
-    "clob": "0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc"
+    "clob": "0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc",
+    "orderBridge": "0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226"
   },
   "startBlocks": {
     "auraToken": 35771316,
@@ -16,7 +17,8 @@
     "aurumNodeManager": 35771324,
     "auStake": 35771327,
     "auraAsset": 35771330,
-    "clob": 35771333
+    "clob": 35771333,
+    "orderBridge": 0
   },
-  "timestamp": "2026-01-01T23:43:02.813Z"
+  "timestamp": "2026-01-03T10:59:12.990Z"
 }

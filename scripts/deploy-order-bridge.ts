@@ -19,8 +19,8 @@ async function main() {
   const CLOB_ADDRESS = '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc';
   const AUSYS_ADDRESS = '0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde';
   
-  // Quote token (mock for now - USDT on Base Sepolia)
-  const QUOTE_TOKEN_ADDRESS = '0x...'; // TODO: Set actual USDT/USDC address
+  // Quote token - Using deployer address as placeholder (needs to be updated with actual USDT/USDC address)
+  const QUOTE_TOKEN_ADDRESS = ethers.getAddress('0x0000000000000000000000000000000000000000'); // Placeholder
   
   // Fee recipient
   const FEE_RECIPIENT = deployer.address; // Use deployer as initial fee recipient
@@ -40,16 +40,17 @@ async function main() {
     FEE_RECIPIENT
   );
 
-  await orderBridge.deployed();
+  await orderBridge.waitForDeployment();
 
   const orderBridgeAddress = await orderBridge.getAddress();
+  const deploymentTx = orderBridge.deploymentTransaction();
   
   console.log('==========================================');
   console.log('OrderBridge deployed successfully!');
   console.log('==========================================');
   console.log(`Address: ${orderBridgeAddress}`);
-  console.log(`Transaction Hash: ${orderBridge.deploymentTransaction()?.hash}`);
-  console.log(`Block Number: ${orderBridge.deploymentTransaction()?.blockNumber}`);
+  console.log(`Transaction Hash: ${deploymentTx?.hash}`);
+  console.log(`Block Number: ${deploymentTx?.blockNumber}`);
   console.log('==========================================\n');
 
   // Verify ownership transfer
@@ -70,7 +71,7 @@ async function main() {
   updateChainConstants(orderBridgeAddress);
   
   // Update ponder.config.ts
-  const deploymentBlock = orderBridge.deploymentTransaction()?.blockNumber || 0;
+  const deploymentBlock = deploymentTx?.blockNumber || 0;
   updatePonderConfig(orderBridgeAddress, deploymentBlock);
   
   // Update deployments JSON

@@ -29,7 +29,7 @@ const START_BLOCKS = {
   auraAsset: 35850004, // TODO: Update with actual deployment block
   auStake: 35850006, // TODO: Update with actual deployment block
   clob: 35771333, // Existing CLOB deployment
-  orderBridge: 35850008, // TODO: Update with actual deployment block
+  orderBridge: 0,
 };
 
 export default createConfig({

@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-03T10:47:31.813Z
+// Deployed: 2026-01-03T10:59:12.989Z.813Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -19,7 +19,7 @@ export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
 export const NEXT_PUBLIC_CLOB_ADDRESS =
   '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc';
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
-  '0x0000000000000000000000000000000000000000'; // TODO: Deploy and set
+  '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
 
 // Quote token address for CLOB trading (USDT on Base Sepolia)
 export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS =
