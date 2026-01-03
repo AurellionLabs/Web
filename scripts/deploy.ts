@@ -36,8 +36,15 @@ async function main() {
   const auraToken = await AuraFactory.deploy();
   await auraToken.waitForDeployment();
   const auraTokenAddress = await auraToken.getAddress();
-  const auraTokenBlock = await getDeploymentBlock(auraToken.deploymentTransaction(), deployer.provider);
-  deployments.push({ name: 'auraToken', address: auraTokenAddress, deployBlock: auraTokenBlock });
+  const auraTokenBlock = await getDeploymentBlock(
+    auraToken.deploymentTransaction(),
+    deployer.provider,
+  );
+  deployments.push({
+    name: 'auraToken',
+    address: auraTokenAddress,
+    deployBlock: auraTokenBlock,
+  });
 
   // Mint initial tokens
   const mintTx = await auraToken.mintTokenToTreasury(1000000);
@@ -53,15 +60,23 @@ async function main() {
   const auSys = await AuSysFactory.deploy(auraTokenAddress);
   await auSys.waitForDeployment();
   const auSysAddress = await auSys.getAddress();
-  const auSysBlock = await getDeploymentBlock(auSys.deploymentTransaction(), deployer.provider);
-  deployments.push({ name: 'auSys', address: auSysAddress, deployBlock: auSysBlock });
+  const auSysBlock = await getDeploymentBlock(
+    auSys.deploymentTransaction(),
+    deployer.provider,
+  );
+  deployments.push({
+    name: 'auSys',
+    address: auSysAddress,
+    deployBlock: auSysBlock,
+  });
   console.log(`   ✓ AuSys: ${auSysAddress} (block ${auSysBlock})\n`);
 
   // =============================================================================
   // 3. Deploy AurumNodeManager
   // =============================================================================
   console.log(`3️⃣  Deploying AurumNodeManager...`);
-  const AurumNodeManagerFactory = await ethers.getContractFactory('AurumNodeManager');
+  const AurumNodeManagerFactory =
+    await ethers.getContractFactory('AurumNodeManager');
   const aurumNodeManager = await AurumNodeManagerFactory.deploy(auSysAddress);
   await aurumNodeManager.waitForDeployment();
   const aurumNodeManagerAddress = await aurumNodeManager.getAddress();
@@ -69,19 +84,35 @@ async function main() {
     aurumNodeManager.deploymentTransaction(),
     deployer.provider,
   );
-  deployments.push({ name: 'aurumNodeManager', address: aurumNodeManagerAddress, deployBlock: aurumNodeManagerBlock });
-  console.log(`   ✓ AurumNodeManager: ${aurumNodeManagerAddress} (block ${aurumNodeManagerBlock})\n`);
+  deployments.push({
+    name: 'aurumNodeManager',
+    address: aurumNodeManagerAddress,
+    deployBlock: aurumNodeManagerBlock,
+  });
+  console.log(
+    `   ✓ AurumNodeManager: ${aurumNodeManagerAddress} (block ${aurumNodeManagerBlock})\n`,
+  );
 
   // =============================================================================
   // 4. Deploy AuStake
   // =============================================================================
   console.log(`4️⃣  Deploying AuStake...`);
   const AuStakeFactory = await ethers.getContractFactory('AuStake');
-  const auStake = await AuStakeFactory.deploy(deployer.address, deployer.address);
+  const auStake = await AuStakeFactory.deploy(
+    deployer.address,
+    deployer.address,
+  );
   await auStake.waitForDeployment();
   const auStakeAddress = await auStake.getAddress();
-  const auStakeBlock = await getDeploymentBlock(auStake.deploymentTransaction(), deployer.provider);
-  deployments.push({ name: 'auStake', address: auStakeAddress, deployBlock: auStakeBlock });
+  const auStakeBlock = await getDeploymentBlock(
+    auStake.deploymentTransaction(),
+    deployer.provider,
+  );
+  deployments.push({
+    name: 'auStake',
+    address: auStakeAddress,
+    deployBlock: auStakeBlock,
+  });
   console.log(`   ✓ AuStake: ${auStakeAddress} (block ${auStakeBlock})\n`);
 
   // =============================================================================
@@ -96,9 +127,18 @@ async function main() {
   );
   await auraAsset.waitForDeployment();
   const auraAssetAddress = await auraAsset.getAddress();
-  const auraAssetBlock = await getDeploymentBlock(auraAsset.deploymentTransaction(), deployer.provider);
-  deployments.push({ name: 'auraAsset', address: auraAssetAddress, deployBlock: auraAssetBlock });
-  console.log(`   ✓ AuraAsset: ${auraAssetAddress} (block ${auraAssetBlock})\n`);
+  const auraAssetBlock = await getDeploymentBlock(
+    auraAsset.deploymentTransaction(),
+    deployer.provider,
+  );
+  deployments.push({
+    name: 'auraAsset',
+    address: auraAssetAddress,
+    deployBlock: auraAssetBlock,
+  });
+  console.log(
+    `   ✓ AuraAsset: ${auraAssetAddress} (block ${auraAssetBlock})\n`,
+  );
 
   // =============================================================================
   // 6. Deploy OrderBridge
@@ -108,12 +148,26 @@ async function main() {
   const QUOTE_TOKEN_ADDRESS = '0x79aF0Abc6A45b82A8cDd99C3b4b24f6f8A8Eb1F6'; // USDT on Base Sepolia
 
   const OrderBridgeFactory = await ethers.getContractFactory('OrderBridge');
-  const orderBridge = await OrderBridgeFactory.deploy(CLOB_ADDRESS, auSysAddress, QUOTE_TOKEN_ADDRESS, deployer.address);
+  const orderBridge = await OrderBridgeFactory.deploy(
+    CLOB_ADDRESS,
+    auSysAddress,
+    QUOTE_TOKEN_ADDRESS,
+    deployer.address,
+  );
   await orderBridge.waitForDeployment();
   const orderBridgeAddress = await orderBridge.getAddress();
-  const orderBridgeBlock = await getDeploymentBlock(orderBridge.deploymentTransaction(), deployer.provider);
-  deployments.push({ name: 'orderBridge', address: orderBridgeAddress, deployBlock: orderBridgeBlock });
-  console.log(`   ✓ OrderBridge: ${orderBridgeAddress} (block ${orderBridgeBlock})\n`);
+  const orderBridgeBlock = await getDeploymentBlock(
+    orderBridge.deploymentTransaction(),
+    deployer.provider,
+  );
+  deployments.push({
+    name: 'orderBridge',
+    address: orderBridgeAddress,
+    deployBlock: orderBridgeBlock,
+  });
+  console.log(
+    `   ✓ OrderBridge: ${orderBridgeAddress} (block ${orderBridgeBlock})\n`,
+  );
 
   // =============================================================================
   // Post-deployment configurations
@@ -140,7 +194,11 @@ async function main() {
     name: 'AUGOAT',
     assetClass: 'GOAT',
     attributes: [
-      { name: 'weight', values: ['S', 'M', 'L'], description: 'A goats weight either S = 20 KG , M = 30 KG, L = 40KG' },
+      {
+        name: 'weight',
+        values: ['S', 'M', 'L'],
+        description: 'A goats weight either S = 20 KG , M = 30 KG, L = 40KG',
+      },
       { name: 'sex', values: ['M', 'F'], description: '' },
     ],
   };
@@ -305,10 +363,22 @@ function updatePonderConfig(blocks: {
 
   // Update start blocks
   content = content.replace(/ausys:\s*\d+/, `ausys: ${blocks.auSysBlock}`);
-  content = content.replace(/aurumNodeManager:\s*\d+/, `aurumNodeManager: ${blocks.aurumNodeManagerBlock}`);
-  content = content.replace(/auraAsset:\s*\d+/, `auraAsset: ${blocks.auraAssetBlock}`);
-  content = content.replace(/auStake:\s*\d+/, `auStake: ${blocks.auStakeBlock}`);
-  content = content.replace(/orderBridge:\s*\d+/, `orderBridge: ${blocks.orderBridgeBlock}`);
+  content = content.replace(
+    /aurumNodeManager:\s*\d+/,
+    `aurumNodeManager: ${blocks.aurumNodeManagerBlock}`,
+  );
+  content = content.replace(
+    /auraAsset:\s*\d+/,
+    `auraAsset: ${blocks.auraAssetBlock}`,
+  );
+  content = content.replace(
+    /auStake:\s*\d+/,
+    `auStake: ${blocks.auStakeBlock}`,
+  );
+  content = content.replace(
+    /orderBridge:\s*\d+/,
+    `orderBridge: ${blocks.orderBridgeBlock}`,
+  );
 
   fs.writeFileSync(filePath, content);
   console.log(`   ✓ Updated indexer/ponder.config.ts`);
@@ -327,7 +397,12 @@ function updateDeploymentsJson(blocks: {
   auStakeBlock: number;
   orderBridgeBlock: number;
 }) {
-  const filePath = path.join(__dirname, '..', 'deployments', 'baseSepolia-latest.json');
+  const filePath = path.join(
+    __dirname,
+    '..',
+    'deployments',
+    'baseSepolia-latest.json',
+  );
   const deployment = {
     network: 'baseSepolia',
     chainId: 84532,
@@ -360,4 +435,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

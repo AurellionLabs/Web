@@ -15,14 +15,54 @@ export const OrderBridgeAbi = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'clobOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'address', name: 'buyer', type: 'address' },
-      { indexed: false, internalType: 'address', name: 'seller', type: 'address' },
-      { indexed: false, internalType: 'address', name: 'token', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'quantity', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'clobOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quantity',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
     ],
     name: 'UnifiedOrderCreated',
     type: 'event',
@@ -30,12 +70,42 @@ export const OrderBridgeAbi = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'clobTradeId', type: 'bytes32' },
-      { indexed: false, internalType: 'bytes32', name: 'clobOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'address', name: 'maker', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'clobTradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'clobOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
     name: 'TradeMatched',
     type: 'event',
@@ -43,11 +113,36 @@ export const OrderBridgeAbi = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'ausysOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'bytes32[]', name: 'journeyIds', type: 'bytes32[]' },
-      { indexed: false, internalType: 'uint256', name: 'bounty', type: 'uint256' },
-      { indexed: false, internalType: 'address', name: 'node', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'ausysOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32[]',
+        name: 'journeyIds',
+        type: 'bytes32[]',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'bounty',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'node',
+        type: 'address',
+      },
     ],
     name: 'LogisticsOrderCreated',
     type: 'event',
@@ -55,8 +150,18 @@ export const OrderBridgeAbi = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'journeyId', type: 'bytes32' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'journeyId',
+        type: 'bytes32',
+      },
       { indexed: false, internalType: 'uint8', name: 'phase', type: 'uint8' },
     ],
     name: 'JourneyStatusUpdated',
@@ -65,7 +170,12 @@ export const OrderBridgeAbi = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
       { indexed: false, internalType: 'uint8', name: 'status', type: 'uint8' },
     ],
     name: 'OrderStatusUpdated',
@@ -74,11 +184,36 @@ export const OrderBridgeAbi = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'address', name: 'seller', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'sellerAmount', type: 'uint256' },
-      { indexed: true, internalType: 'address', name: 'driver', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'driverAmount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'sellerAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'driverAmount',
+        type: 'uint256',
+      },
     ],
     name: 'OrderSettled',
     type: 'event',
@@ -86,9 +221,24 @@ export const OrderBridgeAbi = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'uint8', name: 'previousStatus', type: 'uint8' },
-      { indexed: false, internalType: 'uint256', name: 'refundedAmount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'previousStatus',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'refundedAmount',
+        type: 'uint256',
+      },
     ],
     name: 'OrderCancelled',
     type: 'event',
@@ -110,19 +260,25 @@ export const OrderBridgeAbi = [
       },
     ],
     name: 'createUnifiedOrder',
-    outputs: [{ internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' }],
+    outputs: [
+      { internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
+    ],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
+    ],
     name: 'bridgeTradeToLogistics',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
+    ],
     name: 'cancelUnifiedOrder',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -155,7 +311,9 @@ export const OrderBridgeAbi = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
+    ],
     name: 'getUnifiedOrder',
     outputs: [
       {
@@ -202,4 +360,3 @@ export const OrderBridgeAbi = [
     type: 'function',
   },
 ] as const;
-

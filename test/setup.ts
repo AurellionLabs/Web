@@ -58,4 +58,3 @@ afterAll(() => {
 
 // Increase timeout for async tests
 vi.setConfig({ testTimeout: 30000 });
-

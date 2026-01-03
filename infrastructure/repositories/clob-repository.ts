@@ -9,7 +9,11 @@ import {
   type CLOBTradeGraphResponse,
   type CLOBBestPricesResponse,
 } from '../shared/graph-queries';
-import { NEXT_PUBLIC_AURUM_SUBGRAPH_URL, NEXT_PUBLIC_CLOB_ADDRESS, NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+  NEXT_PUBLIC_CLOB_ADDRESS,
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+} from '@/chain-constants';
 import { formatEther, parseEther } from 'viem';
 import { ethers } from 'ethers';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
@@ -434,7 +438,7 @@ export class CLOBRepository {
   private async getContractWithSigner(): Promise<ethers.Contract> {
     const signer = this.repositoryContext.getSigner();
     const provider = this.repositoryContext.getProvider();
-    
+
     // Get CLOB ABI (minimal interface for trading)
     const clobABI = [
       'function placeLimitOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, bool isBuy) external returns (bytes32)',
@@ -458,7 +462,7 @@ export class CLOBRepository {
   private async getQuoteTokenWithSigner(): Promise<ethers.Contract> {
     const signer = this.repositoryContext.getSigner();
     const provider = this.repositoryContext.getProvider();
-    
+
     const erc20ABI = [
       'function approve(address spender, uint256 amount) external returns (bool)',
       'function allowance(address owner, address spender) external view returns (uint256)',
@@ -498,7 +502,9 @@ export class CLOBRepository {
    * @param params Order placement parameters
    * @returns Order placement result
    */
-  async placeLimitOrder(params: PlaceLimitOrderParams): Promise<OrderPlacementResult> {
+  async placeLimitOrder(
+    params: PlaceLimitOrderParams,
+  ): Promise<OrderPlacementResult> {
     try {
       console.log('[CLOBRepository] Placing limit order:', params);
 
@@ -548,7 +554,9 @@ export class CLOBRepository {
    * @param params Order placement parameters
    * @returns Order placement result
    */
-  async placeMarketOrder(params: PlaceMarketOrderParams): Promise<OrderPlacementResult> {
+  async placeMarketOrder(
+    params: PlaceMarketOrderParams,
+  ): Promise<OrderPlacementResult> {
     try {
       console.log('[CLOBRepository] Placing market order:', params);
 
@@ -597,7 +605,9 @@ export class CLOBRepository {
    * @param orderId The order ID to cancel
    * @returns Cancellation result
    */
-  async cancelOrder(orderId: string): Promise<{ success: boolean; error?: string }> {
+  async cancelOrder(
+    orderId: string,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('[CLOBRepository] Cancelling order:', orderId);
 
@@ -630,14 +640,14 @@ export class CLOBRepository {
     // In a real implementation, you would parse the OrderPlaced event
     // For now, we'll return a placeholder that the indexer will track
     // The actual orderId comes from the contract event
-    
+
     // Try to find OrderPlaced or BuyOrderPlaced/NodeSellOrderPlaced event
     const eventSignature = isBuy
       ? 'BuyOrderPlaced(bytes32,address,address,uint256,address,uint256,uint256)'
       : 'OrderPlaced(bytes32,address,address,uint256,address,uint256,uint256)';
-    
+
     const topic = ethers.id(eventSignature);
-    
+
     for (const log of receipt.logs) {
       if (log.topics[0] === topic) {
         // Order ID is in topics[1]

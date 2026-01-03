@@ -7,7 +7,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['test/**/*.test.ts', 'test/**/*.test.tsx', '__tests__/**/*.test.ts', '__tests__/**/*.test.tsx'],
+    include: [
+      'test/**/*.test.ts',
+      'test/**/*.test.tsx',
+      '__tests__/**/*.test.ts',
+      '__tests__/**/*.test.tsx',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
@@ -39,4 +44,3 @@ export default defineConfig({
     include: /\.tsx$/,
   },
 });
-

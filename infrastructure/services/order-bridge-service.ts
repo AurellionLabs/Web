@@ -3,21 +3,30 @@
 import { ethers } from 'ethers';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
-import { clobRepository, PlaceLimitOrderParams, PlaceMarketOrderParams, OrderPlacementResult } from '@/infrastructure/repositories/clob-repository';
-import { NEXT_PUBLIC_CLOB_ADDRESS, NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS, NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } from '@/chain-constants';
+import {
+  clobRepository,
+  PlaceLimitOrderParams,
+  PlaceMarketOrderParams,
+  OrderPlacementResult,
+} from '@/infrastructure/repositories/clob-repository';
+import {
+  NEXT_PUBLIC_CLOB_ADDRESS,
+  NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS,
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+} from '@/chain-constants';
 
 /**
  * Unified order status - tracks complete lifecycle from trade to delivery
  */
 export enum UnifiedOrderStatus {
   NONE = 'none',
-  PENDING_TRADE = 'pending_trade',       // Order placed on CLOB, waiting for match
-  TRADE_MATCHED = 'trade_matched',       // Trade executed, awaiting logistics
+  PENDING_TRADE = 'pending_trade', // Order placed on CLOB, waiting for match
+  TRADE_MATCHED = 'trade_matched', // Trade executed, awaiting logistics
   LOGISTICS_CREATED = 'logistics_created', // Ausys order created
-  IN_TRANSIT = 'in_transit',             // Package picked up
-  DELIVERED = 'delivered',               // Package delivered
-  SETTLED = 'settled',                   // All payments distributed
-  CANCELLED = 'cancelled',               // Order cancelled
+  IN_TRANSIT = 'in_transit', // Package picked up
+  DELIVERED = 'delivered', // Package delivered
+  SETTLED = 'settled', // All payments distributed
+  CANCELLED = 'cancelled', // Order cancelled
 }
 
 /**
@@ -33,25 +42,25 @@ export interface DeliveryLocation {
  * Unified order data - combines CLOB trading with Ausys logistics
  */
 export interface UnifiedOrder {
-  id: string;                    // Unified order ID
-  clobOrderId: string;           // CLOB order ID
-  clobTradeId: string;           // CLOB trade ID (when matched)
-  ausysOrderId: string;          // Ausys order ID
-  journeyIds: string[];          // Ausys journey IDs
+  id: string; // Unified order ID
+  clobOrderId: string; // CLOB order ID
+  clobTradeId: string; // CLOB trade ID (when matched)
+  ausysOrderId: string; // Ausys order ID
+  journeyIds: string[]; // Ausys journey IDs
   buyer: string;
   seller: string;
   sellerNode: string;
   token: string;
   tokenId: string;
   tokenQuantity: string;
-  price: string;                 // Total price in quote token
-  bounty: string;                // Driver bounty
+  price: string; // Total price in quote token
+  bounty: string; // Driver bounty
   deliveryData: DeliveryLocation;
   status: UnifiedOrderStatus;
   createdAt: number;
-  matchedAt: number;            // When trade executed
-  deliveredAt: number;          // When package delivered
-  settledAt: number;            // When funds distributed
+  matchedAt: number; // When trade executed
+  deliveredAt: number; // When package delivered
+  settledAt: number; // When funds distributed
 }
 
 /**
@@ -84,11 +93,11 @@ export interface BridgeTradeResult {
 
 /**
  * OrderBridgeService - Orchestrates unified order flow: CLOB trading → Ausys logistics
- * 
+ *
  * This service provides the bridge layer that connects:
  * - CLOB for trading and price discovery
  * - Ausys for multi-node logistics and delivery
- * 
+ *
  * Unified workflow:
  * 1. Place order on CLOB (price discovery, matching)
  * 2. Trade executes → Bridge auto-creates Ausys logistics order
@@ -130,11 +139,14 @@ export class OrderBridgeService {
     deliveryData?: DeliveryLocation,
   ): Promise<UnifiedOrderResult> {
     try {
-      console.log('[OrderBridgeService] Placing limit order with bridge:', params);
+      console.log(
+        '[OrderBridgeService] Placing limit order with bridge:',
+        params,
+      );
 
       // Step 1: Place order on CLOB
       const orderResult = await clobRepository.placeLimitOrder(params);
-      
+
       if (!orderResult.success || !orderResult.orderId) {
         return {
           success: false,
@@ -142,7 +154,10 @@ export class OrderBridgeService {
         };
       }
 
-      console.log('[OrderBridgeService] CLOB order placed:', orderResult.orderId);
+      console.log(
+        '[OrderBridgeService] CLOB order placed:',
+        orderResult.orderId,
+      );
 
       // Step 2: If bridging enabled, create unified order with Ausys logistics
       if (bridgeToLogistics && deliveryData) {
@@ -182,7 +197,10 @@ export class OrderBridgeService {
       const result = await clobRepository.placeMarketOrder(params);
 
       if (result.success) {
-        console.log('[OrderBridgeService] Market order executed:', result.orderId);
+        console.log(
+          '[OrderBridgeService] Market order executed:',
+          result.orderId,
+        );
       }
 
       return result;
@@ -239,7 +257,10 @@ export class OrderBridgeService {
       );
 
       const receipt = await tx.wait();
-      console.log('[OrderBridgeService] Unified order created, tx:', receipt.hash);
+      console.log(
+        '[OrderBridgeService] Unified order created, tx:',
+        receipt.hash,
+      );
 
       // Extract unified order ID from transaction
       const unifiedOrderId = this.extractUnifiedOrderId(receipt);
@@ -249,7 +270,10 @@ export class OrderBridgeService {
         unifiedOrderId,
       };
     } catch (error) {
-      console.error('[OrderBridgeService] Error creating unified order:', error);
+      console.error(
+        '[OrderBridgeService] Error creating unified order:',
+        error,
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -266,7 +290,10 @@ export class OrderBridgeService {
     unifiedOrderId: string,
   ): Promise<BridgeTradeResult> {
     try {
-      console.log('[OrderBridgeService] Bridging trade to logistics:', unifiedOrderId);
+      console.log(
+        '[OrderBridgeService] Bridging trade to logistics:',
+        unifiedOrderId,
+      );
 
       const signer = this.repositoryContext.getSigner();
 
@@ -286,7 +313,10 @@ export class OrderBridgeService {
       const tx = await bridgeContract.bridgeTradeToLogistics(unifiedOrderId);
       const receipt = await tx.wait();
 
-      console.log('[OrderBridgeService] Trade bridged to logistics, tx:', receipt.hash);
+      console.log(
+        '[OrderBridgeService] Trade bridged to logistics, tx:',
+        receipt.hash,
+      );
 
       // Get the updated unified order to get Ausys order ID
       const order = await bridgeContract.getUnifiedOrder(unifiedOrderId);
@@ -332,7 +362,10 @@ export class OrderBridgeService {
       }
 
       // Map contract status to unified status
-      const status = this.mapContractStatus(order.status, order.logisticsStatus);
+      const status = this.mapContractStatus(
+        order.status,
+        order.logisticsStatus,
+      );
 
       return {
         id: order.id,
@@ -398,9 +431,14 @@ export class OrderBridgeService {
    * @param unifiedOrderId The order to cancel
    * @returns Success status
    */
-  async cancelUnifiedOrder(unifiedOrderId: string): Promise<{ success: boolean; error?: string }> {
+  async cancelUnifiedOrder(
+    unifiedOrderId: string,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('[OrderBridgeService] Cancelling unified order:', unifiedOrderId);
+      console.log(
+        '[OrderBridgeService] Cancelling unified order:',
+        unifiedOrderId,
+      );
 
       const signer = this.repositoryContext.getSigner();
 
@@ -467,7 +505,8 @@ export class OrderBridgeService {
    */
   private extractUnifiedOrderId(receipt: ethers.TransactionReceipt): string {
     // Look for UnifiedOrderCreated event
-    const eventSignature = 'UnifiedOrderCreated(bytes32,bytes32,address,address,address,uint256,uint256,uint256)';
+    const eventSignature =
+      'UnifiedOrderCreated(bytes32,bytes32,address,address,address,uint256,uint256,uint256)';
     const topic = ethers.id(eventSignature);
 
     for (const log of receipt.logs) {
@@ -489,21 +528,20 @@ export class OrderBridgeService {
   ): UnifiedOrderStatus {
     // Trading status: 0=None, 1=PendingTrade, 2=TradeMatched, 3=LogisticsCreated, 4=Settled, 5=Cancelled
     // Logistics status: 0=None, 1=Pending, 2=InTransit, 3=Delivered
-    
+
     if (tradingStatus === 5) return UnifiedOrderStatus.CANCELLED;
     if (tradingStatus === 4) return UnifiedOrderStatus.SETTLED;
     if (tradingStatus === 3) return UnifiedOrderStatus.LOGISTICS_CREATED;
     if (tradingStatus === 2) return UnifiedOrderStatus.TRADE_MATCHED;
     if (tradingStatus === 1) return UnifiedOrderStatus.PENDING_TRADE;
-    
+
     // Check logistics status for in-transit/delivered
     if (logisticsStatus === 3) return UnifiedOrderStatus.DELIVERED;
     if (logisticsStatus === 2) return UnifiedOrderStatus.IN_TRANSIT;
-    
+
     return UnifiedOrderStatus.NONE;
   }
 }
 
 // Export singleton instance
 export const orderBridgeService = new OrderBridgeService();
-
