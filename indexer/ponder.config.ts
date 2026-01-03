@@ -12,24 +12,24 @@ import { OrderBridgeAbi } from './abis/OrderBridgeAbi';
 // Base Sepolia Chain ID
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
-// Contract addresses - Updated with fresh deployment (Jan 1, 2026)
+// Contract addresses - Updated with fresh deployment (Jan 3, 2026)
 const CONTRACTS = {
-  ausys: '0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde' as `0x${string}`,
+  ausys: '0xCfeE7c48315c35325CEC9721A9aad46C372439D7' as `0x${string}`,
   aurumNodeManager:
-    '0xc50F6505BcBb00Af8f1086d9121525695Bf09D30' as `0x${string}`,
-  auraAsset: '0xdc1B355885ba73EFf0f0a5A72F12D87e785581a8' as `0x${string}`,
-  auStake: '0xd41b6Dc779558bbe674B13F6996BFD5679f75074' as `0x${string}`,
+    '0x5a1A031f66612906CA81c73153ec572DB4C3814B' as `0x${string}`,
+  auraAsset: '0xE28388bC599aCFd63B6722E467A252973176C87F' as `0x${string}`,
+  auStake: '0x1310fe679b58d10764E6Dd636a640139bD083cB2' as `0x${string}`,
   clob: '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc' as `0x${string}`,
   orderBridge: '0x0000000000000000000000000000000000000000' as `0x${string}`, // TODO: Deploy
 };
 
 const START_BLOCKS = {
-  ausys: 35771321,
-  aurumNodeManager: 35771324,
-  auraAsset: 35771330,
-  auStake: 35771327,
-  clob: 35771333,
-  orderBridge: 35771334, // TODO: Update with actual deployment block
+  ausys: 35850000, // TODO: Update with actual deployment block
+  aurumNodeManager: 35850002, // TODO: Update with actual deployment block
+  auraAsset: 35850004, // TODO: Update with actual deployment block
+  auStake: 35850006, // TODO: Update with actual deployment block
+  clob: 35771333, // Existing CLOB deployment
+  orderBridge: 35850008, // TODO: Update with actual deployment block
 };
 
 export default createConfig({

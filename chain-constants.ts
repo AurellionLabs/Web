@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-01T23:43:02.813Z
+// Deployed: 2026-01-03T10:47:31.813Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -7,15 +7,15 @@
 // =============================================================================
 
 export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
-  '0xd41b6Dc779558bbe674B13F6996BFD5679f75074';
+  '0x1310fe679b58d10764E6Dd636a640139bD083cB2';
 export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
-  '0x838Cb08335Ab4121CE4f438F38A002C9A62F69C1';
+  '0x60f7F0467FcA6176008b36CDf96070DC7b54E2C4';
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
-  '0xc50F6505BcBb00Af8f1086d9121525695Bf09D30';
+  '0x5a1A031f66612906CA81c73153ec572DB4C3814B';
 export const NEXT_PUBLIC_AUSYS_ADDRESS =
-  '0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde';
+  '0xCfeE7c48315c35325CEC9721A9aad46C372439D7';
 export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
-  '0xdc1B355885ba73EFf0f0a5A72F12D87e785581a8';
+  '0xE28388bC599aCFd63B6722E467A252973176C87F';
 export const NEXT_PUBLIC_CLOB_ADDRESS =
   '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc';
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
@@ -62,10 +62,10 @@ export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = 84532; // Base Sepolia
 // =============================================================================
 
 export const DEPLOYMENT_BLOCKS = {
-  auraToken: 35771316,
-  auSys: 35771321,
-  aurumNodeManager: 35771324,
-  auStake: 35771327,
-  auraAsset: 35771330,
-  clob: 35771333,
+  auraToken: 35850000, // TODO: Update with actual deployment block
+  auSys: 35850002, // TODO: Update with actual deployment block
+  aurumNodeManager: 35850004, // TODO: Update with actual deployment block
+  auStake: 35850006, // TODO: Update with actual deployment block
+  auraAsset: 35850008, // TODO: Update with actual deployment block
+  clob: 35771333, // Existing CLOB deployment
 };

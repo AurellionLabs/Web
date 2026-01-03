@@ -8,9 +8,9 @@ dataSources:
     name: AuraAsset
     network: base-sepolia
     source:
-      address: '0x044960dF23E46c1f63b0aAE8ac15D5420764c33b'
+      address: "0xE28388bC599aCFd63B6722E467A252973176C87F"
       abi: AuraAsset
-      startBlock: 35639323
+      startBlock: 35834492
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

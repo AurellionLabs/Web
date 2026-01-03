@@ -540,6 +540,57 @@ export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = "https://api.studio.thegraph.com/q
 `;
     await fs.promises.writeFile('chain-constants.ts', constantsWithSubgraphs);
 
+    // Update Ponder indexer configuration with new contract addresses
+    console.log('\nUpdating Ponder indexer configuration...');
+    const ponderConfigPath = path.resolve('./indexer/ponder.config.ts');
+    if (fs.existsSync(ponderConfigPath)) {
+      let ponderConfig = fs.readFileSync(ponderConfigPath, 'utf8');
+
+      // Update contract addresses
+      ponderConfig = ponderConfig.replace(
+        /ausys:\s*'0x[A-Fa-f0-9]+'/,
+        `ausys: '${auSysAddress}' as \`0x\${string}\``,
+      );
+      ponderConfig = ponderConfig.replace(
+        /aurumNodeManager:\s*\n?\s*'0x[A-Fa-f0-9]+'/,
+        `aurumNodeManager:\n    '${aurumNodeManagerAddress}' as \`0x\${string}\``,
+      );
+      ponderConfig = ponderConfig.replace(
+        /auraAsset:\s*'0x[A-Fa-f0-9]+'/,
+        `auraAsset: '${await auraAsset.getAddress()}' as \`0x\${string}\``,
+      );
+      ponderConfig = ponderConfig.replace(
+        /auStake:\s*'0x[A-Fa-f0-9]+'/,
+        `auStake: '${auStakeAddress}' as \`0x\${string}\``,
+      );
+
+      // Update start blocks (use deployment block numbers or add buffer)
+      const currentBlock = await deployer.provider.getBlockNumber();
+      const bufferBlocks = 10; // Small buffer after deployment
+
+      ponderConfig = ponderConfig.replace(
+        /ausys:\s*\d+/,
+        `ausys: ${ausysDeployBlock}`,
+      );
+      ponderConfig = ponderConfig.replace(
+        /aurumNodeManager:\s*\d+/,
+        `aurumNodeManager: ${aurumDeployBlock}`,
+      );
+      ponderConfig = ponderConfig.replace(
+        /auraAsset:\s*\d+/,
+        `auraAsset: ${auraAssetDeployBlock}`,
+      );
+      ponderConfig = ponderConfig.replace(
+        /auStake:\s*\d+/,
+        `auStake: ${auStakeDeployBlock}`,
+      );
+
+      fs.writeFileSync(ponderConfigPath, ponderConfig);
+      console.log('✅ Ponder indexer configuration updated');
+    } else {
+      console.warn('⚠️ Ponder config not found at:', ponderConfigPath);
+    }
+
     // Print deployment summary
     console.log('\nDeployment Summary');
     console.log(constants);
