@@ -1099,3 +1099,158 @@ export const userTradingStats = onchainTable(
     userIdx: index().on(table.user),
   }),
 );
+
+// =============================================================================
+// ORDER BRIDGE TABLES - Unified CLOB → Ausys Order Flow
+// =============================================================================
+
+/**
+ * UnifiedOrder table - Tracks complete order lifecycle from CLOB trading to Ausys logistics
+ * UnifiedOrderStatus: 0=None, 1=PendingTrade, 2=TradeMatched, 3=LogisticsCreated, 4=Settled, 5=Cancelled
+ * LogisticsPhase: 0=None, 1=Pending, 2=InTransit, 3=Delivered
+ */
+export const unifiedOrders = onchainTable(
+  'unified_orders',
+  (t) => ({
+    id: t.hex().primaryKey(), // unifiedOrderId (bytes32)
+    clobOrderId: t.hex().notNull(), // Reference to CLOB order
+    clobTradeId: t.hex(), // Reference to CLOB trade (when matched)
+    ausysOrderId: t.hex(), // Reference to Ausys order
+    // Journey IDs stored as JSON array
+    journeyIds: t.text().notNull().default('[]'),
+    // Parties
+    buyer: t.hex().notNull(),
+    seller: t.hex().notNull(),
+    sellerNode: t.hex().notNull(),
+    // Asset details
+    token: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    tokenQuantity: t.bigint().notNull(),
+    // Pricing
+    price: t.bigint().notNull(), // Total price in quote token
+    bounty: t.bigint().notNull().default(0n), // Driver bounty
+    // Status tracking
+    status: t.integer().notNull().default(0), // UnifiedOrderStatus
+    logisticsStatus: t.integer().notNull().default(0), // LogisticsPhase
+    // Delivery data
+    startLocationLat: t.text().notNull().default(''),
+    startLocationLng: t.text().notNull().default(''),
+    endLocationLat: t.text().notNull().default(''),
+    endLocationLng: t.text().notNull().default(''),
+    startName: t.text().notNull().default(''),
+    endName: t.text().notNull().default(''),
+    // Timestamps
+    createdAt: t.bigint().notNull(),
+    matchedAt: t.bigint().notNull().default(0n),
+    deliveredAt: t.bigint().notNull().default(0n),
+    settledAt: t.bigint().notNull().default(0n),
+    // Metadata
+    blockNumber: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    clobOrderIdx: index().on(table.clobOrderId),
+    clobTradeIdx: index().on(table.clobTradeId),
+    ausysOrderIdx: index().on(table.ausysOrderId),
+    buyerIdx: index().on(table.buyer),
+    sellerIdx: index().on(table.seller),
+    sellerNodeIdx: index().on(table.sellerNode),
+    tokenIdx: index().on(table.token, table.tokenId),
+    statusIdx: index().on(table.status),
+    createdAtIdx: index().on(table.createdAt),
+  }),
+);
+
+/**
+ * UnifiedOrderCreated events (immutable)
+ */
+export const unifiedOrderCreatedEvents = onchainTable(
+  'unified_order_created_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    unifiedOrderId: t.hex().notNull(),
+    clobOrderId: t.hex().notNull(),
+    buyer: t.hex().notNull(),
+    seller: t.hex().notNull(),
+    token: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    quantity: t.bigint().notNull(),
+    price: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    unifiedOrderIdx: index().on(table.unifiedOrderId),
+    buyerIdx: index().on(table.buyer),
+    sellerIdx: index().on(table.seller),
+  }),
+);
+
+/**
+ * TradeMatched events (immutable)
+ */
+export const tradeMatchedEvents = onchainTable(
+  'trade_matched_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    unifiedOrderId: t.hex().notNull(),
+    clobTradeId: t.hex().notNull(),
+    clobOrderId: t.hex().notNull(),
+    maker: t.hex().notNull(),
+    price: t.bigint().notNull(),
+    amount: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    unifiedOrderIdx: index().on(table.unifiedOrderId),
+    clobTradeIdx: index().on(table.clobTradeId),
+  }),
+);
+
+/**
+ * LogisticsOrderCreated events (immutable)
+ */
+export const logisticsOrderCreatedEvents = onchainTable(
+  'logistics_order_created_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    unifiedOrderId: t.hex().notNull(),
+    ausysOrderId: t.hex().notNull(),
+    journeyIds: t.text().notNull(), // JSON array
+    bounty: t.bigint().notNull(),
+    node: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    unifiedOrderIdx: index().on(table.unifiedOrderId),
+    ausysOrderIdx: index().on(table.ausysOrderId),
+  }),
+);
+
+/**
+ * OrderSettled events (immutable)
+ */
+export const unifiedOrderSettledEvents = onchainTable(
+  'unified_order_settled_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    unifiedOrderId: t.hex().notNull(),
+    seller: t.hex().notNull(),
+    sellerAmount: t.bigint().notNull(),
+    driver: t.hex().notNull(),
+    driverAmount: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    unifiedOrderIdx: index().on(table.unifiedOrderId),
+    sellerIdx: index().on(table.seller),
+    driverIdx: index().on(table.driver),
+  }),
+);

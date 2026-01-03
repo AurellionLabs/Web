@@ -11,7 +11,7 @@ import { GlowButton } from '@/app/components/ui/glow-button';
 import { PriceChange } from '@/app/components/ui/price-change';
 import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
-import { TradePanel } from '@/app/components/trading/trade-panel';
+import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
 import {
   ArrowLeft,
   Share2,
@@ -25,6 +25,7 @@ import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { TokenizedAssetAttribute } from '@/domain/node';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import dynamic from 'next/dynamic';
 
 // Dynamically import chart to avoid SSR issues
@@ -201,11 +202,75 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
     console.log(`Clicked ${side} at ${price}`);
   }, []);
 
-  // Handle order placement
-  const handlePlaceOrder = useCallback(async (order: any) => {
-    console.log('Placing order:', order);
-    return true;
-  }, []);
+  // Handle order placement - connects TradePanel to CLOB with OrderBridge
+  const handlePlaceOrder = useCallback(
+    async (order: OrderData): Promise<boolean> => {
+      console.log('[TradingPage] Placing order via CLOB + OrderBridge:', order);
+
+      if (!asset) {
+        console.error('[TradingPage] No asset selected for order');
+        return false;
+      }
+
+      try {
+        // Import the order bridge service dynamically
+        const { orderBridgeService, PlaceLimitOrderParams, DeliveryLocation } = await import(
+          '@/infrastructure/services/order-bridge-service'
+        );
+
+        // Convert price to proper format (wei)
+        // Price in wei = price * 10^18
+        const priceInWei = BigInt(Math.round(order.price * 1e18));
+        const quantity = BigInt(order.quantity);
+
+        // Build CLOB order params
+        const clobParams: PlaceLimitOrderParams = {
+          baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          baseTokenId: BigInt(asset.id),
+          quoteToken: '0x...', // USDT or USDC address - would come from config
+          price: priceInWei,
+          amount: quantity,
+          isBuy: order.side === 'buy',
+        };
+
+        console.log('[TradingPage] Placing CLOB order:', clobParams);
+
+        // Place order on CLOB
+        if (order.type === 'limit') {
+          const result = await orderBridgeService.placeLimitOrderAndBridge(
+            clobParams,
+            false, // Don't bridge immediately - wait for match
+          );
+
+          if (!result.success) {
+            console.error('[TradingPage] CLOB order failed:', result.error);
+            return false;
+          }
+
+          console.log('[TradingPage] CLOB order placed:', result.unifiedOrderId);
+          return true;
+        } else {
+          // Market order - executes immediately
+          const result = await orderBridgeService.placeMarketOrder({
+            ...clobParams,
+            maxPrice: priceInWei * BigInt(105) / BigInt(100), // 5% slippage tolerance
+          });
+
+          if (!result.success) {
+            console.error('[TradingPage] Market order failed:', result.error);
+            return false;
+          }
+
+          console.log('[TradingPage] Market order executed:', result.orderId);
+          return true;
+        }
+      } catch (error) {
+        console.error('[TradingPage] Error placing order:', error);
+        return false;
+      }
+    },
+    [asset],
+  );
 
   if (!asset) {
     return (

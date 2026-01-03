@@ -38,7 +38,6 @@ contract AuSysFlowTest is Test {
             token: address(pay),
             tokenId: 1,
             tokenQuantity: 1,
-            requestedTokenQuantity: 5,
             price: 1 ether,
             txFee: 0,
             buyer: address(this),
@@ -46,7 +45,7 @@ contract AuSysFlowTest is Test {
             journeyIds: new bytes32[](0),
             nodes: new address[](0),
             locationData: _parcel(),
-            currentStatus: Ausys.Status.Pending,
+            currentStatus: Ausys.OrderStatus.Created,
             contractualAgreement: bytes32(0)
         });
 

@@ -11,11 +11,17 @@
     "format": "prettier . --write",
     "lint-staged": "lint-staged",
     "test:hardhat": "npx hardhat test",
+    "test:hardhat:bridge": "npx hardhat test test/OrderBridge.test.ts",
     "test:service:unit": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.test.ts'",
     "test:service:integration": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/services/**/*.service.integration.test.ts'",
+    "test:service:bridge": "npx vitest run test/services/OrderBridgeService.test.ts",
     "test:service": "npm run test:service:unit && npm run test:service:integration",
     "test:repo:unit": "npx ts-node -r tsconfig-paths/register node_modules/.bin/mocha 'test/infrastructure/repositories/**/*.unit.test.ts'",
-    "test": "npm run test:hardhat && npm run test:service"
+    "test:repo:clob": "npx vitest run test/repositories/CLOBRepository.test.ts",
+    "test:hooks": "npx vitest run test/hooks/useUnifiedOrder.test.ts",
+    "test:vitest": "npx vitest run",
+    "test:coverage": "npx vitest run --coverage",
+    "test": "npm run test:hardhat && npm run test:service && npm run test:vitest"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json,css,md}": "npm run format"

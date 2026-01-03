@@ -9,8 +9,10 @@ import {
   type CLOBTradeGraphResponse,
   type CLOBBestPricesResponse,
 } from '../shared/graph-queries';
-import { NEXT_PUBLIC_AURUM_SUBGRAPH_URL } from '@/chain-constants';
+import { NEXT_PUBLIC_AURUM_SUBGRAPH_URL, NEXT_PUBLIC_CLOB_ADDRESS, NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } from '@/chain-constants';
 import { formatEther, parseEther } from 'viem';
+import { ethers } from 'ethers';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 /**
  * Order side type
@@ -102,14 +104,54 @@ export interface MarketStats {
 }
 
 /**
+ * Parameters for placing a limit order
+ */
+export interface PlaceLimitOrderParams {
+  baseToken: string;
+  baseTokenId: string;
+  quoteToken: string;
+  price: bigint; // Price per unit in wei
+  amount: bigint; // Amount of base tokens
+  isBuy: boolean; // true for buy order, false for sell order
+}
+
+/**
+ * Parameters for placing a market order
+ */
+export interface PlaceMarketOrderParams {
+  baseToken: string;
+  baseTokenId: string;
+  quoteToken: string;
+  amount: bigint; // Amount of base tokens
+  isBuy: boolean; // true for buy order, false for sell order
+  maxPrice: bigint; // Maximum price willing to pay (for buys) or minimum (for sells)
+}
+
+/**
+ * Result of order placement
+ */
+export interface OrderPlacementResult {
+  success: boolean;
+  orderId?: string;
+  transactionHash?: string;
+  error?: string;
+}
+
+/**
  * CLOB Repository - Manages CLOB trading data from Ponder indexer
+ * and handles on-chain order placement via CLOB smart contract
  */
 export class CLOBRepository {
   private graphQLEndpoint: string;
+  private repositoryContext: RepositoryContext;
+  private clobAddress: string;
+  private quoteTokenAddress: string;
 
   constructor() {
     this.graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
-  }
+    this.repositoryContext = RepositoryContext.getInstance();
+    this.clobAddress = NEXT_PUBLIC_CLOB_ADDRESS;
+    this.quoteTokenAddress = NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS || '0x...';
 
   /**
    * Get open orders for a market
@@ -380,6 +422,237 @@ export class CLOBRepository {
       };
     }
   }
+
+  // ============================================================================
+  // WRITE METHODS - On-chain order operations
+  // ============================================================================
+
+  /**
+   * Get the CLOB contract instance with signer
+   */
+  private async getContractWithSigner(): Promise<ethers.Contract> {
+    const signer = this.repositoryContext.getSigner();
+    const provider = this.repositoryContext.getProvider();
+    
+    // Get CLOB ABI (minimal interface for trading)
+    const clobABI = [
+      'function placeLimitOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, bool isBuy) external returns (bytes32)',
+      'function placeMarketOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 amount, bool isBuy, uint256 maxPrice) external returns (bytes32)',
+      'function cancelOrder(bytes32 orderId) external',
+      'function orders(bytes32 orderId) external view returns (bytes32 id, address maker, address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, uint256 filledAmount, bool isBuy, uint8 orderType, uint8 status, uint256 createdAt, uint256 updatedAt)',
+    ];
+
+    const clobContract = new ethers.Contract(
+      this.clobAddress,
+      clobABI,
+      provider,
+    );
+
+    return clobContract.connect(signer);
+  }
+
+  /**
+   * Get quote token contract with signer
+   */
+  private async getQuoteTokenWithSigner(): Promise<ethers.Contract> {
+    const signer = this.repositoryContext.getSigner();
+    const provider = this.repositoryContext.getProvider();
+    
+    const erc20ABI = [
+      'function approve(address spender, uint256 amount) external returns (bool)',
+      'function allowance(address owner, address spender) external view returns (uint256)',
+      'function balanceOf(address account) external view returns (uint256)',
+    ];
+
+    return new ethers.Contract(
+      this.quoteTokenAddress,
+      erc20ABI,
+      provider,
+    ).connect(signer);
+  }
+
+  /**
+   * Ensure quote token allowance for CLOB contract
+   */
+  private async ensureQuoteTokenApproval(
+    quoteToken: ethers.Contract,
+    amount: bigint,
+  ): Promise<void> {
+    const signerAddress = await this.repositoryContext.getSignerAddress();
+    const currentAllowance = await quoteToken.allowance(
+      signerAddress,
+      this.clobAddress,
+    );
+
+    if (currentAllowance < amount) {
+      console.log('[CLOBRepository] Approving quote token for CLOB...');
+      const tx = await quoteToken.approve(this.clobAddress, amount);
+      await tx.wait();
+      console.log('[CLOBRepository] Quote token approved:', tx.hash);
+    }
+  }
+
+  /**
+   * Place a limit order on the CLOB
+   * @param params Order placement parameters
+   * @returns Order placement result
+   */
+  async placeLimitOrder(params: PlaceLimitOrderParams): Promise<OrderPlacementResult> {
+    try {
+      console.log('[CLOBRepository] Placing limit order:', params);
+
+      const [clobContract, quoteToken] = await Promise.all([
+        this.getContractWithSigner(),
+        this.getQuoteTokenWithSigner(),
+      ]);
+
+      // Calculate total cost (price * amount) for buy orders
+      if (params.isBuy) {
+        const totalCost = params.price * params.amount;
+        await this.ensureQuoteTokenApproval(quoteToken, totalCost);
+      }
+
+      // Place the order
+      const tx = await clobContract.placeLimitOrder(
+        params.baseToken,
+        params.baseTokenId,
+        params.quoteToken,
+        params.price,
+        params.amount,
+        params.isBuy,
+      );
+
+      const receipt = await tx.wait();
+      console.log('[CLOBRepository] Limit order placed, tx:', receipt.hash);
+
+      // Parse order ID from transaction logs (simplified - would need actual event parsing)
+      const orderId = this.extractOrderIdFromTransaction(receipt, params.isBuy);
+
+      return {
+        success: true,
+        orderId,
+        transactionHash: receipt.hash,
+      };
+    } catch (error) {
+      console.error('[CLOBRepository] Failed to place limit order:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Place a market order on the CLOB
+   * @param params Order placement parameters
+   * @returns Order placement result
+   */
+  async placeMarketOrder(params: PlaceMarketOrderParams): Promise<OrderPlacementResult> {
+    try {
+      console.log('[CLOBRepository] Placing market order:', params);
+
+      const [clobContract, quoteToken] = await Promise.all([
+        this.getContractWithSigner(),
+        this.getQuoteTokenWithSigner(),
+      ]);
+
+      // Calculate total cost (maxPrice * amount) for buy orders
+      if (params.isBuy) {
+        const totalCost = params.maxPrice * params.amount;
+        await this.ensureQuoteTokenApproval(quoteToken, totalCost);
+      }
+
+      // Place the order
+      const tx = await clobContract.placeMarketOrder(
+        params.baseToken,
+        params.baseTokenId,
+        params.quoteToken,
+        params.amount,
+        params.isBuy,
+        params.maxPrice,
+      );
+
+      const receipt = await tx.wait();
+      console.log('[CLOBRepository] Market order placed, tx:', receipt.hash);
+
+      const orderId = this.extractOrderIdFromTransaction(receipt, params.isBuy);
+
+      return {
+        success: true,
+        orderId,
+        transactionHash: receipt.hash,
+      };
+    } catch (error) {
+      console.error('[CLOBRepository] Failed to place market order:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Cancel an existing order on the CLOB
+   * @param orderId The order ID to cancel
+   * @returns Cancellation result
+   */
+  async cancelOrder(orderId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[CLOBRepository] Cancelling order:', orderId);
+
+      const clobContract = await this.getContractWithSigner();
+      const tx = await clobContract.cancelOrder(orderId);
+      const receipt = await tx.wait();
+
+      console.log('[CLOBRepository] Order cancelled, tx:', receipt.hash);
+
+      return { success: true };
+    } catch (error) {
+      console.error('[CLOBRepository] Failed to cancel order:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Extract order ID from transaction receipt
+   * @param receipt Transaction receipt
+   * @param isBuy Whether this was a buy order
+   * @returns Order ID as hex string
+   */
+  private extractOrderIdFromTransaction(
+    receipt: ethers.TransactionReceipt,
+    isBuy: boolean,
+  ): string {
+    // In a real implementation, you would parse the OrderPlaced event
+    // For now, we'll return a placeholder that the indexer will track
+    // The actual orderId comes from the contract event
+    
+    // Try to find OrderPlaced or BuyOrderPlaced/NodeSellOrderPlaced event
+    const eventSignature = isBuy
+      ? 'BuyOrderPlaced(bytes32,address,address,uint256,address,uint256,uint256)'
+      : 'OrderPlaced(bytes32,address,address,uint256,address,uint256,uint256)';
+    
+    const topic = ethers.id(eventSignature);
+    
+    for (const log of receipt.logs) {
+      if (log.topics[0] === topic) {
+        // Order ID is in topics[1]
+        return log.topics[1];
+      }
+    }
+
+    // Fallback: generate from transaction hash and index
+    // This won't match the actual contract-generated ID but works for tracking
+    console.warn('[CLOBRepository] Could not extract order ID from logs');
+    return `0x${receipt.hash.slice(2, 34)}`;
+  }
+
+  // ============================================================================
+  // Mapping Methods
+  // ============================================================================
 
   /**
    * Map GraphQL order response to domain model

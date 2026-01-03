@@ -137,8 +137,13 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         const actualOrderId = await orderService.createOrder(orderWithBuyer);
         console.log(`[TradeProvider] Order created with ID: ${actualOrderId}`);
 
-        // Create the initial journey for the order
-        if (orderWithBuyer.nodes && orderWithBuyer.nodes.length > 0) {
+        // Create the initial journey for the order (only if locationData is provided)
+        // For CLOB-style quick trading without delivery details, skip journey creation
+        if (
+          orderWithBuyer.nodes &&
+          orderWithBuyer.nodes.length > 0 &&
+          orderWithBuyer.locationData
+        ) {
           const firstNodeAddress = String(orderWithBuyer.nodes[0]);
 
           // Formula: bounty = (price * quantity * 0.05)
@@ -166,7 +171,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
             actualOrderId,
             firstNodeAddress,
             receiverNodeAddress,
-            orderWithBuyer.locationData,
+            orderWithBuyer.locationData, // May be undefined for quick CLOB-style orders
             bounty,
             BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)
             BigInt(orderWithBuyer.tokenQuantity),

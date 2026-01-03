@@ -35,7 +35,7 @@ export type Order = {
   seller: string;
   journeyIds: string[];
   nodes: string[];
-  locationData: ParcelData;
+  locationData?: ParcelData; // Optional for quick trading interface (CLOB-style orders)
   currentStatus: OrderStatus; // Uses OrderStatus enum (numeric values)
   contractualAgreement: string;
 };

@@ -7,6 +7,7 @@ import { AurumNodeManagerAbi } from './abis/AurumNodeManagerAbi';
 import { AuraAssetAbi } from './abis/AuraAssetAbi';
 import { AuStakeAbi } from './abis/AuStakeAbi';
 import { CLOBAbi } from './abis/CLOBAbi';
+import { OrderBridgeAbi } from './abis/OrderBridgeAbi';
 
 // Base Sepolia Chain ID
 const BASE_SEPOLIA_CHAIN_ID = 84532;
@@ -19,6 +20,7 @@ const CONTRACTS = {
   auraAsset: '0xdc1B355885ba73EFf0f0a5A72F12D87e785581a8' as `0x${string}`,
   auStake: '0xd41b6Dc779558bbe674B13F6996BFD5679f75074' as `0x${string}`,
   clob: '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc' as `0x${string}`,
+  orderBridge: '0x0000000000000000000000000000000000000000' as `0x${string}`, // TODO: Deploy
 };
 
 const START_BLOCKS = {
@@ -27,6 +29,7 @@ const START_BLOCKS = {
   auraAsset: 35771330,
   auStake: 35771327,
   clob: 35771333,
+  orderBridge: 35771334, // TODO: Update with actual deployment block
 };
 
 export default createConfig({
@@ -83,6 +86,13 @@ export default createConfig({
       abi: CLOBAbi,
       address: CONTRACTS.clob,
       startBlock: START_BLOCKS.clob,
+    },
+    // OrderBridge Contract - Unified order flow (CLOB → Ausys)
+    OrderBridge: {
+      network: 'baseSepolia',
+      abi: OrderBridgeAbi,
+      address: CONTRACTS.orderBridge,
+      startBlock: START_BLOCKS.orderBridge,
     },
   },
 });
