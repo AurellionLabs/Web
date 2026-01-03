@@ -23,5 +23,4 @@ artifacts/**/*.dbg.json
 
 # Temp scripts
 get-docker.sh
-indexer/package-lock.json
 .env*.local
