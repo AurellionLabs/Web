@@ -152,6 +152,7 @@ export class CLOBRepository {
     this.repositoryContext = RepositoryContext.getInstance();
     this.clobAddress = NEXT_PUBLIC_CLOB_ADDRESS;
     this.quoteTokenAddress = NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS || '0x...';
+  }
 
   /**
    * Get open orders for a market
