@@ -26,7 +26,12 @@
     "test": "npm run test:hardhat && npm run test:service && npm run test:vitest",
     "deploy:diamond": "npx hardhat run scripts/deploy-diamond.ts --network baseSepolia",
     "upgrade:diamond": "npx hardhat run scripts/upgrade-diamond.ts --network baseSepolia",
-    "test:diamond": "forge test --match-contract DiamondTest -vv"
+    "test:diamond": "forge test --match-contract DiamondTest -vv",
+    "test:e2e": "vitest run --config e2e/vitest.config.ts",
+    "test:e2e:watch": "vitest --config e2e/vitest.config.ts",
+    "test:e2e:anvil": "cross-env CHAIN=anvil vitest run --config e2e/vitest.config.ts",
+    "test:e2e:verbose": "cross-env VERBOSE=true vitest run --config e2e/vitest.config.ts",
+    "test:e2e:coverage": "cross-env VALIDATE_COVERAGE=true FAIL_ON_COVERAGE=true vitest run --config e2e/vitest.config.ts"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json,css,md}": "npm run format"
@@ -141,6 +146,8 @@
     "tsconfig-paths": "^4.2.0",
     "typechain": "^8.3.2",
     "typescript": "^5",
-    "vitest": "^3.1.2"
+    "vitest": "^3.1.2",
+    "cross-env": "^7.0.3",
+    "@vitejs/plugin-react": "^4.3.4"
   }
 }
