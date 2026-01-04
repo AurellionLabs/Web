@@ -41,15 +41,22 @@ import { ArrowLeft, RefreshCw, TrendingUp } from 'lucide-react';
  * @param asset - Domain asset from useClassAssets
  * @param className - The asset class name
  * @param mockPrice - A mock price to use (will be replaced with real price data later)
- * @returns TokenizedAssetUI compatible object
+ * @returns TokenizedAssetUI compatible object with tokenId for CLOB
  */
 function assetToTradeAsset(
   asset: Asset,
   className: string,
   mockPrice: number = 100,
-): TokenizedAssetUI {
+): TokenizedAssetUI & { tokenId: string } {
+  // Handle both tokenID (bigint from domain) and tokenId (string from repository)
+  // This is a workaround for the type mismatch between domain and repository
+  const assetAny = asset as any;
+  const tokenIdValue =
+    assetAny.tokenId?.toString() || assetAny.tokenID?.toString() || '0';
+
   return {
-    id: asset.tokenID?.toString() || `${asset.name}-${className}`,
+    id: `${asset.name}-${className}`, // Display ID
+    tokenId: tokenIdValue, // Numeric token ID for CLOB
     amount: '0', // Placeholder - actual balance would come from wallet
     name: asset.name,
     class: className,
@@ -183,9 +190,13 @@ function ClassDetailPageContent() {
         const quantity = BigInt(order.quantity);
 
         // Build CLOB order params
+        // Note: tradeableAsset has tokenId (string) for CLOB compatibility
+        const assetWithTokenId = tradeableAsset as TokenizedAssetUI & {
+          tokenId: string;
+        };
         const clobParams = {
           baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-          baseTokenId: BigInt(tradeableAsset.id),
+          baseTokenId: assetWithTokenId.tokenId || '0',
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
           amount: quantity,

@@ -226,9 +226,12 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         const { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } = await import(
           '@/chain-constants'
         );
+        // Use tokenId if available, otherwise try to extract from id or use '0'
+        const assetAny = asset as any;
+        const tokenId = assetAny.tokenId || assetAny.tokenID?.toString() || '0';
         const clobParams: PlaceLimitOrderParams = {
           baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-          baseTokenId: BigInt(asset.id),
+          baseTokenId: tokenId,
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
           amount: quantity,
