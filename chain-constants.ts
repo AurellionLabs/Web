@@ -67,11 +67,11 @@ export const DIAMOND_DEPLOY_BLOCK = 35859031;
 // =============================================================================
 
 export const NEXT_PUBLIC_RPC_URL_84532 =
-  'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c';
+  'https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
 export const NEXT_PUBLIC_RPC_URL_42161 =
-  'https://arbitrum-mainnet.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c';
+  'https://arbitrum-mainnet.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
 export const NEXT_PUBLIC_RPC_URL_8453 =
-  'https://base-mainnet.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c';
+  'https://base-mainnet.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
 
 // =============================================================================
 // SUBGRAPH / INDEXER URLS
