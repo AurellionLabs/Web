@@ -3,22 +3,48 @@ import '@nomicfoundation/hardhat-toolbox';
 import '@nomicfoundation/hardhat-verify';
 import 'dotenv/config';
 
-task('get-selectors', 'Print function selectors').setAction(async (args, hre) => {
-  const OrdersFacet = await hre.ethers.getContractFactory('OrdersFacet');
-  const CLOBFacet = await hre.ethers.getContractFactory('CLOBFacet');
+task('get-selectors', 'Print function selectors').setAction(
+  async (args, hre) => {
+    const OrdersFacet = await hre.ethers.getContractFactory('OrdersFacet');
+    const CLOBFacet = await hre.ethers.getContractFactory('CLOBFacet');
 
-  console.log('OrdersFacet selectors:');
-  console.log('  createOrder:', OrdersFacet.interface.getFunction('createOrder').selector);
-  console.log('  cancelOrder:', OrdersFacet.interface.getFunction('cancelOrder').selector);
-  console.log('  getOrder:', OrdersFacet.interface.getFunction('getOrder').selector);
-  console.log('  updateOrderStatus:', OrdersFacet.interface.getFunction('updateOrderStatus').selector);
+    console.log('OrdersFacet selectors:');
+    console.log(
+      '  createOrder:',
+      OrdersFacet.interface.getFunction('createOrder').selector,
+    );
+    console.log(
+      '  cancelOrder:',
+      OrdersFacet.interface.getFunction('cancelOrder').selector,
+    );
+    console.log(
+      '  getOrder:',
+      OrdersFacet.interface.getFunction('getOrder').selector,
+    );
+    console.log(
+      '  updateOrderStatus:',
+      OrdersFacet.interface.getFunction('updateOrderStatus').selector,
+    );
 
-  console.log('\nCLOBFacet selectors:');
-  console.log('  createMarket:', CLOBFacet.interface.getFunction('createMarket').selector);
-  console.log('  placeOrder:', CLOBFacet.interface.getFunction('placeOrder').selector);
-  console.log('  cancelOrder:', CLOBFacet.interface.getFunction('cancelOrder').selector);
-  console.log('  getOrder:', CLOBFacet.interface.getFunction('getOrder').selector);
-});
+    console.log('\nCLOBFacet selectors:');
+    console.log(
+      '  createMarket:',
+      CLOBFacet.interface.getFunction('createMarket').selector,
+    );
+    console.log(
+      '  placeOrder:',
+      CLOBFacet.interface.getFunction('placeOrder').selector,
+    );
+    console.log(
+      '  cancelOrder:',
+      CLOBFacet.interface.getFunction('cancelOrder').selector,
+    );
+    console.log(
+      '  getOrder:',
+      CLOBFacet.interface.getFunction('getOrder').selector,
+    );
+  },
+);
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -38,7 +64,11 @@ const config: HardhatUserConfig = {
     },
     baseSepolia: {
       url: process.env.BASE_TEST_RPC_URL || 'https://sepolia.base.org',
-      accounts: process.env.SEP_PRIVATE_KEY ? [process.env.SEP_PRIVATE_KEY] : process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: process.env.SEP_PRIVATE_KEY
+        ? [process.env.SEP_PRIVATE_KEY]
+        : process.env.PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY]
+          : [],
       chainId: 84532,
       gas: 'auto',
       gasPrice: 'auto',

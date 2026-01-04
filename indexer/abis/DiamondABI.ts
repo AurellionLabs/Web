@@ -9,15 +9,33 @@ export const DiamondABI = [
       {
         components: [
           { internalType: 'address', name: 'facetAddress', type: 'address' },
-          { internalType: 'enum IDiamondCut.FacetCutAction', name: 'action', type: 'uint8' },
-          { internalType: 'bytes4[]', name: 'functionSelectors', type: 'bytes4[]' },
+          {
+            internalType: 'enum IDiamondCut.FacetCutAction',
+            name: 'action',
+            type: 'uint8',
+          },
+          {
+            internalType: 'bytes4[]',
+            name: 'functionSelectors',
+            type: 'bytes4[]',
+          },
         ],
         indexed: false,
         name: '_diamondCut',
         type: 'tuple[]',
       },
-      { indexed: false, internalType: 'address', name: '_init', type: 'address' },
-      { indexed: false, internalType: 'bytes', name: '_calldata', type: 'bytes' },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: '_init',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes',
+        name: '_calldata',
+        type: 'bytes',
+      },
     ],
     name: 'DiamondCut',
     type: 'event',
@@ -27,8 +45,16 @@ export const DiamondABI = [
       {
         components: [
           { internalType: 'address', name: 'facetAddress', type: 'address' },
-          { internalType: 'enum IDiamondCut.FacetCutAction', name: 'action', type: 'uint8' },
-          { internalType: 'bytes4[]', name: 'functionSelectors', type: 'bytes4[]' },
+          {
+            internalType: 'enum IDiamondCut.FacetCutAction',
+            name: 'action',
+            type: 'uint8',
+          },
+          {
+            internalType: 'bytes4[]',
+            name: 'functionSelectors',
+            type: 'bytes4[]',
+          },
         ],
         name: '_diamondCut',
         type: 'tuple[]',
@@ -46,8 +72,18 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'address', name: 'previousOwner', type: 'address' },
-      { indexed: true, internalType: 'address', name: 'newOwner', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'previousOwner',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'newOwner',
+        type: 'address',
+      },
     ],
     name: 'OwnershipTransferred',
     type: 'event',
@@ -85,9 +121,24 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'nodeHash', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'owner', type: 'address' },
-      { indexed: false, internalType: 'string', name: 'nodeType', type: 'string' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'string',
+        name: 'nodeType',
+        type: 'string',
+      },
     ],
     name: 'NodeRegistered',
     type: 'event',
@@ -95,23 +146,50 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'nodeHash', type: 'bytes32' },
-      { indexed: false, internalType: 'string', name: 'nodeType', type: 'string' },
-      { indexed: false, internalType: 'uint256', name: 'capacity', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'string',
+        name: 'nodeType',
+        type: 'string',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'capacity',
+        type: 'uint256',
+      },
     ],
     name: 'NodeUpdated',
     type: 'event',
   },
   {
     anonymous: false,
-    inputs: [{ indexed: true, internalType: 'bytes32', name: 'nodeHash', type: 'bytes32' }],
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
     name: 'NodeDeactivated',
     type: 'event',
   },
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'string', name: 'addressName', type: 'string' },
+      {
+        indexed: true,
+        internalType: 'string',
+        name: 'addressName',
+        type: 'string',
+      },
       { indexed: false, internalType: 'string', name: 'lat', type: 'string' },
       { indexed: false, internalType: 'string', name: 'lng', type: 'string' },
       { indexed: true, internalType: 'bytes32', name: 'node', type: 'bytes32' },
@@ -122,7 +200,12 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'address', name: 'owner', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
       { indexed: true, internalType: 'bytes32', name: 'node', type: 'bytes32' },
     ],
     name: 'UpdateOwner',
@@ -140,8 +223,18 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'nodeHash', type: 'bytes32' },
-      { indexed: false, internalType: 'uint256[]', name: 'quantities', type: 'uint256[]' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256[]',
+        name: 'quantities',
+        type: 'uint256[]',
+      },
     ],
     name: 'NodeCapacityUpdated',
     type: 'event',
@@ -149,11 +242,36 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'nodeHash', type: 'bytes32' },
-      { indexed: false, internalType: 'address', name: 'token', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'capacity', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'capacity',
+        type: 'uint256',
+      },
     ],
     name: 'SupportedAssetAdded',
     type: 'event',
@@ -161,8 +279,18 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'nodeHash', type: 'bytes32' },
-      { indexed: false, internalType: 'uint256', name: 'count', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'count',
+        type: 'uint256',
+      },
     ],
     name: 'SupportedAssetsUpdated',
     type: 'event',
@@ -214,21 +342,30 @@ export const DiamondABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'address', name: '_owner', type: 'address' }, { internalType: 'bytes32', name: '_node', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'address', name: '_owner', type: 'address' },
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+    ],
     name: 'updateNodeOwner',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes1', name: '_status', type: 'bytes1' }, { internalType: 'bytes32', name: '_node', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'bytes1', name: '_status', type: 'bytes1' },
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+    ],
     name: 'updateNodeStatus',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_node', type: 'bytes32' }, { internalType: 'uint256[]', name: '_quantities', type: 'uint256[]' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'uint256[]', name: '_quantities', type: 'uint256[]' },
+    ],
     name: 'updateNodeCapacity',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -296,16 +433,33 @@ export const DiamondABI = [
   // ======= AssetsFacet Events =======
   {
     anonymous: false,
-    inputs: [{ indexed: true, internalType: 'string', name: 'assetClass', type: 'string' }],
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'string',
+        name: 'assetClass',
+        type: 'string',
+      },
+    ],
     name: 'AssetClassAdded',
     type: 'event',
   },
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'assetHash', type: 'bytes32' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'assetHash',
+        type: 'bytes32',
+      },
       { indexed: false, internalType: 'string', name: 'name', type: 'string' },
-      { indexed: false, internalType: 'string', name: 'assetClass', type: 'string' },
+      {
+        indexed: false,
+        internalType: 'string',
+        name: 'assetClass',
+        type: 'string',
+      },
     ],
     name: 'AssetAdded',
     type: 'event',
@@ -362,11 +516,36 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'orderHash', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'buyer', type: 'address' },
-      { indexed: true, internalType: 'address', name: 'seller', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
     name: 'OrderCreated',
     type: 'event',
@@ -374,8 +553,18 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'orderHash', type: 'bytes32' },
-      { indexed: false, internalType: 'string', name: 'status', type: 'string' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'string',
+        name: 'status',
+        type: 'string',
+      },
     ],
     name: 'OrderUpdated',
     type: 'event',
@@ -383,8 +572,18 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'orderHash', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'buyer', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
     ],
     name: 'OrderCancelled',
     type: 'event',
@@ -405,7 +604,10 @@ export const DiamondABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_orderHash', type: 'bytes32' }, { internalType: 'string', name: '_status', type: 'string' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_orderHash', type: 'bytes32' },
+      { internalType: 'string', name: '_status', type: 'string' },
+    ],
     name: 'updateOrderStatus',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -445,7 +647,12 @@ export const DiamondABI = [
     anonymous: false,
     inputs: [
       { indexed: true, internalType: 'address', name: 'user', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
     name: 'Staked',
     type: 'event',
@@ -454,7 +661,12 @@ export const DiamondABI = [
     anonymous: false,
     inputs: [
       { indexed: true, internalType: 'address', name: 'user', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
     name: 'Withdrawn',
     type: 'event',
@@ -463,7 +675,12 @@ export const DiamondABI = [
     anonymous: false,
     inputs: [
       { indexed: true, internalType: 'address', name: 'user', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
     name: 'RewardsClaimed',
     type: 'event',
@@ -471,8 +688,18 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: false, internalType: 'uint256', name: 'oldRate', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'newRate', type: 'uint256' },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'oldRate',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'newRate',
+        type: 'uint256',
+      },
     ],
     name: 'RewardRateUpdated',
     type: 'event',
@@ -537,14 +764,54 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'clobOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'address', name: 'buyer', type: 'address' },
-      { indexed: false, internalType: 'address', name: 'seller', type: 'address' },
-      { indexed: false, internalType: 'address', name: 'token', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'quantity', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'clobOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quantity',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
     ],
     name: 'UnifiedOrderCreated',
     type: 'event',
@@ -552,12 +819,42 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'bytes32', name: 'clobTradeId', type: 'bytes32' },
-      { indexed: false, internalType: 'bytes32', name: 'clobOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'address', name: 'maker', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'clobTradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'clobOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
     name: 'TradeMatched',
     type: 'event',
@@ -565,11 +862,36 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'bytes32', name: 'ausysOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'bytes32[]', name: 'journeyIds', type: 'bytes32[]' },
-      { indexed: false, internalType: 'uint256', name: 'bounty', type: 'uint256' },
-      { indexed: false, internalType: 'address', name: 'node', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'ausysOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32[]',
+        name: 'journeyIds',
+        type: 'bytes32[]',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'bounty',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'node',
+        type: 'address',
+      },
     ],
     name: 'LogisticsOrderCreated',
     type: 'event',
@@ -577,8 +899,18 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'journeyId', type: 'bytes32' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'journeyId',
+        type: 'bytes32',
+      },
       { indexed: false, internalType: 'uint8', name: 'phase', type: 'uint8' },
     ],
     name: 'JourneyStatusUpdated',
@@ -587,11 +919,36 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'address', name: 'seller', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'sellerAmount', type: 'uint256' },
-      { indexed: false, internalType: 'address', name: 'driver', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'driverAmount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'sellerAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'driverAmount',
+        type: 'uint256',
+      },
     ],
     name: 'OrderSettled',
     type: 'event',
@@ -599,23 +956,56 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
-      { indexed: false, internalType: 'uint8', name: 'previousStatus', type: 'uint8' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'previousStatus',
+        type: 'uint8',
+      },
     ],
     name: 'OrderCancelled',
     type: 'event',
   },
   {
     anonymous: false,
-    inputs: [{ indexed: true, internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' }, { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' }],
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
     name: 'BountyPaid',
     type: 'event',
   },
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'address', name: 'oldRecipient', type: 'address' },
-      { indexed: true, internalType: 'address', name: 'newRecipient', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'oldRecipient',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'newRecipient',
+        type: 'address',
+      },
     ],
     name: 'FeeRecipientUpdated',
     type: 'event',
@@ -630,7 +1020,9 @@ export const DiamondABI = [
       { internalType: 'uint256', name: '_quantity', type: 'uint256' },
     ],
     name: 'createUnifiedOrder',
-    outputs: [{ internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' }],
+    outputs: [
+      { internalType: 'bytes32', name: 'unifiedOrderId', type: 'bytes32' },
+    ],
     stateMutability: 'nonpayable',
     type: 'function',
   },
@@ -649,35 +1041,47 @@ export const DiamondABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' },
+    ],
     name: 'createLogisticsOrder',
     outputs: [{ internalType: 'bytes32', name: 'journeyId', type: 'bytes32' }],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' }, { internalType: 'address', name: '_driver', type: 'address' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' },
+      { internalType: 'address', name: '_driver', type: 'address' },
+    ],
     name: 'assignDriver',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_journeyId', type: 'bytes32' }, { internalType: 'uint8', name: '_phase', type: 'uint8' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_journeyId', type: 'bytes32' },
+      { internalType: 'uint8', name: '_phase', type: 'uint8' },
+    ],
     name: 'updateJourneyStatus',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' },
+    ],
     name: 'settleOrder',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_unifiedOrderId', type: 'bytes32' },
+    ],
     name: 'cancelUnifiedOrder',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -716,7 +1120,9 @@ export const DiamondABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'address', name: '_newRecipient', type: 'address' }],
+    inputs: [
+      { internalType: 'address', name: '_newRecipient', type: 'address' },
+    ],
     name: 'setFeeRecipient',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -727,13 +1133,43 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'orderId', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'maker', type: 'address' },
-      { indexed: true, internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
       { indexed: false, internalType: 'bool', name: 'isBuy', type: 'bool' },
-      { indexed: false, internalType: 'uint8', name: 'orderType', type: 'uint8' },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'orderType',
+        type: 'uint8',
+      },
     ],
     name: 'OrderPlaced',
     type: 'event',
@@ -741,12 +1177,42 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'takerOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'makerOrderId', type: 'bytes32' },
-      { indexed: true, internalType: 'bytes32', name: 'tradeId', type: 'bytes32' },
-      { indexed: false, internalType: 'uint256', name: 'fillAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'fillPrice', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'quoteAmount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'takerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'makerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'fillAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'fillPrice',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
     ],
     name: 'OrderMatched',
     type: 'event',
@@ -754,9 +1220,24 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'orderId', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'maker', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'remainingAmount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'remainingAmount',
+        type: 'uint256',
+      },
     ],
     name: 'OrderCancelled',
     type: 'event',
@@ -764,14 +1245,54 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'tradeId', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'taker', type: 'address' },
-      { indexed: true, internalType: 'address', name: 'maker', type: 'address' },
-      { indexed: false, internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
-      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'quoteAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'timestamp', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'taker',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'timestamp',
+        type: 'uint256',
+      },
     ],
     name: 'TradeExecuted',
     type: 'event',
@@ -779,10 +1300,30 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'poolId', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'baseToken', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'baseTokenId', type: 'uint256' },
-      { indexed: true, internalType: 'address', name: 'quoteToken', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'poolId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'quoteToken',
+        type: 'address',
+      },
     ],
     name: 'PoolCreated',
     type: 'event',
@@ -790,11 +1331,36 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'poolId', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'provider', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'baseAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'quoteAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'lpTokensMinted', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'poolId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'provider',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'baseAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'lpTokensMinted',
+        type: 'uint256',
+      },
     ],
     name: 'LiquidityAdded',
     type: 'event',
@@ -802,11 +1368,36 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'poolId', type: 'bytes32' },
-      { indexed: true, internalType: 'address', name: 'provider', type: 'address' },
-      { indexed: false, internalType: 'uint256', name: 'baseAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'quoteAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'lpTokensBurned', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'poolId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'provider',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'baseAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'lpTokensBurned',
+        type: 'uint256',
+      },
     ],
     name: 'LiquidityRemoved',
     type: 'event',
@@ -814,10 +1405,30 @@ export const DiamondABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: 'bytes32', name: 'tradeId', type: 'bytes32' },
-      { indexed: false, internalType: 'uint256', name: 'takerFeeAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'makerFeeAmount', type: 'uint256' },
-      { indexed: false, internalType: 'uint256', name: 'lpFeeAmount', type: 'uint256' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'takerFeeAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'makerFeeAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'lpFeeAmount',
+        type: 'uint256',
+      },
     ],
     name: 'FeesCollected',
     type: 'event',
@@ -883,7 +1494,10 @@ export const DiamondABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'bytes32', name: '_poolId', type: 'bytes32' }, { internalType: 'uint256', name: '_lpTokens', type: 'uint256' }],
+    inputs: [
+      { internalType: 'bytes32', name: '_poolId', type: 'bytes32' },
+      { internalType: 'uint256', name: '_lpTokens', type: 'uint256' },
+    ],
     name: 'removeLiquidity',
     outputs: [
       { internalType: 'uint256', name: 'baseAmount', type: 'uint256' },

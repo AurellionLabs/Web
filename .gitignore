@@ -1,16 +1,23 @@
 node_modules/
-artifacts/@openzeppelin/
-artifacts/build-info/
+
+# Hardhat artifacts
+artifacts/
 cache/
 typechain-types/
+
+# Foundry artifacts
+out/
+lib/
+
+# Next.js
 .next/
 .swc/
-.*.env
-.env
-artifacts/build-info/
-cache/*
-.env
 .vercel
+
+# Environment files
+.env
+.env*.local
+.*.env
 
 # Ponder generated files
 indexer/generated/
@@ -18,9 +25,16 @@ indexer/.ponder/
 indexer/ponder-env.d.ts
 indexer/logs/
 
-# Hardhat debug files
-artifacts/**/*.dbg.json
-
 # Temp scripts
 get-docker.sh
-.env*.local
+
+# Foundry
+foundry.tar.gz
+
+# Backup files
+*.backup
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -3,8 +3,19 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { GlassCard, GlassCardHeader, GlassCardTitle } from '../ui/glass-card';
-import { OrderProgressStep, useOrderProgressSteps } from '@/hooks/useUnifiedOrder';
-import { Check, Clock, Package, Truck, DollarSign, X, FileText } from 'lucide-react';
+import {
+  OrderProgressStep,
+  useOrderProgressSteps,
+} from '@/hooks/useUnifiedOrder';
+import {
+  Check,
+  Clock,
+  Package,
+  Truck,
+  DollarSign,
+  X,
+  FileText,
+} from 'lucide-react';
 
 /**
  * OrderProgressStepComponent - Visual step in the order lifecycle
@@ -14,9 +25,9 @@ interface OrderProgressStepProps {
   isLast: boolean;
 }
 
-const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({ 
-  step, 
-  isLast 
+const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
+  step,
+  isLast,
 }) => {
   return (
     <div className={cn('flex items-start', !isLast && 'pb-8')}>
@@ -27,7 +38,9 @@ const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
             'w-10 h-10 rounded-full flex items-center justify-center z-10',
             'transition-all duration-300',
             step.isCompleted && 'bg-green-500 text-white',
-            step.isCurrent && step.status !== 'cancelled' && 'bg-blue-500 text-white animate-pulse',
+            step.isCurrent &&
+              step.status !== 'cancelled' &&
+              'bg-blue-500 text-white animate-pulse',
             !step.isCompleted && !step.isCurrent && 'bg-gray-700 text-gray-400',
             step.status === 'cancelled' && 'bg-red-500 text-white',
           )}
@@ -40,13 +53,13 @@ const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
             <span className="text-sm font-medium">{step.icon}</span>
           )}
         </div>
-        
+
         {/* Connecting line */}
         {!isLast && (
-          <div 
+          <div
             className={cn(
               'absolute left-1/2 w-0.5 h-full -translate-x-1/2 top-10',
-              step.isCompleted ? 'bg-green-500' : 'bg-gray-700'
+              step.isCompleted ? 'bg-green-500' : 'bg-gray-700',
             )}
           />
         )}
@@ -55,19 +68,19 @@ const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
       {/* Step content */}
       <div className="ml-4 flex-1 pt-1">
         <div className="flex items-center gap-2">
-          <span className={cn(
-            'font-medium',
-            step.isCompleted && 'text-green-500',
-            step.isCurrent && 'text-blue-500',
-            !step.isCompleted && !step.isCurrent && 'text-gray-400',
-            step.status === 'cancelled' && 'text-red-500',
-          )}>
+          <span
+            className={cn(
+              'font-medium',
+              step.isCompleted && 'text-green-500',
+              step.isCurrent && 'text-blue-500',
+              !step.isCompleted && !step.isCurrent && 'text-gray-400',
+              step.status === 'cancelled' && 'text-red-500',
+            )}
+          >
             {step.label}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          {step.description}
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
       </div>
     </div>
   );
@@ -75,13 +88,13 @@ const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
 
 /**
  * OrderProgressComponent - Shows complete order lifecycle
- * 
+ *
  * Features:
  * - Visual timeline of order progress
  * - Current status highlighted
  * - Completed steps marked
  * - Responsive design
- * 
+ *
  * @example
  * ```tsx
  * <OrderProgressComponent order={trackedOrder} />
@@ -103,34 +116,36 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
   className,
 }) => {
   // Create a mock tracked order for the hook
-  const mockOrder = order ? {
-    ...order,
-    statusConfig: {
-      label: order.status,
-      color: '',
-      bgColor: '',
-      icon: '',
-      description: '',
-    },
-    progressPercent: 0,
-    isActive: false,
-    canCancel: false,
-    estimatedDelivery: undefined,
-    id: '',
-    clobOrderId: '',
-    clobTradeId: '',
-    ausysOrderId: '',
-    journeyIds: [],
-    buyer: '',
-    seller: '',
-    sellerNode: '',
-    token: '',
-    tokenId: '',
-    tokenQuantity: '',
-    price: '',
-    bounty: '',
-    deliveryData: { lat: '', lng: '', name: '' },
-  } : null;
+  const mockOrder = order
+    ? {
+        ...order,
+        statusConfig: {
+          label: order.status,
+          color: '',
+          bgColor: '',
+          icon: '',
+          description: '',
+        },
+        progressPercent: 0,
+        isActive: false,
+        canCancel: false,
+        estimatedDelivery: undefined,
+        id: '',
+        clobOrderId: '',
+        clobTradeId: '',
+        ausysOrderId: '',
+        journeyIds: [],
+        buyer: '',
+        seller: '',
+        sellerNode: '',
+        token: '',
+        tokenId: '',
+        tokenQuantity: '',
+        price: '',
+        bounty: '',
+        deliveryData: { lat: '', lng: '', name: '' },
+      }
+    : null;
 
   const steps = useOrderProgressSteps(mockOrder as any);
 
@@ -155,21 +170,21 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
           Order Progress
         </GlassCardTitle>
       </GlassCardHeader>
-      
+
       <div className="p-4">
         {/* Progress bar at top */}
         <div className="mb-6">
           <div className="flex justify-between text-sm mb-2">
             <span className="text-muted-foreground">Progress</span>
             <span className="font-medium">
-              {steps.filter(s => s.isCompleted).length} / {steps.length} steps
+              {steps.filter((s) => s.isCompleted).length} / {steps.length} steps
             </span>
           </div>
           <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500"
-              style={{ 
-                width: `${(steps.filter(s => s.isCompleted).length / steps.length) * 100}%` 
+              style={{
+                width: `${(steps.filter((s) => s.isCompleted).length / steps.length) * 100}%`,
               }}
             />
           </div>
@@ -250,7 +265,8 @@ export const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({
   status,
   size = 'md',
 }) => {
-  const config = ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG];
+  const config =
+    ORDER_STATUS_CONFIG[status as keyof typeof ORDER_STATUS_CONFIG];
 
   const sizeClasses = {
     sm: 'text-xs px-2 py-0.5',
@@ -260,23 +276,27 @@ export const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({
 
   if (!config) {
     return (
-      <span className={cn(
-        'rounded-full font-medium',
-        sizeClasses[size],
-        'bg-gray-500/10 text-gray-500',
-      )}>
+      <span
+        className={cn(
+          'rounded-full font-medium',
+          sizeClasses[size],
+          'bg-gray-500/10 text-gray-500',
+        )}
+      >
         Unknown
       </span>
     );
   }
 
   return (
-    <span className={cn(
-      'rounded-full font-medium inline-flex items-center gap-1.5',
-      sizeClasses[size],
-      config.bgColor,
-      config.color,
-    )}>
+    <span
+      className={cn(
+        'rounded-full font-medium inline-flex items-center gap-1.5',
+        sizeClasses[size],
+        config.bgColor,
+        config.color,
+      )}
+    >
       <span>{config.icon}</span>
       <span>{config.label}</span>
     </span>
@@ -284,4 +304,3 @@ export const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({
 };
 
 export default OrderProgressComponent;
-

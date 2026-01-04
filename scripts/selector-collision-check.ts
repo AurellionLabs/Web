@@ -21,7 +21,10 @@ async function main() {
   console.log('🔍 Checking for selector collisions across all facets...\n');
 
   const selectorMap = new Map<string, { facet: string; function: string }>();
-  const collisions: Array<{ selector: string; conflicts: Array<{ facet: string; function: string }> }> = [];
+  const collisions: Array<{
+    selector: string;
+    conflicts: Array<{ facet: string; function: string }>;
+  }> = [];
 
   for (const facetName of FACETS) {
     try {
@@ -30,7 +33,7 @@ async function main() {
 
       // Get all function signatures
       const fragments = Object.values(contractInterface.fragments).filter(
-        (f) => f.type === 'function'
+        (f) => f.type === 'function',
       );
 
       console.log(`\n📋 ${facetName} (${fragments.length} functions):`);
@@ -88,4 +91,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

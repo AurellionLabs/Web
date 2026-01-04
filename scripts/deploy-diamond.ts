@@ -26,90 +26,88 @@ const FACET_SELECTORS: Record<string, string[]> = {
     '0x1f931c1c', // diamondCut
   ],
   DiamondLoupeFacet: [
-    '0x7a0d627f', // facets
-    '0xcdffacc6', // facetFunctionSelectors
-    '0x52ef6deb', // facetAddresses
-    '0xadfca15e', // facetAddress
-    '0x0e18b681', // selectors
+    '0xcdffacc6', // facetAddress
+    '0x52ef6b2c', // facetAddresses
+    '0xadfca15e', // facetFunctionSelectors
+    '0x7a0ed627', // facets
+    '0x49e56145', // selectorToFacetAndPosition
   ],
   OwnershipFacet: [
-    '0x8f283970', // owner
-    '0x198f9396', // transferOwnership
-    '0x5935d4f3', // acceptOwnership
-    '0xf2fde38b', // renounceOwnership
+    '0x79ba5097', // acceptOwnership
+    '0xc4d66de8', // initialize
+    '0x8da5cb5b', // owner
+    '0x715018a6', // renounceOwnership
+    '0xf2fde38b', // transferOwnership
   ],
   NodesFacet: [
-    '0x6c1c6f8d', // registerNode
-    '0x7535d7a5', // updateNode
-    '0x5c4b1802', // deactivateNode
-    '0x4f44c4b6', // updateNodeLocation
-    '0x8f2c0b2c', // updateNodeOwner
-    '0x9d37a75f', // updateNodeStatus
-    '0x4b1c7e5a', // updateNodeCapacity
-    '0x8a1d2c6a', // addSupportedAsset
-    '0x9e8b3e2d', // updateSupportedAssets
-    '0x7610d32b', // getNode
-    '0x1e5e3c8f', // getOwnerNodes
-    '0x5a0b1d2b', // getNodeAssets
-    '0xec5b5ef2', // getTotalNodes
-    '0xb5dc6d9b', // getTotalNodeAssets
+    '0x2bef7fb5', // addSupportedAsset
+    '0xa2444390', // deactivateNode
+    '0x50c946fe', // getNode
+    '0xc83f7ca4', // getNodeAssets
+    '0xb59d3bea', // getOwnerNodes
+    '0x3e691b1f', // getTotalNodeAssets
+    '0x63584ecd', // getTotalNodes
+    '0x506a17b2', // registerNode
+    '0x641b8fc7', // updateNode
+    '0xd9ff9ee4', // updateNodeCapacity
+    '0xd24e25d3', // updateNodeLocation
+    '0x4b1f5c70', // updateNodeOwner
+    '0x16261e99', // updateNodeStatus
+    '0x6766c717', // updateSupportedAssets
   ],
   AssetsFacet: [
-    '0x06f26f5a', // addAssetClass
-    '0x40d0f3b3', // addAsset
-    '0x727cd088', // getAsset
-    '0x7a91df9c', // getAssetByHash
-    '0xc2985578', // getTotalAssets
+    '0xe243b2fc', // addAsset
+    '0xb27221ca', // addAssetClass
+    '0xeac8f5b8', // getAsset
+    '0xef6fd2f0', // getAssetByHash
+    '0x6e07302b', // getTotalAssets
   ],
   OrdersFacet: [
-    '0x9f3d926a', // createOrder
-    '0x5c7d8f6a', // cancelOrder
-    '0x7701f22f', // getOrder
-    '0x5a0b1d2b', // getBuyerOrders
-    '0x8b5b8b3c', // getSellerOrders
-    '0x4e5d6c8f', // getTotalOrders
-    '0x6d7f8d9a', // updateOrderStatus
+    '0x7489ec23', // cancelOrder
+    '0x02bd3421', // createOrder
+    '0xa45f2ebc', // getBuyerOrders
+    '0x5778472a', // getOrder
+    '0xe4cbac40', // getSellerOrders
+    '0x375f16a7', // getTotalOrders
+    '0x15914b3f', // updateOrderStatus
   ],
   StakingFacet: [
+    '0x372500ab', // claimRewards
+    '0x008cc262', // earned
+    '0x7e1a3786', // getRewardRate
+    '0x7a766460', // getStake
+    '0x0917e776', // getTotalStaked
+    '0x5ade228a', // REWARD_DURATION
+    '0x9e447fc6', // setRewardRate
     '0xa694fc3a', // stake
-    '0x3b1d21c4', // withdraw
-    '0xc6dbd5b7', // claimRewards
-    '0x490e603c', // earned
-    '0xb5dc6d9b', // getStake
-    '0x5a3b7e4f', // getTotalStaked
-    '0x5e8a9b2c', // setRewardRate
-    '0x08a5eb2a', // getRewardRate
+    '0x2e1a7d4d', // withdraw
   ],
   BridgeFacet: [
-    '0x4a6a0f91', // createUnifiedOrder
-    '0x7c8c5e2d', // bridgeTradeToLogistics
-    '0x8c5b7e6a', // createLogisticsOrder
-    '0x9d7f8a2b', // assignDriver
-    '0x6e4c8f3d', // updateJourneyStatus
-    '0x5f8a9b2e', // settleOrder
-    '0x7c9f8a6d', // cancelUnifiedOrder
-    '0x8d0a1b3e', // getUnifiedOrder
-    '0x9e1b2c4f', // getJourney
-    '0xaf2c3d5e', // getOrderJourneys
-    '0x5e6f7a8b', // getTotalUnifiedOrders
-    '0x5c4d6e7f', // setFeeRecipient
-    '0x6d5e7f8a', // getFeeRecipient
+    '0x20caf786', // BOUNTY_PERCENTAGE
+    '0x6111ce0b', // bridgeTradeToLogistics
+    '0x5fc905ec', // cancelUnifiedOrder
+    '0xe6598313', // createLogisticsOrder
+    '0xd3ca8136', // createUnifiedOrder
+    '0x46904840', // feeRecipient
+    '0xfef24e01', // getTotalUnifiedOrders
+    '0xd2d2e822', // getUnifiedOrder
+    '0xe4d7d6dc', // PROTOCOL_FEE_PERCENTAGE
+    '0xe74b981b', // setFeeRecipient
+    '0x49085d8c', // settleOrder
+    '0x158ed47c', // updateJourneyStatus
   ],
   CLOBFacet: [
-    '0x7f5c8f3a', // createMarket
-    '0x8a6d9f4b', // placeOrder
-    '0x9b7e0a5c', // cancelOrder (CLOB)
-    '0xac8f1b6d', // createPool
-    '0xbd9e2c7e', // addLiquidity
-    '0xceaf3d8f', // removeLiquidity
-    '0xdfbe4e90', // getOrder
-    '0xe0cf5fa1', // getTrade
-    '0xf1e06bb2', // getPool
-    '0x02f17bc3', // getMarket
-    '0x13f28cd4', // getBestBid
-    '0x24f39de5', // getBestAsk
-    '0x35a4af06', // getTotalMarkets
-    '0x46b5c017', // getTotalTrades
+    '0x2b3e8826', // createMarket
+    '0xb3d29d42', // createPool
+    '0xc3c95c7b', // getMarket
+    '0xf6c00927', // getPool
+    '0x81ebf209', // getTotalMarkets
+    '0xebd34f50', // getTotalTrades
+    '0xa3b13799', // getTrade
+    '0x5e3f2727', // LP_FEE
+    '0xb537889c', // MAKER_FEE
+    '0x8707e031', // placeOrder
+    '0x9fa5bc24', // TAKER_FEE
   ],
 };
 
@@ -153,11 +151,14 @@ async function main() {
   console.log(`  ✓ DiamondCutFacet: ${deploymentResult.facets.diamondCut}\n`);
 
   console.log('Deploying DiamondLoupeFacet...');
-  const DiamondLoupeFacet = await ethers.getContractFactory('DiamondLoupeFacet');
+  const DiamondLoupeFacet =
+    await ethers.getContractFactory('DiamondLoupeFacet');
   const diamondLoupeFacet = await DiamondLoupeFacet.deploy();
   await diamondLoupeFacet.waitForDeployment();
   deploymentResult.facets.diamondLoupe = await diamondLoupeFacet.getAddress();
-  console.log(`  ✓ DiamondLoupeFacet: ${deploymentResult.facets.diamondLoupe}\n`);
+  console.log(
+    `  ✓ DiamondLoupeFacet: ${deploymentResult.facets.diamondLoupe}\n`,
+  );
 
   console.log('Deploying OwnershipFacet...');
   const OwnershipFacet = await ethers.getContractFactory('OwnershipFacet');
@@ -208,8 +209,8 @@ async function main() {
   deploymentResult.facets.clob = await clobFacet.getAddress();
   console.log(`  ✓ CLOBFacet: ${deploymentResult.facets.clob}\n`);
 
-  // Step 2: Deploy Diamond
-  console.log('Step 2: Deploying Diamond...\n');
+  // Step 2: Deploy Diamond with DiamondCutFacet only
+  console.log('Step 2: Deploying Diamond with DiamondCutFacet...\n');
 
   const Diamond = await ethers.getContractFactory('Diamond');
   const diamond = await Diamond.deploy(
@@ -220,8 +221,8 @@ async function main() {
   deploymentResult.diamond = await diamond.getAddress();
   console.log(`✓ Diamond deployed: ${deploymentResult.diamond}\n`);
 
-  // Step 3: Add facets to Diamond
-  console.log('Step 3: Adding facets to Diamond...\n');
+  // Step 3: Add remaining facets via diamondCut
+  console.log('Step 3: Adding facets to Diamond via diamondCut...\n');
 
   const diamondCut = await ethers.getContractAt(
     'IDiamondCut',
@@ -238,9 +239,9 @@ async function main() {
     const formattedSelectors = selectors.map((s) =>
       s.startsWith('0x') ? s : '0x' + s,
     );
-    
+
     try {
-      await diamondCut.diamondCut(
+      const tx = await diamondCut.diamondCut(
         [
           {
             facetAddress,
@@ -251,12 +252,15 @@ async function main() {
         ethers.ZeroAddress,
         '0x',
       );
+      await tx.wait();
       console.log(`  ✓ Added ${selectors.length} selectors\n`);
     } catch (error: any) {
       if (error.message.includes('Selector already exists')) {
-        console.log(`  ⚠ Some selectors already exist, trying with Replace action...\n`);
+        console.log(
+          `  ⚠ Some selectors already exist, trying with Replace action...\n`,
+        );
         try {
-          await diamondCut.diamondCut(
+          const tx = await diamondCut.diamondCut(
             [
               {
                 facetAddress,
@@ -267,9 +271,12 @@ async function main() {
             ethers.ZeroAddress,
             '0x',
           );
+          await tx.wait();
           console.log(`  ✓ Replaced ${selectors.length} selectors\n`);
         } catch (replaceError: any) {
-          console.log(`  ⚠ Could not replace selectors (may already be added): ${replaceError.message}\n`);
+          console.log(
+            `  ⚠ Could not replace selectors (may already be added): ${replaceError.message}\n`,
+          );
         }
       } else {
         console.log(`  ⚠ Error: ${error.message}\n`);
@@ -336,6 +343,39 @@ async function main() {
     console.log('  ✓ OwnershipFacet already initialized or no init needed\n');
   }
 
+  // Step 4.5: Add default asset classes via AssetsFacet
+  console.log('Step 4.5: Adding default asset classes...\n');
+  const defaultClasses = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
+
+  try {
+    const AssetsFacet = await ethers.getContractAt(
+      'AssetsFacet',
+      deploymentResult.diamond,
+    );
+
+    for (const className of defaultClasses) {
+      try {
+        const tx = await AssetsFacet.addAssetClass(className);
+        await tx.wait();
+        console.log(`  ✓ Added asset class: ${className}`);
+      } catch (e: any) {
+        if (
+          e.message?.includes('already exists') ||
+          e.message?.includes('AlreadyExists')
+        ) {
+          console.log(`  ⚠ Asset class ${className} already exists`);
+        } else {
+          console.log(`  ✗ Failed to add ${className}:`, e.message);
+        }
+      }
+    }
+    console.log('');
+  } catch (e) {
+    console.log(
+      '  ⚠ Could not add asset classes (AssetsFacet may not have this function yet)\n',
+    );
+  }
+
   // Step 5: Save deployment result
   console.log('Step 5: Saving deployment result...\n');
 
@@ -362,51 +402,64 @@ async function main() {
   if (fs.existsSync(constantsPath)) {
     let constantsContent = fs.readFileSync(constantsPath, 'utf-8');
 
+    // Helper function to replace values (handles both single-line and multi-line formats)
+    function replaceConstant(name: string, value: string) {
+      // Match both:
+      // export const NAME = 'value';  (single line)
+      // export const NAME =
+      //   'value';  (multi-line)
+      const regex = new RegExp(
+        `export const ${name} =\\s*['"]${value}['"]`,
+        'm',
+      );
+      constantsContent = constantsContent.replace(
+        regex,
+        `export const ${name} = '${value}'`,
+      );
+    }
+
     // Update Diamond address
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_DIAMOND_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_DIAMOND_ADDRESS = '${deploymentResult.diamond}'`,
-    );
+    replaceConstant('NEXT_PUBLIC_DIAMOND_ADDRESS', deploymentResult.diamond);
 
     // Update all facet addresses
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS = '${deploymentResult.facets.diamondCut}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS',
+      deploymentResult.facets.diamondCut,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS = '${deploymentResult.facets.diamondLoupe}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS',
+      deploymentResult.facets.diamondLoupe,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS = '${deploymentResult.facets.ownership}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS',
+      deploymentResult.facets.ownership,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_NODES_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_NODES_FACET_ADDRESS = '${deploymentResult.facets.nodes}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_NODES_FACET_ADDRESS',
+      deploymentResult.facets.nodes,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_ASSETS_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_ASSETS_FACET_ADDRESS = '${deploymentResult.facets.assets}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_ASSETS_FACET_ADDRESS',
+      deploymentResult.facets.assets,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_ORDERS_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_ORDERS_FACET_ADDRESS = '${deploymentResult.facets.orders}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_ORDERS_FACET_ADDRESS',
+      deploymentResult.facets.orders,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_STAKING_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_STAKING_FACET_ADDRESS = '${deploymentResult.facets.staking}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_STAKING_FACET_ADDRESS',
+      deploymentResult.facets.staking,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_BRIDGE_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_BRIDGE_FACET_ADDRESS = '${deploymentResult.facets.bridge}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_BRIDGE_FACET_ADDRESS',
+      deploymentResult.facets.bridge,
     );
-    constantsContent = constantsContent.replace(
-      /NEXT_PUBLIC_CLOB_FACET_ADDRESS = '.*'/,
-      `NEXT_PUBLIC_CLOB_FACET_ADDRESS = '${deploymentResult.facets.clob}'`,
+    replaceConstant(
+      'NEXT_PUBLIC_CLOB_FACET_ADDRESS',
+      deploymentResult.facets.clob,
     );
 
-    // Update deployment block
+    // Update deployment block (handle both formats)
     constantsContent = constantsContent.replace(
       /export const DIAMOND_DEPLOY_BLOCK = \d+/,
       `export const DIAMOND_DEPLOY_BLOCK = ${deployBlockNumber}`,
@@ -418,7 +471,12 @@ async function main() {
 
   // Step 7: Update indexer configuration to read from chain-constants
   console.log('Step 7: Updating indexer configuration...\n');
-  const indexerConfigPath = path.join(__dirname, '..', 'indexer', 'ponder.config.ts');
+  const indexerConfigPath = path.join(
+    __dirname,
+    '..',
+    'indexer',
+    'ponder.config.ts',
+  );
   if (fs.existsSync(indexerConfigPath)) {
     let indexerContent = fs.readFileSync(indexerConfigPath, 'utf-8');
 

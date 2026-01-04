@@ -214,9 +214,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
       try {
         // Import the order bridge service dynamically
-        const { orderBridgeService, PlaceLimitOrderParams, DeliveryLocation } = await import(
-          '@/infrastructure/services/order-bridge-service'
-        );
+        const { orderBridgeService, PlaceLimitOrderParams, DeliveryLocation } =
+          await import('@/infrastructure/services/order-bridge-service');
 
         // Convert price to proper format (wei)
         // Price in wei = price * 10^18
@@ -247,13 +246,16 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             return false;
           }
 
-          console.log('[TradingPage] CLOB order placed:', result.unifiedOrderId);
+          console.log(
+            '[TradingPage] CLOB order placed:',
+            result.unifiedOrderId,
+          );
           return true;
         } else {
           // Market order - executes immediately
           const result = await orderBridgeService.placeMarketOrder({
             ...clobParams,
-            maxPrice: priceInWei * BigInt(105) / BigInt(100), // 5% slippage tolerance
+            maxPrice: (priceInWei * BigInt(105)) / BigInt(100), // 5% slippage tolerance
           });
 
           if (!result.success) {

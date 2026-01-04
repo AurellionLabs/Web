@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { orderBridgeService, UnifiedOrder, UnifiedOrderStatus } from '@/infrastructure/services/order-bridge-service';
+import {
+  orderBridgeService,
+  UnifiedOrder,
+  UnifiedOrderStatus,
+} from '@/infrastructure/services/order-bridge-service';
 
 /**
  * Order status display configuration
@@ -115,46 +119,50 @@ const isOrderActive = (status: UnifiedOrderStatus): boolean => {
  * Determine if order can be cancelled
  */
 const canOrderBeCancelled = (status: UnifiedOrderStatus): boolean => {
-  return status === UnifiedOrderStatus.PENDING_TRADE || 
-         status === UnifiedOrderStatus.TRADE_MATCHED;
+  return (
+    status === UnifiedOrderStatus.PENDING_TRADE ||
+    status === UnifiedOrderStatus.TRADE_MATCHED
+  );
 };
 
 /**
  * Estimate delivery date based on order status and creation time
  */
 const estimateDelivery = (order: UnifiedOrder): Date | undefined => {
-  if (order.status === UnifiedOrderStatus.SETTLED || 
-      order.status === UnifiedOrderStatus.DELIVERED) {
+  if (
+    order.status === UnifiedOrderStatus.SETTLED ||
+    order.status === UnifiedOrderStatus.DELIVERED
+  ) {
     return new Date(order.deliveredAt);
   }
-  
+
   if (order.status === UnifiedOrderStatus.IN_TRANSIT) {
     // Estimate 24-48 hours from creation
     const created = new Date(order.createdAt);
     const estimated = new Date(created.getTime() + 36 * 60 * 60 * 1000);
     return estimated;
   }
-  
+
   return undefined;
 };
 
 /**
  * useUnifiedOrder - Hook for tracking unified orders through complete lifecycle
- * 
+ *
  * Features:
  * - Fetches and tracks unified orders from OrderBridge
  * - Calculates order progress and status
  * - Provides order actions (cancel, track)
  * - Polls for status updates
- * 
+ *
  * @param orderId - Optional specific order ID to track
  * @param autoRefresh - Whether to auto-refresh order status
  * @param refreshInterval - Refresh interval in milliseconds
- * 
+ *
  * @example
  * ```tsx
  * const { orders, isLoading, refresh, cancelOrder } = useUnifiedOrder();
- * 
+ *
  * // Track specific order
  * const { order, isLoading } = useUnifiedOrder('0x...');
  * ```
@@ -179,7 +187,7 @@ export function useUnifiedOrder(
       if (orderId) {
         // Fetch specific order
         const orderData = await orderBridgeService.getUnifiedOrder(orderId);
-        
+
         if (orderData) {
           const tracked: TrackedOrder = {
             ...orderData,
@@ -211,12 +219,12 @@ export function useUnifiedOrder(
 
     try {
       const result = await orderBridgeService.cancelUnifiedOrder(orderId);
-      
+
       if (result.success) {
         await refresh();
         return true;
       }
-      
+
       return false;
     } catch (err) {
       console.error('[useUnifiedOrder] Error cancelling order:', err);
@@ -250,7 +258,7 @@ export function useUnifiedOrder(
 
 /**
  * useUnifiedOrders - Hook for tracking all user orders
- * 
+ *
  * @param userAddress - User wallet address
  * @param autoRefresh - Whether to auto-refresh
  * @param refreshInterval - Refresh interval
@@ -305,11 +313,13 @@ export function useUnifiedOrders(
       });
 
       const fetchedOrders = await Promise.all(orderPromises);
-      const validOrders = fetchedOrders.filter((o): o is TrackedOrder => o !== null);
-      
+      const validOrders = fetchedOrders.filter(
+        (o): o is TrackedOrder => o !== null,
+      );
+
       // Sort by creation date (newest first)
       validOrders.sort((a, b) => b.createdAt - a.createdAt);
-      
+
       setOrders(validOrders);
     } catch (err) {
       console.error('[useUnifiedOrders] Error fetching orders:', err);
@@ -325,7 +335,7 @@ export function useUnifiedOrders(
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       await fetchOrderIds();
     } catch (err) {
@@ -362,10 +372,16 @@ export function useUnifiedOrders(
     error,
     refresh,
     activeOrders: orders.filter((o) => o.isActive),
-    pendingOrders: orders.filter((o) => o.status === UnifiedOrderStatus.PENDING_TRADE),
-    inTransitOrders: orders.filter((o) => o.status === UnifiedOrderStatus.IN_TRANSIT),
-    completedOrders: orders.filter((o) => 
-      o.status === UnifiedOrderStatus.SETTLED || o.status === UnifiedOrderStatus.DELIVERED
+    pendingOrders: orders.filter(
+      (o) => o.status === UnifiedOrderStatus.PENDING_TRADE,
+    ),
+    inTransitOrders: orders.filter(
+      (o) => o.status === UnifiedOrderStatus.IN_TRANSIT,
+    ),
+    completedOrders: orders.filter(
+      (o) =>
+        o.status === UnifiedOrderStatus.SETTLED ||
+        o.status === UnifiedOrderStatus.DELIVERED,
     ),
   };
 }
@@ -385,7 +401,9 @@ export interface OrderProgressStep {
 /**
  * Generate progress steps from order status
  */
-export function useOrderProgressSteps(order: TrackedOrder | null): OrderProgressStep[] {
+export function useOrderProgressSteps(
+  order: TrackedOrder | null,
+): OrderProgressStep[] {
   return useMemo(() => {
     if (!order) return [];
 
@@ -404,10 +422,10 @@ export function useOrderProgressSteps(order: TrackedOrder | null): OrderProgress
       status,
       ...ORDER_STATUS_CONFIG[status],
       isCompleted: index < currentIndex,
-      isCurrent: index === currentIndex && order.status !== UnifiedOrderStatus.CANCELLED,
+      isCurrent:
+        index === currentIndex && order.status !== UnifiedOrderStatus.CANCELLED,
     }));
   }, [order]);
 }
 
 export default useUnifiedOrder;
-
