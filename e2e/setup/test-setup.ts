@@ -90,8 +90,11 @@ beforeAll(async () => {
     console.log('⏭️ Reusing existing chain and contracts from previous file');
     setGlobalContext(globalThis.__e2eFlowContext);
 
-    // Re-install wallet mock for this file
+    // Reset NonceManager caches to avoid stale nonces
     const chain = getGlobalChain();
+    chain.resetProviderNonces();
+
+    // Re-install wallet mock for this file
     installWalletMock(chain, {
       verbose: process.env.VERBOSE === 'true',
       autoApprove: true,
