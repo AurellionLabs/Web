@@ -27,6 +27,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/app/components/ui/command';
 import {
   Popover,
@@ -316,45 +317,54 @@ export default function NodeRegistrationPage() {
                           <PopoverContent className="w-full p-0">
                             <Command>
                               <CommandInput placeholder="Search assets..." />
-                              {isLoading ? (
-                                <div className="p-4 text-center text-sm text-muted-foreground">
-                                  Loading assets...
-                                </div>
-                              ) : (
-                                <>
-                                  <CommandEmpty>No assets found.</CommandEmpty>
-                                  <CommandGroup>
-                                    {supportedAssetClasses.map((assetClass) => (
-                                      <CommandItem
-                                        key={assetClass}
-                                        onSelect={() => {
-                                          const currentValue = new Set(
-                                            field.value,
-                                          );
-                                          if (currentValue.has(assetClass)) {
-                                            currentValue.delete(assetClass);
-                                          } else {
-                                            currentValue.add(assetClass);
-                                          }
-                                          const newValue =
-                                            Array.from(currentValue);
-                                          field.onChange(newValue);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            'mr-2 h-4 w-4',
-                                            field.value.includes(assetClass)
-                                              ? 'opacity-100'
-                                              : 'opacity-0',
-                                          )}
-                                        />
-                                        {assetClass}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </>
-                              )}
+                              <CommandList>
+                                {isLoading ? (
+                                  <div className="p-4 text-center text-sm text-muted-foreground">
+                                    Loading assets...
+                                  </div>
+                                ) : (
+                                  <>
+                                    <CommandEmpty>
+                                      No assets found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {supportedAssetClasses.map(
+                                        (assetClass) => (
+                                          <CommandItem
+                                            key={assetClass}
+                                            value={assetClass}
+                                            onSelect={() => {
+                                              const currentValue = new Set(
+                                                field.value,
+                                              );
+                                              if (
+                                                currentValue.has(assetClass)
+                                              ) {
+                                                currentValue.delete(assetClass);
+                                              } else {
+                                                currentValue.add(assetClass);
+                                              }
+                                              const newValue =
+                                                Array.from(currentValue);
+                                              field.onChange(newValue);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                'mr-2 h-4 w-4',
+                                                field.value.includes(assetClass)
+                                                  ? 'opacity-100'
+                                                  : 'opacity-0',
+                                              )}
+                                            />
+                                            {assetClass}
+                                          </CommandItem>
+                                        ),
+                                      )}
+                                    </CommandGroup>
+                                  </>
+                                )}
+                              </CommandList>
                             </Command>
                           </PopoverContent>
                         </Popover>
