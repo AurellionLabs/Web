@@ -8,12 +8,20 @@ import { Loader2 } from 'lucide-react';
 interface GlowButtonProps extends Omit<ButtonProps, 'variant'> {
   children: React.ReactNode;
   className?: string;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+  variant?:
+    | 'primary'
+    | 'secondary'
+    | 'outline'
+    | 'ghost'
+    | 'destructive'
+    | 'buy'
+    | 'sell';
   glow?: boolean;
   glowColor?: 'gold' | 'red' | 'green';
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   loading?: boolean;
+  fullWidth?: boolean;
 }
 
 export function GlowButton({
@@ -26,6 +34,7 @@ export function GlowButton({
   rightIcon,
   loading = false,
   disabled,
+  fullWidth = false,
   ...props
 }: GlowButtonProps) {
   const baseStyles =
@@ -60,6 +69,20 @@ export function GlowButton({
       'text-white border-0',
       glow && 'shadow-glow-red-sm hover:shadow-glow-red',
     ),
+    buy: cn(
+      'bg-gradient-to-r from-green-600 to-green-500',
+      'hover:from-green-500 hover:to-green-400',
+      'text-white border-0',
+      glow &&
+        'shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:shadow-[0_0_25px_rgba(34,197,94,0.6)]',
+    ),
+    sell: cn(
+      'bg-gradient-to-r from-red-600 to-red-500',
+      'hover:from-red-500 hover:to-red-400',
+      'text-white border-0',
+      glow &&
+        'shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)]',
+    ),
   };
 
   return (
@@ -69,6 +92,7 @@ export function GlowButton({
         variantStyles[variant],
         'focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:ring-offset-2 focus:ring-offset-black',
         'disabled:opacity-50 disabled:cursor-not-allowed',
+        fullWidth && 'w-full',
         className,
       )}
       disabled={disabled || loading}

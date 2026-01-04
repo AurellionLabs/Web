@@ -26,6 +26,7 @@ import { TradingErrorBoundary } from '@/app/components/error-boundary';
 
 // Hooks
 import { useClassAssets } from '@/hooks/useClassAssets';
+import { useAssetPrice } from '@/hooks/useAssetPrice';
 
 // Icons
 import { ArrowLeft, RefreshCw, TrendingUp } from 'lucide-react';
@@ -48,11 +49,8 @@ function assetToTradeAsset(
   className: string,
   mockPrice: number = 100,
 ): TokenizedAssetUI & { tokenId: string } {
-  // Handle both tokenID (bigint from domain) and tokenId (string from repository)
-  // This is a workaround for the type mismatch between domain and repository
-  const assetAny = asset as any;
-  const tokenIdValue =
-    assetAny.tokenId?.toString() || assetAny.tokenID?.toString() || '0';
+  // Use tokenId from the domain Asset (now standardized as string)
+  const tokenIdValue = asset.tokenId || asset.tokenID?.toString() || '0';
 
   return {
     id: `${asset.name}-${className}`, // Display ID
@@ -121,26 +119,45 @@ function ClassDetailPageContent() {
     setCurrentUserRole('customer');
   }, [setCurrentUserRole]);
 
-  // Create tradeable asset from selected type
-  // This uses the first filtered asset matching the selected type
-  const tradeableAsset = useMemo((): TokenizedAssetUI | null => {
+  // Find the selected asset
+  const selectedAsset = useMemo(() => {
     if (!selectedAssetType) return null;
+    return assets.find((a) => a.name === selectedAssetType) || null;
+  }, [selectedAssetType, assets]);
 
-    // Find the first asset matching the selected type
-    const matchingAsset = assets.find((a) => a.name === selectedAssetType);
-    if (!matchingAsset) return null;
+  // Fetch real price from CLOB orderbook
+  const { priceData, isLoading: isPriceLoading } = useAssetPrice(
+    selectedAsset?.tokenId || '0',
+  );
 
-    const mockPrice = generateMockPrice(selectedAssetType);
-    return assetToTradeAsset(matchingAsset, className, mockPrice);
-  }, [selectedAssetType, assets, className]);
+  // Create tradeable asset from selected type
+  // Uses real price from CLOB when available, falls back to mock price
+  const tradeableAsset = useMemo(():
+    | (TokenizedAssetUI & { tokenId: string })
+    | null => {
+    if (!selectedAsset) return null;
+
+    // Use real price from CLOB if available, otherwise use mock
+    const price =
+      priceData?.price && priceData.price > 0
+        ? priceData.price
+        : generateMockPrice(selectedAsset.name);
+
+    return assetToTradeAsset(selectedAsset, className, price);
+  }, [selectedAsset, className, priceData]);
 
   // Get base price for chart and order book
   const basePrice = useMemo(() => {
+    // Use real price from CLOB if available
+    if (priceData?.price && priceData.price > 0) {
+      return priceData.price;
+    }
+    // Fall back to mock price
     if (selectedAssetType) {
       return generateMockPrice(selectedAssetType);
     }
     return 100;
-  }, [selectedAssetType]);
+  }, [priceData, selectedAssetType]);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {

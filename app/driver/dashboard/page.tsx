@@ -118,9 +118,9 @@ const StatCard: React.FC<StatCardProps> = ({
  */
 interface DeliveryCardProps {
   delivery: Delivery;
-  onAccept?: (jobId: string) => void;
-  onPickup?: (jobId: string) => void;
-  onComplete?: (jobId: string) => void;
+  onAccept?: (jobId: string) => Promise<void>;
+  onPickup?: (jobId: string) => Promise<void>;
+  onComplete?: (jobId: string) => Promise<void>;
   isLoading?: boolean;
 }
 

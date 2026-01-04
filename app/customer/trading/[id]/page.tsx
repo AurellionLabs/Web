@@ -12,6 +12,7 @@ import { PriceChange } from '@/app/components/ui/price-change';
 import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
+import type { PlaceLimitOrderParams } from '@/infrastructure/repositories/clob-repository';
 import {
   ArrowLeft,
   Share2,
@@ -214,8 +215,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
       try {
         // Import the order bridge service dynamically
-        const { orderBridgeService, PlaceLimitOrderParams, DeliveryLocation } =
-          await import('@/infrastructure/services/order-bridge-service');
+        const { orderBridgeService } = await import(
+          '@/infrastructure/services/order-bridge-service'
+        );
 
         // Convert price to proper format (wei)
         // Price in wei = price * 10^18

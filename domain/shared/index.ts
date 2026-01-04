@@ -40,7 +40,10 @@ export type Journey = {
 
 export interface Asset {
   assetClass: string;
-  tokenID: bigint;
+  /** Token ID as string for JSON serialization compatibility */
+  tokenId: string;
+  /** @deprecated Use tokenId instead - kept for backward compatibility */
+  tokenID?: bigint;
   name: string;
   attributes: AssetAttribute[];
 }

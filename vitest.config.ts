@@ -41,6 +41,6 @@ export default defineConfig({
   },
   esbuild: {
     loader: 'tsx',
-    include: /\.tsx$/,
+    include: /\.(ts|tsx)$/,
   },
 });
