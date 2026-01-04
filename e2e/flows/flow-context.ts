@@ -124,16 +124,25 @@ export class FlowContext {
     this.log('🔧 Setting up test environment...');
 
     try {
-      // 1. Mint AURA tokens to all test accounts
+      // 1. Mint AURA (ERC20) tokens to all test accounts
       await this.mintTokensToTestAccounts();
     } catch (error) {
       this.log(
-        `⚠️ Token minting failed: ${error instanceof Error ? error.message : 'unknown'}`,
+        `⚠️ AURA token minting failed: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
 
     try {
-      // 2. Setup AuStake admin roles
+      // 2. Mint AuraAsset (ERC1155) tokens for RWY staking
+      await this.mintAuraAssetTokens();
+    } catch (error) {
+      this.log(
+        `⚠️ AuraAsset minting failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
+    try {
+      // 3. Setup AuStake admin roles
       await this.setupAuStakeRoles();
     } catch (error) {
       this.log(
@@ -142,7 +151,7 @@ export class FlowContext {
     }
 
     try {
-      // 3. Setup AuSys roles (admin, driver)
+      // 4. Setup AuSys roles (admin, driver)
       await this.setupAuSysRoles();
     } catch (error) {
       this.log(
@@ -151,7 +160,7 @@ export class FlowContext {
     }
 
     try {
-      // 4. Setup RWYVault operator approvals
+      // 5. Setup RWYVault operator approvals
       await this.setupRWYVaultOperators();
     } catch (error) {
       this.log(
@@ -215,6 +224,54 @@ export class FlowContext {
         );
         await tx.wait();
         this.log(`  💵 Funded ${userName} with 10,000 AURA`);
+      }
+    }
+  }
+
+  /**
+   * Mint AuraAsset (ERC1155) tokens to test accounts for RWY staking
+   */
+  private async mintAuraAssetTokens(): Promise<void> {
+    const auraAsset = this.contracts.get('AuraAsset');
+    if (!auraAsset) {
+      this.log('⚠️ AuraAsset contract not deployed, skipping ERC1155 minting');
+      return;
+    }
+
+    const deployer = this.getUser('deployer');
+    const auraAssetContract = auraAsset.contract.connect(
+      deployer.signer,
+    ) as Contract;
+
+    // Mint tokens for each asset class (IDs 1-5: GOAT, SHEEP, COW, CHICKEN, DUCK)
+    const tokenIds = [1n, 2n, 3n, 4n, 5n];
+    const amountsPerToken = [1000n, 1000n, 1000n, 1000n, 1000n]; // 1000 of each
+
+    const usersToFund = [
+      'operator1',
+      'investor1',
+      'investor2',
+      'customer1',
+      'customer2',
+    ];
+
+    for (const userName of usersToFund) {
+      const user = this.users.get(userName);
+      if (user) {
+        try {
+          const tx = await auraAssetContract.mintBatch(
+            user.address,
+            tokenIds,
+            amountsPerToken,
+            '0x',
+          );
+          await tx.wait();
+          this.log(`  🎨 Minted AuraAsset tokens to ${userName}`);
+        } catch (error) {
+          this.log(
+            `  ⚠️ Failed to mint AuraAsset to ${userName}: ${error instanceof Error ? error.message : 'unknown'}`,
+          );
+        }
       }
     }
   }
