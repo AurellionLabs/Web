@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-03T10:59:12.989Z.813Z
+// Deployed: 2026-01-04T02:00:44.580Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -20,6 +20,11 @@ export const NEXT_PUBLIC_CLOB_ADDRESS =
   '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc';
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
   '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
+
+// RWY Vault address - Real World Yield commodity staking
+// Deploy with: DEPLOY_MODE=rwy npx hardhat run scripts/unified-deploy.ts --network baseSepolia
+export const NEXT_PUBLIC_RWY_VAULT_ADDRESS =
+  '0xfC2d5b8464f14a051661E6dE14DB3F703C601938';
 
 // Quote token address for CLOB trading (USDC on Base Sepolia)
 export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS =
@@ -96,4 +101,5 @@ export const DEPLOYMENT_BLOCKS = {
   auStake: 35859031,
   auraAsset: 35859031,
   clob: 35859031,
+  rwyVault: 35861876,
 };
