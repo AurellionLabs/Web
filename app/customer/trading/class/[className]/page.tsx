@@ -151,12 +151,97 @@ function ClassDetailPageContent() {
     // TODO: Could pre-fill the trade panel price
   }, []);
 
-  // Handle order placement
-  const handlePlaceOrder = useCallback(async (order: unknown) => {
-    console.log('Placing order:', order);
-    // TODO: Integrate with CLOB contract
-    return true;
-  }, []);
+  // Handle order placement - connects TradePanel to CLOB
+  const handlePlaceOrder = useCallback(
+    async (order: {
+      side: 'buy' | 'sell';
+      type: 'limit' | 'market';
+      price: number;
+      quantity: number;
+      total: number;
+      assetId: string;
+    }): Promise<boolean> => {
+      console.log('[ClassTradingPage] Placing order:', order);
+
+      if (!selectedAsset) {
+        console.error('[ClassTradingPage] No asset selected for order');
+        return false;
+      }
+
+      try {
+        // Import services dynamically
+        const { orderBridgeService } = await import(
+          '@/infrastructure/services/order-bridge-service'
+        );
+        const {
+          NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+        } = await import('@/chain-constants');
+
+        // Convert price to proper format (wei)
+        const priceInWei = BigInt(Math.round(order.price * 1e18));
+        const quantity = BigInt(order.quantity);
+
+        // Build CLOB order params
+        const clobParams = {
+          baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          baseTokenId: BigInt(selectedAsset.tokenId),
+          quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+          price: priceInWei,
+          amount: quantity,
+          isBuy: order.side === 'buy',
+        };
+
+        console.log('[ClassTradingPage] Placing CLOB order:', clobParams);
+
+        // Place order on CLOB
+        if (order.type === 'limit') {
+          const result = await orderBridgeService.placeLimitOrderAndBridge(
+            clobParams,
+            false, // Don't bridge immediately - wait for match
+          );
+
+          if (!result.success) {
+            console.error(
+              '[ClassTradingPage] CLOB order failed:',
+              result.error,
+            );
+            return false;
+          }
+
+          console.log(
+            '[ClassTradingPage] CLOB order placed:',
+            result.unifiedOrderId,
+          );
+          return true;
+        } else {
+          // Market order - executes immediately
+          const result = await orderBridgeService.placeMarketOrder({
+            ...clobParams,
+            maxPrice: (priceInWei * BigInt(105)) / BigInt(100), // 5% slippage tolerance
+          });
+
+          if (!result.success) {
+            console.error(
+              '[ClassTradingPage] Market order failed:',
+              result.error,
+            );
+            return false;
+          }
+
+          console.log(
+            '[ClassTradingPage] Market order executed:',
+            result.orderId,
+          );
+          return true;
+        }
+      } catch (error) {
+        console.error('[ClassTradingPage] Error placing order:', error);
+        return false;
+      }
+    },
+    [selectedAsset],
+  );
 
   // Render loading state
   if (isLoading && assets.length === 0) {

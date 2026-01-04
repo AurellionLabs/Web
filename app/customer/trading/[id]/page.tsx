@@ -223,10 +223,13 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         const quantity = BigInt(order.quantity);
 
         // Build CLOB order params
+        const { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } = await import(
+          '@/chain-constants'
+        );
         const clobParams: PlaceLimitOrderParams = {
           baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
           baseTokenId: BigInt(asset.id),
-          quoteToken: '0x...', // USDT or USDC address - would come from config
+          quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
           amount: quantity,
           isBuy: order.side === 'buy',

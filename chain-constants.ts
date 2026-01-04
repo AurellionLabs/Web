@@ -21,8 +21,9 @@ export const NEXT_PUBLIC_CLOB_ADDRESS =
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
   '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
 
-// Quote token address for CLOB trading (USDT on Base Sepolia)
-export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = '0x...'; // TODO: Set actual USDT/USDC address
+// Quote token address for CLOB trading (USDC on Base Sepolia)
+export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS =
+  '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
 //
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
