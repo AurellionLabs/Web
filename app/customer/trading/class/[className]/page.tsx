@@ -163,7 +163,7 @@ function ClassDetailPageContent() {
     }): Promise<boolean> => {
       console.log('[ClassTradingPage] Placing order:', order);
 
-      if (!selectedAsset) {
+      if (!tradeableAsset) {
         console.error('[ClassTradingPage] No asset selected for order');
         return false;
       }
@@ -185,7 +185,7 @@ function ClassDetailPageContent() {
         // Build CLOB order params
         const clobParams = {
           baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-          baseTokenId: BigInt(selectedAsset.tokenId),
+          baseTokenId: BigInt(tradeableAsset.id),
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
           amount: quantity,
@@ -240,7 +240,7 @@ function ClassDetailPageContent() {
         return false;
       }
     },
-    [selectedAsset],
+    [tradeableAsset],
   );
 
   // Render loading state
