@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
-    "build": "npx hardhat compile && npm run typecheck && next build",
+    "build": "npm run typecheck && next build",
+    "build:full": "npx hardhat compile && npm run extract-abis && npm run typecheck && next build",
+    "extract-abis": "node scripts/extract-abis.js",
     "deploy": "npx hardhat run scripts/deploy.ts --network baseSepolia",
     "deploy:order-bridge": "npx hardhat run scripts/deploy-order-bridge.ts --network baseSepolia",
     "start": "next start",

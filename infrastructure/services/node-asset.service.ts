@@ -5,13 +5,12 @@ import {
   NodeAssetConverters,
 } from '@/domain/node/node';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { AurumNodeManager } from '@/typechain-types';
+import type { AurumNodeManager } from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
 import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { PinataSDK } from 'pinata';
 import { Asset } from '@/domain/shared';
-import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/Aurum.sol/AurumNode';
 import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 
 /**
@@ -68,7 +67,7 @@ export class NodeAssetService implements INodeAssetService {
       const bigIntAmount = BigInt(amount);
 
       // Build contract AssetStruct from domain Asset
-      const contractAsset: AuraAssetTypes.AssetStruct = {
+      const contractAsset = {
         name: asset.name || '',
         assetClass: asset.assetClass || '',
         attributes: (asset.attributes || []).map(
@@ -78,7 +77,7 @@ export class NodeAssetService implements INodeAssetService {
             description: attr.description || '',
           }),
         ),
-      } as any;
+      };
 
       // Compute tokenId and asset hash locally
       const abiCoder = ethers.AbiCoder.defaultAbiCoder();

@@ -9,13 +9,13 @@ import {
 } from '@/domain/node';
 import { BrowserProvider, ethers } from 'ethers';
 import {
-  AurumNode,
   AurumNode__factory,
-  AurumNodeManager,
   AurumNodeManager__factory,
   AuraAsset__factory,
-  AuraAsset,
-} from '@/typechain-types';
+  type AurumNode,
+  type AurumNodeManager,
+  type AuraAsset,
+} from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
 import { PinataSDK } from 'pinata';
 import { hashToAssets, tokenIdToAssets } from './shared/ipfs';

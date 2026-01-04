@@ -1,6 +1,6 @@
 import { IPlatformRepository } from '@/domain/platform';
 import { Asset } from '@/domain/shared';
-import { AuraAsset } from '@/typechain-types';
+import type { AuraAsset } from '@/lib/contracts';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
 import {

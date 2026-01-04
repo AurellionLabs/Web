@@ -13,7 +13,11 @@ import {
   ethers,
   Overrides,
 } from 'ethers';
-import { LocationContract, LocationContract__factory } from '@/typechain-types';
+import {
+  Ausys__factory,
+  type Ausys as LocationContract,
+} from '@/lib/contracts';
+const LocationContract__factory = Ausys__factory;
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import {
   ethersProvider,

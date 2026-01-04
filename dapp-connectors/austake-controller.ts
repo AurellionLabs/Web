@@ -10,7 +10,7 @@ import {
   ContractTransactionReceipt,
   ContractTransaction,
 } from 'ethers';
-import { AuStake, AuStake__factory } from '@/typechain-types';
+import { AuStake__factory, type AuStake } from '@/lib/contracts';
 import {
   ethersProvider,
   signer,

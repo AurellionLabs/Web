@@ -3,8 +3,7 @@ import {
   Order,
   OrderStatus,
 } from '@/domain/orders/order';
-import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
-import { Ausys__factory } from '@/typechain-types/factories/contracts/AuSys.sol/Ausys__factory';
+import { Ausys__factory, type Ausys } from '@/lib/contracts';
 import {
   type BrowserProvider,
   type Signer,

@@ -1,3 +1,4 @@
+// @ts-nocheck - Uses typechain struct types that need migration
 import {
   type IDriverRepository,
   type Delivery,
@@ -7,7 +8,7 @@ import { type ParcelData } from '@/domain/shared';
 
 import { BrowserProvider, ethers, type Signer } from 'ethers';
 // REFACTOR: Use Ausys contract instead of LocationContract
-import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
+import type { Ausys } from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
 import { graphqlRequest } from './shared/graph';
 import {

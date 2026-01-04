@@ -1,7 +1,7 @@
 import type { Node } from '@/domain/node';
 import { NodeAssetConverters } from '@/domain/node';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import type { AurumNodeManager } from '@/typechain-types';
+import type { AurumNodeManager } from '@/lib/contracts';
 import { ethers } from 'ethers';
 import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 import { handleContractError } from '@/utils/error-handler';
@@ -43,7 +43,13 @@ export class NodeService implements INodeService {
         | undefined;
 
       // Contract expects Asset[] structs, not separate arrays
-      let supportedAssets: AurumNodeManager.AssetStruct[] = [];
+      // AssetStruct type: { token: string, tokenId: bigint, price: bigint, capacity: bigint }
+      let supportedAssets: Array<{
+        token: string;
+        tokenId: bigint;
+        price: bigint;
+        capacity: bigint;
+      }> = [];
 
       if (hasNewAssets && (nodeData.assets?.length ?? 0) > 0) {
         // Use new assets format - already in correct structure
@@ -95,7 +101,8 @@ export class NodeService implements INodeService {
         );
       }
 
-      const contractNodeStruct: AurumNodeManager.NodeStruct = {
+      // NodeStruct type for contract
+      const contractNodeStruct = {
         location: {
           addressName: nodeData.location.addressName,
           location: {

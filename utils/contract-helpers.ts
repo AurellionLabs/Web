@@ -1,4 +1,7 @@
-import { AurumNodeManager, AurumNodeManager__factory } from '@/typechain-types';
+import {
+  AurumNodeManager__factory,
+  type AurumNodeManager,
+} from '@/lib/contracts';
 import { NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS } from '@/chain-constants';
 import { ethers } from 'ethers';
 

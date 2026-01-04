@@ -13,13 +13,9 @@ import {
 import {
   AuStake__factory,
   AurumNodeManager__factory,
-  AurumNodeManager,
   AuraAsset__factory,
-} from '@/typechain-types';
-// LocationContract types - may need regeneration after contract updates
-// import { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';
-// import { LocationContract__factory } from '@/typechain-types/factories/contracts/AuSys.sol/LocationContract__factory';
-import { Ausys, Ausys__factory } from '@/typechain-types';
+  Ausys__factory,
+} from '@/lib/contracts';
 import { PlatformRepository } from '../repositories/platform-repository';
 import { PinataSDK } from 'pinata';
 

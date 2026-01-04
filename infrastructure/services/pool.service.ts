@@ -11,9 +11,9 @@ import {
   GroupedStakes,
 } from '@/domain/pool';
 import {
-  AuStake as AuStakeContract,
   AuStake__factory,
-} from '@/typechain-types';
+  type AuStake as AuStakeContract,
+} from '@/lib/contracts';
 import { ContractTransactionResponse, ethers, Provider, Signer } from 'ethers';
 import { NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';

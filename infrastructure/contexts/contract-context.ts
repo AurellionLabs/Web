@@ -4,10 +4,10 @@ import { useWallet } from '@/hooks/useWallet';
 import { handleContractError } from '@/utils/error-handler';
 import {
   AurumNodeManager__factory,
-  AurumNodeManager,
   AuraGoatRed__factory,
-  AuraGoatRed,
-} from '@/typechain-types';
+  type AurumNodeManager,
+  type AuraGoatRed,
+} from '@/lib/contracts';
 import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,

@@ -1,4 +1,4 @@
-import { AuraAsset } from '@/typechain-types';
+import type { AuraAsset } from '@/lib/contracts';
 import { Asset } from '../shared';
 
 export interface IpfsAssetAttribute {

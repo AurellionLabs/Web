@@ -1,7 +1,7 @@
 // @ts-nocheck - File with outdated contract types
 import { IDriverService } from '@/domain/driver/driver';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { LocationContract } from '@/typechain-types';
+import type { Ausys as LocationContract } from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
 import { ethers } from 'ethers';
 import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';

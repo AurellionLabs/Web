@@ -10,9 +10,9 @@ import {
   BigNumberString,
 } from '@/domain/pool';
 import {
-  AuStake as AuStakeContract,
   AuStake__factory,
-} from '@/typechain-types';
+  type AuStake as AuStakeContract,
+} from '@/lib/contracts';
 import { BigNumberish, BytesLike, ethers, Provider, Signer } from 'ethers';
 import {
   NEXT_PUBLIC_AUSTAKE_ADDRESS,

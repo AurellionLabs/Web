@@ -11,11 +11,11 @@ import {
   ContractTransactionReceipt,
 } from 'ethers';
 import {
-  AurumNode,
   AurumNode__factory,
-  AurumNodeManager,
   AurumNodeManager__factory,
-} from '@/typechain-types';
+  type AurumNode,
+  type AurumNodeManager,
+} from '@/lib/contracts';
 import {
   ethersProvider,
   signer,
@@ -27,7 +27,7 @@ import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
 } from '@/chain-constants';
 import { ethers } from 'ethers';
-import { AuraAsset__factory } from '@/typechain-types';
+import { AuraAsset__factory } from '@/lib/contracts';
 
 export type ResourceData = {
   id: bigint;

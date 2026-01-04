@@ -8,9 +8,11 @@ import {
   NEXT_PUBLIC_AUSYS_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
-import { AurumNodeManager__factory } from '@/typechain-types/factories/contracts/Aurum.sol/AurumNodeManager__factory';
-import { AuraAsset__factory } from '@/typechain-types/factories/contracts/AuraAsset.sol/AuraAsset__factory';
-import { Ausys__factory } from '@/typechain-types/factories/contracts/AuSys.sol/Ausys__factory';
+import {
+  AurumNodeManager__factory,
+  AuraAsset__factory,
+  Ausys__factory,
+} from '@/lib/contracts';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';

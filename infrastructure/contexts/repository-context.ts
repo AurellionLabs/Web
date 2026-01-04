@@ -2,9 +2,7 @@ import { NodeRepository } from '@/domain/node/node';
 import { BlockchainNodeRepository } from '../repositories/node-repository';
 import { OrderRepository } from '../repositories/orders-repository';
 import { IOrderRepository } from '@/domain/orders/order';
-import { AurumNodeManager } from '@/typechain-types/contracts/Aurum.sol/AurumNodeManager';
-import { AuraAsset } from '@/typechain-types/contracts/AuraAsset.sol/AuraAsset';
-import { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
+import type { AurumNodeManager, AuraAsset, Ausys } from '@/lib/contracts';
 import { BrowserProvider, ethers } from 'ethers';
 import { INodeAssetService } from '@/domain/node/node';
 import { DriverRepository } from '../repositories/driver-repository';
@@ -22,7 +20,7 @@ import { RepositoryFactory } from '../factories/repository-factory';
 import { IPlatformRepository } from '@/domain/platform';
 import { PlatformRepository } from '../repositories/platform-repository';
 import { PinataSDK } from 'pinata';
-import { AurumNode, AurumNode__factory } from '@/typechain-types';
+import { AurumNode__factory, type AurumNode } from '@/lib/contracts';
 
 /**
  * Context that manages all repositories and their dependencies - UPDATED for refactored contracts

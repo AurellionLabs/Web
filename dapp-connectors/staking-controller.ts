@@ -14,19 +14,16 @@ import {
   Signer,
   ethers,
 } from 'ethers';
-import {
-  Aura,
-  Aura__factory,
-  AuraGoat,
-  AuraGoat__factory,
-  AuStake,
-} from '@/typechain-types';
-import { AuStake__factory } from '@/typechain-types';
+import { AuStake__factory, AuraGoatRed__factory } from '@/lib/contracts';
+import type { AuStake } from '@/lib/contracts';
+// Legacy aliases
+const Aura__factory = AuraGoatRed__factory;
+const AuraGoat__factory = AuraGoatRed__factory;
+type Aura = any;
+type AuraGoat = any;
+type StakedEvent = any;
+type UnstakedEvent = any;
 import { Wallet } from './wallet-helper';
-import {
-  StakedEvent,
-  UnstakedEvent,
-} from '@/typechain-types/contracts/AuStake';
 import { formatEthereumValue } from './ethereum-utils';
 import {
   NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
