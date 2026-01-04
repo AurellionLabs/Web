@@ -1254,3 +1254,386 @@ export const unifiedOrderSettledEvents = onchainTable(
     driverIdx: index().on(table.driver),
   }),
 );
+
+// =============================================================================
+// RWY VAULT TABLES - Real World Yield Commodity Staking
+// =============================================================================
+
+/**
+ * RWY Opportunity entity - tracks commodity processing opportunities
+ * OpportunityStatus: 0=PENDING, 1=FUNDING, 2=FUNDED, 3=IN_TRANSIT, 4=PROCESSING, 5=SELLING, 6=DISTRIBUTING, 7=COMPLETED, 8=CANCELLED
+ */
+export const rwyOpportunities = onchainTable(
+  'rwy_opportunities',
+  (t) => ({
+    id: t.hex().primaryKey(), // opportunityId (bytes32)
+    operator: t.hex().notNull(),
+    name: t.text().notNull(),
+    description: t.text().notNull().default(''),
+    // Input commodity
+    inputToken: t.hex().notNull(),
+    inputTokenId: t.bigint().notNull(),
+    targetAmount: t.bigint().notNull(),
+    stakedAmount: t.bigint().notNull().default(0n),
+    // Output commodity
+    outputToken: t.hex().notNull(),
+    outputTokenId: t.bigint().notNull().default(0n),
+    expectedOutputAmount: t.bigint().notNull(),
+    // Economics
+    promisedYieldBps: t.integer().notNull(), // basis points
+    operatorFeeBps: t.integer().notNull(),
+    minSalePrice: t.bigint().notNull(),
+    operatorCollateral: t.bigint().notNull(),
+    // Timeline
+    fundingDeadline: t.bigint().notNull(),
+    processingDeadline: t.bigint().notNull().default(0n),
+    createdAt: t.bigint().notNull(),
+    fundedAt: t.bigint().notNull().default(0n),
+    completedAt: t.bigint().notNull().default(0n),
+    // Status
+    status: t.integer().notNull().default(1), // OpportunityStatus enum
+    // Metadata
+    blockNumber: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+    updatedAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    operatorIdx: index().on(table.operator),
+    statusIdx: index().on(table.status),
+    inputTokenIdx: index().on(table.inputToken, table.inputTokenId),
+    outputTokenIdx: index().on(table.outputToken, table.outputTokenId),
+  }),
+);
+
+/**
+ * RWY Stake entity - individual commodity stakes in opportunities
+ */
+export const rwyStakes = onchainTable(
+  'rwy_stakes',
+  (t) => ({
+    id: t.text().primaryKey(), // opportunityId-stakerAddress
+    opportunityId: t.hex().notNull(),
+    staker: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    stakedAt: t.bigint().notNull(),
+    claimed: t.boolean().notNull().default(false),
+    claimedAmount: t.bigint().notNull().default(0n),
+    claimedAt: t.bigint().notNull().default(0n),
+    // Metadata
+    blockNumber: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+    updatedAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+    stakerIdx: index().on(table.staker),
+  }),
+);
+
+/**
+ * RWY Operator entity - approved operators with stats
+ */
+export const rwyOperators = onchainTable(
+  'rwy_operators',
+  (t) => ({
+    id: t.hex().primaryKey(), // operator address
+    operator: t.hex().notNull(),
+    approved: t.boolean().notNull().default(false),
+    reputation: t.integer().notNull().default(0),
+    successfulOps: t.integer().notNull().default(0),
+    totalValueProcessed: t.bigint().notNull().default(0n),
+    totalOpportunities: t.integer().notNull().default(0),
+    activeOpportunities: t.integer().notNull().default(0),
+    // Metadata
+    createdAt: t.bigint().notNull(),
+    updatedAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    approvedIdx: index().on(table.approved),
+  }),
+);
+
+/**
+ * RWY OpportunityCreated events (immutable)
+ */
+export const rwyOpportunityCreatedEvents = onchainTable(
+  'rwy_opportunity_created_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    operator: t.hex().notNull(),
+    inputToken: t.hex().notNull(),
+    inputTokenId: t.bigint().notNull(),
+    targetAmount: t.bigint().notNull(),
+    promisedYieldBps: t.integer().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+    operatorIdx: index().on(table.operator),
+  }),
+);
+
+/**
+ * RWY CommodityStaked events (immutable)
+ */
+export const rwyCommodityStakedEvents = onchainTable(
+  'rwy_commodity_staked_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    staker: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    totalStaked: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+    stakerIdx: index().on(table.staker),
+  }),
+);
+
+/**
+ * RWY CommodityUnstaked events (immutable)
+ */
+export const rwyCommodityUnstakedEvents = onchainTable(
+  'rwy_commodity_unstaked_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    staker: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+    stakerIdx: index().on(table.staker),
+  }),
+);
+
+/**
+ * RWY OpportunityFunded events (immutable)
+ */
+export const rwyOpportunityFundedEvents = onchainTable(
+  'rwy_opportunity_funded_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    totalAmount: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+  }),
+);
+
+/**
+ * RWY DeliveryStarted events (immutable)
+ */
+export const rwyDeliveryStartedEvents = onchainTable(
+  'rwy_delivery_started_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    journeyId: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+    journeyIdx: index().on(table.journeyId),
+  }),
+);
+
+/**
+ * RWY DeliveryConfirmed events (immutable)
+ */
+export const rwyDeliveryConfirmedEvents = onchainTable(
+  'rwy_delivery_confirmed_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    deliveredAmount: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+  }),
+);
+
+/**
+ * RWY ProcessingStarted events (immutable)
+ */
+export const rwyProcessingStartedEvents = onchainTable(
+  'rwy_processing_started_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+  }),
+);
+
+/**
+ * RWY ProcessingCompleted events (immutable)
+ */
+export const rwyProcessingCompletedEvents = onchainTable(
+  'rwy_processing_completed_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    outputAmount: t.bigint().notNull(),
+    outputTokenId: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+  }),
+);
+
+/**
+ * RWY ProfitDistributed events (immutable)
+ */
+export const rwyProfitDistributedEvents = onchainTable(
+  'rwy_profit_distributed_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    staker: t.hex().notNull(),
+    principal: t.bigint().notNull(),
+    profit: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+    stakerIdx: index().on(table.staker),
+  }),
+);
+
+/**
+ * RWY OpportunityCancelled events (immutable)
+ */
+export const rwyOpportunityCancelledEvents = onchainTable(
+  'rwy_opportunity_cancelled_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    reason: t.text().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+  }),
+);
+
+/**
+ * RWY OperatorSlashed events (immutable)
+ */
+export const rwyOperatorSlashedEvents = onchainTable(
+  'rwy_operator_slashed_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    opportunityId: t.hex().notNull(),
+    operator: t.hex().notNull(),
+    slashedAmount: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdx: index().on(table.opportunityId),
+    operatorIdx: index().on(table.operator),
+  }),
+);
+
+/**
+ * RWY OperatorApproved events (immutable)
+ */
+export const rwyOperatorApprovedEvents = onchainTable(
+  'rwy_operator_approved_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    operator: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    operatorIdx: index().on(table.operator),
+  }),
+);
+
+/**
+ * RWY OperatorRevoked events (immutable)
+ */
+export const rwyOperatorRevokedEvents = onchainTable(
+  'rwy_operator_revoked_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    operator: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    operatorIdx: index().on(table.operator),
+  }),
+);
+
+/**
+ * RWY User Stats (aggregated)
+ */
+export const rwyUserStats = onchainTable(
+  'rwy_user_stats',
+  (t) => ({
+    id: t.hex().primaryKey(), // user address
+    user: t.hex().notNull(),
+    totalStaked: t.bigint().notNull().default(0n),
+    totalClaimed: t.bigint().notNull().default(0n),
+    totalProfit: t.bigint().notNull().default(0n),
+    activeStakes: t.integer().notNull().default(0),
+    completedStakes: t.integer().notNull().default(0),
+    firstStakeAt: t.bigint().notNull(),
+    lastStakeAt: t.bigint().notNull(),
+    updatedAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    userIdx: index().on(table.user),
+  }),
+);
+
+/**
+ * RWY Global Stats (aggregated)
+ */
+export const rwyGlobalStats = onchainTable('rwy_global_stats', (t) => ({
+  id: t.text().primaryKey(), // 'global'
+  totalOpportunities: t.integer().notNull().default(0),
+  activeOpportunities: t.integer().notNull().default(0),
+  completedOpportunities: t.integer().notNull().default(0),
+  totalValueStaked: t.bigint().notNull().default(0n),
+  totalValueDistributed: t.bigint().notNull().default(0n),
+  totalOperators: t.integer().notNull().default(0),
+  totalStakers: t.integer().notNull().default(0),
+  updatedAt: t.bigint().notNull(),
+}));
