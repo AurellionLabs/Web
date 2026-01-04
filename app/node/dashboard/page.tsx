@@ -263,7 +263,8 @@ export default function NodeDashboardPage() {
         }));
       const assetPayload: Asset = {
         assetClass: form.getValues('assetClass'),
-        tokenID: BigInt(assetIdStr),
+        tokenId: assetIdStr,
+        tokenID: BigInt(assetIdStr), // Deprecated, kept for backward compatibility
         name: selectedAssetName,
         attributes: normalizedAttributes,
       };

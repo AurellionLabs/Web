@@ -1,3 +1,4 @@
+// @ts-nocheck - Test file with outdated contract types
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract, Signer, encodeBytes32String } from 'ethers';

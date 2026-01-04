@@ -455,7 +455,7 @@ export class CLOBRepository {
       provider,
     );
 
-    return clobContract.connect(signer);
+    return clobContract.connect(signer) as ethers.Contract;
   }
 
   /**
@@ -475,7 +475,7 @@ export class CLOBRepository {
       this.quoteTokenAddress,
       erc20ABI,
       provider,
-    ).connect(signer);
+    ).connect(signer) as ethers.Contract;
   }
 
   /**

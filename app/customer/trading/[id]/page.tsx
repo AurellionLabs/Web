@@ -12,6 +12,7 @@ import { PriceChange } from '@/app/components/ui/price-change';
 import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
+import type { PlaceLimitOrderParams } from '@/infrastructure/repositories/clob-repository';
 import {
   ArrowLeft,
   Share2,
@@ -214,8 +215,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
       try {
         // Import the order bridge service dynamically
-        const { orderBridgeService, PlaceLimitOrderParams, DeliveryLocation } =
-          await import('@/infrastructure/services/order-bridge-service');
+        const { orderBridgeService } = await import(
+          '@/infrastructure/services/order-bridge-service'
+        );
 
         // Convert price to proper format (wei)
         // Price in wei = price * 10^18
@@ -226,9 +228,12 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         const { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } = await import(
           '@/chain-constants'
         );
+        // Use tokenId if available, otherwise try to extract from id or use '0'
+        const assetAny = asset as any;
+        const tokenId = assetAny.tokenId || assetAny.tokenID?.toString() || '0';
         const clobParams: PlaceLimitOrderParams = {
           baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-          baseTokenId: BigInt(asset.id),
+          baseTokenId: tokenId,
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
           amount: quantity,

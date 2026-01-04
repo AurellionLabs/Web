@@ -372,7 +372,13 @@ export {
   ChartStyle,
 };
 
-export function Chart({ data }) {
+interface ChartDataPoint {
+  time: number;
+  price: number;
+  [key: string]: unknown;
+}
+
+export function Chart({ data }: { data: ChartDataPoint[] }) {
   // Sort data by timestamp to ensure proper line drawing
   const sortedData = [...data].sort((a, b) => a.time - b.time);
 

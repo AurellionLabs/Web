@@ -5,7 +5,8 @@ import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import React from 'react';
 
 interface PriceChangeProps {
-  change: number;
+  change?: number;
+  value?: number; // Alias for change
   percentage?: number;
   className?: string;
   fixed?: number;
@@ -16,6 +17,7 @@ interface PriceChangeProps {
 
 export function PriceChange({
   change,
+  value,
   percentage,
   className,
   fixed = 2,
@@ -23,9 +25,11 @@ export function PriceChange({
   showIcon = true,
   size = 'sm',
 }: PriceChangeProps) {
-  const isPositive = change > 0;
-  const isNegative = change < 0;
-  const isNeutral = change === 0;
+  // Support both 'change' and 'value' props
+  const changeValue = change ?? value ?? 0;
+  const isPositive = changeValue > 0;
+  const isNegative = changeValue < 0;
+  const isNeutral = changeValue === 0;
 
   const sizeClasses = {
     sm: 'text-xs',
@@ -47,7 +51,7 @@ export function PriceChange({
 
   const Icon = isPositive ? ArrowUp : isNegative ? ArrowDown : Minus;
   const displayValue =
-    percentage !== undefined ? Math.abs(percentage) : Math.abs(change);
+    percentage !== undefined ? Math.abs(percentage) : Math.abs(changeValue);
 
   return (
     <span

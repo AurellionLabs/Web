@@ -233,6 +233,26 @@ export class RepositoryContext {
   }
 
   /**
+   * Get the provider from the signer
+   */
+  public getProvider(): ethers.Provider {
+    if (!this.signer?.provider) {
+      throw new Error('Provider not available. Call initialize() first.');
+    }
+    return this.signer.provider;
+  }
+
+  /**
+   * Get the signer's address
+   */
+  public async getSignerAddress(): Promise<string> {
+    if (!this.signer) {
+      throw new Error('Signer not initialized. Call initialize() first.');
+    }
+    return this.signer.getAddress();
+  }
+
+  /**
    * Listen for signature events on a journey
    */
   public async listenForSignature(

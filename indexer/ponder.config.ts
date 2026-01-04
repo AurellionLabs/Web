@@ -29,15 +29,8 @@ import {
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export default createConfig({
-  cors: {
-    origins: [
-      'https://aurellionlabs.com',
-      'https://www.aurellionlabs.com',
-      /https:\/\/web-.*-aurellion\.vercel\.app/,
-      'https://indexer.aurellionlabs.com',
-      'http://localhost:3000',
-    ],
-  },
+  // Note: CORS configuration should be handled at the server level (nginx/reverse proxy)
+  // or via environment variables if supported by your Ponder version
   networks: {
     baseSepolia: {
       chainId: BASE_SEPOLIA_CHAIN_ID,

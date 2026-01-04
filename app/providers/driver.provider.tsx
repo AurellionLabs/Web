@@ -183,10 +183,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const tx = await ausys.packageSign(jobId as any);
       console.log('[confirmPickup] packageSign tx sent:', tx.hash);
       const receipt = await tx.wait();
-      console.log(
-        '[confirmPickup] packageSign tx mined:',
-        receipt?.transactionHash,
-      );
+      console.log('[confirmPickup] packageSign tx mined:', receipt?.hash);
       await refreshDeliveries();
     } catch (err) {
       console.error('[confirmPickup] Error:', err);

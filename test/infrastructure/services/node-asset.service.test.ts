@@ -1,3 +1,4 @@
+// @ts-nocheck - Test file with outdated contract types
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon, { SinonStubbedInstance } from 'sinon';

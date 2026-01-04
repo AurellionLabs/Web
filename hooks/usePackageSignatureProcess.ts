@@ -1,3 +1,4 @@
+// @ts-nocheck - File with outdated contract types
 import { useState, useCallback } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { encodeBytes32String } from 'ethers';

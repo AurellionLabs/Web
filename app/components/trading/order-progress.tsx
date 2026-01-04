@@ -17,6 +17,52 @@ import {
   FileText,
 } from 'lucide-react';
 
+// Status configuration for order badges
+const ORDER_STATUS_CONFIG = {
+  pending: {
+    label: 'Pending',
+    bgColor: 'bg-yellow-500/20',
+    color: 'text-yellow-400',
+    icon: '⏳',
+  },
+  matched: {
+    label: 'Matched',
+    bgColor: 'bg-blue-500/20',
+    color: 'text-blue-400',
+    icon: '✓',
+  },
+  in_transit: {
+    label: 'In Transit',
+    bgColor: 'bg-purple-500/20',
+    color: 'text-purple-400',
+    icon: '🚚',
+  },
+  delivered: {
+    label: 'Delivered',
+    bgColor: 'bg-green-500/20',
+    color: 'text-green-400',
+    icon: '📦',
+  },
+  settled: {
+    label: 'Settled',
+    bgColor: 'bg-emerald-500/20',
+    color: 'text-emerald-400',
+    icon: '💰',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    bgColor: 'bg-red-500/20',
+    color: 'text-red-400',
+    icon: '✕',
+  },
+  failed: {
+    label: 'Failed',
+    bgColor: 'bg-red-500/20',
+    color: 'text-red-400',
+    icon: '⚠',
+  },
+} as const;
+
 /**
  * OrderProgressStepComponent - Visual step in the order lifecycle
  */
@@ -214,7 +260,7 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
               </span>
             </div>
           )}
-          {order.matchedAt > 0 && (
+          {order.matchedAt && order.matchedAt > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-2">
                 <FileText className="w-4 h-4" />
@@ -225,7 +271,7 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
               </span>
             </div>
           )}
-          {order.deliveredAt > 0 && (
+          {order.deliveredAt && order.deliveredAt > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-2">
                 <Package className="w-4 h-4" />
@@ -236,7 +282,7 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
               </span>
             </div>
           )}
-          {order.settledAt > 0 && (
+          {order.settledAt && order.settledAt > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-2">
                 <DollarSign className="w-4 h-4" />

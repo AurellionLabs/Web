@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from './dialog';
 import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
-import { OrderWithAsset } from '@/app/providers/customer.provider';
+import { OrderWithAsset } from '@/app/types/shared';
 import { useState } from 'react';
 
 interface OrderActionDialogProps {

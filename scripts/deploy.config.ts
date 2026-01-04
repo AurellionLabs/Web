@@ -140,7 +140,11 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     ],
     chainConstantKey: 'NEXT_PUBLIC_RWY_VAULT_ADDRESS',
     indexerConfig: { abiName: 'RWYVaultAbi', startBlockKey: 'rwyVault' },
-    postDeploy: async (contract, _, deployer) => {
+    postDeploy: async (
+      contract: any,
+      _addresses: Record<string, string>,
+      deployer?: string,
+    ) => {
       console.log('   Approving deployer as operator...');
       const tx = await contract.approveOperator(deployer);
       await tx.wait();

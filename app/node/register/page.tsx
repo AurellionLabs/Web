@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
+import { Node } from '@/domain/node';
 import { Input } from '@/app/components/ui/input';
 import {
   Form,
@@ -199,7 +200,7 @@ export default function NodeRegistrationPage() {
       // Note: The contract expects Asset[] structs, not class names
       // For initial registration, we'll use empty arrays and add assets after registration
       // The selected asset classes are stored for reference but won't be used in registration
-      const nodeData = {
+      const nodeData: Node = {
         address: '',
         owner: walletAddress,
         location: {
@@ -209,13 +210,12 @@ export default function NodeRegistrationPage() {
             lng: values.lng,
           },
         },
-        validNode: '0x01',
-        status: 'Active' as const,
+        validNode: true,
+        status: 'Active',
         // Use empty arrays for initial registration - assets can be added after registration
         // The selected asset classes are for UI purposes only
-        supportedAssets: [],
-        capacity: [],
-        assetPrices: [],
+        // assets array will be populated when assets are actually added
+        assets: [],
       };
 
       await registerNode(nodeData);

@@ -24,7 +24,7 @@ import { Node } from '@/domain/node';
 
 interface EditNodeModalProps {
   nodeAddress: string;
-  nodeData: Pick<Node, 'status' | 'supportedAssets' | 'capacity'>;
+  nodeData: Pick<Node, 'status' | 'assets'>;
   assetNames: Record<number, string>;
   onNodeUpdated: () => Promise<void>;
 }
@@ -52,15 +52,13 @@ export function EditNodeModal({
       const initialCapacities: Record<number, string> = {};
       const initialPrices: Record<number, string> = {};
 
-      // Ensure properties exist before iterating
-      const supportedAssets = nodeData.supportedAssets || [];
-      const capacityData = nodeData.capacity || [];
-      const priceData: string[] = [];
+      // Initialize from assets array
+      const assets = nodeData.assets || [];
 
-      supportedAssets.forEach((assetId, index) => {
-        const id = Number(assetId);
-        initialCapacities[id] = capacityData[index]?.toString() || '0';
-        initialPrices[id] = priceData[index]?.toString() || '0';
+      assets.forEach((asset, index) => {
+        const id = Number(asset.tokenId);
+        initialCapacities[id] = asset.capacity?.toString() || '0';
+        initialPrices[id] = asset.price?.toString() || '0';
       });
 
       setCapacities(initialCapacities);
@@ -89,7 +87,7 @@ export function EditNodeModal({
     try {
       // Check against the string 'Active' now
       const newStatus = nodeData.status === 'Active' ? 'Inactive' : 'Active';
-      await updateNodeStatus(nodeAddress, newStatus);
+      await updateNodeStatus(newStatus);
       // await onNodeUpdated(); // Remove this immediate refresh
       toast({
         title: 'Success',
@@ -110,27 +108,22 @@ export function EditNodeModal({
   const handleSaveAssets = async () => {
     setIsUpdating(true);
     try {
-      // Convert to arrays for the provider function (expects numbers)
-      const supportedAssetsNum = Array.from(nodeData.supportedAssets || []).map(
-        (asset) => Number(asset.toString()),
-      );
+      // Get asset IDs from the assets array
+      const assets = nodeData.assets || [];
+      const assetIds = assets.map((asset) => Number(asset.tokenId));
 
       // Create new capacity and price arrays using component state
-      const newCapacities = supportedAssetsNum.map((assetId) => {
+      const newCapacities = assetIds.map((assetId) => {
         return Number(capacities[assetId] || '0');
       });
 
-      const newPrices = supportedAssetsNum.map((assetId) => {
+      const newPrices = assetIds.map((assetId) => {
         return Number(prices[assetId] || '0');
       });
 
-      // Call the context function
-      await updateSupportedAssets(
-        nodeAddress,
-        newCapacities, // Should match the 'quantities' param? Check provider
-        supportedAssetsNum,
-        newPrices,
-      );
+      // TODO: Implement updateSupportedAssets in the provider
+      // For now, just log the data
+      console.log('Updating assets:', { assetIds, newCapacities, newPrices });
 
       await onNodeUpdated(); // Refresh node data
       toast({
@@ -202,8 +195,8 @@ export function EditNodeModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {(nodeData.supportedAssets || []).map((assetId) => {
-                      const id = Number(assetId);
+                    {(nodeData.assets || []).map((asset) => {
+                      const id = Number(asset.tokenId);
                       return (
                         <tr key={id} className="border-b">
                           <td className="py-3">

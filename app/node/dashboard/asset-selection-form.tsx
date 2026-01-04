@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Asset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 import { Input } from '@/app/components/ui/input';
 import { FormLabel } from '@/app/components/ui/form';
 import AssetAttributeInput from './asset-attribute-input';

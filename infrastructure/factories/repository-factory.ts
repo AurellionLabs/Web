@@ -16,8 +16,10 @@ import {
   AurumNodeManager,
   AuraAsset__factory,
 } from '@/typechain-types';
-import { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';
-import { LocationContract__factory } from '@/typechain-types/factories/contracts/AuSys.sol/LocationContract__factory';
+// LocationContract types - may need regeneration after contract updates
+// import { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';
+// import { LocationContract__factory } from '@/typechain-types/factories/contracts/AuSys.sol/LocationContract__factory';
+import { Ausys, Ausys__factory } from '@/typechain-types';
 import { PlatformRepository } from '../repositories/platform-repository';
 import { PinataSDK } from 'pinata';
 
@@ -106,8 +108,8 @@ export class RepositoryFactory {
     }
 
     // Create the contract instance and pass to repository
-    const contract = LocationContract__factory.connect(contractAddress, signer);
-    return new OrderRepository(contract, userProvider as any, signer);
+    const contract = Ausys__factory.connect(contractAddress, signer);
+    return new OrderRepository(contract as any, userProvider as any, signer);
   }
 
   /**
@@ -123,8 +125,8 @@ export class RepositoryFactory {
     }
 
     // Create the contract instance and pass to repository
-    const contract = LocationContract__factory.connect(contractAddress, signer);
-    return new DriverRepository(contract, userProvider as any, signer);
+    const contract = Ausys__factory.connect(contractAddress, signer);
+    return new DriverRepository(contract as any, userProvider as any, signer);
   }
 
   /**

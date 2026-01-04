@@ -1,4 +1,5 @@
-import { IPlatformRepository, Asset } from '@/domain/platform';
+import { IPlatformRepository } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 import { AuraAsset } from '@/typechain-types';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
@@ -28,7 +29,12 @@ export class PlatformRepository implements IPlatformRepository {
     let iterations = 0;
 
     while (hasNextPage && iterations < MAX_ITERATIONS) {
-      const res = await graphqlRequest<{
+      const res: {
+        assetss: {
+          items: any[];
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        };
+      } = await graphqlRequest<{
         assetss: {
           items: any[];
           pageInfo: { hasNextPage: boolean; endCursor: string | null };
@@ -41,7 +47,7 @@ export class PlatformRepository implements IPlatformRepository {
       const items = extractPonderItems(res.assetss || { items: [] });
       if (items.length === 0) break;
 
-      for (const a of items) {
+      for (const a of items as any[]) {
         out.push({
           assetClass: a.class ?? a.className ?? a.assetClass ?? 'Unknown',
           tokenId: String(a.tokenId),
@@ -54,7 +60,7 @@ export class PlatformRepository implements IPlatformRepository {
                 : [],
               description: String(attr?.description ?? ''),
             }))
-            .filter((x: any) => x.name.length > 0),
+            .filter((x: { name: string }) => x.name.length > 0),
         });
       }
 

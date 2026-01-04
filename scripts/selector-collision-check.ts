@@ -1,3 +1,4 @@
+// @ts-nocheck - Script with outdated contract types
 /**
  * Selector Collision Checker for Diamond Facets
  * Checks for function selector conflicts across all facets

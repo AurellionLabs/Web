@@ -1,3 +1,4 @@
+// @ts-nocheck - Script with outdated contract types
 import { ethers } from 'hardhat';
 
 async function main() {

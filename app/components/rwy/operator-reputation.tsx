@@ -93,10 +93,7 @@ export function OperatorReputation({
           {level}
         </Badge>
         {stats.approved && (
-          <CheckCircle2
-            className="h-4 w-4 text-emerald-500"
-            title="Approved Operator"
-          />
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
         )}
       </div>
     );

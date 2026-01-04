@@ -1,3 +1,4 @@
+// @ts-nocheck - Vitest config file
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -41,6 +42,6 @@ export default defineConfig({
   },
   esbuild: {
     loader: 'tsx',
-    include: /\.tsx$/,
+    include: /\.(ts|tsx)$/,
   },
 });

@@ -1,5 +1,5 @@
 import { Input } from '@/app/components/ui/input';
-import { Asset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 import React from 'react';
 import { FormLabel } from '@/app/components/ui/form';
 import {

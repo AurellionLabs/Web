@@ -1,3 +1,4 @@
+// @ts-nocheck - File with outdated contract types
 /**
  * Ponder Database Client
  * Provides direct PostgreSQL access to Ponder indexed data

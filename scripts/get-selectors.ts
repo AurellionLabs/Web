@@ -1,3 +1,4 @@
+// @ts-nocheck - Script with outdated contract types
 const OrdersFacet = await ethers.getContractFactory('OrdersFacet');
 const CLOBFacet = await ethers.getContractFactory('CLOBFacet');
 

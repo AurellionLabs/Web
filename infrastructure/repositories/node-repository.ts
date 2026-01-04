@@ -390,15 +390,20 @@ export class BlockchainNodeRepository implements NodeRepository {
       let iterations = 0;
 
       while (hasNextPage && iterations < MAX_ITERATIONS) {
-        const pageResp = await graphqlRequest<{
+        type PageResponse = {
           nodeAssetss: {
             items: NodeAssetAurum[];
             pageInfo: { hasNextPage: boolean; endCursor: string | null };
           };
-        }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_ALL_NODE_ASSETS_AURUM, {
-          limit: PAGE_SIZE,
-          after: after,
-        });
+        };
+        const pageResp: PageResponse = await graphqlRequest<PageResponse>(
+          NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+          GET_ALL_NODE_ASSETS_AURUM,
+          {
+            limit: PAGE_SIZE,
+            after: after,
+          },
+        );
         const pageItems = extractPonderNodeAssets(pageResp);
         allNodeAssets = allNodeAssets.concat(pageItems);
         hasNextPage = pageResp.nodeAssetss?.pageInfo?.hasNextPage || false;

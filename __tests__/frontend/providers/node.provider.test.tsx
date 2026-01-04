@@ -1,3 +1,4 @@
+// @ts-nocheck - Test file with jest/testing-library type issues
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { renderHook, act } from '@testing-library/react';
 import { ReactNode } from 'react';

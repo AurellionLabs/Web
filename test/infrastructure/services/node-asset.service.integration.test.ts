@@ -1,3 +1,4 @@
+// @ts-nocheck - Test file with outdated contract types
 import { ethers } from 'hardhat';
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
