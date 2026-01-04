@@ -2,7 +2,7 @@ import type {
   IOrderService,
   Order as DomainOrder,
 } from '@/domain/orders/order';
-import type { Ausys } from '@/typechain-types/contracts/AuSys.sol/Ausys';
+import type { Ausys } from '@/lib/contracts';
 import {
   BytesLike,
   ContractTransactionReceipt,
