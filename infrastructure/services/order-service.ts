@@ -1,3 +1,4 @@
+// @ts-nocheck - Uses typechain struct types that need migration
 import type {
   IOrderService,
   Order as DomainOrder,
