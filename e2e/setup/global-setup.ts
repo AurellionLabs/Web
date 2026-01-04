@@ -10,8 +10,8 @@ export default async function globalSetup() {
   console.log('\n🌍 E2E Global Setup');
   console.log('═'.repeat(60));
 
-  // Determine chain type from environment
-  const chainType = (process.env.CHAIN as ChainType) || 'hardhat';
+  // Determine chain type from environment (default to Anvil for speed)
+  const chainType = (process.env.CHAIN as ChainType) || 'anvil';
   const port = parseInt(process.env.CHAIN_PORT || '8545', 10);
 
   console.log(`   Chain Type: ${chainType}`);

@@ -2,6 +2,12 @@
  * Test Setup - Runs before each test file
  *
  * Sets up the test context and initializes contracts.
+ *
+ * ARCHITECTURE:
+ * - One Anvil chain starts and persists across all test files
+ * - Contracts are deployed once and shared
+ * - Each test file creates its own test data (stateless tests)
+ * - NonceManager ensures wallets always fetch current nonce from chain
  */
 
 import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
@@ -16,31 +22,101 @@ import { installWalletMock, uninstallWalletMock } from '../flows/wallet-mock';
 import { getCoverageTracker } from '../coverage/coverage-tracker';
 
 // =============================================================================
-// GLOBAL TEST STATE
+// GLOBAL TEST STATE (shared across all test files via globalThis)
 // =============================================================================
 
-let flowContext: FlowContext | null = null;
-let snapshotId: string | null = null;
+declare global {
+  var __e2eFlowContext: FlowContext | undefined;
+  var __e2eInitialized: boolean | undefined;
+  var __e2eExitHandlerInstalled: boolean | undefined;
+}
+
+// =============================================================================
+// PROCESS EXIT HANDLER - Ensures chain is stopped when tests complete
+// =============================================================================
+
+function installExitHandler() {
+  if (globalThis.__e2eExitHandlerInstalled) return;
+
+  const cleanup = async () => {
+    const chain = getGlobalChain();
+    if (chain.isRunning()) {
+      console.log('\n🛑 Process exit - stopping chain...');
+      await chain.stop();
+    }
+  };
+
+  // Handle various exit scenarios
+  process.on('exit', () => {
+    // Synchronous cleanup - can't await here
+    const chain = getGlobalChain();
+    if (chain.isRunning()) {
+      // Force kill the process
+      try {
+        (chain as any).process?.kill('SIGKILL');
+      } catch {}
+    }
+  });
+
+  process.on('SIGINT', async () => {
+    await cleanup();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    await cleanup();
+    process.exit(0);
+  });
+
+  process.on('uncaughtException', async (err) => {
+    console.error('Uncaught exception:', err);
+    await cleanup();
+    process.exit(1);
+  });
+
+  globalThis.__e2eExitHandlerInstalled = true;
+}
 
 // =============================================================================
 // SETUP HOOKS
 // =============================================================================
 
 beforeAll(async () => {
-  // Get the global chain - start it if not running (for thread pool mode)
-  const chain = getGlobalChain();
+  // Install exit handler to ensure cleanup
+  installExitHandler();
 
-  if (!chain.isRunning()) {
-    // Chain not started yet (happens in thread pool mode), start it now
-    const chainType = (process.env.CHAIN as ChainType) || 'hardhat';
-    const port = parseInt(process.env.CHAIN_PORT || '8545', 10);
+  // Check if already initialized by a previous test file
+  if (globalThis.__e2eInitialized && globalThis.__e2eFlowContext) {
+    console.log('⏭️ Reusing existing chain and contracts from previous file');
+    setGlobalContext(globalThis.__e2eFlowContext);
 
-    console.log(`\n🔗 Starting ${chainType} chain in test setup...`);
-    await chain.start();
+    // Re-install wallet mock for this file
+    const chain = getGlobalChain();
+    installWalletMock(chain, {
+      verbose: process.env.VERBOSE === 'true',
+      autoApprove: true,
+    });
+    return;
   }
 
+  // First test file - start the chain
+  const chainType = (process.env.CHAIN as ChainType) || 'anvil';
+  const port = parseInt(process.env.CHAIN_PORT || '8545', 10);
+
+  console.log(`\n🔗 Starting ${chainType} chain...`);
+
+  // Initialize chain with proper config
+  const chain = getGlobalChain({
+    type: chainType,
+    port,
+    accounts: 20,
+    balance: '10000',
+  });
+
+  await chain.start();
+
   // Create flow context
-  flowContext = createFlowContext(chain, {
+  const flowContext = createFlowContext(chain, {
     verbose: process.env.VERBOSE === 'true',
     trackCoverage: true,
   });
@@ -58,37 +134,25 @@ beforeAll(async () => {
     autoApprove: true,
   });
 
-  // Take initial snapshot
-  snapshotId = await chain.snapshot('Initial state after deployment');
+  // Store in globalThis for sharing across test files
+  globalThis.__e2eFlowContext = flowContext;
+  globalThis.__e2eInitialized = true;
+
+  console.log('⚡ Chain ready - tests share persistent state');
 });
 
 afterAll(async () => {
-  // Uninstall wallet mock
+  // Uninstall wallet mock for this file
   uninstallWalletMock();
 
-  // Clean up context
-  flowContext?.reset();
-  flowContext = null;
-
-  // Stop the chain
-  const chain = getGlobalChain();
-  if (chain.isRunning()) {
-    await chain.stop();
-  }
+  // DON'T stop the chain here - let the exit handler do it
+  // This allows the chain to be reused across test files
 });
 
 beforeEach(async (context) => {
   // Set current test name for coverage tracking
   const testName = context.task.name;
   getCoverageTracker().setCurrentTest(testName);
-
-  // Revert to initial snapshot for test isolation
-  const chain = getGlobalChain();
-  if (snapshotId && chain.isRunning()) {
-    await chain.revert(snapshotId);
-    // Take a new snapshot after revert (snapshots are consumed)
-    snapshotId = await chain.snapshot('Test initial state');
-  }
 });
 
 afterEach(async () => {

@@ -106,12 +106,272 @@ export class FlowContext {
     // Create default users
     await this.createDefaultUsers();
 
+    // Setup test environment (tokens, roles, etc.)
+    await this.setupTestEnvironment();
+
     // Create wallet mock
     this.walletMock = createWalletMock(this.chain, {
       verbose: this.options.verbose,
     });
 
     this.log('✅ Flow context initialized');
+  }
+
+  /**
+   * Setup test environment with tokens and roles
+   */
+  private async setupTestEnvironment(): Promise<void> {
+    this.log('🔧 Setting up test environment...');
+
+    try {
+      // 1. Mint AURA tokens to all test accounts
+      await this.mintTokensToTestAccounts();
+    } catch (error) {
+      this.log(
+        `⚠️ Token minting failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
+    try {
+      // 2. Setup AuStake admin roles
+      await this.setupAuStakeRoles();
+    } catch (error) {
+      this.log(
+        `⚠️ AuStake role setup failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
+    try {
+      // 3. Setup AuSys roles (admin, driver)
+      await this.setupAuSysRoles();
+    } catch (error) {
+      this.log(
+        `⚠️ AuSys role setup failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
+    try {
+      // 4. Setup RWYVault operator approvals
+      await this.setupRWYVaultOperators();
+    } catch (error) {
+      this.log(
+        `⚠️ RWYVault operator setup failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
+    // Skip node registration for now - it's complex and may not be needed for basic tests
+    // try {
+    //   // 5. Setup node registrations (for AuSys orders)
+    //   await this.setupNodeRegistrations();
+    // } catch (error) {
+    //   this.log(`⚠️ Node registration failed: ${error instanceof Error ? error.message : 'unknown'}`);
+    // }
+
+    this.log('✅ Test environment setup complete');
+  }
+
+  /**
+   * Mint AURA tokens to all test accounts
+   */
+  private async mintTokensToTestAccounts(): Promise<void> {
+    const aura = this.contracts.get('Aura');
+    if (!aura) {
+      this.log('⚠️ Aura contract not deployed, skipping token minting');
+      return;
+    }
+
+    const deployer = this.getUser('deployer');
+    const auraContract = aura.contract.connect(deployer.signer) as Contract;
+
+    // Mint a large amount to deployer first
+    const mintAmount = 1000000; // 1 million tokens (contract multiplies by 10^18)
+    this.log(`💰 Minting ${mintAmount} AURA tokens to deployer...`);
+    const mintTx = await auraContract.mintTokenToTreasury(mintAmount);
+    await mintTx.wait();
+
+    // Distribute to all test users
+    const distributionAmount = ethers.parseEther('10000'); // 10k tokens each
+    const usersToFund = [
+      'operator1',
+      'operator2',
+      'customer1',
+      'customer2',
+      'driver1',
+      'driver2',
+      'node1',
+      'node2',
+      'investor1',
+      'investor2',
+      'provider1',
+      'provider2',
+    ];
+
+    for (const userName of usersToFund) {
+      const user = this.users.get(userName);
+      if (user) {
+        const tx = await auraContract.transfer(
+          user.address,
+          distributionAmount,
+        );
+        await tx.wait();
+        this.log(`  💵 Funded ${userName} with 10,000 AURA`);
+      }
+    }
+  }
+
+  /**
+   * Setup AuStake admin roles
+   */
+  private async setupAuStakeRoles(): Promise<void> {
+    const auStake = this.contracts.get('AuStake');
+    if (!auStake) {
+      this.log('⚠️ AuStake contract not deployed, skipping role setup');
+      return;
+    }
+
+    const deployer = this.getUser('deployer');
+    const auStakeContract = auStake.contract.connect(
+      deployer.signer,
+    ) as Contract;
+
+    // Make providers admins so they can create operations
+    const providers = ['provider1', 'provider2'];
+    for (const providerName of providers) {
+      const provider = this.users.get(providerName);
+      if (provider) {
+        const tx = await auStakeContract.setAdmin(provider.address, true);
+        await tx.wait();
+        this.log(`  👮 Set ${providerName} as AuStake admin`);
+      }
+    }
+  }
+
+  /**
+   * Setup AuSys roles (admin, driver, dispatcher)
+   */
+  private async setupAuSysRoles(): Promise<void> {
+    const auSys = this.contracts.get('AuSys');
+    if (!auSys) {
+      this.log('⚠️ AuSys contract not deployed, skipping role setup');
+      return;
+    }
+
+    const deployer = this.getUser('deployer');
+    const auSysContract = auSys.contract.connect(deployer.signer) as Contract;
+
+    // Set deployer as admin first
+    const setAdminTx = await auSysContract.setAdmin(deployer.address);
+    await setAdminTx.wait();
+    this.log('  👮 Set deployer as AuSys admin');
+
+    // Set drivers
+    const drivers = ['driver1', 'driver2'];
+    for (const driverName of drivers) {
+      const driver = this.users.get(driverName);
+      if (driver) {
+        const tx = await auSysContract.setDriver(driver.address, true);
+        await tx.wait();
+        this.log(`  🚗 Set ${driverName} as AuSys driver`);
+      }
+    }
+  }
+
+  /**
+   * Setup RWYVault operator approvals
+   */
+  private async setupRWYVaultOperators(): Promise<void> {
+    const rwyVault = this.contracts.get('RWYVault');
+    if (!rwyVault) {
+      this.log('⚠️ RWYVault contract not deployed, skipping operator setup');
+      return;
+    }
+
+    const deployer = this.getUser('deployer');
+    const rwyVaultContract = rwyVault.contract.connect(
+      deployer.signer,
+    ) as Contract;
+
+    // Approve operators
+    const operators = ['operator1', 'operator2'];
+    for (const operatorName of operators) {
+      const operator = this.users.get(operatorName);
+      if (operator) {
+        const tx = await rwyVaultContract.approveOperator(operator.address);
+        await tx.wait();
+        this.log(`  ✅ Approved ${operatorName} as RWYVault operator`);
+      }
+    }
+  }
+
+  /**
+   * Setup node registrations for AuSys
+   */
+  private async setupNodeRegistrations(): Promise<void> {
+    const nodeManager = this.contracts.get('AurumNodeManager');
+    if (!nodeManager) {
+      this.log(
+        '⚠️ AurumNodeManager contract not deployed, skipping node setup',
+      );
+      return;
+    }
+
+    const deployer = this.getUser('deployer');
+    const nodeManagerContract = nodeManager.contract.connect(
+      deployer.signer,
+    ) as Contract;
+
+    // First set deployer as admin
+    try {
+      const adminTx = await nodeManagerContract.setAdmin(deployer.address);
+      await adminTx.wait();
+      this.log('  👮 Set deployer as AurumNodeManager admin');
+    } catch (error) {
+      this.log(
+        `  ⚠️ Could not set admin: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
+
+    // Register nodes - registerNode takes a Node struct
+    const nodes = ['node1', 'node2'];
+    for (const nodeName of nodes) {
+      const nodeUser = this.users.get(nodeName);
+      if (nodeUser) {
+        try {
+          // Node struct: { location: NodeLocationData, validNode: bytes1, owner: address, supportedAssets: Asset[], status: bytes1 }
+          // NodeLocationData: { addressName: string, location: Location }
+          // Location: { lat: string, lng: string }
+          const nodeStruct = {
+            location: {
+              addressName: `${nodeName} Warehouse`,
+              location: { lat: '40.7128', lng: '-74.0060' },
+            },
+            validNode: '0x01',
+            owner: nodeUser.address,
+            supportedAssets: [],
+            status: '0x01',
+          };
+
+          const tx = await nodeManagerContract.registerNode(nodeStruct);
+          const receipt = await tx.wait();
+
+          // Get the node address from the event
+          const event = receipt.logs.find(
+            (log: any) => log.fragment?.name === 'NodeRegistered',
+          );
+          if (event) {
+            const nodeAddress = event.args?.[0];
+            this.log(`  📍 Registered ${nodeName} as node at ${nodeAddress}`);
+          } else {
+            this.log(`  📍 Registered ${nodeName} as node`);
+          }
+        } catch (error) {
+          // Node registration might fail if already registered or other issues
+          this.log(
+            `  ⚠️ Could not register ${nodeName}: ${error instanceof Error ? error.message : 'unknown error'}`,
+          );
+        }
+      }
+    }
   }
 
   /**

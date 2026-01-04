@@ -92,6 +92,9 @@ export class RWYFlows {
   /**
    * Create a new RWY opportunity
    * Mirrors: useRWYOperatorActions.createOpportunity
+   *
+   * Contract requires collateral = (targetAmount * minSalePrice * minOperatorCollateralBps) / 10000
+   * Default minOperatorCollateralBps = 2000 (20%)
    */
   async createOpportunity(
     operator: TestUser,
@@ -102,26 +105,44 @@ export class RWYFlows {
     const vault = this.getVaultAs(operator);
 
     // Set defaults
+    // IMPORTANT: targetAmount is in base token units (NOT wei)
+    // The contract formula: (targetAmount * minSalePrice * collateralBps) / 10000
+    // expects targetAmount to be the actual token count, not wei
     const inputTokenId = BigInt(params.inputTokenId);
     const targetAmount =
       typeof params.targetAmount === 'string'
-        ? ethers.parseEther(params.targetAmount)
+        ? BigInt(params.targetAmount) // Do NOT use parseEther - this is token count
         : BigInt(params.targetAmount);
     const expectedOutputAmount = params.expectedOutputAmount
       ? typeof params.expectedOutputAmount === 'string'
-        ? ethers.parseEther(params.expectedOutputAmount)
+        ? BigInt(params.expectedOutputAmount)
         : BigInt(params.expectedOutputAmount)
       : targetAmount;
     const minSalePrice = params.minSalePrice
       ? typeof params.minSalePrice === 'string'
-        ? ethers.parseEther(params.minSalePrice)
+        ? ethers.parseEther(params.minSalePrice) // This IS in wei (price per token)
         : BigInt(params.minSalePrice)
-      : ethers.parseEther('1');
-    const collateralAmount = params.collateralAmount
-      ? typeof params.collateralAmount === 'string'
-        ? ethers.parseEther(params.collateralAmount)
-        : BigInt(params.collateralAmount)
-      : 0n;
+      : ethers.parseEther('1'); // 1 ETH per token
+
+    // Calculate required collateral if not provided
+    // Formula: (targetAmount * minSalePrice * minOperatorCollateralBps) / 10000
+    // minOperatorCollateralBps defaults to 2000 (20%)
+    // Example: 100 tokens * 1 ETH * 2000 / 10000 = 20 ETH collateral
+    let collateralAmount: bigint;
+    if (params.collateralAmount) {
+      collateralAmount =
+        typeof params.collateralAmount === 'string'
+          ? ethers.parseEther(params.collateralAmount)
+          : BigInt(params.collateralAmount);
+    } else {
+      // Calculate required collateral exactly as the contract does
+      const minCollateralBps = 2000n;
+      collateralAmount =
+        (targetAmount * minSalePrice * minCollateralBps) / 10000n;
+      this.log(
+        `📊 Calculated required collateral: ${ethers.formatEther(collateralAmount)} ETH`,
+      );
+    }
 
     const tx = await vault.createOpportunity(
       params.name,
@@ -284,6 +305,7 @@ export class RWYFlows {
   /**
    * Stake commodities into an opportunity
    * Mirrors: useRWYStakeActions.stake
+   * Note: amount is in token units (not wei) since this is for ERC1155 tokens
    */
   async stake(
     staker: TestUser,
@@ -292,8 +314,8 @@ export class RWYFlows {
   ): Promise<ActionResult<StakeResult>> {
     this.log(`💰 ${staker.name} staking in ${opportunityId}`);
 
-    const stakeAmount =
-      typeof amount === 'string' ? ethers.parseEther(amount) : amount;
+    // Amount is in token units (not wei) for ERC1155
+    const stakeAmount = typeof amount === 'string' ? BigInt(amount) : amount;
 
     const result = await this.simulator.executeWrite(
       'RWYVault',
@@ -328,6 +350,7 @@ export class RWYFlows {
   /**
    * Unstake commodities from an opportunity
    * Mirrors: useRWYStakeActions.unstake
+   * Note: amount is in token units (not wei) since this is for ERC1155 tokens
    */
   async unstake(
     staker: TestUser,
@@ -336,8 +359,8 @@ export class RWYFlows {
   ): Promise<ActionResult> {
     this.log(`📤 ${staker.name} unstaking from ${opportunityId}`);
 
-    const unstakeAmount =
-      typeof amount === 'string' ? ethers.parseEther(amount) : amount;
+    // Amount is in token units (not wei) for ERC1155
+    const unstakeAmount = typeof amount === 'string' ? BigInt(amount) : amount;
 
     const result = await this.simulator.executeWrite(
       'RWYVault',

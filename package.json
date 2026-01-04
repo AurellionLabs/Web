@@ -31,6 +31,8 @@
     "upgrade:diamond": "npx hardhat run scripts/upgrade-diamond.ts --network baseSepolia",
     "test:diamond": "forge test --match-contract DiamondTest -vv",
     "test:e2e": "vitest run --config e2e/vitest.config.ts",
+    "test:e2e:fast": "vitest run --config e2e/vitest.config.ts",
+    "test:e2e:isolated": "cross-env ISOLATE_TESTS=true vitest run --config e2e/vitest.config.ts",
     "test:e2e:watch": "vitest --config e2e/vitest.config.ts",
     "test:e2e:anvil": "cross-env CHAIN=anvil vitest run --config e2e/vitest.config.ts",
     "test:e2e:verbose": "cross-env VERBOSE=true vitest run --config e2e/vitest.config.ts",

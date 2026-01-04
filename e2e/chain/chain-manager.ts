@@ -5,7 +5,7 @@
  * Provides snapshot/revert capabilities for test isolation.
  */
 
-import { ethers, JsonRpcProvider, Wallet, Signer } from 'ethers';
+import { ethers, JsonRpcProvider, Wallet, Signer, NonceManager } from 'ethers';
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 
@@ -327,7 +327,33 @@ export class ChainManager extends EventEmitter {
     const newSnapshotId = await this.provider!.send('evm_snapshot', []);
     this.state!.snapshotId = newSnapshotId;
 
+    // Reset provider nonce cache to avoid NONCE_EXPIRED errors
+    this.resetProviderNonces();
+
     console.log(`⏪ Reverted to snapshot: ${id}`);
+  }
+
+  /**
+   * Reset provider nonce cache after snapshot revert
+   * This is necessary because ethers.js caches nonces, but they become
+   * stale after a chain revert.
+   *
+   * OPTIMIZED: Only recreates wallet instances without fetching balances
+   */
+  /**
+   * Reset the NonceManager cache for all accounts
+   * This forces wallets to re-fetch nonces from the chain
+   */
+  public resetProviderNonces(): void {
+    if (!this.provider || !this.state) return;
+
+    // Reset each NonceManager's internal state
+    for (const account of this.state.accounts) {
+      const signer = account.signer as NonceManager;
+      if (signer.reset) {
+        signer.reset();
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -368,6 +394,16 @@ export class ChainManager extends EventEmitter {
     await this.provider!.send('evm_setNextBlockTimestamp', [timestamp]);
 
     console.log(`⏰ Next block timestamp set to ${timestamp}`);
+  }
+
+  /**
+   * Get current chain timestamp
+   */
+  async getTimestamp(): Promise<number> {
+    this.ensureRunning();
+
+    const block = await this.provider!.getBlock('latest');
+    return block?.timestamp ?? Math.floor(Date.now() / 1000);
   }
 
   // ---------------------------------------------------------------------------
@@ -534,9 +570,33 @@ export class ChainManager extends EventEmitter {
       }
     }
 
-    this.process = spawn('anvil', args, {
+    // Try to find anvil in common locations
+    const isWindows = process.platform === 'win32';
+    const anvilPaths = isWindows
+      ? [
+          `${process.env.USERPROFILE}\\.foundry\\bin\\anvil.exe`,
+          'anvil.exe',
+          'anvil',
+        ]
+      : [`${process.env.HOME}/.foundry/bin/anvil`, 'anvil'];
+
+    let anvilCmd = 'anvil';
+    for (const path of anvilPaths) {
+      try {
+        const { execSync } = require('child_process');
+        execSync(`"${path}" --version`, { stdio: 'ignore', shell: true });
+        anvilCmd = path;
+        console.log(`🔧 Found Anvil at: ${anvilCmd}`);
+        break;
+      } catch {
+        // Try next path
+      }
+    }
+
+    this.process = spawn(anvilCmd, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
+      shell: false, // Don't use shell on Windows for better process control
+      windowsHide: true,
     });
 
     this.setupProcessHandlers('Anvil');
@@ -603,13 +663,16 @@ export class ChainManager extends EventEmitter {
 
     for (let i = 0; i < numAccounts; i++) {
       const { address, privateKey } = HARDHAT_ACCOUNTS[i];
-      const connectedWallet = new Wallet(privateKey, this.provider);
+      const wallet = new Wallet(privateKey, this.provider);
+      // Wrap with NonceManager to always fetch nonce from chain
+      // This prevents stale nonce errors when reusing wallets across test files
+      const nonceManager = new NonceManager(wallet);
       const balance = await this.provider.getBalance(address);
 
       accounts.push({
         address,
         privateKey,
-        signer: connectedWallet,
+        signer: nonceManager,
         balance,
       });
     }
@@ -659,27 +722,31 @@ export function createChain(config?: Partial<ChainConfig>): ChainManager {
 }
 
 // =============================================================================
-// SINGLETON INSTANCE
+// SINGLETON INSTANCE (using globalThis for cross-module sharing in Vitest)
 // =============================================================================
 
-let globalChain: ChainManager | null = null;
+// Declare global type for TypeScript
+declare global {
+  var __chainManager: ChainManager | undefined;
+}
 
 /**
  * Get or create the global chain instance
+ * Uses globalThis to ensure the same instance is shared across all test files
  */
 export function getGlobalChain(config?: ChainConfig): ChainManager {
-  if (!globalChain) {
-    globalChain = createChain(config);
+  if (!globalThis.__chainManager) {
+    globalThis.__chainManager = createChain(config);
   }
-  return globalChain;
+  return globalThis.__chainManager;
 }
 
 /**
  * Reset the global chain instance
  */
 export async function resetGlobalChain(): Promise<void> {
-  if (globalChain) {
-    await globalChain.stop();
-    globalChain = null;
+  if (globalThis.__chainManager) {
+    await globalThis.__chainManager.stop();
+    globalThis.__chainManager = undefined;
   }
 }

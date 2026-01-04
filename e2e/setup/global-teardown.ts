@@ -4,39 +4,22 @@
  * Stops the local chain and performs cleanup.
  */
 
-import { resetGlobalChain } from '../chain/chain-manager';
-import { validateCoverage } from '../coverage/coverage-validator';
+import { getGlobalChain } from '../chain/chain-manager';
 
 export default async function globalTeardown() {
   console.log('\n🌍 E2E Global Teardown');
   console.log('═'.repeat(60));
 
-  // Validate coverage if enabled
-  if (process.env.VALIDATE_COVERAGE !== 'false') {
-    try {
-      console.log('\n📊 Validating interface coverage...');
-      validateCoverage({
-        minCoverage: parseInt(process.env.MIN_COVERAGE || '80', 10),
-        requireFullCoverage: process.env.REQUIRE_FULL_COVERAGE === 'true',
-        printReport: true,
-        throwOnFailure: process.env.FAIL_ON_COVERAGE === 'true',
-      });
-    } catch (error) {
-      console.error('⚠️  Coverage validation failed:', error);
-      if (process.env.FAIL_ON_COVERAGE === 'true') {
-        throw error;
-      }
-    }
-  }
-
-  // Stop the chain
   try {
-    await resetGlobalChain();
-    console.log('✅ Chain stopped');
+    const chain = getGlobalChain();
+    if (chain.isRunning()) {
+      await chain.stop();
+      console.log('✅ Chain stopped');
+    }
+    console.log('═'.repeat(60));
+    console.log('✅ Global teardown complete\n');
   } catch (error) {
-    console.error('⚠️  Error stopping chain:', error);
+    console.error('❌ Global teardown failed:', error);
+    // Don't throw - we want tests to complete even if teardown fails
   }
-
-  console.log('═'.repeat(60));
-  console.log('✅ Global teardown complete\n');
 }

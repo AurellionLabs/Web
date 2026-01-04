@@ -13,25 +13,31 @@ export default defineConfig({
     include: ['e2e/tests/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
 
-    // Setup files - using test-setup.ts which handles chain lifecycle per test file
+    // Setup files - runs before each test file
+    // Note: We don't use globalSetup because it runs in a separate process
+    // and can't share chain state with tests
     setupFiles: ['e2e/setup/test-setup.ts'],
 
     // Timeouts for blockchain operations
     testTimeout: 120000, // 2 minutes per test
-    hookTimeout: 60000, // 1 minute for hooks
+    hookTimeout: 180000, // 3 minutes for hooks (deployment + setup can take time)
 
     // Run tests sequentially (important for blockchain state)
     sequence: {
       shuffle: false,
     },
 
-    // Pool configuration - use threads with single thread for shared state
-    pool: 'threads',
+    // Use forks pool with no isolation for shared chain state
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        singleThread: true, // Run all tests in a single thread for shared chain state
+      forks: {
+        singleFork: true, // Run all tests in a single fork
+        isolate: false, // Don't isolate test files - share module state
       },
     },
+
+    // Disable file parallelism - run test files sequentially
+    fileParallelism: false,
 
     // Reporter configuration
     reporters: ['verbose'],
