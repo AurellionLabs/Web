@@ -11,37 +11,37 @@ task('get-selectors', 'Print function selectors').setAction(
     console.log('OrdersFacet selectors:');
     console.log(
       '  createOrder:',
-      OrdersFacet.interface.getFunction('createOrder').selector,
+      OrdersFacet.interface.getFunction('createOrder')?.selector,
     );
     console.log(
       '  cancelOrder:',
-      OrdersFacet.interface.getFunction('cancelOrder').selector,
+      OrdersFacet.interface.getFunction('cancelOrder')?.selector,
     );
     console.log(
       '  getOrder:',
-      OrdersFacet.interface.getFunction('getOrder').selector,
+      OrdersFacet.interface.getFunction('getOrder')?.selector,
     );
     console.log(
       '  updateOrderStatus:',
-      OrdersFacet.interface.getFunction('updateOrderStatus').selector,
+      OrdersFacet.interface.getFunction('updateOrderStatus')?.selector,
     );
 
     console.log('\nCLOBFacet selectors:');
     console.log(
       '  createMarket:',
-      CLOBFacet.interface.getFunction('createMarket').selector,
+      CLOBFacet.interface.getFunction('createMarket')?.selector,
     );
     console.log(
       '  placeOrder:',
-      CLOBFacet.interface.getFunction('placeOrder').selector,
+      CLOBFacet.interface.getFunction('placeOrder')?.selector,
     );
     console.log(
       '  cancelOrder:',
-      CLOBFacet.interface.getFunction('cancelOrder').selector,
+      CLOBFacet.interface.getFunction('cancelOrder')?.selector,
     );
     console.log(
       '  getOrder:',
-      CLOBFacet.interface.getFunction('getOrder').selector,
+      CLOBFacet.interface.getFunction('getOrder')?.selector,
     );
   },
 );

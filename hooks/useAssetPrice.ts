@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import { CLOBRepository } from '@/infrastructure/repositories/clob-repository';
+import {
+  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_INDEXER_URL,
+} from '@/chain-constants';
 
 interface AssetPriceData {
   price: number;
@@ -54,7 +57,7 @@ export function useAssetPrice(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const repositoryRef = useRef(RepositoryContext.getInstance());
+  const clobRepositoryRef = useRef(new CLOBRepository());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchPrice = useCallback(async () => {
@@ -65,8 +68,10 @@ export function useAssetPrice(
     }
 
     try {
-      const clobRepository = repositoryRef.current.getCLOBRepository();
-      const orderBook = await clobRepository.getOrderBook(baseToken, tokenId);
+      const orderBook = await clobRepositoryRef.current.getOrderBook(
+        baseToken,
+        tokenId,
+      );
 
       const newPriceData: AssetPriceData = {
         price: orderBook.midPrice || 0,
@@ -132,7 +137,7 @@ export function useAssetPrices(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const repositoryRef = useRef(RepositoryContext.getInstance());
+  const clobRepositoryRef = useRef(new CLOBRepository());
 
   const fetchPrices = useCallback(async () => {
     if (!tokenIds.length) {
@@ -144,13 +149,12 @@ export function useAssetPrices(
     setIsLoading(true);
 
     try {
-      const clobRepository = repositoryRef.current.getCLOBRepository();
       const newPrices = new Map<string, AssetPriceData>();
 
       // Fetch prices in parallel
       const results = await Promise.allSettled(
         tokenIds.map(async (tokenId) => {
-          const orderBook = await clobRepository.getOrderBook(
+          const orderBook = await clobRepositoryRef.current.getOrderBook(
             baseToken,
             tokenId,
           );

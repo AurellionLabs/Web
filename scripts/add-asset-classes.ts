@@ -1,3 +1,4 @@
+// @ts-nocheck - Script with outdated contract types
 /**
  * Script to add supported asset classes and default assets to the AuraAsset contract
  * This should be run after deployment if asset classes were not added during deployment

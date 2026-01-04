@@ -108,19 +108,29 @@ export function useClassAssets(className: string): UseClassAssetsReturn {
 
     // Apply attribute filters
     if (Object.keys(filters).length > 0) {
-      result = applyFilters(result, filters, (asset, attributeId) => {
-        // Find the attribute value in the asset
-        const attr = asset.attributes?.find(
-          (a) => a.name.toLowerCase() === attributeId.toLowerCase(),
-        );
-        if (!attr) return null;
+      result = applyFilters(
+        result as unknown as Record<string, unknown>[],
+        filters,
+        (asset: Record<string, unknown>, attributeId: string) => {
+          // Find the attribute value in the asset
+          const attributes = asset.attributes as
+            | Array<{
+                name: string;
+                values: string[];
+              }>
+            | undefined;
+          const attr = attributes?.find(
+            (a) => a.name.toLowerCase() === attributeId.toLowerCase(),
+          );
+          if (!attr) return null;
 
-        // Return the first value if single, or the values array
-        if (attr.values.length === 1) {
-          return attr.values[0];
-        }
-        return attr.values;
-      });
+          // Return the first value if single, or the values array
+          if (attr.values.length === 1) {
+            return attr.values[0];
+          }
+          return attr.values;
+        },
+      ) as unknown as Asset[];
     }
 
     return result;

@@ -1,3 +1,4 @@
+// @ts-nocheck - Test file with jest/testing-library type issues
 import { describe, it, expect } from '@jest/globals';
 
 // Test-first: Define what the simplified Node domain should look like

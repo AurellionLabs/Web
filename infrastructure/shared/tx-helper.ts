@@ -243,7 +243,7 @@ export async function sendContractTxWithReadEstimation(
     // Wait with 1 confirmation and a longer polling interval to reduce RPC calls
     receipt = await tx.wait(1);
     console.log(
-      `[tx-helper] Transaction confirmed in block ${receipt.blockNumber}`,
+      `[tx-helper] Transaction confirmed in block ${receipt?.blockNumber}`,
     );
   } catch (error: any) {
     // If tx.wait fails due to rate limiting, try using provider.waitForTransaction

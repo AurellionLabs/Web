@@ -83,9 +83,15 @@ ponder.on('RWYVault:OpportunityCreated', async ({ event, context }) => {
   });
 
   // Update operator stats
-  await db
-    .insert(rwyOperators)
-    .values({
+  const existingOperator = await db.find(rwyOperators, { id: operator });
+  if (existingOperator) {
+    await db.update(rwyOperators, { id: operator }).set({
+      totalOpportunities: existingOperator.totalOpportunities + 1,
+      activeOpportunities: existingOperator.activeOpportunities + 1,
+      updatedAt: event.block.timestamp,
+    });
+  } else {
+    await db.insert(rwyOperators).values({
       id: operator,
       operator,
       approved: true,
@@ -96,17 +102,19 @@ ponder.on('RWYVault:OpportunityCreated', async ({ event, context }) => {
       activeOpportunities: 1,
       createdAt: event.block.timestamp,
       updatedAt: event.block.timestamp,
-    })
-    .onConflictDoUpdate({
-      totalOpportunities: (row) => row.totalOpportunities + 1,
-      activeOpportunities: (row) => row.activeOpportunities + 1,
-      updatedAt: event.block.timestamp,
     });
+  }
 
   // Update global stats
-  await db
-    .insert(rwyGlobalStats)
-    .values({
+  const existingGlobalStats = await db.find(rwyGlobalStats, { id: 'global' });
+  if (existingGlobalStats) {
+    await db.update(rwyGlobalStats, { id: 'global' }).set({
+      totalOpportunities: existingGlobalStats.totalOpportunities + 1,
+      activeOpportunities: existingGlobalStats.activeOpportunities + 1,
+      updatedAt: event.block.timestamp,
+    });
+  } else {
+    await db.insert(rwyGlobalStats).values({
       id: 'global',
       totalOpportunities: 1,
       activeOpportunities: 1,
@@ -116,12 +124,8 @@ ponder.on('RWYVault:OpportunityCreated', async ({ event, context }) => {
       totalOperators: 1,
       totalStakers: 0,
       updatedAt: event.block.timestamp,
-    })
-    .onConflictDoUpdate({
-      totalOpportunities: (row) => row.totalOpportunities + 1,
-      activeOpportunities: (row) => row.activeOpportunities + 1,
-      updatedAt: event.block.timestamp,
     });
+  }
 });
 
 // ============ COMMODITY STAKED ============
@@ -143,9 +147,14 @@ ponder.on('RWYVault:CommodityStaked', async ({ event, context }) => {
 
   // Update or create stake
   const stakeId = `${opportunityId}-${staker}`;
-  await db
-    .insert(rwyStakes)
-    .values({
+  const existingStake = await db.find(rwyStakes, { id: stakeId });
+  if (existingStake) {
+    await db.update(rwyStakes, { id: stakeId }).set({
+      amount: existingStake.amount + amount,
+      updatedAt: event.block.timestamp,
+    });
+  } else {
+    await db.insert(rwyStakes).values({
       id: stakeId,
       opportunityId,
       staker,
@@ -157,11 +166,8 @@ ponder.on('RWYVault:CommodityStaked', async ({ event, context }) => {
       blockNumber: event.block.number,
       transactionHash: event.transaction.hash,
       updatedAt: event.block.timestamp,
-    })
-    .onConflictDoUpdate({
-      amount: (row) => row.amount + amount,
-      updatedAt: event.block.timestamp,
     });
+  }
 
   // Update opportunity
   await db.update(rwyOpportunities, { id: opportunityId }).set({
@@ -170,9 +176,16 @@ ponder.on('RWYVault:CommodityStaked', async ({ event, context }) => {
   });
 
   // Update user stats
-  await db
-    .insert(rwyUserStats)
-    .values({
+  const existingUserStats = await db.find(rwyUserStats, { id: staker });
+  if (existingUserStats) {
+    await db.update(rwyUserStats, { id: staker }).set({
+      totalStaked: existingUserStats.totalStaked + amount,
+      activeStakes: existingUserStats.activeStakes + 1,
+      lastStakeAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+    });
+  } else {
+    await db.insert(rwyUserStats).values({
       id: staker,
       user: staker,
       totalStaked: amount,
@@ -183,19 +196,17 @@ ponder.on('RWYVault:CommodityStaked', async ({ event, context }) => {
       firstStakeAt: event.block.timestamp,
       lastStakeAt: event.block.timestamp,
       updatedAt: event.block.timestamp,
-    })
-    .onConflictDoUpdate({
-      totalStaked: (row) => row.totalStaked + amount,
-      activeStakes: (row) => row.activeStakes + 1,
-      lastStakeAt: event.block.timestamp,
-      updatedAt: event.block.timestamp,
     });
+  }
 
   // Update global stats
-  await db.update(rwyGlobalStats, { id: 'global' }).set({
-    totalValueStaked: (row) => row.totalValueStaked + amount,
-    updatedAt: event.block.timestamp,
-  });
+  const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
+  if (globalStats) {
+    await db.update(rwyGlobalStats, { id: 'global' }).set({
+      totalValueStaked: globalStats.totalValueStaked + amount,
+      updatedAt: event.block.timestamp,
+    });
+  }
 });
 
 // ============ COMMODITY UNSTAKED ============
@@ -216,28 +227,40 @@ ponder.on('RWYVault:CommodityUnstaked', async ({ event, context }) => {
 
   // Update stake
   const stakeId = `${opportunityId}-${staker}`;
-  await db.update(rwyStakes, { id: stakeId }).set({
-    amount: (row) => row.amount - amount,
-    updatedAt: event.block.timestamp,
-  });
+  const existingStake = await db.find(rwyStakes, { id: stakeId });
+  if (existingStake) {
+    await db.update(rwyStakes, { id: stakeId }).set({
+      amount: existingStake.amount - amount,
+      updatedAt: event.block.timestamp,
+    });
+  }
 
   // Update opportunity
-  await db.update(rwyOpportunities, { id: opportunityId }).set({
-    stakedAmount: (row) => row.stakedAmount - amount,
-    updatedAt: event.block.timestamp,
-  });
+  const opportunity = await db.find(rwyOpportunities, { id: opportunityId });
+  if (opportunity) {
+    await db.update(rwyOpportunities, { id: opportunityId }).set({
+      stakedAmount: opportunity.stakedAmount - amount,
+      updatedAt: event.block.timestamp,
+    });
+  }
 
   // Update user stats
-  await db.update(rwyUserStats, { id: staker }).set({
-    totalStaked: (row) => row.totalStaked - amount,
-    updatedAt: event.block.timestamp,
-  });
+  const userStats = await db.find(rwyUserStats, { id: staker });
+  if (userStats) {
+    await db.update(rwyUserStats, { id: staker }).set({
+      totalStaked: userStats.totalStaked - amount,
+      updatedAt: event.block.timestamp,
+    });
+  }
 
   // Update global stats
-  await db.update(rwyGlobalStats, { id: 'global' }).set({
-    totalValueStaked: (row) => row.totalValueStaked - amount,
-    updatedAt: event.block.timestamp,
-  });
+  const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
+  if (globalStats) {
+    await db.update(rwyGlobalStats, { id: 'global' }).set({
+      totalValueStaked: globalStats.totalValueStaked - amount,
+      updatedAt: event.block.timestamp,
+    });
+  }
 });
 
 // ============ OPPORTUNITY FUNDED ============
@@ -382,19 +405,25 @@ ponder.on('RWYVault:ProfitDistributed', async ({ event, context }) => {
   });
 
   // Update user stats
-  await db.update(rwyUserStats, { id: staker }).set({
-    totalClaimed: (row) => row.totalClaimed + profit,
-    totalProfit: (row) => row.totalProfit + profit,
-    activeStakes: (row) => row.activeStakes - 1,
-    completedStakes: (row) => row.completedStakes + 1,
-    updatedAt: event.block.timestamp,
-  });
+  const userStats = await db.find(rwyUserStats, { id: staker });
+  if (userStats) {
+    await db.update(rwyUserStats, { id: staker }).set({
+      totalClaimed: userStats.totalClaimed + profit,
+      totalProfit: userStats.totalProfit + profit,
+      activeStakes: Math.max(0, userStats.activeStakes - 1),
+      completedStakes: userStats.completedStakes + 1,
+      updatedAt: event.block.timestamp,
+    });
+  }
 
   // Update global stats
-  await db.update(rwyGlobalStats, { id: 'global' }).set({
-    totalValueDistributed: (row) => row.totalValueDistributed + profit,
-    updatedAt: event.block.timestamp,
-  });
+  const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
+  if (globalStats) {
+    await db.update(rwyGlobalStats, { id: 'global' }).set({
+      totalValueDistributed: globalStats.totalValueDistributed + profit,
+      updatedAt: event.block.timestamp,
+    });
+  }
 });
 
 // ============ OPPORTUNITY CANCELLED ============
@@ -423,17 +452,25 @@ ponder.on('RWYVault:OpportunityCancelled', async ({ event, context }) => {
 
   // Update operator stats
   if (opportunity) {
-    await db.update(rwyOperators, { id: opportunity.operator }).set({
-      activeOpportunities: (row) => row.activeOpportunities - 1,
-      updatedAt: event.block.timestamp,
+    const operatorStats = await db.find(rwyOperators, {
+      id: opportunity.operator,
     });
+    if (operatorStats) {
+      await db.update(rwyOperators, { id: opportunity.operator }).set({
+        activeOpportunities: Math.max(0, operatorStats.activeOpportunities - 1),
+        updatedAt: event.block.timestamp,
+      });
+    }
   }
 
   // Update global stats
-  await db.update(rwyGlobalStats, { id: 'global' }).set({
-    activeOpportunities: (row) => row.activeOpportunities - 1,
-    updatedAt: event.block.timestamp,
-  });
+  const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
+  if (globalStats) {
+    await db.update(rwyGlobalStats, { id: 'global' }).set({
+      activeOpportunities: Math.max(0, globalStats.activeOpportunities - 1),
+      updatedAt: event.block.timestamp,
+    });
+  }
 });
 
 // ============ OPERATOR SLASHED ============
@@ -453,16 +490,22 @@ ponder.on('RWYVault:OperatorSlashed', async ({ event, context }) => {
   });
 
   // Update operator reputation (decrease)
-  await db.update(rwyOperators, { id: operator }).set({
-    reputation: (row) => Math.max(0, row.reputation - 20),
-    updatedAt: event.block.timestamp,
-  });
+  const operatorStats = await db.find(rwyOperators, { id: operator });
+  if (operatorStats) {
+    await db.update(rwyOperators, { id: operator }).set({
+      reputation: Math.max(0, operatorStats.reputation - 20),
+      updatedAt: event.block.timestamp,
+    });
+  }
 
   // Update opportunity collateral
-  await db.update(rwyOpportunities, { id: opportunityId }).set({
-    operatorCollateral: (row) => row.operatorCollateral - slashedAmount,
-    updatedAt: event.block.timestamp,
-  });
+  const opportunity = await db.find(rwyOpportunities, { id: opportunityId });
+  if (opportunity) {
+    await db.update(rwyOpportunities, { id: opportunityId }).set({
+      operatorCollateral: opportunity.operatorCollateral - slashedAmount,
+      updatedAt: event.block.timestamp,
+    });
+  }
 });
 
 // ============ OPERATOR APPROVED ============
@@ -480,9 +523,14 @@ ponder.on('RWYVault:OperatorApproved', async ({ event, context }) => {
   });
 
   // Create or update operator
-  await db
-    .insert(rwyOperators)
-    .values({
+  const existingOperator = await db.find(rwyOperators, { id: operator });
+  if (existingOperator) {
+    await db.update(rwyOperators, { id: operator }).set({
+      approved: true,
+      updatedAt: event.block.timestamp,
+    });
+  } else {
+    await db.insert(rwyOperators).values({
       id: operator,
       operator,
       approved: true,
@@ -493,17 +541,17 @@ ponder.on('RWYVault:OperatorApproved', async ({ event, context }) => {
       activeOpportunities: 0,
       createdAt: event.block.timestamp,
       updatedAt: event.block.timestamp,
-    })
-    .onConflictDoUpdate({
-      approved: true,
-      updatedAt: event.block.timestamp,
     });
+  }
 
   // Update global stats
-  await db.update(rwyGlobalStats, { id: 'global' }).set({
-    totalOperators: (row) => row.totalOperators + 1,
-    updatedAt: event.block.timestamp,
-  });
+  const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
+  if (globalStats) {
+    await db.update(rwyGlobalStats, { id: 'global' }).set({
+      totalOperators: globalStats.totalOperators + 1,
+      updatedAt: event.block.timestamp,
+    });
+  }
 });
 
 // ============ OPERATOR REVOKED ============
@@ -527,8 +575,11 @@ ponder.on('RWYVault:OperatorRevoked', async ({ event, context }) => {
   });
 
   // Update global stats
-  await db.update(rwyGlobalStats, { id: 'global' }).set({
-    totalOperators: (row) => row.totalOperators - 1,
-    updatedAt: event.block.timestamp,
-  });
+  const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
+  if (globalStats) {
+    await db.update(rwyGlobalStats, { id: 'global' }).set({
+      totalOperators: Math.max(0, globalStats.totalOperators - 1),
+      updatedAt: event.block.timestamp,
+    });
+  }
 });

@@ -1,3 +1,4 @@
+// @ts-nocheck - Test file with type issues
 import { expect } from 'chai';
 import sinon from 'sinon';
 

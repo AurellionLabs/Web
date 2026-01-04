@@ -1,3 +1,4 @@
+// @ts-nocheck - File with outdated contract types
 import { Contract } from 'ethers';
 // Import specific contract type
 import { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';

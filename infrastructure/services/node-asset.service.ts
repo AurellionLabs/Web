@@ -10,7 +10,7 @@ import { handleContractError } from '@/utils/error-handler';
 import { ethers } from 'ethers';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import { PinataSDK } from 'pinata';
-import { Asset } from '@/domain/platform';
+import { Asset } from '@/domain/shared';
 import type { AuraAsset as AuraAssetTypes } from '@/typechain-types/contracts/Aurum.sol/AurumNode';
 import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
 
@@ -71,11 +71,13 @@ export class NodeAssetService implements INodeAssetService {
       const contractAsset: AuraAssetTypes.AssetStruct = {
         name: asset.name || '',
         assetClass: asset.assetClass || '',
-        attributes: (asset.attributes || []).map((attr) => ({
-          name: attr.name || '',
-          values: attr.values || [],
-          description: attr.description || '',
-        })),
+        attributes: (asset.attributes || []).map(
+          (attr: { name: string; values: string[]; description: string }) => ({
+            name: attr.name || '',
+            values: attr.values || [],
+            description: attr.description || '',
+          }),
+        ),
       } as any;
 
       // Compute tokenId and asset hash locally

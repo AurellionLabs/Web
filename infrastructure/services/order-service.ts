@@ -274,17 +274,21 @@ export class OrderService implements IOrderService {
       await this.handleTokenApproval(totalAmount);
 
       // Map domain Order -> contract OrderStruct
+      const locationData = orderData.locationData;
+      if (!locationData) {
+        throw new Error('Order location data is required');
+      }
       const parcelData: Ausys.ParcelDataStruct = {
         startLocation: {
-          lat: orderData.locationData.startLocation.lat,
-          lng: orderData.locationData.startLocation.lng,
+          lat: locationData.startLocation.lat,
+          lng: locationData.startLocation.lng,
         },
         endLocation: {
-          lat: orderData.locationData.endLocation.lat,
-          lng: orderData.locationData.endLocation.lng,
+          lat: locationData.endLocation.lat,
+          lng: locationData.endLocation.lng,
         },
-        startName: orderData.locationData.startName,
-        endName: orderData.locationData.endName,
+        startName: locationData.startName,
+        endName: locationData.endName,
       };
 
       const contractOrder: Ausys.OrderStruct = {
@@ -451,7 +455,7 @@ export class OrderService implements IOrderService {
 
       if (!receipt || receipt.status !== 1) {
         throw new Error(
-          `orderJourneyCreation transaction failed or reverted. Hash: ${tx.hash}`,
+          `orderJourneyCreation transaction failed or reverted. Hash: ${receipt?.hash}`,
         );
       }
 
