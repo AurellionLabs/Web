@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && npx hardhat compile && next build",
+    "build": "npx hardhat compile && npm run typecheck && next build",
     "deploy": "npx hardhat run scripts/deploy.ts --network baseSepolia",
     "deploy:order-bridge": "npx hardhat run scripts/deploy-order-bridge.ts --network baseSepolia",
     "start": "next start",
