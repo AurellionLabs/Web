@@ -133,52 +133,19 @@ export function TradeProvider({ children }: { children: ReactNode }) {
 
         console.log('[TradeProvider] Placing order:', orderWithBuyer);
 
-        // Create the order using the centralized service
+        // Create the CLOB order - trade completes instantly
+        // User receives ERC1155 token immediately, seller receives payment
+        // Physical delivery is handled separately via the Redemption flow
         const actualOrderId = await orderService.createOrder(orderWithBuyer);
-        console.log(`[TradeProvider] Order created with ID: ${actualOrderId}`);
-
-        // Create the initial journey for the order (only if locationData is provided)
-        // For CLOB-style quick trading without delivery details, skip journey creation
-        if (
-          orderWithBuyer.nodes &&
-          orderWithBuyer.nodes.length > 0 &&
-          orderWithBuyer.locationData
-        ) {
-          const firstNodeAddress = String(orderWithBuyer.nodes[0]);
-
-          // Formula: bounty = (price * quantity * 0.05)
-          const bountyPercentage = 2;
-          const totalOrderValue = BigInt(orderWithBuyer.price);
-          const bounty =
-            (totalOrderValue * BigInt(bountyPercentage)) / BigInt(100);
-
-          console.log('[TradeProvider] Bounty calculation:', {
-            price: orderWithBuyer.price,
-            priceAsBigInt: totalOrderValue.toString(),
-            bountyPercentage,
-            calculatedBounty: bounty.toString(),
-            bountyType: typeof bounty,
-          });
-
-          // For direct orders (only one node), the receiver is the buyer (customer)
-          // For multi-hop orders, the receiver is the next node in the chain
-          const receiverNodeAddress =
-            orderWithBuyer.nodes.length > 1
-              ? orderWithBuyer.nodes[1]
-              : walletAddress; // Direct to customer for single-node orders
-
-          await orderService.createOrderJourney(
-            actualOrderId,
-            firstNodeAddress,
-            receiverNodeAddress,
-            orderWithBuyer.locationData, // May be undefined for quick CLOB-style orders
-            bounty,
-            BigInt(Date.now() + 24 * 60 * 60 * 1000), // ETA (24 hours from now)
-            BigInt(orderWithBuyer.tokenQuantity),
-            BigInt(orderWithBuyer.tokenId),
-          );
-          console.log('[TradeProvider] Initial journey created for order');
-        }
+        console.log(
+          `[TradeProvider] CLOB order created with ID: ${actualOrderId}`,
+        );
+        console.log(
+          '[TradeProvider] Trade complete - user now holds tokenized asset',
+        );
+        console.log(
+          '[TradeProvider] Physical delivery available via Redeem flow in dashboard',
+        );
 
         await loadOrders();
         return true;

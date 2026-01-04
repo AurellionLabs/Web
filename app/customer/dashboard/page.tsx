@@ -27,7 +27,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   TrendingUp,
+  Wallet,
+  Send,
 } from 'lucide-react';
+import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
+import { RedemptionDialog } from '@/app/components/redemption/RedemptionDialog';
 import { Input } from '@/app/components/ui/input';
 import {
   Select,
@@ -168,6 +172,20 @@ export default function CustomerDashboard() {
     confirmReceipt,
   } = useCustomer();
   const { toast } = useToast();
+
+  // User holdings for redemption
+  const {
+    holdings,
+    isLoading: holdingsLoading,
+    error: holdingsError,
+    refetch: refetchHoldings,
+  } = useUserHoldings();
+
+  // Redemption dialog state
+  const [selectedHolding, setSelectedHolding] = useState<UserHolding | null>(
+    null,
+  );
+  const [isRedemptionOpen, setIsRedemptionOpen] = useState(false);
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -400,6 +418,145 @@ export default function CustomerDashboard() {
             prefix="$"
           />
         </div>
+
+        {/* My Assets - Holdings available for redemption */}
+        <GlassCard>
+          <GlassCardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <GlassCardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  My Assets
+                </GlassCardTitle>
+                <GlassCardDescription>
+                  Tokenized assets you own - redeem to receive physical delivery
+                </GlassCardDescription>
+              </div>
+              <GlowButton
+                variant="ghost"
+                size="sm"
+                onClick={() => refetchHoldings()}
+                disabled={holdingsLoading}
+              >
+                <RefreshCw
+                  className={cn('w-4 h-4', holdingsLoading && 'animate-spin')}
+                />
+              </GlowButton>
+            </div>
+          </GlassCardHeader>
+
+          {holdingsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-6 h-6 text-accent animate-spin" />
+            </div>
+          ) : holdingsError ? (
+            <div className="text-center py-8">
+              <p className="text-trading-sell text-sm">{holdingsError}</p>
+              <GlowButton
+                variant="outline"
+                size="sm"
+                onClick={() => refetchHoldings()}
+                className="mt-4"
+              >
+                Try Again
+              </GlowButton>
+            </div>
+          ) : holdings.length === 0 ? (
+            <div className="text-center py-12">
+              <Wallet className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">No assets in your wallet</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Trade on the order book to acquire tokenized assets
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {holdings.map((holding) => (
+                <div
+                  key={holding.tokenId}
+                  className={cn(
+                    'relative p-4 rounded-xl',
+                    'bg-glass-bg border border-glass-border',
+                    'hover:border-accent/30 transition-all duration-200',
+                    'group',
+                  )}
+                >
+                  {/* Asset glow effect */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  <div className="relative">
+                    {/* Asset header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-semibold text-foreground">
+                          {holding.name}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {holding.assetClass}
+                        </p>
+                      </div>
+                      <StatusBadge
+                        status="connected"
+                        label={holding.className}
+                        size="sm"
+                      />
+                    </div>
+
+                    {/* Balance */}
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <span className="text-2xl font-bold text-foreground">
+                        {holding.balance.toString()}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        units
+                      </span>
+                    </div>
+
+                    {/* Token ID */}
+                    <p className="text-xs font-mono text-muted-foreground mb-4">
+                      Token: {holding.tokenId.slice(0, 12)}...
+                    </p>
+
+                    {/* Redeem button */}
+                    <GlowButton
+                      variant="primary"
+                      size="sm"
+                      className="w-full"
+                      leftIcon={<Send className="w-4 h-4" />}
+                      onClick={() => {
+                        setSelectedHolding(holding);
+                        setIsRedemptionOpen(true);
+                      }}
+                    >
+                      Redeem for Delivery
+                    </GlowButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Redemption Dialog */}
+        {selectedHolding && (
+          <RedemptionDialog
+            isOpen={isRedemptionOpen}
+            onClose={() => {
+              setIsRedemptionOpen(false);
+              setSelectedHolding(null);
+            }}
+            holding={selectedHolding}
+            onSuccess={() => {
+              refetchHoldings();
+              refreshOrders();
+              toast({
+                title: 'Redemption Initiated',
+                description:
+                  'Your physical delivery has been scheduled. Track it in the orders section below.',
+              });
+            }}
+          />
+        )}
 
         {/* Recent Orders */}
         <GlassCard>

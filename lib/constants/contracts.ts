@@ -1,7 +1,7 @@
-import { ethers } from 'ethers';
-import AusysArtifact from '../../artifacts/contracts/AuSys.sol/Ausys.json';
+import { AusysABI } from '@/lib/contracts/abis';
+import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 
-export const AUSYS_CONTRACT_ADDRESS = '0x...'; // This should be replaced with the actual deployed contract address
+export const AUSYS_CONTRACT_ADDRESS = NEXT_PUBLIC_AUSYS_ADDRESS;
 
-// Use the full ABI from the compiled contract
-export const AUSYS_ABI = AusysArtifact.abi;
+// Use the extracted ABI from lib/contracts
+export const AUSYS_ABI = AusysABI;
