@@ -469,35 +469,53 @@ async function main() {
     console.log(`✓ Updated chain-constants.ts\n`);
   }
 
-  // Step 7: Update indexer configuration to read from chain-constants
-  console.log('Step 7: Updating indexer configuration...\n');
-  const indexerConfigPath = path.join(
+  // Step 7: Update indexer diamond-constants.ts
+  console.log('Step 7: Updating indexer diamond-constants.ts...\n');
+  const indexerConstantsPath = path.join(
     __dirname,
     '..',
     'indexer',
-    'ponder.config.ts',
+    'diamond-constants.ts',
   );
-  if (fs.existsSync(indexerConfigPath)) {
-    let indexerContent = fs.readFileSync(indexerConfigPath, 'utf-8');
 
-    // Remove .env references and use chain-constants
-    indexerContent = indexerContent.replace(
-      /const DIAMOND_ADDRESS = \(process\.env\.NEXT_PUBLIC_DIAMOND_ADDRESS \|\| '0x0000000000000000000000000000000000000000'\) as `0x\$\{string\}`;/,
-      `import { NEXT_PUBLIC_DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from '../chain-constants';\nconst DIAMOND_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS as \`0x\${string}\`;`,
+  const indexerConstantsContent = `// Diamond contract constants for the Ponder indexer
+// Auto-updated by deploy-diamond.ts script
+// Last updated: ${new Date().toISOString()}
+
+export const DIAMOND_ADDRESS: \`0x\${string}\` =
+  '${deploymentResult.diamond}';
+
+export const DIAMOND_DEPLOY_BLOCK = ${deployBlockNumber};
+`;
+
+  fs.writeFileSync(indexerConstantsPath, indexerConstantsContent);
+  console.log(`✓ Updated indexer/diamond-constants.ts\n`);
+  console.log(`  DIAMOND_ADDRESS: ${deploymentResult.diamond}`);
+  console.log(`  DIAMOND_DEPLOY_BLOCK: ${deployBlockNumber}\n`);
+
+  // Step 7.5: Update DEPLOYMENT_BLOCKS in chain-constants.ts
+  // This ensures legacy contract start blocks are also updated
+  if (fs.existsSync(constantsPath)) {
+    let content = fs.readFileSync(constantsPath, 'utf-8');
+
+    // Update the deployment blocks to use the Diamond deploy block as a baseline
+    // (since all contracts were deployed around the same time)
+    const deploymentBlocksUpdate = `export const DEPLOYMENT_BLOCKS = {
+  auraToken: ${deployBlockNumber},
+  auSys: ${deployBlockNumber},
+  aurumNodeManager: ${deployBlockNumber},
+  auStake: ${deployBlockNumber},
+  auraAsset: ${deployBlockNumber},
+  clob: ${deployBlockNumber},
+};`;
+
+    content = content.replace(
+      /export const DEPLOYMENT_BLOCKS = \{[\s\S]*?\};/,
+      deploymentBlocksUpdate,
     );
 
-    indexerContent = indexerContent.replace(
-      /const DIAMOND_DEPLOY_BLOCK = parseInt\(process\.env\.DIAMOND_DEPLOY_BLOCK \|\| '0'\);/,
-      `const DIAMOND_DEPLOY_BLOCK_NUM = DIAMOND_DEPLOY_BLOCK;`,
-    );
-
-    indexerContent = indexerContent.replace(
-      /startBlock: DIAMOND_DEPLOY_BLOCK,/,
-      `startBlock: DIAMOND_DEPLOY_BLOCK_NUM,`,
-    );
-
-    fs.writeFileSync(indexerConfigPath, indexerContent);
-    console.log(`✓ Updated indexer/ponder.config.ts to use chain-constants\n`);
+    fs.writeFileSync(constantsPath, content);
+    console.log(`✓ Updated DEPLOYMENT_BLOCKS in chain-constants.ts\n`);
   }
 
   // Print summary

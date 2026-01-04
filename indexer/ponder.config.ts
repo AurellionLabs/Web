@@ -9,49 +9,42 @@ import { AuraAssetAbi } from './abis/AuraAssetAbi';
 import { AuStakeAbi } from './abis/AuStakeAbi';
 import { CLOBAbi } from './abis/CLOBAbi';
 
-// Import Diamond constants
+// Import constants from diamond-constants (auto-updated by deploy script)
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
+
+// Import contract addresses and deployment blocks from chain-constants
+import {
+  NEXT_PUBLIC_AUSYS_ADDRESS,
+  NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
+  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+  NEXT_PUBLIC_AUSTAKE_ADDRESS,
+  NEXT_PUBLIC_CLOB_ADDRESS,
+  NEXT_PUBLIC_RPC_URL_84532,
+  DEPLOYMENT_BLOCKS,
+} from '../chain-constants';
 
 // Base Sepolia Chain ID
 const BASE_SEPOLIA_CHAIN_ID = 84532;
-
-// Helper to get contract address from env or default to zero address
-function getAddress(
-  envVar: string | undefined,
-  defaultAddress: string,
-): `0x${string}` {
-  return (envVar as `0x${string}`) || (defaultAddress as `0x${string}`);
-}
-
-// Helper to get start block from env or default to 0
-function getStartBlock(
-  envVar: string | undefined,
-  defaultBlock: number,
-): number {
-  return envVar ? parseInt(envVar, 10) : defaultBlock;
-}
 
 export default createConfig({
   cors: {
     origins: [
       'https://aurellionlabs.com',
       'https://www.aurellionlabs.com',
-      'https://web-gk8i9h3wk-aurellion.vercel.app',
+      /https:\/\/web-.*-aurellion\.vercel\.app/,
       'https://indexer.aurellionlabs.com',
+      'http://localhost:3000',
     ],
   },
   networks: {
     baseSepolia: {
       chainId: BASE_SEPOLIA_CHAIN_ID,
-      transport: http(
-        process.env.NEXT_PUBLIC_RPC_URL_84532 ||
-          process.env.BASE_TEST_RPC_URL ||
-          'https://base-sepolia.infura.io/v3/281dfd93e10842199b64ed6f3535fa4c',
-      ),
+      transport: http(NEXT_PUBLIC_RPC_URL_84532),
     },
   },
   contracts: {
     // Diamond - Single proxy that delegates to all facets
+    // This is the primary contract for all new functionality
     Diamond: {
       network: 'baseSepolia',
       abi: DiamondABI,
@@ -62,47 +55,32 @@ export default createConfig({
     Ausys: {
       network: 'baseSepolia',
       abi: AusysAbi,
-      address: getAddress(
-        process.env.NEXT_PUBLIC_AUSYS_ADDRESS,
-        '0x0000000000000000000000000000000000000000',
-      ),
-      startBlock: getStartBlock(process.env.AUSYS_START_BLOCK, 0),
+      address: NEXT_PUBLIC_AUSYS_ADDRESS as `0x${string}`,
+      startBlock: DEPLOYMENT_BLOCKS.auSys,
     },
     AurumNodeManager: {
       network: 'baseSepolia',
       abi: AurumNodeManagerAbi,
-      address: getAddress(
-        process.env.NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
-        '0x0000000000000000000000000000000000000000',
-      ),
-      startBlock: getStartBlock(process.env.AURUM_START_BLOCK, 0),
+      address: NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS as `0x${string}`,
+      startBlock: DEPLOYMENT_BLOCKS.aurumNodeManager,
     },
     AuraAsset: {
       network: 'baseSepolia',
       abi: AuraAssetAbi,
-      address: getAddress(
-        process.env.NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-        '0x0000000000000000000000000000000000000000',
-      ),
-      startBlock: getStartBlock(process.env.AURA_ASSET_START_BLOCK, 0),
+      address: NEXT_PUBLIC_AURA_ASSET_ADDRESS as `0x${string}`,
+      startBlock: DEPLOYMENT_BLOCKS.auraAsset,
     },
     AuStake: {
       network: 'baseSepolia',
       abi: AuStakeAbi,
-      address: getAddress(
-        process.env.NEXT_PUBLIC_AUSTAKE_ADDRESS,
-        '0x0000000000000000000000000000000000000000',
-      ),
-      startBlock: getStartBlock(process.env.AUSTAKE_START_BLOCK, 0),
+      address: NEXT_PUBLIC_AUSTAKE_ADDRESS as `0x${string}`,
+      startBlock: DEPLOYMENT_BLOCKS.auStake,
     },
     CLOB: {
       network: 'baseSepolia',
       abi: CLOBAbi,
-      address: getAddress(
-        process.env.NEXT_PUBLIC_CLOB_ADDRESS,
-        '0x0000000000000000000000000000000000000000',
-      ),
-      startBlock: getStartBlock(process.env.CLOB_START_BLOCK, 0),
+      address: NEXT_PUBLIC_CLOB_ADDRESS as `0x${string}`,
+      startBlock: DEPLOYMENT_BLOCKS.clob,
     },
   },
 });

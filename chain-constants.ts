@@ -89,10 +89,10 @@ export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = 84532; // Base Sepolia
 // =============================================================================
 
 export const DEPLOYMENT_BLOCKS = {
-  auraToken: 35850000, // TODO: Update with actual deployment block
-  auSys: 35850002, // TODO: Update with actual deployment block
-  aurumNodeManager: 35850004, // TODO: Update with actual deployment block
-  auStake: 35850006, // TODO: Update with actual deployment block
-  auraAsset: 35850008, // TODO: Update with actual deployment block
-  clob: 35771333, // Existing CLOB deployment
+  auraToken: 35859031,
+  auSys: 35859031,
+  aurumNodeManager: 35859031,
+  auStake: 35859031,
+  auraAsset: 35859031,
+  clob: 35859031,
 };
