@@ -155,7 +155,9 @@ export class CLOBRepository {
     this.graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
     this.repositoryContext = RepositoryContext.getInstance();
     this.clobAddress = NEXT_PUBLIC_CLOB_ADDRESS;
-    this.quoteTokenAddress = NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS || '0x...';
+    this.quoteTokenAddress =
+      NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS ||
+      '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
   }
 
   /**
