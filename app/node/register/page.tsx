@@ -21,6 +21,7 @@ import {
   GlassCardDescription,
 } from '@/app/components/ui/glass-card';
 import { GlowButton } from '@/app/components/ui/glow-button';
+import { Button } from '@/app/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -301,18 +302,18 @@ export default function NodeRegistrationPage() {
                       <FormControl>
                         <Popover open={open} onOpenChange={setOpen}>
                           <PopoverTrigger asChild>
-                            <GlowButton
+                            <Button
                               variant="outline"
                               role="combobox"
                               aria-expanded={open}
-                              className="w-full justify-between"
+                              className="w-full justify-between bg-surface-overlay border-glass-border hover:bg-surface-overlay/80"
                               type="button"
                             >
                               {field.value.length > 0
                                 ? `${field.value.length} asset${field.value.length === 1 ? '' : 's'} selected`
                                 : 'Select assets...'}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </GlowButton>
+                            </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-full p-0">
                             <Command>
