@@ -1,5 +1,5 @@
-// @ts-nocheck - Test file with jest/testing-library type issues
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+// @ts-nocheck - Test file with vitest
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Test-first: Define correct NodeRepository contract interactions
 describe('NodeRepository', () => {
@@ -11,9 +11,9 @@ describe('NodeRepository', () => {
   beforeEach(() => {
     // Mock contract that returns new Asset struct format
     mockAurumContract = {
-      getNode: jest.fn(),
-      registerNode: jest.fn(),
-      updateStatus: jest.fn(),
+      getNode: vi.fn(),
+      registerNode: vi.fn(),
+      updateStatus: vi.fn(),
     };
 
     mockProvider = {};

@@ -102,6 +102,12 @@ const config: HardhatUserConfig = {
     outDir: 'typechain-types',
     target: 'ethers-v6',
   },
+  paths: {
+    tests: './test/foundry',
+  },
+  mocha: {
+    timeout: 60000,
+  },
 };
 
 export default config;

@@ -1,5 +1,5 @@
-// @ts-nocheck - Test file with jest/testing-library type issues
-import { describe, it, expect } from '@jest/globals';
+// @ts-nocheck - Test file with vitest
+import { describe, it, expect } from 'vitest';
 
 // Test-first: Define what the simplified Order domain should look like
 describe('Order Domain Model', () => {

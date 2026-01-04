@@ -1,5 +1,5 @@
-// @ts-nocheck - Test file with jest/testing-library type issues
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+// @ts-nocheck - Test file with vitest
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { ReactNode } from 'react';
 
@@ -10,25 +10,25 @@ describe('NodeProvider - Updated for New Domain Models', () => {
 
   beforeEach(() => {
     mockRepositoryContext = {
-      getNodeRepository: jest.fn(() => ({
-        getNode: jest.fn(),
-        getOwnedNodes: jest.fn(),
-        registerNode: jest.fn(),
-        updateNodeStatus: jest.fn(),
-        getNodeAssets: jest.fn(),
+      getNodeRepository: vi.fn(() => ({
+        getNode: vi.fn(),
+        getOwnedNodes: vi.fn(),
+        registerNode: vi.fn(),
+        updateNodeStatus: vi.fn(),
+        getNodeAssets: vi.fn(),
       })),
-      getOrderRepository: jest.fn(() => ({
-        getBuyerOrders: jest.fn(),
-        getSellerOrders: jest.fn(),
-        getNodeOrders: jest.fn(),
+      getOrderRepository: vi.fn(() => ({
+        getBuyerOrders: vi.fn(),
+        getSellerOrders: vi.fn(),
+        getNodeOrders: vi.fn(),
       })),
     };
 
     mockServiceContext = {
-      getNodeAssetService: jest.fn(() => ({
-        mintAsset: jest.fn(),
-        updateAssetCapacity: jest.fn(),
-        updateAssetPrice: jest.fn(),
+      getNodeAssetService: vi.fn(() => ({
+        mintAsset: vi.fn(),
+        updateAssetCapacity: vi.fn(),
+        updateAssetPrice: vi.fn(),
       })),
     };
   });
@@ -173,15 +173,15 @@ describe('NodeProvider - Updated for New Domain Models', () => {
     it('should use GraphQL queries instead of on-chain iteration', () => {
       // Test that provider uses GraphQL-based repositories
       const mockOrderRepo = {
-        getBuyerOrders: jest.fn().mockResolvedValue([]),
-        getSellerOrders: jest.fn().mockResolvedValue([]),
-        getNodeOrders: jest.fn().mockResolvedValue([]),
-        fetchAllJourneys: jest.fn().mockResolvedValue([]),
+        getBuyerOrders: vi.fn().mockResolvedValue([]),
+        getSellerOrders: vi.fn().mockResolvedValue([]),
+        getNodeOrders: vi.fn().mockResolvedValue([]),
+        fetchAllJourneys: vi.fn().mockResolvedValue([]),
       };
 
       const mockNodeRepo = {
-        getOwnedNodes: jest.fn().mockResolvedValue([]),
-        loadAvailableAssets: jest.fn().mockResolvedValue([]),
+        getOwnedNodes: vi.fn().mockResolvedValue([]),
+        loadAvailableAssets: vi.fn().mockResolvedValue([]),
       };
 
       // Should call GraphQL-based methods, not on-chain iteration

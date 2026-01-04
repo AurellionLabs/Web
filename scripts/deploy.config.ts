@@ -235,6 +235,22 @@ export const CONTRACTS: Record<string, ContractConfig> = {
 // =============================================================================
 
 export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
+  // Test deployment for E2E tests - minimal contracts needed
+  test: {
+    name: 'Test Deployment',
+    description:
+      'Deploy minimal contracts for E2E testing (Aura, AuSys, AurumNodeManager, AuStake, AuraAsset, CLOB, RWYVault)',
+    contracts: [
+      'Aura',
+      'AuSys',
+      'AurumNodeManager',
+      'AuStake',
+      'AuraAsset',
+      'CLOB',
+      'RWYVault',
+    ],
+  },
+
   // Full deployment of all core contracts
   full: {
     name: 'Full Deployment',

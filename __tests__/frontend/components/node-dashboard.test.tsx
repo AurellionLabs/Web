@@ -1,5 +1,5 @@
-// @ts-nocheck - Test file with jest/testing-library type issues
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+// @ts-nocheck - Test file with vitest
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Test-first: Define how NodeDashboard should work with new domain models
@@ -40,10 +40,10 @@ describe('NodeDashboard - Updated for New Domain Models', () => {
       orders: [],
       loading: false,
       error: null,
-      mintAsset: jest.fn(),
-      updateAssetCapacity: jest.fn(),
-      updateAssetPrice: jest.fn(),
-      getNodeAssets: jest.fn().mockResolvedValue([]),
+      mintAsset: vi.fn(),
+      updateAssetCapacity: vi.fn(),
+      updateAssetPrice: vi.fn(),
+      getNodeAssets: vi.fn().mockResolvedValue([]),
     };
   });
 

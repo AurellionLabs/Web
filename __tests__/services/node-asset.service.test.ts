@@ -1,5 +1,5 @@
-// @ts-nocheck - Test file with jest/testing-library type issues
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+// @ts-nocheck - Test file with vitest
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Test-first: Define correct NodeAssetService contract interactions
 describe('NodeAssetService', () => {
@@ -11,19 +11,19 @@ describe('NodeAssetService', () => {
   beforeEach(() => {
     // Mock the contracts with correct function signatures
     mockAurumContract = {
-      addSupportedAsset: jest.fn(),
-      updateSupportedAssets: jest.fn(),
-      getNode: jest.fn(),
+      addSupportedAsset: vi.fn(),
+      updateSupportedAssets: vi.fn(),
+      getNode: vi.fn(),
     };
 
     mockNodeContract = {
-      addItem: jest.fn(),
+      addItem: vi.fn(),
     };
 
     mockContext = {
-      getAurumContract: jest.fn(() => mockAurumContract),
-      getAurumNodeContract: jest.fn(() => mockNodeContract),
-      getNodeRepository: jest.fn(() => ({})),
+      getAurumContract: vi.fn(() => mockAurumContract),
+      getAurumNodeContract: vi.fn(() => mockNodeContract),
+      getNodeRepository: vi.fn(() => ({})),
     };
   });
 

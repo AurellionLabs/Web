@@ -2,18 +2,25 @@
 // File: test/hooks/useUnifiedOrder.test.ts
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import React from 'react';
 
-// Mock the order bridge service
-const mockOrderBridgeService = {
-  getUnifiedOrder: vi.fn(),
-  getBuyerOrders: vi.fn(),
-  cancelUnifiedOrder: vi.fn(),
-  getStatusDisplayText: vi.fn(),
-  getStatusColor: vi.fn(),
-};
+// Define mock functions at module level BEFORE vi.mock
+const mockGetUnifiedOrder = vi.fn();
+const mockGetBuyerOrders = vi.fn();
+const mockCancelUnifiedOrder = vi.fn();
+const mockGetStatusDisplayText = vi.fn();
+const mockGetStatusColor = vi.fn();
 
+// Mock the order bridge service - this is hoisted to top
 vi.mock('@/infrastructure/services/order-bridge-service', () => ({
-  orderBridgeService: mockOrderBridgeService,
+  orderBridgeService: {
+    getUnifiedOrder: mockGetUnifiedOrder,
+    getBuyerOrders: mockGetBuyerOrders,
+    cancelUnifiedOrder: mockCancelUnifiedOrder,
+    getStatusDisplayText: mockGetStatusDisplayText,
+    getStatusColor: mockGetStatusColor,
+  },
   UnifiedOrderStatus: {
     NONE: 'none',
     PENDING_TRADE: 'pending_trade',
@@ -26,13 +33,20 @@ vi.mock('@/infrastructure/services/order-bridge-service', () => ({
   },
 }));
 
+// Create a reference object for easier access in tests
+const mockOrderBridgeService = {
+  getUnifiedOrder: mockGetUnifiedOrder,
+  getBuyerOrders: mockGetBuyerOrders,
+  cancelUnifiedOrder: mockCancelUnifiedOrder,
+  getStatusDisplayText: mockGetStatusDisplayText,
+  getStatusColor: mockGetStatusColor,
+};
+
 import {
   useUnifiedOrder,
   useUnifiedOrders,
   useOrderProgressSteps,
 } from '@/hooks/useUnifiedOrder';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import React from 'react';
 
 // Helper to create mock tracked order
 const createMockOrder = (overrides = {}) => ({
