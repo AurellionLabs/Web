@@ -164,13 +164,16 @@ ponder.on('AuraAsset:AssetAttributeAdded', async ({ event, context }) => {
   const { hash, attributeIndex, name, values, description } = event.args;
   const attributeId = `${hash.toLowerCase()}-${attributeIndex.toString()}`;
 
-  await context.db.insert(assetAttributes).values({
-    id: attributeId,
-    assetId: hash.toLowerCase(),
-    name,
-    values: JSON.stringify(values),
-    description,
-  });
+  await context.db
+    .insert(assetAttributes)
+    .values({
+      id: attributeId,
+      assetId: hash.toLowerCase(),
+      name,
+      values: JSON.stringify(values),
+      description,
+    })
+    .onConflictDoNothing();
 });
 
 /**
