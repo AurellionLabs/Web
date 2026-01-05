@@ -10,6 +10,7 @@ import { CustomerProvider } from './providers/customer.provider';
 import { DriverProvider } from './providers/driver.provider';
 import { PlatformProvider } from './providers/platform.provider';
 import { RepositoryProvider } from './providers/RepositoryProvider';
+import { DiamondProvider } from './providers/diamond.provider';
 import { PrivyProviderWrapper } from './providers/privy.provider';
 import { Toaster } from './components/ui/toaster';
 
@@ -61,22 +62,24 @@ export default function RootLayout({
       <body className={`${plusJakartaSans.className} antialiased`}>
         <PrivyProviderWrapper>
           <MainProvider>
-            <RepositoryProvider>
-              <PlatformProvider>
-                <NodesProvider>
-                  <SelectedNodeProvider>
-                    <CustomerProvider>
-                      <DriverProvider>
-                        <TradeProvider>
-                          <ClientLayout>{children}</ClientLayout>
-                          <Toaster />
-                        </TradeProvider>
-                      </DriverProvider>
-                    </CustomerProvider>
-                  </SelectedNodeProvider>
-                </NodesProvider>
-              </PlatformProvider>
-            </RepositoryProvider>
+            <DiamondProvider>
+              <RepositoryProvider>
+                <PlatformProvider>
+                  <NodesProvider>
+                    <SelectedNodeProvider>
+                      <CustomerProvider>
+                        <DriverProvider>
+                          <TradeProvider>
+                            <ClientLayout>{children}</ClientLayout>
+                            <Toaster />
+                          </TradeProvider>
+                        </DriverProvider>
+                      </CustomerProvider>
+                    </SelectedNodeProvider>
+                  </NodesProvider>
+                </PlatformProvider>
+              </RepositoryProvider>
+            </DiamondProvider>
           </MainProvider>
         </PrivyProviderWrapper>
       </body>

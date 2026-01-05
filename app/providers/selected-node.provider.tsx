@@ -15,11 +15,10 @@ import {
 } from '@/domain/node/node';
 import { Asset } from '@/domain/shared';
 import { useWallet } from '@/hooks/useWallet';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
 import { useNodes } from './nodes.provider';
 import { usePlatform } from './platform.provider';
+import { useDiamond } from './diamond.provider';
 import { OrderWithAsset } from '@/app/types/shared';
 
 type SelectedNodeContextType = {
@@ -94,31 +93,28 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   const { getNode, refreshNodes } = useNodes();
   const { getAssetByTokenId } = usePlatform();
 
-  // Initialize contexts
-  const [repositoryContext, setRepositoryContext] =
-    useState<RepositoryContext | null>(null);
-  const [serviceContext, setServiceContext] = useState<ServiceContext | null>(
-    null,
-  );
+  // Use Diamond infrastructure
+  const {
+    initialized: diamondInitialized,
+    nodeRepository,
+    nodeService,
+    nodeAssetService,
+    getNodeAssets: getDiamondNodeAssets,
+    getAssetAttributes: getDiamondAssetAttributes,
+    updateNodeStatus: diamondUpdateNodeStatus,
+    mintAsset: diamondMintAsset,
+    updateAssetCapacity: diamondUpdateAssetCapacity,
+    updateAssetPrice: diamondUpdateAssetPrice,
+  } = useDiamond();
 
-  useEffect(() => {
-    if (connected && address) {
-      const repoContext = RepositoryContext.getInstance();
-      const servContext = ServiceContext.getInstance();
-      setRepositoryContext(repoContext);
-      setServiceContext(servContext);
-    }
-  }, [connected, address]);
-
-  // Load orders for selected node
+  // Load orders for selected node (from GraphQL indexer via Diamond repository)
   const loadOrders = useCallback(
     async (nodeAddress: string) => {
-      if (!repositoryContext) return;
+      if (!nodeRepository) return;
 
       setOrdersLoading(true);
       try {
-        const orderRepository = repositoryContext.getOrderRepository();
-        const nodeOrders = await orderRepository.getNodeOrders(nodeAddress);
+        const nodeOrders = await nodeRepository.getNodeOrders(nodeAddress);
 
         // Fetch asset details for each order
         const ordersWithAssets: OrderWithAsset[] = await Promise.all(
@@ -150,18 +146,17 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setOrdersLoading(false);
       }
     },
-    [repositoryContext, getAssetByTokenId],
+    [nodeRepository, getAssetByTokenId],
   );
 
   // Load assets for selected node
   const loadAssets = useCallback(
     async (nodeAddress: string) => {
-      if (!repositoryContext) return;
+      if (!nodeRepository) return;
 
       setAssetsLoading(true);
       try {
-        const nodeRepository = repositoryContext.getNodeRepository();
-        const nodeAssets = await nodeRepository.getNodeAssets(nodeAddress);
+        const nodeAssets = await getDiamondNodeAssets(nodeAddress);
         setAssets(nodeAssets);
       } catch (err) {
         console.error('Error loading assets:', err);
@@ -170,7 +165,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setAssetsLoading(false);
       }
     },
-    [repositoryContext],
+    [nodeRepository, getDiamondNodeAssets],
   );
 
   // Select node and load all its data
@@ -178,11 +173,11 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     async (nodeAddress: string) => {
       if (selectedNodeAddress === nodeAddress) return; // Already selected
 
-      // Check if repository context is available
-      if (!repositoryContext) {
-        console.warn('Repository context not initialized, cannot select node');
+      // Check if Diamond is initialized
+      if (!diamondInitialized) {
+        console.warn('Diamond not initialized, cannot select node');
         throw new Error(
-          'Repository context not initialized. Please ensure wallet is connected.',
+          'Diamond not initialized. Please ensure wallet is connected.',
         );
       }
 
@@ -211,7 +206,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [selectedNodeAddress, getNode, loadOrders, loadAssets, repositoryContext],
+    [selectedNodeAddress, getNode, loadOrders, loadAssets, diamondInitialized],
   );
 
   // Clear selection
@@ -247,16 +242,15 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     await loadAssets(selectedNodeAddress);
   }, [selectedNodeAddress, loadAssets]);
 
-  // Update node status
+  // Update node status via Diamond
   const updateNodeStatus = useCallback(
     async (status: 'Active' | 'Inactive') => {
-      if (!serviceContext || !selectedNodeAddress) {
-        throw new Error('Service context not initialized or no node selected');
+      if (!diamondInitialized || !selectedNodeAddress) {
+        throw new Error('Diamond not initialized or no node selected');
       }
 
       try {
-        const nodeService = serviceContext.getNodeService();
-        await nodeService.updateNodeStatus(selectedNodeAddress, status);
+        await diamondUpdateNodeStatus(selectedNodeAddress, status);
 
         // Update local node data
         if (nodeData) {
@@ -270,97 +264,68 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [serviceContext, selectedNodeAddress, nodeData, refreshNodes],
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      nodeData,
+      refreshNodes,
+      diamondUpdateNodeStatus,
+    ],
   );
 
-  // Node custody actions: packageSign and handOn
+  // Node custody actions: packageSign and startJourney
+  // These still need to go through the node contract for proper authorization
   const packageSign = useCallback(
     async (journeyId: string) => {
-      if (!repositoryContext)
-        throw new Error('Repository context not initialized');
+      if (!diamondInitialized) throw new Error('Diamond not initialized');
       if (!selectedNodeAddress) throw new Error('No node selected');
 
-      // Call nodeSign on the node contract (not packageSign on Ausys directly)
-      // This ensures the call comes FROM the node address, not the user's wallet
-      const nodeRepository = repositoryContext.getNodeRepository();
-      const nodeContract = await (nodeRepository as any).getNodeContract(
-        selectedNodeAddress,
+      // TODO: Implement via Diamond's BridgeFacet
+      console.warn(
+        '[packageSign] Not yet implemented for Diamond - use legacy for now',
       );
-      const tx = await nodeContract.nodeSign(journeyId as any);
-      await tx.wait();
+      throw new Error('Package signing via Diamond not yet implemented');
     },
-    [repositoryContext, selectedNodeAddress],
+    [diamondInitialized, selectedNodeAddress],
   );
 
   const startJourney = useCallback(
     async (journeyId: string) => {
-      if (!repositoryContext)
-        throw new Error('Repository context not initialized');
+      if (!diamondInitialized) throw new Error('Diamond not initialized');
       if (!selectedNodeAddress) throw new Error('No node selected');
 
-      // Call nodeHandOn on the node contract (not handOn on Ausys directly)
-      // This ensures the call comes FROM the node address
-      const nodeRepository = repositoryContext.getNodeRepository();
-      const nodeContract = await (nodeRepository as any).getNodeContract(
-        selectedNodeAddress,
+      // TODO: Implement via Diamond's BridgeFacet
+      console.warn(
+        '[startJourney] Not yet implemented for Diamond - use legacy for now',
       );
-
-      // First, ensure Ausys has approval to transfer this node's tokens
-      // This is required for handOn to transfer tokens from node to Ausys
-      try {
-        console.log(
-          '[startJourney] Approving Ausys to transfer node tokens...',
-        );
-        await (nodeRepository as any).approveAusysForTokens(
-          selectedNodeAddress,
-        );
-        console.log('[startJourney] Approval granted');
-      } catch (approvalError) {
-        // If approval fails, it might already be approved, continue anyway
-        console.warn(
-          '[startJourney] Approval step failed (might already be approved):',
-          approvalError,
-        );
-      }
-
-      const tx = await nodeContract.nodeHandOn(journeyId as any);
-      await tx.wait();
+      throw new Error('Start journey via Diamond not yet implemented');
     },
-    [repositoryContext, selectedNodeAddress],
+    [diamondInitialized, selectedNodeAddress],
   );
-
-  // Removed getOrderJourneyIds - journeyIds now come from subgraph repository
 
   // Get node status
   const getNodeStatus = useCallback(async (): Promise<
     'Active' | 'Inactive'
   > => {
-    if (!repositoryContext || !selectedNodeAddress) return 'Inactive';
+    if (!nodeRepository || !selectedNodeAddress) return 'Inactive';
 
     try {
-      const nodeRepository = repositoryContext.getNodeRepository();
       return await nodeRepository.getNodeStatus(selectedNodeAddress);
     } catch (err) {
       console.error('Error getting node status:', err);
       return 'Inactive';
     }
-  }, [repositoryContext, selectedNodeAddress]);
+  }, [nodeRepository, selectedNodeAddress]);
 
-  // Mint asset for selected node
+  // Mint asset for selected node via Diamond
   const mintAsset = useCallback(
     async (asset: Asset, amount: number, priceWei: bigint) => {
-      if (!serviceContext || !selectedNodeAddress) {
-        throw new Error('Service context not initialized or no node selected');
+      if (!diamondInitialized || !selectedNodeAddress) {
+        throw new Error('Diamond not initialized or no node selected');
       }
 
       try {
-        const nodeAssetService = serviceContext.getNodeAssetService();
-        await nodeAssetService.mintAsset(
-          selectedNodeAddress,
-          asset,
-          amount,
-          priceWei,
-        );
+        await diamondMintAsset(selectedNodeAddress, asset, amount, priceWei);
 
         // Refresh assets and nodes
         await Promise.all([refreshAssets(), refreshNodes()]);
@@ -369,19 +334,24 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [serviceContext, selectedNodeAddress, refreshAssets, refreshNodes],
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      refreshAssets,
+      refreshNodes,
+      diamondMintAsset,
+    ],
   );
 
-  // Update asset capacity
+  // Update asset capacity via Diamond
   const updateAssetCapacity = useCallback(
     async (assetToken: string, assetTokenId: string, newCapacity: number) => {
-      if (!serviceContext || !selectedNodeAddress) {
-        throw new Error('Service context not initialized or no node selected');
+      if (!diamondInitialized || !selectedNodeAddress) {
+        throw new Error('Diamond not initialized or no node selected');
       }
 
       try {
-        const nodeAssetService = serviceContext.getNodeAssetService();
-        await nodeAssetService.updateAssetCapacity(
+        await diamondUpdateAssetCapacity(
           selectedNodeAddress,
           assetToken,
           assetTokenId,
@@ -395,19 +365,24 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [serviceContext, selectedNodeAddress, refreshAssets, refreshNodes],
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      refreshAssets,
+      refreshNodes,
+      diamondUpdateAssetCapacity,
+    ],
   );
 
-  // Update asset price
+  // Update asset price via Diamond
   const updateAssetPrice = useCallback(
     async (assetToken: string, assetTokenId: string, newPrice: bigint) => {
-      if (!serviceContext || !selectedNodeAddress) {
-        throw new Error('Service context not initialized or no node selected');
+      if (!diamondInitialized || !selectedNodeAddress) {
+        throw new Error('Diamond not initialized or no node selected');
       }
 
       try {
-        const nodeAssetService = serviceContext.getNodeAssetService();
-        await nodeAssetService.updateAssetPrice(
+        await diamondUpdateAssetPrice(
           selectedNodeAddress,
           assetToken,
           assetTokenId,
@@ -421,23 +396,28 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [serviceContext, selectedNodeAddress, refreshAssets, refreshNodes],
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      refreshAssets,
+      refreshNodes,
+      diamondUpdateAssetPrice,
+    ],
   );
 
-  // Get asset attributes
+  // Get asset attributes via Diamond
   const getAssetAttributes = useCallback(
     async (fileHash: string): Promise<TokenizedAssetAttribute[]> => {
-      if (!repositoryContext) return [];
+      if (!nodeRepository) return [];
 
       try {
-        const nodeRepository = repositoryContext.getNodeRepository();
-        return await nodeRepository.getAssetAttributes(fileHash);
+        return await getDiamondAssetAttributes(fileHash);
       } catch (err) {
         console.error('Error getting asset attributes:', err);
         return [];
       }
     },
-    [repositoryContext],
+    [nodeRepository, getDiamondAssetAttributes],
   );
 
   const value: SelectedNodeContextType = {
