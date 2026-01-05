@@ -639,28 +639,30 @@ export class CLOBRepository {
     receipt: ethers.TransactionReceipt,
     isBuy: boolean,
   ): string {
-    // In a real implementation, you would parse the OrderPlaced event
-    // For now, we'll return a placeholder that the indexer will track
-    // The actual orderId comes from the contract event
-
-    // Try to find OrderPlaced or BuyOrderPlaced/NodeSellOrderPlaced event
-    const eventSignature = isBuy
-      ? 'BuyOrderPlaced(bytes32,address,address,uint256,address,uint256,uint256)'
-      : 'OrderPlaced(bytes32,address,address,uint256,address,uint256,uint256)';
-
-    const topic = ethers.id(eventSignature);
+    // CLOB contract emits OrderPlaced event with this signature:
+    // OrderPlaced(bytes32 indexed orderId, address indexed maker, address indexed baseToken,
+    //             uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, bool isBuy, uint8 orderType)
+    const orderPlacedSignature =
+      'OrderPlaced(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)';
+    const orderPlacedTopic = ethers.id(orderPlacedSignature);
 
     for (const log of receipt.logs) {
-      if (log.topics[0] === topic) {
-        // Order ID is in topics[1]
+      if (log.topics[0] === orderPlacedTopic && log.topics.length >= 2) {
+        // Order ID is in topics[1] (first indexed param)
+        console.log(
+          '[CLOBRepository] Found OrderPlaced event, orderId:',
+          log.topics[1],
+        );
         return log.topics[1];
       }
     }
 
-    // Fallback: generate from transaction hash and index
-    // This won't match the actual contract-generated ID but works for tracking
-    console.warn('[CLOBRepository] Could not extract order ID from logs');
-    return `0x${receipt.hash.slice(2, 34)}`;
+    // Fallback: use transaction hash as a pseudo-ID
+    // The indexer will have the real orderId from the event
+    console.warn(
+      '[CLOBRepository] Could not extract order ID from logs, using tx hash fallback',
+    );
+    return receipt.hash;
   }
 
   // ============================================================================
