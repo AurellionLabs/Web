@@ -6,6 +6,7 @@ import { GlassCard } from '../ui/glass-card';
 import { GlowButton } from '../ui/glow-button';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 import { formatTokenAmount } from '@/lib/formatters';
+import { ChevronDown, Package, Check } from 'lucide-react';
 
 /**
  * Order side type
@@ -30,6 +31,18 @@ export interface OrderData {
 }
 
 /**
+ * Sellable asset with balance info
+ */
+export interface SellableAsset {
+  id: string;
+  tokenId: string;
+  name: string;
+  class: string;
+  balance: string;
+  price?: string;
+}
+
+/**
  * Props for the TradePanel component
  */
 export interface TradePanelProps {
@@ -37,6 +50,10 @@ export interface TradePanelProps {
   asset?: TokenizedAssetUI | null;
   /** Initial price to populate */
   initialPrice?: number;
+  /** Available assets for selling (node's inventory) */
+  sellableAssets?: SellableAsset[];
+  /** Callback when asset is selected for selling */
+  onAssetSelect?: (asset: SellableAsset) => void;
   /** Callback when order is placed */
   onOrderPlaced?: (order: OrderData) => void;
   /** Callback when order is submitted for placement */
@@ -163,6 +180,164 @@ const NumberInput: React.FC<NumberInputProps> = ({
 );
 
 /**
+ * AssetSelector - Elegant dropdown for selecting assets to sell
+ */
+interface AssetSelectorProps {
+  assets: SellableAsset[];
+  selectedAsset?: SellableAsset | null;
+  onSelect: (asset: SellableAsset) => void;
+}
+
+const AssetSelector: React.FC<AssetSelectorProps> = ({
+  assets,
+  selectedAsset,
+  onSelect,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (assets.length === 0) {
+    return (
+      <div className="p-4 rounded-xl bg-surface-overlay/50 border border-glass-border text-center">
+        <Package className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">
+          No assets available to sell
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* Trigger Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          'w-full p-3 rounded-xl transition-all duration-200',
+          'bg-gradient-to-br from-surface-overlay to-surface-overlay/50',
+          'border border-glass-border hover:border-trading-sell/30',
+          'flex items-center gap-3',
+          isOpen && 'border-trading-sell/50 ring-1 ring-trading-sell/20',
+        )}
+      >
+        {selectedAsset ? (
+          <>
+            <div className="w-10 h-10 rounded-lg bg-trading-sell/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-lg font-bold text-trading-sell">
+                {selectedAsset.name.charAt(0)}
+              </span>
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <p className="font-medium text-foreground truncate">
+                {selectedAsset.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Balance:{' '}
+                <span className="font-mono text-trading-sell">
+                  {selectedAsset.balance}
+                </span>
+                {selectedAsset.price && (
+                  <span className="ml-2">
+                    • ${formatTokenAmount(selectedAsset.price, 0, 2)}/unit
+                  </span>
+                )}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="w-10 h-10 rounded-lg bg-glass-hover flex items-center justify-center flex-shrink-0">
+              <Package className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm text-muted-foreground">
+                Select asset to sell
+              </p>
+            </div>
+          </>
+        )}
+        <ChevronDown
+          className={cn(
+            'w-5 h-5 text-muted-foreground transition-transform duration-200',
+            isOpen && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
+
+          {/* Dropdown Menu */}
+          <div className="absolute z-20 w-full mt-2 py-2 rounded-xl bg-surface-elevated border border-glass-border shadow-xl shadow-black/20 max-h-64 overflow-y-auto">
+            {assets.map((asset) => {
+              const isSelected = selectedAsset?.id === asset.id;
+              return (
+                <button
+                  key={asset.id}
+                  onClick={() => {
+                    onSelect(asset);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    'w-full px-3 py-2.5 flex items-center gap-3 transition-all duration-150',
+                    'hover:bg-trading-sell/5',
+                    isSelected && 'bg-trading-sell/10',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                      isSelected ? 'bg-trading-sell/20' : 'bg-glass-hover',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'text-sm font-bold',
+                        isSelected
+                          ? 'text-trading-sell'
+                          : 'text-muted-foreground',
+                      )}
+                    >
+                      {asset.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p
+                      className={cn(
+                        'text-sm font-medium truncate',
+                        isSelected ? 'text-trading-sell' : 'text-foreground',
+                      )}
+                    >
+                      {asset.name}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="px-1.5 py-0.5 rounded bg-glass-hover text-[10px] uppercase tracking-wider">
+                        {asset.class}
+                      </span>
+                      <span className="font-mono">
+                        {asset.balance} available
+                      </span>
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <Check className="w-4 h-4 text-trading-sell flex-shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/**
  * TradePanel - Buy/sell form with order type selection
  *
  * Features:
@@ -187,6 +362,8 @@ const NumberInput: React.FC<NumberInputProps> = ({
 export const TradePanel: React.FC<TradePanelProps> = ({
   asset,
   initialPrice,
+  sellableAssets = [],
+  onAssetSelect,
   onOrderPlaced,
   onPlaceOrder,
   className,
@@ -196,6 +373,30 @@ export const TradePanel: React.FC<TradePanelProps> = ({
   const [price, setPrice] = useState(initialPrice?.toString() || '');
   const [quantity, setQuantity] = useState('');
   const [isPlacing, setIsPlacing] = useState(false);
+  const [selectedSellAsset, setSelectedSellAsset] =
+    useState<SellableAsset | null>(null);
+
+  // Handle sell asset selection
+  const handleSellAssetSelect = (sellAsset: SellableAsset) => {
+    setSelectedSellAsset(sellAsset);
+    onAssetSelect?.(sellAsset);
+    // Pre-fill price if available
+    if (sellAsset.price) {
+      setPrice(sellAsset.price);
+    }
+  };
+
+  // Get the effective asset based on side
+  const effectiveAsset =
+    side === 'sell' && selectedSellAsset
+      ? ({
+          ...asset,
+          id: selectedSellAsset.id,
+          name: selectedSellAsset.name,
+          class: selectedSellAsset.class,
+          capacity: selectedSellAsset.balance,
+        } as TokenizedAssetUI)
+      : asset;
 
   // Calculate totals
   const { total, fee, netTotal } = useMemo(() => {
@@ -215,7 +416,8 @@ export const TradePanel: React.FC<TradePanelProps> = ({
 
   // Handle order placement
   const handlePlaceOrder = async () => {
-    if (!asset || !price || !quantity) return;
+    const orderAsset = side === 'sell' ? selectedSellAsset : asset;
+    if (!orderAsset || !price || !quantity) return;
 
     const orderData: OrderData = {
       side,
@@ -223,7 +425,10 @@ export const TradePanel: React.FC<TradePanelProps> = ({
       price: parseFloat(price),
       quantity: parseFloat(quantity),
       total: netTotal,
-      assetId: asset.id,
+      assetId:
+        side === 'sell' && selectedSellAsset
+          ? selectedSellAsset.tokenId
+          : asset?.id || '',
     };
 
     setIsPlacing(true);
@@ -248,7 +453,11 @@ export const TradePanel: React.FC<TradePanelProps> = ({
     }
   }, [initialPrice]);
 
-  const isValid = asset && parseFloat(price) > 0 && parseFloat(quantity) > 0;
+  // For sell orders, require a selected asset
+  const isValid =
+    side === 'sell'
+      ? selectedSellAsset && parseFloat(price) > 0 && parseFloat(quantity) > 0
+      : asset && parseFloat(price) > 0 && parseFloat(quantity) > 0;
 
   return (
     <GlassCard className={cn('flex flex-col', className)}>
@@ -271,6 +480,20 @@ export const TradePanel: React.FC<TradePanelProps> = ({
         <TypeToggle type={type} onTypeChange={setType} />
       </div>
 
+      {/* Asset selector for sell orders */}
+      {side === 'sell' && sellableAssets.length > 0 && (
+        <div className="mt-4">
+          <label className="text-xs font-medium text-muted-foreground mb-2 block">
+            Select Asset to Sell
+          </label>
+          <AssetSelector
+            assets={sellableAssets}
+            selectedAsset={selectedSellAsset}
+            onSelect={handleSellAssetSelect}
+          />
+        </div>
+      )}
+
       {/* Input fields */}
       <div className="mt-4 space-y-4">
         {type === 'limit' && (
@@ -288,17 +511,17 @@ export const TradePanel: React.FC<TradePanelProps> = ({
           value={quantity}
           onChange={setQuantity}
           placeholder="0"
-          suffix={asset?.name?.toUpperCase() || 'UNITS'}
+          suffix={effectiveAsset?.name?.toUpperCase() || 'UNITS'}
         />
 
         {/* Quick quantity buttons */}
-        {asset && (
+        {effectiveAsset && (
           <div className="flex gap-2">
             {[25, 50, 75, 100].map((percent) => (
               <button
                 key={percent}
                 onClick={() => {
-                  const maxQty = parseFloat(asset.capacity) || 0;
+                  const maxQty = parseFloat(effectiveAsset.capacity) || 0;
                   setQuantity(((maxQty * percent) / 100).toString());
                 }}
                 className="flex-1 py-1.5 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-glass-hover border border-glass-border transition-all duration-200"
@@ -348,7 +571,7 @@ export const TradePanel: React.FC<TradePanelProps> = ({
       >
         {isPlacing
           ? 'Placing Order...'
-          : `${side === 'buy' ? 'Buy' : 'Sell'} ${asset?.name || 'Asset'}`}
+          : `${side === 'buy' ? 'Buy' : 'Sell'} ${effectiveAsset?.name || 'Asset'}`}
       </GlowButton>
 
       {/* Market price info for market orders */}
