@@ -49,7 +49,12 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    console.log('[NodesProvider] Context init effect:', {
+      connected,
+      address: !!address,
+    });
     if (connected && address) {
+      console.log('[NodesProvider] Setting repository and service contexts');
       const repoContext = RepositoryContext.getInstance();
       const servContext = ServiceContext.getInstance();
       setRepositoryContext(repoContext);
@@ -60,14 +65,22 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   // Load nodes for the current wallet
   const loadNodes = useCallback(
     async (walletAddress: string) => {
-      if (!repositoryContext) return;
+      if (!repositoryContext) {
+        console.log('[NodesProvider] loadNodes: repositoryContext not ready');
+        return;
+      }
 
+      console.log('[NodesProvider] loadNodes: Starting for', walletAddress);
       setLoading(true);
       setError(null);
 
       try {
         const nodeRepository = repositoryContext.getNodeRepository();
+        console.log(
+          '[NodesProvider] loadNodes: Got nodeRepository, calling getOwnedNodes...',
+        );
         const ownedNodes = await nodeRepository.getOwnedNodes(walletAddress);
+        console.log('[NodesProvider] loadNodes: Got ownedNodes:', ownedNodes);
 
         const nodeDataPromises = ownedNodes.map((nodeAddress) =>
           nodeRepository.getNode(nodeAddress),
@@ -78,12 +91,19 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           (node): node is Node => node !== null,
         );
 
+        console.log(
+          '[NodesProvider] loadNodes: Valid nodes:',
+          validNodes.length,
+        );
         setNodes(validNodes);
         setIsRegisteredNode(validNodes.length > 0);
       } catch (err) {
-        console.error('Error loading nodes:', err);
+        console.error('[NodesProvider] Error loading nodes:', err);
         setError(err as Error);
       } finally {
+        console.log(
+          '[NodesProvider] loadNodes: Finished, setting loading=false',
+        );
         setLoading(false);
       }
     },
@@ -145,7 +165,13 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
   // Load nodes when wallet connects
   useEffect(() => {
+    console.log('[NodesProvider] Effect check:', {
+      connected,
+      address: !!address,
+      hasRepoContext: !!repositoryContext,
+    });
     if (connected && address && repositoryContext) {
+      console.log('[NodesProvider] All conditions met, calling loadNodes');
       loadNodes(address);
     }
   }, [connected, address, repositoryContext, loadNodes]);
