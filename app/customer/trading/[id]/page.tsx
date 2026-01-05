@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useEffect, useState, useCallback } from 'react';
+import { FC, useEffect, useState, useCallback, useRef } from 'react';
 import { useTrade } from '@/app/providers/trade.provider';
 import {
   GlassCard,
@@ -12,14 +12,18 @@ import { PriceChange } from '@/app/components/ui/price-change';
 import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
-import type { PlaceLimitOrderParams } from '@/infrastructure/repositories/clob-repository';
+import type {
+  PlaceLimitOrderParams,
+  CLOBTrade,
+  OrderBookData,
+  MarketStats,
+} from '@/infrastructure/repositories/clob-repository';
+import { clobRepository } from '@/infrastructure/repositories/clob-repository';
 import {
-  ArrowLeft,
-  Share2,
-  RefreshCw,
-  ExternalLink,
-  Clock,
-} from 'lucide-react';
+  priceHistoryService,
+  type TimePeriod as PriceTimePeriod,
+} from '@/infrastructure/services/price-history-service';
+import { ArrowLeft, Share2, RefreshCw, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
@@ -31,6 +35,9 @@ import dynamic from 'next/dynamic';
 
 // Dynamically import chart to avoid SSR issues
 const Chart = dynamic(() => import('./chart'), { ssr: false });
+
+// Auto-refresh interval in milliseconds
+const REFRESH_INTERVAL = 15000; // 15 seconds
 
 /**
  * Time period options for the chart
@@ -55,50 +62,42 @@ interface PageProps {
 }
 
 /**
- * Generate mock recent trades
+ * Format trade for display
  */
-const generateMockTrades = (basePrice: number) => {
-  return Array.from({ length: 10 }, (_, i) => ({
-    id: `trade-${i}`,
-    time: new Date(Date.now() - i * 60000).toLocaleTimeString(),
-    side: Math.random() > 0.5 ? 'buy' : 'sell',
-    price: basePrice * (1 + (Math.random() - 0.5) * 0.02),
-    quantity: Math.floor(Math.random() * 10) + 1,
+interface DisplayTrade {
+  id: string;
+  time: string;
+  side: 'buy' | 'sell';
+  price: number;
+  quantity: number;
+}
+
+/**
+ * Convert CLOB trades to display format
+ */
+const formatTradesForDisplay = (trades: CLOBTrade[]): DisplayTrade[] => {
+  return trades.map((trade) => ({
+    id: trade.id,
+    time: new Date(trade.timestamp).toLocaleTimeString(),
+    side: 'buy' as const, // Trades don't have side info directly, could be inferred
+    price: trade.price,
+    quantity: trade.amount,
   }));
 };
 
 /**
- * Generate mock price history for chart
+ * Convert OHLCV candles to chart format
  */
-const generatePriceHistory = (basePrice: number, period: TimePeriod) => {
-  let points = 24;
-  switch (period) {
-    case '1h':
-      points = 12;
-      break;
-    case '1d':
-      points = 24;
-      break;
-    case '1w':
-      points = 7;
-      break;
-    case '1m':
-      points = 30;
-      break;
-    case '1y':
-      points = 12;
-      break;
+const candlesToChartData = (
+  candles: { time: number; close: number }[],
+  period: TimePeriod,
+) => {
+  if (candles.length === 0) {
+    return { dates: [], prices: [] };
   }
 
-  const dates = Array.from({ length: points }, (_, i) => {
-    const date = new Date();
-    if (period === '1h')
-      date.setMinutes(date.getMinutes() - (points - 1 - i) * 5);
-    else if (period === '1d') date.setHours(date.getHours() - (points - 1 - i));
-    else if (period === '1w') date.setDate(date.getDate() - (points - 1 - i));
-    else if (period === '1m') date.setDate(date.getDate() - (points - 1 - i));
-    else date.setMonth(date.getMonth() - (points - 1 - i));
-
+  const dates = candles.map((c) => {
+    const date = new Date(c.time * 1000);
     return date.toLocaleDateString('en-US', {
       month: period === '1y' ? 'short' : undefined,
       day: period !== '1y' ? 'numeric' : undefined,
@@ -107,10 +106,7 @@ const generatePriceHistory = (basePrice: number, period: TimePeriod) => {
     });
   });
 
-  const prices = Array.from({ length: points }, () => {
-    const variation = (Math.random() - 0.5) * 0.1;
-    return basePrice * (1 + variation);
-  });
+  const prices = candles.map((c) => c.close);
 
   return { dates, prices };
 };
@@ -119,44 +115,58 @@ const generatePriceHistory = (basePrice: number, period: TimePeriod) => {
  * RecentTrades - List of recent trade executions
  */
 interface RecentTradesProps {
-  trades: ReturnType<typeof generateMockTrades>;
+  trades: DisplayTrade[];
+  isLoading?: boolean;
 }
 
-const RecentTrades: FC<RecentTradesProps> = ({ trades }) => (
+const RecentTrades: FC<RecentTradesProps> = ({ trades, isLoading }) => (
   <GlassCard padding={false}>
     <div className="p-4 border-b border-glass-border">
       <h3 className="text-lg font-semibold text-foreground">Recent Trades</h3>
     </div>
     <div className="divide-y divide-glass-border max-h-64 overflow-y-auto">
-      {trades.map((trade) => (
-        <div
-          key={trade.id}
-          className="flex items-center justify-between px-4 py-2 text-sm"
-        >
-          <span className="text-muted-foreground font-mono text-xs">
-            {trade.time}
-          </span>
-          <span
-            className={cn(
-              'font-mono',
-              trade.side === 'buy' ? 'text-trading-buy' : 'text-trading-sell',
-            )}
-          >
-            ${trade.price.toFixed(2)}
-          </span>
-          <span className="text-foreground font-mono">{trade.quantity}</span>
-          <span
-            className={cn(
-              'text-xs px-2 py-0.5 rounded',
-              trade.side === 'buy'
-                ? 'bg-trading-buy/10 text-trading-buy'
-                : 'bg-trading-sell/10 text-trading-sell',
-            )}
-          >
-            {trade.side.toUpperCase()}
-          </span>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-accent" />
         </div>
-      ))}
+      ) : trades.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <p className="text-muted-foreground text-sm">No trades yet</p>
+          <p className="text-muted-foreground/60 text-xs mt-1">
+            Be the first to trade this asset
+          </p>
+        </div>
+      ) : (
+        trades.map((trade) => (
+          <div
+            key={trade.id}
+            className="flex items-center justify-between px-4 py-2 text-sm"
+          >
+            <span className="text-muted-foreground font-mono text-xs">
+              {trade.time}
+            </span>
+            <span
+              className={cn(
+                'font-mono',
+                trade.side === 'buy' ? 'text-trading-buy' : 'text-trading-sell',
+              )}
+            >
+              ${trade.price.toFixed(2)}
+            </span>
+            <span className="text-foreground font-mono">{trade.quantity}</span>
+            <span
+              className={cn(
+                'text-xs px-2 py-0.5 rounded',
+                trade.side === 'buy'
+                  ? 'bg-trading-buy/10 text-trading-buy'
+                  : 'bg-trading-sell/10 text-trading-sell',
+              )}
+            >
+              {trade.side.toUpperCase()}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   </GlassCard>
 );
@@ -175,10 +185,101 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   >([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Real data state
+  const [recentTrades, setRecentTrades] = useState<DisplayTrade[]>([]);
+  const [priceHistory, setPriceHistory] = useState<{
+    dates: string[];
+    prices: number[];
+  }>({ dates: [], prices: [] });
+  const [marketStats, setMarketStats] = useState<MarketStats | null>(null);
+  const [isLoadingTrades, setIsLoadingTrades] = useState(true);
+  const [isLoadingChart, setIsLoadingChart] = useState(true);
+
+  // Ref for auto-refresh interval
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const asset = assets.find((a) => a.id === params.id);
-  const basePrice = asset ? parseFloat(asset.price) : 100;
-  const priceHistory = generatePriceHistory(basePrice, selectedPeriod);
-  const recentTrades = generateMockTrades(basePrice);
+  const basePrice =
+    marketStats?.lastPrice || (asset ? parseFloat(asset.price) : 100);
+
+  // Get token ID from asset
+  // The asset.id IS the tokenId (set in node-repository.ts: id: na.tokenId)
+  const getTokenId = useCallback(() => {
+    if (!asset) return '0';
+    // asset.id is the tokenId from the indexer
+    return asset.id || '0';
+  }, [asset]);
+
+  // Fetch real trading data
+  const fetchTradingData = useCallback(async () => {
+    if (!asset) return;
+
+    const tokenId = getTokenId();
+
+    try {
+      // Fetch trades
+      const trades = await clobRepository.getTrades(
+        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        tokenId,
+        20,
+      );
+      setRecentTrades(formatTradesForDisplay(trades));
+
+      // Fetch market stats
+      const stats = await clobRepository.getMarketStats(
+        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        tokenId,
+      );
+      setMarketStats(stats);
+    } catch (error) {
+      console.error('[TradingPage] Error fetching trading data:', error);
+    } finally {
+      setIsLoadingTrades(false);
+    }
+  }, [asset, getTokenId]);
+
+  // Fetch price history for chart
+  const fetchPriceHistory = useCallback(async () => {
+    if (!asset) return;
+
+    const tokenId = getTokenId();
+    setIsLoadingChart(true);
+
+    try {
+      const candles = await priceHistoryService.getCandlestickData(
+        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        tokenId,
+        selectedPeriod as PriceTimePeriod,
+      );
+
+      const chartData = candlesToChartData(candles, selectedPeriod);
+      setPriceHistory(chartData);
+    } catch (error) {
+      console.error('[TradingPage] Error fetching price history:', error);
+      setPriceHistory({ dates: [], prices: [] });
+    } finally {
+      setIsLoadingChart(false);
+    }
+  }, [asset, getTokenId, selectedPeriod]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchTradingData();
+    fetchPriceHistory();
+  }, [fetchTradingData, fetchPriceHistory]);
+
+  // Auto-refresh trading data
+  useEffect(() => {
+    refreshIntervalRef.current = setInterval(() => {
+      fetchTradingData();
+    }, REFRESH_INTERVAL);
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [fetchTradingData]);
 
   // Fetch asset attributes
   useEffect(() => {
@@ -191,11 +292,16 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
     fetchAssetAttributes();
   }, [asset?.id, getAssetAttributes, asset]);
 
-  // Handle refresh
+  // Handle manual refresh
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await Promise.all([fetchTradingData(), fetchPriceHistory()]);
     setIsRefreshing(false);
+  }, [fetchTradingData, fetchPriceHistory]);
+
+  // Handle period change
+  const handlePeriodChange = useCallback((period: TimePeriod) => {
+    setSelectedPeriod(period);
   }, []);
 
   // Handle price click from order book
@@ -228,9 +334,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         const { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } = await import(
           '@/chain-constants'
         );
-        // Use tokenId if available, otherwise try to extract from id or use '0'
-        const assetAny = asset as any;
-        const tokenId = assetAny.tokenId || assetAny.tokenID?.toString() || '0';
+        // asset.id IS the tokenId from the indexer
+        const tokenId = asset.id || '0';
         const clobParams: PlaceLimitOrderParams = {
           baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
           baseTokenId: tokenId,
@@ -382,9 +487,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
                   <div className="text-3xl font-display font-bold text-foreground mb-1">
-                    ${formatTokenAmount(asset.price, 0, 2)}
+                    ${formatTokenAmount(basePrice.toString(), 0, 2)}
                   </div>
-                  <PriceChange value={(Math.random() - 0.3) * 10} showIcon />
+                  <PriceChange value={marketStats?.change24h || 0} showIcon />
                 </div>
 
                 {/* Time period tabs */}
@@ -392,7 +497,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                   {TIME_PERIODS.map((period) => (
                     <button
                       key={period.value}
-                      onClick={() => setSelectedPeriod(period.value)}
+                      onClick={() => handlePeriodChange(period.value)}
                       className={cn(
                         'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
                         selectedPeriod === period.value
@@ -408,7 +513,22 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
               {/* Chart */}
               <div className="h-[300px] md:h-[400px]">
-                <Chart priceData={priceHistory} timeRange={selectedPeriod} />
+                {isLoadingChart ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                  </div>
+                ) : priceHistory.dates.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center">
+                    <p className="text-muted-foreground">
+                      No price data available
+                    </p>
+                    <p className="text-muted-foreground/60 text-sm mt-1">
+                      Price history will appear after trades occur
+                    </p>
+                  </div>
+                ) : (
+                  <Chart priceData={priceHistory} timeRange={selectedPeriod} />
+                )}
               </div>
             </GlassCard>
 
@@ -416,11 +536,13 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <OrderBook
                 assetId={asset.id}
+                baseToken={NEXT_PUBLIC_AURA_GOAT_ADDRESS}
+                baseTokenId={getTokenId()}
                 basePrice={basePrice}
                 maxLevels={8}
                 onPriceClick={handlePriceClick}
               />
-              <RecentTrades trades={recentTrades} />
+              <RecentTrades trades={recentTrades} isLoading={isLoadingTrades} />
             </div>
           </div>
 
