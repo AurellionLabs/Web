@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from './useWallet';
+import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
 import { SellableAsset } from '@/app/components/trading/trade-panel';
 
 /**
- * GraphQL query to get user's token balances
+ * GraphQL query to get user's ERC1155 token balances (from transfers)
  */
 const GET_USER_BALANCES = `
   query GetUserBalances($user: String!) {
@@ -19,6 +20,25 @@ const GET_USER_BALANCES = `
         balance
         asset
         lastUpdated
+      }
+    }
+  }
+`;
+
+/**
+ * GraphQL query to get node's inventory (for nodes selling their assets)
+ * This returns assets the node has minted and can sell
+ */
+const GET_NODE_INVENTORY = `
+  query GetNodeInventory($node: String!) {
+    nodeAssetss(where: { node: $node }, limit: 100) {
+      items {
+        id
+        node
+        tokenId
+        capacity
+        price
+        token
       }
     }
   }
@@ -42,21 +62,6 @@ const GET_ASSETS_BY_TOKEN_IDS = `
   }
 `;
 
-/**
- * GraphQL query to get node asset prices
- */
-const GET_NODE_ASSET_PRICES = `
-  query GetNodeAssetPrices($tokenIds: [BigInt!]!) {
-    nodeAssetss(where: { tokenId_in: $tokenIds }, limit: 100) {
-      items {
-        tokenId
-        price
-        node
-      }
-    }
-  }
-`;
-
 interface UserBalanceResponse {
   userBalancess: {
     items: Array<{
@@ -66,6 +71,19 @@ interface UserBalanceResponse {
       balance: string;
       asset: string;
       lastUpdated: string;
+    }>;
+  };
+}
+
+interface NodeInventoryResponse {
+  nodeAssetss: {
+    items: Array<{
+      id: string;
+      node: string;
+      tokenId: string;
+      capacity: string;
+      price: string;
+      token: string;
     }>;
   };
 }
@@ -83,42 +101,41 @@ interface AssetMetadataResponse {
   };
 }
 
-interface NodeAssetPriceResponse {
-  nodeAssetss: {
-    items: Array<{
-      tokenId: string;
-      price: string;
-      node: string;
-    }>;
-  };
+interface BalanceItem {
+  id: string;
+  tokenId: string;
+  balance: string;
+  price?: string;
 }
 
 /**
  * Hook to fetch user's owned assets with balances
+ *
+ * For nodes: Uses nodeAssets inventory (capacity)
+ * For customers: Uses userBalances (ERC1155 token holdings)
  *
  * @param filterClass - Optional asset class to filter by
  * @returns User's sellable assets with balances and metadata
  */
 export function useUserAssets(filterClass?: string) {
   const { address, isConnected } = useWallet();
-  const [balances, setBalances] = useState<
-    UserBalanceResponse['userBalancess']['items']
-  >([]);
+  const { selectedNodeAddress } = useSelectedNode();
+
+  const [balances, setBalances] = useState<BalanceItem[]>([]);
   const [metadata, setMetadata] = useState<
     Map<string, AssetMetadataResponse['assetss']['items'][0]>
   >(new Map());
-  const [prices, setPrices] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   /**
    * Fetch user balances and related metadata
+   * Checks both node inventory (if user is a node) and ERC1155 balances
    */
   const fetchUserAssets = useCallback(async () => {
     if (!isConnected || !address) {
       setBalances([]);
       setMetadata(new Map());
-      setPrices(new Map());
       setIsLoading(false);
       return;
     }
@@ -127,8 +144,38 @@ export function useUserAssets(filterClass?: string) {
     setError(null);
 
     try {
-      // Step 1: Fetch user's token balances
-      console.log('[useUserAssets] Fetching balances for:', address);
+      const allBalances: BalanceItem[] = [];
+
+      // Step 1a: If user has a selected node, fetch node inventory
+      if (selectedNodeAddress) {
+        console.log(
+          '[useUserAssets] Fetching node inventory for:',
+          selectedNodeAddress,
+        );
+        const nodeResponse = await graphqlRequest<NodeInventoryResponse>(
+          NEXT_PUBLIC_INDEXER_URL,
+          GET_NODE_INVENTORY,
+          { node: selectedNodeAddress.toLowerCase() },
+        );
+
+        const nodeAssets = nodeResponse.nodeAssetss?.items || [];
+        console.log('[useUserAssets] Found node assets:', nodeAssets.length);
+
+        // Convert node assets to balance items (capacity = balance for nodes)
+        nodeAssets.forEach((na) => {
+          if (BigInt(na.capacity) > 0n) {
+            allBalances.push({
+              id: na.id,
+              tokenId: na.tokenId,
+              balance: na.capacity,
+              price: na.price,
+            });
+          }
+        });
+      }
+
+      // Step 1b: Also fetch user's ERC1155 token balances (in case they received tokens)
+      console.log('[useUserAssets] Fetching ERC1155 balances for:', address);
       const balanceResponse = await graphqlRequest<UserBalanceResponse>(
         NEXT_PUBLIC_INDEXER_URL,
         GET_USER_BALANCES,
@@ -136,39 +183,42 @@ export function useUserAssets(filterClass?: string) {
       );
 
       const userBalances = balanceResponse.userBalancess?.items || [];
-      console.log('[useUserAssets] Found balances:', userBalances.length);
+      console.log('[useUserAssets] Found user balances:', userBalances.length);
 
-      // Filter out zero balances
-      const nonZeroBalances = userBalances.filter(
-        (b) => BigInt(b.balance) > 0n,
-      );
+      // Add user balances (avoiding duplicates with node inventory)
+      const existingTokenIds = new Set(allBalances.map((b) => b.tokenId));
+      userBalances.forEach((ub) => {
+        if (BigInt(ub.balance) > 0n && !existingTokenIds.has(ub.tokenId)) {
+          allBalances.push({
+            id: ub.id,
+            tokenId: ub.tokenId,
+            balance: ub.balance,
+          });
+        }
+      });
 
-      if (nonZeroBalances.length === 0) {
+      if (allBalances.length === 0) {
         setBalances([]);
         setMetadata(new Map());
-        setPrices(new Map());
         setIsLoading(false);
         return;
       }
 
-      setBalances(nonZeroBalances);
+      setBalances(allBalances);
 
-      // Step 2: Fetch asset metadata for these token IDs
-      const tokenIds = nonZeroBalances.map((b) => b.tokenId);
-      console.log('[useUserAssets] Fetching metadata for tokenIds:', tokenIds);
+      // Step 2: Fetch asset metadata for all token IDs
+      const tokenIds = allBalances.map((b) => b.tokenId);
+      console.log(
+        '[useUserAssets] Fetching metadata for',
+        tokenIds.length,
+        'tokenIds',
+      );
 
-      const [metadataResponse, priceResponse] = await Promise.all([
-        graphqlRequest<AssetMetadataResponse>(
-          NEXT_PUBLIC_INDEXER_URL,
-          GET_ASSETS_BY_TOKEN_IDS,
-          { tokenIds },
-        ),
-        graphqlRequest<NodeAssetPriceResponse>(
-          NEXT_PUBLIC_INDEXER_URL,
-          GET_NODE_ASSET_PRICES,
-          { tokenIds },
-        ),
-      ]);
+      const metadataResponse = await graphqlRequest<AssetMetadataResponse>(
+        NEXT_PUBLIC_INDEXER_URL,
+        GET_ASSETS_BY_TOKEN_IDS,
+        { tokenIds },
+      );
 
       // Build metadata map
       const metaMap = new Map<
@@ -179,15 +229,6 @@ export function useUserAssets(filterClass?: string) {
         metaMap.set(asset.tokenId, asset);
       });
       setMetadata(metaMap);
-
-      // Build price map (use first price found for each tokenId)
-      const priceMap = new Map<string, string>();
-      (priceResponse.nodeAssetss?.items || []).forEach((nodeAsset) => {
-        if (!priceMap.has(nodeAsset.tokenId)) {
-          priceMap.set(nodeAsset.tokenId, nodeAsset.price);
-        }
-      });
-      setPrices(priceMap);
 
       console.log(
         '[useUserAssets] Loaded metadata for',
@@ -200,7 +241,7 @@ export function useUserAssets(filterClass?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [address, isConnected]);
+  }, [address, isConnected, selectedNodeAddress]);
 
   // Fetch on mount and when address changes
   useEffect(() => {
@@ -229,20 +270,20 @@ export function useUserAssets(filterClass?: string) {
         continue;
       }
 
-      const price = prices.get(balance.tokenId);
-
       result.push({
         id: balance.id,
         tokenId: balance.tokenId,
         name: meta.name || 'Unknown Asset',
         class: meta.assetClass || meta.className || 'Unknown',
         balance: balance.balance,
-        price: price ? (Number(price) / 1e18).toFixed(2) : undefined,
+        price: balance.price
+          ? (Number(balance.price) / 1e18).toFixed(2)
+          : undefined,
       });
     }
 
     return result;
-  }, [balances, metadata, prices, filterClass]);
+  }, [balances, metadata, filterClass]);
 
   return {
     sellableAssets,
