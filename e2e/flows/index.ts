@@ -10,3 +10,4 @@ export * from './action-simulator';
 export * from './rwy-flows';
 export * from './pool-flows';
 export * from './order-flows';
+export * from './redemption-flows';

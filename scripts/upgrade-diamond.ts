@@ -30,12 +30,26 @@ async function getFacetSelectors(facetName: string): Promise<string[]> {
       '0x5b5c6f6c', // transferOwnershipWithAcceptance
     ],
     NodesFacet: [
-      '0x5c4c6f2e', // registerNode
-      '0x2f154f1d', // updateNode
-      '0x5c6b4824', // deactivateNode
-      '0x9e665932', // getNode
-      '0x1e5e3c8f', // getOwnerNodes
-      '0xec5b5ef2', // getTotalNodes
+      '0x2bef7fb5', // addSupportedAsset
+      '0xa2444390', // deactivateNode
+      '0x50c946fe', // getNode
+      '0xc83f7ca4', // getNodeAssets
+      '0xb59d3bea', // getOwnerNodes
+      '0x3e691b1f', // getTotalNodeAssets
+      '0x63584ecd', // getTotalNodes
+      '0x506a17b2', // registerNode
+      '0x641b8fc7', // updateNode
+      '0xd9ff9ee4', // updateNodeCapacity
+      '0xd24e25d3', // updateNodeLocation
+      '0x4b1f5c70', // updateNodeOwner
+      '0x16261e99', // updateNodeStatus
+      '0x6766c717', // updateSupportedAssets
+      // CLOB approval functions
+      '0xf7502631', // setAuraAssetAddress
+      '0x89a1153c', // getAuraAssetAddress
+      '0x40ed3118', // approveClobForTokens
+      '0xe1ed5db1', // revokeClobApproval
+      '0xcb24a4b4', // isClobApproved
     ],
     AssetsFacet: [
       '0x9d8c698d', // addSupportedClass

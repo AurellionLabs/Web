@@ -1,14 +1,12 @@
 'use client';
 
-import { ethers, Signer } from 'ethers';
+import { ethers } from 'ethers';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
-import {
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
 import { Order, OrderStatus } from '@/domain/orders/order';
 import { ParcelData } from '@/domain/shared';
+import { RouteCalculationService } from './route-calculation-service';
 
 /**
  * Parameters for requesting a redemption
@@ -18,6 +16,9 @@ export interface RedemptionParams {
   quantity: bigint;
   deliveryAddress: string;
   originNode: string; // The node where the physical asset is stored
+  confirmationLevel: number; // Number of nodes in the route (1-5)
+  destinationLat: number; // Customer delivery latitude
+  destinationLng: number; // Customer delivery longitude
 }
 
 /**
@@ -59,10 +60,12 @@ const ERC20_ABI = [
 export class RedemptionService {
   private repositoryContext: RepositoryContext;
   private serviceContext: ServiceContext;
+  private routeCalculationService: RouteCalculationService;
 
   constructor() {
     this.repositoryContext = RepositoryContext.getInstance();
     this.serviceContext = ServiceContext.getInstance();
+    this.routeCalculationService = new RouteCalculationService();
   }
 
   /**
@@ -72,7 +75,15 @@ export class RedemptionService {
    * @returns Result with order and journey IDs
    */
   async requestRedemption(params: RedemptionParams): Promise<RedemptionResult> {
-    const { tokenId, quantity, deliveryAddress, originNode } = params;
+    const {
+      tokenId,
+      quantity,
+      deliveryAddress,
+      originNode,
+      confirmationLevel,
+      destinationLat,
+      destinationLng,
+    } = params;
 
     try {
       console.log('[RedemptionService] Starting redemption request:', {
@@ -80,6 +91,8 @@ export class RedemptionService {
         quantity: quantity.toString(),
         deliveryAddress,
         originNode,
+        confirmationLevel,
+        destination: { lat: destinationLat, lng: destinationLng },
       });
 
       const signer = this.repositoryContext.getSigner();
@@ -104,7 +117,22 @@ export class RedemptionService {
         balance.toString(),
       );
 
-      // Step 2: Burn the tokens
+      // Step 2: Calculate the delivery route through nodes
+      console.log('[RedemptionService] Calculating delivery route...');
+      const route = await this.routeCalculationService.calculateRoute(
+        originNode,
+        destinationLat,
+        destinationLng,
+        confirmationLevel,
+      );
+
+      console.log('[RedemptionService] Route calculated:', {
+        nodes: route.nodes,
+        totalDistance: `${route.totalDistance.toFixed(2)} km`,
+        estimatedDays: route.estimatedDays,
+      });
+
+      // Step 3: Burn the tokens
       // The user burns their own tokens (ERC1155Burnable allows self-burn)
       console.log('[RedemptionService] Burning tokens...');
       const burnTx = await auraAssetContract.burn(
@@ -115,24 +143,34 @@ export class RedemptionService {
       const burnReceipt = await burnTx.wait();
       console.log('[RedemptionService] Tokens burned. Tx:', burnReceipt.hash);
 
-      // Step 3: Create the logistics order via OrderService
-      const orderService = this.serviceContext.getOrderService();
+      // Step 4: Get origin node location for parcel data
+      const originNodeLocation =
+        await this.routeCalculationService.getNodeLocation(originNode);
 
-      // Build parcel data from delivery address
-      // In production, this would geocode the address
+      // Build parcel data with actual coordinates
       const parcelData: ParcelData = {
-        startLocation: { lat: '0', lng: '0' }, // Origin node location (would be fetched)
-        endLocation: { lat: '0', lng: '0' }, // Customer location (would be geocoded)
-        startName: originNode || 'Origin Node',
+        startLocation: originNodeLocation
+          ? {
+              lat: originNodeLocation.lat.toString(),
+              lng: originNodeLocation.lng.toString(),
+            }
+          : { lat: '0', lng: '0' },
+        endLocation: {
+          lat: destinationLat.toString(),
+          lng: destinationLng.toString(),
+        },
+        startName:
+          originNodeLocation?.addressName || originNode || 'Origin Node',
         endName: deliveryAddress,
       };
 
-      // Calculate redemption fee (simplified - would be based on distance/nodes)
-      const baseRedemptionFee = 5_000_000n; // $5 in USDC (6 decimals)
-      const perUnitFee = 2_000_000n; // $2 per unit
-      const totalFee = baseRedemptionFee + perUnitFee * quantity;
+      // Step 5: Calculate redemption fee based on route
+      const totalFee = this.calculateRedemptionFee(
+        quantity,
+        route.nodes.length,
+      );
 
-      // Build the order
+      // Build the order with the calculated route
       const order: Order = {
         id: '', // Will be assigned by contract
         token: NEXT_PUBLIC_AURA_ASSET_ADDRESS,
@@ -143,31 +181,37 @@ export class RedemptionService {
         buyer: signerAddress,
         seller: originNode || signerAddress, // Origin node is the "seller" in redemption context
         journeyIds: [],
-        nodes: originNode ? [originNode] : [],
+        nodes: route.nodes, // All nodes in the delivery route
         locationData: parcelData,
         currentStatus: OrderStatus.CREATED,
         contractualAgreement: '',
       };
 
+      // Step 6: Create the logistics order via OrderService
+      const orderService = this.serviceContext.getOrderService();
       console.log('[RedemptionService] Creating logistics order...');
       const orderId = await orderService.createOrder(order);
       console.log('[RedemptionService] Order created:', orderId);
 
-      // Step 4: Create the initial journey
-      // The journey goes from the origin node to the customer
-      if (originNode) {
+      // Step 7: Create journeys for each leg of the route
+      // For now, create a single journey from origin to destination
+      // In the future, this could create multiple journeys for each node hop
+      if (route.nodes.length > 0) {
         console.log('[RedemptionService] Creating initial journey...');
 
-        // Calculate driver bounty (portion of the fee)
-        const bounty = totalFee / 5n; // 20% of fee goes to driver
+        // Calculate driver bounty (portion of the fee distributed across nodes)
+        const bountyPerNode = totalFee / BigInt(route.nodes.length) / 5n; // 20% of fee per node
+
+        // Calculate ETA based on route
+        const etaMs = Date.now() + route.estimatedDays * 24 * 60 * 60 * 1000;
 
         const journeyId = await orderService.createOrderJourney(
           orderId,
-          originNode, // Sender is the origin node
+          route.nodes[0], // First node (origin) is the sender
           signerAddress, // Receiver is the customer
           parcelData,
-          bounty,
-          BigInt(Date.now() + 7 * 24 * 60 * 60 * 1000), // ETA: 7 days
+          bountyPerNode,
+          BigInt(etaMs),
           quantity,
           BigInt(tokenId),
         );
@@ -195,33 +239,42 @@ export class RedemptionService {
   }
 
   /**
-   * Calculate the redemption fee for a given quantity
+   * Calculate the redemption fee for a given quantity and node count
    *
    * @param quantity - Number of units to redeem
+   * @param nodeCount - Number of nodes in the route (default 1)
    * @returns Fee in USDC (6 decimals)
    */
-  calculateRedemptionFee(quantity: bigint): bigint {
-    const baseRedemptionFee = 5_000_000n; // $5 in USDC
+  calculateRedemptionFee(quantity: bigint, nodeCount: number = 1): bigint {
+    const baseRedemptionFee = 5_000_000n; // $5 in USDC (6 decimals)
+    const perNodeFee = 3_000_000n; // $3 per intermediate node
     const perUnitFee = 2_000_000n; // $2 per unit
-    return baseRedemptionFee + perUnitFee * quantity;
+
+    // Fee increases with more nodes (more security = higher cost)
+    const intermediateNodes = Math.max(0, nodeCount - 1);
+    return (
+      baseRedemptionFee +
+      perNodeFee * BigInt(intermediateNodes) +
+      perUnitFee * quantity
+    );
   }
 
   /**
-   * Get the estimated delivery time based on origin node and destination
+   * Get the estimated delivery time based on route
    *
-   * @param originNode - Origin node address
-   * @param destinationAddress - Delivery address
+   * @param nodeCount - Number of nodes in the delivery route
    * @returns Estimated delivery time in days
    */
-  estimateDeliveryTime(
-    _originNode: string,
-    _destinationAddress: string,
-  ): number {
-    // Simplified - in production this would calculate based on:
-    // - Distance between origin and destination
-    // - Available node network for relay
-    // - Historical delivery times
-    return 5; // Default 5 days
+  estimateDeliveryTime(nodeCount: number): number {
+    // Base 2 days + 1 day per node in route
+    return nodeCount + 2;
+  }
+
+  /**
+   * Get route calculation service for external use (e.g., previewing routes)
+   */
+  getRouteCalculationService(): RouteCalculationService {
+    return this.routeCalculationService;
   }
 }
 

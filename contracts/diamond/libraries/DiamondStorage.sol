@@ -44,6 +44,9 @@ library DiamondStorage {
         mapping(address => uint256) userRewardPerTokenPaid;
         mapping(address => uint256) rewards;
 
+        // ======= TOKEN ADDRESSES =======
+        address auraAssetAddress;
+
         // ======= BRIDGE =======
         address clobAddress;
         address ausysAddress;

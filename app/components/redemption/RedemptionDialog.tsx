@@ -12,20 +12,26 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
+import { Slider } from '@/app/components/ui/slider';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { cn } from '@/lib/utils';
 import {
   Send,
   MapPin,
-  Package,
   Loader2,
   AlertTriangle,
   CheckCircle2,
   Truck,
+  Shield,
+  Clock,
 } from 'lucide-react';
 import { UserHolding } from '@/hooks/useUserHoldings';
 import { RedemptionService } from '@/infrastructure/services/redemption-service';
 import { useToast } from '@/hooks/use-toast';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+// Google Maps libraries
+const GOOGLE_LIBRARIES: 'places'[] = ['places'];
 
 interface RedemptionDialogProps {
   isOpen: boolean;
@@ -52,15 +58,22 @@ export function RedemptionDialog({
 }: RedemptionDialogProps) {
   const { toast } = useToast();
 
+  // Google Maps
+  const { isLoaded: mapsLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: GOOGLE_LIBRARIES,
+  });
+  const [autocomplete, setAutocomplete] =
+    useState<google.maps.places.Autocomplete | null>(null);
+
   // Form state
   const [quantity, setQuantity] = useState('1');
-  const [deliveryAddress, setDeliveryAddress] = useState({
-    street: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: '',
-  });
+  const [confirmationLevel, setConfirmationLevel] = useState(3); // Default: 3 nodes
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryCoords, setDeliveryCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   // UI state
   const [step, setStep] = useState<
@@ -69,20 +82,48 @@ export function RedemptionDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calculate redemption fee (simplified - in production this would be based on distance/nodes)
+  // Calculate redemption fee based on confirmation level and quantity
   const baseRedemptionFee = 5; // $5 base fee
+  const perNodeFee = 3; // $3 per intermediate node
   const perUnitFee = 2; // $2 per unit
   const quantityNum = parseInt(quantity) || 0;
-  const totalFee = baseRedemptionFee + perUnitFee * quantityNum;
+  // Fee increases with more nodes (more security = higher cost)
+  const totalFee =
+    baseRedemptionFee +
+    perNodeFee * (confirmationLevel - 1) +
+    perUnitFee * quantityNum;
+
+  // Estimated delivery time based on confirmation level
+  const estimatedDays = confirmationLevel + 2; // Base 3 days + 1 day per extra node
 
   const isValidQuantity =
     quantityNum > 0 && BigInt(quantityNum) <= holding.balance;
   const isAddressComplete =
-    deliveryAddress.street &&
-    deliveryAddress.city &&
-    deliveryAddress.state &&
-    deliveryAddress.postalCode &&
-    deliveryAddress.country;
+    deliveryAddress.length > 0 && deliveryCoords !== null;
+
+  // Confirmation level descriptions
+  const getConfirmationDescription = (level: number) => {
+    switch (level) {
+      case 1:
+        return { label: 'Direct', security: 'Basic', speed: 'Fastest' };
+      case 2:
+        return { label: 'Standard', security: 'Good', speed: 'Fast' };
+      case 3:
+        return { label: 'Enhanced', security: 'Strong', speed: 'Medium' };
+      case 4:
+        return {
+          label: 'High Security',
+          security: 'Very Strong',
+          speed: 'Slower',
+        };
+      case 5:
+        return { label: 'Maximum', security: 'Maximum', speed: 'Slowest' };
+      default:
+        return { label: 'Standard', security: 'Good', speed: 'Medium' };
+    }
+  };
+
+  const confirmationDesc = getConfirmationDescription(confirmationLevel);
 
   const handleQuantityChange = (value: string) => {
     // Only allow positive integers
@@ -92,11 +133,17 @@ export function RedemptionDialog({
     }
   };
 
-  const handleAddressChange = (
-    field: keyof typeof deliveryAddress,
-    value: string,
-  ) => {
-    setDeliveryAddress((prev) => ({ ...prev, [field]: value }));
+  const handlePlaceSelect = () => {
+    if (autocomplete) {
+      const place = autocomplete.getPlace();
+      if (place.geometry && place.geometry.location) {
+        setDeliveryAddress(place.formatted_address || '');
+        setDeliveryCoords({
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        });
+      }
+    }
   };
 
   const handleProceedToConfirm = () => {
@@ -105,7 +152,7 @@ export function RedemptionDialog({
       return;
     }
     if (!isAddressComplete) {
-      setError('Please complete all address fields');
+      setError('Please select a delivery address from the dropdown');
       return;
     }
     setError(null);
@@ -120,14 +167,18 @@ export function RedemptionDialog({
     try {
       const redemptionService = new RedemptionService();
 
-      // Format delivery address as a single string for the parcel data
-      const formattedAddress = `${deliveryAddress.street}, ${deliveryAddress.city}, ${deliveryAddress.state} ${deliveryAddress.postalCode}, ${deliveryAddress.country}`;
+      if (!deliveryCoords) {
+        throw new Error('Delivery coordinates not set');
+      }
 
       await redemptionService.requestRedemption({
         tokenId: holding.tokenId,
         quantity: BigInt(quantityNum),
-        deliveryAddress: formattedAddress,
+        deliveryAddress: deliveryAddress,
         originNode: holding.originNode || '',
+        confirmationLevel: confirmationLevel,
+        destinationLat: deliveryCoords.lat,
+        destinationLng: deliveryCoords.lng,
       });
 
       setStep('success');
@@ -149,13 +200,9 @@ export function RedemptionDialog({
 
   const resetForm = () => {
     setQuantity('1');
-    setDeliveryAddress({
-      street: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: '',
-    });
+    setConfirmationLevel(3);
+    setDeliveryAddress('');
+    setDeliveryCoords(null);
     setStep('details');
     setError(null);
   };
@@ -220,53 +267,95 @@ export function RedemptionDialog({
               )}
             </div>
 
-            {/* Delivery Address */}
-            <div className="space-y-4">
+            {/* Delivery Address - Google Places Autocomplete */}
+            <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
                 Delivery Address
               </Label>
-
-              <Input
-                placeholder="Street Address"
-                value={deliveryAddress.street}
-                onChange={(e) => handleAddressChange('street', e.target.value)}
-                className="bg-surface-overlay border-glass-border"
-              />
-
-              <div className="grid grid-cols-2 gap-3">
+              {mapsLoaded ? (
+                <Autocomplete
+                  onLoad={(autocompleteInstance) => {
+                    setAutocomplete(autocompleteInstance);
+                  }}
+                  onPlaceChanged={handlePlaceSelect}
+                >
+                  <Input
+                    placeholder="Search for a delivery address..."
+                    className="bg-surface-overlay border-glass-border"
+                  />
+                </Autocomplete>
+              ) : (
                 <Input
-                  placeholder="City"
-                  value={deliveryAddress.city}
-                  onChange={(e) => handleAddressChange('city', e.target.value)}
+                  placeholder="Loading maps..."
+                  disabled
                   className="bg-surface-overlay border-glass-border"
                 />
-                <Input
-                  placeholder="State/Province"
-                  value={deliveryAddress.state}
-                  onChange={(e) => handleAddressChange('state', e.target.value)}
-                  className="bg-surface-overlay border-glass-border"
-                />
+              )}
+              {deliveryAddress && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {deliveryAddress}
+                </p>
+              )}
+            </div>
+
+            {/* Confirmation Level Slider */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Security Level
+                </Label>
+                <span className="text-sm font-medium text-accent">
+                  {confirmationDesc.label}
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  placeholder="Postal Code"
-                  value={deliveryAddress.postalCode}
-                  onChange={(e) =>
-                    handleAddressChange('postalCode', e.target.value)
-                  }
-                  className="bg-surface-overlay border-glass-border"
+              <div className="px-1">
+                <Slider
+                  value={[confirmationLevel]}
+                  onValueChange={(value) => setConfirmationLevel(value[0])}
+                  min={1}
+                  max={5}
+                  step={1}
+                  className="w-full"
                 />
-                <Input
-                  placeholder="Country"
-                  value={deliveryAddress.country}
-                  onChange={(e) =>
-                    handleAddressChange('country', e.target.value)
-                  }
-                  className="bg-surface-overlay border-glass-border"
-                />
+                <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                  <span>1</span>
+                  <span>2</span>
+                  <span>3</span>
+                  <span>4</span>
+                  <span>5</span>
+                </div>
               </div>
+
+              {/* Security level info */}
+              <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-glass-bg border border-glass-border">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Security</p>
+                    <p className="text-sm font-medium">
+                      {confirmationDesc.security}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Est. Delivery
+                    </p>
+                    <p className="text-sm font-medium">{estimatedDays} days</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Higher security routes your package through more verification
+                nodes, increasing delivery time but providing stronger proof of
+                custody.
+              </p>
             </div>
 
             {/* Fee Estimate */}
@@ -313,8 +402,19 @@ export function RedemptionDialog({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery To</span>
                   <span className="text-right max-w-[200px] truncate">
-                    {deliveryAddress.city}, {deliveryAddress.state}
+                    {deliveryAddress}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Security Level</span>
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-accent" />
+                    {confirmationDesc.label} ({confirmationLevel} nodes)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Est. Delivery</span>
+                  <span>{estimatedDays} days</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-glass-border">
                   <span className="text-muted-foreground">Redemption Fee</span>

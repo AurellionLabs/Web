@@ -54,6 +54,12 @@ const FACET_SELECTORS: Record<string, string[]> = {
     '0x4b1f5c70', // updateNodeOwner
     '0x16261e99', // updateNodeStatus
     '0x6766c717', // updateSupportedAssets
+    // CLOB approval functions (for trading support)
+    '0xf7502631', // setAuraAssetAddress
+    '0x89a1153c', // getAuraAssetAddress
+    '0x40ed3118', // approveClobForTokens
+    '0xe1ed5db1', // revokeClobApproval
+    '0xcb24a4b4', // isClobApproved
   ],
   AssetsFacet: [
     '0xe243b2fc', // addAsset

@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 
 /**
  * @title NodesFacet
@@ -43,6 +44,8 @@ contract NodesFacet is Initializable {
         bytes32 indexed nodeHash,
         uint256 count
     );
+    event ClobApprovalGranted(bytes32 indexed nodeHash, address indexed clobAddress);
+    event ClobApprovalRevoked(bytes32 indexed nodeHash, address indexed clobAddress);
 
     function initialize() public initializer {}
 
@@ -291,5 +294,45 @@ contract NodesFacet is Initializable {
     function getTotalNodeAssets(bytes32 _node) external view returns (uint256) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.totalNodeAssets[_node];
+    }
+
+    // ======= TOKEN APPROVAL FUNCTIONS =======
+
+    function setAuraAssetAddress(address _auraAsset) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.auraAssetAddress = _auraAsset;
+    }
+
+    function getAuraAssetAddress() external view returns (address) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.auraAssetAddress;
+    }
+
+    function approveClobForTokens(bytes32 _node, address _clobAddress) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
+        
+        IERC1155(s.auraAssetAddress).setApprovalForAll(_clobAddress, true);
+        
+        emit ClobApprovalGranted(_node, _clobAddress);
+    }
+
+    function revokeClobApproval(bytes32 _node, address _clobAddress) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
+        
+        IERC1155(s.auraAssetAddress).setApprovalForAll(_clobAddress, false);
+        
+        emit ClobApprovalRevoked(_node, _clobAddress);
+    }
+
+    function isClobApproved(address _clobAddress) external view returns (bool) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
+        
+        return IERC1155(s.auraAssetAddress).isApprovedForAll(address(this), _clobAddress);
     }
 }
