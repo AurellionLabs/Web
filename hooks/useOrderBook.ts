@@ -180,25 +180,11 @@ export function useOrderBook(
     try {
       // If we have real market data, fetch from repository
       if (baseToken && baseTokenId) {
-        console.log('[useOrderBook] Fetching order book for:', {
-          baseToken,
-          baseTokenId,
-          levels,
-        });
-
         const repoOrderBook = await clobRepository.getOrderBook(
           baseToken,
           baseTokenId,
           levels * 2, // Fetch extra levels for better aggregation
         );
-
-        console.log('[useOrderBook] Repository returned:', {
-          bidsCount: repoOrderBook.bids.length,
-          asksCount: repoOrderBook.asks.length,
-          spread: repoOrderBook.spread,
-          bids: repoOrderBook.bids.slice(0, 2),
-          asks: repoOrderBook.asks.slice(0, 2),
-        });
 
         // Check if we have real data
         const hasRealData =
@@ -206,22 +192,11 @@ export function useOrderBook(
 
         if (hasRealData) {
           const formatted = convertToHookFormat(repoOrderBook, levels);
-          console.log('[useOrderBook] Setting order book with real data:', {
-            bidsCount: formatted.bids.length,
-            asksCount: formatted.asks.length,
-          });
           setOrderBook(formatted);
           setIsLoading(false);
           setError(null);
           return;
-        } else {
-          console.log('[useOrderBook] No real data found, showing empty');
         }
-      } else {
-        console.log('[useOrderBook] Missing baseToken or baseTokenId:', {
-          baseToken,
-          baseTokenId,
-        });
       }
 
       // Return empty order book when no real data available

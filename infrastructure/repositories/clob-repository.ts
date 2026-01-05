@@ -169,12 +169,6 @@ export class CLOBRepository {
     limit = 50,
   ): Promise<CLOBOrder[]> {
     try {
-      console.log('[CLOBRepository] getOpenOrders called with:', {
-        baseToken: baseToken.toLowerCase(),
-        baseTokenId,
-        limit,
-      });
-
       const response = await graphqlRequest<{
         clobOrderss: { items: CLOBOrderGraphResponse[] };
       }>(this.graphQLEndpoint, GET_CLOB_OPEN_ORDERS, {
@@ -182,12 +176,6 @@ export class CLOBRepository {
         baseTokenId,
         limit,
       });
-
-      console.log(
-        '[CLOBRepository] getOpenOrders response:',
-        response.clobOrderss?.items?.length || 0,
-        'orders',
-      );
 
       return (response.clobOrderss?.items || []).map(this.mapOrderToDomain);
     } catch (error) {

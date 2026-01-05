@@ -210,35 +210,38 @@ export function useUserAssets(filterClass?: string) {
   /**
    * Convert balances + metadata to SellableAsset format
    */
-  const sellableAssets: SellableAsset[] = useMemo(() => {
-    return balances
-      .map((balance) => {
-        const meta = metadata.get(balance.tokenId);
-        const price = prices.get(balance.tokenId);
+  const sellableAssets = useMemo((): SellableAsset[] => {
+    const result: SellableAsset[] = [];
 
-        // Skip if no metadata found
-        if (!meta) {
-          return null;
-        }
+    for (const balance of balances) {
+      const meta = metadata.get(balance.tokenId);
 
-        // Apply class filter if specified
-        if (
-          filterClass &&
-          meta.assetClass?.toLowerCase() !== filterClass.toLowerCase()
-        ) {
-          return null;
-        }
+      // Skip if no metadata found
+      if (!meta) {
+        continue;
+      }
 
-        return {
-          id: balance.id,
-          tokenId: balance.tokenId,
-          name: meta.name || 'Unknown Asset',
-          class: meta.assetClass || meta.className || 'Unknown',
-          balance: balance.balance,
-          price: price ? (Number(price) / 1e18).toFixed(2) : undefined,
-        };
-      })
-      .filter((asset): asset is SellableAsset => asset !== null);
+      // Apply class filter if specified
+      if (
+        filterClass &&
+        meta.assetClass?.toLowerCase() !== filterClass.toLowerCase()
+      ) {
+        continue;
+      }
+
+      const price = prices.get(balance.tokenId);
+
+      result.push({
+        id: balance.id,
+        tokenId: balance.tokenId,
+        name: meta.name || 'Unknown Asset',
+        class: meta.assetClass || meta.className || 'Unknown',
+        balance: balance.balance,
+        price: price ? (Number(price) / 1e18).toFixed(2) : undefined,
+      });
+    }
+
+    return result;
   }, [balances, metadata, prices, filterClass]);
 
   return {
