@@ -311,6 +311,12 @@ export class CLOBRepository {
     try {
       const orders = await this.getOpenOrders(baseToken, baseTokenId, 100);
 
+      console.log('[CLOBRepository] getOrderBook processing orders:', {
+        totalOrders: orders.length,
+        buyOrders: orders.filter((o) => o.isBuy).length,
+        sellOrders: orders.filter((o) => !o.isBuy).length,
+      });
+
       // Separate bids and asks
       const bids = orders
         .filter((o) => o.isBuy)
@@ -320,6 +326,13 @@ export class CLOBRepository {
         .filter((o) => !o.isBuy)
         .sort((a, b) => a.price - b.price)
         .slice(0, levels);
+
+      console.log('[CLOBRepository] getOrderBook result:', {
+        bidsCount: bids.length,
+        asksCount: asks.length,
+        firstBid: bids[0],
+        firstAsk: asks[0],
+      });
 
       // Calculate cumulative totals
       let bidTotal = 0;

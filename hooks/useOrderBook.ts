@@ -196,6 +196,8 @@ export function useOrderBook(
           bidsCount: repoOrderBook.bids.length,
           asksCount: repoOrderBook.asks.length,
           spread: repoOrderBook.spread,
+          bids: repoOrderBook.bids.slice(0, 2),
+          asks: repoOrderBook.asks.slice(0, 2),
         });
 
         // Check if we have real data
@@ -204,10 +206,16 @@ export function useOrderBook(
 
         if (hasRealData) {
           const formatted = convertToHookFormat(repoOrderBook, levels);
+          console.log('[useOrderBook] Setting order book with real data:', {
+            bidsCount: formatted.bids.length,
+            asksCount: formatted.asks.length,
+          });
           setOrderBook(formatted);
           setIsLoading(false);
           setError(null);
           return;
+        } else {
+          console.log('[useOrderBook] No real data found, showing empty');
         }
       } else {
         console.log('[useOrderBook] Missing baseToken or baseTokenId:', {
