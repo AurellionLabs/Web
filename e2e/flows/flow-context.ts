@@ -93,90 +93,99 @@ export class FlowContext {
    * Initialize the flow context with deployed contracts
    */
   async initialize(deploymentMode: string = 'full'): Promise<void> {
-    this.log('🚀 Initializing flow context...');
+    console.log('\n🚀 Initializing flow context...');
 
     // Deploy contracts
+    console.log('📦 Deploying contracts...');
     const result = await this.deployer.deployMode(deploymentMode);
+    console.log(`✓ Deployed ${result.contracts.size} contracts`);
 
     // Store deployed contracts
     for (const [name, deployed] of result.contracts) {
       this.contracts.set(name, deployed);
     }
+    console.log('✓ Contracts stored');
 
     // Create default users
+    console.log('👥 Creating default users...');
     await this.createDefaultUsers();
+    console.log(`✓ Created ${this.users.size} users`);
 
     // Setup test environment (tokens, roles, etc.)
+    console.log('🔧 Setting up test environment...');
     await this.setupTestEnvironment();
+    console.log('✓ Test environment ready');
 
     // Create wallet mock
+    console.log('🔐 Creating wallet mock...');
     this.walletMock = createWalletMock(this.chain, {
       verbose: this.options.verbose,
     });
+    console.log('✓ Wallet mock created');
 
-    this.log('✅ Flow context initialized');
+    console.log('✅ Flow context initialized\n');
   }
 
   /**
    * Setup test environment with tokens and roles
    */
   private async setupTestEnvironment(): Promise<void> {
-    this.log('🔧 Setting up test environment...');
-
     try {
       // 1. Mint AURA (ERC20) tokens to all test accounts
+      console.log('  📝 Step 1/5: Minting AURA tokens...');
       await this.mintTokensToTestAccounts();
+      console.log('  ✓ AURA tokens minted');
     } catch (error) {
-      this.log(
+      console.log(
         `⚠️ AURA token minting failed: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
 
     try {
       // 2. Mint AuraAsset (ERC1155) tokens for RWY staking
+      console.log('  📝 Step 2/5: Minting AuraAsset tokens...');
       await this.mintAuraAssetTokens();
+      console.log('  ✓ AuraAsset tokens minted');
     } catch (error) {
-      this.log(
+      console.log(
         `⚠️ AuraAsset minting failed: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
 
     try {
       // 3. Setup AuStake admin roles
+      console.log('  📝 Step 3/5: Setting up AuStake roles...');
       await this.setupAuStakeRoles();
+      console.log('  ✓ AuStake roles set');
     } catch (error) {
-      this.log(
+      console.log(
         `⚠️ AuStake role setup failed: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
 
     try {
       // 4. Setup AuSys roles (admin, driver)
+      console.log('  📝 Step 4/5: Setting up AuSys roles...');
       await this.setupAuSysRoles();
+      console.log('  ✓ AuSys roles set');
     } catch (error) {
-      this.log(
+      console.log(
         `⚠️ AuSys role setup failed: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
 
     try {
       // 5. Setup RWYVault operator approvals
+      console.log('  📝 Step 5/5: Setting up RWYVault operators...');
       await this.setupRWYVaultOperators();
+      console.log('  ✓ RWYVault operators set');
     } catch (error) {
-      this.log(
+      console.log(
         `⚠️ RWYVault operator setup failed: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
 
-    // Skip node registration for now - it's complex and may not be needed for basic tests
-    // try {
-    //   // 5. Setup node registrations (for AuSys orders)
-    //   await this.setupNodeRegistrations();
-    // } catch (error) {
-    //   this.log(`⚠️ Node registration failed: ${error instanceof Error ? error.message : 'unknown'}`);
-    // }
-
-    this.log('✅ Test environment setup complete');
+    console.log('  ✅ All setup steps complete');
   }
 
   /**
@@ -309,26 +318,51 @@ export class FlowContext {
   private async setupAuSysRoles(): Promise<void> {
     const auSys = this.contracts.get('AuSys');
     if (!auSys) {
-      this.log('⚠️ AuSys contract not deployed, skipping role setup');
+      console.log('⚠️ AuSys contract not deployed, skipping role setup');
       return;
     }
 
     const deployer = this.getUser('deployer');
     const auSysContract = auSys.contract.connect(deployer.signer) as Contract;
 
-    // Set deployer as admin first
-    const setAdminTx = await auSysContract.setAdmin(deployer.address);
-    await setAdminTx.wait();
-    this.log('  👮 Set deployer as AuSys admin');
+    try {
+      // Set deployer as admin first
+      console.log('    Setting deployer as AuSys admin...');
+      const setAdminTx = await auSysContract.setAdmin(deployer.address);
+      await Promise.race([
+        setAdminTx.wait(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Transaction timeout')), 30000),
+        ),
+      ]);
+      console.log('    ✓ Deployer is AuSys admin');
+    } catch (error) {
+      console.log(
+        `    ⚠️ Failed to set admin: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+      return; // Skip driver setup if admin setup fails
+    }
 
     // Set drivers
     const drivers = ['driver1', 'driver2'];
     for (const driverName of drivers) {
       const driver = this.users.get(driverName);
       if (driver) {
-        const tx = await auSysContract.setDriver(driver.address, true);
-        await tx.wait();
-        this.log(`  🚗 Set ${driverName} as AuSys driver`);
+        try {
+          console.log(`    Setting ${driverName} as driver...`);
+          const tx = await auSysContract.setDriver(driver.address, true);
+          await Promise.race([
+            tx.wait(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Transaction timeout')), 30000),
+            ),
+          ]);
+          console.log(`    ✓ ${driverName} is driver`);
+        } catch (error) {
+          console.log(
+            `    ⚠️ Failed to set ${driverName}: ${error instanceof Error ? error.message : 'unknown'}`,
+          );
+        }
       }
     }
   }

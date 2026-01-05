@@ -254,6 +254,15 @@ contract aurumNode is ERC1155Holder, Ownable {
     manager = _manager;
   }
 
+  /**
+   * @dev Updates the AuraAsset contract address. Only callable by owner.
+   * @param _auraAsset The new AuraAsset contract address.
+   */
+  function setAuraAsset(AuraAsset _auraAsset) public onlyOwner {
+    require(address(_auraAsset) != address(0), 'Invalid AuraAsset address');
+    auraAsset = _auraAsset;
+  }
+
   function nodeHandoff(bytes32 id) public onlyOwner {
     ausys.handOff(id);
   }

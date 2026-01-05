@@ -403,14 +403,24 @@ export class NodeInventoryFlows {
    * Configure AuraAsset address on Diamond (owner only)
    */
   async setAuraAssetAddress(deployer: TestUser): Promise<NodeInventoryResult> {
-    const diamond = this.getDiamond(deployer);
-    const auraAssetAddress = this.context.getContractAddress('AuraAsset');
-
     try {
       this.log(`⚙️ Setting AuraAsset address on Diamond...`);
+      this.log(`  Deployer: ${deployer.address}`);
 
+      const diamond = this.getDiamond(deployer);
+      const diamondAddress = this.context.getContractAddress('Diamond');
+      const auraAssetAddress = this.context.getContractAddress('AuraAsset');
+
+      this.log(`  Diamond: ${diamondAddress}`);
+      this.log(`  AuraAsset: ${auraAssetAddress}`);
+
+      this.log(`  Sending transaction...`);
       const tx = await diamond.setAuraAssetAddress(auraAssetAddress);
+      this.log(`  Transaction sent: ${tx.hash}`);
+
+      this.log(`  Waiting for confirmation...`);
       const receipt = await tx.wait();
+      this.log(`  Transaction confirmed in block ${receipt.blockNumber}`);
 
       this.log(`  ✓ AuraAsset configured: ${auraAssetAddress}`);
       getCoverageTracker().mark('NodesFacet', 'setAuraAssetAddress');
@@ -418,7 +428,11 @@ export class NodeInventoryFlows {
       return { success: true, transactionHash: receipt.hash };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      const stack = error instanceof Error ? error.stack : '';
       this.log(`  ✗ Configuration failed: ${message}`);
+      if (stack) {
+        this.log(`  Stack: ${stack}`);
+      }
       return { success: false, error: message };
     }
   }

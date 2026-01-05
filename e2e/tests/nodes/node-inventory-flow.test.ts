@@ -40,7 +40,12 @@ describe('Node Token Inventory Flow', () => {
     nodeOperator2 = context.getUser('node2');
 
     // Configure AuraAsset address on Diamond (required for inventory operations)
-    await inventoryFlows.setAuraAssetAddress(deployer);
+    console.log('Configuring AuraAsset address on Diamond...');
+    const result = await inventoryFlows.setAuraAssetAddress(deployer);
+    if (!result.success) {
+      throw new Error(`Failed to set AuraAsset address: ${result.error}`);
+    }
+    console.log('AuraAsset address configured successfully');
   });
 
   describe('Node Registration via Diamond', () => {

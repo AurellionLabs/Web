@@ -60,6 +60,15 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     _setURI(newuri);
   }
 
+  /**
+   * @dev Updates the NodeManager address. Only callable by owner.
+   * @param _NodeManager The new NodeManager contract address.
+   */
+  function setNodeManager(IAurumNodeManager _NodeManager) external onlyOwner {
+    require(address(_NodeManager) != address(0), 'Invalid NodeManager address');
+    NodeManager = _NodeManager;
+  }
+
   //* @dev A method for the owner to mint new ERC1155 tokens.
   //* @param account The account for new tokens to be sent to.
   //* @param id The id of token type.
