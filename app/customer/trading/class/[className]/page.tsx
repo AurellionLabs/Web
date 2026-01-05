@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 import { Asset } from '@/domain/shared';
+import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
 // Components
 import { GlassCard } from '@/app/components/ui/glass-card';
@@ -461,9 +462,11 @@ function ClassDetailPageContent() {
           <div className="lg:col-span-3">
             <div className="sticky top-20 space-y-6">
               {/* Order Book (compact) */}
-              {selectedAssetType && (
+              {selectedAssetType && tradeableAsset && (
                 <OrderBook
-                  assetId={tradeableAsset?.id || 'preview'}
+                  assetId={tradeableAsset.id}
+                  baseToken={NEXT_PUBLIC_AURA_GOAT_ADDRESS}
+                  baseTokenId={tradeableAsset.tokenId}
                   basePrice={basePrice}
                   maxLevels={5}
                   onPriceClick={handlePriceClick}
