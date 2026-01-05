@@ -28,6 +28,7 @@ import { TradingErrorBoundary } from '@/app/components/error-boundary';
 // Hooks
 import { useClassAssets } from '@/hooks/useClassAssets';
 import { useAssetPrice } from '@/hooks/useAssetPrice';
+import { useUserAssets } from '@/hooks/useUserAssets';
 
 // Icons
 import { ArrowLeft, RefreshCw, TrendingUp } from 'lucide-react';
@@ -159,6 +160,13 @@ function ClassDetailPageContent() {
     }
     return 100;
   }, [priceData, selectedAssetType]);
+
+  // Fetch user's owned assets for selling (filtered by this class)
+  const {
+    sellableAssets,
+    isLoading: isLoadingSellable,
+    hasAssets: hasSellableAssets,
+  } = useUserAssets(className);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
@@ -479,6 +487,7 @@ function ClassDetailPageContent() {
                 <TradePanel
                   asset={tradeableAsset}
                   initialPrice={basePrice}
+                  sellableAssets={sellableAssets}
                   onPlaceOrder={handlePlaceOrder}
                 />
               ) : (

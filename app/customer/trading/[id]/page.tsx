@@ -32,6 +32,7 @@ import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import dynamic from 'next/dynamic';
+import { useUserAssets } from '@/hooks/useUserAssets';
 
 // Dynamically import chart to avoid SSR issues
 const Chart = dynamic(() => import('./chart'), { ssr: false });
@@ -201,6 +202,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const asset = assets.find((a) => a.id === params.id);
   const basePrice =
     marketStats?.lastPrice || (asset ? parseFloat(asset.price) : 100);
+
+  // Fetch user's owned assets for selling (filtered by asset class)
+  const { sellableAssets } = useUserAssets(asset?.class);
 
   // Get token ID from asset
   // The asset.id IS the tokenId (set in node-repository.ts: id: na.tokenId)
@@ -552,6 +556,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             <TradePanel
               asset={asset}
               initialPrice={basePrice}
+              sellableAssets={sellableAssets}
               onPlaceOrder={handlePlaceOrder}
             />
 
