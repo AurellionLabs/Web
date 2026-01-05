@@ -26,9 +26,15 @@ export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
 export const NEXT_PUBLIC_RWY_VAULT_ADDRESS =
   '0xfC2d5b8464f14a051661E6dE14DB3F703C601938';
 
-// Quote token address for CLOB trading (USDC on Base Sepolia)
-export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS =
-  '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+// Quote token address for CLOB trading
+// For testnet: Using AURA token so testers have tokens to simulate payments
+// For mainnet: Would use USDC (0x036CbD53842c5426634e7929541eC2318f3dCF7e on Base Sepolia)
+export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
+
+// Quote token decimals - changes based on which token is used
+// AURA = 18 decimals (testnet), USDC = 6 decimals (production)
+export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = 18; // Change to 6 for USDC in production
+export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL = 'AURA'; // Change to 'USDC' for production
 
 //
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)

@@ -16,6 +16,9 @@ import {
   MapPin,
   ShoppingCart,
   DollarSign,
+  Wallet,
+  AlertCircle,
+  Droplets,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -31,11 +34,16 @@ import {
 } from '@/app/components/ui/form';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ethers } from 'ethers';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+  NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL,
+} from '@/chain-constants';
 import { Order, OrderStatus } from '@/domain/orders';
 import { formatTokenAmount, parseTokenAmount } from '@/lib/formatters';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuraToken } from '@/hooks/useAuraToken';
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -58,6 +66,14 @@ export default function OrderPage({ params }: { params: { id: string } }) {
     lat: string;
     lng: string;
   } | null>(null);
+
+  // AURA token balance for payment
+  const {
+    balance: auraBalance,
+    balanceRaw: auraBalanceRaw,
+    isLoadingBalance,
+    symbol: auraSymbol,
+  } = useAuraToken();
 
   // Load Google Maps script
   const { isLoaded, loadError } = useLoadScript({
@@ -183,6 +199,49 @@ export default function OrderPage({ params }: { params: { id: string } }) {
           </div>
         </GlassCard>
 
+        {/* AURA Balance Card */}
+        <GlassCard className="bg-amber-500/5 border-amber-500/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Your {auraSymbol} Balance
+                </p>
+                <p className="text-xl font-bold font-mono text-foreground">
+                  {isLoadingBalance ? '...' : auraBalance}{' '}
+                  <span className="text-amber-400 text-sm">{auraSymbol}</span>
+                </p>
+              </div>
+            </div>
+            {parseFloat(auraBalance.replace(/,/g, '')) < totalPrice &&
+              totalPrice > 0 && (
+                <Link
+                  href="/customer/faucet"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors text-sm"
+                >
+                  <Droplets className="w-4 h-4" />
+                  Get Tokens
+                </Link>
+              )}
+          </div>
+          {parseFloat(auraBalance.replace(/,/g, '')) < totalPrice &&
+            totalPrice > 0 && (
+              <div className="mt-3 flex items-center gap-2 text-amber-400 text-sm">
+                <AlertCircle className="w-4 h-4" />
+                <span>
+                  Insufficient balance. You need{' '}
+                  {(
+                    totalPrice - parseFloat(auraBalance.replace(/,/g, ''))
+                  ).toFixed(2)}{' '}
+                  more {NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL}.
+                </span>
+              </div>
+            )}
+        </GlassCard>
+
         {/* Order Form */}
         <GlassCard>
           <Form {...form}>
@@ -204,17 +263,22 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   const randomBytes = ethers.randomBytes(32);
                   const orderId = ethers.hexlify(randomBytes);
 
-                  // Convert price to USDT units (6 decimals)
+                  // Convert price to quote token units (configurable decimals)
+                  // Testnet: AURA (18 decimals), Production: USDC (6 decimals)
                   const assetPrice = asset.price || '0';
-                  const priceInUSDT = parseTokenAmount(assetPrice, 6);
-                  const totalPrice = priceInUSDT * BigInt(data.quantity);
+                  const priceInQuoteToken = parseTokenAmount(
+                    assetPrice,
+                    NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+                  );
+                  const totalPriceWei =
+                    priceInQuoteToken * BigInt(data.quantity);
 
                   const orderData: Order = {
                     id: orderId,
                     token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
                     tokenId: asset.id,
                     tokenQuantity: String(data.quantity),
-                    price: totalPrice.toString(),
+                    price: totalPriceWei.toString(),
                     txFee: String(0),
                     journeyIds: [],
                     nodes: [ethers.getAddress(asset.nodeAddress)],
@@ -389,9 +453,16 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                 className="w-full"
                 glow
                 loading={isPlacingOrder}
-                disabled={!isLoaded || !!loadError}
+                disabled={
+                  !isLoaded ||
+                  !!loadError ||
+                  parseFloat(auraBalance.replace(/,/g, '')) < totalPrice
+                }
               >
-                Place Order - ${(totalPrice || 0).toFixed(2)}
+                {parseFloat(auraBalance.replace(/,/g, '')) < totalPrice &&
+                totalPrice > 0
+                  ? `Insufficient ${NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL} Balance`
+                  : `Place Order - ${(totalPrice || 0).toFixed(2)} ${NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL}`}
               </GlowButton>
             </form>
           </Form>
