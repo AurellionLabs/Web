@@ -90,13 +90,13 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   const [nodeAssetService, setNodeAssetService] =
     useState<DiamondNodeAssetService | null>(null);
 
-  const { provider, address, connected } = useWallet();
+  const { connectedWallet, address, isConnected } = useWallet();
   const { connected: mainConnected } = useMainProvider();
 
   // Initialize Diamond context when wallet connects
   useEffect(() => {
     async function initializeDiamond() {
-      if (!connected || !provider || !address) {
+      if (!isConnected || !connectedWallet || !address) {
         // Cleanup on disconnect
         setDiamondContext(null);
         setNodeRepository(null);
@@ -112,8 +112,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       try {
         const context = getDiamondContext();
 
-        // Initialize with browser provider
-        const browserProvider = new BrowserProvider(provider);
+        // Initialize with browser provider from connected wallet
+        const ethereumProvider = await connectedWallet.getEthereumProvider();
+        const browserProvider = new BrowserProvider(ethereumProvider);
         await context.initialize(browserProvider);
 
         // Create services
@@ -141,7 +142,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     }
 
     initializeDiamond();
-  }, [connected, provider, address]);
+  }, [isConnected, connectedWallet, address]);
 
   // Node operations
   const registerNode = useCallback(

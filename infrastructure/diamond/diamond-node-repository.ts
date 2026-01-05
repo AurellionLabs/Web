@@ -275,7 +275,7 @@ export class DiamondNodeRepository implements NodeRepository {
           currentStatus: order.currentStatus || 0,
           journeyIds: [],
           nodes: [nodeAddress],
-          locationData: null,
+          locationData: undefined,
           contractualAgreement: '',
         })) || []
       );
