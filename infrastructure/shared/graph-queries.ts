@@ -41,6 +41,40 @@ export const GET_NODES_BY_OWNER = gql`
   }
 `;
 
+// All active nodes with locations (for route calculation)
+export const GET_ALL_ACTIVE_NODES = gql`
+  query GetAllActiveNodes($limit: Int = 500) {
+    nodess(where: { validNode: true }, limit: $limit) {
+      items {
+        id
+        owner
+        addressName
+        lat
+        lng
+        validNode
+        status
+      }
+    }
+  }
+`;
+
+// Response type for GET_ALL_ACTIVE_NODES
+export interface ActiveNodeResponse {
+  id: string;
+  owner: string;
+  addressName: string;
+  lat: string;
+  lng: string;
+  validNode: boolean;
+  status: string;
+}
+
+export interface GetAllActiveNodesResponse {
+  nodess: {
+    items: ActiveNodeResponse[];
+  };
+}
+
 // All node assets
 export const GET_ALL_NODE_ASSETS = gql`
   query GetAllNodeAssets($limit: Int = 1000) {
@@ -460,7 +494,7 @@ export const GET_ALL_ASSETS = gql`
 `;
 
 export const GET_ASSET_BY_TOKEN_ID = gql`
-  query GetAssetByTokenId($tokenId: String!) {
+  query GetAssetByTokenId($tokenId: BigInt!) {
     assetss(where: { tokenId: $tokenId }, limit: 1) {
       items {
         id
@@ -519,7 +553,7 @@ export const GET_DRIVER_STATISTICS = gql`
 export const GET_CLOB_OPEN_ORDERS = gql`
   query GetCLOBOpenOrders(
     $baseToken: String!
-    $baseTokenId: String!
+    $baseTokenId: BigInt!
     $limit: Int = 50
   ) {
     clobOrderss(
@@ -551,7 +585,7 @@ export const GET_CLOB_OPEN_ORDERS = gql`
 export const GET_CLOB_TRADES = gql`
   query GetCLOBTrades(
     $baseToken: String!
-    $baseTokenId: String!
+    $baseTokenId: BigInt!
     $limit: Int = 50
   ) {
     clobTradess(
@@ -637,7 +671,7 @@ export const GET_CLOB_USER_TRADES = gql`
 
 // Get best bid and ask for a market
 export const GET_CLOB_BEST_PRICES = gql`
-  query GetCLOBBestPrices($baseToken: String!, $baseTokenId: String!) {
+  query GetCLOBBestPrices($baseToken: String!, $baseTokenId: BigInt!) {
     # Best bid (highest buy price)
     bestBids: clobOrderss(
       where: {
