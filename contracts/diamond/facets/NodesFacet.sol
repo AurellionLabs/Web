@@ -46,6 +46,32 @@ contract NodesFacet is Initializable {
     );
     event ClobApprovalGranted(bytes32 indexed nodeHash, address indexed clobAddress);
     event ClobApprovalRevoked(bytes32 indexed nodeHash, address indexed clobAddress);
+    
+    // Token inventory events
+    event TokensMintedToNode(
+        bytes32 indexed nodeHash,
+        uint256 indexed tokenId,
+        uint256 amount,
+        address indexed minter
+    );
+    event TokensTransferredBetweenNodes(
+        bytes32 indexed fromNode,
+        bytes32 indexed toNode,
+        uint256 indexed tokenId,
+        uint256 amount
+    );
+    event TokensWithdrawnFromNode(
+        bytes32 indexed nodeHash,
+        uint256 indexed tokenId,
+        uint256 amount,
+        address indexed recipient
+    );
+    event TokensDepositedToNode(
+        bytes32 indexed nodeHash,
+        uint256 indexed tokenId,
+        uint256 amount,
+        address indexed depositor
+    );
 
     function initialize() public initializer {}
 
@@ -334,5 +360,242 @@ contract NodesFacet is Initializable {
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
         
         return IERC1155(s.auraAssetAddress).isApprovedForAll(address(this), _clobAddress);
+    }
+
+    // ======= NODE TOKEN INVENTORY FUNCTIONS =======
+
+    /**
+     * @notice Record tokens minted to a node (called after minting to Diamond)
+     * @dev This updates internal accounting. Actual ERC1155 mint happens externally.
+     * @param _node The node hash to credit
+     * @param _tokenId The ERC1155 token ID
+     * @param _amount The amount minted
+     */
+    function creditNodeTokens(
+        bytes32 _node,
+        uint256 _tokenId,
+        uint256 _amount
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(_amount > 0, 'Amount must be positive');
+        
+        // Update balance
+        s.nodeTokenBalances[_node][_tokenId] += _amount;
+        
+        // Track token ID if new
+        if (!s.nodeHasToken[_node][_tokenId]) {
+            s.nodeHasToken[_node][_tokenId] = true;
+            s.nodeTokenIds[_node].push(_tokenId);
+        }
+        
+        emit TokensMintedToNode(_node, _tokenId, _amount, msg.sender);
+    }
+
+    /**
+     * @notice Deposit tokens from caller's wallet to a node's inventory
+     * @dev Transfers ERC1155 from caller to Diamond and credits node
+     * @param _node The node hash to credit
+     * @param _tokenId The ERC1155 token ID
+     * @param _amount The amount to deposit
+     */
+    function depositTokensToNode(
+        bytes32 _node,
+        uint256 _tokenId,
+        uint256 _amount
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
+        require(_amount > 0, 'Amount must be positive');
+        
+        // Transfer tokens from caller to Diamond
+        IERC1155(s.auraAssetAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _tokenId,
+            _amount,
+            ""
+        );
+        
+        // Update internal balance
+        s.nodeTokenBalances[_node][_tokenId] += _amount;
+        
+        // Track token ID if new
+        if (!s.nodeHasToken[_node][_tokenId]) {
+            s.nodeHasToken[_node][_tokenId] = true;
+            s.nodeTokenIds[_node].push(_tokenId);
+        }
+        
+        emit TokensDepositedToNode(_node, _tokenId, _amount, msg.sender);
+    }
+
+    /**
+     * @notice Withdraw tokens from a node's inventory to caller's wallet
+     * @dev Transfers ERC1155 from Diamond to caller and debits node
+     * @param _node The node hash to debit
+     * @param _tokenId The ERC1155 token ID
+     * @param _amount The amount to withdraw
+     */
+    function withdrawTokensFromNode(
+        bytes32 _node,
+        uint256 _tokenId,
+        uint256 _amount
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
+        require(_amount > 0, 'Amount must be positive');
+        require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
+        
+        // Update internal balance first (checks-effects-interactions)
+        s.nodeTokenBalances[_node][_tokenId] -= _amount;
+        
+        // Transfer tokens from Diamond to caller
+        IERC1155(s.auraAssetAddress).safeTransferFrom(
+            address(this),
+            msg.sender,
+            _tokenId,
+            _amount,
+            ""
+        );
+        
+        emit TokensWithdrawnFromNode(_node, _tokenId, _amount, msg.sender);
+    }
+
+    /**
+     * @notice Transfer tokens between nodes (internal accounting only)
+     * @dev Both nodes must be owned by caller. No ERC1155 transfer needed.
+     * @param _fromNode Source node hash
+     * @param _toNode Destination node hash
+     * @param _tokenId The ERC1155 token ID
+     * @param _amount The amount to transfer
+     */
+    function transferTokensBetweenNodes(
+        bytes32 _fromNode,
+        bytes32 _toNode,
+        uint256 _tokenId,
+        uint256 _amount
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_fromNode].owner == msg.sender, 'Not source node owner');
+        require(s.nodes[_toNode].owner == msg.sender, 'Not dest node owner');
+        require(_amount > 0, 'Amount must be positive');
+        require(s.nodeTokenBalances[_fromNode][_tokenId] >= _amount, 'Insufficient source balance');
+        
+        // Update balances
+        s.nodeTokenBalances[_fromNode][_tokenId] -= _amount;
+        s.nodeTokenBalances[_toNode][_tokenId] += _amount;
+        
+        // Track token ID on destination if new
+        if (!s.nodeHasToken[_toNode][_tokenId]) {
+            s.nodeHasToken[_toNode][_tokenId] = true;
+            s.nodeTokenIds[_toNode].push(_tokenId);
+        }
+        
+        emit TokensTransferredBetweenNodes(_fromNode, _toNode, _tokenId, _amount);
+    }
+
+    /**
+     * @notice Debit tokens from a node (for sales/transfers out)
+     * @dev Called by CLOB or other authorized contracts when tokens are sold
+     * @param _node The node hash to debit
+     * @param _tokenId The ERC1155 token ID
+     * @param _amount The amount to debit
+     */
+    function debitNodeTokens(
+        bytes32 _node,
+        uint256 _tokenId,
+        uint256 _amount
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        // Only node owner or CLOB can debit
+        require(
+            s.nodes[_node].owner == msg.sender || msg.sender == s.clobAddress,
+            'Not authorized'
+        );
+        require(_amount > 0, 'Amount must be positive');
+        require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
+        
+        s.nodeTokenBalances[_node][_tokenId] -= _amount;
+    }
+
+    // ======= NODE TOKEN INVENTORY VIEW FUNCTIONS =======
+
+    /**
+     * @notice Get a node's balance of a specific token
+     * @param _node The node hash
+     * @param _tokenId The ERC1155 token ID
+     * @return balance The node's internal balance
+     */
+    function getNodeTokenBalance(
+        bytes32 _node,
+        uint256 _tokenId
+    ) external view returns (uint256 balance) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.nodeTokenBalances[_node][_tokenId];
+    }
+
+    /**
+     * @notice Get all token IDs a node has ever held
+     * @param _node The node hash
+     * @return tokenIds Array of token IDs
+     */
+    function getNodeTokenIds(bytes32 _node) external view returns (uint256[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.nodeTokenIds[_node];
+    }
+
+    /**
+     * @notice Get all token balances for a node
+     * @param _node The node hash
+     * @return tokenIds Array of token IDs
+     * @return balances Array of corresponding balances
+     */
+    function getNodeInventory(bytes32 _node) 
+        external 
+        view 
+        returns (uint256[] memory tokenIds, uint256[] memory balances) 
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256[] memory ids = s.nodeTokenIds[_node];
+        uint256[] memory bals = new uint256[](ids.length);
+        
+        for (uint256 i = 0; i < ids.length; i++) {
+            bals[i] = s.nodeTokenBalances[_node][ids[i]];
+        }
+        
+        return (ids, bals);
+    }
+
+    /**
+     * @notice Check if Diamond's actual ERC1155 balance matches sum of all node balances
+     * @dev Useful for auditing/verification
+     * @param _tokenId The ERC1155 token ID to check
+     * @param _nodeHashes Array of node hashes to sum
+     * @return diamondBalance The Diamond's actual ERC1155 balance
+     * @return sumNodeBalances Sum of all specified nodes' internal balances
+     * @return isBalanced Whether they match
+     */
+    function verifyTokenAccounting(
+        uint256 _tokenId,
+        bytes32[] calldata _nodeHashes
+    ) external view returns (
+        uint256 diamondBalance,
+        uint256 sumNodeBalances,
+        bool isBalanced
+    ) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
+        
+        diamondBalance = IERC1155(s.auraAssetAddress).balanceOf(address(this), _tokenId);
+        
+        for (uint256 i = 0; i < _nodeHashes.length; i++) {
+            sumNodeBalances += s.nodeTokenBalances[_nodeHashes[i]][_tokenId];
+        }
+        
+        isBalanced = (diamondBalance >= sumNodeBalances);
+        
+        return (diamondBalance, sumNodeBalances, isBalanced);
     }
 }

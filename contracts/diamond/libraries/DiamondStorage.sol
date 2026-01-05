@@ -47,6 +47,15 @@ library DiamondStorage {
         // ======= TOKEN ADDRESSES =======
         address auraAssetAddress;
 
+        // ======= NODE TOKEN INVENTORY =======
+        // Internal accounting: nodeHash => tokenId => balance
+        // Tracks how many tokens each node "owns" within the Diamond
+        mapping(bytes32 => mapping(uint256 => uint256)) nodeTokenBalances;
+        // Track all token IDs a node has ever held (for enumeration)
+        mapping(bytes32 => uint256[]) nodeTokenIds;
+        // Quick lookup: does node have this token ID in their list?
+        mapping(bytes32 => mapping(uint256 => bool)) nodeHasToken;
+
         // ======= BRIDGE =======
         address clobAddress;
         address ausysAddress;

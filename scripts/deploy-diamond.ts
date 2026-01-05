@@ -54,12 +54,27 @@ const FACET_SELECTORS: Record<string, string[]> = {
     '0x4b1f5c70', // updateNodeOwner
     '0x16261e99', // updateNodeStatus
     '0x6766c717', // updateSupportedAssets
-    // CLOB approval functions (for trading support)
+    // CLOB approval functions
     '0xf7502631', // setAuraAssetAddress
     '0x89a1153c', // getAuraAssetAddress
     '0x40ed3118', // approveClobForTokens
     '0xe1ed5db1', // revokeClobApproval
     '0xcb24a4b4', // isClobApproved
+    // Node token inventory functions
+    '0x0a063811', // creditNodeTokens
+    '0x250b58d4', // depositTokensToNode
+    '0x86f99af0', // withdrawTokensFromNode
+    '0xa3cb5b6e', // transferTokensBetweenNodes
+    '0x4794010e', // debitNodeTokens
+    '0x2159e90e', // getNodeTokenBalance
+    '0x653a5887', // getNodeTokenIds
+    '0xe02b8288', // getNodeInventory
+    '0x294cc9d5', // verifyTokenAccounting
+  ],
+  ERC1155ReceiverFacet: [
+    '0xf23a6e61', // onERC1155Received
+    '0xbc197c81', // onERC1155BatchReceived
+    '0x01ffc9a7', // supportsInterface
   ],
   AssetsFacet: [
     '0xe243b2fc', // addAsset
