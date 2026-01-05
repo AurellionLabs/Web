@@ -11,3 +11,4 @@ export * from './rwy-flows';
 export * from './pool-flows';
 export * from './order-flows';
 export * from './redemption-flows';
+export * from './node-inventory-flows';

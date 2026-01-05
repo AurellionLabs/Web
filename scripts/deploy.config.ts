@@ -216,6 +216,13 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     chainConstantKey: 'NEXT_PUBLIC_CLOB_FACET_ADDRESS',
   },
 
+  ERC1155ReceiverFacet: {
+    name: 'ERC1155ReceiverFacet',
+    contractName: 'ERC1155ReceiverFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS',
+  },
+
   // Diamond itself
   Diamond: {
     name: 'Diamond',
@@ -238,8 +245,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
   // Test deployment for E2E tests - minimal contracts needed
   test: {
     name: 'Test Deployment',
-    description:
-      'Deploy minimal contracts for E2E testing (Aura, AuSys, AurumNodeManager, AuStake, AuraAsset, CLOB, RWYVault)',
+    description: 'Deploy minimal contracts for E2E testing including Diamond',
     contracts: [
       'Aura',
       'AuSys',
@@ -248,6 +254,13 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'AuraAsset',
       'CLOB',
       'RWYVault',
+      // Diamond for node inventory testing
+      'DiamondCutFacet',
+      'DiamondLoupeFacet',
+      'OwnershipFacet',
+      'NodesFacet',
+      'ERC1155ReceiverFacet',
+      'Diamond',
     ],
   },
 
@@ -356,20 +369,36 @@ export const FACET_SELECTORS: Record<string, string[]> = {
     '0xf2fde38b',
   ],
   NodesFacet: [
-    '0x2bef7fb5',
-    '0xa2444390',
-    '0x50c946fe',
-    '0xc83f7ca4',
-    '0xb59d3bea',
-    '0x3e691b1f',
-    '0x63584ecd',
-    '0x506a17b2',
-    '0x641b8fc7',
-    '0xd9ff9ee4',
-    '0xd24e25d3',
-    '0x4b1f5c70',
-    '0x16261e99',
-    '0x6766c717',
+    '0x2bef7fb5', // addSupportedAsset
+    '0xa2444390', // deactivateNode
+    '0x50c946fe', // getNode
+    '0xc83f7ca4', // getNodeAssets
+    '0xb59d3bea', // getOwnerNodes
+    '0x3e691b1f', // getTotalNodeAssets
+    '0x63584ecd', // getTotalNodes
+    '0x506a17b2', // registerNode
+    '0x641b8fc7', // updateNode
+    '0xd9ff9ee4', // updateNodeCapacity
+    '0xd24e25d3', // updateNodeLocation
+    '0x4b1f5c70', // updateNodeOwner
+    '0x16261e99', // updateNodeStatus
+    '0x6766c717', // updateSupportedAssets
+    // CLOB approval functions
+    '0xf7502631', // setAuraAssetAddress
+    '0x89a1153c', // getAuraAssetAddress
+    '0x40ed3118', // approveClobForTokens
+    '0xe1ed5db1', // revokeClobApproval
+    '0xcb24a4b4', // isClobApproved
+    // Node token inventory functions
+    '0x0a063811', // creditNodeTokens
+    '0x250b58d4', // depositTokensToNode
+    '0x86f99af0', // withdrawTokensFromNode
+    '0xa3cb5b6e', // transferTokensBetweenNodes
+    '0x4794010e', // debitNodeTokens
+    '0x2159e90e', // getNodeTokenBalance
+    '0x653a5887', // getNodeTokenIds
+    '0xe02b8288', // getNodeInventory
+    '0x294cc9d5', // verifyTokenAccounting
   ],
   AssetsFacet: [
     '0xe243b2fc',
@@ -424,5 +453,10 @@ export const FACET_SELECTORS: Record<string, string[]> = {
     '0xb537889c',
     '0x8707e031',
     '0x9fa5bc24',
+  ],
+  ERC1155ReceiverFacet: [
+    '0xf23a6e61', // onERC1155Received
+    '0xbc197c81', // onERC1155BatchReceived
+    '0x01ffc9a7', // supportsInterface
   ],
 };
