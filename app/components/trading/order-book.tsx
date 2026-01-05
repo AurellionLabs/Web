@@ -11,6 +11,10 @@ import { useOrderBook, OrderLevel } from '@/hooks/useOrderBook';
 export interface OrderBookProps {
   /** Asset ID to display order book for */
   assetId: string;
+  /** Base token address (ERC1155 contract) */
+  baseToken?: string;
+  /** Base token ID */
+  baseTokenId?: string;
   /** Base price for the asset */
   basePrice?: number;
   /** Maximum levels to display per side */
@@ -139,6 +143,8 @@ const SpreadIndicator: React.FC<SpreadIndicatorProps> = ({
  */
 export const OrderBook: React.FC<OrderBookProps> = ({
   assetId,
+  baseToken,
+  baseTokenId,
   basePrice = 100,
   maxLevels = 10,
   onPriceClick,
@@ -148,6 +154,9 @@ export const OrderBook: React.FC<OrderBookProps> = ({
   const { orderBook, isLoading } = useOrderBook(assetId, {
     levels: maxLevels,
     basePrice,
+    baseToken,
+    baseTokenId,
+    updateInterval: 10000, // Refresh every 10 seconds
   });
 
   // Calculate max depth for scaling
@@ -177,6 +186,9 @@ export const OrderBook: React.FC<OrderBookProps> = ({
       </GlassCard>
     );
   }
+
+  // Check if order book is empty
+  const hasOrders = orderBook.bids.length > 0 || orderBook.asks.length > 0;
 
   return (
     <GlassCard
@@ -213,42 +225,62 @@ export const OrderBook: React.FC<OrderBookProps> = ({
         <span className="text-right">Total</span>
       </div>
 
-      {/* Asks (sell orders) - reversed so lowest ask is at bottom */}
-      <div className={cn('overflow-y-auto', compact ? 'max-h-24' : 'flex-1')}>
-        <div className="flex flex-col-reverse">
-          {orderBook.asks.map((level, index) => (
-            <OrderBookRow
-              key={`ask-${index}`}
-              level={level}
-              side="ask"
-              maxDepth={maxDepth}
-              onClick={() => onPriceClick?.(level.price, 'ask')}
-              compact={compact}
-            />
-          ))}
-        </div>
-      </div>
+      {hasOrders ? (
+        <>
+          {/* Asks (sell orders) - reversed so lowest ask is at bottom */}
+          <div
+            className={cn('overflow-y-auto', compact ? 'max-h-24' : 'flex-1')}
+          >
+            <div className="flex flex-col-reverse">
+              {orderBook.asks.map((level, index) => (
+                <OrderBookRow
+                  key={`ask-${index}`}
+                  level={level}
+                  side="ask"
+                  maxDepth={maxDepth}
+                  onClick={() => onPriceClick?.(level.price, 'ask')}
+                  compact={compact}
+                />
+              ))}
+            </div>
+          </div>
 
-      {/* Spread indicator */}
-      <SpreadIndicator
-        spread={orderBook.spread}
-        spreadPercent={orderBook.spreadPercent}
-        midPrice={orderBook.midPrice}
-      />
-
-      {/* Bids (buy orders) */}
-      <div className={cn('overflow-y-auto', compact ? 'max-h-24' : 'flex-1')}>
-        {orderBook.bids.map((level, index) => (
-          <OrderBookRow
-            key={`bid-${index}`}
-            level={level}
-            side="bid"
-            maxDepth={maxDepth}
-            onClick={() => onPriceClick?.(level.price, 'bid')}
-            compact={compact}
+          {/* Spread indicator */}
+          <SpreadIndicator
+            spread={orderBook.spread}
+            spreadPercent={orderBook.spreadPercent}
+            midPrice={orderBook.midPrice}
           />
-        ))}
-      </div>
+
+          {/* Bids (buy orders) */}
+          <div
+            className={cn('overflow-y-auto', compact ? 'max-h-24' : 'flex-1')}
+          >
+            {orderBook.bids.map((level, index) => (
+              <OrderBookRow
+                key={`bid-${index}`}
+                level={level}
+                side="bid"
+                maxDepth={maxDepth}
+                onClick={() => onPriceClick?.(level.price, 'bid')}
+                compact={compact}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div
+          className={cn(
+            'flex flex-col items-center justify-center text-center',
+            compact ? 'h-32' : 'flex-1 min-h-[200px]',
+          )}
+        >
+          <p className="text-muted-foreground text-sm">No orders yet</p>
+          <p className="text-muted-foreground/60 text-xs mt-1">
+            Place the first order to start trading
+          </p>
+        </div>
+      )}
     </GlassCard>
   );
 };

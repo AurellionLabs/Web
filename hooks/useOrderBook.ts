@@ -199,21 +199,14 @@ export function useOrderBook(
         }
       }
 
-      // Fallback to mock data if no real data available
-      const { bids, asks } = generateMockOrderBook(basePrice, levels);
-
-      const bestBid = bids[0]?.price || 0;
-      const bestAsk = asks[0]?.price || 0;
-      const spread = bestAsk - bestBid;
-      const midPrice = (bestBid + bestAsk) / 2;
-      const spreadPercent = midPrice > 0 ? (spread / midPrice) * 100 : 0;
-
+      // Return empty order book when no real data available
+      // This allows the UI to show "No orders yet" instead of mock data
       setOrderBook({
-        bids,
-        asks,
-        spread,
-        spreadPercent,
-        midPrice,
+        bids: [],
+        asks: [],
+        spread: 0,
+        spreadPercent: 0,
+        midPrice: basePrice,
         lastUpdate: Date.now(),
       });
       setIsLoading(false);
