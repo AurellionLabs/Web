@@ -481,16 +481,28 @@ export const TradePanel: React.FC<TradePanelProps> = ({
       </div>
 
       {/* Asset selector for sell orders */}
-      {side === 'sell' && sellableAssets.length > 0 && (
+      {side === 'sell' && (
         <div className="mt-4">
           <label className="text-xs font-medium text-muted-foreground mb-2 block">
             Select Asset to Sell
           </label>
-          <AssetSelector
-            assets={sellableAssets}
-            selectedAsset={selectedSellAsset}
-            onSelect={handleSellAssetSelect}
-          />
+          {sellableAssets.length > 0 ? (
+            <AssetSelector
+              assets={sellableAssets}
+              selectedAsset={selectedSellAsset}
+              onSelect={handleSellAssetSelect}
+            />
+          ) : (
+            <div className="p-4 rounded-xl bg-surface-overlay/50 border border-glass-border text-center">
+              <Package className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                No assets in your wallet
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Mint or receive assets to sell them here
+              </p>
+            </div>
+          )}
         </div>
       )}
 
