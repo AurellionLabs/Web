@@ -548,10 +548,14 @@ export const TradePanel: React.FC<TradePanelProps> = ({
   }, [initialPrice]);
 
   // For sell orders, require a selected asset
+  // For market orders, price is not required (determined by market)
+  const hasValidPrice = type === 'market' || parseFloat(price) > 0;
+  const hasValidQuantity = parseFloat(quantity) > 0;
+
   const isValid =
     side === 'sell'
-      ? selectedSellAsset && parseFloat(price) > 0 && parseFloat(quantity) > 0
-      : asset && parseFloat(price) > 0 && parseFloat(quantity) > 0;
+      ? selectedSellAsset && hasValidPrice && hasValidQuantity
+      : asset && hasValidPrice && hasValidQuantity;
 
   return (
     <GlassCard className={cn('flex flex-col', className)}>
