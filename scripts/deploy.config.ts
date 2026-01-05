@@ -228,12 +228,99 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     name: 'Diamond',
     contractName: 'Diamond',
     category: 'diamond',
-    dependencies: ['DiamondCutFacet'],
+    dependencies: [
+      'DiamondCutFacet',
+      'DiamondLoupeFacet',
+      'OwnershipFacet',
+      'NodesFacet',
+      'ERC1155ReceiverFacet',
+    ],
     constructorArgs: (addresses, deployer) => [
       deployer,
       addresses.DiamondCutFacet,
     ],
     chainConstantKey: 'NEXT_PUBLIC_DIAMOND_ADDRESS',
+    postDeploy: async (contract, addresses) => {
+      try {
+        console.log('   Adding facets to Diamond...');
+
+        // Import ethers dynamically
+        const { ethers } = await import('ethers');
+
+        // FacetCutAction enum: Add = 0, Replace = 1, Remove = 2
+        const FacetCutAction = { Add: 0, Replace: 1, Remove: 2 };
+
+        // Facets to add (DiamondCutFacet is already added in constructor)
+        const facetsToAdd = [
+          { name: 'DiamondLoupeFacet', address: addresses.DiamondLoupeFacet },
+          { name: 'OwnershipFacet', address: addresses.OwnershipFacet },
+          { name: 'NodesFacet', address: addresses.NodesFacet },
+          {
+            name: 'ERC1155ReceiverFacet',
+            address: addresses.ERC1155ReceiverFacet,
+          },
+        ];
+
+        // Build facet cuts
+        const facetCuts = [];
+        for (const facet of facetsToAdd) {
+          if (!facet.address) {
+            console.log(`   ⚠ Skipping ${facet.name} - not deployed`);
+            continue;
+          }
+
+          const selectors = FACET_SELECTORS[facet.name];
+          if (!selectors || selectors.length === 0) {
+            console.log(`   ⚠ Skipping ${facet.name} - no selectors defined`);
+            continue;
+          }
+
+          facetCuts.push({
+            facetAddress: facet.address,
+            action: FacetCutAction.Add,
+            functionSelectors: selectors,
+          });
+
+          console.log(
+            `   ✓ Prepared ${facet.name} with ${selectors.length} selectors`,
+          );
+        }
+
+        if (facetCuts.length === 0) {
+          console.log('   ⚠ No facets to add');
+          return;
+        }
+
+        // Get the Diamond address
+        const diamondAddress = await contract.getAddress();
+
+        // Attach IDiamondCut interface to the Diamond address
+        const diamondCutAbi = [
+          'function diamondCut((address facetAddress, uint8 action, bytes4[] functionSelectors)[] calldata _diamondCut, address _init, bytes calldata _calldata) external',
+        ];
+        const diamondCut = new ethers.Contract(
+          diamondAddress,
+          diamondCutAbi,
+          contract.runner,
+        );
+
+        // Execute diamond cut
+        console.log('   Executing diamondCut transaction...');
+        const tx = await diamondCut.diamondCut(
+          facetCuts,
+          ethers.ZeroAddress,
+          '0x',
+        );
+        console.log('   Waiting for transaction confirmation...');
+        await tx.wait();
+
+        console.log(`   ✅ Added ${facetCuts.length} facets to Diamond`);
+      } catch (error) {
+        console.error('   ❌ Failed to add facets to Diamond:');
+        console.error('   ', error instanceof Error ? error.message : error);
+        throw error;
+      }
+    },
   },
 };
 
