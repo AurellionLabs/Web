@@ -26,6 +26,21 @@ const GET_USER_BALANCES = `
 `;
 
 /**
+ * GraphQL query to get nodes owned by a wallet address
+ */
+const GET_NODES_BY_OWNER = `
+  query GetNodesByOwner($ownerAddress: String!) {
+    nodess(where: { owner: $ownerAddress }) {
+      items {
+        id
+        owner
+        status
+      }
+    }
+  }
+`;
+
+/**
  * GraphQL query to get node's inventory (for nodes selling their assets)
  * This returns assets the node has minted and can sell
  */
@@ -71,6 +86,16 @@ interface UserBalanceResponse {
       balance: string;
       asset: string;
       lastUpdated: string;
+    }>;
+  };
+}
+
+interface NodesByOwnerResponse {
+  nodess: {
+    items: Array<{
+      id: string;
+      owner: string;
+      status: string;
     }>;
   };
 }
@@ -130,7 +155,7 @@ export function useUserAssets(filterClass?: string) {
 
   /**
    * Fetch user balances and related metadata
-   * Checks both node inventory (if user is a node) and ERC1155 balances
+   * Checks both node inventory (if user owns nodes) and ERC1155 balances
    */
   const fetchUserAssets = useCallback(async () => {
     if (!isConnected || !address) {
@@ -145,13 +170,16 @@ export function useUserAssets(filterClass?: string) {
 
     try {
       const allBalances: BalanceItem[] = [];
+      const processedNodeAddresses = new Set<string>();
 
-      // Step 1a: If user has a selected node, fetch node inventory
+      // Step 1a: If user has a selected node from context, fetch its inventory
       if (selectedNodeAddress) {
         console.log(
-          '[useUserAssets] Fetching node inventory for:',
+          '[useUserAssets] Fetching inventory for selected node:',
           selectedNodeAddress,
         );
+        processedNodeAddresses.add(selectedNodeAddress.toLowerCase());
+
         const nodeResponse = await graphqlRequest<NodeInventoryResponse>(
           NEXT_PUBLIC_INDEXER_URL,
           GET_NODE_INVENTORY,
@@ -159,9 +187,11 @@ export function useUserAssets(filterClass?: string) {
         );
 
         const nodeAssets = nodeResponse.nodeAssetss?.items || [];
-        console.log('[useUserAssets] Found node assets:', nodeAssets.length);
+        console.log(
+          '[useUserAssets] Found selected node assets:',
+          nodeAssets.length,
+        );
 
-        // Convert node assets to balance items (capacity = balance for nodes)
         nodeAssets.forEach((na) => {
           if (BigInt(na.capacity) > 0n) {
             allBalances.push({
@@ -174,7 +204,53 @@ export function useUserAssets(filterClass?: string) {
         });
       }
 
-      // Step 1b: Also fetch user's ERC1155 token balances (in case they received tokens)
+      // Step 1b: Check if wallet owns any nodes and fetch their inventory
+      console.log('[useUserAssets] Checking for owned nodes by:', address);
+      const nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
+        NEXT_PUBLIC_INDEXER_URL,
+        GET_NODES_BY_OWNER,
+        { ownerAddress: address.toLowerCase() },
+      );
+
+      const ownedNodes = nodesResponse.nodess?.items || [];
+      console.log('[useUserAssets] Found owned nodes:', ownedNodes.length);
+
+      // Fetch inventory for each owned node (that we haven't already processed)
+      for (const node of ownedNodes) {
+        if (processedNodeAddresses.has(node.id.toLowerCase())) {
+          continue; // Already processed this node
+        }
+        processedNodeAddresses.add(node.id.toLowerCase());
+
+        console.log(
+          '[useUserAssets] Fetching inventory for owned node:',
+          node.id,
+        );
+        const nodeResponse = await graphqlRequest<NodeInventoryResponse>(
+          NEXT_PUBLIC_INDEXER_URL,
+          GET_NODE_INVENTORY,
+          { node: node.id.toLowerCase() },
+        );
+
+        const nodeAssets = nodeResponse.nodeAssetss?.items || [];
+        console.log(
+          '[useUserAssets] Found owned node assets:',
+          nodeAssets.length,
+        );
+
+        nodeAssets.forEach((na) => {
+          if (BigInt(na.capacity) > 0n) {
+            allBalances.push({
+              id: na.id,
+              tokenId: na.tokenId,
+              balance: na.capacity,
+              price: na.price,
+            });
+          }
+        });
+      }
+
+      // Step 1c: Also fetch user's ERC1155 token balances (in case they received tokens)
       console.log('[useUserAssets] Fetching ERC1155 balances for:', address);
       const balanceResponse = await graphqlRequest<UserBalanceResponse>(
         NEXT_PUBLIC_INDEXER_URL,
