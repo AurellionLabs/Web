@@ -277,6 +277,22 @@ contract aurumNode is ERC1155Holder, Ownable {
     auraAsset.setApprovalForAll(address(ausys), false);
   }
 
+  // Approve CLOB to transfer this node's ERC1155 tokens
+  // This is required for the node to place sell orders on the CLOB
+  function approveClobForTokens(address clobAddress) public onlyOwner {
+    auraAsset.setApprovalForAll(clobAddress, true);
+  }
+
+  // Revoke CLOB approval (for security)
+  function revokeClobApproval(address clobAddress) public onlyOwner {
+    auraAsset.setApprovalForAll(clobAddress, false);
+  }
+
+  // Check if CLOB is approved to transfer this node's tokens
+  function isClobApproved(address clobAddress) public view returns (bool) {
+    return auraAsset.isApprovedForAll(address(this), clobAddress);
+  }
+
   function addItem(
     address itemOwner,
     uint256 amount,

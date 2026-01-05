@@ -109,6 +109,30 @@ export class BlockchainNodeRepository implements NodeRepository {
   }
 
   /**
+   * Approve CLOB to transfer this node's ERC1155 tokens
+   * This must be called before the node can place sell orders on the CLOB
+   */
+  async approveClobForTokens(
+    nodeAddress: string,
+    clobAddress: string,
+  ): Promise<void> {
+    const nodeContract = await this.getNodeContract(nodeAddress);
+    const tx = await (nodeContract as any).approveClobForTokens(clobAddress);
+    await tx.wait();
+  }
+
+  /**
+   * Check if CLOB is approved to transfer this node's tokens
+   */
+  async isClobApproved(
+    nodeAddress: string,
+    clobAddress: string,
+  ): Promise<boolean> {
+    const nodeContract = await this.getNodeContract(nodeAddress);
+    return await (nodeContract as any).isClobApproved(clobAddress);
+  }
+
+  /**
    * REFACTORED: Correctly maps contract Node struct with Asset[] to domain Node
    */
   async getNode(nodeAddress: string): Promise<Node | null> {

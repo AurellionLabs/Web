@@ -8,7 +8,10 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 import type { AurumNodeManager } from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
 import { ethers } from 'ethers';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_CLOB_ADDRESS,
+} from '@/chain-constants';
 import { PinataSDK } from 'pinata';
 import { Asset } from '@/domain/shared';
 import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
@@ -181,6 +184,9 @@ export class NodeAssetService implements INodeAssetService {
 
       console.log('[NodeAssetService] addItem and addSupportedAsset confirmed');
 
+      // Ensure CLOB is approved to transfer this node's tokens for trading
+      await this.ensureClobApproval(nodeContract, nodeAddress);
+
       // Upload metadata to IPFS
       await this.uploadMetadataToIPFS(
         tokenIdLocal,
@@ -191,6 +197,53 @@ export class NodeAssetService implements INodeAssetService {
     } catch (error) {
       handleContractError(error, `error in mint asset for node ${nodeAddress}`);
       throw error;
+    }
+  }
+
+  /**
+   * Ensure CLOB contract is approved to transfer this node's ERC1155 tokens.
+   * This is required for the node to place sell orders on the CLOB.
+   */
+  private async ensureClobApproval(
+    nodeContract: ethers.Contract,
+    nodeAddress: string,
+  ): Promise<void> {
+    try {
+      // Check if CLOB is already approved
+      const isApproved = await nodeContract.isClobApproved(
+        NEXT_PUBLIC_CLOB_ADDRESS,
+      );
+
+      if (isApproved) {
+        console.log(
+          `[NodeAssetService] CLOB already approved for node ${nodeAddress}`,
+        );
+        return;
+      }
+
+      console.log(
+        `[NodeAssetService] Approving CLOB (${NEXT_PUBLIC_CLOB_ADDRESS}) for node ${nodeAddress}...`,
+      );
+
+      const { receipt } = await sendContractTxWithReadEstimation(
+        nodeContract as unknown as ethers.Contract,
+        'approveClobForTokens',
+        [NEXT_PUBLIC_CLOB_ADDRESS],
+        { from: await this.context.getSigner().getAddress() },
+      );
+
+      console.log(
+        `[NodeAssetService] CLOB approved for node ${nodeAddress}, tx: ${receipt.hash}`,
+      );
+    } catch (error) {
+      // Log but don't fail the mint - user can manually approve later
+      console.warn(
+        `[NodeAssetService] Failed to auto-approve CLOB for node ${nodeAddress}:`,
+        error,
+      );
+      console.warn(
+        '[NodeAssetService] Node operator will need to manually approve CLOB before placing sell orders',
+      );
     }
   }
 
