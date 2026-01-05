@@ -77,6 +77,23 @@ const GET_ASSETS_BY_TOKEN_IDS = `
   }
 `;
 
+/**
+ * GraphQL query to get asset attributes by asset IDs (hashes)
+ */
+const GET_ASSET_ATTRIBUTES = `
+  query GetAssetAttributes($assetIds: [String!]!) {
+    assetAttributess(where: { assetId_in: $assetIds }, limit: 500) {
+      items {
+        id
+        assetId
+        name
+        values
+        description
+      }
+    }
+  }
+`;
+
 interface UserBalanceResponse {
   userBalancess: {
     items: Array<{
@@ -126,6 +143,18 @@ interface AssetMetadataResponse {
   };
 }
 
+interface AssetAttributesResponse {
+  assetAttributess: {
+    items: Array<{
+      id: string;
+      assetId: string;
+      name: string;
+      values: string; // JSON array string like '["M"]'
+      description: string;
+    }>;
+  };
+}
+
 interface BalanceItem {
   id: string;
   tokenId: string;
@@ -149,6 +178,9 @@ export function useUserAssets(filterClass?: string) {
   const [balances, setBalances] = useState<BalanceItem[]>([]);
   const [metadata, setMetadata] = useState<
     Map<string, AssetMetadataResponse['assetss']['items'][0]>
+  >(new Map());
+  const [attributes, setAttributes] = useState<
+    Map<string, Array<{ name: string; value: string }>>
   >(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -296,13 +328,18 @@ export function useUserAssets(filterClass?: string) {
         { tokenIds },
       );
 
-      // Build metadata map
+      // Build metadata map (keyed by tokenId)
       const metaMap = new Map<
         string,
         AssetMetadataResponse['assetss']['items'][0]
       >();
+      const assetIds: string[] = [];
       (metadataResponse.assetss?.items || []).forEach((asset) => {
         metaMap.set(asset.tokenId, asset);
+        // Collect asset hashes for attribute lookup
+        if (asset.hash) {
+          assetIds.push(asset.hash);
+        }
       });
       setMetadata(metaMap);
 
@@ -311,6 +348,47 @@ export function useUserAssets(filterClass?: string) {
         metaMap.size,
         'assets',
       );
+
+      // Step 3: Fetch attributes for all assets
+      if (assetIds.length > 0) {
+        console.log(
+          '[useUserAssets] Fetching attributes for',
+          assetIds.length,
+          'assets',
+        );
+        const attributesResponse =
+          await graphqlRequest<AssetAttributesResponse>(
+            NEXT_PUBLIC_INDEXER_URL,
+            GET_ASSET_ATTRIBUTES,
+            { assetIds },
+          );
+
+        // Build attributes map (keyed by assetId/hash)
+        const attrMap = new Map<
+          string,
+          Array<{ name: string; value: string }>
+        >();
+        (attributesResponse.assetAttributess?.items || []).forEach((attr) => {
+          const existing = attrMap.get(attr.assetId) || [];
+          // Parse the JSON values array and take first value
+          let value = '';
+          try {
+            const parsed = JSON.parse(attr.values);
+            value = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : '';
+          } catch {
+            value = attr.values;
+          }
+          existing.push({ name: attr.name, value });
+          attrMap.set(attr.assetId, existing);
+        });
+        setAttributes(attrMap);
+
+        console.log(
+          '[useUserAssets] Loaded attributes for',
+          attrMap.size,
+          'assets',
+        );
+      }
     } catch (err) {
       console.error('[useUserAssets] Error fetching user assets:', err);
       setError('Failed to fetch your assets');
@@ -346,6 +424,9 @@ export function useUserAssets(filterClass?: string) {
         continue;
       }
 
+      // Get attributes for this asset (keyed by hash)
+      const assetAttributes = meta.hash ? attributes.get(meta.hash) : undefined;
+
       result.push({
         id: balance.id,
         tokenId: balance.tokenId,
@@ -355,11 +436,12 @@ export function useUserAssets(filterClass?: string) {
         price: balance.price
           ? (Number(balance.price) / 1e18).toFixed(2)
           : undefined,
+        attributes: assetAttributes,
       });
     }
 
     return result;
-  }, [balances, metadata, filterClass]);
+  }, [balances, metadata, attributes, filterClass]);
 
   return {
     sellableAssets,

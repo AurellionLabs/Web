@@ -4,9 +4,15 @@ import React, { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '../ui/glass-card';
 import { GlowButton } from '../ui/glow-button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../ui/tooltip';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 import { formatTokenAmount } from '@/lib/formatters';
-import { ChevronDown, Package, Check } from 'lucide-react';
+import { ChevronDown, Package, Check, Info } from 'lucide-react';
 
 /**
  * Order side type
@@ -31,6 +37,14 @@ export interface OrderData {
 }
 
 /**
+ * Asset attribute
+ */
+export interface AssetAttribute {
+  name: string;
+  value: string;
+}
+
+/**
  * Sellable asset with balance info
  */
 export interface SellableAsset {
@@ -40,6 +54,7 @@ export interface SellableAsset {
   class: string;
   balance: string;
   price?: string;
+  attributes?: AssetAttribute[];
 }
 
 /**
@@ -227,9 +242,49 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({
               </span>
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="font-medium text-foreground truncate">
-                {selectedAsset.name}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-medium text-foreground truncate">
+                  {selectedAsset.name}
+                </p>
+                {selectedAsset.attributes &&
+                  selectedAsset.attributes.length > 0 && (
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger
+                          asChild
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="cursor-help">
+                            <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-accent transition-colors" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          className="bg-surface-elevated border-glass-border p-3 max-w-xs"
+                        >
+                          <p className="text-xs font-semibold text-foreground mb-2">
+                            Asset Attributes
+                          </p>
+                          <div className="space-y-1">
+                            {selectedAsset.attributes.map((attr, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between gap-4 text-xs"
+                              >
+                                <span className="text-muted-foreground capitalize">
+                                  {attr.name}
+                                </span>
+                                <span className="font-mono text-foreground bg-glass-hover px-1.5 py-0.5 rounded">
+                                  {attr.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Balance:{' '}
                 <span className="font-mono text-trading-sell">
@@ -307,14 +362,53 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({
                     </span>
                   </div>
                   <div className="flex-1 text-left min-w-0">
-                    <p
-                      className={cn(
-                        'text-sm font-medium truncate',
-                        isSelected ? 'text-trading-sell' : 'text-foreground',
+                    <div className="flex items-center gap-1.5">
+                      <p
+                        className={cn(
+                          'text-sm font-medium truncate',
+                          isSelected ? 'text-trading-sell' : 'text-foreground',
+                        )}
+                      >
+                        {asset.name}
+                      </p>
+                      {asset.attributes && asset.attributes.length > 0 && (
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger
+                              asChild
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="cursor-help">
+                                <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-accent transition-colors" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="right"
+                              className="bg-surface-elevated border-glass-border p-3 max-w-xs"
+                            >
+                              <p className="text-xs font-semibold text-foreground mb-2">
+                                Asset Attributes
+                              </p>
+                              <div className="space-y-1">
+                                {asset.attributes.map((attr, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between gap-4 text-xs"
+                                  >
+                                    <span className="text-muted-foreground capitalize">
+                                      {attr.name}
+                                    </span>
+                                    <span className="font-mono text-foreground bg-glass-hover px-1.5 py-0.5 rounded">
+                                      {attr.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
-                    >
-                      {asset.name}
-                    </p>
+                    </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="px-1.5 py-0.5 rounded bg-glass-hover text-[10px] uppercase tracking-wider">
                         {asset.class}
