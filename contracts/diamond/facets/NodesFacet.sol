@@ -322,6 +322,40 @@ contract NodesFacet is Initializable {
         return s.totalNodeAssets[_node];
     }
 
+    // ======= AURA ASSET COMPATIBILITY =======
+
+    /**
+     * @notice Get node status for an address - compatible with AuraAsset's IAurumNodeManager interface
+     * @dev Returns bytes1(1) for active nodes. The Diamond itself is always considered a valid node
+     *      so that AuraAsset can mint tokens directly to the Diamond contract.
+     * @param _node The address to check (can be Diamond address or a node address from nodeList)
+     * @return status bytes1(1) if valid/active, bytes1(0) otherwise
+     */
+    function getNodeStatus(address _node) external view returns (bytes1) {
+        // Diamond itself is always a valid node (allows AuraAsset to mint to Diamond)
+        if (_node == address(this)) {
+            return bytes1(uint8(1));
+        }
+        
+        // Check if this address is in our nodeList and is active
+        // The nodeList contains addresses derived from node hashes
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        
+        for (uint256 i = 0; i < s.nodeList.length; i++) {
+            if (s.nodeList[i] == _node) {
+                // Found the address, now we need to find the corresponding node hash
+                // to check if it's active. The hash is stored as address in nodeList.
+                bytes32 nodeHash = bytes32(uint256(uint160(_node)));
+                if (s.nodes[nodeHash].active && s.nodes[nodeHash].validNode) {
+                    return bytes1(uint8(1));
+                }
+                break;
+            }
+        }
+        
+        return bytes1(uint8(0));
+    }
+
     // ======= TOKEN APPROVAL FUNCTIONS =======
 
     function setAuraAssetAddress(address _auraAsset) external {

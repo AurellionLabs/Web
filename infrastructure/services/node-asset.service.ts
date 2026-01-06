@@ -52,12 +52,12 @@ export class NodeAssetService implements INodeAssetService {
 
   /**
    * REFACTORED: Uses correct addSupportedAsset signature with Asset struct
+   * Note: Price is no longer set during minting - it's set when placing CLOB orders
    */
   async mintAsset(
     nodeAddress: string,
     asset: Omit<Asset, 'tokenID'>,
     amount: number,
-    priceWei: bigint,
   ): Promise<void> {
     console.log(
       `[NodeAssetService] Minting asset "${asset.name}" (class: ${asset.assetClass}) amount ${amount} for node ${nodeAddress}`,
@@ -114,10 +114,11 @@ export class NodeAssetService implements INodeAssetService {
         );
 
       // FIXED: Use correct addSupportedAsset signature with Asset struct
+      // Price is 0 - actual price set when placing sell orders on CLOB
       const assetStruct = {
         token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
         tokenId: tokenIdLocal,
-        price: priceWei,
+        price: 0n,
         capacity: bigIntAmount,
       };
 

@@ -48,11 +48,27 @@ export class PlatformRepository implements IPlatformRepository {
       if (items.length === 0) break;
 
       for (const a of items as any[]) {
+        // Handle attributes - can be array, object, or null/undefined
+        const attributesRaw = a.attributes;
+        let attributesArray: any[] = [];
+
+        if (Array.isArray(attributesRaw)) {
+          attributesArray = attributesRaw;
+        } else if (attributesRaw && typeof attributesRaw === 'object') {
+          // Single attribute object - wrap in array
+          attributesArray = [attributesRaw];
+        } else if (attributesRaw?.items) {
+          // Ponder format: { items: [...] }
+          attributesArray = Array.isArray(attributesRaw.items)
+            ? attributesRaw.items
+            : [];
+        }
+
         out.push({
           assetClass: a.class ?? a.className ?? a.assetClass ?? 'Unknown',
           tokenId: String(a.tokenId),
           name: a.name ?? 'Unknown Asset',
-          attributes: (a.attributes || [])
+          attributes: attributesArray
             .map((attr: any) => ({
               name: String(attr?.name ?? ''),
               values: Array.isArray(attr?.values)

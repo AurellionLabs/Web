@@ -63,18 +63,11 @@ const tokenizeFormSchema = z.object({
       message: 'Please enter a valid quantity greater than 0.',
     },
   ),
-  price: z
-    .string()
-    .regex(/^\d+$/, { message: 'Price must be a whole number (wei).' }),
+  // Price removed - set when placing sell orders on CLOB
   assetAttributes: z.record(z.string(), z.record(z.string(), z.any())),
 });
 
 interface EditingCapacity {
-  id: number;
-  value: string;
-}
-
-interface EditingPrice {
   id: number;
   value: string;
 }
@@ -150,7 +143,6 @@ export default function NodeDashboardPage() {
     mintAsset,
     updateNodeStatus,
     updateAssetCapacity,
-    updateAssetPrice,
     getAssetAttributes,
     refreshAssets,
     packageSign,
@@ -184,7 +176,6 @@ export default function NodeDashboardPage() {
   const [isUpdatingCapacity, setIsUpdatingCapacity] = useState(false);
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
-  const [editingPrice, setEditingPrice] = useState<EditingPrice | null>(null);
   const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
 
@@ -194,7 +185,6 @@ export default function NodeDashboardPage() {
       assetClass: '',
       assetId: '',
       quantity: '',
-      price: '',
       assetAttributes: {},
     },
   });
@@ -268,8 +258,8 @@ export default function NodeDashboardPage() {
         name: selectedAssetName,
         attributes: normalizedAttributes,
       };
-      const priceWei = BigInt(values.price || '0');
-      await mintAsset(assetPayload, quantity, priceWei);
+      // Price is set when placing sell orders on CLOB, not during tokenization
+      await mintAsset(assetPayload, quantity);
 
       await loadAssetAttributes(assets);
 
@@ -287,34 +277,29 @@ export default function NodeDashboardPage() {
   };
 
   const supportedAssetsCount = assets.length;
-  const tokenizedValue = assets
-    .reduce(
-      (total, asset) => total + Number(asset.price) * Number(asset.capacity),
-      0,
-    )
-    .toFixed(2);
+  // Total quantity of all tokenized assets
+  const totalTokenizedQuantity = assets.reduce(
+    (total, asset) => total + Number(asset.capacity),
+    0,
+  );
 
   const getAssetsSummaryByClass = () => {
-    const summary: Record<string, { quantity: number; value: number }> = {};
+    const summary: Record<string, { quantity: number }> = {};
 
     assets.forEach((asset) => {
       const assetClass = asset.class || 'Unknown';
       const quantity = Number(asset.capacity) || 0;
-      const price = Number(asset.price) || 0;
-      const value = quantity * price;
 
       if (summary[assetClass]) {
         summary[assetClass].quantity += quantity;
-        summary[assetClass].value += value;
       } else {
-        summary[assetClass] = { quantity, value };
+        summary[assetClass] = { quantity };
       }
     });
 
-    return Object.entries(summary).map(([assetClass, { quantity, value }]) => ({
+    return Object.entries(summary).map(([assetClass, { quantity }]) => ({
       assetClass,
       totalQuantity: quantity,
-      totalValue: value,
     }));
   };
 
@@ -409,8 +394,8 @@ export default function NodeDashboardPage() {
             <td className="p-4 font-mono text-foreground">
               {Number(asset.capacity ?? '0')}
             </td>
-            <td className="p-4 font-mono text-foreground">
-              ${Number(asset.price ?? '0').toFixed(2)}
+            <td className="p-4 font-mono text-muted-foreground text-sm">
+              Set via trading
             </td>
           </tr>
           {/* Attributes row */}
@@ -562,28 +547,6 @@ export default function NodeDashboardPage() {
     }
   };
 
-  const handlePriceUpdate = async (assetId: number, newValue: string) => {
-    if (!currentNodeData) return;
-
-    try {
-      await updateAssetPrice(
-        currentNodeData.owner,
-        String(assetId),
-        BigInt(newValue),
-      );
-
-      setEditingPrice(null);
-      toast({ title: 'Success', description: 'Price updated successfully' });
-    } catch (error) {
-      console.error('Error updating price:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update price',
-        variant: 'destructive',
-      });
-    }
-  };
-
   if (nodeLoading || (!currentNodeData && nodeIdFromUrl)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -671,7 +634,6 @@ export default function NodeDashboardPage() {
                     selectedAssetClass={form.watch('assetClass')}
                     selectedAssetId={form.watch('assetId')}
                     quantity={form.watch('quantity')}
-                    price={form.watch('price')}
                     supportedAssetClasses={supportedAssetClasses}
                     onAssetClassChange={(value) => {
                       form.setValue('assetClass', value);
@@ -682,7 +644,6 @@ export default function NodeDashboardPage() {
                     onQuantityChange={(value) =>
                       form.setValue('quantity', value)
                     }
-                    onPriceChange={(value) => form.setValue('price', value)}
                     assetAttributes={assetAttributes}
                     onAssetAttributeChange={handleAssetAttributeChange}
                     onSelectedAssetChange={(asset) =>
@@ -719,11 +680,11 @@ export default function NodeDashboardPage() {
             description="Total assets tokenized"
           />
           <StatCard
-            title="Tokenized Value"
-            value={`$${tokenizedValue}`}
+            title="Total Quantity"
+            value={totalTokenizedQuantity}
             icon={DollarSign}
             iconColor="bg-green-500"
-            description="Total value of assets"
+            description="Total tokenized units"
           />
           <StatCard
             title="Node Status"
@@ -756,9 +717,6 @@ export default function NodeDashboardPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Quantity
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Total Value
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-glass-border">
@@ -774,15 +732,12 @@ export default function NodeDashboardPage() {
                       <td className="px-4 py-4 font-mono text-foreground">
                         {summary.totalQuantity}
                       </td>
-                      <td className="px-4 py-4 font-mono text-foreground">
-                        ${summary.totalValue.toFixed(2)}
-                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td
-                      colSpan={3}
+                      colSpan={2}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
                       No tokenized assets found
@@ -819,7 +774,7 @@ export default function NodeDashboardPage() {
                     Quantity
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Price
+                    Trading
                   </th>
                 </tr>
               </thead>
@@ -1022,63 +977,6 @@ export default function NodeDashboardPage() {
             }
           />
         </GlassCard>
-
-        {/* Edit Price Modal */}
-        {editingPrice && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <GlassCard className="w-96">
-              <h3 className="text-lg font-medium text-foreground mb-4">
-                Edit Asset Price
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">
-                    Price (in wei)
-                  </label>
-                  <Input
-                    type="number"
-                    value={editingPrice.value}
-                    onChange={(e) =>
-                      setEditingPrice({
-                        ...editingPrice,
-                        value: e.target.value,
-                      })
-                    }
-                    className="w-full bg-surface-overlay border-glass-border"
-                    placeholder="Enter new price"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <GlowButton
-                    variant="outline"
-                    onClick={() => setEditingPrice(null)}
-                  >
-                    Cancel
-                  </GlowButton>
-                  <GlowButton
-                    variant="primary"
-                    onClick={async () => {
-                      try {
-                        await handlePriceUpdate(
-                          editingPrice.id,
-                          editingPrice.value,
-                        );
-                      } catch (error) {
-                        toast({
-                          title: 'Error',
-                          description: 'Failed to update price',
-                          variant: 'destructive',
-                        });
-                      }
-                    }}
-                  >
-                    Save
-                  </GlowButton>
-                </div>
-              </div>
-            </GlassCard>
-          </div>
-        )}
       </div>
     </div>
   );

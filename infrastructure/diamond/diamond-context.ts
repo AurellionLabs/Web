@@ -10,6 +10,9 @@ import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_AURA_ASSET_ADDRESS,
 } from '@/chain-constants';
+
+// Re-export for convenience
+export { NEXT_PUBLIC_DIAMOND_ADDRESS };
 import { DiamondABI } from '@/indexer/abis/DiamondABI';
 import { AuraAssetABI } from '@/lib/contracts/abis';
 
@@ -110,6 +113,14 @@ export class DiamondContext {
   async getSignerAddress(): Promise<string> {
     const signer = this.getSigner();
     return await signer.getAddress();
+  }
+
+  /**
+   * Get the Diamond contract address
+   * Used for minting operations where Diamond is the recipient
+   */
+  getDiamondAddress(): string {
+    return NEXT_PUBLIC_DIAMOND_ADDRESS;
   }
 
   /**

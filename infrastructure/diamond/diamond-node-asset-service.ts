@@ -25,30 +25,88 @@ export class DiamondNodeAssetService implements INodeAssetService {
   }
 
   /**
+   * Convert node address/hash to bytes32 format
+   * Diamond uses bytes32 node hashes, but frontend may pass addresses
+   */
+  private toBytes32NodeHash(nodeHashOrAddress: string): string {
+    // If already bytes32 (66 chars with 0x prefix), return as-is
+    if (nodeHashOrAddress.startsWith('0x') && nodeHashOrAddress.length === 66) {
+      return nodeHashOrAddress;
+    }
+    // Convert address (20 bytes) to bytes32 by zero-padding
+    return ethers.zeroPadValue(nodeHashOrAddress, 32);
+  }
+
+  /**
+   * Check if a node exists in Diamond
+   * Nodes from the old Aurum system need to be registered in Diamond first
+   */
+  private async ensureNodeExistsInDiamond(nodeHash: string): Promise<string> {
+    const diamond = this.context.getDiamond();
+
+    try {
+      // Try to get the node from Diamond
+      const nodeData = await diamond.getNode(nodeHash);
+
+      // Check if node exists (owner is not zero address)
+      if (nodeData && nodeData.owner !== ethers.ZeroAddress) {
+        console.log(
+          '[DiamondNodeAssetService] Node exists in Diamond:',
+          nodeHash,
+        );
+        return nodeHash;
+      }
+    } catch (error) {
+      console.log('[DiamondNodeAssetService] Node not found in Diamond', error);
+    }
+
+    // Node doesn't exist in Diamond - user needs to register it properly
+    console.error(
+      '[DiamondNodeAssetService] Node not registered in Diamond:',
+      nodeHash,
+    );
+    throw new Error(
+      'This node is not registered in the new Diamond system. ' +
+        'Please register a new node via the Node Overview page before tokenizing assets. ' +
+        'Note: Nodes from the old system cannot be automatically migrated and must be re-registered.',
+    );
+  }
+
+  /**
    * Mint new assets for a node
    *
    * Flow:
-   * 1. Call AuraAsset.nodeMint() to mint ERC1155 tokens to Diamond
-   * 2. Call Diamond.creditNodeTokens() to track inventory
-   * 3. Call Diamond.addSupportedAsset() to register asset with price/capacity
+   * 1. Call AuraAsset.nodeMint() to mint ERC1155 tokens directly to Diamond
+   *    (Diamond must be registered as a valid node in Aurum's AllNodes)
+   * 2. Call Diamond.creditNodeTokens() to track inventory for the specific node
+   * 3. Call Diamond.addSupportedAsset() to register asset with capacity
+   *
+   * Note: Price is NOT set during tokenization. Price is set when placing
+   * sell orders on the CLOB.
    */
   async mintAsset(
-    nodeHash: string,
+    nodeHashOrAddress: string,
     asset: Omit<Asset, 'tokenID'>,
     amount: number,
-    priceWei: bigint,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
     const auraAsset = this.context.getAuraAsset();
-    const signerAddress = await this.context.getSignerAddress();
+    const diamondAddress = this.context.getDiamondAddress();
+
+    // Convert to bytes32 format for Diamond operations
+    const initialNodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
 
     console.log('[DiamondNodeAssetService] Minting asset:', {
-      nodeHash,
+      nodeHashOrAddress,
+      initialNodeHash,
       assetName: asset.name,
       assetClass: asset.assetClass,
       amount,
-      priceWei: priceWei.toString(),
+      diamondAddress,
     });
+
+    // Ensure node exists in Diamond (will register if needed)
+    const nodeHash = await this.ensureNodeExistsInDiamond(initialNodeHash);
 
     try {
       // Build contract asset struct for AuraAsset
@@ -77,11 +135,12 @@ export class DiamondNodeAssetService implements INodeAssetService {
         tokenId.toString(),
       );
 
-      // Step 1: Mint tokens via AuraAsset.nodeMint()
-      // The Diamond address should be a valid node in AuraAsset's NodeManager
-      console.log('[DiamondNodeAssetService] Calling nodeMint...');
+      // Step 1: Mint tokens via AuraAsset.nodeMint() directly to Diamond
+      // The Diamond address must be registered as a valid node in Aurum's NodeManager
+      // This bypasses the need for signer approval and deposit steps
+      console.log('[DiamondNodeAssetService] Calling nodeMint to Diamond...');
       const mintTx = await auraAsset.nodeMint(
-        signerAddress, // Mint to signer's wallet first
+        diamondAddress, // Mint directly to Diamond contract
         contractAsset,
         amount,
         asset.assetClass,
@@ -89,45 +148,28 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
       const mintReceipt = await mintTx.wait();
       console.log(
-        '[DiamondNodeAssetService] Tokens minted, tx:',
+        '[DiamondNodeAssetService] Tokens minted to Diamond, tx:',
         mintReceipt.hash,
       );
 
-      // Step 2: Deposit tokens to node's inventory in Diamond
-      // First approve Diamond to transfer tokens
-      const diamondAddress = await diamond.getAddress();
-      const isApproved = await auraAsset.isApprovedForAll(
-        signerAddress,
-        diamondAddress,
-      );
-      if (!isApproved) {
-        console.log(
-          '[DiamondNodeAssetService] Approving Diamond for token transfers...',
-        );
-        const approveTx = await auraAsset.setApprovalForAll(
-          diamondAddress,
-          true,
-        );
-        await approveTx.wait();
-      }
-
-      // Deposit tokens to node
-      console.log('[DiamondNodeAssetService] Depositing tokens to node...');
-      const depositTx = await diamond.depositTokensToNode(
+      // Step 2: Credit the tokens to the node's internal inventory
+      // This updates Diamond's internal accounting for the specific node
+      console.log('[DiamondNodeAssetService] Crediting tokens to node...');
+      const creditTx = await diamond.creditNodeTokens(
         nodeHash,
         tokenId,
         amount,
       );
-      await depositTx.wait();
-      console.log('[DiamondNodeAssetService] Tokens deposited to node');
+      await creditTx.wait();
+      console.log('[DiamondNodeAssetService] Tokens credited to node');
 
-      // Step 3: Add/update supported asset with price and capacity
+      // Step 3: Add/update supported asset with capacity (price is 0, set via CLOB orders)
       console.log('[DiamondNodeAssetService] Adding supported asset...');
       const addAssetTx = await diamond.addSupportedAsset(
         nodeHash,
         NEXT_PUBLIC_AURA_ASSET_ADDRESS,
         tokenId,
-        priceWei,
+        0n, // Price is 0 - actual price set when placing sell orders on CLOB
         amount,
       );
       await addAssetTx.wait();
@@ -147,12 +189,13 @@ export class DiamondNodeAssetService implements INodeAssetService {
    * Update asset capacity for a node
    */
   async updateAssetCapacity(
-    nodeHash: string,
+    nodeHashOrAddress: string,
     assetToken: string,
     assetTokenId: string,
     newCapacity: number,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
+    const nodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
 
     console.log('[DiamondNodeAssetService] Updating asset capacity:', {
       nodeHash,
@@ -205,12 +248,13 @@ export class DiamondNodeAssetService implements INodeAssetService {
    * Update asset price for a node
    */
   async updateAssetPrice(
-    nodeHash: string,
+    nodeHashOrAddress: string,
     assetToken: string,
     assetTokenId: string,
     newPrice: bigint,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
+    const nodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
 
     console.log('[DiamondNodeAssetService] Updating asset price:', {
       nodeHash,
@@ -260,10 +304,11 @@ export class DiamondNodeAssetService implements INodeAssetService {
    * Update all supported assets for a node
    */
   async updateSupportedAssets(
-    nodeHash: string,
+    nodeHashOrAddress: string,
     assets: NodeAsset[],
   ): Promise<void> {
     const diamond = this.context.getDiamond();
+    const nodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
 
     console.log('[DiamondNodeAssetService] Updating supported assets:', {
       nodeHash,

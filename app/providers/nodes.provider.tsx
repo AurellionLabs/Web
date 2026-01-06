@@ -11,9 +11,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { Node } from '@/domain/node/node';
 import { useWallet } from '@/hooks/useWallet';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
+import { useDiamond } from './diamond.provider';
 
 type NodesContextType = {
   // Collection state
@@ -41,32 +40,19 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const { connected } = useMainProvider();
   const router = useRouter();
 
-  // Initialize contexts
-  const [repositoryContext, setRepositoryContext] =
-    useState<RepositoryContext | null>(null);
-  const [serviceContext, setServiceContext] = useState<ServiceContext | null>(
-    null,
-  );
+  // Use Diamond system for node management
+  const {
+    initialized: diamondInitialized,
+    getNode: getDiamondNode,
+    getOwnedNodes: getDiamondOwnedNodes,
+    registerNode: diamondRegisterNode,
+  } = useDiamond();
 
-  useEffect(() => {
-    console.log('[NodesProvider] Context init effect:', {
-      connected,
-      address: !!address,
-    });
-    if (connected && address) {
-      console.log('[NodesProvider] Setting repository and service contexts');
-      const repoContext = RepositoryContext.getInstance();
-      const servContext = ServiceContext.getInstance();
-      setRepositoryContext(repoContext);
-      setServiceContext(servContext);
-    }
-  }, [connected, address]);
-
-  // Load nodes for the current wallet
+  // Load nodes for the current wallet from Diamond
   const loadNodes = useCallback(
     async (walletAddress: string) => {
-      if (!repositoryContext) {
-        console.log('[NodesProvider] loadNodes: repositoryContext not ready');
+      if (!diamondInitialized) {
+        console.log('[NodesProvider] loadNodes: Diamond not initialized');
         return;
       }
 
@@ -75,15 +61,16 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
-        const nodeRepository = repositoryContext.getNodeRepository();
+        // Get node hashes owned by wallet from Diamond
+        const ownedNodeHashes = await getDiamondOwnedNodes();
         console.log(
-          '[NodesProvider] loadNodes: Got nodeRepository, calling getOwnedNodes...',
+          '[NodesProvider] loadNodes: Got ownedNodeHashes:',
+          ownedNodeHashes,
         );
-        const ownedNodes = await nodeRepository.getOwnedNodes(walletAddress);
-        console.log('[NodesProvider] loadNodes: Got ownedNodes:', ownedNodes);
 
-        const nodeDataPromises = ownedNodes.map((nodeAddress) =>
-          nodeRepository.getNode(nodeAddress),
+        // Load full node data for each hash
+        const nodeDataPromises = ownedNodeHashes.map((nodeHash) =>
+          getDiamondNode(nodeHash),
         );
 
         const nodeDataResults = await Promise.all(nodeDataPromises);
@@ -92,13 +79,13 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         );
 
         console.log(
-          '[NodesProvider] loadNodes: Valid nodes:',
+          '[NodesProvider] loadNodes: Valid Diamond nodes:',
           validNodes.length,
         );
         setNodes(validNodes);
         setIsRegisteredNode(validNodes.length > 0);
       } catch (err) {
-        console.error('[NodesProvider] Error loading nodes:', err);
+        console.error('[NodesProvider] Error loading nodes from Diamond:', err);
         setError(err as Error);
       } finally {
         console.log(
@@ -107,36 +94,35 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [repositoryContext],
+    [diamondInitialized, getDiamondOwnedNodes, getDiamondNode],
   );
 
-  // Get single node data
+  // Get single node data from Diamond
   const getNode = useCallback(
-    async (nodeAddress: string): Promise<Node | null> => {
-      if (!repositoryContext) return null;
+    async (nodeHash: string): Promise<Node | null> => {
+      if (!diamondInitialized) return null;
 
       try {
-        const nodeRepository = repositoryContext.getNodeRepository();
-        return await nodeRepository.getNode(nodeAddress);
+        return await getDiamondNode(nodeHash);
       } catch (err) {
-        console.error('Error getting node:', err);
+        console.error('[NodesProvider] Error getting node from Diamond:', err);
         return null;
       }
     },
-    [repositoryContext],
+    [diamondInitialized, getDiamondNode],
   );
 
-  // Register new node
+  // Register new node in Diamond
   const registerNode = useCallback(
     async (nodeData: Node) => {
-      if (!serviceContext) throw new Error('Service context not initialized');
+      if (!diamondInitialized) throw new Error('Diamond not initialized');
 
       setLoading(true);
       setError(null);
 
       try {
-        const nodeService = serviceContext.getNodeService();
-        const nodeAddress = await nodeService.registerNode(nodeData);
+        // Register node via Diamond
+        const nodeHash = await diamondRegisterNode(nodeData);
 
         // Reload nodes after registration
         if (address) {
@@ -144,16 +130,19 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }
 
         // Navigate to the new node
-        router.push(`/node/dashboard?nodeId=${nodeAddress}`);
+        router.push(`/node/dashboard?nodeId=${nodeHash}`);
       } catch (err) {
-        console.error('Error registering node:', err);
+        console.error(
+          '[NodesProvider] Error registering node in Diamond:',
+          err,
+        );
         setError(err as Error);
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [serviceContext, address, loadNodes, router],
+    [diamondInitialized, diamondRegisterNode, address, loadNodes, router],
   );
 
   // Refresh nodes
@@ -168,13 +157,15 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     console.log('[NodesProvider] Effect check:', {
       connected,
       address: !!address,
-      hasRepoContext: !!repositoryContext,
+      diamondInitialized,
     });
-    if (connected && address && repositoryContext) {
-      console.log('[NodesProvider] All conditions met, calling loadNodes');
+    if (connected && address && diamondInitialized) {
+      console.log(
+        '[NodesProvider] All conditions met, calling loadNodes from Diamond',
+      );
       loadNodes(address);
     }
-  }, [connected, address, repositoryContext, loadNodes]);
+  }, [connected, address, diamondInitialized, loadNodes]);
 
   const value: NodesContextType = {
     // State

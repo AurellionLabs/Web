@@ -295,6 +295,44 @@ export const DiamondABI = [
     name: 'SupportedAssetsUpdated',
     type: 'event',
   },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'clobAddress',
+        type: 'address',
+      },
+    ],
+    name: 'ClobApprovalGranted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'clobAddress',
+        type: 'address',
+      },
+    ],
+    name: 'ClobApprovalRevoked',
+    type: 'event',
+  },
 
   // ======= NodesFacet Functions =======
   {
@@ -426,6 +464,84 @@ export const DiamondABI = [
     inputs: [{ internalType: 'bytes32', name: '_node', type: 'bytes32' }],
     name: 'getTotalNodes',
     outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'bytes32', name: '_node', type: 'bytes32' }],
+    name: 'getNodeAssets',
+    outputs: [
+      {
+        components: [
+          { internalType: 'address', name: 'token', type: 'address' },
+          { internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+          { internalType: 'uint256', name: 'price', type: 'uint256' },
+          { internalType: 'uint256', name: 'capacity', type: 'uint256' },
+          { internalType: 'uint256', name: 'createdAt', type: 'uint256' },
+          { internalType: 'bool', name: 'active', type: 'bool' },
+        ],
+        internalType: 'struct DiamondStorage.NodeAsset[]',
+        name: '',
+        type: 'tuple[]',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: '_node', type: 'address' }],
+    name: 'getNodeStatus',
+    outputs: [{ internalType: 'bytes1', name: '', type: 'bytes1' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
+      { internalType: 'uint256', name: '_amount', type: 'uint256' },
+    ],
+    name: 'creditNodeTokens',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
+    ],
+    name: 'getNodeTokenBalance',
+    outputs: [{ internalType: 'uint256', name: 'balance', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'address', name: '_clobAddress', type: 'address' },
+    ],
+    name: 'approveClobForTokens',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'address', name: '_clobAddress', type: 'address' },
+    ],
+    name: 'revokeClobApproval',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '_clobAddress', type: 'address' },
+    ],
+    name: 'isClobApproved',
+    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
     stateMutability: 'view',
     type: 'function',
   },

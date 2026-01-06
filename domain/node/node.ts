@@ -93,14 +93,12 @@ export interface NodeRepository {
 
 /**
  * Node asset service interface - UPDATED for new Asset struct
+ *
+ * Note: mintAsset no longer takes a price parameter. Price is set
+ * exclusively when placing sell orders on the CLOB.
  */
 export interface INodeAssetService {
-  mintAsset(
-    nodeAddress: string,
-    asset: Asset,
-    amount: number,
-    priceWei: bigint,
-  ): Promise<void>;
+  mintAsset(nodeAddress: string, asset: Asset, amount: number): Promise<void>;
 
   // Updated to work with NodeAsset instead of separate arrays
   updateAssetCapacity(

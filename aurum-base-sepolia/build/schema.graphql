@@ -1,0 +1,84 @@
+type NodeCapacityUpdated @entity(immutable: true) {
+  id: Bytes!
+  node: Bytes! # address
+  quantities: [BigInt!]! # uint256[]
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeRegistered @entity(immutable: true) {
+  id: Bytes!
+  nodeAddress: Bytes! # address
+  owner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OwnershipTransferred @entity(immutable: true) {
+  id: Bytes!
+  previousOwner: Bytes! # address
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type SupportedAssetAdded @entity(immutable: true) {
+  id: Bytes!
+  node: Bytes! # address
+  asset_token: Bytes! # address
+  asset_tokenId: BigInt! # uint256
+  asset_price: BigInt! # uint256
+  asset_capacity: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type SupportedAssetsUpdated @entity(immutable: true) {
+  id: Bytes!
+  node: Bytes! # address
+  supportedAssets: [Bytes!]! # tuple[]
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type eventUpdateAdmin @entity(immutable: true) {
+  id: Bytes!
+  admin: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type eventUpdateLocation @entity(immutable: true) {
+  id: Bytes!
+  addressName: String! # string
+  lat: String! # string
+  lng: String! # string
+  node: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type eventUpdateOwner @entity(immutable: true) {
+  id: Bytes!
+  owner: Bytes! # address
+  node: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type eventUpdateStatus @entity(immutable: true) {
+  id: Bytes!
+  status: Bytes! # bytes1
+  node: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

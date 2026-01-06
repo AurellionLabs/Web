@@ -4,15 +4,10 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useWallet } from '@/hooks/useWallet';
 import {
-  NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AUSYS_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
-import {
-  AurumNodeManager__factory,
-  AuraAsset__factory,
-  Ausys__factory,
-} from '@/lib/contracts';
+import { AuraAsset__factory, Ausys__factory } from '@/lib/contracts';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';
@@ -86,10 +81,6 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       const network = await provider.getNetwork();
       const chainId = Number(network.chainId);
       const readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
-      const aurumContract = AurumNodeManager__factory.connect(
-        NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
-        signer,
-      );
 
       const ausysContract = Ausys__factory.connect(
         NEXT_PUBLIC_AUSYS_ADDRESS,
@@ -100,20 +91,23 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         NEXT_PUBLIC_AURA_GOAT_ADDRESS,
         readProvider,
       );
-      const repoContext = RepositoryContext.getInstance();
+
       const pinata = new PinataSDK({
         pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
       });
+
+      const repoContext = RepositoryContext.getInstance();
       await repoContext.initialize(
         auraAssetContract,
         ausysContract,
-        aurumContract,
         provider,
         signer,
         pinata,
       );
-      console.log('[RepositoryProvider] RepositoryContext initialized.');
+      console.log(
+        '[RepositoryProvider] RepositoryContext initialized with Diamond.',
+      );
 
       const serviceContext = ServiceContext.getInstance();
       serviceContext.initialize(repoContext);

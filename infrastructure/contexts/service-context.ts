@@ -1,24 +1,17 @@
-import { INodeAssetService } from '@/domain/node/node';
-import {
-  INodeService,
-  NodeService,
-} from '@/infrastructure/services/node.service';
 import { IOrderService } from '@/domain/orders/order';
-import { NodeAssetService } from '../services/node-asset.service';
 import { RepositoryContext } from './repository-context';
 import { OrderService } from '@/infrastructure/services/order-service';
 import { IPoolService } from '@/domain/pool';
 import { PoolService } from '../services/pool.service';
 
 /**
- * Context that manages all services and their dependencies - UPDATED
+ * Context that manages services - Node operations now handled by DiamondProvider
+ * This context only manages Order and Pool services
  */
 export class ServiceContext {
   private static instance: ServiceContext;
-  private nodeAssetService: INodeAssetService | null = null;
   private repositoryContext: RepositoryContext | null = null;
   private orderService: IOrderService | null = null;
-  private nodeService: INodeService | null = null;
   private poolService: IPoolService | null = null;
 
   private constructor() {}
@@ -35,13 +28,11 @@ export class ServiceContext {
 
   /**
    * Initialize the context with repository context
+   * Note: Node operations are handled by DiamondProvider, not ServiceContext
    */
   public initialize(repositoryContext: RepositoryContext) {
     this.repositoryContext = repositoryContext;
 
-    // Create services with updated implementations
-    this.nodeAssetService = new NodeAssetService(repositoryContext);
-    this.nodeService = new NodeService(repositoryContext);
     // Wire OrderService using Ausys contract + signer from RepositoryContext
     try {
       const ausys = repositoryContext.getAusysContract();
@@ -68,19 +59,9 @@ export class ServiceContext {
       this.poolService = null;
     }
 
-    console.log('[ServiceContext] Successfully created refactored services');
-  }
-
-  /**
-   * Get the node asset service instance
-   */
-  public getNodeAssetService(): INodeAssetService {
-    if (!this.nodeAssetService) {
-      throw new Error(
-        'NodeAssetService not initialized. Call initialize() first.',
-      );
-    }
-    return this.nodeAssetService;
+    console.log(
+      '[ServiceContext] Successfully initialized Order and Pool services',
+    );
   }
 
   /**
@@ -93,18 +74,6 @@ export class ServiceContext {
       );
     }
     return this.orderService;
-  }
-
-  /**
-   * Get the node service instance
-   */
-  public getNodeService(): INodeService {
-    if (!this.nodeService) {
-      throw new Error(
-        'NodeService not initialized. Ensure RepositoryContext is initialized before ServiceContext.',
-      );
-    }
-    return this.nodeService;
   }
 
   /**
@@ -123,10 +92,8 @@ export class ServiceContext {
    * Clean up resources
    */
   public cleanup(): void {
-    this.nodeAssetService = null;
     this.repositoryContext = null;
     this.orderService = null;
-    this.nodeService = null;
     this.poolService = null;
   }
 }

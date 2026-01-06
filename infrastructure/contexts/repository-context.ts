@@ -1,29 +1,26 @@
 import { NodeRepository } from '@/domain/node/node';
-import { BlockchainNodeRepository } from '../repositories/node-repository';
+import { DiamondNodeRepository } from '../diamond/diamond-node-repository';
 import { OrderRepository } from '../repositories/orders-repository';
 import { IOrderRepository } from '@/domain/orders/order';
-import type { AurumNodeManager, AuraAsset, Ausys } from '@/lib/contracts';
+import type { AuraAsset, Ausys } from '@/lib/contracts';
 import { BrowserProvider, ethers } from 'ethers';
-import { INodeAssetService } from '@/domain/node/node';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
 import {
-  NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-  NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
   NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+  NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
 import { listenForSignature } from '../services/signature-listener.service';
 import { IPoolRepository } from '@/domain/pool';
 import { PoolRepository } from '../repositories/pool-repository';
-import { RepositoryFactory } from '../factories/repository-factory';
 import { IPlatformRepository } from '@/domain/platform';
 import { PlatformRepository } from '../repositories/platform-repository';
 import { PinataSDK } from 'pinata';
-import { AurumNode__factory, type AurumNode } from '@/lib/contracts';
+import { DiamondContext } from '../diamond/diamond-context';
 
 /**
- * Context that manages all repositories and their dependencies - UPDATED for refactored contracts
+ * Context that manages all repositories using Diamond infrastructure
  */
 export class RepositoryContext {
   private static instance: RepositoryContext;
@@ -32,10 +29,10 @@ export class RepositoryContext {
   private driverRepository: IDriverRepository | null = null;
   private poolRepository: IPoolRepository | null = null;
   private platformRepository: IPlatformRepository | null = null;
-  private aurumContract: AurumNodeManager | null = null;
+  private diamondContext: DiamondContext | null = null;
   private ausysContract: Ausys | null = null;
   private signer: ethers.Signer | null = null;
-  private auraGoatContract: AuraAsset | null = null;
+  private auraAssetContract: AuraAsset | null = null;
 
   private constructor(
     private readonly auraGoatAddress: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
@@ -52,34 +49,32 @@ export class RepositoryContext {
   }
 
   /**
-   * Initialize the context with required contracts and signer - UPDATED
+   * Initialize the context with Diamond infrastructure
    */
   public async initialize(
     auraAssetContract: AuraAsset,
     ausysContract: Ausys,
-    aurumContract: AurumNodeManager,
     provider: BrowserProvider,
     signer: ethers.Signer,
     pinata: PinataSDK,
   ) {
     this.ausysContract = ausysContract;
-    this.aurumContract = aurumContract;
     this.signer = signer;
-    this.auraGoatContract = auraAssetContract;
+    this.auraAssetContract = auraAssetContract;
 
     try {
       console.log(
-        '[RepositoryContext] Creating repositories with refactored implementations...',
+        '[RepositoryContext] Initializing with Diamond infrastructure...',
       );
 
-      // Create NodeRepository with updated implementation
-      this.nodeRepository = new BlockchainNodeRepository(
-        aurumContract,
-        provider,
-        signer,
-        this.auraGoatAddress,
-        pinata,
-      );
+      // Initialize Diamond context
+      this.diamondContext = new DiamondContext();
+      await this.diamondContext.initialize(provider);
+      console.log('[RepositoryContext] Diamond context initialized');
+
+      // Create Diamond-based NodeRepository
+      this.nodeRepository = new DiamondNodeRepository(this.diamondContext);
+      console.log('[RepositoryContext] DiamondNodeRepository created');
 
       // Create OrderRepository with GraphQL integration
       this.orderRepository = new OrderRepository(
@@ -88,7 +83,7 @@ export class RepositoryContext {
         signer,
       );
 
-      // Create other repositories (these may need updates too)
+      // Create other repositories
       this.driverRepository = new DriverRepository(
         ausysContract,
         provider,
@@ -103,7 +98,7 @@ export class RepositoryContext {
       );
 
       console.log(
-        '[RepositoryContext] Successfully created refactored repositories',
+        '[RepositoryContext] Successfully created Diamond-based repositories',
       );
     } catch (error) {
       console.error(
@@ -175,15 +170,15 @@ export class RepositoryContext {
   }
 
   /**
-   * Get the Aurum contract instance
+   * Get the Diamond context instance
    */
-  public getAurumContract(): AurumNodeManager {
-    if (!this.aurumContract) {
+  public getDiamondContext(): DiamondContext {
+    if (!this.diamondContext) {
       throw new Error(
-        'AurumContract not initialized. Call initialize() first.',
+        'DiamondContext not initialized. Call initialize() first.',
       );
     }
-    return this.aurumContract;
+    return this.diamondContext;
   }
 
   /**
@@ -199,25 +194,15 @@ export class RepositoryContext {
   }
 
   /**
-   * Get a specific AurumNode contract instance
+   * Get the AuraAsset contract instance
    */
-  public getAurumNodeContract(nodeAddress: string): AurumNode {
-    if (!this.signer) {
-      throw new Error('Signer not initialized. Call initialize() first.');
-    }
-    return AurumNode__factory.connect(nodeAddress, this.signer);
-  }
-
-  /**
-   * Get the AuraGoat contract instance
-   */
-  public getAuraGoatContract(): AuraAsset {
-    if (!this.auraGoatContract) {
+  public getAuraAssetContract(): AuraAsset {
+    if (!this.auraAssetContract) {
       throw new Error(
-        'AuraGoatContract not initialized. Call initialize() first.',
+        'AuraAssetContract not initialized. Call initialize() first.',
       );
     }
-    return this.auraGoatContract;
+    return this.auraAssetContract;
   }
 
   /**
@@ -271,7 +256,7 @@ export class RepositoryContext {
    */
   public getSubgraphEndpoints() {
     return {
-      aurum: NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+      indexer: NEXT_PUBLIC_INDEXER_URL,
       ausys: NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
     };
   }
@@ -285,9 +270,9 @@ export class RepositoryContext {
     this.driverRepository = null;
     this.poolRepository = null;
     this.platformRepository = null;
-    this.aurumContract = null;
+    this.diamondContext = null;
     this.ausysContract = null;
     this.signer = null;
-    this.auraGoatContract = null;
+    this.auraAssetContract = null;
   }
 }

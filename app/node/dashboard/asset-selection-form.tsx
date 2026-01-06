@@ -15,12 +15,10 @@ type Props = {
   selectedAssetClass: string;
   selectedAssetId: string;
   quantity: string;
-  price: string;
   supportedAssetClasses: string[];
   onAssetClassChange: (value: string) => void;
   onAssetIdChange: (value: string) => void;
   onQuantityChange: (value: string) => void;
-  onPriceChange: (value: string) => void;
   assetAttributes: Record<string, Record<string, any>>;
   onAssetAttributeChange: (
     assetId: string,
@@ -30,16 +28,19 @@ type Props = {
   onSelectedAssetChange?: (asset: Asset | null) => void;
 };
 
+/**
+ * Asset selection form for tokenizing assets.
+ * Note: Price is NOT set during tokenization. Price is set when placing
+ * sell orders on the CLOB.
+ */
 const AssetSelectionForm: React.FC<Props> = ({
   selectedAssetClass,
   selectedAssetId,
   quantity,
-  price,
   supportedAssetClasses,
   onAssetClassChange,
   onAssetIdChange,
   onQuantityChange,
-  onPriceChange,
   assetAttributes,
   onAssetAttributeChange,
   onSelectedAssetChange,
@@ -155,26 +156,8 @@ const AssetSelectionForm: React.FC<Props> = ({
           }}
         />
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Enter the number of assets to tokenize.
-        </p>
-      </div>
-
-      {/* Price Input */}
-      <div>
-        <FormLabel>Price (wei)</FormLabel>
-        <Input
-          type="text"
-          placeholder="Enter price"
-          value={price}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              onPriceChange(value);
-            }
-          }}
-        />
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Price per unit in wei.
+          Enter the number of assets to tokenize. Set price when placing sell
+          orders.
         </p>
       </div>
 
