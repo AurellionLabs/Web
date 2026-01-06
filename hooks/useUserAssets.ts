@@ -3,8 +3,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from './useWallet';
 import { useDiamond } from '@/app/providers/diamond.provider';
-import { SellableAsset } from '@/app/components/trading/trade-panel';
-import { TokenizedAsset } from '@/domain/node/node';
+import {
+  SellableAsset,
+  AssetAttribute,
+} from '@/app/components/trading/trade-panel';
+import { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node/node';
+
+/**
+ * Extended asset type that includes attributes
+ */
+interface AssetWithAttributes extends TokenizedAsset {
+  attributes?: AssetAttribute[];
+}
 
 /**
  * Hook to fetch user's owned assets with balances
@@ -22,9 +32,10 @@ export function useUserAssets(filterClass?: string) {
     initialized: diamondInitialized,
     getOwnedNodes,
     getNodeAssets,
+    getAssetAttributes,
   } = useDiamond();
 
-  const [assets, setAssets] = useState<TokenizedAsset[]>([]);
+  const [assets, setAssets] = useState<AssetWithAttributes[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,14 +120,58 @@ export function useUserAssets(filterClass?: string) {
         '[useUserAssets] Total assets from all nodes:',
         allAssets.length,
       );
-      setAssets(allAssets);
+
+      // Step 3: Fetch attributes for each asset
+      const assetsWithAttributes: AssetWithAttributes[] = await Promise.all(
+        allAssets.map(async (asset) => {
+          if (!asset.fileHash) {
+            return asset;
+          }
+
+          try {
+            const attrs = await getAssetAttributes(asset.fileHash);
+            // Convert TokenizedAssetAttribute to AssetAttribute format
+            const convertedAttrs: AssetAttribute[] = attrs.map(
+              (attr: TokenizedAssetAttribute) => ({
+                name: attr.name,
+                value: attr.value || '',
+              }),
+            );
+            return {
+              ...asset,
+              attributes:
+                convertedAttrs.length > 0 ? convertedAttrs : undefined,
+            };
+          } catch (attrError) {
+            console.warn(
+              '[useUserAssets] Failed to fetch attributes for asset:',
+              asset.id,
+              attrError,
+            );
+            return asset;
+          }
+        }),
+      );
+
+      console.log(
+        '[useUserAssets] Assets with attributes loaded:',
+        assetsWithAttributes.length,
+      );
+      setAssets(assetsWithAttributes);
     } catch (err) {
       console.error('[useUserAssets] Error fetching user assets:', err);
       setError('Failed to fetch your assets');
     } finally {
       setIsLoading(false);
     }
-  }, [address, isConnected, diamondInitialized, getOwnedNodes, getNodeAssets]);
+  }, [
+    address,
+    isConnected,
+    diamondInitialized,
+    getOwnedNodes,
+    getNodeAssets,
+    getAssetAttributes,
+  ]);
 
   // Fetch on mount and when dependencies change
   useEffect(() => {
@@ -153,8 +208,7 @@ export function useUserAssets(filterClass?: string) {
         price: asset.price
           ? (Number(asset.price) / 1e18).toFixed(2)
           : undefined,
-        // Note: Attributes are not included in TokenizedAsset from DiamondNodeRepository
-        // They would need to be fetched separately via getAssetAttributes if needed
+        attributes: asset.attributes,
       });
     }
 
