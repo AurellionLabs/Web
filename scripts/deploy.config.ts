@@ -486,6 +486,11 @@ export const FACET_SELECTORS: Record<string, string[]> = {
     '0x653a5887', // getNodeTokenIds
     '0xe02b8288', // getNodeInventory
     '0x294cc9d5', // verifyTokenAccounting
+    // CLOB address management
+    '0xd1a69b35', // setClobAddress(address)
+    '0x0f392fb4', // getClobAddress()
+    // Node sell order (place sell orders from node inventory)
+    '0xbcd542d1', // placeSellOrderFromNode(bytes32,uint256,address,uint256,uint256)
   ],
   AssetsFacet: [
     '0xe243b2fc',
