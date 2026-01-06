@@ -513,6 +513,43 @@ export class CLOBRepository {
   }
 
   /**
+   * Ensure ERC1155 base token approval for CLOB contract (needed for sell orders)
+   */
+  private async ensureBaseTokenApproval(baseToken: string): Promise<void> {
+    const signer = this.repositoryContext.getSigner();
+    const provider = this.repositoryContext.getProvider();
+    const signerAddress = await this.repositoryContext.getSignerAddress();
+
+    const erc1155ABI = [
+      'function setApprovalForAll(address operator, bool approved) external',
+      'function isApprovedForAll(address account, address operator) external view returns (bool)',
+    ];
+
+    const baseTokenContract = new ethers.Contract(
+      baseToken,
+      erc1155ABI,
+      provider,
+    ).connect(signer) as ethers.Contract;
+
+    const isApproved = await baseTokenContract.isApprovedForAll(
+      signerAddress,
+      this.clobAddress,
+    );
+
+    if (!isApproved) {
+      console.log(
+        '[CLOBRepository] Approving base token (ERC1155) for CLOB...',
+      );
+      const tx = await baseTokenContract.setApprovalForAll(
+        this.clobAddress,
+        true,
+      );
+      await tx.wait();
+      console.log('[CLOBRepository] Base token approved:', tx.hash);
+    }
+  }
+
+  /**
    * Place a limit order on the CLOB
    * @param params Order placement parameters
    * @returns Order placement result
@@ -528,10 +565,14 @@ export class CLOBRepository {
         this.getQuoteTokenWithSigner(),
       ]);
 
-      // Calculate total cost (price * amount) for buy orders
+      // For buy orders: approve quote token (ERC20)
+      // For sell orders: approve base token (ERC1155)
       if (params.isBuy) {
         const totalCost = params.price * params.amount;
         await this.ensureQuoteTokenApproval(quoteToken, totalCost);
+      } else {
+        // Sell order - need to approve the ERC1155 base token
+        await this.ensureBaseTokenApproval(params.baseToken);
       }
 
       // Place the order
@@ -580,10 +621,14 @@ export class CLOBRepository {
         this.getQuoteTokenWithSigner(),
       ]);
 
-      // Calculate total cost (maxPrice * amount) for buy orders
+      // For buy orders: approve quote token (ERC20)
+      // For sell orders: approve base token (ERC1155)
       if (params.isBuy) {
         const totalCost = params.maxPrice * params.amount;
         await this.ensureQuoteTokenApproval(quoteToken, totalCost);
+      } else {
+        // Sell order - need to approve the ERC1155 base token
+        await this.ensureBaseTokenApproval(params.baseToken);
       }
 
       // Place the order
