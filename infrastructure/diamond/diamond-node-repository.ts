@@ -121,14 +121,42 @@ export class DiamondNodeRepository implements NodeRepository {
   }
 
   /**
-   * Get tokenized assets for a node from GraphQL indexer
+   * Get tokenized assets for a node
+   *
+   * Strategy:
+   * 1. Get the node's inventory from Diamond (which tokens are credited to this node)
+   * 2. Enrich with metadata from the GraphQL indexer (name, class, attributes)
+   *
+   * Note: Assets are minted to the Diamond contract address, and Diamond internally
+   * tracks which node owns which tokens via creditNodeTokens(). So we query the
+   * indexer by tokenId, not by account.
    */
   async getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]> {
     try {
-      // Query indexed assets from GraphQL
+      // Step 1: Get node data including its asset inventory from Diamond
+      const node = await this.getNode(nodeAddress);
+
+      if (!node || !node.assets || node.assets.length === 0) {
+        console.log(
+          '[DiamondNodeRepository] No assets found in node inventory:',
+          nodeAddress,
+        );
+        return [];
+      }
+
+      console.log(
+        '[DiamondNodeRepository] Node has',
+        node.assets.length,
+        'assets in inventory',
+      );
+
+      // Step 2: Get metadata for each token from the indexer
+      // Query by tokenId since assets are indexed by the Diamond contract address
+      const tokenIds = node.assets.map((a) => a.tokenId);
+
       const query = `
-        query GetNodeAssets($nodeAddress: String!) {
-          assetss(where: { account: $nodeAddress }, limit: 100) {
+        query GetAssetsByTokenIds($tokenIds: [BigInt!]!) {
+          assetss(where: { tokenId_in: $tokenIds }, limit: 100) {
             items {
               id
               hash
@@ -150,34 +178,47 @@ export class DiamondNodeRepository implements NodeRepository {
         }
       `;
 
-      const response = await graphqlRequest<{
-        assetss: { items: any[] };
-      }>(this.graphQLEndpoint, query, {
-        nodeAddress: nodeAddress.toLowerCase(),
-      });
+      let indexedAssets: any[] = [];
+      try {
+        const response = await graphqlRequest<{
+          assetss: { items: any[] };
+        }>(this.graphQLEndpoint, query, {
+          tokenIds: tokenIds,
+        });
+        indexedAssets = response.assetss?.items || [];
+        console.log(
+          '[DiamondNodeRepository] Found',
+          indexedAssets.length,
+          'indexed assets for tokenIds',
+        );
+      } catch (error) {
+        console.warn(
+          '[DiamondNodeRepository] Failed to get indexed asset metadata:',
+          error,
+        );
+      }
 
-      const node = await this.getNode(nodeAddress);
-
-      return response.assetss.items.map((asset: any) => {
-        // Find matching node asset for price/capacity
-        const nodeAsset = node?.assets?.find(
-          (na) => na.tokenId === asset.tokenId.toString(),
+      // Step 3: Combine node inventory with indexed metadata
+      return node.assets.map((nodeAsset) => {
+        // Find matching indexed asset for metadata
+        const indexedAsset = indexedAssets.find(
+          (ia) => ia.tokenId.toString() === nodeAsset.tokenId,
         );
 
         return {
-          id: asset.tokenId.toString(),
-          amount: asset.amount?.toString() || '0',
-          name: asset.name || '',
-          class: asset.assetClass || asset.className || '',
-          fileHash: asset.hash || '',
+          id: nodeAsset.tokenId,
+          amount: nodeAsset.capacity.toString(),
+          name: indexedAsset?.name || '',
+          class: indexedAsset?.assetClass || indexedAsset?.className || '',
+          fileHash: indexedAsset?.hash || '',
           status: 'Active',
           nodeAddress: nodeAddress,
-          nodeLocation: node?.location || {
+          nodeLocation: node.location || {
             addressName: '',
             location: { lat: '0', lng: '0' },
           },
-          price: nodeAsset?.price?.toString() || '0',
-          capacity: nodeAsset?.capacity?.toString() || '0',
+          price: nodeAsset.price.toString(),
+          capacity: nodeAsset.capacity.toString(),
         };
       });
     } catch (error) {
