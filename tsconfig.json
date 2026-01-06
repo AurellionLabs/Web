@@ -33,8 +33,6 @@
     "test",
     "__tests__",
     "dapp-connectors",
-    "austake-base-sepolia",
-    "aura-asset-base-sepolia",
     "typechain-types"
   ]
 }
