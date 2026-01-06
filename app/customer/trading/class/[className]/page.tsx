@@ -29,6 +29,7 @@ import { TradingErrorBoundary } from '@/app/components/error-boundary';
 import { useClassAssets } from '@/hooks/useClassAssets';
 import { useAssetPrice } from '@/hooks/useAssetPrice';
 import { useUserAssets } from '@/hooks/useUserAssets';
+import { useDiamond } from '@/app/providers/diamond.provider';
 
 // Icons
 import { ArrowLeft, RefreshCw, TrendingUp } from 'lucide-react';
@@ -95,6 +96,7 @@ function generateMockPrice(assetName: string): number {
 function ClassDetailPageContent() {
   const params = useParams();
   const { setCurrentUserRole } = useMainProvider();
+  const { getOwnedNodes, withdrawTokensFromNode } = useDiamond();
 
   // Get class name from URL params
   const className = decodeURIComponent(params.className as string);
@@ -231,6 +233,43 @@ function ClassDetailPageContent() {
 
         console.log('[ClassTradingPage] Placing CLOB order:', clobParams);
 
+        // For SELL orders: tokens are held by the Diamond contract (node inventory)
+        // We need to withdraw them to user's wallet first
+        if (order.side === 'sell') {
+          console.log(
+            '[ClassTradingPage] Sell order - withdrawing tokens from node first...',
+          );
+
+          // Get user's owned nodes
+          const ownedNodes = await getOwnedNodes();
+          if (ownedNodes.length === 0) {
+            console.error(
+              '[ClassTradingPage] No owned nodes found for selling',
+            );
+            return false;
+          }
+
+          // Use the first owned node
+          const nodeHash = ownedNodes[0];
+          console.log('[ClassTradingPage] Withdrawing from node:', nodeHash);
+
+          try {
+            // Withdraw tokens from node to user's wallet
+            await withdrawTokensFromNode(
+              nodeHash,
+              assetWithTokenId.tokenId || '0',
+              quantity,
+            );
+            console.log('[ClassTradingPage] Tokens withdrawn successfully');
+          } catch (withdrawError) {
+            console.error(
+              '[ClassTradingPage] Failed to withdraw tokens:',
+              withdrawError,
+            );
+            // Continue anyway - the CLOB will fail if balance is truly insufficient
+          }
+        }
+
         // Place order on CLOB
         if (order.type === 'limit') {
           const result = await orderBridgeService.placeLimitOrderAndBridge(
@@ -277,7 +316,7 @@ function ClassDetailPageContent() {
         return false;
       }
     },
-    [tradeableAsset],
+    [tradeableAsset, getOwnedNodes, withdrawTokensFromNode],
   );
 
   // Render loading state

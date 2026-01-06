@@ -27,6 +27,7 @@ import { ArrowLeft, Share2, RefreshCw, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
+import { useDiamond } from '@/app/providers/diamond.provider';
 import { TokenizedAssetAttribute } from '@/domain/node';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -179,6 +180,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const router = useRouter();
   const { assets } = useTrade();
   const { getAssetAttributes } = useSelectedNode();
+  const { getOwnedNodes, withdrawTokensFromNode } = useDiamond();
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const [assetAttributes, setAssetAttributes] = useState<
@@ -352,6 +354,38 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
         console.log('[TradingPage] Placing CLOB order:', clobParams);
 
+        // For SELL orders: tokens are held by the Diamond contract (node inventory)
+        // We need to withdraw them to user's wallet first
+        if (!order.isBuy && order.side === 'sell') {
+          console.log(
+            '[TradingPage] Sell order - withdrawing tokens from node first...',
+          );
+
+          // Get user's owned nodes
+          const ownedNodes = await getOwnedNodes();
+          if (ownedNodes.length === 0) {
+            console.error('[TradingPage] No owned nodes found for selling');
+            return false;
+          }
+
+          // Use the first owned node (could be enhanced to let user pick)
+          const nodeHash = ownedNodes[0];
+          console.log('[TradingPage] Withdrawing from node:', nodeHash);
+
+          try {
+            // Withdraw tokens from node to user's wallet
+            await withdrawTokensFromNode(nodeHash, tokenId, quantity);
+            console.log('[TradingPage] Tokens withdrawn successfully');
+          } catch (withdrawError) {
+            console.error(
+              '[TradingPage] Failed to withdraw tokens:',
+              withdrawError,
+            );
+            // If withdrawal fails, the tokens might already be in wallet or insufficient balance
+            // Continue anyway - the CLOB will fail if balance is truly insufficient
+          }
+        }
+
         // Place order on CLOB
         if (order.type === 'limit') {
           const result = await orderBridgeService.placeLimitOrderAndBridge(
@@ -389,7 +423,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         return false;
       }
     },
-    [asset],
+    [asset, getOwnedNodes, withdrawTokensFromNode],
   );
 
   if (!asset) {

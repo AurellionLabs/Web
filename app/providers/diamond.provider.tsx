@@ -63,6 +63,15 @@ interface DiamondContextType {
   ) => Promise<void>;
   getNodeAssets: (nodeHash: string) => Promise<TokenizedAsset[]>;
   getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
+
+  // Trading operations
+  withdrawTokensFromNode: (
+    nodeHash: string,
+    tokenId: string,
+    amount: bigint,
+  ) => Promise<void>;
+  approveClobForTokens: (nodeHash: string) => Promise<void>;
+  isClobApproved: () => Promise<boolean>;
 }
 
 const DiamondProviderContext = createContext<DiamondContextType | undefined>(
@@ -248,6 +257,70 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [nodeRepository],
   );
 
+  // Trading operations - withdraw tokens from node to user wallet for selling
+  const withdrawTokensFromNode = useCallback(
+    async (
+      nodeHash: string,
+      tokenId: string,
+      amount: bigint,
+    ): Promise<void> => {
+      if (!diamondContext) {
+        throw new Error('Diamond not initialized');
+      }
+      const diamond = diamondContext.getDiamond();
+      console.log('[DiamondProvider] Withdrawing tokens from node:', {
+        nodeHash,
+        tokenId,
+        amount: amount.toString(),
+      });
+      const tx = await diamond.withdrawTokensFromNode(
+        nodeHash,
+        tokenId,
+        amount,
+      );
+      await tx.wait();
+      console.log('[DiamondProvider] Tokens withdrawn successfully');
+    },
+    [diamondContext],
+  );
+
+  // Approve CLOB to transfer tokens from Diamond (for node selling)
+  const approveClobForTokens = useCallback(
+    async (nodeHash: string): Promise<void> => {
+      if (!diamondContext) {
+        throw new Error('Diamond not initialized');
+      }
+      const diamond = diamondContext.getDiamond();
+      const { NEXT_PUBLIC_CLOB_ADDRESS } = await import('@/chain-constants');
+
+      // Check if already approved
+      const isApproved = await diamond.isClobApproved(NEXT_PUBLIC_CLOB_ADDRESS);
+      if (isApproved) {
+        console.log('[DiamondProvider] CLOB already approved');
+        return;
+      }
+
+      console.log('[DiamondProvider] Approving CLOB for token transfers...');
+      const tx = await diamond.approveClobForTokens(
+        nodeHash,
+        NEXT_PUBLIC_CLOB_ADDRESS,
+      );
+      await tx.wait();
+      console.log('[DiamondProvider] CLOB approved successfully');
+    },
+    [diamondContext],
+  );
+
+  // Check if CLOB is approved
+  const isClobApproved = useCallback(async (): Promise<boolean> => {
+    if (!diamondContext) {
+      return false;
+    }
+    const diamond = diamondContext.getDiamond();
+    const { NEXT_PUBLIC_CLOB_ADDRESS } = await import('@/chain-constants');
+    return await diamond.isClobApproved(NEXT_PUBLIC_CLOB_ADDRESS);
+  }, [diamondContext]);
+
   const value: DiamondContextType = {
     initialized,
     loading,
@@ -264,6 +337,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     updateAssetPrice,
     getNodeAssets,
     getAssetAttributes,
+    withdrawTokensFromNode,
+    approveClobForTokens,
+    isClobApproved,
   };
 
   return (
