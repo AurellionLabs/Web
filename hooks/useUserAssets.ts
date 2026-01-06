@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from './useWallet';
-import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
 import { SellableAsset } from '@/app/components/trading/trade-panel';
@@ -165,15 +164,21 @@ interface BalanceItem {
 /**
  * Hook to fetch user's owned assets with balances
  *
- * For nodes: Uses nodeAssets inventory (capacity)
- * For customers: Uses userBalances (ERC1155 token holdings)
+ * Fetches inventory from ALL nodes owned by the wallet plus ERC1155 balances.
+ * No node selection required - automatically aggregates from all owned nodes.
  *
  * @param filterClass - Optional asset class to filter by
  * @returns User's sellable assets with balances and metadata
  */
 export function useUserAssets(filterClass?: string) {
   const { address, isConnected } = useWallet();
-  const { selectedNodeAddress } = useSelectedNode();
+
+  // Log context state on each render for debugging
+  console.log('[useUserAssets] Hook called with:', {
+    filterClass,
+    isConnected,
+    address: address ? address.slice(0, 10) + '...' : 'none',
+  });
 
   const [balances, setBalances] = useState<BalanceItem[]>([]);
   const [metadata, setMetadata] = useState<
@@ -187,22 +192,25 @@ export function useUserAssets(filterClass?: string) {
 
   /**
    * Fetch user balances and related metadata
-   * Checks both node inventory (if user owns nodes) and ERC1155 balances
+   * Fetches inventory from ALL owned nodes (not just selected one) plus ERC1155 balances
    */
   const fetchUserAssets = useCallback(async () => {
     console.log('[useUserAssets] fetchUserAssets called', {
       isConnected,
       address,
-      selectedNodeAddress,
     });
 
     if (!isConnected || !address) {
-      console.log('[useUserAssets] Not connected or no address, skipping');
+      console.log(
+        '[useUserAssets] Not connected or no address, skipping fetch',
+      );
       setBalances([]);
       setMetadata(new Map());
       setIsLoading(false);
       return;
     }
+
+    console.log('[useUserAssets] Starting fetch for address:', address);
 
     setIsLoading(true);
     setError(null);
@@ -211,72 +219,11 @@ export function useUserAssets(filterClass?: string) {
       const allBalances: BalanceItem[] = [];
       const processedNodeAddresses = new Set<string>();
 
-      // Step 1a: If user has a selected node from context, fetch its inventory
-      if (selectedNodeAddress) {
-        console.log(
-          '[useUserAssets] Fetching inventory for selected node:',
-          selectedNodeAddress,
-        );
-        processedNodeAddresses.add(selectedNodeAddress.toLowerCase());
-
-        try {
-          const nodeResponse = await graphqlRequest<NodeInventoryResponse>(
-            NEXT_PUBLIC_INDEXER_URL,
-            GET_NODE_INVENTORY,
-            { node: selectedNodeAddress.toLowerCase() },
-          );
-
-          console.log('[useUserAssets] Node inventory response:', nodeResponse);
-          const nodeAssets = nodeResponse.nodeAssetss?.items || [];
-          console.log(
-            '[useUserAssets] Found selected node assets:',
-            nodeAssets.length,
-            nodeAssets,
-          );
-
-          nodeAssets.forEach((na) => {
-            if (BigInt(na.capacity) > 0n) {
-              allBalances.push({
-                id: na.id,
-                tokenId: na.tokenId,
-                balance: na.capacity,
-                price: na.price,
-              });
-            }
-          });
-        } catch (nodeError) {
-          console.error(
-            '[useUserAssets] Error fetching selected node inventory:',
-            nodeError,
-          );
-        }
-      } else {
-        console.log('[useUserAssets] No selected node address');
-      }
-
-      // Step 1b: Check if wallet owns any nodes and fetch their inventory
-      console.log('[useUserAssets] Checking for owned nodes by:', address);
-      try {
-        const nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
-          NEXT_PUBLIC_INDEXER_URL,
-          GET_NODES_BY_OWNER,
-          { ownerAddress: address.toLowerCase() },
-        );
-
-        console.log('[useUserAssets] Nodes by owner response:', nodesResponse);
-        const ownedNodes = nodesResponse.nodess?.items || [];
-        console.log(
-          '[useUserAssets] Found owned nodes:',
-          ownedNodes.length,
-          ownedNodes,
-        );
-      } catch (nodesError) {
-        console.error(
-          '[useUserAssets] Error fetching owned nodes:',
-          nodesError,
-        );
-      }
-
+      // Step 1: Get ALL nodes owned by this wallet and fetch their inventory
+      console.log(
+        '[useUserAssets] Checking for owned nodes by:',
+        address.toLowerCase(),
+      );
       const nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
         NEXT_PUBLIC_INDEXER_URL,
         GET_NODES_BY_OWNER,
@@ -284,9 +231,13 @@ export function useUserAssets(filterClass?: string) {
       );
 
       const ownedNodes = nodesResponse.nodess?.items || [];
-      console.log('[useUserAssets] Found owned nodes:', ownedNodes.length);
+      console.log(
+        '[useUserAssets] Found owned nodes:',
+        ownedNodes.length,
+        ownedNodes.map((n) => n.id),
+      );
 
-      // Fetch inventory for each owned node (that we haven't already processed)
+      // Fetch inventory for each owned node
       for (const node of ownedNodes) {
         if (processedNodeAddresses.has(node.id.toLowerCase())) {
           continue; // Already processed this node
@@ -321,7 +272,7 @@ export function useUserAssets(filterClass?: string) {
         });
       }
 
-      // Step 1c: Also fetch user's ERC1155 token balances (in case they received tokens)
+      // Step 2: Also fetch user's ERC1155 token balances (in case they received tokens)
       console.log('[useUserAssets] Fetching ERC1155 balances for:', address);
       const balanceResponse = await graphqlRequest<UserBalanceResponse>(
         NEXT_PUBLIC_INDEXER_URL,
@@ -353,7 +304,7 @@ export function useUserAssets(filterClass?: string) {
 
       setBalances(allBalances);
 
-      // Step 2: Fetch asset metadata for all token IDs
+      // Step 3: Fetch asset metadata for all token IDs
       const tokenIds = allBalances.map((b) => b.tokenId);
       console.log(
         '[useUserAssets] Fetching metadata for',
@@ -388,7 +339,7 @@ export function useUserAssets(filterClass?: string) {
         'assets',
       );
 
-      // Step 3: Fetch attributes for all assets
+      // Step 4: Fetch attributes for all assets
       if (assetIds.length > 0) {
         console.log(
           '[useUserAssets] Fetching attributes for',
@@ -434,7 +385,7 @@ export function useUserAssets(filterClass?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [address, isConnected, selectedNodeAddress]);
+  }, [address, isConnected]);
 
   // Fetch on mount and when address changes
   useEffect(() => {
@@ -443,6 +394,7 @@ export function useUserAssets(filterClass?: string) {
 
   /**
    * Convert balances + metadata to SellableAsset format
+   * This aggregates assets from ALL nodes owned by the user
    */
   const sellableAssets = useMemo((): SellableAsset[] => {
     const result: SellableAsset[] = [];
@@ -479,6 +431,7 @@ export function useUserAssets(filterClass?: string) {
       });
     }
 
+    console.log('[useUserAssets] Sellable assets:', result.length);
     return result;
   }, [balances, metadata, attributes, filterClass]);
 

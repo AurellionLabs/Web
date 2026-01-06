@@ -204,6 +204,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
     marketStats?.lastPrice || (asset ? parseFloat(asset.price) : 100);
 
   // Fetch user's owned assets for selling (filtered by asset class)
+  // This automatically fetches from ALL nodes owned by the connected wallet
   const { sellableAssets } = useUserAssets(asset?.class);
 
   // Get token ID from asset
