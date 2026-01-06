@@ -89,6 +89,27 @@ contract NodesFacet is Initializable {
 
     function initialize() public initializer {}
 
+    // ======= ADMIN FUNCTIONS =======
+
+    /**
+     * @notice Set the CLOB contract address (admin only)
+     * @param _clobAddress The CLOB contract address
+     */
+    function setClobAddress(address _clobAddress) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.clobAddress = _clobAddress;
+    }
+
+    /**
+     * @notice Get the CLOB contract address
+     * @return The CLOB contract address
+     */
+    function getClobAddress() external view returns (address) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.clobAddress;
+    }
+
     function registerNode(
         string memory _nodeType,
         uint256 _capacity,
