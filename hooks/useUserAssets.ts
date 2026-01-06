@@ -190,7 +190,14 @@ export function useUserAssets(filterClass?: string) {
    * Checks both node inventory (if user owns nodes) and ERC1155 balances
    */
   const fetchUserAssets = useCallback(async () => {
+    console.log('[useUserAssets] fetchUserAssets called', {
+      isConnected,
+      address,
+      selectedNodeAddress,
+    });
+
     if (!isConnected || !address) {
+      console.log('[useUserAssets] Not connected or no address, skipping');
       setBalances([]);
       setMetadata(new Map());
       setIsLoading(false);
@@ -212,32 +219,64 @@ export function useUserAssets(filterClass?: string) {
         );
         processedNodeAddresses.add(selectedNodeAddress.toLowerCase());
 
-        const nodeResponse = await graphqlRequest<NodeInventoryResponse>(
-          NEXT_PUBLIC_INDEXER_URL,
-          GET_NODE_INVENTORY,
-          { node: selectedNodeAddress.toLowerCase() },
-        );
+        try {
+          const nodeResponse = await graphqlRequest<NodeInventoryResponse>(
+            NEXT_PUBLIC_INDEXER_URL,
+            GET_NODE_INVENTORY,
+            { node: selectedNodeAddress.toLowerCase() },
+          );
 
-        const nodeAssets = nodeResponse.nodeAssetss?.items || [];
-        console.log(
-          '[useUserAssets] Found selected node assets:',
-          nodeAssets.length,
-        );
+          console.log('[useUserAssets] Node inventory response:', nodeResponse);
+          const nodeAssets = nodeResponse.nodeAssetss?.items || [];
+          console.log(
+            '[useUserAssets] Found selected node assets:',
+            nodeAssets.length,
+            nodeAssets,
+          );
 
-        nodeAssets.forEach((na) => {
-          if (BigInt(na.capacity) > 0n) {
-            allBalances.push({
-              id: na.id,
-              tokenId: na.tokenId,
-              balance: na.capacity,
-              price: na.price,
-            });
-          }
-        });
+          nodeAssets.forEach((na) => {
+            if (BigInt(na.capacity) > 0n) {
+              allBalances.push({
+                id: na.id,
+                tokenId: na.tokenId,
+                balance: na.capacity,
+                price: na.price,
+              });
+            }
+          });
+        } catch (nodeError) {
+          console.error(
+            '[useUserAssets] Error fetching selected node inventory:',
+            nodeError,
+          );
+        }
+      } else {
+        console.log('[useUserAssets] No selected node address');
       }
 
       // Step 1b: Check if wallet owns any nodes and fetch their inventory
       console.log('[useUserAssets] Checking for owned nodes by:', address);
+      try {
+        const nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
+          NEXT_PUBLIC_INDEXER_URL,
+          GET_NODES_BY_OWNER,
+          { ownerAddress: address.toLowerCase() },
+        );
+
+        console.log('[useUserAssets] Nodes by owner response:', nodesResponse);
+        const ownedNodes = nodesResponse.nodess?.items || [];
+        console.log(
+          '[useUserAssets] Found owned nodes:',
+          ownedNodes.length,
+          ownedNodes,
+        );
+      } catch (nodesError) {
+        console.error(
+          '[useUserAssets] Error fetching owned nodes:',
+          nodesError,
+        );
+      }
+
       const nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
         NEXT_PUBLIC_INDEXER_URL,
         GET_NODES_BY_OWNER,

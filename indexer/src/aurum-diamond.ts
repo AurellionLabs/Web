@@ -50,18 +50,20 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
   let status = 'Active';
 
   try {
+    // getNode returns flat fields: [owner, nodeType, capacity, createdAt, active, validNode, assetHash, addressName, lat, lng]
     const node = await context.client.readContract({
       abi: context.contracts.Diamond.abi,
       address: context.contracts.Diamond.address,
       functionName: 'getNode',
       args: [nodeHash],
     });
+    // Access flat fields directly (viem returns as array or object depending on ABI)
     locationData = {
-      addressName: node.location?.addressName || '',
-      lat: node.location?.lat || '0',
-      lng: node.location?.lng || '0',
+      addressName: (node as any).addressName || (node as any)[7] || '',
+      lat: (node as any).lat || (node as any)[8] || '0',
+      lng: (node as any).lng || (node as any)[9] || '0',
     };
-    status = node.active ? 'Active' : 'Inactive';
+    status = ((node as any).active ?? (node as any)[4]) ? 'Active' : 'Inactive';
   } catch (e) {
     console.warn(`Failed to get node data for ${nodeHash}:`, e);
   }
