@@ -268,8 +268,10 @@ contract CLOB is ReentrancyGuard, ERC1155Holder, Ownable, Pausable {
 
     /**
      * @notice Place a sell order on behalf of a node (tokens transferred from Diamond)
-     * @dev Called by Diamond contract to place sell orders for node inventory
-     * @param nodeOwner The node owner who initiated the sell
+     * @dev Called by Diamond contract to place sell orders for node inventory.
+     *      Diamond must have deposited tokens first via depositTokensToNode().
+     *      The Diamond transfers actual ERC1155 tokens to CLOB escrow.
+     * @param nodeOwner The node owner who initiated the sell (receives quote token proceeds)
      * @param baseToken ERC1155 token address
      * @param baseTokenId Token ID for ERC1155
      * @param quoteToken ERC20 payment token address
@@ -289,7 +291,7 @@ contract CLOB is ReentrancyGuard, ERC1155Holder, Ownable, Pausable {
         if (price == 0) revert InvalidPrice();
 
         // Transfer tokens from msg.sender (Diamond) to escrow
-        // Diamond must have approved this contract
+        // Diamond must have approved this contract and hold the tokens
         IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
 
         // Create order with nodeOwner as the maker (so they receive proceeds)
@@ -843,4 +845,3 @@ contract CLOB is ReentrancyGuard, ERC1155Holder, Ownable, Pausable {
         }
     }
 }
-

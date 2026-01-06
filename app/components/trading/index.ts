@@ -13,3 +13,6 @@ export * from './price-chart';
 
 // Shared components
 export * from './shared';
+
+// Deposit modal
+export { DepositForTradingModal } from './deposit-for-trading-modal';

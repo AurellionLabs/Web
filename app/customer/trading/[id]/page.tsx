@@ -12,6 +12,7 @@ import { PriceChange } from '@/app/components/ui/price-change';
 import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
+import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
 import type {
   PlaceLimitOrderParams,
   CLOBTrade,
@@ -28,6 +29,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { useDiamond } from '@/app/providers/diamond.provider';
+import { useWallet } from '@/hooks/useWallet';
 import { TokenizedAssetAttribute } from '@/domain/node';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -180,13 +182,27 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const router = useRouter();
   const { assets } = useTrade();
   const { getAssetAttributes } = useSelectedNode();
-  const { getOwnedNodes, placeSellOrderFromNode } = useDiamond();
+  const { getOwnedNodes, placeSellOrderFromNode, getNodeTokenBalance } =
+    useDiamond();
+  const { address, connectedWallet } = useWallet();
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const [assetAttributes, setAssetAttributes] = useState<
     TokenizedAssetAttribute[]
   >([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Deposit modal state
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [pendingSellOrder, setPendingSellOrder] = useState<{
+    tokenId: string;
+    tokenName: string;
+    nodeHash: string;
+    walletBalance: bigint;
+    nodeBalance: bigint;
+    requiredAmount: bigint;
+    price: bigint;
+  } | null>(null);
 
   // Real data state
   const [recentTrades, setRecentTrades] = useState<DisplayTrade[]>([]);
@@ -355,11 +371,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         console.log('[TradingPage] Placing CLOB order:', clobParams);
 
         // For SELL orders: use Diamond's placeSellOrderFromNode
-        // This transfers tokens directly from Diamond to CLOB without going through user's wallet
+        // Node must have deposited tokens first
         if (order.side === 'sell') {
-          console.log(
-            '[TradingPage] Sell order - placing directly from node inventory...',
-          );
+          console.log('[TradingPage] Sell order - checking node inventory...');
 
           // Get user's owned nodes
           const ownedNodes = await getOwnedNodes();
@@ -370,10 +384,67 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
           // Use the first owned node
           const nodeHash = ownedNodes[0];
+
+          // Check node's deposited balance
+          const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
+          console.log(
+            '[TradingPage] Node balance:',
+            nodeBalance.toString(),
+            'Required:',
+            quantity.toString(),
+          );
+
+          // If insufficient balance, show deposit modal
+          if (nodeBalance < quantity) {
+            console.log(
+              '[TradingPage] Insufficient node balance - showing deposit modal',
+            );
+
+            // Get wallet balance for the modal
+            let walletBalance = BigInt(0);
+            try {
+              const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+                '@/chain-constants'
+              );
+              const { ethers } = await import('ethers');
+
+              if (connectedWallet && address) {
+                const ethereumProvider =
+                  await connectedWallet.getEthereumProvider();
+                const provider = new ethers.BrowserProvider(ethereumProvider);
+                const auraAsset = new ethers.Contract(
+                  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                  [
+                    'function balanceOf(address account, uint256 id) view returns (uint256)',
+                  ],
+                  provider,
+                );
+                walletBalance = BigInt(
+                  await auraAsset.balanceOf(address, tokenId),
+                );
+              }
+            } catch (err) {
+              console.error('[TradingPage] Error getting wallet balance:', err);
+            }
+
+            // Set pending order and show modal
+            setPendingSellOrder({
+              tokenId,
+              tokenName: asset?.name || 'Asset',
+              nodeHash,
+              walletBalance,
+              nodeBalance,
+              requiredAmount: quantity,
+              price: priceInWei,
+            });
+            setShowDepositModal(true);
+            return false; // Don't place order yet
+          }
+
           console.log('[TradingPage] Placing sell order from node:', nodeHash);
 
           try {
-            // Place sell order directly from Diamond (no wallet withdrawal needed)
+            // Place sell order directly from Diamond (tokens already deposited)
             const orderId = await placeSellOrderFromNode(
               nodeHash,
               tokenId,
@@ -383,11 +454,57 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             );
             console.log('[TradingPage] Sell order placed from node:', orderId);
             return true;
-          } catch (sellError) {
+          } catch (sellError: any) {
             console.error(
               '[TradingPage] Failed to place sell order from node:',
               sellError,
             );
+            // Check if error is about insufficient balance
+            if (
+              sellError.message?.includes('Insufficient node balance') ||
+              sellError.message?.includes('insufficient balance')
+            ) {
+              // Show deposit modal
+              let walletBalance = BigInt(0);
+              try {
+                const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+                  '@/chain-constants'
+                );
+                const { ethers } = await import('ethers');
+
+                if (connectedWallet && address) {
+                  const ethereumProvider =
+                    await connectedWallet.getEthereumProvider();
+                  const provider = new ethers.BrowserProvider(ethereumProvider);
+                  const auraAsset = new ethers.Contract(
+                    NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                    [
+                      'function balanceOf(address account, uint256 id) view returns (uint256)',
+                    ],
+                    provider,
+                  );
+                  walletBalance = BigInt(
+                    await auraAsset.balanceOf(address, tokenId),
+                  );
+                }
+              } catch (err) {
+                console.error(
+                  '[TradingPage] Error getting wallet balance:',
+                  err,
+                );
+              }
+
+              setPendingSellOrder({
+                tokenId,
+                tokenName: asset?.name || 'Asset',
+                nodeHash,
+                walletBalance,
+                nodeBalance: BigInt(0),
+                requiredAmount: quantity,
+                price: priceInWei,
+              });
+              setShowDepositModal(true);
+            }
             return false;
           }
         }
@@ -429,7 +546,14 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         return false;
       }
     },
-    [asset, getOwnedNodes, placeSellOrderFromNode],
+    [
+      asset,
+      getOwnedNodes,
+      placeSellOrderFromNode,
+      getNodeTokenBalance,
+      connectedWallet,
+      address,
+    ],
   );
 
   if (!asset) {
@@ -687,6 +811,47 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           </div>
         </div>
       </div>
+
+      {/* Deposit Modal - shown when user tries to sell without deposited tokens */}
+      {pendingSellOrder && (
+        <DepositForTradingModal
+          open={showDepositModal}
+          onOpenChange={setShowDepositModal}
+          tokenId={pendingSellOrder.tokenId}
+          tokenName={pendingSellOrder.tokenName}
+          nodeHash={pendingSellOrder.nodeHash}
+          walletBalance={pendingSellOrder.walletBalance}
+          nodeBalance={pendingSellOrder.nodeBalance}
+          requiredAmount={pendingSellOrder.requiredAmount}
+          onDepositComplete={async () => {
+            // After deposit, retry the sell order
+            if (pendingSellOrder) {
+              try {
+                const { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } = await import(
+                  '@/chain-constants'
+                );
+                const orderId = await placeSellOrderFromNode(
+                  pendingSellOrder.nodeHash,
+                  pendingSellOrder.tokenId,
+                  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+                  pendingSellOrder.price,
+                  pendingSellOrder.requiredAmount,
+                );
+                console.log(
+                  '[TradingPage] Sell order placed after deposit:',
+                  orderId,
+                );
+              } catch (err) {
+                console.error(
+                  '[TradingPage] Failed to place order after deposit:',
+                  err,
+                );
+              }
+            }
+            setPendingSellOrder(null);
+          }}
+        />
+      )}
     </div>
   );
 };

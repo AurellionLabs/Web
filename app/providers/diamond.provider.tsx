@@ -65,11 +65,17 @@ interface DiamondContextType {
   getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
 
   // Trading operations
+  depositTokensToNode: (
+    nodeHash: string,
+    tokenId: string,
+    amount: bigint,
+  ) => Promise<void>;
   withdrawTokensFromNode: (
     nodeHash: string,
     tokenId: string,
     amount: bigint,
   ) => Promise<void>;
+  getNodeTokenBalance: (nodeHash: string, tokenId: string) => Promise<bigint>;
   approveClobForTokens: (nodeHash: string) => Promise<void>;
   isClobApproved: () => Promise<boolean>;
   placeSellOrderFromNode: (
@@ -264,7 +270,66 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [nodeRepository],
   );
 
-  // Trading operations - withdraw tokens from node to user wallet for selling
+  // Trading operations - deposit tokens from user wallet to node for selling on CLOB
+  const depositTokensToNode = useCallback(
+    async (
+      nodeHash: string,
+      tokenId: string,
+      amount: bigint,
+    ): Promise<void> => {
+      if (!diamondContext) {
+        throw new Error('Diamond not initialized');
+      }
+      const diamond = diamondContext.getDiamond();
+      console.log('[DiamondProvider] Depositing tokens to node:', {
+        nodeHash,
+        tokenId,
+        amount: amount.toString(),
+      });
+
+      // First, approve Diamond to transfer user's tokens
+      const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+        '@/chain-constants'
+      );
+      const { ethers } = await import('ethers');
+
+      const signer = await diamondContext.getSigner();
+      const auraAsset = new ethers.Contract(
+        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        [
+          'function setApprovalForAll(address operator, bool approved) external',
+          'function isApprovedForAll(address account, address operator) view returns (bool)',
+        ],
+        signer,
+      );
+
+      const diamondAddress = await diamond.getAddress();
+      const isApproved = await auraAsset.isApprovedForAll(
+        await signer.getAddress(),
+        diamondAddress,
+      );
+
+      if (!isApproved) {
+        console.log(
+          '[DiamondProvider] Approving Diamond to transfer tokens...',
+        );
+        const approveTx = await auraAsset.setApprovalForAll(
+          diamondAddress,
+          true,
+        );
+        await approveTx.wait();
+        console.log('[DiamondProvider] Diamond approved');
+      }
+
+      // Now deposit tokens to node
+      const tx = await diamond.depositTokensToNode(nodeHash, tokenId, amount);
+      await tx.wait();
+      console.log('[DiamondProvider] Tokens deposited successfully');
+    },
+    [diamondContext],
+  );
+
+  // Withdraw tokens from node to user wallet
   const withdrawTokensFromNode = useCallback(
     async (
       nodeHash: string,
@@ -287,6 +352,27 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       );
       await tx.wait();
       console.log('[DiamondProvider] Tokens withdrawn successfully');
+    },
+    [diamondContext],
+  );
+
+  // Get node's deposited token balance (available for selling on CLOB)
+  const getNodeTokenBalance = useCallback(
+    async (nodeHash: string, tokenId: string): Promise<bigint> => {
+      if (!diamondContext) {
+        return BigInt(0);
+      }
+      const diamond = diamondContext.getDiamond();
+      try {
+        const balance = await diamond.getNodeTokenBalance(nodeHash, tokenId);
+        return BigInt(balance.toString());
+      } catch (err) {
+        console.error(
+          '[DiamondProvider] Error getting node token balance:',
+          err,
+        );
+        return BigInt(0);
+      }
     },
     [diamondContext],
   );
@@ -381,7 +467,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     updateAssetPrice,
     getNodeAssets,
     getAssetAttributes,
+    depositTokensToNode,
     withdrawTokensFromNode,
+    getNodeTokenBalance,
     approveClobForTokens,
     isClobApproved,
     placeSellOrderFromNode,

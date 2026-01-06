@@ -433,7 +433,8 @@ contract NodesFacet is Initializable {
 
     /**
      * @notice Place a sell order on the CLOB from node's inventory
-     * @dev Transfers tokens from Diamond to CLOB and creates sell order
+     * @dev Node operator must first deposit tokens to Diamond via depositTokensToNode().
+     *      Diamond then transfers actual ERC1155 tokens to CLOB escrow.
      * @param _node The node hash whose inventory to sell from
      * @param _tokenId The ERC1155 token ID to sell
      * @param _quoteToken The payment token (USDC, etc.)
@@ -453,7 +454,7 @@ contract NodesFacet is Initializable {
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
         require(s.clobAddress != address(0), 'CLOB not set');
         require(_amount > 0, 'Amount must be positive');
-        require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
+        require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance - deposit tokens first');
 
         // Debit node's internal balance
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
@@ -463,7 +464,7 @@ contract NodesFacet is Initializable {
             IERC1155(s.auraAssetAddress).setApprovalForAll(s.clobAddress, true);
         }
 
-        // Call CLOB to place sell order (Diamond transfers tokens to CLOB)
+        // Call CLOB to place sell order (Diamond transfers tokens to CLOB escrow)
         // The CLOB's placeNodeSellOrder function will transfer tokens from Diamond
         orderId = ICLOBNodeSell(s.clobAddress).placeNodeSellOrder(
             msg.sender,           // nodeOwner receives proceeds
