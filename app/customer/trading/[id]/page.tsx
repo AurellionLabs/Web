@@ -466,6 +466,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             ) {
               // Show deposit modal
               let walletBalance = BigInt(0);
+              let nodeBalance = BigInt(0);
               try {
                 const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
                   '@/chain-constants'
@@ -487,6 +488,16 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                     await auraAsset.balanceOf(address, tokenId),
                   );
                 }
+
+                // Fetch actual node balance
+                try {
+                  nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
+                } catch (nodeErr) {
+                  console.error(
+                    '[TradingPage] Error getting node balance:',
+                    nodeErr,
+                  );
+                }
               } catch (err) {
                 console.error(
                   '[TradingPage] Error getting wallet balance:',
@@ -499,7 +510,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                 tokenName: asset?.name || 'Asset',
                 nodeHash,
                 walletBalance,
-                nodeBalance: BigInt(0),
+                nodeBalance,
                 requiredAmount: quantity,
                 price: priceInWei,
               });

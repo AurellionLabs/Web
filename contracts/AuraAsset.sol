@@ -41,6 +41,29 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   mapping(bytes32 => uint256) public hashToTokenID;
   bytes32[] public ipfsID;
 
+  // ============== CUSTODY TRACKING ==============
+  // Maps tokenId => custodian node address
+  // Set when asset is minted, persists through transfers, cleared on redeem
+  mapping(uint256 => address) public tokenCustodian;
+  
+  // Maps tokenId => total amount currently in custody (minted but not redeemed)
+  mapping(uint256 => uint256) public tokenCustodyAmount;
+  
+  // Event emitted when custody is established (at mint)
+  event CustodyEstablished(
+    uint256 indexed tokenId,
+    address indexed custodian,
+    uint256 amount
+  );
+  
+  // Event emitted when custody is released (at redeem)
+  event CustodyReleased(
+    uint256 indexed tokenId,
+    address indexed custodian,
+    uint256 amount,
+    address indexed redeemer
+  );
+
   // ucall balane wih tokenId to get an amount of tokens
   constructor(
     address /*initialOwner*/,
@@ -129,6 +152,19 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     ipfsID.push(hash);
     _mint(account, tokenID, amount, data);
 
+    // ============== ESTABLISH CUSTODY ==============
+    // The minting node becomes the custodian for this tokenId
+    // If this is the first mint for this tokenId, set the custodian
+    // If already has a custodian, it must be the same node (can't have multiple custodians)
+    if (tokenCustodian[tokenID] == address(0)) {
+      tokenCustodian[tokenID] = account;
+    } else {
+      require(tokenCustodian[tokenID] == account, 'Token already has different custodian');
+    }
+    tokenCustodyAmount[tokenID] += amount;
+    emit CustodyEstablished(tokenID, account, amount);
+    // ================================================
+
     // Get className from contract state
     string memory resolvedClassName = hashToClass[hash];
     if (bytes(resolvedClassName).length == 0) {
@@ -161,6 +197,59 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   function lookupHash(Asset memory asset) public pure returns (uint256) {
     uint256 tokenID = uint256(keccak256(abi.encode(asset)));
     return (tokenID);
+  }
+
+  // ============== REDEMPTION (RELEASE CUSTODY) ==============
+  /**
+   * @dev Redeem tokens - burns the tokens and releases them from custody
+   * @param tokenId The token ID to redeem
+   * @param amount The amount to redeem
+   * 
+   * This function:
+   * 1. Burns the caller's tokens
+   * 2. Reduces the custody amount
+   * 3. Emits CustodyReleased event (can be used to trigger physical delivery)
+   * 
+   * The custodian node is responsible for physical delivery after this call.
+   */
+  function redeem(uint256 tokenId, uint256 amount) external {
+    require(balanceOf(msg.sender, tokenId) >= amount, 'Insufficient balance');
+    require(tokenCustodyAmount[tokenId] >= amount, 'Exceeds custody amount');
+    
+    address custodian = tokenCustodian[tokenId];
+    require(custodian != address(0), 'No custodian for token');
+    
+    // Burn the tokens
+    _burn(msg.sender, tokenId, amount);
+    
+    // Release from custody
+    tokenCustodyAmount[tokenId] -= amount;
+    
+    // If all tokens redeemed, clear the custodian
+    if (tokenCustodyAmount[tokenId] == 0) {
+      delete tokenCustodian[tokenId];
+    }
+    
+    emit CustodyReleased(tokenId, custodian, amount, msg.sender);
+  }
+
+  /**
+   * @dev Get custody info for a token
+   * @param tokenId The token ID to query
+   * @return custodian The custodian node address
+   * @return amount The amount currently in custody
+   */
+  function getCustodyInfo(uint256 tokenId) external view returns (address custodian, uint256 amount) {
+    return (tokenCustodian[tokenId], tokenCustodyAmount[tokenId]);
+  }
+
+  /**
+   * @dev Check if a token is in custody
+   * @param tokenId The token ID to check
+   * @return True if the token has a custodian
+   */
+  function isInCustody(uint256 tokenId) external view returns (bool) {
+    return tokenCustodian[tokenId] != address(0);
   }
 
   /**

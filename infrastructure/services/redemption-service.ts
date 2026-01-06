@@ -31,11 +31,11 @@ export interface RedemptionResult {
   error?: string;
 }
 
-// ERC1155 ABI for burning tokens
-const ERC1155_BURNABLE_ABI = [
-  'function burn(address account, uint256 id, uint256 value) external',
-  'function setApprovalForAll(address operator, bool approved) external',
-  'function isApprovedForAll(address account, address operator) external view returns (bool)',
+// AuraAsset ABI for redemption (burns tokens and releases custody)
+const AURA_ASSET_REDEEM_ABI = [
+  'function redeem(uint256 tokenId, uint256 amount) external',
+  'function getCustodyInfo(uint256 tokenId) external view returns (address custodian, uint256 amount)',
+  'function isInCustody(uint256 tokenId) external view returns (bool)',
   'function balanceOf(address account, uint256 id) external view returns (uint256)',
 ];
 
@@ -101,7 +101,7 @@ export class RedemptionService {
       // Step 1: Verify user owns enough tokens
       const auraAssetContract = new ethers.Contract(
         NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-        ERC1155_BURNABLE_ABI,
+        AURA_ASSET_REDEEM_ABI,
         signer,
       );
 
@@ -132,16 +132,20 @@ export class RedemptionService {
         estimatedDays: route.estimatedDays,
       });
 
-      // Step 3: Burn the tokens
-      // The user burns their own tokens (ERC1155Burnable allows self-burn)
-      console.log('[RedemptionService] Burning tokens...');
-      const burnTx = await auraAssetContract.burn(
-        signerAddress,
-        tokenId,
-        quantity,
+      // Step 3: Redeem the tokens (burns tokens and releases custody)
+      // This calls the redeem() function which:
+      // - Burns the caller's tokens
+      // - Releases them from custody
+      // - Emits CustodyReleased event (used to trigger physical delivery)
+      console.log(
+        '[RedemptionService] Redeeming tokens (burn + release custody)...',
       );
-      const burnReceipt = await burnTx.wait();
-      console.log('[RedemptionService] Tokens burned. Tx:', burnReceipt.hash);
+      const redeemTx = await auraAssetContract.redeem(tokenId, quantity);
+      const redeemReceipt = await redeemTx.wait();
+      console.log(
+        '[RedemptionService] Tokens redeemed, custody released. Tx:',
+        redeemReceipt.hash,
+      );
 
       // Step 4: Get origin node location for parcel data
       const originNodeLocation =

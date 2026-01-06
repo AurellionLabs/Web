@@ -359,6 +359,7 @@ function ClassDetailPageContent() {
             ) {
               // Show deposit modal
               let walletBalance = BigInt(0);
+              let nodeBalance = BigInt(0);
               try {
                 const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
                   '@/chain-constants'
@@ -380,6 +381,16 @@ function ClassDetailPageContent() {
                     await auraAsset.balanceOf(address, tokenId),
                   );
                 }
+
+                // Fetch actual node balance
+                try {
+                  nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
+                } catch (nodeErr) {
+                  console.error(
+                    '[ClassTradingPage] Error getting node balance:',
+                    nodeErr,
+                  );
+                }
               } catch (err) {
                 console.error(
                   '[ClassTradingPage] Error getting wallet balance:',
@@ -392,7 +403,7 @@ function ClassDetailPageContent() {
                 tokenName: tradeableAsset?.name || 'Asset',
                 nodeHash,
                 walletBalance,
-                nodeBalance: BigInt(0),
+                nodeBalance,
                 requiredAmount: quantity,
                 price: priceInWei,
               });

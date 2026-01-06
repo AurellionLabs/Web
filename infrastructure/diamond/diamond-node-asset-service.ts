@@ -76,13 +76,21 @@ export class DiamondNodeAssetService implements INodeAssetService {
    * Mint new assets for a node
    *
    * Flow:
-   * 1. Call AuraAsset.nodeMint() to mint ERC1155 tokens directly to Diamond
-   *    (Diamond must be registered as a valid node in Aurum's AllNodes)
+   * 1. Call AuraAsset.nodeMint() to mint ERC1155 tokens directly to Diamond (custodian)
+   *    - Diamond is registered as a valid node in Aurum's NodeManager
+   *    - Custody is established: Diamond becomes the custodian for these tokens
+   *    - Custody persists through all subsequent transfers until redemption
    * 2. Call Diamond.creditNodeTokens() to track inventory for the specific node
    * 3. Call Diamond.addSupportedAsset() to register asset with capacity
    *
    * Note: Price is NOT set during tokenization. Price is set when placing
    * sell orders on the CLOB.
+   *
+   * CUSTODY MODEL:
+   * - Tokens are minted to Diamond (the custodian node)
+   * - The custodian relationship persists even when tokens are transferred/traded
+   * - Only when a user calls redeem() is custody released and tokens burned
+   * - This ensures the physical asset backing is always tracked to a responsible node
    */
   async mintAsset(
     nodeHashOrAddress: string,
@@ -103,6 +111,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
       assetClass: asset.assetClass,
       amount,
       diamondAddress,
+      custodian: diamondAddress, // Diamond is the custodian
     });
 
     // Ensure node exists in Diamond (will register if needed)
@@ -135,12 +144,13 @@ export class DiamondNodeAssetService implements INodeAssetService {
         tokenId.toString(),
       );
 
-      // Step 1: Mint tokens via AuraAsset.nodeMint() directly to Diamond
-      // The Diamond address must be registered as a valid node in Aurum's NodeManager
-      // This bypasses the need for signer approval and deposit steps
-      console.log('[DiamondNodeAssetService] Calling nodeMint to Diamond...');
+      // Step 1: Mint tokens via AuraAsset.nodeMint() directly to Diamond (custodian)
+      // Diamond becomes the custodian for these tokens - custody persists through transfers
+      console.log(
+        '[DiamondNodeAssetService] Calling nodeMint to Diamond (custodian)...',
+      );
       const mintTx = await auraAsset.nodeMint(
-        diamondAddress, // Mint directly to Diamond contract
+        diamondAddress, // Mint to Diamond - establishes custody
         contractAsset,
         amount,
         asset.assetClass,
@@ -148,7 +158,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
       const mintReceipt = await mintTx.wait();
       console.log(
-        '[DiamondNodeAssetService] Tokens minted to Diamond, tx:',
+        '[DiamondNodeAssetService] Tokens minted, custody established. tx:',
         mintReceipt.hash,
       );
 
@@ -178,7 +188,10 @@ export class DiamondNodeAssetService implements INodeAssetService {
       // Step 4: Ensure CLOB is approved for trading
       await this.ensureClobApproval(nodeHash);
 
-      console.log('[DiamondNodeAssetService] Asset minting complete');
+      console.log(
+        '[DiamondNodeAssetService] Asset minting complete. Custodian:',
+        diamondAddress,
+      );
     } catch (error) {
       console.error('[DiamondNodeAssetService] Error minting asset:', error);
       throw error;
