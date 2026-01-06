@@ -545,6 +545,81 @@ export const DiamondABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  // CLOB address management
+  {
+    inputs: [
+      { internalType: 'address', name: '_clobAddress', type: 'address' },
+    ],
+    name: 'setClobAddress',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getClobAddress',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  // Place sell order from node inventory
+  {
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
+      { internalType: 'address', name: '_quoteToken', type: 'address' },
+      { internalType: 'uint256', name: '_price', type: 'uint256' },
+      { internalType: 'uint256', name: '_amount', type: 'uint256' },
+    ],
+    name: 'placeSellOrderFromNode',
+    outputs: [{ internalType: 'bytes32', name: 'orderId', type: 'bytes32' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // Event for node sell order placement
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'NodeSellOrderPlaced',
+    type: 'event',
+  },
 
   // ======= AssetsFacet Events =======
   {
