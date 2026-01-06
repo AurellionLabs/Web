@@ -356,7 +356,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
         // For SELL orders: use Diamond's placeSellOrderFromNode
         // This transfers tokens directly from Diamond to CLOB without going through user's wallet
-        if (!order.isBuy && order.side === 'sell') {
+        if (order.side === 'sell') {
           console.log(
             '[TradingPage] Sell order - placing directly from node inventory...',
           );
