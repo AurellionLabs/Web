@@ -220,14 +220,12 @@ export function useUserAssets(filterClass?: string) {
       const processedNodeAddresses = new Set<string>();
 
       // Step 1: Get ALL nodes owned by this wallet and fetch their inventory
-      console.log(
-        '[useUserAssets] Checking for owned nodes by:',
-        address.toLowerCase(),
-      );
+      // Note: Don't lowercase - indexer stores addresses with checksum casing
+      console.log('[useUserAssets] Checking for owned nodes by:', address);
       const nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
         NEXT_PUBLIC_INDEXER_URL,
         GET_NODES_BY_OWNER,
-        { ownerAddress: address.toLowerCase() },
+        { ownerAddress: address },
       );
 
       const ownedNodes = nodesResponse.nodess?.items || [];
@@ -239,10 +237,10 @@ export function useUserAssets(filterClass?: string) {
 
       // Fetch inventory for each owned node
       for (const node of ownedNodes) {
-        if (processedNodeAddresses.has(node.id.toLowerCase())) {
+        if (processedNodeAddresses.has(node.id)) {
           continue; // Already processed this node
         }
-        processedNodeAddresses.add(node.id.toLowerCase());
+        processedNodeAddresses.add(node.id);
 
         console.log(
           '[useUserAssets] Fetching inventory for owned node:',
@@ -251,7 +249,7 @@ export function useUserAssets(filterClass?: string) {
         const nodeResponse = await graphqlRequest<NodeInventoryResponse>(
           NEXT_PUBLIC_INDEXER_URL,
           GET_NODE_INVENTORY,
-          { node: node.id.toLowerCase() },
+          { node: node.id },
         );
 
         const nodeAssets = nodeResponse.nodeAssetss?.items || [];
@@ -277,7 +275,7 @@ export function useUserAssets(filterClass?: string) {
       const balanceResponse = await graphqlRequest<UserBalanceResponse>(
         NEXT_PUBLIC_INDEXER_URL,
         GET_USER_BALANCES,
-        { user: address.toLowerCase() },
+        { user: address },
       );
 
       const userBalances = balanceResponse.userBalancess?.items || [];
