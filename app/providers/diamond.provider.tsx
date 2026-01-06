@@ -72,6 +72,13 @@ interface DiamondContextType {
   ) => Promise<void>;
   approveClobForTokens: (nodeHash: string) => Promise<void>;
   isClobApproved: () => Promise<boolean>;
+  placeSellOrderFromNode: (
+    nodeHash: string,
+    tokenId: string,
+    quoteToken: string,
+    price: bigint,
+    amount: bigint,
+  ) => Promise<string>; // Returns orderId
 }
 
 const DiamondProviderContext = createContext<DiamondContextType | undefined>(
@@ -321,6 +328,43 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     return await diamond.isClobApproved(NEXT_PUBLIC_CLOB_ADDRESS);
   }, [diamondContext]);
 
+  // Place sell order directly from node inventory (no withdrawal to wallet needed)
+  const placeSellOrderFromNode = useCallback(
+    async (
+      nodeHash: string,
+      tokenId: string,
+      quoteToken: string,
+      price: bigint,
+      amount: bigint,
+    ): Promise<string> => {
+      if (!diamondContext) {
+        throw new Error('Diamond not initialized');
+      }
+      const diamond = diamondContext.getDiamond();
+      console.log('[DiamondProvider] Placing sell order from node:', {
+        nodeHash,
+        tokenId,
+        quoteToken,
+        price: price.toString(),
+        amount: amount.toString(),
+      });
+      const tx = await diamond.placeSellOrderFromNode(
+        nodeHash,
+        tokenId,
+        quoteToken,
+        price,
+        amount,
+      );
+      const receipt = await tx.wait();
+      console.log('[DiamondProvider] Sell order placed, tx:', receipt.hash);
+
+      // Extract orderId from events if available
+      // For now, return tx hash as order reference
+      return receipt.hash;
+    },
+    [diamondContext],
+  );
+
   const value: DiamondContextType = {
     initialized,
     loading,
@@ -340,6 +384,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     withdrawTokensFromNode,
     approveClobForTokens,
     isClobApproved,
+    placeSellOrderFromNode,
   };
 
   return (

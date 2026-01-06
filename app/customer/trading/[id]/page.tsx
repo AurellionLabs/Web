@@ -180,7 +180,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const router = useRouter();
   const { assets } = useTrade();
   const { getAssetAttributes } = useSelectedNode();
-  const { getOwnedNodes, withdrawTokensFromNode } = useDiamond();
+  const { getOwnedNodes, placeSellOrderFromNode } = useDiamond();
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
   const [assetAttributes, setAssetAttributes] = useState<
@@ -354,11 +354,11 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
         console.log('[TradingPage] Placing CLOB order:', clobParams);
 
-        // For SELL orders: tokens are held by the Diamond contract (node inventory)
-        // We need to withdraw them to user's wallet first
+        // For SELL orders: use Diamond's placeSellOrderFromNode
+        // This transfers tokens directly from Diamond to CLOB without going through user's wallet
         if (!order.isBuy && order.side === 'sell') {
           console.log(
-            '[TradingPage] Sell order - withdrawing tokens from node first...',
+            '[TradingPage] Sell order - placing directly from node inventory...',
           );
 
           // Get user's owned nodes
@@ -368,25 +368,31 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             return false;
           }
 
-          // Use the first owned node (could be enhanced to let user pick)
+          // Use the first owned node
           const nodeHash = ownedNodes[0];
-          console.log('[TradingPage] Withdrawing from node:', nodeHash);
+          console.log('[TradingPage] Placing sell order from node:', nodeHash);
 
           try {
-            // Withdraw tokens from node to user's wallet
-            await withdrawTokensFromNode(nodeHash, tokenId, quantity);
-            console.log('[TradingPage] Tokens withdrawn successfully');
-          } catch (withdrawError) {
-            console.error(
-              '[TradingPage] Failed to withdraw tokens:',
-              withdrawError,
+            // Place sell order directly from Diamond (no wallet withdrawal needed)
+            const orderId = await placeSellOrderFromNode(
+              nodeHash,
+              tokenId,
+              clobParams.quoteToken,
+              priceInWei,
+              quantity,
             );
-            // If withdrawal fails, the tokens might already be in wallet or insufficient balance
-            // Continue anyway - the CLOB will fail if balance is truly insufficient
+            console.log('[TradingPage] Sell order placed from node:', orderId);
+            return true;
+          } catch (sellError) {
+            console.error(
+              '[TradingPage] Failed to place sell order from node:',
+              sellError,
+            );
+            return false;
           }
         }
 
-        // Place order on CLOB
+        // For BUY orders: use regular CLOB flow (buyer pays from wallet)
         if (order.type === 'limit') {
           const result = await orderBridgeService.placeLimitOrderAndBridge(
             clobParams,
@@ -423,7 +429,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         return false;
       }
     },
-    [asset, getOwnedNodes, withdrawTokensFromNode],
+    [asset, getOwnedNodes, placeSellOrderFromNode],
   );
 
   if (!asset) {

@@ -267,6 +267,50 @@ contract CLOB is ReentrancyGuard, ERC1155Holder, Ownable, Pausable {
     }
 
     /**
+     * @notice Place a sell order on behalf of a node (tokens transferred from Diamond)
+     * @dev Called by Diamond contract to place sell orders for node inventory
+     * @param nodeOwner The node owner who initiated the sell
+     * @param baseToken ERC1155 token address
+     * @param baseTokenId Token ID for ERC1155
+     * @param quoteToken ERC20 payment token address
+     * @param price Price per unit in quote token
+     * @param amount Amount of base tokens to sell
+     * @return orderId The created order ID
+     */
+    function placeNodeSellOrder(
+        address nodeOwner,
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint256 price,
+        uint256 amount
+    ) external nonReentrant whenNotPaused returns (bytes32) {
+        if (amount == 0) revert InvalidAmount();
+        if (price == 0) revert InvalidPrice();
+
+        // Transfer tokens from msg.sender (Diamond) to escrow
+        // Diamond must have approved this contract
+        IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
+
+        // Create order with nodeOwner as the maker (so they receive proceeds)
+        bytes32 orderId = _createOrder(
+            nodeOwner,
+            baseToken,
+            baseTokenId,
+            quoteToken,
+            price,
+            amount,
+            false, // isBuy = false (sell order)
+            OrderType.Limit
+        );
+
+        // Try to match immediately
+        _matchOrder(orderId);
+
+        return orderId;
+    }
+
+    /**
      * @notice Place a market order (execute immediately at best price)
      * @param baseToken ERC1155 token address
      * @param baseTokenId Token ID for ERC1155

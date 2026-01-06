@@ -96,7 +96,7 @@ function generateMockPrice(assetName: string): number {
 function ClassDetailPageContent() {
   const params = useParams();
   const { setCurrentUserRole } = useMainProvider();
-  const { getOwnedNodes, withdrawTokensFromNode } = useDiamond();
+  const { getOwnedNodes, placeSellOrderFromNode } = useDiamond();
 
   // Get class name from URL params
   const className = decodeURIComponent(params.className as string);
@@ -233,11 +233,11 @@ function ClassDetailPageContent() {
 
         console.log('[ClassTradingPage] Placing CLOB order:', clobParams);
 
-        // For SELL orders: tokens are held by the Diamond contract (node inventory)
-        // We need to withdraw them to user's wallet first
+        // For SELL orders: use Diamond's placeSellOrderFromNode
+        // This transfers tokens directly from Diamond to CLOB without going through user's wallet
         if (order.side === 'sell') {
           console.log(
-            '[ClassTradingPage] Sell order - withdrawing tokens from node first...',
+            '[ClassTradingPage] Sell order - placing directly from node inventory...',
           );
 
           // Get user's owned nodes
@@ -251,26 +251,35 @@ function ClassDetailPageContent() {
 
           // Use the first owned node
           const nodeHash = ownedNodes[0];
-          console.log('[ClassTradingPage] Withdrawing from node:', nodeHash);
+          console.log(
+            '[ClassTradingPage] Placing sell order from node:',
+            nodeHash,
+          );
 
           try {
-            // Withdraw tokens from node to user's wallet
-            await withdrawTokensFromNode(
+            // Place sell order directly from Diamond (no wallet withdrawal needed)
+            const orderId = await placeSellOrderFromNode(
               nodeHash,
               assetWithTokenId.tokenId || '0',
+              NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+              priceInWei,
               quantity,
             );
-            console.log('[ClassTradingPage] Tokens withdrawn successfully');
-          } catch (withdrawError) {
-            console.error(
-              '[ClassTradingPage] Failed to withdraw tokens:',
-              withdrawError,
+            console.log(
+              '[ClassTradingPage] Sell order placed from node:',
+              orderId,
             );
-            // Continue anyway - the CLOB will fail if balance is truly insufficient
+            return true;
+          } catch (sellError) {
+            console.error(
+              '[ClassTradingPage] Failed to place sell order from node:',
+              sellError,
+            );
+            return false;
           }
         }
 
-        // Place order on CLOB
+        // For BUY orders: use regular CLOB flow (buyer pays from wallet)
         if (order.type === 'limit') {
           const result = await orderBridgeService.placeLimitOrderAndBridge(
             clobParams,
@@ -316,7 +325,7 @@ function ClassDetailPageContent() {
         return false;
       }
     },
-    [tradeableAsset, getOwnedNodes, withdrawTokensFromNode],
+    [tradeableAsset, getOwnedNodes, placeSellOrderFromNode],
   );
 
   // Render loading state

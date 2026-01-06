@@ -7,6 +7,20 @@ import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 
 /**
+ * @dev Interface for CLOB's node sell order function
+ */
+interface ICLOBNodeSell {
+    function placeNodeSellOrder(
+        address nodeOwner,
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint256 price,
+        uint256 amount
+    ) external returns (bytes32 orderId);
+}
+
+/**
  * @title NodesFacet
  * @notice Business logic facet for node registration, management, and node assets
  * @dev Combines AurumNodeManager + NodeAsset functionality
@@ -395,6 +409,62 @@ contract NodesFacet is Initializable {
         
         return IERC1155(s.auraAssetAddress).isApprovedForAll(address(this), _clobAddress);
     }
+
+    /**
+     * @notice Place a sell order on the CLOB from node's inventory
+     * @dev Transfers tokens from Diamond to CLOB and creates sell order
+     * @param _node The node hash whose inventory to sell from
+     * @param _tokenId The ERC1155 token ID to sell
+     * @param _quoteToken The payment token (USDC, etc.)
+     * @param _price Price per unit in quote token
+     * @param _amount Amount to sell
+     * @return orderId The CLOB order ID
+     */
+    function placeSellOrderFromNode(
+        bytes32 _node,
+        uint256 _tokenId,
+        address _quoteToken,
+        uint256 _price,
+        uint256 _amount
+    ) external returns (bytes32 orderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
+        require(s.clobAddress != address(0), 'CLOB not set');
+        require(_amount > 0, 'Amount must be positive');
+        require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
+
+        // Debit node's internal balance
+        s.nodeTokenBalances[_node][_tokenId] -= _amount;
+
+        // Ensure CLOB is approved to receive tokens from Diamond
+        if (!IERC1155(s.auraAssetAddress).isApprovedForAll(address(this), s.clobAddress)) {
+            IERC1155(s.auraAssetAddress).setApprovalForAll(s.clobAddress, true);
+        }
+
+        // Call CLOB to place sell order (Diamond transfers tokens to CLOB)
+        // The CLOB's placeNodeSellOrder function will transfer tokens from Diamond
+        orderId = ICLOBNodeSell(s.clobAddress).placeNodeSellOrder(
+            msg.sender,           // nodeOwner receives proceeds
+            s.auraAssetAddress,   // baseToken
+            _tokenId,             // baseTokenId
+            _quoteToken,          // quoteToken
+            _price,               // price
+            _amount               // amount
+        );
+
+        emit NodeSellOrderPlaced(_node, _tokenId, _quoteToken, _price, _amount, orderId);
+    }
+
+    // Event for sell order placement
+    event NodeSellOrderPlaced(
+        bytes32 indexed nodeHash,
+        uint256 indexed tokenId,
+        address quoteToken,
+        uint256 price,
+        uint256 amount,
+        bytes32 orderId
+    );
 
     // ======= NODE TOKEN INVENTORY FUNCTIONS =======
 
