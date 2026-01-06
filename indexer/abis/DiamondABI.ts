@@ -545,6 +545,21 @@ export const DiamondABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  // AuraAsset address management
+  {
+    inputs: [{ internalType: 'address', name: '_auraAsset', type: 'address' }],
+    name: 'setAuraAssetAddress',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getAuraAssetAddress',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
   // CLOB address management
   {
     inputs: [
