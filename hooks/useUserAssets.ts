@@ -220,15 +220,30 @@ export function useUserAssets(filterClass?: string) {
       const processedNodeAddresses = new Set<string>();
 
       // Step 1: Get ALL nodes owned by this wallet and fetch their inventory
-      // Note: Don't lowercase - indexer stores addresses with checksum casing
-      console.log('[useUserAssets] Checking for owned nodes by:', address);
-      const nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
-        NEXT_PUBLIC_INDEXER_URL,
-        GET_NODES_BY_OWNER,
-        { ownerAddress: address },
+      // Note: Ponder/indexer stores addresses in lowercase
+      const ownerAddressLower = address.toLowerCase();
+      console.log(
+        '[useUserAssets] Checking for owned nodes by:',
+        ownerAddressLower,
       );
 
-      const ownedNodes = nodesResponse.nodess?.items || [];
+      let nodesResponse: NodesByOwnerResponse;
+      try {
+        nodesResponse = await graphqlRequest<NodesByOwnerResponse>(
+          NEXT_PUBLIC_INDEXER_URL,
+          GET_NODES_BY_OWNER,
+          { ownerAddress: ownerAddressLower },
+        );
+        console.log(
+          '[useUserAssets] Raw nodes response:',
+          JSON.stringify(nodesResponse),
+        );
+      } catch (nodeQueryError) {
+        console.error('[useUserAssets] Error querying nodes:', nodeQueryError);
+        throw nodeQueryError;
+      }
+
+      const ownedNodes = nodesResponse?.nodess?.items || [];
       console.log(
         '[useUserAssets] Found owned nodes:',
         ownedNodes.length,
@@ -271,11 +286,14 @@ export function useUserAssets(filterClass?: string) {
       }
 
       // Step 2: Also fetch user's ERC1155 token balances (in case they received tokens)
-      console.log('[useUserAssets] Fetching ERC1155 balances for:', address);
+      console.log(
+        '[useUserAssets] Fetching ERC1155 balances for:',
+        ownerAddressLower,
+      );
       const balanceResponse = await graphqlRequest<UserBalanceResponse>(
         NEXT_PUBLIC_INDEXER_URL,
         GET_USER_BALANCES,
-        { user: address },
+        { user: ownerAddressLower },
       );
 
       const userBalances = balanceResponse.userBalancess?.items || [];
