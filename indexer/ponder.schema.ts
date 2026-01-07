@@ -317,6 +317,8 @@ export const nodes = onchainTable(
 
 /**
  * Node asset entity - assets supported by a node with pricing/capacity
+ * NOTE: This tracks METADATA about what assets a node supports.
+ * For ACTUAL tradable balances, see nodeTokenBalances table.
  */
 export const nodeAssets = onchainTable(
   'node_assets',
@@ -326,7 +328,7 @@ export const nodeAssets = onchainTable(
     token: t.hex().notNull(),
     tokenId: t.bigint().notNull(),
     price: t.bigint().notNull(), // wei
-    capacity: t.bigint().notNull(),
+    capacity: t.bigint().notNull(), // Maximum capacity (metadata, NOT actual balance)
     // Metadata
     createdAt: t.bigint().notNull(),
     updatedAt: t.bigint().notNull(),
@@ -336,6 +338,127 @@ export const nodeAssets = onchainTable(
   (table) => ({
     nodeIdx: index().on(table.node),
     tokenIdx: index().on(table.token, table.tokenId),
+  }),
+);
+
+/**
+ * Node token balances - ACTUAL tradable inventory for each node
+ * This is the authoritative source for what a node can actually sell.
+ * Updated by: TokensMintedToNode, TokensDepositedToNode, TokensWithdrawnFromNode events
+ *
+ * IMPORTANT: This is different from nodeAssets.capacity:
+ * - capacity: Maximum amount a node CAN hold (configuration/metadata)
+ * - balance: Amount a node ACTUALLY has in inventory (tradable)
+ */
+export const nodeTokenBalances = onchainTable(
+  'node_token_balances',
+  (t) => ({
+    id: t.text().primaryKey(), // nodeHash-tokenId
+    nodeHash: t.hex().notNull(), // The node's hash (bytes32)
+    tokenId: t.bigint().notNull(), // ERC1155 token ID
+    balance: t.bigint().notNull().default(0n), // Actual tradable balance
+    // Metadata
+    firstCreditedAt: t.bigint().notNull(), // When first tokens were added
+    lastUpdatedAt: t.bigint().notNull(), // Last balance change
+    blockNumber: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    nodeIdx: index().on(table.nodeHash),
+    tokenIdx: index().on(table.tokenId),
+    balanceIdx: index().on(table.balance), // For finding nodes with inventory
+  }),
+);
+
+/**
+ * Token minted to node events (immutable)
+ * Emitted when tokens are credited to a node's internal inventory
+ */
+export const tokensMintedToNodeEvents = onchainTable(
+  'tokens_minted_to_node_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    nodeHash: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    amount: t.bigint().notNull(),
+    minter: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    nodeIdx: index().on(table.nodeHash),
+    tokenIdx: index().on(table.tokenId),
+    minterIdx: index().on(table.minter),
+  }),
+);
+
+/**
+ * Tokens deposited to node events (immutable)
+ * Emitted when tokens are transferred from a wallet to a node's inventory
+ */
+export const tokensDepositedToNodeEvents = onchainTable(
+  'tokens_deposited_to_node_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    nodeHash: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    amount: t.bigint().notNull(),
+    depositor: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    nodeIdx: index().on(table.nodeHash),
+    tokenIdx: index().on(table.tokenId),
+    depositorIdx: index().on(table.depositor),
+  }),
+);
+
+/**
+ * Tokens withdrawn from node events (immutable)
+ * Emitted when tokens are transferred from a node's inventory to a wallet
+ */
+export const tokensWithdrawnFromNodeEvents = onchainTable(
+  'tokens_withdrawn_from_node_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    nodeHash: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    amount: t.bigint().notNull(),
+    recipient: t.hex().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    nodeIdx: index().on(table.nodeHash),
+    tokenIdx: index().on(table.tokenId),
+    recipientIdx: index().on(table.recipient),
+  }),
+);
+
+/**
+ * Tokens transferred between nodes events (immutable)
+ * Emitted when tokens are moved between two nodes' inventories
+ */
+export const tokensTransferredBetweenNodesEvents = onchainTable(
+  'tokens_transferred_between_nodes_events',
+  (t) => ({
+    id: t.text().primaryKey(), // txHash-logIndex
+    fromNode: t.hex().notNull(),
+    toNode: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    amount: t.bigint().notNull(),
+    blockNumber: t.bigint().notNull(),
+    blockTimestamp: t.bigint().notNull(),
+    transactionHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    fromNodeIdx: index().on(table.fromNode),
+    toNodeIdx: index().on(table.toNode),
+    tokenIdx: index().on(table.tokenId),
   }),
 );
 

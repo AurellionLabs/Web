@@ -10,20 +10,27 @@ import {
   tokenStats,
   userBalances,
 } from '../ponder.schema';
+import {
+  safeSub,
+  logger,
+  eventId as makeEventId,
+  balanceId as makeBalanceId,
+} from './utils';
+import { ZERO_ADDRESS } from './types';
+
+// Create logger for this module
+const log = logger('AuraAsset');
 
 // =============================================================================
 // AURA ASSET EVENT HANDLERS - ERC1155 Mints, Transfers, Balances
 // =============================================================================
-
-const ZERO_ADDRESS =
-  '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
 /**
  * Handle MintedAsset event
  */
 ponder.on('AuraAsset:MintedAsset', async ({ event, context }) => {
   const { account, hash, tokenId, name, assetClass, className } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
   const hashString = hash.toLowerCase();
 
   // Insert MintedAsset event
@@ -106,13 +113,15 @@ ponder.on('AuraAsset:MintedAsset', async ({ event, context }) => {
     }
   }
 
-  // Create or update TokenStats
+  // Create or update TokenStats - new mint means new holder
   const tokenStatsId = tokenId.toString();
   const existingTokenStats = await context.db.find(tokenStats, {
     id: tokenStatsId,
   });
   if (existingTokenStats) {
     await context.db.update(tokenStats, { id: tokenStatsId }).set({
+      totalSupply: existingTokenStats.totalSupply + 1n,
+      holders: existingTokenStats.holders + 1n, // New holder from mint
       updatedAt: event.block.timestamp,
     });
   } else {
@@ -121,8 +130,8 @@ ponder.on('AuraAsset:MintedAsset', async ({ event, context }) => {
       .values({
         id: tokenStatsId,
         tokenId,
-        totalSupply: 0n,
-        holders: 0n,
+        totalSupply: 1n,
+        holders: 1n, // First holder
         transfers: 0n,
         asset: hashString,
         createdAt: event.block.timestamp,
@@ -132,7 +141,7 @@ ponder.on('AuraAsset:MintedAsset', async ({ event, context }) => {
   }
 
   // Create or update UserBalance
-  const balanceId = `${account.toLowerCase()}-${tokenId.toString()}`;
+  const balanceId = makeBalanceId(account, tokenId);
   const existingBalance = await context.db.find(userBalances, {
     id: balanceId,
   });
@@ -181,7 +190,7 @@ ponder.on('AuraAsset:AssetAttributeAdded', async ({ event, context }) => {
  */
 ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
   const { operator, from, to, id: tokenId, value } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Insert Transfer event
   await context.db.insert(transferEvents).values({
@@ -196,44 +205,52 @@ ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
+  // Track holder changes for tokenStats
+  let holderDelta = 0n;
+
   // Update TokenStats
   const tokenStatsId = tokenId.toString();
   const tokenStatsRecord = await context.db.find(tokenStats, {
     id: tokenStatsId,
   });
-  if (tokenStatsRecord) {
-    await context.db.update(tokenStats, { id: tokenStatsId }).set({
-      transfers: tokenStatsRecord.transfers + 1n,
-      updatedAt: event.block.timestamp,
-    });
-  }
 
-  // Update UserBalances - subtract from sender
+  // Update UserBalances - subtract from sender with underflow protection
   if (from !== ZERO_ADDRESS) {
-    const fromBalanceId = `${from.toLowerCase()}-${tokenId.toString()}`;
+    const fromBalanceId = makeBalanceId(from, tokenId);
     const fromBalance = await context.db.find(userBalances, {
       id: fromBalanceId,
     });
     if (fromBalance) {
+      const newBalance = safeSub(fromBalance.balance, value);
       await context.db.update(userBalances, { id: fromBalanceId }).set({
-        balance: fromBalance.balance - value,
+        balance: newBalance,
         lastUpdated: event.block.timestamp,
       });
+      // Check if sender lost all tokens (lost holder)
+      if (fromBalance.balance > 0n && newBalance === 0n) {
+        holderDelta -= 1n;
+      }
     }
   }
 
   // Update UserBalances - add to receiver
   if (to !== ZERO_ADDRESS) {
-    const toBalanceId = `${to.toLowerCase()}-${tokenId.toString()}`;
+    const toBalanceId = makeBalanceId(to, tokenId);
     const toBalance = await context.db.find(userBalances, {
       id: toBalanceId,
     });
     if (toBalance) {
+      // Check if receiver is becoming a new holder
+      if (toBalance.balance === 0n && value > 0n) {
+        holderDelta += 1n;
+      }
       await context.db.update(userBalances, { id: toBalanceId }).set({
         balance: toBalance.balance + value,
         lastUpdated: event.block.timestamp,
       });
     } else {
+      // New holder
+      holderDelta += 1n;
       await context.db
         .insert(userBalances)
         .values({
@@ -248,6 +265,20 @@ ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
         .onConflictDoNothing();
     }
   }
+
+  // Update TokenStats with transfer count and holder changes
+  if (tokenStatsRecord) {
+    const newHolders =
+      holderDelta > 0n
+        ? tokenStatsRecord.holders + holderDelta
+        : safeSub(tokenStatsRecord.holders, -holderDelta);
+
+    await context.db.update(tokenStats, { id: tokenStatsId }).set({
+      transfers: tokenStatsRecord.transfers + 1n,
+      holders: newHolders,
+      updatedAt: event.block.timestamp,
+    });
+  }
 });
 
 /**
@@ -255,7 +286,7 @@ ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
  */
 ponder.on('AuraAsset:TransferBatch', async ({ event, context }) => {
   const { operator, from, to, ids, values } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Insert TransferBatch event
   await context.db.insert(transferBatchEvents).values({
@@ -275,44 +306,52 @@ ponder.on('AuraAsset:TransferBatch', async ({ event, context }) => {
     const tokenId = ids[i];
     const amount = values[i];
 
+    // Track holder changes for this token
+    let holderDelta = 0n;
+
     // Update TokenStats
     const tokenStatsId = tokenId.toString();
     const tokenStatsRecord = await context.db.find(tokenStats, {
       id: tokenStatsId,
     });
-    if (tokenStatsRecord) {
-      await context.db.update(tokenStats, { id: tokenStatsId }).set({
-        transfers: tokenStatsRecord.transfers + 1n,
-        updatedAt: event.block.timestamp,
-      });
-    }
 
-    // Update UserBalances - subtract from sender
+    // Update UserBalances - subtract from sender with underflow protection
     if (from !== ZERO_ADDRESS) {
-      const fromBalanceId = `${from.toLowerCase()}-${tokenId.toString()}`;
+      const fromBalanceId = makeBalanceId(from, tokenId);
       const fromBalance = await context.db.find(userBalances, {
         id: fromBalanceId,
       });
       if (fromBalance) {
+        const newBalance = safeSub(fromBalance.balance, amount);
         await context.db.update(userBalances, { id: fromBalanceId }).set({
-          balance: fromBalance.balance - amount,
+          balance: newBalance,
           lastUpdated: event.block.timestamp,
         });
+        // Check if sender lost all tokens (lost holder)
+        if (fromBalance.balance > 0n && newBalance === 0n) {
+          holderDelta -= 1n;
+        }
       }
     }
 
     // Update UserBalances - add to receiver
     if (to !== ZERO_ADDRESS) {
-      const toBalanceId = `${to.toLowerCase()}-${tokenId.toString()}`;
+      const toBalanceId = makeBalanceId(to, tokenId);
       const toBalance = await context.db.find(userBalances, {
         id: toBalanceId,
       });
       if (toBalance) {
+        // Check if receiver is becoming a new holder
+        if (toBalance.balance === 0n && amount > 0n) {
+          holderDelta += 1n;
+        }
         await context.db.update(userBalances, { id: toBalanceId }).set({
           balance: toBalance.balance + amount,
           lastUpdated: event.block.timestamp,
         });
       } else {
+        // New holder
+        holderDelta += 1n;
         await context.db
           .insert(userBalances)
           .values({
@@ -326,6 +365,20 @@ ponder.on('AuraAsset:TransferBatch', async ({ event, context }) => {
           })
           .onConflictDoNothing();
       }
+    }
+
+    // Update TokenStats with transfer count and holder changes
+    if (tokenStatsRecord) {
+      const newHolders =
+        holderDelta > 0n
+          ? tokenStatsRecord.holders + holderDelta
+          : safeSub(tokenStatsRecord.holders, -holderDelta);
+
+      await context.db.update(tokenStats, { id: tokenStatsId }).set({
+        transfers: tokenStatsRecord.transfers + 1n,
+        holders: newHolders,
+        updatedAt: event.block.timestamp,
+      });
     }
   }
 });

@@ -15,6 +15,10 @@ import {
   driverStats,
   nodeStats,
 } from '../ponder.schema';
+import { logger, safeJsonParse, eventId as makeEventId } from './utils';
+
+// Create logger for this module
+const log = logger('Ausys');
 
 // =============================================================================
 // AUSYS EVENT HANDLERS - Orders, Journeys, Signatures, Settlements
@@ -25,7 +29,7 @@ import {
  */
 ponder.on('Ausys:JourneyCreated', async ({ event, context }) => {
   const { journeyId, sender, receiver } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Try to get additional data from contract
   let bounty = 0n;
@@ -48,7 +52,7 @@ ponder.on('Ausys:JourneyCreated', async ({ event, context }) => {
     eta = journey.ETA;
     parcelData = journey.parcelData;
   } catch (e) {
-    console.warn(`Failed to get journey data for ${journeyId}:`, e);
+    log.warn(`Failed to get journey data for ${journeyId}`, e);
   }
 
   // Check if this journey is linked to an order
@@ -116,7 +120,7 @@ ponder.on('Ausys:JourneyCreated', async ({ event, context }) => {
  */
 ponder.on('Ausys:JourneyStatusUpdated', async ({ event, context }) => {
   const { journeyId, newStatus } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get current journey to capture old status
   const journey = await context.db.find(journeys, { id: journeyId });
@@ -154,6 +158,35 @@ ponder.on('Ausys:JourneyStatusUpdated', async ({ event, context }) => {
     blockTimestamp: event.block.timestamp,
     transactionHash: event.transaction.hash,
   });
+
+  // Update driver stats when journey is delivered
+  if (newStatus === 2 && journey?.driver) {
+    const driverStatsRecord = await context.db.find(driverStats, {
+      id: journey.driver,
+    });
+    if (driverStatsRecord) {
+      await context.db.update(driverStats, { id: journey.driver }).set({
+        completedJourneys: driverStatsRecord.completedJourneys + 1n,
+        totalEarnings: driverStatsRecord.totalEarnings + (journey.bounty || 0n),
+        lastActiveAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+      });
+    }
+  }
+
+  // Update driver stats when journey is canceled
+  if (newStatus === 3 && journey?.driver) {
+    const driverStatsRecord = await context.db.find(driverStats, {
+      id: journey.driver,
+    });
+    if (driverStatsRecord) {
+      await context.db.update(driverStats, { id: journey.driver }).set({
+        canceledJourneys: driverStatsRecord.canceledJourneys + 1n,
+        lastActiveAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+      });
+    }
+  }
 });
 
 /**
@@ -162,11 +195,28 @@ ponder.on('Ausys:JourneyStatusUpdated', async ({ event, context }) => {
 ponder.on('Ausys:JourneyCanceled', async ({ event, context }) => {
   const { journeyId } = event.args;
 
+  // Get journey to update driver stats
+  const journey = await context.db.find(journeys, { id: journeyId });
+
   // Update Journey entity to canceled status
   await context.db.update(journeys, { id: journeyId }).set({
     currentStatus: 3, // Canceled
     updatedAt: event.block.timestamp,
   });
+
+  // Update driver stats if there was an assigned driver
+  if (journey?.driver) {
+    const driverStatsRecord = await context.db.find(driverStats, {
+      id: journey.driver,
+    });
+    if (driverStatsRecord) {
+      await context.db.update(driverStats, { id: journey.driver }).set({
+        canceledJourneys: driverStatsRecord.canceledJourneys + 1n,
+        lastActiveAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+      });
+    }
+  }
 });
 
 /**
@@ -187,7 +237,7 @@ ponder.on('Ausys:OrderCreated', async ({ event, context }) => {
     nodes,
     locationData,
   } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Insert Order entity
   await context.db
@@ -236,7 +286,7 @@ ponder.on('Ausys:OrderCreated', async ({ event, context }) => {
  */
 ponder.on('Ausys:OrderStatusUpdated', async ({ event, context }) => {
   const { orderId, newStatus } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get current order to capture old status
   const order = await context.db.find(orders, { id: orderId });
@@ -265,7 +315,7 @@ ponder.on('Ausys:OrderStatusUpdated', async ({ event, context }) => {
  */
 ponder.on('Ausys:OrderSettled', async ({ event, context }) => {
   const { orderId } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get order data for totals
   let totalPrice = 0n;
@@ -280,7 +330,7 @@ ponder.on('Ausys:OrderSettled', async ({ event, context }) => {
     totalPrice = orderData.price;
     totalFee = orderData.txFee;
   } catch (e) {
-    console.warn(`Failed to get order data for ${orderId}:`, e);
+    log.warn(`Failed to get order data for ${orderId}`, e);
   }
 
   // Update Order entity
@@ -303,7 +353,8 @@ ponder.on('Ausys:OrderSettled', async ({ event, context }) => {
   // Update NodeStats for involved nodes
   const order = await context.db.find(orders, { id: orderId });
   if (order) {
-    const nodes = JSON.parse(order.nodes) as `0x${string}`[];
+    // Use safe JSON parse to handle malformed data
+    const nodes = safeJsonParse<`0x${string}`[]>(order.nodes, []);
     const nodeCount = nodes.length;
     if (nodeCount > 0) {
       const feePerNode = totalFee / BigInt(nodeCount);
@@ -346,7 +397,7 @@ ponder.on('Ausys:OrderSettled', async ({ event, context }) => {
  */
 ponder.on('Ausys:DriverAssigned', async ({ event, context }) => {
   const { driver, journeyId } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Update Journey entity with driver
   await context.db.update(journeys, { id: journeyId }).set({
@@ -396,7 +447,7 @@ ponder.on('Ausys:DriverAssigned', async ({ event, context }) => {
  */
 ponder.on('Ausys:emitSig', async ({ event, context }) => {
   const { user, id: journeyId } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get journey to determine signature type
   const journey = await context.db.find(journeys, { id: journeyId });
@@ -441,7 +492,7 @@ ponder.on('Ausys:emitSig', async ({ event, context }) => {
  */
 ponder.on('Ausys:FundsEscrowed', async ({ event, context }) => {
   const { from, amount } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   await context.db.insert(fundsEscrowedEvents).values({
     id: eventId,
@@ -459,7 +510,7 @@ ponder.on('Ausys:FundsEscrowed', async ({ event, context }) => {
  */
 ponder.on('Ausys:SellerPaid', async ({ event, context }) => {
   const { seller, amount } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   await context.db.insert(sellerPaidEvents).values({
     id: eventId,
@@ -477,7 +528,7 @@ ponder.on('Ausys:SellerPaid', async ({ event, context }) => {
  */
 ponder.on('Ausys:NodeFeeDistributed', async ({ event, context }) => {
   const { node, amount } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   await context.db.insert(nodeFeeDistributedEvents).values({
     id: eventId,
@@ -494,6 +545,8 @@ ponder.on('Ausys:NodeFeeDistributed', async ({ event, context }) => {
  * Handle AdminSet event
  */
 ponder.on('Ausys:AdminSet', async ({ event, context }) => {
-  // Just log this event - could be used for admin tracking
-  console.log(`Admin set: ${event.args.admin} at block ${event.block.number}`);
+  // Log this event using proper logger
+  log.info(`Admin set: ${event.args.admin}`, {
+    blockNumber: event.block.number,
+  });
 });

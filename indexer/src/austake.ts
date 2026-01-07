@@ -10,6 +10,15 @@ import {
   userStakeStats,
   tokenStakeStats,
 } from '../ponder.schema';
+import {
+  safeSub,
+  logger,
+  eventId as makeEventId,
+  stakeId as makeStakeId,
+} from './utils';
+
+// Create logger for this module
+const log = logger('AuStake');
 
 // =============================================================================
 // AUSTAKE EVENT HANDLERS - Staking Operations
@@ -20,7 +29,7 @@ import {
  */
 ponder.on('AuStake:OperationCreated', async ({ event, context }) => {
   const { operationId, name, token } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Try to get additional operation data from contract
   let operationData = {
@@ -56,7 +65,7 @@ ponder.on('AuStake:OperationCreated', async ({ event, context }) => {
       assetPrice: operation.assetPrice,
     };
   } catch (e) {
-    console.warn(`Failed to get operation data for ${operationId}:`, e);
+    log.warn(`Failed to get operation data for ${operationId}`, e);
   }
 
   // Map status number to string
@@ -132,8 +141,8 @@ ponder.on('AuStake:OperationCreated', async ({ event, context }) => {
  */
 ponder.on('AuStake:Staked', async ({ event, context }) => {
   const { token, user, amount, operationId, eType, time } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
-  const stakeId = `${operationId}-${user.toLowerCase()}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+  const stakeId = makeStakeId(operationId, user);
 
   // Insert Staked event
   await context.db.insert(stakedEvents).values({
@@ -149,8 +158,11 @@ ponder.on('AuStake:Staked', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Create or update Stake entity
+  // Check if this is a new stake or adding to existing
   const existingStake = await context.db.find(stakes, { id: stakeId });
+  const isNewStake = !existingStake || existingStake.amount === 0n;
+
+  // Create or update Stake entity
   if (existingStake) {
     await context.db.update(stakes, { id: stakeId }).set({
       amount: existingStake.amount + amount,
@@ -188,14 +200,19 @@ ponder.on('AuStake:Staked', async ({ event, context }) => {
     });
   }
 
+  // Check if user already has stats (to determine if they're a new staker)
+  const existingUserStats = await context.db.find(userStakeStats, { id: user });
+  const isNewStaker =
+    !existingUserStats || existingUserStats.activeStakes === 0n;
+
   // Update UserStakeStats
-  const userStakeStatsRecord = await context.db.find(userStakeStats, {
-    id: user,
-  });
-  if (userStakeStatsRecord) {
+  if (existingUserStats) {
     await context.db.update(userStakeStats, { id: user }).set({
-      totalStaked: userStakeStatsRecord.totalStaked + amount,
-      activeStakes: userStakeStatsRecord.activeStakes + 1n,
+      totalStaked: existingUserStats.totalStaked + amount,
+      activeStakes: existingUserStats.activeStakes + 1n,
+      operationsCount: isNewStake
+        ? existingUserStats.operationsCount + 1n
+        : existingUserStats.operationsCount,
       lastActiveAt: event.block.timestamp,
       updatedAt: event.block.timestamp,
     });
@@ -216,14 +233,16 @@ ponder.on('AuStake:Staked', async ({ event, context }) => {
       .onConflictDoNothing();
   }
 
-  // Update TokenStakeStats
+  // Update TokenStakeStats - only increment stakers if this is a new staker
   const tokenStakeStatsRecord = await context.db.find(tokenStakeStats, {
     id: token,
   });
   if (tokenStakeStatsRecord) {
     await context.db.update(tokenStakeStats, { id: token }).set({
       totalTvl: tokenStakeStatsRecord.totalTvl + amount,
-      totalStakers: tokenStakeStatsRecord.totalStakers + 1n,
+      totalStakers: isNewStaker
+        ? tokenStakeStatsRecord.totalStakers + 1n
+        : tokenStakeStatsRecord.totalStakers,
       updatedAt: event.block.timestamp,
     });
   } else {
@@ -247,8 +266,8 @@ ponder.on('AuStake:Staked', async ({ event, context }) => {
  */
 ponder.on('AuStake:Unstaked', async ({ event, context }) => {
   const { token, user, amount, operationId, eType, time } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
-  const stakeId = `${operationId}-${user.toLowerCase()}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+  const stakeId = makeStakeId(operationId, user);
 
   // Insert Unstaked event
   await context.db.insert(unstakedEvents).values({
@@ -264,10 +283,10 @@ ponder.on('AuStake:Unstaked', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Update Stake entity
+  // Update Stake entity with underflow protection
   const existingStake = await context.db.find(stakes, { id: stakeId });
   if (existingStake) {
-    const newAmount = existingStake.amount - amount;
+    const newAmount = safeSub(existingStake.amount, amount);
     await context.db.update(stakes, { id: stakeId }).set({
       amount: newAmount,
       timestamp: time,
@@ -278,36 +297,55 @@ ponder.on('AuStake:Unstaked', async ({ event, context }) => {
     });
   }
 
-  // Update Operation TVL
+  // Update Operation TVL with underflow protection
   const operation = await context.db.find(operations, { id: operationId });
   if (operation) {
     await context.db.update(operations, { id: operationId }).set({
-      tokenTvl: operation.tokenTvl - amount,
+      tokenTvl: safeSub(operation.tokenTvl, amount),
       updatedAt: event.block.timestamp,
     });
   }
 
-  // Update UserStakeStats
+  // Update UserStakeStats with underflow protection and activeStakes decrement
   const userStakeStatsRecord = await context.db.find(userStakeStats, {
     id: user,
   });
   if (userStakeStatsRecord) {
+    const newActiveStakes = safeSub(userStakeStatsRecord.activeStakes, 1n);
     await context.db.update(userStakeStats, { id: user }).set({
-      totalStaked: userStakeStatsRecord.totalStaked - amount,
+      totalStaked: safeSub(userStakeStatsRecord.totalStaked, amount),
+      activeStakes: newActiveStakes,
       lastActiveAt: event.block.timestamp,
       updatedAt: event.block.timestamp,
     });
-  }
 
-  // Update TokenStakeStats
-  const tokenStakeStatsRecord = await context.db.find(tokenStakeStats, {
-    id: token,
-  });
-  if (tokenStakeStatsRecord) {
-    await context.db.update(tokenStakeStats, { id: token }).set({
-      totalTvl: tokenStakeStatsRecord.totalTvl - amount,
-      updatedAt: event.block.timestamp,
+    // Check if user no longer has any active stakes - they're no longer a staker
+    const isNoLongerStaker = newActiveStakes === 0n;
+
+    // Update TokenStakeStats with underflow protection
+    const tokenStakeStatsRecord = await context.db.find(tokenStakeStats, {
+      id: token,
     });
+    if (tokenStakeStatsRecord) {
+      await context.db.update(tokenStakeStats, { id: token }).set({
+        totalTvl: safeSub(tokenStakeStatsRecord.totalTvl, amount),
+        totalStakers: isNoLongerStaker
+          ? safeSub(tokenStakeStatsRecord.totalStakers, 1n)
+          : tokenStakeStatsRecord.totalStakers,
+        updatedAt: event.block.timestamp,
+      });
+    }
+  } else {
+    // If no user stats, still update token stats
+    const tokenStakeStatsRecord = await context.db.find(tokenStakeStats, {
+      id: token,
+    });
+    if (tokenStakeStatsRecord) {
+      await context.db.update(tokenStakeStats, { id: token }).set({
+        totalTvl: safeSub(tokenStakeStatsRecord.totalTvl, amount),
+        updatedAt: event.block.timestamp,
+      });
+    }
   }
 });
 
@@ -316,7 +354,7 @@ ponder.on('AuStake:Unstaked', async ({ event, context }) => {
  */
 ponder.on('AuStake:RewardPaid', async ({ event, context }) => {
   const { user, amount, operationId } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Insert RewardPaid event
   await context.db.insert(rewardPaidEvents).values({
@@ -347,7 +385,7 @@ ponder.on('AuStake:RewardPaid', async ({ event, context }) => {
  */
 ponder.on('AuStake:AdminStatusChanged', async ({ event, context }) => {
   const { admin, status } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Insert AdminStatusChanged event
   await context.db.insert(adminStatusChangedEvents).values({
@@ -357,5 +395,9 @@ ponder.on('AuStake:AdminStatusChanged', async ({ event, context }) => {
     blockNumber: event.block.number,
     blockTimestamp: event.block.timestamp,
     transactionHash: event.transaction.hash,
+  });
+
+  log.info(`AdminStatusChanged: ${admin} status=${status}`, {
+    blockNumber: event.block.number,
   });
 });

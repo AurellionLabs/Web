@@ -19,6 +19,17 @@ import {
   rwyUserStats,
   rwyGlobalStats,
 } from '../ponder.schema';
+import { RwyOpportunityData } from './types';
+import {
+  safeSub,
+  safeSubNum,
+  logger,
+  eventId as makeEventId,
+  stakeId as makeStakeId,
+} from './utils';
+
+// Create logger for this module
+const log = logger('RWYVault');
 
 // ============ OPPORTUNITY CREATED ============
 ponder.on('RWYVault:OpportunityCreated', async ({ event, context }) => {
@@ -32,9 +43,11 @@ ponder.on('RWYVault:OpportunityCreated', async ({ event, context }) => {
     promisedYieldBps,
   } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyOpportunityCreatedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     operator,
     inputToken,
@@ -46,32 +59,50 @@ ponder.on('RWYVault:OpportunityCreated', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Fetch full opportunity data from contract
-  const opportunity = await context.client.readContract({
-    address: event.log.address,
-    abi: context.contracts.RWYVault.abi,
-    functionName: 'getOpportunity',
-    args: [opportunityId],
-  });
+  // Fetch full opportunity data from contract with error handling
+  let opportunityData: Partial<RwyOpportunityData> = {
+    name: '',
+    description: '',
+    outputToken: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    expectedOutputAmount: 0n,
+    operatorFeeBps: 0n,
+    minSalePrice: 0n,
+    operatorCollateral: 0n,
+    fundingDeadline: 0n,
+  };
+
+  try {
+    const opportunity = await context.client.readContract({
+      address: event.log.address,
+      abi: context.contracts.RWYVault.abi,
+      functionName: 'getOpportunity',
+      args: [opportunityId],
+    });
+    opportunityData = opportunity as RwyOpportunityData;
+  } catch (e) {
+    log.warn(`Failed to get opportunity ${opportunityId}`, e);
+  }
 
   // Create/update opportunity entity
   await db.insert(rwyOpportunities).values({
     id: opportunityId,
     operator,
-    name: opportunity.name,
-    description: opportunity.description,
+    name: opportunityData.name || '',
+    description: opportunityData.description || '',
     inputToken,
     inputTokenId,
     targetAmount,
     stakedAmount: 0n,
-    outputToken: opportunity.outputToken,
+    outputToken:
+      opportunityData.outputToken ||
+      ('0x0000000000000000000000000000000000000000' as `0x${string}`),
     outputTokenId: 0n,
-    expectedOutputAmount: opportunity.expectedOutputAmount,
+    expectedOutputAmount: opportunityData.expectedOutputAmount || 0n,
     promisedYieldBps: Number(promisedYieldBps),
-    operatorFeeBps: Number(opportunity.operatorFeeBps),
-    minSalePrice: opportunity.minSalePrice,
-    operatorCollateral: opportunity.operatorCollateral,
-    fundingDeadline: opportunity.fundingDeadline,
+    operatorFeeBps: Number(opportunityData.operatorFeeBps || 0n),
+    minSalePrice: opportunityData.minSalePrice || 0n,
+    operatorCollateral: opportunityData.operatorCollateral || 0n,
+    fundingDeadline: opportunityData.fundingDeadline || 0n,
     processingDeadline: 0n,
     createdAt: event.block.timestamp,
     fundedAt: 0n,
@@ -133,9 +164,11 @@ ponder.on('RWYVault:CommodityStaked', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, staker, amount, totalStaked } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyCommodityStakedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     staker,
     amount,
@@ -146,7 +179,7 @@ ponder.on('RWYVault:CommodityStaked', async ({ event, context }) => {
   });
 
   // Update or create stake
-  const stakeId = `${opportunityId}-${staker}`;
+  const stakeId = makeStakeId(opportunityId, staker);
   const existingStake = await db.find(rwyStakes, { id: stakeId });
   if (existingStake) {
     await db.update(rwyStakes, { id: stakeId }).set({
@@ -214,9 +247,11 @@ ponder.on('RWYVault:CommodityUnstaked', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, staker, amount } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyCommodityUnstakedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     staker,
     amount,
@@ -225,39 +260,40 @@ ponder.on('RWYVault:CommodityUnstaked', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Update stake
-  const stakeId = `${opportunityId}-${staker}`;
+  // Update stake with underflow protection
+  const stakeId = makeStakeId(opportunityId, staker);
   const existingStake = await db.find(rwyStakes, { id: stakeId });
   if (existingStake) {
     await db.update(rwyStakes, { id: stakeId }).set({
-      amount: existingStake.amount - amount,
+      amount: safeSub(existingStake.amount, amount),
       updatedAt: event.block.timestamp,
     });
   }
 
-  // Update opportunity
+  // Update opportunity with underflow protection
   const opportunity = await db.find(rwyOpportunities, { id: opportunityId });
   if (opportunity) {
     await db.update(rwyOpportunities, { id: opportunityId }).set({
-      stakedAmount: opportunity.stakedAmount - amount,
+      stakedAmount: safeSub(opportunity.stakedAmount, amount),
       updatedAt: event.block.timestamp,
     });
   }
 
-  // Update user stats
+  // Update user stats with underflow protection
   const userStats = await db.find(rwyUserStats, { id: staker });
   if (userStats) {
     await db.update(rwyUserStats, { id: staker }).set({
-      totalStaked: userStats.totalStaked - amount,
+      totalStaked: safeSub(userStats.totalStaked, amount),
+      activeStakes: safeSubNum(userStats.activeStakes, 1),
       updatedAt: event.block.timestamp,
     });
   }
 
-  // Update global stats
+  // Update global stats with underflow protection
   const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
   if (globalStats) {
     await db.update(rwyGlobalStats, { id: 'global' }).set({
-      totalValueStaked: globalStats.totalValueStaked - amount,
+      totalValueStaked: safeSub(globalStats.totalValueStaked, amount),
       updatedAt: event.block.timestamp,
     });
   }
@@ -268,9 +304,11 @@ ponder.on('RWYVault:OpportunityFunded', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, totalAmount } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyOpportunityFundedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     totalAmount,
     blockNumber: event.block.number,
@@ -278,19 +316,26 @@ ponder.on('RWYVault:OpportunityFunded', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Fetch updated opportunity from contract
-  const opportunity = await context.client.readContract({
-    address: event.log.address,
-    abi: context.contracts.RWYVault.abi,
-    functionName: 'getOpportunity',
-    args: [opportunityId],
-  });
+  // Fetch updated opportunity from contract with error handling
+  let processingDeadline = 0n;
+  try {
+    const opportunity = await context.client.readContract({
+      address: event.log.address,
+      abi: context.contracts.RWYVault.abi,
+      functionName: 'getOpportunity',
+      args: [opportunityId],
+    });
+    processingDeadline =
+      (opportunity as RwyOpportunityData).processingDeadline || 0n;
+  } catch (e) {
+    log.warn(`Failed to get opportunity ${opportunityId} for funded event`, e);
+  }
 
   // Update opportunity
   await db.update(rwyOpportunities, { id: opportunityId }).set({
     status: 2, // FUNDED
     fundedAt: event.block.timestamp,
-    processingDeadline: opportunity.processingDeadline,
+    processingDeadline,
     updatedAt: event.block.timestamp,
   });
 });
@@ -300,9 +345,11 @@ ponder.on('RWYVault:DeliveryStarted', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, journeyId } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyDeliveryStartedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     journeyId,
     blockNumber: event.block.number,
@@ -322,9 +369,11 @@ ponder.on('RWYVault:DeliveryConfirmed', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, deliveredAmount } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyDeliveryConfirmedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     deliveredAmount,
     blockNumber: event.block.number,
@@ -338,9 +387,11 @@ ponder.on('RWYVault:ProcessingStarted', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyProcessingStartedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     blockNumber: event.block.number,
     blockTimestamp: event.block.timestamp,
@@ -359,9 +410,11 @@ ponder.on('RWYVault:ProcessingCompleted', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, outputAmount, outputTokenId } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyProcessingCompletedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     outputAmount,
     outputTokenId,
@@ -383,9 +436,11 @@ ponder.on('RWYVault:ProfitDistributed', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, staker, principal, profit } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyProfitDistributedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     staker,
     principal,
@@ -396,7 +451,7 @@ ponder.on('RWYVault:ProfitDistributed', async ({ event, context }) => {
   });
 
   // Update stake
-  const stakeId = `${opportunityId}-${staker}`;
+  const stakeId = makeStakeId(opportunityId, staker);
   await db.update(rwyStakes, { id: stakeId }).set({
     claimed: true,
     claimedAmount: profit,
@@ -404,13 +459,13 @@ ponder.on('RWYVault:ProfitDistributed', async ({ event, context }) => {
     updatedAt: event.block.timestamp,
   });
 
-  // Update user stats
+  // Update user stats with underflow protection
   const userStats = await db.find(rwyUserStats, { id: staker });
   if (userStats) {
     await db.update(rwyUserStats, { id: staker }).set({
       totalClaimed: userStats.totalClaimed + profit,
       totalProfit: userStats.totalProfit + profit,
-      activeStakes: Math.max(0, userStats.activeStakes - 1),
+      activeStakes: safeSubNum(userStats.activeStakes, 1),
       completedStakes: userStats.completedStakes + 1,
       updatedAt: event.block.timestamp,
     });
@@ -431,9 +486,11 @@ ponder.on('RWYVault:OpportunityCancelled', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, reason } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyOpportunityCancelledEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     reason,
     blockNumber: event.block.number,
@@ -450,24 +507,24 @@ ponder.on('RWYVault:OpportunityCancelled', async ({ event, context }) => {
     updatedAt: event.block.timestamp,
   });
 
-  // Update operator stats
+  // Update operator stats with underflow protection
   if (opportunity) {
     const operatorStats = await db.find(rwyOperators, {
       id: opportunity.operator,
     });
     if (operatorStats) {
       await db.update(rwyOperators, { id: opportunity.operator }).set({
-        activeOpportunities: Math.max(0, operatorStats.activeOpportunities - 1),
+        activeOpportunities: safeSubNum(operatorStats.activeOpportunities, 1),
         updatedAt: event.block.timestamp,
       });
     }
   }
 
-  // Update global stats
+  // Update global stats with underflow protection
   const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
   if (globalStats) {
     await db.update(rwyGlobalStats, { id: 'global' }).set({
-      activeOpportunities: Math.max(0, globalStats.activeOpportunities - 1),
+      activeOpportunities: safeSubNum(globalStats.activeOpportunities, 1),
       updatedAt: event.block.timestamp,
     });
   }
@@ -478,9 +535,11 @@ ponder.on('RWYVault:OperatorSlashed', async ({ event, context }) => {
   const { db } = context;
   const { opportunityId, operator, slashedAmount } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyOperatorSlashedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     opportunityId,
     operator,
     slashedAmount,
@@ -489,20 +548,23 @@ ponder.on('RWYVault:OperatorSlashed', async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Update operator reputation (decrease)
+  // Update operator reputation (decrease) with underflow protection
   const operatorStats = await db.find(rwyOperators, { id: operator });
   if (operatorStats) {
     await db.update(rwyOperators, { id: operator }).set({
-      reputation: Math.max(0, operatorStats.reputation - 20),
+      reputation: safeSubNum(operatorStats.reputation, 20),
       updatedAt: event.block.timestamp,
     });
   }
 
-  // Update opportunity collateral
+  // Update opportunity collateral with underflow protection
   const opportunity = await db.find(rwyOpportunities, { id: opportunityId });
   if (opportunity) {
     await db.update(rwyOpportunities, { id: opportunityId }).set({
-      operatorCollateral: opportunity.operatorCollateral - slashedAmount,
+      operatorCollateral: safeSub(
+        opportunity.operatorCollateral,
+        slashedAmount,
+      ),
       updatedAt: event.block.timestamp,
     });
   }
@@ -513,9 +575,11 @@ ponder.on('RWYVault:OperatorApproved', async ({ event, context }) => {
   const { db } = context;
   const { operator } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyOperatorApprovedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     operator,
     blockNumber: event.block.number,
     blockTimestamp: event.block.timestamp,
@@ -559,9 +623,11 @@ ponder.on('RWYVault:OperatorRevoked', async ({ event, context }) => {
   const { db } = context;
   const { operator } = event.args;
 
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
   // Create event record
   await db.insert(rwyOperatorRevokedEvents).values({
-    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    id: eventId,
     operator,
     blockNumber: event.block.number,
     blockTimestamp: event.block.timestamp,
@@ -574,11 +640,11 @@ ponder.on('RWYVault:OperatorRevoked', async ({ event, context }) => {
     updatedAt: event.block.timestamp,
   });
 
-  // Update global stats
+  // Update global stats with underflow protection
   const globalStats = await db.find(rwyGlobalStats, { id: 'global' });
   if (globalStats) {
     await db.update(rwyGlobalStats, { id: 'global' }).set({
-      totalOperators: Math.max(0, globalStats.totalOperators - 1),
+      totalOperators: safeSubNum(globalStats.totalOperators, 1),
       updatedAt: event.block.timestamp,
     });
   }

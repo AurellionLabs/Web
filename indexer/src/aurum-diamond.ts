@@ -1,12 +1,16 @@
-// @ts-nocheck - File with type issues that need deeper refactoring
 import { ponder } from '@/generated';
 import {
   nodes,
   nodeAssets,
+  nodeTokenBalances,
   nodeRegisteredEvents,
   nodeOwnershipTransferredEvents,
   nodeStatusUpdatedEvents,
   supportedAssetAddedEvents,
+  tokensMintedToNodeEvents,
+  tokensDepositedToNodeEvents,
+  tokensWithdrawnFromNodeEvents,
+  tokensTransferredBetweenNodesEvents,
   assets,
   assetAttributes,
   supportedClasses,
@@ -29,6 +33,17 @@ import {
   marketData,
   userTradingStats,
 } from '../ponder.schema';
+import { DiamondNodeData, ZERO_ADDRESS, ZERO_BYTES32 } from './types';
+import {
+  safeSub,
+  logger,
+  eventId as makeEventId,
+  nodeBalanceId,
+  positionId as makePositionId,
+} from './utils';
+
+// Create logger for this module
+const log = logger('Diamond');
 
 // =============================================================================
 // DIAMOND NODE HANDLERS - All node events come from the Diamond proxy
@@ -39,7 +54,7 @@ import {
  */
 ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
   const { nodeHash, owner, nodeType } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get additional node data from Diamond
   let locationData = {
@@ -57,15 +72,16 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
       functionName: 'getNode',
       args: [nodeHash],
     });
-    // Access flat fields directly (viem returns as array or object depending on ABI)
+    // Type the result properly - viem returns tuple as readonly array
+    const typedNode = node as unknown as DiamondNodeData;
     locationData = {
-      addressName: (node as any).addressName || (node as any)[7] || '',
-      lat: (node as any).lat || (node as any)[8] || '0',
-      lng: (node as any).lng || (node as any)[9] || '0',
+      addressName: typedNode.addressName || '',
+      lat: typedNode.lat || '0',
+      lng: typedNode.lng || '0',
     };
-    status = ((node as any).active ?? (node as any)[4]) ? 'Active' : 'Inactive';
+    status = typedNode.active ? 'Active' : 'Inactive';
   } catch (e) {
-    console.warn(`Failed to get node data for ${nodeHash}:`, e);
+    log.warn(`Failed to get node data for ${nodeHash}`, e);
   }
 
   // Insert Node entity using db.insert().values() with onConflictDoNothing to handle re-orgs
@@ -101,7 +117,7 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
  * Handle NodeUpdated event from Diamond
  */
 ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
-  const { nodeHash, nodeType, capacity } = event.args;
+  const { nodeHash } = event.args;
 
   // Update Node entity
   await context.db.update(nodes, { id: nodeHash }).set({
@@ -129,7 +145,7 @@ ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
  */
 ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
   const { nodeHash, token, tokenId, price, capacity } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
   const assetId = `${nodeHash}-${token}-${tokenId}`;
 
   // Insert node asset
@@ -173,9 +189,9 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
   // Note: The event only tells us the count changed, we need to read the actual assets
   // from the contract. For now, we'll just log this - the actual asset data comes from
   // SupportedAssetAdded events or needs to be read from contract state.
-  console.log(
-    `[Diamond] SupportedAssetsUpdated for node ${nodeHash}, count: ${count}`,
-  );
+  log.info(`SupportedAssetsUpdated for node ${nodeHash}`, {
+    count: count.toString(),
+  });
 });
 
 /**
@@ -198,12 +214,11 @@ ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
  */
 ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
   const { owner, node } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get current owner for event record
   const existingNode = await context.db.find(nodes, { id: node });
-  const oldOwner =
-    existingNode?.owner || '0x0000000000000000000000000000000000000000';
+  const oldOwner = existingNode?.owner || ZERO_ADDRESS;
 
   // Update Node entity with new owner
   await context.db.update(nodes, { id: node }).set({
@@ -228,7 +243,7 @@ ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
  */
 ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
   const { status, node } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Convert bytes1 status to string
   const statusStr = status === '0x01' ? 'Active' : 'Inactive';
@@ -263,9 +278,9 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
 
   // Note: quantities is an array - we'd need to match these to specific assets
   // This would require reading the node's asset list from the contract
-  console.log(
-    `[Diamond] NodeCapacityUpdated for node ${nodeHash}, quantities: ${quantities.length}`,
-  );
+  log.info(`NodeCapacityUpdated for node ${nodeHash}`, {
+    quantitiesCount: quantities.length,
+  });
 });
 
 /**
@@ -273,10 +288,7 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
  */
 ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
-
-  console.log(
-    `[Diamond] ClobApprovalGranted for node ${nodeHash}, CLOB: ${clobAddress}`,
-  );
+  log.info(`ClobApprovalGranted for node ${nodeHash}`, { clobAddress });
 });
 
 /**
@@ -284,11 +296,243 @@ ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
  */
 ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
-
-  console.log(
-    `[Diamond] ClobApprovalRevoked for node ${nodeHash}, CLOB: ${clobAddress}`,
-  );
+  log.info(`ClobApprovalRevoked for node ${nodeHash}`, { clobAddress });
 });
+
+// =============================================================================
+// DIAMOND TOKEN INVENTORY HANDLERS - Track actual tradable balances
+// These events update nodeTokenBalances which is the authoritative source
+// for what a node can actually sell (as opposed to nodeAssets.capacity which
+// is just metadata/configuration).
+// =============================================================================
+
+/**
+ * Handle TokensMintedToNode event from Diamond NodesFacet
+ * This is emitted when creditNodeTokens() is called after minting tokens
+ */
+ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
+  const { nodeHash, tokenId, amount, minter } = event.args;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+  const balanceId = nodeBalanceId(nodeHash, tokenId);
+
+  log.debug('TokensMintedToNode processing', {
+    nodeHash,
+    tokenId: tokenId.toString(),
+    amount: amount.toString(),
+    minter,
+  });
+
+  // Update or create node token balance
+  const existingBalance = await context.db.find(nodeTokenBalances, {
+    id: balanceId,
+  });
+
+  if (existingBalance) {
+    await context.db.update(nodeTokenBalances, { id: balanceId }).set({
+      balance: existingBalance.balance + amount,
+      lastUpdatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    });
+  } else {
+    await context.db.insert(nodeTokenBalances).values({
+      id: balanceId,
+      nodeHash: nodeHash,
+      tokenId: tokenId,
+      balance: amount,
+      firstCreditedAt: event.block.timestamp,
+      lastUpdatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    });
+  }
+
+  // Insert event record
+  await context.db.insert(tokensMintedToNodeEvents).values({
+    id: eventId,
+    nodeHash: nodeHash,
+    tokenId: tokenId,
+    amount: amount,
+    minter: minter,
+    blockNumber: event.block.number,
+    blockTimestamp: event.block.timestamp,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle TokensDepositedToNode event from Diamond NodesFacet
+ * This is emitted when depositTokensToNode() is called
+ */
+ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
+  const { nodeHash, tokenId, amount, depositor } = event.args;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+  const balanceId = nodeBalanceId(nodeHash, tokenId);
+
+  log.debug('TokensDepositedToNode processing', {
+    nodeHash,
+    tokenId: tokenId.toString(),
+    amount: amount.toString(),
+    depositor,
+  });
+
+  // Update or create node token balance
+  const existingBalance = await context.db.find(nodeTokenBalances, {
+    id: balanceId,
+  });
+
+  if (existingBalance) {
+    await context.db.update(nodeTokenBalances, { id: balanceId }).set({
+      balance: existingBalance.balance + amount,
+      lastUpdatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    });
+  } else {
+    await context.db.insert(nodeTokenBalances).values({
+      id: balanceId,
+      nodeHash: nodeHash,
+      tokenId: tokenId,
+      balance: amount,
+      firstCreditedAt: event.block.timestamp,
+      lastUpdatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    });
+  }
+
+  // Insert event record
+  await context.db.insert(tokensDepositedToNodeEvents).values({
+    id: eventId,
+    nodeHash: nodeHash,
+    tokenId: tokenId,
+    amount: amount,
+    depositor: depositor,
+    blockNumber: event.block.number,
+    blockTimestamp: event.block.timestamp,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle TokensWithdrawnFromNode event from Diamond NodesFacet
+ * This is emitted when withdrawTokensFromNode() is called
+ */
+ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
+  const { nodeHash, tokenId, amount, recipient } = event.args;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+  const balanceId = nodeBalanceId(nodeHash, tokenId);
+
+  log.debug('TokensWithdrawnFromNode processing', {
+    nodeHash,
+    tokenId: tokenId.toString(),
+    amount: amount.toString(),
+    recipient,
+  });
+
+  // Update node token balance (decrease) with underflow protection
+  const existingBalance = await context.db.find(nodeTokenBalances, {
+    id: balanceId,
+  });
+
+  if (existingBalance) {
+    const newBalance = safeSub(existingBalance.balance, amount);
+
+    await context.db.update(nodeTokenBalances, { id: balanceId }).set({
+      balance: newBalance,
+      lastUpdatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    });
+  } else {
+    // This shouldn't happen, but handle gracefully
+    log.warn(`No existing balance for ${balanceId} during withdrawal`);
+  }
+
+  // Insert event record
+  await context.db.insert(tokensWithdrawnFromNodeEvents).values({
+    id: eventId,
+    nodeHash: nodeHash,
+    tokenId: tokenId,
+    amount: amount,
+    recipient: recipient,
+    blockNumber: event.block.number,
+    blockTimestamp: event.block.timestamp,
+    transactionHash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle TokensTransferredBetweenNodes event from Diamond NodesFacet
+ * This is emitted when transferTokensBetweenNodes() is called
+ */
+ponder.on(
+  'Diamond:TokensTransferredBetweenNodes',
+  async ({ event, context }) => {
+    const { fromNode, toNode, tokenId, amount } = event.args;
+    const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+    const fromBalanceId = nodeBalanceId(fromNode, tokenId);
+    const toBalanceId = nodeBalanceId(toNode, tokenId);
+
+    log.debug('TokensTransferredBetweenNodes processing', {
+      fromNode,
+      toNode,
+      tokenId: tokenId.toString(),
+      amount: amount.toString(),
+    });
+
+    // Decrease from node balance with underflow protection
+    const fromBalance = await context.db.find(nodeTokenBalances, {
+      id: fromBalanceId,
+    });
+    if (fromBalance) {
+      const newBalance = safeSub(fromBalance.balance, amount);
+
+      await context.db.update(nodeTokenBalances, { id: fromBalanceId }).set({
+        balance: newBalance,
+        lastUpdatedAt: event.block.timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      });
+    }
+
+    // Increase to node balance
+    const toBalance = await context.db.find(nodeTokenBalances, {
+      id: toBalanceId,
+    });
+    if (toBalance) {
+      await context.db.update(nodeTokenBalances, { id: toBalanceId }).set({
+        balance: toBalance.balance + amount,
+        lastUpdatedAt: event.block.timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      });
+    } else {
+      await context.db.insert(nodeTokenBalances).values({
+        id: toBalanceId,
+        nodeHash: toNode,
+        tokenId: tokenId,
+        balance: amount,
+        firstCreditedAt: event.block.timestamp,
+        lastUpdatedAt: event.block.timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      });
+    }
+
+    // Insert event record
+    await context.db.insert(tokensTransferredBetweenNodesEvents).values({
+      id: eventId,
+      fromNode: fromNode,
+      toNode: toNode,
+      tokenId: tokenId,
+      amount: amount,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    });
+  },
+);
 
 // =============================================================================
 // DIAMOND ASSET HANDLERS - Asset management events from Diamond
@@ -357,7 +601,7 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
     quantity,
     price,
   } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Insert unified order entity
   await context.db
@@ -416,7 +660,7 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
 ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
   const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } =
     event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Update unified order with trade info
   await context.db.update(unifiedOrders, { id: unifiedOrderId }).set({
@@ -445,7 +689,7 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
  */
 ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
   const { unifiedOrderId, ausysOrderId, journeyIds, bounty, node } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Update unified order with logistics info
   await context.db.update(unifiedOrders, { id: unifiedOrderId }).set({
@@ -496,7 +740,7 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
 ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
   const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } =
     event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Update unified order status
   await context.db.update(unifiedOrders, { id: unifiedOrderId }).set({
@@ -523,10 +767,9 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
  */
 ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
   const { unifiedOrderId, amount } = event.args;
-
-  console.log(
-    `[Diamond] BountyPaid for order ${unifiedOrderId}, amount: ${amount}`,
-  );
+  log.info(`BountyPaid for order ${unifiedOrderId}`, {
+    amount: amount.toString(),
+  });
 });
 
 /**
@@ -534,10 +777,7 @@ ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
  */
 ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
   const { oldRecipient, newRecipient } = event.args;
-
-  console.log(
-    `[Diamond] FeeRecipientUpdated from ${oldRecipient} to ${newRecipient}`,
-  );
+  log.info(`FeeRecipientUpdated from ${oldRecipient} to ${newRecipient}`);
 });
 
 // =============================================================================
@@ -551,13 +791,12 @@ ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
 ponder.on('Diamond:OrderPlaced', async ({ event, context }) => {
   const { orderId, maker, marketId, price, amount, isBuy, orderType } =
     event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get market info to determine tokens
-  let baseToken = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+  let baseToken = ZERO_ADDRESS;
   let baseTokenId = 0n;
-  let quoteToken =
-    '0x0000000000000000000000000000000000000000' as `0x${string}`;
+  let quoteToken = ZERO_ADDRESS;
 
   try {
     const market = await context.client.readContract({
@@ -568,7 +807,7 @@ ponder.on('Diamond:OrderPlaced', async ({ event, context }) => {
     });
     // Market returns strings for tokens, would need to resolve to addresses
   } catch (e) {
-    console.warn(`Failed to get market data for ${marketId}:`, e);
+    log.warn(`Failed to get market data for ${marketId}`, e);
   }
 
   // Insert CLOB Order entity (use onConflictDoNothing since OrderPlacedWithTokens may have already inserted)
@@ -641,7 +880,7 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
   } = event.args;
   const eventId = `${event.transaction.hash}-${event.log.logIndex}-tokens`;
 
-  console.log('[Diamond:OrderPlacedWithTokens] Processing order:', {
+  log.debug('OrderPlacedWithTokens processing', {
     orderId,
     maker,
     baseToken,
@@ -651,7 +890,6 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
     amount: amount.toString(),
     isBuy,
     orderType,
-    txHash: event.transaction.hash,
   });
 
   // Insert CLOB Order entity with actual token addresses
@@ -733,13 +971,13 @@ ponder.on('Diamond:OrderMatched', async ({ event, context }) => {
     fillPrice,
     quoteAmount,
   } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
-  // Update maker order
+  // Update maker order with underflow protection
   const makerOrder = await context.db.find(clobOrders, { id: makerOrderId });
   if (makerOrder) {
     const newFilledAmount = makerOrder.filledAmount + fillAmount;
-    const newRemainingAmount = makerOrder.amount - newFilledAmount;
+    const newRemainingAmount = safeSub(makerOrder.amount, newFilledAmount);
     const newStatus = newRemainingAmount === 0n ? 2 : 1; // Filled or PartialFill
 
     await context.db.update(clobOrders, { id: makerOrderId }).set({
@@ -774,7 +1012,7 @@ ponder.on(
   'Diamond:OrderCancelled(bytes32 indexed orderId, address indexed maker, uint256 remainingAmount)',
   async ({ event, context }) => {
     const { orderId, maker, remainingAmount } = event.args;
-    const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+    const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
     // Update CLOB Order entity
     await context.db.update(clobOrders, { id: orderId }).set({
@@ -835,21 +1073,18 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
     quoteAmount,
     timestamp,
   } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get market info
-  let baseToken = '0x0000000000000000000000000000000000000000' as `0x${string}`;
-  let baseTokenId = 0n;
-  let quoteToken =
-    '0x0000000000000000000000000000000000000000' as `0x${string}`;
+  const baseToken = ZERO_ADDRESS;
+  const baseTokenId = 0n;
+  const quoteToken = ZERO_ADDRESS;
 
   // Insert CLOB Trade entity
   await context.db.insert(clobTrades).values({
     id: tradeId,
-    takerOrderId:
-      '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
-    makerOrderId:
-      '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+    takerOrderId: ZERO_BYTES32,
+    makerOrderId: ZERO_BYTES32,
     taker,
     maker,
     baseToken,
@@ -902,7 +1137,7 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
  */
 ponder.on('Diamond:PoolCreated', async ({ event, context }) => {
   const { poolId, baseToken, baseTokenId, quoteToken } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Insert pool entity
   await context.db
@@ -942,8 +1177,8 @@ ponder.on('Diamond:PoolCreated', async ({ event, context }) => {
 ponder.on('Diamond:LiquidityAdded', async ({ event, context }) => {
   const { poolId, provider, baseAmount, quoteAmount, lpTokensMinted } =
     event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
-  const positionId = `${poolId}-${provider.toLowerCase()}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+  const positionId = makePositionId(poolId, provider);
 
   // Update pool reserves
   const pool = await context.db.find(clobPools, { id: poolId });
@@ -999,27 +1234,27 @@ ponder.on('Diamond:LiquidityAdded', async ({ event, context }) => {
 ponder.on('Diamond:LiquidityRemoved', async ({ event, context }) => {
   const { poolId, provider, baseAmount, quoteAmount, lpTokensBurned } =
     event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
-  const positionId = `${poolId}-${provider.toLowerCase()}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+  const positionId = makePositionId(poolId, provider);
 
-  // Update pool reserves
+  // Update pool reserves with underflow protection
   const pool = await context.db.find(clobPools, { id: poolId });
   if (pool) {
     await context.db.update(clobPools, { id: poolId }).set({
-      baseReserve: pool.baseReserve - baseAmount,
-      quoteReserve: pool.quoteReserve - quoteAmount,
-      totalLpTokens: pool.totalLpTokens - lpTokensBurned,
+      baseReserve: safeSub(pool.baseReserve, baseAmount),
+      quoteReserve: safeSub(pool.quoteReserve, quoteAmount),
+      totalLpTokens: safeSub(pool.totalLpTokens, lpTokensBurned),
       updatedAt: event.block.timestamp,
     });
   }
 
-  // Update liquidity position
+  // Update liquidity position with underflow protection
   const position = await context.db.find(clobLiquidityPositions, {
     id: positionId,
   });
   if (position) {
     await context.db.update(clobLiquidityPositions, { id: positionId }).set({
-      lpTokens: position.lpTokens - lpTokensBurned,
+      lpTokens: safeSub(position.lpTokens, lpTokensBurned),
       updatedAt: event.block.timestamp,
     });
   }
@@ -1043,10 +1278,11 @@ ponder.on('Diamond:LiquidityRemoved', async ({ event, context }) => {
  */
 ponder.on('Diamond:FeesCollected', async ({ event, context }) => {
   const { tradeId, takerFeeAmount, makerFeeAmount, lpFeeAmount } = event.args;
-
-  console.log(
-    `[Diamond] FeesCollected for trade ${tradeId}: taker=${takerFeeAmount}, maker=${makerFeeAmount}, lp=${lpFeeAmount}`,
-  );
+  log.info(`FeesCollected for trade ${tradeId}`, {
+    takerFee: takerFeeAmount.toString(),
+    makerFee: makerFeeAmount.toString(),
+    lpFee: lpFeeAmount.toString(),
+  });
 });
 
 // =============================================================================
@@ -1072,9 +1308,9 @@ ponder.on(
       expiry,
       nonce,
     } = event.args;
-    const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+    const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
-    console.log('[Diamond:OrderCreated V2] Processing order:', {
+    log.debug('OrderCreated V2 processing', {
       orderId,
       marketId,
       maker,
@@ -1093,11 +1329,9 @@ ponder.on(
       .values({
         id: orderId,
         maker,
-        baseToken:
-          '0x0000000000000000000000000000000000000000' as `0x${string}`, // Will be updated by OrderPlacedWithTokens
+        baseToken: ZERO_ADDRESS, // Will be updated by OrderPlacedWithTokens
         baseTokenId: 0n,
-        quoteToken:
-          '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        quoteToken: ZERO_ADDRESS,
         price,
         amount,
         filledAmount: 0n,
@@ -1142,9 +1376,8 @@ ponder.on('Diamond:OrderFilled', async ({ event, context }) => {
     remainingAmount,
     cumulativeFilled,
   } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-  console.log('[Diamond:OrderFilled] Processing fill:', {
+  log.debug('OrderFilled processing', {
     orderId,
     tradeId,
     fillAmount: fillAmount.toString(),
@@ -1184,7 +1417,7 @@ ponder.on('Diamond:OrderFilled', async ({ event, context }) => {
 ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
   const { orderId, expiredAt } = event.args;
 
-  console.log('[Diamond:OrderExpired] Order expired:', {
+  log.debug('OrderExpired processing', {
     orderId,
     expiredAt: expiredAt.toString(),
   });
@@ -1217,9 +1450,9 @@ ponder.on('Diamond:TradeExecutedV2', async ({ event, context }) => {
     timestamp,
     takerIsBuy,
   } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
-  console.log('[Diamond:TradeExecutedV2] Processing trade:', {
+  log.debug('TradeExecutedV2 processing', {
     tradeId,
     taker,
     maker,
@@ -1237,9 +1470,9 @@ ponder.on('Diamond:TradeExecutedV2', async ({ event, context }) => {
     makerOrderId,
     taker,
     maker,
-    baseToken: '0x0000000000000000000000000000000000000000' as `0x${string}`, // Will be resolved from order
+    baseToken: ZERO_ADDRESS, // Will be resolved from order
     baseTokenId: 0n,
-    quoteToken: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    quoteToken: ZERO_ADDRESS,
     price,
     amount,
     quoteAmount,
@@ -1254,7 +1487,7 @@ ponder.on('Diamond:TradeExecutedV2', async ({ event, context }) => {
     tradeId,
     taker,
     maker,
-    baseToken: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    baseToken: ZERO_ADDRESS,
     baseTokenId: 0n,
     price,
     amount,
@@ -1303,17 +1536,9 @@ ponder.on('Diamond:TradeExecutedV2', async ({ event, context }) => {
  */
 ponder.on('Diamond:OrderCommitted', async ({ event, context }) => {
   const { commitmentId, committer, commitBlock } = event.args;
-
-  console.log('[Diamond:OrderCommitted] New commitment:', {
-    commitmentId,
-    committer,
+  log.info(`OrderCommitted: ${commitmentId} by ${committer}`, {
     commitBlock: commitBlock.toString(),
   });
-
-  // Log commitment for tracking (could add to a commitments table if needed)
-  console.log(
-    `[Diamond] OrderCommitted: ${commitmentId} by ${committer} at block ${commitBlock}`,
-  );
 });
 
 /**
@@ -1322,16 +1547,9 @@ ponder.on('Diamond:OrderCommitted', async ({ event, context }) => {
  */
 ponder.on('Diamond:OrderRevealed', async ({ event, context }) => {
   const { commitmentId, orderId, maker } = event.args;
-
-  console.log('[Diamond:OrderRevealed] Commitment revealed:', {
-    commitmentId,
-    orderId,
+  log.info(`OrderRevealed: commitment ${commitmentId} -> order ${orderId}`, {
     maker,
   });
-
-  console.log(
-    `[Diamond] OrderRevealed: commitment ${commitmentId} -> order ${orderId} by ${maker}`,
-  );
 });
 
 /**
@@ -1346,7 +1564,7 @@ ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
     cooldownUntil,
   } = event.args;
 
-  console.log('[Diamond:CircuitBreakerTripped] Circuit breaker activated:', {
+  log.warn('CircuitBreakerTripped', {
     marketId,
     triggerPrice: triggerPrice.toString(),
     previousPrice: previousPrice.toString(),
@@ -1360,11 +1578,7 @@ ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
  */
 ponder.on('Diamond:CircuitBreakerReset', async ({ event, context }) => {
   const { marketId, resetAt } = event.args;
-
-  console.log('[Diamond:CircuitBreakerReset] Circuit breaker reset:', {
-    marketId,
-    resetAt: resetAt.toString(),
-  });
+  log.info('CircuitBreakerReset', { marketId, resetAt: resetAt.toString() });
 });
 
 /**
@@ -1375,7 +1589,7 @@ ponder.on('Diamond:MarketDepthChanged', async ({ event, context }) => {
   const { marketId, bestBid, bestBidSize, bestAsk, bestAskSize, spread } =
     event.args;
 
-  console.log('[Diamond:MarketDepthChanged] Market depth updated:', {
+  log.debug('MarketDepthChanged', {
     marketId,
     bestBid: bestBid.toString(),
     bestBidSize: bestBidSize.toString(),
@@ -1384,12 +1598,11 @@ ponder.on('Diamond:MarketDepthChanged', async ({ event, context }) => {
     spread: spread.toString(),
   });
 
-  // Update market data with best bid/ask
-  const existing = await context.db.find(marketData, {
-    id: marketId as string,
-  });
+  // Update market data with best bid/ask - marketId is bytes32
+  const marketIdStr = marketId as string;
+  const existing = await context.db.find(marketData, { id: marketIdStr });
   if (existing) {
-    await context.db.update(marketData, { id: marketId as string }).set({
+    await context.db.update(marketData, { id: marketIdStr }).set({
       bestBidPrice: bestBid,
       bestBidAmount: bestBidSize,
       bestAskPrice: bestAsk,
@@ -1405,7 +1618,7 @@ ponder.on('Diamond:MarketDepthChanged', async ({ event, context }) => {
 ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
   const { marketId, baseToken, baseTokenId, quoteToken } = event.args;
 
-  console.log('[Diamond:MarketCreated] New market created:', {
+  log.info('MarketCreated', {
     marketId,
     baseToken,
     baseTokenId: baseTokenId.toString(),
@@ -1440,8 +1653,7 @@ ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
  */
 ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
   const { user, orderId, token, amount } = event.args;
-
-  console.log('[Diamond:EmergencyWithdrawal] Emergency withdrawal:', {
+  log.warn('EmergencyWithdrawal', {
     user,
     orderId,
     token,
@@ -1454,8 +1666,7 @@ ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
  */
 ponder.on('Diamond:GlobalPause', async ({ event, context }) => {
   const { paused } = event.args;
-
-  console.log(`[Diamond:GlobalPause] System ${paused ? 'PAUSED' : 'UNPAUSED'}`);
+  log.warn(`System ${paused ? 'PAUSED' : 'UNPAUSED'}`);
 });
 
 /**
@@ -1463,8 +1674,7 @@ ponder.on('Diamond:GlobalPause', async ({ event, context }) => {
  */
 ponder.on('Diamond:MarketPaused', async ({ event, context }) => {
   const { marketId } = event.args;
-
-  console.log(`[Diamond:MarketPaused] Market ${marketId} paused`);
+  log.info(`Market ${marketId} paused`);
 });
 
 /**
@@ -1472,8 +1682,7 @@ ponder.on('Diamond:MarketPaused', async ({ event, context }) => {
  */
 ponder.on('Diamond:MarketUnpaused', async ({ event, context }) => {
   const { marketId } = event.args;
-
-  console.log(`[Diamond:MarketUnpaused] Market ${marketId} unpaused`);
+  log.info(`Market ${marketId} unpaused`);
 });
 
 /**
@@ -1481,12 +1690,7 @@ ponder.on('Diamond:MarketUnpaused', async ({ event, context }) => {
  */
 ponder.on('Diamond:FeesUpdated', async ({ event, context }) => {
   const { takerFeeBps, makerFeeBps, lpFeeBps } = event.args;
-
-  console.log('[Diamond:FeesUpdated] Fee configuration updated:', {
-    takerFeeBps,
-    makerFeeBps,
-    lpFeeBps,
-  });
+  log.info('FeesUpdated', { takerFeeBps, makerFeeBps, lpFeeBps });
 });
 
 /**
@@ -1495,16 +1699,12 @@ ponder.on('Diamond:FeesUpdated', async ({ event, context }) => {
 ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
   const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } =
     event.args;
-
-  console.log(
-    '[Diamond:CircuitBreakerConfigured] Circuit breaker configured:',
-    {
-      marketId,
-      priceChangeThreshold: priceChangeThreshold.toString(),
-      cooldownPeriod: cooldownPeriod.toString(),
-      isEnabled,
-    },
-  );
+  log.info('CircuitBreakerConfigured', {
+    marketId,
+    priceChangeThreshold: priceChangeThreshold.toString(),
+    cooldownPeriod: cooldownPeriod.toString(),
+    isEnabled,
+  });
 });
 
 // =============================================================================
@@ -1516,8 +1716,7 @@ ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
  */
 ponder.on('Diamond:Staked', async ({ event, context }) => {
   const { user, amount } = event.args;
-
-  console.log(`[Diamond] Staked by ${user}, amount: ${amount}`);
+  log.info(`Staked by ${user}`, { amount: amount.toString() });
 });
 
 /**
@@ -1525,8 +1724,7 @@ ponder.on('Diamond:Staked', async ({ event, context }) => {
  */
 ponder.on('Diamond:Withdrawn', async ({ event, context }) => {
   const { user, amount } = event.args;
-
-  console.log(`[Diamond] Withdrawn by ${user}, amount: ${amount}`);
+  log.info(`Withdrawn by ${user}`, { amount: amount.toString() });
 });
 
 /**
@@ -1534,8 +1732,7 @@ ponder.on('Diamond:Withdrawn', async ({ event, context }) => {
  */
 ponder.on('Diamond:RewardsClaimed', async ({ event, context }) => {
   const { user, amount } = event.args;
-
-  console.log(`[Diamond] RewardsClaimed by ${user}, amount: ${amount}`);
+  log.info(`RewardsClaimed by ${user}`, { amount: amount.toString() });
 });
 
 /**
@@ -1543,8 +1740,7 @@ ponder.on('Diamond:RewardsClaimed', async ({ event, context }) => {
  */
 ponder.on('Diamond:RewardRateUpdated', async ({ event, context }) => {
   const { oldRate, newRate } = event.args;
-
-  console.log(`[Diamond] RewardRateUpdated from ${oldRate} to ${newRate}`);
+  log.info(`RewardRateUpdated from ${oldRate} to ${newRate}`);
 });
 
 // =============================================================================
@@ -1556,10 +1752,7 @@ ponder.on('Diamond:RewardRateUpdated', async ({ event, context }) => {
  */
 ponder.on('Diamond:OwnershipTransferred', async ({ event, context }) => {
   const { previousOwner, newOwner } = event.args;
-
-  console.log(
-    `[Diamond] OwnershipTransferred from ${previousOwner} to ${newOwner}`,
-  );
+  log.info(`OwnershipTransferred from ${previousOwner} to ${newOwner}`);
 });
 
 /**
@@ -1567,30 +1760,83 @@ ponder.on('Diamond:OwnershipTransferred', async ({ event, context }) => {
  */
 ponder.on('Diamond:DiamondCut', async ({ event, context }) => {
   const { _diamondCut, _init, _calldata } = event.args;
-
-  console.log(
-    `[Diamond] DiamondCut executed with ${_diamondCut.length} facet changes`,
-  );
+  log.info(`DiamondCut executed with ${_diamondCut.length} facet changes`);
 });
 
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
+// Type for Ponder context
+type PonderContext = {
+  db: {
+    find: <T>(table: unknown, query: { id: string }) => Promise<T | null>;
+    insert: (table: unknown) => {
+      values: (data: unknown) => {
+        onConflictDoNothing: () => Promise<void>;
+        onConflictDoUpdate: (data: unknown) => Promise<void>;
+      };
+    };
+    update: (
+      table: unknown,
+      query: { id: string },
+    ) => {
+      set: (data: unknown) => Promise<void>;
+    };
+  };
+};
+
+// Type for user trading stats record
+type UserTradingStatsRecord = {
+  id: string;
+  user: `0x${string}`;
+  totalOrdersPlaced: bigint;
+  totalOrdersFilled: bigint;
+  totalOrdersCancelled: bigint;
+  totalTradesAsMaker: bigint;
+  totalTradesAsTaker: bigint;
+  totalVolumeQuote: bigint;
+  totalFeesPaid: bigint;
+  firstTradeAt: bigint;
+  lastTradeAt: bigint;
+  updatedAt: bigint;
+};
+
+// Type for market data record
+type MarketDataRecord = {
+  id: string;
+  baseToken: `0x${string}`;
+  baseTokenId: bigint;
+  quoteToken: `0x${string}`;
+  bestBidPrice: bigint;
+  bestBidAmount: bigint;
+  bestAskPrice: bigint;
+  bestAskAmount: bigint;
+  lastTradePrice: bigint;
+  volume24h: bigint;
+  tradeCount24h: bigint;
+  openOrderCount: bigint;
+  createdAt: bigint;
+  updatedAt: bigint;
+};
+
 /**
  * Update user trading statistics for Diamond CLOB
  */
 async function updateDiamondUserTradingStats(
-  context: any,
+  context: PonderContext,
   user: `0x${string}`,
   timestamp: bigint,
   action: string,
   volume?: bigint,
-) {
-  const stats = await context.db.find(userTradingStats, { id: user });
+): Promise<void> {
+  const stats = await context.db.find<UserTradingStatsRecord>(
+    userTradingStats,
+    { id: user },
+  );
 
   if (stats) {
-    const update: any = {
+    const update: Partial<UserTradingStatsRecord> = {
       lastTradeAt: timestamp,
       updatedAt: timestamp,
     };
@@ -1641,15 +1887,17 @@ async function updateDiamondUserTradingStats(
  * Update market data aggregation for Diamond CLOB
  */
 async function updateMarketData(
-  context: any,
+  context: PonderContext,
   baseToken: `0x${string}`,
   baseTokenId: bigint,
   quoteToken: `0x${string}`,
   timestamp: bigint,
-) {
+): Promise<void> {
   const marketId = `${baseToken}-${baseTokenId.toString()}-${quoteToken}`;
 
-  const existing = await context.db.find(marketData, { id: marketId });
+  const existing = await context.db.find<MarketDataRecord>(marketData, {
+    id: marketId,
+  });
   if (!existing) {
     await context.db
       .insert(marketData)
@@ -1674,7 +1922,7 @@ async function updateMarketData(
     // Handle case where existing record might not have openOrderCount (schema migration)
     const currentCount = existing.openOrderCount ?? 0n;
     await context.db.update(marketData, { id: marketId }).set({
-      openOrderCount: BigInt(currentCount) + 1n,
+      openOrderCount: currentCount + 1n,
       updatedAt: timestamp,
     });
   }

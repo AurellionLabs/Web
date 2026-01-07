@@ -7,6 +7,11 @@ import {
   nodeStatusUpdatedEvents,
   supportedAssetAddedEvents,
 } from '../ponder.schema';
+import { logger, eventId as makeEventId } from './utils';
+import { ZERO_ADDRESS } from './types';
+
+// Create logger for this module
+const log = logger('AurumNodeManager');
 
 // =============================================================================
 // AURUM NODE MANAGER EVENT HANDLERS - Nodes, NodeAssets, Capacity
@@ -17,7 +22,7 @@ import {
  */
 ponder.on('AurumNodeManager:NodeRegistered', async ({ event, context }) => {
   const { nodeAddress, owner } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Try to get additional node data from contract
   let locationData = {
@@ -43,7 +48,7 @@ ponder.on('AurumNodeManager:NodeRegistered', async ({ event, context }) => {
     validNode = node.validNode === '0x01';
     status = node.status === '0x01' ? 'Active' : 'Inactive';
   } catch (e) {
-    console.warn(`Failed to get node data for ${nodeAddress}:`, e);
+    log.warn(`Failed to get node data for ${nodeAddress}`, e);
   }
 
   // Insert Node entity using db.insert().values() with onConflictDoNothing to handle re-orgs
@@ -98,10 +103,10 @@ ponder.on(
  */
 ponder.on('AurumNodeManager:eventUpdateOwner', async ({ event, context }) => {
   const { owner, node } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   // Get old owner before update using db.find()
-  let oldOwner = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+  let oldOwner = ZERO_ADDRESS;
   const existingNode = await context.db.find(nodes, { id: node });
 
   if (existingNode) {
@@ -145,7 +150,7 @@ ponder.on('AurumNodeManager:eventUpdateOwner', async ({ event, context }) => {
  */
 ponder.on('AurumNodeManager:eventUpdateStatus', async ({ event, context }) => {
   const { status, node } = event.args;
-  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
   const nodeStatus = status === '0x01' ? 'Active' : 'Inactive';
 
@@ -173,9 +178,9 @@ ponder.on(
   'AurumNodeManager:NodeCapacityUpdated',
   async ({ event, context }) => {
     const { node, quantities } = event.args;
-    console.log(
-      `Node ${node} capacity updated with ${quantities.length} assets`,
-    );
+    log.info(`Node ${node} capacity updated`, {
+      assetCount: quantities.length,
+    });
   },
 );
 
@@ -186,7 +191,7 @@ ponder.on(
   'AurumNodeManager:SupportedAssetAdded',
   async ({ event, context }) => {
     const { node, asset } = event.args;
-    const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+    const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
     const assetId = `${node}-${asset.token}-${asset.tokenId}`;
 
     // Insert node asset
@@ -226,22 +231,14 @@ ponder.on(
   async ({ event, context }) => {
     const { node, supportedAssets } = event.args;
 
-    // Update all supported assets for this node
+    // Update all supported assets for this node using upsert pattern
     for (const asset of supportedAssets) {
       const assetId = `${node}-${asset.token}-${asset.tokenId}`;
 
-      // Check if asset exists
-      const existingAsset = await context.db.find(nodeAssets, { id: assetId });
-      if (existingAsset) {
-        // Update existing asset
-        await context.db.update(nodeAssets, { id: assetId }).set({
-          price: asset.price,
-          capacity: asset.capacity,
-          updatedAt: event.block.timestamp,
-        });
-      } else {
-        // Insert new asset
-        await context.db.insert(nodeAssets).values({
+      // Use insert with onConflictDoUpdate for atomic upsert
+      await context.db
+        .insert(nodeAssets)
+        .values({
           id: assetId,
           node: node,
           token: asset.token,
@@ -252,8 +249,12 @@ ponder.on(
           updatedAt: event.block.timestamp,
           blockNumber: event.block.number,
           transactionHash: event.transaction.hash,
+        })
+        .onConflictDoUpdate({
+          price: asset.price,
+          capacity: asset.capacity,
+          updatedAt: event.block.timestamp,
         });
-      }
     }
   },
 );
