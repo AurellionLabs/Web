@@ -1213,8 +1213,10 @@ async function updateMarketData(
       })
       .onConflictDoNothing();
   } else {
+    // Handle case where existing record might not have openOrderCount (schema migration)
+    const currentCount = existing.openOrderCount ?? 0n;
     await context.db.update(marketData, { id: marketId }).set({
-      openOrderCount: BigInt(existing.openOrderCount) + 1n,
+      openOrderCount: BigInt(currentCount) + 1n,
       updatedAt: timestamp,
     });
   }

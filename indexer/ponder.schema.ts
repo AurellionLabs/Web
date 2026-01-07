@@ -1068,6 +1068,8 @@ export const marketData = onchainTable(
     lastTradePrice: t.bigint().notNull().default(0n),
     volume24h: t.bigint().notNull().default(0n),
     tradeCount24h: t.bigint().notNull().default(0n),
+    openOrderCount: t.bigint().notNull().default(0n),
+    createdAt: t.bigint().notNull().default(0n),
     updatedAt: t.bigint().notNull(),
   }),
   (table) => ({
