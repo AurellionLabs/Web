@@ -1845,4 +1845,823 @@ export const DiamondABI = [
     stateMutability: 'view',
     type: 'function',
   },
+
+  // ======= CLOBFacetV2 Events - Production CLOB =======
+  // OrderCreated - V2 with full details including timeInForce and expiry
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      { indexed: false, internalType: 'bool', name: 'isBuy', type: 'bool' },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'orderType',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'timeInForce',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'expiry',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'nonce',
+        type: 'uint256',
+      },
+    ],
+    name: 'OrderCreated',
+    type: 'event',
+  },
+  // OrderFilled - V2 with cumulative fill tracking
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'fillAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'fillPrice',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'remainingAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'cumulativeFilled',
+        type: 'uint256',
+      },
+    ],
+    name: 'OrderFilled',
+    type: 'event',
+  },
+  // OrderExpired - V2 for GTD orders
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'expiredAt',
+        type: 'uint256',
+      },
+    ],
+    name: 'OrderExpired',
+    type: 'event',
+  },
+  // TradeExecuted V2 - with fees and takerIsBuy
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'takerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'makerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'taker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'takerFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'makerFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'timestamp',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'takerIsBuy',
+        type: 'bool',
+      },
+    ],
+    name: 'TradeExecutedV2',
+    type: 'event',
+  },
+  // MEV Protection Events
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'commitmentId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'committer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'commitBlock',
+        type: 'uint256',
+      },
+    ],
+    name: 'OrderCommitted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'commitmentId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+    ],
+    name: 'OrderRevealed',
+    type: 'event',
+  },
+  // Circuit Breaker Events
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'triggerPrice',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'previousPrice',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'changePercent',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'cooldownUntil',
+        type: 'uint256',
+      },
+    ],
+    name: 'CircuitBreakerTripped',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'resetAt',
+        type: 'uint256',
+      },
+    ],
+    name: 'CircuitBreakerReset',
+    type: 'event',
+  },
+  // Market Depth Event
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'bestBid',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'bestBidSize',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'bestAsk',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'bestAskSize',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'spread',
+        type: 'uint256',
+      },
+    ],
+    name: 'MarketDepthChanged',
+    type: 'event',
+  },
+  // Emergency Events
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'address', name: 'user', type: 'address' },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'EmergencyWithdrawal',
+    type: 'event',
+  },
+  // Market Created V2
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'quoteToken',
+        type: 'address',
+      },
+    ],
+    name: 'MarketCreated',
+    type: 'event',
+  },
+  // Admin Events
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'priceChangeThreshold',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'cooldownPeriod',
+        type: 'uint256',
+      },
+      { indexed: false, internalType: 'bool', name: 'isEnabled', type: 'bool' },
+    ],
+    name: 'CircuitBreakerConfigured',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'uint16',
+        name: 'takerFeeBps',
+        type: 'uint16',
+      },
+      {
+        indexed: false,
+        internalType: 'uint16',
+        name: 'makerFeeBps',
+        type: 'uint16',
+      },
+      {
+        indexed: false,
+        internalType: 'uint16',
+        name: 'lpFeeBps',
+        type: 'uint16',
+      },
+    ],
+    name: 'FeesUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'maxOrdersPerBlock',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'maxVolumePerBlock',
+        type: 'uint256',
+      },
+    ],
+    name: 'RateLimitsUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'minRevealDelay',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'commitmentThreshold',
+        type: 'uint256',
+      },
+    ],
+    name: 'MEVProtectionUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'MarketPaused',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'MarketUnpaused',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: 'bool', name: 'paused', type: 'bool' },
+    ],
+    name: 'GlobalPause',
+    type: 'event',
+  },
+
+  // ======= CLOBFacetV2 Functions =======
+  {
+    inputs: [
+      { internalType: 'uint16', name: '_takerFeeBps', type: 'uint16' },
+      { internalType: 'uint16', name: '_makerFeeBps', type: 'uint16' },
+      {
+        internalType: 'uint256',
+        name: '_defaultPriceChangeThreshold',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: '_defaultCooldownPeriod',
+        type: 'uint256',
+      },
+      { internalType: 'uint256', name: '_emergencyTimelock', type: 'uint256' },
+    ],
+    name: 'initializeCLOBV2',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'bytes32', name: 'commitment', type: 'bytes32' }],
+    name: 'commitOrder',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'commitmentId', type: 'bytes32' },
+      { internalType: 'address', name: 'baseToken', type: 'address' },
+      { internalType: 'uint256', name: 'baseTokenId', type: 'uint256' },
+      { internalType: 'address', name: 'quoteToken', type: 'address' },
+      { internalType: 'uint96', name: 'price', type: 'uint96' },
+      { internalType: 'uint96', name: 'amount', type: 'uint96' },
+      { internalType: 'bool', name: 'isBuy', type: 'bool' },
+      { internalType: 'uint8', name: 'timeInForce', type: 'uint8' },
+      { internalType: 'uint40', name: 'expiry', type: 'uint40' },
+      { internalType: 'bytes32', name: 'salt', type: 'bytes32' },
+    ],
+    name: 'revealOrder',
+    outputs: [{ internalType: 'bytes32', name: 'orderId', type: 'bytes32' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: 'baseToken', type: 'address' },
+      { internalType: 'uint256', name: 'baseTokenId', type: 'uint256' },
+      { internalType: 'address', name: 'quoteToken', type: 'address' },
+      { internalType: 'uint96', name: 'price', type: 'uint96' },
+      { internalType: 'uint96', name: 'amount', type: 'uint96' },
+      { internalType: 'bool', name: 'isBuy', type: 'bool' },
+      { internalType: 'uint8', name: 'timeInForce', type: 'uint8' },
+      { internalType: 'uint40', name: 'expiry', type: 'uint40' },
+    ],
+    name: 'placeLimitOrder',
+    outputs: [{ internalType: 'bytes32', name: 'orderId', type: 'bytes32' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: 'baseToken', type: 'address' },
+      { internalType: 'uint256', name: 'baseTokenId', type: 'uint256' },
+      { internalType: 'address', name: 'quoteToken', type: 'address' },
+      { internalType: 'uint96', name: 'amount', type: 'uint96' },
+      { internalType: 'bool', name: 'isBuy', type: 'bool' },
+      { internalType: 'uint256', name: 'maxSlippageBps', type: 'uint256' },
+    ],
+    name: 'placeMarketOrder',
+    outputs: [{ internalType: 'bytes32', name: 'orderId', type: 'bytes32' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32[]', name: 'orderIds', type: 'bytes32[]' },
+    ],
+    name: 'cancelOrders',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // CLOBViewFacet Functions
+  {
+    inputs: [{ internalType: 'bytes32', name: 'marketId', type: 'bytes32' }],
+    name: 'getBestBidAsk',
+    outputs: [
+      { internalType: 'uint256', name: 'bestBid', type: 'uint256' },
+      { internalType: 'uint256', name: 'bestBidSize', type: 'uint256' },
+      { internalType: 'uint256', name: 'bestAsk', type: 'uint256' },
+      { internalType: 'uint256', name: 'bestAskSize', type: 'uint256' },
+      { internalType: 'uint256', name: 'spread', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
+      { internalType: 'uint256', name: 'levels', type: 'uint256' },
+    ],
+    name: 'getOrderBookDepth',
+    outputs: [
+      { internalType: 'uint256[]', name: 'bidPrices', type: 'uint256[]' },
+      { internalType: 'uint256[]', name: 'bidSizes', type: 'uint256[]' },
+      { internalType: 'uint256[]', name: 'bidCounts', type: 'uint256[]' },
+      { internalType: 'uint256[]', name: 'askPrices', type: 'uint256[]' },
+      { internalType: 'uint256[]', name: 'askSizes', type: 'uint256[]' },
+      { internalType: 'uint256[]', name: 'askCounts', type: 'uint256[]' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'bytes32', name: 'orderId', type: 'bytes32' }],
+    name: 'getPackedOrder',
+    outputs: [
+      { internalType: 'address', name: 'maker', type: 'address' },
+      { internalType: 'bool', name: 'isBuy', type: 'bool' },
+      { internalType: 'uint8', name: 'orderType', type: 'uint8' },
+      { internalType: 'uint8', name: 'status', type: 'uint8' },
+      { internalType: 'uint8', name: 'timeInForce', type: 'uint8' },
+      { internalType: 'uint96', name: 'price', type: 'uint96' },
+      { internalType: 'uint96', name: 'amount', type: 'uint96' },
+      { internalType: 'uint64', name: 'filledAmount', type: 'uint64' },
+      { internalType: 'uint40', name: 'expiry', type: 'uint40' },
+      { internalType: 'uint40', name: 'createdAt', type: 'uint40' },
+      { internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'bytes32', name: 'orderId', type: 'bytes32' }],
+    name: 'getOrderStatus',
+    outputs: [
+      { internalType: 'uint8', name: 'status', type: 'uint8' },
+      { internalType: 'uint96', name: 'amount', type: 'uint96' },
+      { internalType: 'uint64', name: 'filledAmount', type: 'uint64' },
+      { internalType: 'uint96', name: 'remainingAmount', type: 'uint96' },
+      { internalType: 'bool', name: 'isExpired', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'bytes32', name: 'orderId', type: 'bytes32' }],
+    name: 'isOrderActive',
+    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: 'baseToken', type: 'address' },
+      { internalType: 'uint256', name: 'baseTokenId', type: 'uint256' },
+      { internalType: 'address', name: 'quoteToken', type: 'address' },
+    ],
+    name: 'getMarketId',
+    outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
+    stateMutability: 'pure',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getAllMarkets',
+    outputs: [{ internalType: 'bytes32[]', name: '', type: 'bytes32[]' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'bytes32', name: 'marketId', type: 'bytes32' }],
+    name: 'getMarketStats',
+    outputs: [
+      { internalType: 'uint256', name: 'totalBidVolume', type: 'uint256' },
+      { internalType: 'uint256', name: 'totalAskVolume', type: 'uint256' },
+      { internalType: 'uint256', name: 'totalBidOrders', type: 'uint256' },
+      { internalType: 'uint256', name: 'totalAskOrders', type: 'uint256' },
+      { internalType: 'uint256', name: 'priceLevelsBid', type: 'uint256' },
+      { internalType: 'uint256', name: 'priceLevelsAsk', type: 'uint256' },
+      { internalType: 'uint256', name: 'lastTradePrice', type: 'uint256' },
+      { internalType: 'bool', name: 'circuitBreakerTripped', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getTotalCounts',
+    outputs: [
+      { internalType: 'uint256', name: 'totalMarkets', type: 'uint256' },
+      { internalType: 'uint256', name: 'totalOrders', type: 'uint256' },
+      { internalType: 'uint256', name: 'totalTrades', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'commitmentId', type: 'bytes32' },
+    ],
+    name: 'getCommitment',
+    outputs: [
+      { internalType: 'bytes32', name: 'commitment', type: 'bytes32' },
+      { internalType: 'uint256', name: 'commitBlock', type: 'uint256' },
+      { internalType: 'address', name: 'committer', type: 'address' },
+      { internalType: 'bool', name: 'revealed', type: 'bool' },
+      { internalType: 'bool', name: 'expired', type: 'bool' },
+      { internalType: 'uint256', name: 'revealDeadline', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  // CLOBAdminFacet Functions
+  {
+    inputs: [{ internalType: 'bytes32', name: 'marketId', type: 'bytes32' }],
+    name: 'getCircuitBreaker',
+    outputs: [
+      { internalType: 'uint256', name: 'lastPrice', type: 'uint256' },
+      {
+        internalType: 'uint256',
+        name: 'priceChangeThreshold',
+        type: 'uint256',
+      },
+      { internalType: 'uint256', name: 'cooldownPeriod', type: 'uint256' },
+      { internalType: 'uint256', name: 'tripTimestamp', type: 'uint256' },
+      { internalType: 'bool', name: 'isTripped', type: 'bool' },
+      { internalType: 'bool', name: 'isEnabled', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getFeeConfig',
+    outputs: [
+      { internalType: 'uint16', name: 'takerFeeBps', type: 'uint16' },
+      { internalType: 'uint16', name: 'makerFeeBps', type: 'uint16' },
+      { internalType: 'uint16', name: 'lpFeeBps', type: 'uint16' },
+      { internalType: 'address', name: 'feeRecipient', type: 'address' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getMEVConfig',
+    outputs: [
+      { internalType: 'uint8', name: 'minRevealDelay', type: 'uint8' },
+      { internalType: 'uint256', name: 'commitmentThreshold', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'isPaused',
+    outputs: [
+      { internalType: 'bool', name: 'paused', type: 'bool' },
+      { internalType: 'uint256', name: 'pauseStartTime', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
 ] as const;

@@ -1,0 +1,11 @@
+{
+  "clobCoreFacet": "0x2CFFE1c6D64556f2F6956E43D7C155597C8A27Cd",
+  "clobMatchingFacet": "0xEaC6222832C5c0aF5a590d926E4d33e0080A6A0F",
+  "clobAdminFacet": "0xEE9359F788C56c82251bc5624a0CbBE421B363fF",
+  "clobViewFacet": "0x5ef5832962d02B4EC66348A816544b3E0AEe52A4",
+  "clobLib": "0x5401fC69F72058F414827fe093D06574964e1deA",
+  "diamondAddress": "0x2516CAdb7b3d4E94094bC4580C271B8559902e3f",
+  "timestamp": "2026-01-07T13:26:24.961Z",
+  "blockNumber": 36012071,
+  "network": "baseSepolia"
+}

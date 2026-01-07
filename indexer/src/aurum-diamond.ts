@@ -1050,6 +1050,464 @@ ponder.on('Diamond:FeesCollected', async ({ event, context }) => {
 });
 
 // =============================================================================
+// DIAMOND CLOB V2 HANDLERS - Production CLOB with MEV protection
+// =============================================================================
+
+/**
+ * Handle OrderCreated event from Diamond CLOBFacetV2
+ * V2 event with timeInForce and expiry support
+ */
+ponder.on(
+  'Diamond:OrderCreated(bytes32 indexed orderId, bytes32 indexed marketId, address indexed maker, uint256 price, uint256 amount, bool isBuy, uint8 orderType, uint8 timeInForce, uint256 expiry, uint256 nonce)',
+  async ({ event, context }) => {
+    const {
+      orderId,
+      marketId,
+      maker,
+      price,
+      amount,
+      isBuy,
+      orderType,
+      timeInForce,
+      expiry,
+      nonce,
+    } = event.args;
+    const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+    console.log('[Diamond:OrderCreated V2] Processing order:', {
+      orderId,
+      marketId,
+      maker,
+      price: price.toString(),
+      amount: amount.toString(),
+      isBuy,
+      orderType,
+      timeInForce,
+      expiry: expiry.toString(),
+      nonce: nonce.toString(),
+    });
+
+    // Insert CLOB Order entity with V2 fields
+    await context.db
+      .insert(clobOrders)
+      .values({
+        id: orderId,
+        maker,
+        baseToken:
+          '0x0000000000000000000000000000000000000000' as `0x${string}`, // Will be updated by OrderPlacedWithTokens
+        baseTokenId: 0n,
+        quoteToken:
+          '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        price,
+        amount,
+        filledAmount: 0n,
+        remainingAmount: amount,
+        isBuy,
+        orderType,
+        status: 0, // Open
+        createdAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoUpdate({
+        // Update with V2 data if order already exists
+        price,
+        amount,
+        isBuy,
+        orderType,
+        updatedAt: event.block.timestamp,
+      });
+
+    // Update user trading stats
+    await updateDiamondUserTradingStats(
+      context,
+      maker,
+      event.block.timestamp,
+      'orderPlaced',
+    );
+  },
+);
+
+/**
+ * Handle OrderFilled event from Diamond CLOBFacetV2
+ * Tracks cumulative fills for partial order execution
+ */
+ponder.on('Diamond:OrderFilled', async ({ event, context }) => {
+  const {
+    orderId,
+    tradeId,
+    fillAmount,
+    fillPrice,
+    remainingAmount,
+    cumulativeFilled,
+  } = event.args;
+  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+  console.log('[Diamond:OrderFilled] Processing fill:', {
+    orderId,
+    tradeId,
+    fillAmount: fillAmount.toString(),
+    fillPrice: fillPrice.toString(),
+    remainingAmount: remainingAmount.toString(),
+    cumulativeFilled: cumulativeFilled.toString(),
+  });
+
+  // Update order with new fill data
+  const order = await context.db.find(clobOrders, { id: orderId });
+  if (order) {
+    const newStatus = remainingAmount === 0n ? 2 : 1; // Filled or PartialFill
+
+    await context.db.update(clobOrders, { id: orderId }).set({
+      filledAmount: cumulativeFilled,
+      remainingAmount,
+      status: newStatus,
+      updatedAt: event.block.timestamp,
+    });
+
+    // Update user stats if order is fully filled
+    if (newStatus === 2) {
+      await updateDiamondUserTradingStats(
+        context,
+        order.maker,
+        event.block.timestamp,
+        'orderFilled',
+      );
+    }
+  }
+});
+
+/**
+ * Handle OrderExpired event from Diamond CLOBFacetV2
+ * For GTD (Good Till Date) orders that have expired
+ */
+ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
+  const { orderId, expiredAt } = event.args;
+
+  console.log('[Diamond:OrderExpired] Order expired:', {
+    orderId,
+    expiredAt: expiredAt.toString(),
+  });
+
+  // Update order status to expired (4)
+  await context.db.update(clobOrders, { id: orderId }).set({
+    status: 4, // Expired
+    remainingAmount: 0n,
+    updatedAt: event.block.timestamp,
+  });
+});
+
+/**
+ * Handle TradeExecutedV2 event from Diamond CLOBFacetV2
+ * V2 event with fees and takerIsBuy tracking
+ */
+ponder.on('Diamond:TradeExecutedV2', async ({ event, context }) => {
+  const {
+    tradeId,
+    takerOrderId,
+    makerOrderId,
+    taker,
+    maker,
+    marketId,
+    price,
+    amount,
+    quoteAmount,
+    takerFee,
+    makerFee,
+    timestamp,
+    takerIsBuy,
+  } = event.args;
+  const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+  console.log('[Diamond:TradeExecutedV2] Processing trade:', {
+    tradeId,
+    taker,
+    maker,
+    price: price.toString(),
+    amount: amount.toString(),
+    takerFee: takerFee.toString(),
+    makerFee: makerFee.toString(),
+    takerIsBuy,
+  });
+
+  // Insert CLOB Trade entity with V2 fields
+  await context.db.insert(clobTrades).values({
+    id: tradeId,
+    takerOrderId,
+    makerOrderId,
+    taker,
+    maker,
+    baseToken: '0x0000000000000000000000000000000000000000' as `0x${string}`, // Will be resolved from order
+    baseTokenId: 0n,
+    quoteToken: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    price,
+    amount,
+    quoteAmount,
+    timestamp,
+    blockNumber: event.block.number,
+    transactionHash: event.transaction.hash,
+  });
+
+  // Insert TradeExecuted event
+  await context.db.insert(tradeExecutedEvents).values({
+    id: eventId,
+    tradeId,
+    taker,
+    maker,
+    baseToken: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    baseTokenId: 0n,
+    price,
+    amount,
+    quoteAmount,
+    timestamp,
+    blockNumber: event.block.number,
+    blockTimestamp: event.block.timestamp,
+    transactionHash: event.transaction.hash,
+  });
+
+  // Update user trading stats for both parties with fees
+  await updateDiamondUserTradingStats(
+    context,
+    taker,
+    event.block.timestamp,
+    'tradeAsTaker',
+    quoteAmount,
+  );
+  await updateDiamondUserTradingStats(
+    context,
+    maker,
+    event.block.timestamp,
+    'tradeAsMaker',
+    quoteAmount,
+  );
+
+  // Update fee totals
+  const takerStats = await context.db.find(userTradingStats, { id: taker });
+  if (takerStats) {
+    await context.db.update(userTradingStats, { id: taker }).set({
+      totalFeesPaid: takerStats.totalFeesPaid + takerFee,
+    });
+  }
+
+  const makerStats = await context.db.find(userTradingStats, { id: maker });
+  if (makerStats) {
+    await context.db.update(userTradingStats, { id: maker }).set({
+      totalFeesPaid: makerStats.totalFeesPaid + makerFee,
+    });
+  }
+});
+
+/**
+ * Handle OrderCommitted event from Diamond CLOBFacetV2
+ * MEV protection - tracks order commitments
+ */
+ponder.on('Diamond:OrderCommitted', async ({ event, context }) => {
+  const { commitmentId, committer, commitBlock } = event.args;
+
+  console.log('[Diamond:OrderCommitted] New commitment:', {
+    commitmentId,
+    committer,
+    commitBlock: commitBlock.toString(),
+  });
+
+  // Log commitment for tracking (could add to a commitments table if needed)
+  console.log(
+    `[Diamond] OrderCommitted: ${commitmentId} by ${committer} at block ${commitBlock}`,
+  );
+});
+
+/**
+ * Handle OrderRevealed event from Diamond CLOBFacetV2
+ * MEV protection - tracks order reveals
+ */
+ponder.on('Diamond:OrderRevealed', async ({ event, context }) => {
+  const { commitmentId, orderId, maker } = event.args;
+
+  console.log('[Diamond:OrderRevealed] Commitment revealed:', {
+    commitmentId,
+    orderId,
+    maker,
+  });
+
+  console.log(
+    `[Diamond] OrderRevealed: commitment ${commitmentId} -> order ${orderId} by ${maker}`,
+  );
+});
+
+/**
+ * Handle CircuitBreakerTripped event from Diamond CLOBFacetV2
+ */
+ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
+  const {
+    marketId,
+    triggerPrice,
+    previousPrice,
+    changePercent,
+    cooldownUntil,
+  } = event.args;
+
+  console.log('[Diamond:CircuitBreakerTripped] Circuit breaker activated:', {
+    marketId,
+    triggerPrice: triggerPrice.toString(),
+    previousPrice: previousPrice.toString(),
+    changePercent: changePercent.toString(),
+    cooldownUntil: cooldownUntil.toString(),
+  });
+});
+
+/**
+ * Handle CircuitBreakerReset event from Diamond CLOBFacetV2
+ */
+ponder.on('Diamond:CircuitBreakerReset', async ({ event, context }) => {
+  const { marketId, resetAt } = event.args;
+
+  console.log('[Diamond:CircuitBreakerReset] Circuit breaker reset:', {
+    marketId,
+    resetAt: resetAt.toString(),
+  });
+});
+
+/**
+ * Handle MarketDepthChanged event from Diamond CLOBFacetV2
+ * Updates market data with best bid/ask
+ */
+ponder.on('Diamond:MarketDepthChanged', async ({ event, context }) => {
+  const { marketId, bestBid, bestBidSize, bestAsk, bestAskSize, spread } =
+    event.args;
+
+  console.log('[Diamond:MarketDepthChanged] Market depth updated:', {
+    marketId,
+    bestBid: bestBid.toString(),
+    bestBidSize: bestBidSize.toString(),
+    bestAsk: bestAsk.toString(),
+    bestAskSize: bestAskSize.toString(),
+    spread: spread.toString(),
+  });
+
+  // Update market data with best bid/ask
+  const existing = await context.db.find(marketData, {
+    id: marketId as string,
+  });
+  if (existing) {
+    await context.db.update(marketData, { id: marketId as string }).set({
+      bestBidPrice: bestBid,
+      bestBidAmount: bestBidSize,
+      bestAskPrice: bestAsk,
+      bestAskAmount: bestAskSize,
+      updatedAt: event.block.timestamp,
+    });
+  }
+});
+
+/**
+ * Handle MarketCreated event from Diamond CLOBFacetV2
+ */
+ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
+  const { marketId, baseToken, baseTokenId, quoteToken } = event.args;
+
+  console.log('[Diamond:MarketCreated] New market created:', {
+    marketId,
+    baseToken,
+    baseTokenId: baseTokenId.toString(),
+    quoteToken,
+  });
+
+  // Create market data entry
+  const marketDataId = `${baseToken}-${baseTokenId.toString()}-${quoteToken}`;
+  await context.db
+    .insert(marketData)
+    .values({
+      id: marketDataId,
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      bestBidPrice: 0n,
+      bestBidAmount: 0n,
+      bestAskPrice: 0n,
+      bestAskAmount: 0n,
+      lastTradePrice: 0n,
+      volume24h: 0n,
+      tradeCount24h: 0n,
+      openOrderCount: 0n,
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+    })
+    .onConflictDoNothing();
+});
+
+/**
+ * Handle EmergencyWithdrawal event from Diamond CLOBFacetV2
+ */
+ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
+  const { user, orderId, token, amount } = event.args;
+
+  console.log('[Diamond:EmergencyWithdrawal] Emergency withdrawal:', {
+    user,
+    orderId,
+    token,
+    amount: amount.toString(),
+  });
+});
+
+/**
+ * Handle GlobalPause event from Diamond CLOBAdminFacet
+ */
+ponder.on('Diamond:GlobalPause', async ({ event, context }) => {
+  const { paused } = event.args;
+
+  console.log(`[Diamond:GlobalPause] System ${paused ? 'PAUSED' : 'UNPAUSED'}`);
+});
+
+/**
+ * Handle MarketPaused event from Diamond CLOBAdminFacet
+ */
+ponder.on('Diamond:MarketPaused', async ({ event, context }) => {
+  const { marketId } = event.args;
+
+  console.log(`[Diamond:MarketPaused] Market ${marketId} paused`);
+});
+
+/**
+ * Handle MarketUnpaused event from Diamond CLOBAdminFacet
+ */
+ponder.on('Diamond:MarketUnpaused', async ({ event, context }) => {
+  const { marketId } = event.args;
+
+  console.log(`[Diamond:MarketUnpaused] Market ${marketId} unpaused`);
+});
+
+/**
+ * Handle FeesUpdated event from Diamond CLOBAdminFacet
+ */
+ponder.on('Diamond:FeesUpdated', async ({ event, context }) => {
+  const { takerFeeBps, makerFeeBps, lpFeeBps } = event.args;
+
+  console.log('[Diamond:FeesUpdated] Fee configuration updated:', {
+    takerFeeBps,
+    makerFeeBps,
+    lpFeeBps,
+  });
+});
+
+/**
+ * Handle CircuitBreakerConfigured event from Diamond CLOBAdminFacet
+ */
+ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
+  const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } =
+    event.args;
+
+  console.log(
+    '[Diamond:CircuitBreakerConfigured] Circuit breaker configured:',
+    {
+      marketId,
+      priceChangeThreshold: priceChangeThreshold.toString(),
+      cooldownPeriod: cooldownPeriod.toString(),
+      isEnabled,
+    },
+  );
+});
+
+// =============================================================================
 // DIAMOND STAKING HANDLERS - Staking events from Diamond StakingFacet
 // =============================================================================
 
