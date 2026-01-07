@@ -4,9 +4,9 @@
   "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF",
   "contracts": {
     "CLOBFacet": {
-      "address": "0x86F2245959dab5a4EEFE1aeA4165aD6DB56Ec10e",
-      "blockNumber": 35989323
+      "address": "0xF96ad2125F20aB64C62689195e85AF5A1be81971",
+      "blockNumber": 36009287
     }
   },
-  "timestamp": "2026-01-07T00:49:00.768Z"
+  "timestamp": "2026-01-07T11:54:28.798Z"
 }
