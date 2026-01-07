@@ -262,6 +262,7 @@ export function useUserAssets(filterClass?: string) {
           ? (Number(asset.price) / 1e18).toFixed(2)
           : undefined,
         attributes: asset.attributes,
+        nodeHash: asset.nodeHash, // Include the node this asset belongs to
       });
     }
 

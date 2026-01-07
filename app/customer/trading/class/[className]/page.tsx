@@ -225,6 +225,7 @@ function ClassDetailPageContent() {
       quantity: number;
       total: number;
       assetId: string;
+      nodeHash?: string; // For sell orders - which node's inventory to use
     }): Promise<boolean> => {
       console.log('[ClassTradingPage] Placing order:', order);
 
@@ -279,19 +280,35 @@ function ClassDetailPageContent() {
             '[ClassTradingPage] Limit sell order - checking node inventory...',
           );
 
-          // Get user's owned nodes
-          const ownedNodes = await getOwnedNodes();
-          if (ownedNodes.length === 0) {
-            console.error(
-              '[ClassTradingPage] No owned nodes found for selling',
+          // Use the nodeHash from the selected asset (passed via order.nodeHash)
+          // This ensures we check/use the correct node's inventory
+          let nodeHash = order.nodeHash;
+
+          if (!nodeHash) {
+            // Fallback: get user's owned nodes and use the first one
+            // This should rarely happen if the asset was properly selected
+            console.warn(
+              '[ClassTradingPage] No nodeHash in order - falling back to first owned node',
             );
-            return false;
+            const ownedNodes = await getOwnedNodes();
+            if (ownedNodes.length === 0) {
+              console.error(
+                '[ClassTradingPage] No owned nodes found for selling',
+              );
+              return false;
+            }
+            nodeHash = ownedNodes[0];
           }
 
-          // Use the first owned node
-          const nodeHash = ownedNodes[0];
           // Use the effective token ID (from user's inventory for sell orders)
           const tokenId = effectiveTokenId;
+
+          console.log(
+            '[ClassTradingPage] Using nodeHash:',
+            nodeHash,
+            'tokenId:',
+            tokenId,
+          );
 
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
@@ -443,18 +460,33 @@ function ClassDetailPageContent() {
             '[ClassTradingPage] Market sell order - checking node inventory...',
           );
 
-          // Get user's owned nodes
-          const ownedNodes = await getOwnedNodes();
-          if (ownedNodes.length === 0) {
-            console.error(
-              '[ClassTradingPage] No owned nodes found for selling',
+          // Use the nodeHash from the selected asset (passed via order.nodeHash)
+          let nodeHash = order.nodeHash;
+
+          if (!nodeHash) {
+            // Fallback: get user's owned nodes and use the first one
+            console.warn(
+              '[ClassTradingPage] No nodeHash in order - falling back to first owned node',
             );
-            return false;
+            const ownedNodes = await getOwnedNodes();
+            if (ownedNodes.length === 0) {
+              console.error(
+                '[ClassTradingPage] No owned nodes found for selling',
+              );
+              return false;
+            }
+            nodeHash = ownedNodes[0];
           }
 
-          const nodeHash = ownedNodes[0];
           // Use the effective token ID (from user's inventory for sell orders)
           const tokenId = effectiveTokenId;
+
+          console.log(
+            '[ClassTradingPage] Market sell using nodeHash:',
+            nodeHash,
+            'tokenId:',
+            tokenId,
+          );
 
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);

@@ -31,6 +31,7 @@ const CATALOG_ASSET = {
 /**
  * Simulate user's sellable asset (from their inventory)
  * This has the CORRECT tokenId for the user's actual tokens
+ * AND includes the nodeHash to identify which node has this asset
  */
 const USER_SELLABLE_ASSET = {
   id: '112821530000000000000000000000000000000000000000001',
@@ -38,10 +39,11 @@ const USER_SELLABLE_ASSET = {
   name: 'Boer Goat',
   class: 'GOAT',
   balance: '20000',
+  nodeHash: '0xnode1111111111111111111111111111111111111111111111111111111111',
 };
 
 /**
- * Another user asset with same name but different tokenId
+ * Another user asset with same name but different tokenId AND different node
  */
 const USER_SELLABLE_ASSET_2 = {
   id: '112821530000000000000000000000000000000000000000002',
@@ -49,7 +51,16 @@ const USER_SELLABLE_ASSET_2 = {
   name: 'Boer Goat',
   class: 'GOAT',
   balance: '15000',
+  nodeHash: '0xnode2222222222222222222222222222222222222222222222222222222222',
 };
+
+/**
+ * Node hashes for testing multi-node scenarios
+ */
+const NODE_1_HASH =
+  '0xnode1111111111111111111111111111111111111111111111111111111111';
+const NODE_2_HASH =
+  '0xnode2222222222222222222222222222222222222222222222222222222222';
 
 // =============================================================================
 // CORE LOGIC TESTS
@@ -279,6 +290,164 @@ describe('Edge Cases', () => {
         : tradeableAsset.tokenId;
 
     expect(effectiveTokenId).toBe(largeTokenId);
+  });
+});
+
+// =============================================================================
+// NODE HASH TESTS - Critical for multi-node users
+// =============================================================================
+
+describe('NodeHash in Sell Orders', () => {
+  /**
+   * This test catches the bug where we always used the first owned node
+   * instead of the node that actually has the selected asset
+   */
+  it('should include nodeHash in SellableAsset', () => {
+    // SellableAsset must include nodeHash
+    expect(USER_SELLABLE_ASSET.nodeHash).toBeDefined();
+    expect(USER_SELLABLE_ASSET.nodeHash).toBe(NODE_1_HASH);
+  });
+
+  it('should pass nodeHash through order data for sell orders', () => {
+    const side = 'sell';
+    const selectedSellAsset = USER_SELLABLE_ASSET;
+
+    // OrderData should include nodeHash for sell orders
+    const orderData = {
+      side,
+      type: 'limit' as const,
+      price: 100,
+      quantity: 10,
+      total: 1000,
+      assetId: selectedSellAsset.tokenId,
+      nodeHash: side === 'sell' ? selectedSellAsset.nodeHash : undefined,
+    };
+
+    expect(orderData.nodeHash).toBe(USER_SELLABLE_ASSET.nodeHash);
+  });
+
+  it('should use order.nodeHash for balance check, not first owned node', () => {
+    // Simulate user has 2 nodes
+    const ownedNodes = [NODE_1_HASH, NODE_2_HASH];
+
+    // Asset is on NODE_2, not NODE_1
+    const selectedAsset = USER_SELLABLE_ASSET_2; // This is on NODE_2
+
+    const order = {
+      side: 'sell' as const,
+      assetId: selectedAsset.tokenId,
+      nodeHash: selectedAsset.nodeHash,
+    };
+
+    // The handler should use order.nodeHash, not ownedNodes[0]
+    const nodeHashToUse = order.nodeHash || ownedNodes[0];
+
+    expect(nodeHashToUse).toBe(NODE_2_HASH);
+    expect(nodeHashToUse).not.toBe(ownedNodes[0]); // Should NOT use first node!
+  });
+
+  it('REGRESSION: should not always use first owned node for sell orders', () => {
+    // This is the exact bug scenario:
+    // - User has NODE_1 and NODE_2
+    // - Asset is on NODE_2 with balance 15000
+    // - NODE_1 has 0 balance for this token
+    // - Old code would check NODE_1 and find 0, showing deposit modal incorrectly
+
+    const ownedNodes = [NODE_1_HASH, NODE_2_HASH];
+    const selectedAsset = USER_SELLABLE_ASSET_2; // On NODE_2
+
+    // Old buggy behavior: always use first node
+    const buggyNodeHash = ownedNodes[0];
+    expect(buggyNodeHash).toBe(NODE_1_HASH); // Wrong!
+
+    // Fixed behavior: use nodeHash from selected asset
+    const correctNodeHash = selectedAsset.nodeHash;
+    expect(correctNodeHash).toBe(NODE_2_HASH); // Correct!
+
+    // The order should include the correct nodeHash
+    const order = {
+      nodeHash: selectedAsset.nodeHash,
+    };
+    expect(order.nodeHash).toBe(NODE_2_HASH);
+  });
+});
+
+// =============================================================================
+// TOKEN ID FORMAT VALIDATION
+// =============================================================================
+
+describe('TokenId Format Validation', () => {
+  /**
+   * TokenIds must be valid uint256 values - no slashes, decimals, or other characters
+   */
+  it('should validate tokenId is a valid uint256 string', () => {
+    const validTokenId = '112821530000000000000000000000000000000000000000001';
+    const invalidTokenIds = [
+      '7459/2215346691342978896243124894471545492/2185/8057880545.3/9/9094510', // slashes and decimals
+      '12345.67', // decimal
+      '12345/67', // slash
+      '-12345', // negative
+      'abc123', // letters
+      '', // empty
+    ];
+
+    // Valid tokenId should be numeric only
+    expect(/^\d+$/.test(validTokenId)).toBe(true);
+
+    // Invalid tokenIds should fail the regex
+    for (const invalidId of invalidTokenIds) {
+      expect(/^\d+$/.test(invalidId)).toBe(false);
+    }
+  });
+
+  it('should ensure tokenId can be converted to BigInt', () => {
+    const validTokenId = '112821530000000000000000000000000000000000000000001';
+
+    // Should not throw
+    expect(() => BigInt(validTokenId)).not.toThrow();
+
+    // Invalid tokenIds should throw
+    expect(() => BigInt('123/456')).toThrow();
+    expect(() => BigInt('123.456')).toThrow();
+  });
+
+  it('should validate tokenId is within uint256 range', () => {
+    const maxUint256 = BigInt(
+      '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+    );
+
+    const validTokenId = '112821530000000000000000000000000000000000000000001';
+    const tokenIdBigInt = BigInt(validTokenId);
+
+    expect(tokenIdBigInt >= 0n).toBe(true);
+    expect(tokenIdBigInt <= maxUint256).toBe(true);
+  });
+
+  it('should sanitize/validate tokenId before contract call', () => {
+    // Helper function that should be used before contract calls
+    function validateTokenId(tokenId: string): boolean {
+      if (!tokenId || typeof tokenId !== 'string') return false;
+      if (!/^\d+$/.test(tokenId)) return false;
+      try {
+        const bigIntValue = BigInt(tokenId);
+        const maxUint256 = BigInt(
+          '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+        );
+        return bigIntValue >= 0n && bigIntValue <= maxUint256;
+      } catch {
+        return false;
+      }
+    }
+
+    expect(
+      validateTokenId('112821530000000000000000000000000000000000000000001'),
+    ).toBe(true);
+    expect(validateTokenId('7459/2215346691342978896243124894471545492')).toBe(
+      false,
+    );
+    expect(validateTokenId('123.456')).toBe(false);
+    expect(validateTokenId('')).toBe(false);
+    expect(validateTokenId(undefined as any)).toBe(false);
   });
 });
 

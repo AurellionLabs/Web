@@ -34,6 +34,8 @@ export interface OrderData {
   quantity: number;
   total: number;
   assetId: string;
+  /** The node hash for sell orders - determines which node's inventory to use */
+  nodeHash?: string;
 }
 
 /**
@@ -55,6 +57,8 @@ export interface SellableAsset {
   balance: string;
   price?: string;
   attributes?: AssetAttribute[];
+  /** The node hash this asset belongs to - required for sell orders */
+  nodeHash?: string;
 }
 
 /**
@@ -547,6 +551,11 @@ export const TradePanel: React.FC<TradePanelProps> = ({
         side === 'sell' && selectedSellAsset
           ? selectedSellAsset.tokenId
           : asset?.id || '',
+      // Include nodeHash for sell orders - required to check correct node's inventory
+      nodeHash:
+        side === 'sell' && selectedSellAsset
+          ? selectedSellAsset.nodeHash
+          : undefined,
     };
 
     setIsPlacing(true);
