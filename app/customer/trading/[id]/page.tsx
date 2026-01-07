@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 import dynamic from 'next/dynamic';
 import { useUserAssets } from '@/hooks/useUserAssets';
+import { useOrderBook } from '@/hooks/useOrderBook';
 
 // Dynamically import chart to avoid SSR issues
 const Chart = dynamic(() => import('./chart'), { ssr: false });
@@ -224,6 +225,19 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   // Fetch user's owned assets for selling (filtered by asset class)
   // This automatically fetches from ALL nodes owned by the connected wallet
   const { sellableAssets } = useUserAssets(asset?.class);
+
+  // Fetch order book data for best bid/ask prices
+  const { orderBook } = useOrderBook(asset?.id || '', {
+    baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+    baseTokenId: asset?.id || '0',
+    basePrice,
+    levels: 10,
+    updateInterval: 5000,
+  });
+
+  // Get best bid and ask prices from order book
+  const bestAskPrice = orderBook?.asks[0]?.price || 0;
+  const bestBidPrice = orderBook?.bids[0]?.price || 0;
 
   // Get token ID from asset
   // The asset.id IS the tokenId (set in node-repository.ts: id: na.tokenId)
@@ -901,6 +915,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             <TradePanel
               asset={asset}
               initialPrice={basePrice}
+              bestAskPrice={bestAskPrice}
+              bestBidPrice={bestBidPrice}
               sellableAssets={sellableAssets}
               onPlaceOrder={handlePlaceOrder}
             />

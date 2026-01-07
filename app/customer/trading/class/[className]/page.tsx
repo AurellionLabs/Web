@@ -32,6 +32,7 @@ import { useAssetPrice } from '@/hooks/useAssetPrice';
 import { useUserAssets } from '@/hooks/useUserAssets';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import { useWallet } from '@/hooks/useWallet';
+import { useOrderBook } from '@/hooks/useOrderBook';
 
 // Icons
 import { ArrowLeft, RefreshCw, TrendingUp } from 'lucide-react';
@@ -185,6 +186,19 @@ function ClassDetailPageContent() {
     isLoading: isLoadingSellable,
     hasAssets: hasSellableAssets,
   } = useUserAssets(className);
+
+  // Fetch order book data for best bid/ask prices
+  const { orderBook } = useOrderBook(tradeableAsset?.id || '', {
+    baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+    baseTokenId: tradeableAsset?.tokenId || '0',
+    basePrice,
+    levels: 10,
+    updateInterval: 5000,
+  });
+
+  // Get best bid and ask prices from order book
+  const bestAskPrice = orderBook?.asks[0]?.price || 0;
+  const bestBidPrice = orderBook?.bids[0]?.price || 0;
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
@@ -850,6 +864,8 @@ function ClassDetailPageContent() {
                 <TradePanel
                   asset={tradeableAsset}
                   initialPrice={basePrice}
+                  bestAskPrice={bestAskPrice}
+                  bestBidPrice={bestBidPrice}
                   sellableAssets={sellableAssets}
                   onPlaceOrder={handlePlaceOrder}
                 />

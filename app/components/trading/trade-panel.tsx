@@ -65,6 +65,10 @@ export interface TradePanelProps {
   asset?: TokenizedAssetUI | null;
   /** Initial price to populate */
   initialPrice?: number;
+  /** Best ask price (lowest sell) - for market buy orders */
+  bestAskPrice?: number;
+  /** Best bid price (highest buy) - for market sell orders */
+  bestBidPrice?: number;
   /** Available assets for selling (node's inventory) */
   sellableAssets?: SellableAsset[];
   /** Callback when asset is selected for selling */
@@ -456,6 +460,8 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({
 export const TradePanel: React.FC<TradePanelProps> = ({
   asset,
   initialPrice,
+  bestAskPrice,
+  bestBidPrice,
   sellableAssets = [],
   onAssetSelect,
   onOrderPlaced,
@@ -469,6 +475,20 @@ export const TradePanel: React.FC<TradePanelProps> = ({
   const [isPlacing, setIsPlacing] = useState(false);
   const [selectedSellAsset, setSelectedSellAsset] =
     useState<SellableAsset | null>(null);
+
+  // Get the effective price for display based on order type and side
+  // For market orders: use best ask (buy) or best bid (sell)
+  // For limit orders: use user-entered price
+  const effectivePrice = useMemo(() => {
+    if (type === 'market') {
+      if (side === 'buy') {
+        return bestAskPrice || initialPrice || 0;
+      } else {
+        return bestBidPrice || initialPrice || 0;
+      }
+    }
+    return parseFloat(price) || 0;
+  }, [type, side, bestAskPrice, bestBidPrice, initialPrice, price]);
 
   // Handle sell asset selection
   const handleSellAssetSelect = (sellAsset: SellableAsset) => {
@@ -492,9 +512,10 @@ export const TradePanel: React.FC<TradePanelProps> = ({
         } as TokenizedAssetUI)
       : asset;
 
-  // Calculate totals
+  // Calculate totals using effective price (market price for market orders)
   const { total, fee, netTotal } = useMemo(() => {
-    const priceNum = parseFloat(price) || 0;
+    const priceNum =
+      type === 'market' ? effectivePrice : parseFloat(price) || 0;
     const quantityNum = parseFloat(quantity) || 0;
     const totalValue = priceNum * quantityNum;
     const feeValue = totalValue * 0.001; // 0.1% fee
@@ -506,17 +527,20 @@ export const TradePanel: React.FC<TradePanelProps> = ({
       fee: feeValue,
       netTotal: netTotalValue,
     };
-  }, [price, quantity, side]);
+  }, [type, effectivePrice, price, quantity, side]);
 
   // Handle order placement
   const handlePlaceOrder = async () => {
     const orderAsset = side === 'sell' ? selectedSellAsset : asset;
-    if (!orderAsset || !price || !quantity) return;
+    // For market orders, price field is not required (we use effectivePrice)
+    if (!orderAsset || !quantity) return;
+    if (type === 'limit' && !price) return;
 
     const orderData: OrderData = {
       side,
       type,
-      price: parseFloat(price),
+      // For market orders, use the effective price (best ask/bid)
+      price: type === 'market' ? effectivePrice : parseFloat(price),
       quantity: parseFloat(quantity),
       total: netTotal,
       assetId:
