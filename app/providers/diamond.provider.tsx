@@ -356,7 +356,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
-// Get node's deposited token balance (available for selling on CLOB)
+  // Get node's deposited token balance (available for selling on CLOB)
   const getNodeTokenBalance = useCallback(
     async (nodeHash: string, tokenId: string): Promise<bigint> => {
       if (!diamondContext) {

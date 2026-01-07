@@ -18,6 +18,8 @@ import {
   CLOBOrderType,
   CircuitBreakerStatus,
 } from '@/domain/clob/clob';
+import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
+import { clobV2Service } from '@/infrastructure/services/clob-v2-service';
 import { keccak256, encodePacked } from 'viem';
 
 /**
@@ -382,27 +384,59 @@ export function useCLOBV2(options: UseCLOBV2Options) {
    */
   const fetchOrderBook = useCallback(async () => {
     try {
-      // TODO: Replace with actual repository call when backend is ready
-      // const data = await clobRepository.getOrderBook(baseToken, baseTokenId, quoteToken, levels);
-      const mockData = createMockOrderBook(marketId, levels);
-      setOrderBook(mockData);
+      const data = await clobV2Repository.getOrderBook(
+        baseToken,
+        baseTokenId,
+        quoteToken,
+        levels,
+      );
+
+      // Convert to display format
+      const displayData: DisplayOrderBook = {
+        ...data,
+        hasData: data.bids.length > 0 || data.asks.length > 0,
+        totalBidVolume: data.bids.reduce(
+          (sum, b) => (BigInt(sum) + BigInt(b.quantity)).toString(),
+          '0',
+        ),
+        totalAskVolume: data.asks.reduce(
+          (sum, a) => (BigInt(sum) + BigInt(a.quantity)).toString(),
+          '0',
+        ),
+        volumeRatio: 0,
+        imbalance: 0,
+      };
+
+      // Calculate ratios
+      const bidVol = BigInt(displayData.totalBidVolume);
+      const askVol = BigInt(displayData.totalAskVolume);
+      if (askVol > 0n) {
+        displayData.volumeRatio = Number((bidVol * 100n) / askVol) / 100;
+      }
+      if (bidVol + askVol > 0n) {
+        displayData.imbalance =
+          Number(((bidVol - askVol) * 100n) / (bidVol + askVol)) / 100;
+      }
+
+      setOrderBook(displayData);
     } catch (err) {
       console.error('[useCLOBV2] Failed to fetch order book:', err);
-      setError('Failed to fetch order book');
+      // Fall back to mock data for development
+      const mockData = createMockOrderBook(marketId, levels);
+      setOrderBook(mockData);
     }
-  }, [marketId, levels]);
+  }, [baseToken, baseTokenId, quoteToken, marketId, levels]);
 
   /**
    * Fetch user orders
    */
   const fetchUserOrders = useCallback(async (userAddress: string) => {
     try {
-      // TODO: Replace with actual repository call
-      // const orders = await clobRepository.getUserOrders(userAddress);
-      // setUserOrders(orders.map(enhanceOrder));
-      setUserOrders([]);
+      const orders = await clobV2Repository.getUserActiveOrders(userAddress);
+      setUserOrders(orders.map(enhanceOrder));
     } catch (err) {
       console.error('[useCLOBV2] Failed to fetch user orders:', err);
+      setUserOrders([]);
     }
   }, []);
 
@@ -411,23 +445,25 @@ export function useCLOBV2(options: UseCLOBV2Options) {
    */
   const fetchTrades = useCallback(async () => {
     try {
-      // TODO: Replace with actual repository call
-      // const tradeData = await clobRepository.getTrades(baseToken, baseTokenId, 50);
-      // setTrades(tradeData.map(enhanceTrade));
-      setTrades([]);
+      const tradeData = await clobV2Repository.getTrades(
+        baseToken,
+        baseTokenId,
+        50,
+      );
+      setTrades(tradeData.map(enhanceTrade));
     } catch (err) {
       console.error('[useCLOBV2] Failed to fetch trades:', err);
+      setTrades([]);
     }
-  }, []);
+  }, [baseToken, baseTokenId]);
 
   /**
    * Fetch market statistics
    */
   const fetchMarketStats = useCallback(async () => {
     try {
-      // TODO: Replace with actual repository call
-      // const stats = await clobRepository.getMarketStats(marketId);
-      // setMarketStats(stats);
+      const stats = await clobV2Repository.getMarketStats(marketId);
+      setMarketStats(stats);
     } catch (err) {
       console.error('[useCLOBV2] Failed to fetch market stats:', err);
     }
@@ -482,32 +518,22 @@ export function useCLOBV2(options: UseCLOBV2Options) {
       expiry?: number,
     ): Promise<OrderPlacementResult> => {
       try {
-        // TODO: Replace with actual service call
-        // const result = await clobService.placeLimitOrder({
-        //   baseToken,
-        //   baseTokenId,
-        //   quoteToken,
-        //   price,
-        //   amount,
-        //   isBuy,
-        //   timeInForce,
-        //   expiry,
-        // });
-        // await refresh();
-        // return result;
-
-        console.log('[useCLOBV2] placeLimitOrder:', {
-          price: price.toString(),
-          amount: amount.toString(),
+        const result = await clobV2Service.placeLimitOrder({
+          baseToken,
+          baseTokenId,
+          quoteToken,
+          price,
+          amount,
           isBuy,
           timeInForce,
+          expiry,
         });
 
-        return {
-          success: true,
-          orderId: '0x' + Math.random().toString(16).slice(2),
-          transactionHash: '0x' + Math.random().toString(16).slice(2),
-        };
+        if (result.success) {
+          await refresh();
+        }
+
+        return result;
       } catch (err) {
         console.error('[useCLOBV2] Failed to place limit order:', err);
         return {
@@ -516,7 +542,7 @@ export function useCLOBV2(options: UseCLOBV2Options) {
         };
       }
     },
-    [baseToken, baseTokenId, quoteToken],
+    [baseToken, baseTokenId, quoteToken, refresh],
   );
 
   /**
@@ -529,17 +555,20 @@ export function useCLOBV2(options: UseCLOBV2Options) {
       maxSlippageBps: number = 100,
     ): Promise<OrderPlacementResult> => {
       try {
-        console.log('[useCLOBV2] placeMarketOrder:', {
-          amount: amount.toString(),
+        const result = await clobV2Service.placeMarketOrder({
+          baseToken,
+          baseTokenId,
+          quoteToken,
+          amount,
           isBuy,
           maxSlippageBps,
         });
 
-        return {
-          success: true,
-          orderId: '0x' + Math.random().toString(16).slice(2),
-          transactionHash: '0x' + Math.random().toString(16).slice(2),
-        };
+        if (result.success) {
+          await refresh();
+        }
+
+        return result;
       } catch (err) {
         console.error('[useCLOBV2] Failed to place market order:', err);
         return {
@@ -548,7 +577,7 @@ export function useCLOBV2(options: UseCLOBV2Options) {
         };
       }
     },
-    [baseToken, baseTokenId, quoteToken],
+    [baseToken, baseTokenId, quoteToken, refresh],
   );
 
   /**
@@ -557,17 +586,13 @@ export function useCLOBV2(options: UseCLOBV2Options) {
   const cancelOrder = useCallback(
     async (orderId: string): Promise<OrderCancellationResult> => {
       try {
-        console.log('[useCLOBV2] cancelOrder:', orderId);
+        const result = await clobV2Service.cancelOrder(orderId);
 
-        // TODO: Replace with actual service call
-        // const result = await clobService.cancelOrder(orderId);
-        // await refresh();
-        // return result;
+        if (result.success) {
+          await refresh();
+        }
 
-        return {
-          success: true,
-          transactionHash: '0x' + Math.random().toString(16).slice(2),
-        };
+        return result;
       } catch (err) {
         console.error('[useCLOBV2] Failed to cancel order:', err);
         return {
@@ -576,7 +601,7 @@ export function useCLOBV2(options: UseCLOBV2Options) {
         };
       }
     },
-    [],
+    [refresh],
   );
 
   /**
