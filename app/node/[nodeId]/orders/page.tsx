@@ -134,8 +134,8 @@ function OrdersContent({
       orders
         .filter((order) => order.asset !== null)
         .map((order) => [
-          String(order.asset!.tokenID),
-          { value: String(order.asset!.tokenID), label: order.asset!.name },
+          String(order.asset!.tokenId),
+          { value: String(order.asset!.tokenId), label: order.asset!.name },
         ]),
     ).values(),
   );
@@ -157,7 +157,7 @@ function OrdersContent({
 
     if (filters.assetType !== 'all') {
       result = result.filter(
-        (order) => String(order.asset?.tokenID) === filters.assetType,
+        (order) => String(order.asset?.tokenId) === filters.assetType,
       );
     }
 

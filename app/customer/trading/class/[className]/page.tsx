@@ -792,14 +792,14 @@ function ClassDetailPageContent() {
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {filteredAssets.slice(0, 10).map((asset, i) => (
                     <div
-                      key={`${asset.name}-${asset.tokenID || i}`}
+                      key={`${asset.name}-${asset.tokenId || i}`}
                       className="flex items-center justify-between p-2 rounded-lg bg-surface-overlay/50"
                     >
                       <span className="text-sm text-foreground">
                         {asset.name}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        Token #{asset.tokenID?.toString() || 'N/A'}
+                        Token #{asset.tokenId || 'N/A'}
                       </span>
                     </div>
                   ))}
