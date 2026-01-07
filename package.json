@@ -37,6 +37,10 @@
     "test:e2e:anvil": "cross-env CHAIN=anvil vitest run --config e2e/vitest.config.ts",
     "test:e2e:verbose": "cross-env VERBOSE=true vitest run --config e2e/vitest.config.ts",
     "test:e2e:coverage": "cross-env VALIDATE_COVERAGE=true FAIL_ON_COVERAGE=true vitest run --config e2e/vitest.config.ts",
+    "test:browser": "npx playwright test",
+    "test:browser:headed": "npx playwright test --headed",
+    "test:browser:ui": "npx playwright test --ui",
+    "test:browser:debug": "npx playwright test --debug",
     "generate:abi": "node -r ts-node/register scripts/generate-diamond-abi.ts"
   },
   "lint-staged": {
@@ -121,8 +125,11 @@
     "@nomicfoundation/hardhat-verify": "^2.0.12",
     "@nomicfoundation/ignition-core": "^0.15.9",
     "@openzeppelin/contracts": "^4.9.3",
+    "@playwright/test": "^1.57.0",
     "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.6.1",
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.3.20",
