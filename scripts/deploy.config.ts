@@ -291,6 +291,14 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     chainConstantKey: 'NEXT_PUBLIC_CLOB_FACET_ADDRESS',
   },
 
+  // CLOBFacetV2 - Production CLOB with OrderPlacedWithTokens event
+  CLOBFacetV2: {
+    name: 'CLOBFacetV2',
+    contractName: 'CLOBFacetV2',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_CLOB_FACET_V2_ADDRESS',
+  },
+
   // OrderRouterFacet - SINGLE ENTRY POINT for all order operations
   // This replaces direct calls to CLOBFacet order functions
   OrderRouterFacet: {
@@ -1264,6 +1272,205 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
         { name: 'timeInForce', type: 'uint8', indexed: false },
         { name: 'expiry', type: 'uint256', indexed: false },
         { name: 'nonce', type: 'uint256', indexed: false },
+      ],
+    },
+  ],
+
+  // CLOBFacetV2 - Production CLOB with OrderPlacedWithTokens event for proper indexing
+  CLOBFacetV2: [
+    // Initialize the V2 CLOB
+    {
+      type: 'function',
+      name: 'initializeCLOBV2',
+      inputs: [
+        { name: '_takerFeeBps', type: 'uint16' },
+        { name: '_makerFeeBps', type: 'uint16' },
+        { name: '_defaultPriceChangeThreshold', type: 'uint256' },
+        { name: '_defaultCooldownPeriod', type: 'uint256' },
+        { name: '_emergencyTimelock', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // Place limit order with time-in-force
+    {
+      type: 'function',
+      name: 'placeLimitOrder',
+      inputs: [
+        { name: 'baseToken', type: 'address' },
+        { name: 'baseTokenId', type: 'uint256' },
+        { name: 'quoteToken', type: 'address' },
+        { name: 'price', type: 'uint96' },
+        { name: 'amount', type: 'uint96' },
+        { name: 'isBuy', type: 'bool' },
+        { name: 'timeInForce', type: 'uint8' },
+        { name: 'expiry', type: 'uint40' },
+      ],
+      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    // Place market order with slippage protection
+    {
+      type: 'function',
+      name: 'placeMarketOrder',
+      inputs: [
+        { name: 'baseToken', type: 'address' },
+        { name: 'baseTokenId', type: 'uint256' },
+        { name: 'quoteToken', type: 'address' },
+        { name: 'amount', type: 'uint96' },
+        { name: 'isBuy', type: 'bool' },
+        { name: 'maxSlippageBps', type: 'uint256' },
+      ],
+      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    // Node sell order V2 - called by Diamond for node inventory sales
+    {
+      type: 'function',
+      name: 'placeNodeSellOrderV2',
+      inputs: [
+        { name: 'nodeOwner', type: 'address' },
+        { name: 'baseToken', type: 'address' },
+        { name: 'baseTokenId', type: 'uint256' },
+        { name: 'quoteToken', type: 'address' },
+        { name: 'price', type: 'uint96' },
+        { name: 'amount', type: 'uint96' },
+        { name: 'timeInForce', type: 'uint8' },
+        { name: 'expiry', type: 'uint40' },
+      ],
+      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    // Cancel order
+    {
+      type: 'function',
+      name: 'cancelOrder',
+      inputs: [{ name: 'orderId', type: 'bytes32' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // ERC1155 receiver functions
+    {
+      type: 'function',
+      name: 'onERC1155Received',
+      inputs: [
+        { name: '', type: 'address' },
+        { name: '', type: 'address' },
+        { name: '', type: 'uint256' },
+        { name: '', type: 'uint256' },
+        { name: '', type: 'bytes' },
+      ],
+      outputs: [{ name: '', type: 'bytes4' }],
+      stateMutability: 'pure',
+    },
+    {
+      type: 'function',
+      name: 'onERC1155BatchReceived',
+      inputs: [
+        { name: '', type: 'address' },
+        { name: '', type: 'address' },
+        { name: '', type: 'uint256[]' },
+        { name: '', type: 'uint256[]' },
+        { name: '', type: 'bytes' },
+      ],
+      outputs: [{ name: '', type: 'bytes4' }],
+      stateMutability: 'pure',
+    },
+    // Events - OrderCreated (basic event)
+    {
+      type: 'event',
+      name: 'OrderCreated',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'marketId', type: 'bytes32', indexed: true },
+        { name: 'maker', type: 'address', indexed: true },
+        { name: 'price', type: 'uint256', indexed: false },
+        { name: 'amount', type: 'uint256', indexed: false },
+        { name: 'isBuy', type: 'bool', indexed: false },
+        { name: 'orderType', type: 'uint8', indexed: false },
+        { name: 'timeInForce', type: 'uint8', indexed: false },
+        { name: 'expiry', type: 'uint256', indexed: false },
+        { name: 'nonce', type: 'uint256', indexed: false },
+      ],
+    },
+    // OrderPlacedWithTokens - THE KEY EVENT for indexer compatibility
+    {
+      type: 'event',
+      name: 'OrderPlacedWithTokens',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'maker', type: 'address', indexed: true },
+        { name: 'baseToken', type: 'address', indexed: true },
+        { name: 'baseTokenId', type: 'uint256', indexed: false },
+        { name: 'quoteToken', type: 'address', indexed: false },
+        { name: 'price', type: 'uint256', indexed: false },
+        { name: 'amount', type: 'uint256', indexed: false },
+        { name: 'isBuy', type: 'bool', indexed: false },
+        { name: 'orderType', type: 'uint8', indexed: false },
+      ],
+    },
+    // OrderFilled
+    {
+      type: 'event',
+      name: 'OrderFilled',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'tradeId', type: 'bytes32', indexed: true },
+        { name: 'fillAmount', type: 'uint256', indexed: false },
+        { name: 'fillPrice', type: 'uint256', indexed: false },
+        { name: 'remainingAmount', type: 'uint256', indexed: false },
+        { name: 'cumulativeFilled', type: 'uint256', indexed: false },
+      ],
+    },
+    // OrderCancelled
+    {
+      type: 'event',
+      name: 'OrderCancelled',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'maker', type: 'address', indexed: true },
+        { name: 'remainingAmount', type: 'uint256', indexed: false },
+        { name: 'reason', type: 'uint8', indexed: false },
+      ],
+    },
+    // OrderExpired
+    {
+      type: 'event',
+      name: 'OrderExpired',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'expiredAt', type: 'uint256', indexed: false },
+      ],
+    },
+    // TradeExecuted
+    {
+      type: 'event',
+      name: 'TradeExecuted',
+      inputs: [
+        { name: 'tradeId', type: 'bytes32', indexed: true },
+        { name: 'takerOrderId', type: 'bytes32', indexed: true },
+        { name: 'makerOrderId', type: 'bytes32', indexed: true },
+        { name: 'taker', type: 'address', indexed: false },
+        { name: 'maker', type: 'address', indexed: false },
+        { name: 'marketId', type: 'bytes32', indexed: false },
+        { name: 'price', type: 'uint256', indexed: false },
+        { name: 'amount', type: 'uint256', indexed: false },
+        { name: 'quoteAmount', type: 'uint256', indexed: false },
+        { name: 'takerFee', type: 'uint256', indexed: false },
+        { name: 'makerFee', type: 'uint256', indexed: false },
+        { name: 'timestamp', type: 'uint256', indexed: false },
+        { name: 'takerIsBuy', type: 'bool', indexed: false },
+      ],
+    },
+    // MarketCreated
+    {
+      type: 'event',
+      name: 'MarketCreated',
+      inputs: [
+        { name: 'marketId', type: 'bytes32', indexed: true },
+        { name: 'baseToken', type: 'address', indexed: true },
+        { name: 'baseTokenId', type: 'uint256', indexed: false },
+        { name: 'quoteToken', type: 'address', indexed: true },
       ],
     },
   ],
