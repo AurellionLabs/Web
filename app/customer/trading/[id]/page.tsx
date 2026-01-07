@@ -540,10 +540,64 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           );
           return true;
         } else {
-          // Market order - executes immediately
+          // Market order - executes immediately at best available price
+          // For market orders, we need to use the best available price from the order book
+          // not the user-entered price, to ensure matching happens
+
+          // Fetch current order book to get best prices
+          const orderBookData = await clobRepository.getOrderBook(
+            NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+            tokenId,
+            10,
+          );
+
+          let marketMaxPrice: bigint;
+
+          if (order.side === 'buy') {
+            // For buy market orders: use best ask (lowest sell price) + 10% slippage
+            // This ensures we can buy at or better than the best available price
+            const bestAsk = orderBookData.asks[0]?.price;
+            if (bestAsk && bestAsk > 0) {
+              const bestAskWei = BigInt(Math.round(bestAsk * 1e18));
+              // Add 10% slippage to ensure order fills even if price moves
+              marketMaxPrice = (bestAskWei * BigInt(110)) / BigInt(100);
+              console.log(
+                '[TradingPage] Market buy: using best ask',
+                bestAsk,
+                'with 10% slippage',
+              );
+            } else {
+              // No asks available - use user price with high slippage as fallback
+              marketMaxPrice = (priceInWei * BigInt(150)) / BigInt(100);
+              console.log(
+                '[TradingPage] Market buy: no asks, using fallback price with 50% buffer',
+              );
+            }
+          } else {
+            // For sell market orders: use best bid (highest buy price) - 10% slippage
+            // This ensures we can sell at or better than the best available price
+            const bestBid = orderBookData.bids[0]?.price;
+            if (bestBid && bestBid > 0) {
+              const bestBidWei = BigInt(Math.round(bestBid * 1e18));
+              // Subtract 10% to set minimum acceptable price
+              marketMaxPrice = (bestBidWei * BigInt(90)) / BigInt(100);
+              console.log(
+                '[TradingPage] Market sell: using best bid',
+                bestBid,
+                'with 10% slippage',
+              );
+            } else {
+              // No bids available - use user price with slippage as fallback
+              marketMaxPrice = (priceInWei * BigInt(50)) / BigInt(100);
+              console.log(
+                '[TradingPage] Market sell: no bids, using fallback price with 50% buffer',
+              );
+            }
+          }
+
           const result = await orderBridgeService.placeMarketOrder({
             ...clobParams,
-            maxPrice: (priceInWei * BigInt(105)) / BigInt(100), // 5% slippage tolerance
+            maxPrice: marketMaxPrice,
           });
 
           if (!result.success) {
