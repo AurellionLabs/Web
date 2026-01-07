@@ -10,21 +10,25 @@ import {
 import { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node/node';
 
 /**
- * Extended asset type that includes attributes
+ * Extended asset type that includes attributes and actual balance
  */
 interface AssetWithAttributes extends TokenizedAsset {
   attributes?: AssetAttribute[];
+  /** Actual tradable balance from node inventory (not capacity) */
+  actualBalance?: string;
+  /** The node hash this asset belongs to */
+  nodeHash?: string;
 }
 
 /**
  * Hook to fetch user's owned assets with balances
  *
- * Uses the Diamond contract (same as Node Dashboard) to get accurate inventory.
- * Fetches inventory from ALL nodes owned by the wallet.
+ * Uses the Diamond contract to get accurate inventory balances.
+ * Fetches actual node token balances (not just capacity metadata).
  * No node selection required - automatically aggregates from all owned nodes.
  *
  * @param filterClass - Optional asset class to filter by
- * @returns User's sellable assets with balances and metadata
+ * @returns User's sellable assets with actual tradable balances
  */
 export function useUserAssets(filterClass?: string) {
   const { address, isConnected } = useWallet();
@@ -33,6 +37,7 @@ export function useUserAssets(filterClass?: string) {
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
+    getNodeInventory,
   } = useDiamond();
 
   const [assets, setAssets] = useState<AssetWithAttributes[]>([]);
@@ -93,23 +98,81 @@ export function useUserAssets(filterClass?: string) {
         return;
       }
 
-      // Step 2: Fetch assets for each owned node from Diamond contract
-      const allAssets: TokenizedAsset[] = [];
+      // Step 2: Fetch ACTUAL inventory balances for each node
+      // This is the real tradable balance, not just metadata capacity
+      const allAssets: AssetWithAttributes[] = [];
 
       for (const nodeId of ownedNodeIds) {
-        console.log('[useUserAssets] Fetching assets for node:', nodeId);
+        console.log('[useUserAssets] Fetching inventory for node:', nodeId);
         try {
+          // Get actual node inventory (tokenIds + balances)
+          const inventory = await getNodeInventory(nodeId);
+          console.log(
+            '[useUserAssets] Node inventory:',
+            nodeId,
+            'tokenIds:',
+            inventory.tokenIds.map((t) => t.toString()),
+            'balances:',
+            inventory.balances.map((b) => b.toString()),
+          );
+
+          // Also get asset metadata for enrichment
           const nodeAssets = await getNodeAssets(nodeId);
           console.log(
-            '[useUserAssets] Found',
+            '[useUserAssets] Node asset metadata:',
             nodeAssets.length,
-            'assets for node',
-            nodeId,
+            'assets',
           );
-          allAssets.push(...nodeAssets);
+
+          // Create a map of tokenId -> metadata for quick lookup
+          const metadataMap = new Map<string, TokenizedAsset>();
+          for (const asset of nodeAssets) {
+            metadataMap.set(asset.id, asset);
+          }
+
+          // For each token in inventory with balance > 0, create an asset entry
+          for (let i = 0; i < inventory.tokenIds.length; i++) {
+            const tokenId = inventory.tokenIds[i].toString();
+            const balance = inventory.balances[i];
+
+            if (balance <= 0n) {
+              continue; // Skip zero-balance tokens
+            }
+
+            // Get metadata if available
+            const metadata = metadataMap.get(tokenId);
+
+            const assetEntry: AssetWithAttributes = {
+              id: tokenId,
+              amount: balance.toString(),
+              name: metadata?.name || `Token #${tokenId.slice(0, 8)}...`,
+              class: metadata?.class || 'Unknown',
+              fileHash: metadata?.fileHash || '',
+              status: 'Active',
+              nodeAddress: nodeId,
+              nodeLocation: metadata?.nodeLocation || {
+                addressName: '',
+                location: { lat: '0', lng: '0' },
+              },
+              price: metadata?.price || '0',
+              capacity: metadata?.capacity || '0',
+              actualBalance: balance.toString(),
+              nodeHash: nodeId,
+            };
+
+            allAssets.push(assetEntry);
+            console.log(
+              '[useUserAssets] Added asset:',
+              tokenId,
+              'balance:',
+              balance.toString(),
+              'name:',
+              assetEntry.name,
+            );
+          }
         } catch (nodeError) {
           console.error(
-            '[useUserAssets] Error fetching assets for node',
+            '[useUserAssets] Error fetching inventory for node',
             nodeId,
             nodeError,
           );
@@ -117,7 +180,7 @@ export function useUserAssets(filterClass?: string) {
       }
 
       console.log(
-        '[useUserAssets] Total assets from all nodes:',
+        '[useUserAssets] Total assets with balances from all nodes:',
         allAssets.length,
       );
 
@@ -171,6 +234,7 @@ export function useUserAssets(filterClass?: string) {
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
+    getNodeInventory,
   ]);
 
   // Fetch on mount and when dependencies change
@@ -180,6 +244,7 @@ export function useUserAssets(filterClass?: string) {
 
   /**
    * Convert TokenizedAsset to SellableAsset format
+   * Uses actualBalance (real node inventory) instead of capacity (metadata)
    */
   const sellableAssets = useMemo((): SellableAsset[] => {
     const result: SellableAsset[] = [];
@@ -193,10 +258,10 @@ export function useUserAssets(filterClass?: string) {
         continue;
       }
 
-      // Only include assets with capacity > 0
-      const capacity = BigInt(asset.capacity || '0');
-      if (capacity <= 0n) {
-        continue;
+      // Use actualBalance (real tradable inventory) instead of capacity
+      const balance = BigInt(asset.actualBalance || asset.amount || '0');
+      if (balance <= 0n) {
+        continue; // Skip assets with no tradable balance
       }
 
       result.push({
@@ -204,7 +269,7 @@ export function useUserAssets(filterClass?: string) {
         tokenId: asset.id,
         name: asset.name || 'Unknown Asset',
         class: asset.class || 'Unknown',
-        balance: asset.capacity || '0',
+        balance: balance.toString(), // Use actual balance, not capacity
         price: asset.price
           ? (Number(asset.price) / 1e18).toFixed(2)
           : undefined,
@@ -212,7 +277,11 @@ export function useUserAssets(filterClass?: string) {
       });
     }
 
-    console.log('[useUserAssets] Sellable assets:', result.length);
+    console.log(
+      '[useUserAssets] Sellable assets:',
+      result.length,
+      result.map((a) => ({ id: a.id, balance: a.balance })),
+    );
     return result;
   }, [assets, filterClass]);
 

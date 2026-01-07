@@ -76,6 +76,9 @@ interface DiamondContextType {
     amount: bigint,
   ) => Promise<void>;
   getNodeTokenBalance: (nodeHash: string, tokenId: string) => Promise<bigint>;
+  getNodeInventory: (
+    nodeHash: string,
+  ) => Promise<{ tokenIds: bigint[]; balances: bigint[] }>;
   approveClobForTokens: (nodeHash: string) => Promise<void>;
   isClobApproved: () => Promise<boolean>;
   placeSellOrderFromNode: (
@@ -380,6 +383,34 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
+  // Get full node inventory (all tokenIds and their balances)
+  const getNodeInventory = useCallback(
+    async (
+      nodeHash: string,
+    ): Promise<{ tokenIds: bigint[]; balances: bigint[] }> => {
+      if (!diamondContext) {
+        return { tokenIds: [], balances: [] };
+      }
+      const diamond = diamondContext.getDiamond();
+      try {
+        const [tokenIds, balances] = await diamond.getNodeInventory(nodeHash);
+        console.log('[DiamondProvider] Node inventory:', {
+          nodeHash,
+          tokenIds: tokenIds.map((t: any) => t.toString()),
+          balances: balances.map((b: any) => b.toString()),
+        });
+        return {
+          tokenIds: tokenIds.map((t: any) => BigInt(t.toString())),
+          balances: balances.map((b: any) => BigInt(b.toString())),
+        };
+      } catch (err) {
+        console.error('[DiamondProvider] Error getting node inventory:', err);
+        return { tokenIds: [], balances: [] };
+      }
+    },
+    [diamondContext],
+  );
+
   // DEPRECATED: CLOB approval is no longer needed since CLOBFacet is internal to Diamond
   // Kept for backward compatibility - always succeeds immediately
   const approveClobForTokens = useCallback(
@@ -472,6 +503,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     depositTokensToNode,
     withdrawTokensFromNode,
     getNodeTokenBalance,
+    getNodeInventory,
     approveClobForTokens,
     isClobApproved,
     placeSellOrderFromNode,
