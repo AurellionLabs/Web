@@ -24,7 +24,8 @@ interface AssetWithAttributes extends TokenizedAsset {
  * Hook to fetch user's owned assets with balances
  *
  * Uses the Diamond contract to get accurate inventory balances.
- * Fetches actual node token balances (not just capacity metadata).
+ * Gets asset list from getNodeAssets() (metadata) and actual tradable
+ * balance from getNodeTokenBalance() for each asset.
  * No node selection required - automatically aggregates from all owned nodes.
  *
  * @param filterClass - Optional asset class to filter by
@@ -37,7 +38,7 @@ export function useUserAssets(filterClass?: string) {
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
-    getNodeInventory,
+    getNodeTokenBalance,
   } = useDiamond();
 
   const [assets, setAssets] = useState<AssetWithAttributes[]>([]);
@@ -98,81 +99,61 @@ export function useUserAssets(filterClass?: string) {
         return;
       }
 
-      // Step 2: Fetch ACTUAL inventory balances for each node
-      // This is the real tradable balance, not just metadata capacity
+      // Step 2: Fetch assets for each node from getNodeAssets (metadata)
+      // Then get ACTUAL tradable balance from getNodeTokenBalance for each
       const allAssets: AssetWithAttributes[] = [];
 
       for (const nodeId of ownedNodeIds) {
-        console.log('[useUserAssets] Fetching inventory for node:', nodeId);
+        console.log('[useUserAssets] Fetching assets for node:', nodeId);
         try {
-          // Get actual node inventory (tokenIds + balances)
-          const inventory = await getNodeInventory(nodeId);
-          console.log(
-            '[useUserAssets] Node inventory:',
-            nodeId,
-            'tokenIds:',
-            inventory.tokenIds.map((t) => t.toString()),
-            'balances:',
-            inventory.balances.map((b) => b.toString()),
-          );
-
-          // Also get asset metadata for enrichment
+          // Get asset metadata from getNodeAssets
           const nodeAssets = await getNodeAssets(nodeId);
           console.log(
-            '[useUserAssets] Node asset metadata:',
+            '[useUserAssets] Found',
             nodeAssets.length,
-            'assets',
+            'assets for node',
+            nodeId,
           );
 
-          // Create a map of tokenId -> metadata for quick lookup
-          const metadataMap = new Map<string, TokenizedAsset>();
+          // For each asset, get its ACTUAL tradable balance from nodeTokenBalances
           for (const asset of nodeAssets) {
-            metadataMap.set(asset.id, asset);
-          }
+            try {
+              // Query the real tradable balance (what the CLOB sell will use)
+              const actualBalance = await getNodeTokenBalance(nodeId, asset.id);
+              console.log(
+                '[useUserAssets] Asset',
+                asset.id,
+                'capacity:',
+                asset.capacity,
+                'actualBalance:',
+                actualBalance.toString(),
+              );
 
-          // For each token in inventory with balance > 0, create an asset entry
-          for (let i = 0; i < inventory.tokenIds.length; i++) {
-            const tokenId = inventory.tokenIds[i].toString();
-            const balance = inventory.balances[i];
+              // Create asset entry with actual balance
+              const assetEntry: AssetWithAttributes = {
+                ...asset,
+                actualBalance: actualBalance.toString(),
+                nodeHash: nodeId,
+              };
 
-            if (balance <= 0n) {
-              continue; // Skip zero-balance tokens
+              allAssets.push(assetEntry);
+            } catch (balanceError) {
+              console.warn(
+                '[useUserAssets] Error getting balance for asset',
+                asset.id,
+                balanceError,
+              );
+              // Still add the asset but with capacity as fallback
+              allAssets.push({
+                ...asset,
+                actualBalance: asset.capacity || '0',
+                nodeHash: nodeId,
+              });
             }
-
-            // Get metadata if available
-            const metadata = metadataMap.get(tokenId);
-
-            const assetEntry: AssetWithAttributes = {
-              id: tokenId,
-              amount: balance.toString(),
-              name: metadata?.name || `Token #${tokenId.slice(0, 8)}...`,
-              class: metadata?.class || 'Unknown',
-              fileHash: metadata?.fileHash || '',
-              status: 'Active',
-              nodeAddress: nodeId,
-              nodeLocation: metadata?.nodeLocation || {
-                addressName: '',
-                location: { lat: '0', lng: '0' },
-              },
-              price: metadata?.price || '0',
-              capacity: metadata?.capacity || '0',
-              actualBalance: balance.toString(),
-              nodeHash: nodeId,
-            };
-
-            allAssets.push(assetEntry);
-            console.log(
-              '[useUserAssets] Added asset:',
-              tokenId,
-              'balance:',
-              balance.toString(),
-              'name:',
-              assetEntry.name,
-            );
           }
         } catch (nodeError) {
           console.error(
-            '[useUserAssets] Error fetching inventory for node',
+            '[useUserAssets] Error fetching assets for node',
             nodeId,
             nodeError,
           );
@@ -180,7 +161,7 @@ export function useUserAssets(filterClass?: string) {
       }
 
       console.log(
-        '[useUserAssets] Total assets with balances from all nodes:',
+        '[useUserAssets] Total assets from all nodes:',
         allAssets.length,
       );
 
@@ -234,7 +215,7 @@ export function useUserAssets(filterClass?: string) {
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
-    getNodeInventory,
+    getNodeTokenBalance,
   ]);
 
   // Fetch on mount and when dependencies change
@@ -244,7 +225,8 @@ export function useUserAssets(filterClass?: string) {
 
   /**
    * Convert TokenizedAsset to SellableAsset format
-   * Uses actualBalance (real node inventory) instead of capacity (metadata)
+   * Uses actualBalance (real node inventory) - this is what the CLOB will check
+   * Falls back to capacity if actualBalance is not available
    */
   const sellableAssets = useMemo((): SellableAsset[] => {
     const result: SellableAsset[] = [];
@@ -258,10 +240,16 @@ export function useUserAssets(filterClass?: string) {
         continue;
       }
 
-      // Use actualBalance (real tradable inventory) instead of capacity
-      const balance = BigInt(asset.actualBalance || asset.amount || '0');
-      if (balance <= 0n) {
-        continue; // Skip assets with no tradable balance
+      // Use actualBalance (real tradable inventory) - this matches what CLOB checks
+      // Fall back to capacity if actualBalance is not set
+      const actualBalance = BigInt(asset.actualBalance || '0');
+      const capacity = BigInt(asset.capacity || '0');
+
+      // Use actualBalance if available, otherwise fall back to capacity
+      const displayBalance = actualBalance > 0n ? actualBalance : capacity;
+
+      if (displayBalance <= 0n) {
+        continue; // Skip assets with no balance
       }
 
       result.push({
@@ -269,7 +257,7 @@ export function useUserAssets(filterClass?: string) {
         tokenId: asset.id,
         name: asset.name || 'Unknown Asset',
         class: asset.class || 'Unknown',
-        balance: balance.toString(), // Use actual balance, not capacity
+        balance: displayBalance.toString(),
         price: asset.price
           ? (Number(asset.price) / 1e18).toFixed(2)
           : undefined,
