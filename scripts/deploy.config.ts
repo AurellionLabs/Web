@@ -931,6 +931,34 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       outputs: [{ name: 'orderId', type: 'bytes32' }],
       stateMutability: 'nonpayable',
     },
+    // Convenience function - simplified buy order (GTC, no expiry)
+    {
+      type: 'function',
+      name: 'placeBuyOrder',
+      inputs: [
+        { name: 'baseToken', type: 'address' },
+        { name: 'baseTokenId', type: 'uint256' },
+        { name: 'quoteToken', type: 'address' },
+        { name: 'price', type: 'uint96' },
+        { name: 'amount', type: 'uint96' },
+      ],
+      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    // Convenience function - simplified sell order (GTC, no expiry)
+    {
+      type: 'function',
+      name: 'placeSellOrder',
+      inputs: [
+        { name: 'baseToken', type: 'address' },
+        { name: 'baseTokenId', type: 'uint256' },
+        { name: 'quoteToken', type: 'address' },
+        { name: 'price', type: 'uint96' },
+        { name: 'amount', type: 'uint96' },
+      ],
+      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
     // Cancel single order
     {
       type: 'function',
