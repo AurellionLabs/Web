@@ -7,9 +7,28 @@ import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 
 /**
- * @dev Interface for Diamond's CLOBFacet node sell order function
+ * @dev Interface for OrderRouterFacet - SINGLE ENTRY POINT for all order operations
+ * This replaces direct calls to CLOBFacet to ensure consistent V2 storage usage
+ */
+interface IOrderRouter {
+    function placeNodeSellOrder(
+        address nodeOwner,
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint96 price,
+        uint96 amount,
+        uint8 timeInForce,
+        uint40 expiry
+    ) external returns (bytes32 orderId);
+}
+
+/**
+ * @dev DEPRECATED: Old interface kept for reference only
+ * DO NOT USE - orders placed via this interface won't match with V2 orders
  */
 interface ICLOBFacet {
+    // DEPRECATED: Use IOrderRouter.placeNodeSellOrder instead
     function placeNodeSellOrder(
         address nodeOwner,
         address baseToken,
@@ -464,15 +483,17 @@ contract NodesFacet is Initializable {
         // Debit node's internal balance
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
 
-        // Call Diamond's own CLOBFacet via delegatecall (same contract)
-        // This keeps all logic within the Diamond - no external CLOB contract needed
-        orderId = ICLOBFacet(address(this)).placeNodeSellOrder(
+        // Route through OrderRouterFacet - SINGLE ENTRY POINT for all orders
+        // This ensures consistent V2 storage usage and proper order matching
+        orderId = IOrderRouter(address(this)).placeNodeSellOrder(
             msg.sender,           // nodeOwner receives proceeds
             s.auraAssetAddress,   // baseToken
             _tokenId,             // baseTokenId
             _quoteToken,          // quoteToken
-            _price,               // price
-            _amount               // amount
+            uint96(_price),       // price (cast to uint96)
+            uint96(_amount),      // amount (cast to uint96)
+            0,                    // timeInForce: GTC (Good Till Cancel)
+            0                     // expiry: 0 = no expiry
         );
 
         emit NodeSellOrderPlaced(_node, _tokenId, _quoteToken, _price, _amount, orderId);

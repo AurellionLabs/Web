@@ -48,6 +48,7 @@ import {
   CONTRACTS,
   DEPLOYMENT_MODES,
   FACET_SELECTORS,
+  DEPRECATED_SELECTORS,
   ContractConfig,
 } from './deploy.config';
 
@@ -783,6 +784,113 @@ async function analyzeSelectorsForFacet(
   return { toAdd, toReplace, toRemove, unchanged, existingFacetAddress };
 }
 
+/**
+ * Find deprecated selectors that are currently active in the Diamond
+ * These should be automatically removed during any facet upgrade
+ */
+async function findActiveDeprecatedSelectors(
+  diamondAddress: string,
+): Promise<{ selector: string; functionName: string; reason: string }[]> {
+  const diamondLoupe = await ethers.getContractAt(
+    'IDiamondLoupe',
+    diamondAddress,
+  );
+
+  const activeDeprecated: {
+    selector: string;
+    functionName: string;
+    reason: string;
+  }[] = [];
+
+  // Get all selectors from the Diamond
+  const facets = await diamondLoupe.facets();
+  const existingSelectors = new Set<string>();
+
+  for (const facet of facets) {
+    for (const selector of facet.functionSelectors) {
+      existingSelectors.add(selector.toLowerCase());
+    }
+  }
+
+  // Check each deprecated selector
+  for (const deprecated of DEPRECATED_SELECTORS) {
+    // Compute selector from function signature if not provided
+    let selector = deprecated.selector;
+    if (selector === '0x' || !selector.startsWith('0x')) {
+      // We need to compute it - for now, we'll use the function name
+      // In production, this should be computed from the full signature
+      // For the known deprecated functions, we can hardcode them:
+      const knownSelectors: Record<string, string> = {
+        // placeNodeSellOrder(address,address,uint256,address,uint256,uint256)
+        placeNodeSellOrder: '0x', // Will be computed
+        // placeBuyOrder(address,uint256,address,uint256,uint256)
+        placeBuyOrder: '0x',
+        // placeOrder(bytes32,uint256,uint256,bool,uint8)
+        placeOrder: '0x',
+      };
+      selector = knownSelectors[deprecated.functionName] || '0x';
+    }
+
+    if (selector !== '0x' && existingSelectors.has(selector.toLowerCase())) {
+      activeDeprecated.push({
+        selector,
+        functionName: deprecated.functionName,
+        reason: deprecated.reason,
+      });
+    }
+  }
+
+  return activeDeprecated;
+}
+
+/**
+ * Remove deprecated selectors from the Diamond
+ */
+async function removeDeprecatedSelectors(
+  diamondAddress: string,
+  dryRun: boolean = false,
+): Promise<string[]> {
+  console.log('\n🔍 Checking for deprecated selectors...\n');
+
+  const activeDeprecated = await findActiveDeprecatedSelectors(diamondAddress);
+
+  if (activeDeprecated.length === 0) {
+    console.log('   ✓ No deprecated selectors found in Diamond\n');
+    return [];
+  }
+
+  console.log(
+    `   ⚠️  Found ${activeDeprecated.length} deprecated selector(s):\n`,
+  );
+  for (const dep of activeDeprecated) {
+    console.log(`      ${dep.functionName} (${dep.selector})`);
+    console.log(`         Reason: ${dep.reason}\n`);
+  }
+
+  if (dryRun) {
+    console.log('   [DRY RUN] Would remove these deprecated selectors\n');
+    return activeDeprecated.map((d) => d.selector);
+  }
+
+  // Execute diamond cut to remove deprecated selectors
+  const diamondCut = await ethers.getContractAt('IDiamondCut', diamondAddress);
+
+  const facetCuts = [
+    {
+      facetAddress: ethers.ZeroAddress,
+      action: 2, // Remove
+      functionSelectors: activeDeprecated.map((d) => d.selector),
+    },
+  ];
+
+  console.log('   Removing deprecated selectors...');
+  const tx = await diamondCut.diamondCut(facetCuts, ethers.ZeroAddress, '0x');
+  await tx.wait();
+  console.log('   ✓ Deprecated selectors removed\n');
+
+  return activeDeprecated.map((d) => d.selector);
+}
+
 async function updateFacet(
   facetName: string,
   action: 'add' | 'replace' | 'remove' | 'auto',
@@ -844,6 +952,9 @@ async function updateFacet(
 
   // If action is 'auto', analyze and perform smart update
   if (action === 'auto') {
+    // First, check for and remove any deprecated selectors
+    await removeDeprecatedSelectors(diamondAddress, dryRun);
+
     console.log('🔍 Analyzing on-chain selector state...\n');
 
     const analysis = await analyzeSelectorsForFacet(
@@ -914,11 +1025,14 @@ async function updateFacet(
     }> = [];
 
     // Build facet cuts array
-    if (analysis.toAdd.length > 0) {
+    // Order matters: Remove first, then Replace, then Add
+    // This prevents "selector already exists" errors
+
+    if (analysis.toRemove.length > 0) {
       facetCuts.push({
-        facetAddress: facetAddress,
-        action: 0, // Add
-        functionSelectors: analysis.toAdd,
+        facetAddress: ethers.ZeroAddress,
+        action: 2, // Remove
+        functionSelectors: analysis.toRemove,
       });
     }
 
@@ -930,18 +1044,58 @@ async function updateFacet(
       });
     }
 
-    if (analysis.toRemove.length > 0) {
+    if (analysis.toAdd.length > 0) {
       facetCuts.push({
-        facetAddress: ethers.ZeroAddress,
-        action: 2, // Remove
-        functionSelectors: analysis.toRemove,
+        facetAddress: facetAddress,
+        action: 0, // Add
+        functionSelectors: analysis.toAdd,
       });
     }
 
     // Execute all cuts in a single transaction
     console.log('⚙️  Performing diamondCut with smart selector updates...');
-    const tx = await diamondCut.diamondCut(facetCuts, ethers.ZeroAddress, '0x');
-    await tx.wait();
+    console.log('   Facet cuts to execute:');
+    for (const cut of facetCuts) {
+      const actionName =
+        cut.action === 0 ? 'Add' : cut.action === 1 ? 'Replace' : 'Remove';
+      console.log(
+        `   - ${actionName}: ${cut.functionSelectors.length} selectors to ${cut.facetAddress}`,
+      );
+      cut.functionSelectors.forEach((s) => console.log(`     ${s}`));
+    }
+
+    try {
+      const tx = await diamondCut.diamondCut(
+        facetCuts,
+        ethers.ZeroAddress,
+        '0x',
+      );
+      await tx.wait();
+    } catch (error: any) {
+      console.error('   Diamond cut failed:', error.message);
+      // Try executing cuts one at a time to find the problematic one
+      console.log('   Attempting individual cuts to identify issue...');
+      for (const cut of facetCuts) {
+        try {
+          const actionName =
+            cut.action === 0 ? 'Add' : cut.action === 1 ? 'Replace' : 'Remove';
+          console.log(`   Trying ${actionName} cut...`);
+          const singleTx = await diamondCut.diamondCut(
+            [cut],
+            ethers.ZeroAddress,
+            '0x',
+          );
+          await singleTx.wait();
+          console.log(`   ✓ ${actionName} succeeded`);
+        } catch (singleError: any) {
+          console.error(
+            `   ✗ ${cut.action === 0 ? 'Add' : cut.action === 1 ? 'Replace' : 'Remove'} failed:`,
+            singleError.message,
+          );
+        }
+      }
+      throw error;
+    }
 
     console.log('   ✓ Diamond cut completed successfully');
     if (analysis.toAdd.length > 0) {

@@ -585,6 +585,9 @@ contract CLOBFacet is Initializable {
      * @param _price Price per unit in quote token (wei)
      * @param _amount Amount of tokens to sell
      * @return orderId The generated order ID
+     * @dev DEPRECATED: This function uses array-based storage which is incompatible with 
+     *      CLOBFacetV2's tree-based storage. Orders placed here will NOT match with V2 orders.
+     *      Use placeNodeSellOrderV2 in CLOBFacetV2 instead.
      */
     function placeNodeSellOrder(
         address _nodeOwner,
@@ -594,6 +597,11 @@ contract CLOBFacet is Initializable {
         uint256 _price,
         uint256 _amount
     ) external returns (bytes32 orderId) {
+        // DEPRECATED: This function uses array-based storage incompatible with V2.
+        // Revert to prevent accidental usage - use placeNodeSellOrderV2 instead.
+        revert("DEPRECATED: Use placeNodeSellOrderV2 - this function uses incompatible storage");
+        
+        // Original implementation kept for reference:
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(_price > 0, 'Invalid price');
         require(_amount > 0, 'Invalid amount');

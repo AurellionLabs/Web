@@ -2060,6 +2060,38 @@ export const DiamondABI = [
     name: 'TradeExecutedV2',
     type: 'event',
   },
+  // OrderRouterFacet Events - tracks which entry point was used
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'orderSource',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'isBuy',
+        type: 'bool',
+      },
+    ],
+    name: 'OrderRouted',
+    type: 'event',
+  },
   // MEV Protection Events
   {
     anonymous: false,

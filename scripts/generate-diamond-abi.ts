@@ -21,8 +21,10 @@ const OUTPUT_PATH = path.resolve(
 );
 
 // Facets to include in the frontend Diamond ABI
+// OrderRouterFacet is the SINGLE ENTRY POINT for all order operations
 const FRONTEND_FACETS = [
-  'CLOBFacet',
+  'OrderRouterFacet', // Primary - use this for all order operations
+  'CLOBFacet', // Legacy - view functions only, order functions deprecated
   'NodesFacet',
   'DiamondLoupeFacet',
   'OwnershipFacet',
