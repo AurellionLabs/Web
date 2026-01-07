@@ -459,8 +459,10 @@ export class CLOBRepository {
 
     // Diamond CLOBFacet ABI (minimal interface for trading)
     const diamondCLOBABI = [
-      // Buy orders - user places buy order, tokens escrowed from their wallet
+      // Limit orders - user places buy order, tokens escrowed from their wallet
       'function placeBuyOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount) external returns (bytes32)',
+      // Market orders - immediate execution at best available price
+      'function placeMarketOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 amount, bool isBuy, uint256 maxPrice) external returns (bytes32)',
       // Cancel order - works for both buy and sell orders
       'function cancelCLOBOrder(bytes32 orderId) external',
       // View functions
