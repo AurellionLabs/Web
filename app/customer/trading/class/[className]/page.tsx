@@ -248,13 +248,22 @@ function ClassDetailPageContent() {
         const quantity = BigInt(order.quantity);
 
         // Build CLOB order params
-        // Note: tradeableAsset has tokenId (string) for CLOB compatibility
+        // For sell orders, use the tokenId from order.assetId (set by TradePanel from selectedSellAsset)
+        // For buy orders, use the tokenId from the platform catalog (tradeableAsset)
         const assetWithTokenId = tradeableAsset as TokenizedAssetUI & {
           tokenId: string;
         };
+
+        // IMPORTANT: For sell orders, order.assetId contains the user's actual token ID
+        // from their inventory (sellableAssets). For buy orders, we use the catalog token ID.
+        const effectiveTokenId =
+          order.side === 'sell' && order.assetId
+            ? order.assetId
+            : assetWithTokenId.tokenId || '0';
+
         const clobParams = {
           baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-          baseTokenId: assetWithTokenId.tokenId || '0',
+          baseTokenId: effectiveTokenId,
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
           amount: quantity,
@@ -281,7 +290,8 @@ function ClassDetailPageContent() {
 
           // Use the first owned node
           const nodeHash = ownedNodes[0];
-          const tokenId = assetWithTokenId.tokenId || '0';
+          // Use the effective token ID (from user's inventory for sell orders)
+          const tokenId = effectiveTokenId;
 
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
@@ -443,7 +453,8 @@ function ClassDetailPageContent() {
           }
 
           const nodeHash = ownedNodes[0];
-          const tokenId = assetWithTokenId.tokenId || '0';
+          // Use the effective token ID (from user's inventory for sell orders)
+          const tokenId = effectiveTokenId;
 
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
