@@ -32,6 +32,19 @@ contract CLOBFacetV2 is ReentrancyGuard {
         uint256 nonce
     );
     
+    // Token-based event for indexer compatibility (matches CLOBFacet format)
+    event OrderPlacedWithTokens(
+        bytes32 indexed orderId,
+        address indexed maker,
+        address indexed baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint256 price,
+        uint256 amount,
+        bool isBuy,
+        uint8 orderType
+    );
+    
     event OrderFilled(
         bytes32 indexed orderId,
         bytes32 indexed tradeId,
@@ -380,6 +393,19 @@ contract CLOBFacetV2 is ReentrancyGuard {
             timeInForce,
             expiry,
             nonce
+        );
+        
+        // Emit token-based event for indexer compatibility
+        emit OrderPlacedWithTokens(
+            orderId,
+            maker,
+            baseToken,
+            baseTokenId,
+            quoteToken,
+            price,
+            amount,
+            isBuy,
+            CLOBLib.TYPE_LIMIT
         );
         
         // Try to match
