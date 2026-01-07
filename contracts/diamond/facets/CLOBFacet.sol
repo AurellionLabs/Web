@@ -160,15 +160,45 @@ contract CLOBFacet is Initializable {
 
         s.clobOrderIds.push(orderId);
         s.totalCLOBOrders++;
+        
+        // FIX: Also add to price-level arrays for unified matching
+        if (_isBuy) {
+            s.bidOrders[_marketId][_price].push(orderId);
+            _addPriceLevel(s.bidPrices[_marketId], _price);
+        } else {
+            s.askOrders[_marketId][_price].push(orderId);
+            _addPriceLevel(s.askPrices[_marketId], _price);
+        }
 
         emit OrderPlaced(orderId, msg.sender, _marketId, _price, _amount, _isBuy, _orderType);
 
-        matchOrders(s, _marketId, orderId);
+        // FIX: Use unified matching that works with price-level arrays
+        _matchOrderUnified(s, _marketId, orderId);
 
         return orderId;
     }
 
+    /**
+     * @notice Legacy matching function - now redirects to unified matching
+     * @dev Kept for backward compatibility, but uses price-level matching internally
+     */
     function matchOrders(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _orderId
+    ) internal {
+        _matchOrderUnified(s, _marketId, _orderId);
+    }
+    
+    /**
+     * @notice Unified order matching using price-level arrays
+     * @dev This fixes the bug where orders from different placement functions didn't match
+     *      because they used different data structures
+     * 
+     * For BUY orders: Match against askPrices (lowest first)
+     * For SELL orders: Match against bidPrices (highest first)
+     */
+    function _matchOrderUnified(
         DiamondStorage.AppStorage storage s,
         bytes32 _marketId,
         bytes32 _orderId
@@ -176,66 +206,199 @@ contract CLOBFacet is Initializable {
         DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
         require(order.status == 0 || order.status == 1, 'Order not matchable');
 
+        if (order.isBuy) {
+            _matchBuyOrderUnified(s, _marketId, _orderId);
+        } else {
+            _matchSellOrderUnified(s, _marketId, _orderId);
+        }
+    }
+    
+    /**
+     * @notice Match a buy order against sell orders (asks)
+     * @dev Iterates ask prices from lowest to highest, matching until filled or no more matches
+     */
+    function _matchBuyOrderUnified(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _buyOrderId
+    ) internal {
+        DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
+        uint256[] storage askPrices = s.askPrices[_marketId];
+        
+        // Iterate through ask prices (already sorted ascending)
+        for (uint256 i = 0; i < askPrices.length; i++) {
+            if (buyOrder.filledAmount >= buyOrder.amount) break;
+            
+            uint256 askPrice = askPrices[i];
+            // Only match if ask price <= buy price (buyer willing to pay at least this much)
+            if (askPrice > buyOrder.price) break;
+            
+            bytes32[] storage ordersAtPrice = s.askOrders[_marketId][askPrice];
+            
+            for (uint256 j = 0; j < ordersAtPrice.length; j++) {
+                if (buyOrder.filledAmount >= buyOrder.amount) break;
+                
+                bytes32 sellOrderId = ordersAtPrice[j];
+                if (sellOrderId == _buyOrderId) continue; // Don't match with self
+                
+                DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[sellOrderId];
+                
+                // Skip if not matchable
+                if (sellOrder.status != 0 && sellOrder.status != 1) continue;
+                if (sellOrder.filledAmount >= sellOrder.amount) continue;
+                
+                // Execute the match at the ask price (price improvement for buyer)
+                _executeMatch(s, _marketId, _buyOrderId, sellOrderId, askPrice);
+            }
+        }
+        
+        // Also check legacy orders that might not be in price arrays
+        _matchAgainstLegacyOrders(s, _marketId, _buyOrderId);
+    }
+    
+    /**
+     * @notice Match a sell order against buy orders (bids)
+     * @dev Iterates bid prices from highest to lowest, matching until filled or no more matches
+     */
+    function _matchSellOrderUnified(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _sellOrderId
+    ) internal {
+        DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
+        uint256[] storage bidPrices = s.bidPrices[_marketId];
+        
+        // Iterate through bid prices from highest to lowest
+        for (uint256 i = bidPrices.length; i > 0; i--) {
+            if (sellOrder.filledAmount >= sellOrder.amount) break;
+            
+            uint256 bidPrice = bidPrices[i - 1];
+            // Only match if bid price >= sell price (buyer willing to pay at least seller's ask)
+            if (bidPrice < sellOrder.price) break;
+            
+            bytes32[] storage ordersAtPrice = s.bidOrders[_marketId][bidPrice];
+            
+            for (uint256 j = 0; j < ordersAtPrice.length; j++) {
+                if (sellOrder.filledAmount >= sellOrder.amount) break;
+                
+                bytes32 buyOrderId = ordersAtPrice[j];
+                if (buyOrderId == _sellOrderId) continue; // Don't match with self
+                
+                DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[buyOrderId];
+                
+                // Skip if not matchable
+                if (buyOrder.status != 0 && buyOrder.status != 1) continue;
+                if (buyOrder.filledAmount >= buyOrder.amount) continue;
+                
+                // Execute the match at the bid price (price improvement for seller)
+                _executeMatch(s, _marketId, buyOrderId, _sellOrderId, bidPrice);
+            }
+        }
+        
+        // Also check legacy orders that might not be in price arrays
+        _matchAgainstLegacyOrders(s, _marketId, _sellOrderId);
+    }
+    
+    /**
+     * @notice Fallback matching against legacy orders not in price arrays
+     * @dev This ensures backward compatibility with orders placed before the fix
+     */
+    function _matchAgainstLegacyOrders(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _orderId
+    ) internal {
+        DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
+        if (order.filledAmount >= order.amount) return;
+        
         uint256 orderRemaining = order.amount - order.filledAmount;
 
         for (uint256 i = 0; i < s.clobOrderIds.length && orderRemaining > 0; i++) {
             bytes32 matchOrderId = s.clobOrderIds[i];
+            if (matchOrderId == _orderId) continue;
+            
             DiamondStorage.CLOBOrder storage matchOrder = s.clobOrders[matchOrderId];
 
             if (matchOrder.status != 0 && matchOrder.status != 1) continue;
             if (matchOrder.marketId != _marketId) continue;
             if (matchOrder.isBuy == order.isBuy) continue;
+            if (matchOrder.filledAmount >= matchOrder.amount) continue;
+            
+            // Price compatibility check
             if (order.isBuy && matchOrder.price > order.price) continue;
             if (!order.isBuy && matchOrder.price < order.price) continue;
 
-            uint256 matchRemaining = matchOrder.amount - matchOrder.filledAmount;
-            uint256 fillAmount = orderRemaining < matchRemaining ? orderRemaining : matchRemaining;
-
-            bytes32 tradeId = keccak256(abi.encodePacked(_orderId, matchOrderId, block.timestamp));
-            uint256 quoteAmount = fillAmount * order.price;
-
-            s.trades[tradeId] = DiamondStorage.Trade({
-                takerOrderId: _orderId,
-                makerOrderId: matchOrderId,
-                taker: order.maker,
-                maker: matchOrder.maker,
-                marketId: _marketId,
-                price: order.price,
-                amount: fillAmount,
-                quoteAmount: quoteAmount,
-                timestamp: block.timestamp,
-                createdAt: block.timestamp
-            });
-
-            s.tradeIds.push(tradeId);
-            s.totalTrades++;
-
-            order.filledAmount += fillAmount;
-            order.updatedAt = block.timestamp;
-            matchOrder.filledAmount += fillAmount;
-            matchOrder.updatedAt = block.timestamp;
-
-            uint256 takerFee = (quoteAmount * TAKER_FEE) / 10000;
-            uint256 makerFee = (quoteAmount * MAKER_FEE) / 10000;
-
-            emit FeesCollected(tradeId, takerFee, makerFee, 0);
-            emit TradeExecuted(tradeId, order.maker, matchOrder.maker, _marketId, order.price, fillAmount, quoteAmount, block.timestamp);
-            emit OrderMatched(_orderId, matchOrderId, tradeId, fillAmount, order.price, quoteAmount);
-
-            if (order.filledAmount >= order.amount) {
-                order.status = 2;
-            } else {
-                order.status = 1;
-            }
-
-            if (matchOrder.filledAmount >= matchOrder.amount) {
-                matchOrder.status = 2;
-            } else {
-                matchOrder.status = 1;
-            }
-
+            // Determine fill price (maker's price for price improvement)
+            uint256 fillPrice = matchOrder.price;
+            
+            _executeMatch(s, _marketId, 
+                order.isBuy ? _orderId : matchOrderId,  // buyOrderId
+                order.isBuy ? matchOrderId : _orderId,  // sellOrderId
+                fillPrice
+            );
+            
             orderRemaining = order.amount - order.filledAmount;
         }
+    }
+    
+    /**
+     * @notice Execute a match between a buy order and sell order
+     * @dev Handles fill amount calculation, trade recording, and status updates
+     */
+    function _executeMatch(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _buyOrderId,
+        bytes32 _sellOrderId,
+        uint256 _fillPrice
+    ) internal {
+        DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
+        DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
+        
+        uint256 buyRemaining = buyOrder.amount - buyOrder.filledAmount;
+        uint256 sellRemaining = sellOrder.amount - sellOrder.filledAmount;
+        
+        if (buyRemaining == 0 || sellRemaining == 0) return;
+        
+        uint256 fillAmount = buyRemaining < sellRemaining ? buyRemaining : sellRemaining;
+        uint256 quoteAmount = fillAmount * _fillPrice;
+        
+        // Create trade record
+        bytes32 tradeId = keccak256(abi.encodePacked(_buyOrderId, _sellOrderId, block.timestamp, s.totalTrades));
+        
+        s.trades[tradeId] = DiamondStorage.Trade({
+            takerOrderId: _buyOrderId,
+            makerOrderId: _sellOrderId,
+            taker: buyOrder.maker,
+            maker: sellOrder.maker,
+            marketId: _marketId,
+            price: _fillPrice,
+            amount: fillAmount,
+            quoteAmount: quoteAmount,
+            timestamp: block.timestamp,
+            createdAt: block.timestamp
+        });
+
+        s.tradeIds.push(tradeId);
+        s.totalTrades++;
+
+        // Update order fill amounts
+        buyOrder.filledAmount += fillAmount;
+        buyOrder.updatedAt = block.timestamp;
+        sellOrder.filledAmount += fillAmount;
+        sellOrder.updatedAt = block.timestamp;
+
+        // Update order statuses
+        buyOrder.status = buyOrder.filledAmount >= buyOrder.amount ? 2 : 1;
+        sellOrder.status = sellOrder.filledAmount >= sellOrder.amount ? 2 : 1;
+
+        // Calculate and emit fees
+        uint256 takerFee = (quoteAmount * TAKER_FEE) / 10000;
+        uint256 makerFee = (quoteAmount * MAKER_FEE) / 10000;
+
+        emit FeesCollected(tradeId, takerFee, makerFee, 0);
+        emit TradeExecuted(tradeId, buyOrder.maker, sellOrder.maker, _marketId, _fillPrice, fillAmount, quoteAmount, block.timestamp);
+        emit OrderMatched(_buyOrderId, _sellOrderId, tradeId, fillAmount, _fillPrice, quoteAmount);
     }
 
     function cancelOrder(bytes32 _orderId) external {
@@ -836,6 +999,83 @@ contract CLOBFacet is Initializable {
                 remaining = sellOrder.amount - sellOrder.filledAmount;
             }
         }
+        
+        // FIX: Also check legacy orders not in price arrays
+        _matchSellOrderLegacy(s, _marketId, _sellOrderId, baseToken, quoteToken, baseTokenId);
+    }
+    
+    /**
+     * @notice Fallback matching for sell orders against legacy buy orders
+     */
+    function _matchSellOrderLegacy(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _sellOrderId,
+        address _baseToken,
+        address _quoteToken,
+        uint256 _baseTokenId
+    ) internal {
+        DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
+        if (sellOrder.filledAmount >= sellOrder.amount) return;
+        
+        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+            if (sellOrder.filledAmount >= sellOrder.amount) break;
+            
+            bytes32 buyOrderId = s.clobOrderIds[i];
+            if (buyOrderId == _sellOrderId) continue;
+            
+            DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[buyOrderId];
+            
+            if (buyOrder.status != 0 && buyOrder.status != 1) continue;
+            if (buyOrder.marketId != _marketId) continue;
+            if (!buyOrder.isBuy) continue; // Only match with buy orders
+            if (buyOrder.price < sellOrder.price) continue; // Price must be acceptable
+            if (buyOrder.filledAmount >= buyOrder.amount) continue;
+            
+            uint256 buyRemaining = buyOrder.amount - buyOrder.filledAmount;
+            uint256 sellRemaining = sellOrder.amount - sellOrder.filledAmount;
+            uint256 fillAmount = buyRemaining < sellRemaining ? buyRemaining : sellRemaining;
+            uint256 fillPrice = buyOrder.price; // Use buyer's price
+            uint256 quoteAmount = fillAmount * fillPrice;
+            
+            // Execute trade
+            bytes32 tradeId = keccak256(abi.encodePacked(_sellOrderId, buyOrderId, block.timestamp, s.totalTrades));
+            
+            // Transfer base tokens from Diamond to buyer
+            IERC1155(_baseToken).safeTransferFrom(address(this), buyOrder.maker, _baseTokenId, fillAmount, "");
+            
+            // Transfer quote tokens from Diamond (escrowed) to seller
+            IERC20(_quoteToken).transfer(sellOrder.maker, quoteAmount);
+            
+            // Update orders
+            sellOrder.filledAmount += fillAmount;
+            sellOrder.updatedAt = block.timestamp;
+            buyOrder.filledAmount += fillAmount;
+            buyOrder.updatedAt = block.timestamp;
+            
+            // Update statuses
+            sellOrder.status = sellOrder.filledAmount >= sellOrder.amount ? 2 : 1;
+            buyOrder.status = buyOrder.filledAmount >= buyOrder.amount ? 2 : 1;
+            
+            // Record trade
+            s.trades[tradeId] = DiamondStorage.Trade({
+                takerOrderId: _sellOrderId,
+                makerOrderId: buyOrderId,
+                taker: sellOrder.maker,
+                maker: buyOrder.maker,
+                marketId: _marketId,
+                price: fillPrice,
+                amount: fillAmount,
+                quoteAmount: quoteAmount,
+                timestamp: block.timestamp,
+                createdAt: block.timestamp
+            });
+            s.tradeIds.push(tradeId);
+            s.totalTrades++;
+            
+            emit TradeExecuted(tradeId, sellOrder.maker, buyOrder.maker, _marketId, fillPrice, fillAmount, quoteAmount, block.timestamp);
+            emit OrderMatched(_sellOrderId, buyOrderId, tradeId, fillAmount, fillPrice, quoteAmount);
+        }
     }
 
     function _matchBuyOrder(
@@ -855,6 +1095,39 @@ contract CLOBFacet is Initializable {
             if (askPrices[i] > buyOrder.price) break;
             
             _matchBuyAtPrice(s, _buyOrderId, askPrices[i], ctx);
+        }
+        
+        // FIX: Also check legacy orders not in price arrays
+        _matchBuyOrderLegacy(s, _marketId, _buyOrderId, ctx);
+    }
+    
+    /**
+     * @notice Fallback matching for buy orders against legacy sell orders
+     */
+    function _matchBuyOrderLegacy(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _buyOrderId,
+        MatchContext memory ctx
+    ) internal {
+        DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
+        if (buyOrder.filledAmount >= buyOrder.amount) return;
+        
+        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+            if (buyOrder.filledAmount >= buyOrder.amount) break;
+            
+            bytes32 sellOrderId = s.clobOrderIds[i];
+            if (sellOrderId == _buyOrderId) continue;
+            
+            DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[sellOrderId];
+            
+            if (sellOrder.status != 0 && sellOrder.status != 1) continue;
+            if (sellOrder.marketId != _marketId) continue;
+            if (sellOrder.isBuy) continue; // Only match with sell orders
+            if (sellOrder.price > buyOrder.price) continue; // Price must be acceptable
+            if (sellOrder.filledAmount >= sellOrder.amount) continue;
+            
+            _executeBuyMatch(s, _buyOrderId, sellOrderId, sellOrder.price, ctx);
         }
     }
 

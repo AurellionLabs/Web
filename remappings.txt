@@ -1,2 +1,2 @@
-forge-std/=lib/forge-std/
+forge-std/=lib/forge-std/src/
 @openzeppelin/=node_modules/@openzeppelin/
