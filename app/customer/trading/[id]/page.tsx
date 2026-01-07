@@ -13,6 +13,7 @@ import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
 import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
+import { UserOrders } from '@/app/components/trading/user-orders';
 import type {
   PlaceLimitOrderParams,
   CLOBTrade,
@@ -907,6 +908,14 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               />
               <RecentTrades trades={recentTrades} isLoading={isLoadingTrades} />
             </div>
+
+            {/* User's Orders Section */}
+            <UserOrders
+              baseToken={NEXT_PUBLIC_AURA_GOAT_ADDRESS}
+              baseTokenId={getTokenId()}
+              maxOrders={20}
+              refreshInterval={REFRESH_INTERVAL}
+            />
           </div>
 
           {/* Right side - Trade panel and Stats */}

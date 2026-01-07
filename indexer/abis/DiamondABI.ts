@@ -2482,6 +2482,13 @@ export const DiamondABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
+  {
+    inputs: [{ internalType: 'bytes32', name: '_orderId', type: 'bytes32' }],
+    name: 'cancelCLOBOrder',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
   // CLOBViewFacet Functions
   {
     inputs: [{ internalType: 'bytes32', name: 'marketId', type: 'bytes32' }],

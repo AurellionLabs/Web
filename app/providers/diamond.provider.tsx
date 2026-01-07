@@ -85,6 +85,9 @@ interface DiamondContextType {
     price: bigint,
     amount: bigint,
   ) => Promise<string>; // Returns orderId
+
+  // Order management
+  cancelCLOBOrder: (orderId: string) => Promise<void>;
 }
 
 const DiamondProviderContext = createContext<DiamondContextType | undefined>(
@@ -433,6 +436,23 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
+  // Cancel a CLOB order
+  const cancelCLOBOrder = useCallback(
+    async (orderId: string): Promise<void> => {
+      if (!diamondContext) {
+        throw new Error('Diamond not initialized');
+      }
+      const diamond = diamondContext.getDiamond();
+      console.log('[DiamondProvider] Cancelling order:', orderId);
+
+      // Call cancelCLOBOrder on the Diamond contract
+      const tx = await diamond.cancelCLOBOrder(orderId);
+      const receipt = await tx.wait();
+      console.log('[DiamondProvider] Order cancelled, tx:', receipt.hash);
+    },
+    [diamondContext],
+  );
+
   const value: DiamondContextType = {
     initialized,
     loading,
@@ -455,6 +475,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     approveClobForTokens,
     isClobApproved,
     placeSellOrderFromNode,
+    cancelCLOBOrder,
   };
 
   return (
