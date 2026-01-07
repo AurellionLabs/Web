@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-07T11:54:28.798Z
+// Deployed: 2026-01-07T14:48:22.597Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -65,7 +65,7 @@ export const NEXT_PUBLIC_STAKING_FACET_ADDRESS =
 export const NEXT_PUBLIC_BRIDGE_FACET_ADDRESS =
   '0xab99C57492A7e1f060560139FeAf3e642fF1e8E1';
 export const NEXT_PUBLIC_CLOB_FACET_ADDRESS =
-  '0xF96ad2125F20aB64C62689195e85AF5A1be81971';
+  '0xEb8B895110f8321B06b06A516f03a3d12D6387a6';
 
 // Diamond deployment block (for indexer start block)
 export const DIAMOND_DEPLOY_BLOCK = 35859031;
