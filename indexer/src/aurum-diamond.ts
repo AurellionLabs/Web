@@ -1214,7 +1214,7 @@ async function updateMarketData(
       .onConflictDoNothing();
   } else {
     await context.db.update(marketData, { id: marketId }).set({
-      openOrderCount: existing.openOrderCount + 1n,
+      openOrderCount: BigInt(existing.openOrderCount) + 1n,
       updatedAt: timestamp,
     });
   }
