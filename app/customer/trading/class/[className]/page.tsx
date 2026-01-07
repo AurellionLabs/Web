@@ -251,9 +251,9 @@ function ClassDetailPageContent() {
 
         // For SELL orders: use Diamond's placeSellOrderFromNode
         // Node must have deposited tokens first
-        if (order.side === 'sell') {
+        if (order.side === 'sell' && order.type === 'limit') {
           console.log(
-            '[ClassTradingPage] Sell order - checking node inventory...',
+            '[ClassTradingPage] Limit sell order - checking node inventory...',
           );
 
           // Get user's owned nodes
@@ -329,7 +329,7 @@ function ClassDetailPageContent() {
           }
 
           console.log(
-            '[ClassTradingPage] Placing sell order from node:',
+            '[ClassTradingPage] Placing limit sell order from node:',
             nodeHash,
           );
 
@@ -343,7 +343,7 @@ function ClassDetailPageContent() {
               quantity,
             );
             console.log(
-              '[ClassTradingPage] Sell order placed from node:',
+              '[ClassTradingPage] Limit sell order placed from node:',
               orderId,
             );
             return true;
@@ -413,7 +413,131 @@ function ClassDetailPageContent() {
           }
         }
 
-        // For BUY orders: use regular CLOB flow (buyer pays from wallet)
+        // For MARKET SELL orders: use placeSellOrderFromNode with best bid price
+        if (order.side === 'sell' && order.type === 'market') {
+          console.log(
+            '[ClassTradingPage] Market sell order - checking node inventory...',
+          );
+
+          // Get user's owned nodes
+          const ownedNodes = await getOwnedNodes();
+          if (ownedNodes.length === 0) {
+            console.error(
+              '[ClassTradingPage] No owned nodes found for selling',
+            );
+            return false;
+          }
+
+          const nodeHash = ownedNodes[0];
+          const tokenId = assetWithTokenId.tokenId || '0';
+
+          // Check node's deposited balance
+          const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
+          console.log(
+            '[ClassTradingPage] Node balance:',
+            nodeBalance.toString(),
+            'Required:',
+            quantity.toString(),
+          );
+
+          if (nodeBalance < quantity) {
+            console.log(
+              '[ClassTradingPage] Insufficient node balance for market sell',
+            );
+            // Show deposit modal
+            let walletBalance = BigInt(0);
+            try {
+              const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+                '@/chain-constants'
+              );
+              const { ethers } = await import('ethers');
+              if (connectedWallet && address) {
+                const ethereumProvider =
+                  await connectedWallet.getEthereumProvider();
+                const provider = new ethers.BrowserProvider(ethereumProvider);
+                const auraAsset = new ethers.Contract(
+                  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                  [
+                    'function balanceOf(address account, uint256 id) view returns (uint256)',
+                  ],
+                  provider,
+                );
+                walletBalance = BigInt(
+                  await auraAsset.balanceOf(address, tokenId),
+                );
+              }
+            } catch (err) {
+              console.error(
+                '[ClassTradingPage] Error getting wallet balance:',
+                err,
+              );
+            }
+            setPendingSellOrder({
+              tokenId,
+              tokenName: tradeableAsset?.name || 'Asset',
+              nodeHash,
+              walletBalance,
+              nodeBalance,
+              requiredAmount: quantity,
+              price: priceInWei,
+            });
+            setShowDepositModal(true);
+            return false;
+          }
+
+          // Fetch best bid price for market sell
+          const { clobRepository } = await import(
+            '@/infrastructure/repositories/clob-repository'
+          );
+          const orderBookData = await clobRepository.getOrderBook(
+            NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+            tokenId,
+            10,
+          );
+
+          const bestBid = orderBookData.bids[0]?.price;
+          let sellPrice: bigint;
+
+          if (bestBid && bestBid > 0) {
+            // Use best bid price with 10% slippage (minimum acceptable)
+            sellPrice = BigInt(Math.round(bestBid * 0.9 * 1e18));
+            console.log(
+              '[ClassTradingPage] Market sell: using best bid',
+              bestBid,
+              'with 10% slippage, sellPrice:',
+              sellPrice.toString(),
+            );
+          } else {
+            // No bids - cannot execute market sell
+            console.error(
+              '[ClassTradingPage] No bids available for market sell',
+            );
+            return false;
+          }
+
+          try {
+            const orderId = await placeSellOrderFromNode(
+              nodeHash,
+              tokenId,
+              NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+              sellPrice,
+              quantity,
+            );
+            console.log(
+              '[ClassTradingPage] Market sell order placed from node:',
+              orderId,
+            );
+            return true;
+          } catch (sellError: any) {
+            console.error(
+              '[ClassTradingPage] Failed to place market sell order:',
+              sellError,
+            );
+            return false;
+          }
+        }
+
+        // For BUY LIMIT orders: use regular CLOB flow (buyer pays from wallet)
         if (order.type === 'limit') {
           const result = await orderBridgeService.placeLimitOrderAndBridge(
             clobParams,

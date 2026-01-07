@@ -370,11 +370,11 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
         console.log('[TradingPage] Placing CLOB order:', clobParams);
 
-        // For SELL orders: use Diamond's placeSellOrderFromNode
+        // For LIMIT SELL orders: use Diamond's placeSellOrderFromNode
         // This transfers tokens directly from Diamond to CLOB without going through user's wallet
-        if (order.side === 'sell') {
+        if (order.side === 'sell' && order.type === 'limit') {
           console.log(
-            '[TradingPage] Sell order - placing directly from node inventory...',
+            '[TradingPage] Limit sell order - placing directly from node inventory...',
           );
 
           // Get user's owned nodes
@@ -522,7 +522,120 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           }
         }
 
-        // For BUY orders: use regular CLOB flow (buyer pays from wallet)
+        // For MARKET SELL orders: use placeSellOrderFromNode with best bid price
+        if (order.side === 'sell' && order.type === 'market') {
+          console.log(
+            '[TradingPage] Market sell order - checking node inventory...',
+          );
+
+          // Get user's owned nodes
+          const ownedNodes = await getOwnedNodes();
+          if (ownedNodes.length === 0) {
+            console.error('[TradingPage] No owned nodes found for selling');
+            return false;
+          }
+
+          const nodeHash = ownedNodes[0];
+
+          // Check node's deposited balance
+          const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
+          console.log(
+            '[TradingPage] Node balance:',
+            nodeBalance.toString(),
+            'Required:',
+            quantity.toString(),
+          );
+
+          if (nodeBalance < quantity) {
+            console.log(
+              '[TradingPage] Insufficient node balance for market sell',
+            );
+            // Show deposit modal
+            let walletBalance = BigInt(0);
+            try {
+              const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+                '@/chain-constants'
+              );
+              const { ethers } = await import('ethers');
+              if (connectedWallet && address) {
+                const ethereumProvider =
+                  await connectedWallet.getEthereumProvider();
+                const provider = new ethers.BrowserProvider(ethereumProvider);
+                const auraAsset = new ethers.Contract(
+                  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                  [
+                    'function balanceOf(address account, uint256 id) view returns (uint256)',
+                  ],
+                  provider,
+                );
+                walletBalance = BigInt(
+                  await auraAsset.balanceOf(address, tokenId),
+                );
+              }
+            } catch (err) {
+              console.error('[TradingPage] Error getting wallet balance:', err);
+            }
+            setPendingSellOrder({
+              tokenId,
+              tokenName: asset?.name || 'Asset',
+              nodeHash,
+              walletBalance,
+              nodeBalance,
+              requiredAmount: quantity,
+              price: priceInWei,
+            });
+            setShowDepositModal(true);
+            return false;
+          }
+
+          // Fetch best bid price for market sell
+          const orderBookData = await clobRepository.getOrderBook(
+            NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+            tokenId,
+            10,
+          );
+
+          const bestBid = orderBookData.bids[0]?.price;
+          let sellPrice: bigint;
+
+          if (bestBid && bestBid > 0) {
+            // Use best bid price with 10% slippage (minimum acceptable)
+            sellPrice = BigInt(Math.round(bestBid * 0.9 * 1e18));
+            console.log(
+              '[TradingPage] Market sell: using best bid',
+              bestBid,
+              'with 10% slippage, sellPrice:',
+              sellPrice.toString(),
+            );
+          } else {
+            // No bids - cannot execute market sell
+            console.error('[TradingPage] No bids available for market sell');
+            return false;
+          }
+
+          try {
+            const orderId = await placeSellOrderFromNode(
+              nodeHash,
+              tokenId,
+              clobParams.quoteToken,
+              sellPrice,
+              quantity,
+            );
+            console.log(
+              '[TradingPage] Market sell order placed from node:',
+              orderId,
+            );
+            return true;
+          } catch (sellError: any) {
+            console.error(
+              '[TradingPage] Failed to place market sell order:',
+              sellError,
+            );
+            return false;
+          }
+        }
+
+        // For BUY LIMIT orders: use regular CLOB flow (buyer pays from wallet)
         if (order.type === 'limit') {
           const result = await orderBridgeService.placeLimitOrderAndBridge(
             clobParams,
