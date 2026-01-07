@@ -443,7 +443,7 @@ function ClassDetailPageContent() {
           // Fetch current order book to get best prices
           const orderBookData = await clobRepository.getOrderBook(
             NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-            tokenId,
+            clobParams.baseTokenId,
             10,
           );
 
