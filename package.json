@@ -41,7 +41,11 @@
     "test:browser:headed": "npx playwright test --headed",
     "test:browser:ui": "npx playwright test --ui",
     "test:browser:debug": "npx playwright test --debug",
-    "generate:abi": "node -r ts-node/register scripts/generate-diamond-abi.ts"
+    "generate:abi": "node -r ts-node/register scripts/generate-diamond-abi.ts",
+    "verify:deployment": "npx hardhat run scripts/verify-deployment.ts --network baseSepolia",
+    "test:deployment": "npx vitest run test/deployment/",
+    "test:smoke": "npx vitest run test/deployment/smoke.test.ts",
+    "postdeploy:verify": "npm run verify:deployment"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json,css,md}": "npm run format"
