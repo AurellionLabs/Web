@@ -864,14 +864,17 @@ contract CLOBFacet is Initializable {
         uint256 _askPrice,
         MatchContext memory ctx
     ) internal {
-        DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
         bytes32[] storage ordersAtPrice = s.askOrders[ctx.marketId][_askPrice];
         
         for (uint256 j = 0; j < ordersAtPrice.length; j++) {
+            // Re-read buy order state from storage each iteration to get latest filledAmount
+            DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
             if (buyOrder.filledAmount >= buyOrder.amount) break;
             
             bytes32 sellOrderId = ordersAtPrice[j];
-            if (s.clobOrders[sellOrderId].status > 1) continue;
+            DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[sellOrderId];
+            if (sellOrder.status > 1) continue;
+            if (sellOrder.filledAmount >= sellOrder.amount) continue;
             
             _executeBuyMatch(s, _buyOrderId, sellOrderId, _askPrice, ctx);
         }
@@ -887,10 +890,14 @@ contract CLOBFacet is Initializable {
         DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
         DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
         
-        uint256 fillAmount = _min(
-            buyOrder.amount - buyOrder.filledAmount,
-            sellOrder.amount - sellOrder.filledAmount
-        );
+        // Calculate remaining amounts
+        uint256 buyRemaining = buyOrder.amount - buyOrder.filledAmount;
+        uint256 sellRemaining = sellOrder.amount - sellOrder.filledAmount;
+        
+        // Skip if either order is already filled
+        if (buyRemaining == 0 || sellRemaining == 0) return;
+        
+        uint256 fillAmount = _min(buyRemaining, sellRemaining);
         uint256 quoteAmount = fillAmount * _fillPrice;
         
         // Transfer tokens
