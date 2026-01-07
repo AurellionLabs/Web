@@ -9,10 +9,8 @@ import { ethers } from 'ethers';
 import { INodeAssetService, NodeAsset } from '@/domain/node';
 import { Asset } from '@/domain/shared';
 import { DiamondContext } from './diamond-context';
-import {
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-  NEXT_PUBLIC_CLOB_ADDRESS,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
+// NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
 
 /**
  * Diamond-based implementation of INodeAssetService
@@ -351,29 +349,14 @@ export class DiamondNodeAssetService implements INodeAssetService {
   }
 
   /**
-   * Ensure CLOB is approved to transfer node's tokens for trading
+   * DEPRECATED: CLOB approval is no longer needed since CLOBFacet is internal to Diamond
+   * Kept for backward compatibility - always succeeds immediately
    */
   private async ensureClobApproval(nodeHash: string): Promise<void> {
-    const diamond = this.context.getDiamond();
-
-    try {
-      const isApproved = await diamond.isClobApproved(NEXT_PUBLIC_CLOB_ADDRESS);
-      if (!isApproved) {
-        console.log(
-          '[DiamondNodeAssetService] Approving CLOB for token transfers...',
-        );
-        const tx = await diamond.approveClobForTokens(
-          nodeHash,
-          NEXT_PUBLIC_CLOB_ADDRESS,
-        );
-        await tx.wait();
-        console.log('[DiamondNodeAssetService] CLOB approved');
-      }
-    } catch (error) {
-      console.warn(
-        '[DiamondNodeAssetService] Could not verify/set CLOB approval:',
-        error,
-      );
-    }
+    // No-op: CLOB is now internal to Diamond via CLOBFacet
+    // Tokens are held by Diamond and CLOBFacet can access them directly
+    console.log(
+      '[DiamondNodeAssetService] CLOB approval not needed - CLOBFacet is internal to Diamond',
+    );
   }
 }

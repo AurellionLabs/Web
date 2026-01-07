@@ -1380,6 +1380,63 @@ export const DiamondABI = [
     name: 'OrderPlaced',
     type: 'event',
   },
+  // OrderPlacedWithTokens - Token-based event for indexer (matches standalone CLOB format)
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      { indexed: false, internalType: 'bool', name: 'isBuy', type: 'bool' },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'orderType',
+        type: 'uint8',
+      },
+    ],
+    name: 'OrderPlacedWithTokens',
+    type: 'event',
+  },
   {
     anonymous: false,
     inputs: [

@@ -10,10 +10,11 @@ import {
   OrderPlacementResult,
 } from '@/infrastructure/repositories/clob-repository';
 import {
-  NEXT_PUBLIC_CLOB_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
+// NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
 
 /**
  * Unified order status - tracks complete lifecycle from trade to delivery
@@ -107,14 +108,15 @@ export interface BridgeTradeResult {
 export class OrderBridgeService {
   private repositoryContext: RepositoryContext;
   private serviceContext: ServiceContext;
-  private clobAddress: string;
+  private diamondAddress: string; // Diamond contains CLOBFacet
   private bridgeAddress: string;
   private quoteTokenAddress: string;
 
   constructor() {
     this.repositoryContext = RepositoryContext.getInstance();
     this.serviceContext = ServiceContext.getInstance();
-    this.clobAddress = NEXT_PUBLIC_CLOB_ADDRESS;
+    // CLOB is now internal to Diamond via CLOBFacet
+    this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
     this.bridgeAddress = NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS;
     this.quoteTokenAddress = NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS;
   }

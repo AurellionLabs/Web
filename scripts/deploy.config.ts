@@ -470,12 +470,16 @@ export const FACET_SELECTORS: Record<string, string[]> = {
     '0x4b1f5c70', // updateNodeOwner
     '0x16261e99', // updateNodeStatus
     '0x6766c717', // updateSupportedAssets
-    // CLOB approval functions
+    // CLOB address functions (deprecated but kept for compatibility)
+    '0xd1a69b35', // setClobAddress
+    '0x0f392fb4', // getClobAddress
     '0xf7502631', // setAuraAssetAddress
     '0x89a1153c', // getAuraAssetAddress
     '0x40ed3118', // approveClobForTokens
     '0xe1ed5db1', // revokeClobApproval
     '0xcb24a4b4', // isClobApproved
+    // Node sell order function (calls internal CLOBFacet)
+    '0xbcd542d1', // placeSellOrderFromNode
     // Node token inventory functions
     '0x0a063811', // creditNodeTokens
     '0x250b58d4', // depositTokensToNode
@@ -486,11 +490,7 @@ export const FACET_SELECTORS: Record<string, string[]> = {
     '0x653a5887', // getNodeTokenIds
     '0xe02b8288', // getNodeInventory
     '0x294cc9d5', // verifyTokenAccounting
-    // CLOB address management
-    '0xd1a69b35', // setClobAddress(address)
-    '0x0f392fb4', // getClobAddress()
-    // Node sell order (place sell orders from node inventory)
-    '0xbcd542d1', // placeSellOrderFromNode(bytes32,uint256,address,uint256,uint256)
+    '0x3c9f8a2d', // getNodeStatus (for AuraAsset compatibility)
   ],
   AssetsFacet: [
     '0xe243b2fc',
@@ -534,17 +534,21 @@ export const FACET_SELECTORS: Record<string, string[]> = {
     '0x158ed47c',
   ],
   CLOBFacet: [
-    '0x2b3e8826',
-    '0xb3d29d42',
-    '0xc3c95c7b',
-    '0xf6c00927',
-    '0x81ebf209',
-    '0xebd34f50',
-    '0xa3b13799',
-    '0x5e3f2727',
-    '0xb537889c',
-    '0x8707e031',
-    '0x9fa5bc24',
+    // Original market-based functions
+    '0x2b3e8826', // createMarket
+    '0x8707e031', // placeOrder (market-based)
+    '0x5778472a', // getOrder
+    '0xc3c95c7b', // getMarket
+    '0xa3b13799', // getTrade
+    '0xf6c00927', // getPool
+    '0x81ebf209', // getTotalMarkets
+    '0xebd34f50', // getTotalTrades
+    // New token-based functions
+    '0x631adcef', // placeNodeSellOrder - for node sell orders
+    '0x069e403f', // placeBuyOrder - for buy orders
+    '0x5cc519cd', // cancelCLOBOrder - cancel any order
+    '0x337cd847', // getOpenOrders - view open orders
+    '0x882363ae', // getOrderWithTokens - get order with token info
   ],
   ERC1155ReceiverFacet: [
     '0xf23a6e61', // onERC1155Received

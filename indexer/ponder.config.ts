@@ -7,7 +7,8 @@ import { AusysAbi } from './abis/AusysAbi';
 import { AurumNodeManagerAbi } from './abis/AurumNodeManagerAbi';
 import { AuraAssetAbi } from './abis/AuraAssetAbi';
 import { AuStakeAbi } from './abis/AuStakeAbi';
-import { CLOBAbi } from './abis/CLOBAbi';
+// CLOBAbi no longer needed - CLOB functionality now in Diamond CLOBFacet
+// import { CLOBAbi } from './abis/CLOBAbi';
 import { RWYVaultAbi } from './abis/RWYVault';
 
 // Import constants from diamond-constants (auto-updated by deploy script)
@@ -19,7 +20,7 @@ import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AURA_ASSET_ADDRESS,
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
-  NEXT_PUBLIC_CLOB_ADDRESS,
+  // NEXT_PUBLIC_CLOB_ADDRESS, // No longer needed - using Diamond CLOBFacet
   NEXT_PUBLIC_RWY_VAULT_ADDRESS,
   NEXT_PUBLIC_RPC_URL_84532,
   DEPLOYMENT_BLOCKS,
@@ -71,12 +72,15 @@ export default createConfig({
       address: NEXT_PUBLIC_AUSTAKE_ADDRESS as `0x${string}`,
       startBlock: DEPLOYMENT_BLOCKS.auStake,
     },
-    CLOB: {
-      network: 'baseSepolia',
-      abi: CLOBAbi,
-      address: NEXT_PUBLIC_CLOB_ADDRESS as `0x${string}`,
-      startBlock: DEPLOYMENT_BLOCKS.clob,
-    },
+    // CLOB: Disabled - All CLOB functionality now handled by Diamond CLOBFacet
+    // The Diamond contract emits OrderPlacedWithTokens events which are indexed
+    // by the Diamond:OrderPlacedWithTokens handler in aurum-diamond.ts
+    // CLOB: {
+    //   network: 'baseSepolia',
+    //   abi: CLOBAbi,
+    //   address: NEXT_PUBLIC_CLOB_ADDRESS as `0x${string}`,
+    //   startBlock: DEPLOYMENT_BLOCKS.clob,
+    // },
     // RWY Vault - Real World Yield commodity staking
     RWYVault: {
       network: 'baseSepolia',

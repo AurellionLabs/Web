@@ -545,7 +545,8 @@ ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
 // =============================================================================
 
 /**
- * Handle OrderPlaced event from Diamond CLOBFacet
+ * Handle OrderPlaced event from Diamond CLOBFacet (market-based, legacy)
+ * Note: This is the original market-based event. New orders also emit OrderPlacedWithTokens.
  */
 ponder.on('Diamond:OrderPlaced', async ({ event, context }) => {
   const { orderId, maker, marketId, price, amount, isBuy, orderType } =
@@ -570,7 +571,7 @@ ponder.on('Diamond:OrderPlaced', async ({ event, context }) => {
     console.warn(`Failed to get market data for ${marketId}:`, e);
   }
 
-  // Insert CLOB Order entity
+  // Insert CLOB Order entity (use onConflictDoNothing since OrderPlacedWithTokens may have already inserted)
   await context.db
     .insert(clobOrders)
     .values({
@@ -593,9 +594,41 @@ ponder.on('Diamond:OrderPlaced', async ({ event, context }) => {
     })
     .onConflictDoNothing();
 
-  // Insert OrderPlaced event
-  await context.db.insert(orderPlacedEvents).values({
-    id: eventId,
+  // Insert OrderPlaced event (use onConflictDoNothing)
+  await context.db
+    .insert(orderPlacedEvents)
+    .values({
+      id: eventId,
+      orderId,
+      maker,
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      price,
+      amount,
+      isBuy,
+      orderType,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
+
+  // Update user trading stats
+  await updateDiamondUserTradingStats(
+    context,
+    maker,
+    event.block.timestamp,
+    'orderPlaced',
+  );
+});
+
+/**
+ * Handle OrderPlacedWithTokens event from Diamond CLOBFacet
+ * This is the PRIMARY event for node sell orders - contains actual token addresses
+ */
+ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
+  const {
     orderId,
     maker,
     baseToken,
@@ -605,10 +638,70 @@ ponder.on('Diamond:OrderPlaced', async ({ event, context }) => {
     amount,
     isBuy,
     orderType,
-    blockNumber: event.block.number,
-    blockTimestamp: event.block.timestamp,
-    transactionHash: event.transaction.hash,
+  } = event.args;
+  const eventId = `${event.transaction.hash}-${event.log.logIndex}-tokens`;
+
+  console.log('[Diamond:OrderPlacedWithTokens] Processing order:', {
+    orderId,
+    maker,
+    baseToken,
+    baseTokenId: baseTokenId.toString(),
+    quoteToken,
+    price: price.toString(),
+    amount: amount.toString(),
+    isBuy,
+    orderType,
+    txHash: event.transaction.hash,
   });
+
+  // Insert CLOB Order entity with actual token addresses
+  await context.db
+    .insert(clobOrders)
+    .values({
+      id: orderId,
+      maker,
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      price,
+      amount,
+      filledAmount: 0n,
+      remainingAmount: amount,
+      isBuy,
+      orderType,
+      status: 0, // Open
+      createdAt: event.block.timestamp,
+      updatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoUpdate({
+      // If order already exists (from OrderPlaced), update with token info
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      updatedAt: event.block.timestamp,
+    });
+
+  // Insert OrderPlaced event with token info
+  await context.db
+    .insert(orderPlacedEvents)
+    .values({
+      id: eventId,
+      orderId,
+      maker,
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      price,
+      amount,
+      isBuy,
+      orderType,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 
   // Update user trading stats
   await updateDiamondUserTradingStats(
@@ -616,6 +709,15 @@ ponder.on('Diamond:OrderPlaced', async ({ event, context }) => {
     maker,
     event.block.timestamp,
     'orderPlaced',
+  );
+
+  // Update market data for this token
+  await updateMarketData(
+    context,
+    baseToken,
+    baseTokenId,
+    quoteToken,
+    event.block.timestamp,
   );
 });
 
@@ -665,15 +767,13 @@ ponder.on('Diamond:OrderMatched', async ({ event, context }) => {
 
 /**
  * Handle OrderCancelled event from Diamond CLOBFacet
- * Note: This event has the same name as BridgeFacet:OrderCancelled but different args
+ * Using full signature to disambiguate from other OrderCancelled events
+ * CLOBFacet: OrderCancelled(bytes32 indexed orderId, address indexed maker, uint256 remainingAmount)
  */
-ponder.on('Diamond:OrderCancelled', async ({ event, context }) => {
-  // Check which type of event this is based on args
-  const args = event.args as any;
-
-  // CLOBFacet OrderCancelled has: orderId, maker, remainingAmount
-  if ('maker' in args && 'remainingAmount' in args) {
-    const { orderId, maker, remainingAmount } = args;
+ponder.on(
+  'Diamond:OrderCancelled(bytes32 indexed orderId, address indexed maker, uint256 remainingAmount)',
+  async ({ event, context }) => {
+    const { orderId, maker, remainingAmount } = event.args;
     const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
     // Update CLOB Order entity
@@ -701,17 +801,25 @@ ponder.on('Diamond:OrderCancelled', async ({ event, context }) => {
       event.block.timestamp,
       'orderCancelled',
     );
-  }
-  // BridgeFacet OrderCancelled has: unifiedOrderId, previousStatus
-  else if ('unifiedOrderId' in args && 'previousStatus' in args) {
-    const { unifiedOrderId, previousStatus } = args;
+  },
+);
+
+/**
+ * Handle OrderCancelled event from Diamond BridgeFacet
+ * Using full signature to disambiguate from other OrderCancelled events
+ * BridgeFacet: OrderCancelled(bytes32 indexed unifiedOrderId, uint8 previousStatus)
+ */
+ponder.on(
+  'Diamond:OrderCancelled(bytes32 indexed unifiedOrderId, uint8 previousStatus)',
+  async ({ event, context }) => {
+    const { unifiedOrderId } = event.args;
 
     // Update unified order status
     await context.db.update(unifiedOrders, { id: unifiedOrderId }).set({
       status: 5, // Cancelled
     });
-  }
-});
+  },
+);
 
 /**
  * Handle TradeExecuted event from Diamond CLOBFacet
@@ -1068,5 +1176,46 @@ async function updateDiamondUserTradingStats(
         updatedAt: timestamp,
       })
       .onConflictDoNothing();
+  }
+}
+
+/**
+ * Update market data aggregation for Diamond CLOB
+ */
+async function updateMarketData(
+  context: any,
+  baseToken: `0x${string}`,
+  baseTokenId: bigint,
+  quoteToken: `0x${string}`,
+  timestamp: bigint,
+) {
+  const marketId = `${baseToken}-${baseTokenId.toString()}-${quoteToken}`;
+
+  const existing = await context.db.find(marketData, { id: marketId });
+  if (!existing) {
+    await context.db
+      .insert(marketData)
+      .values({
+        id: marketId,
+        baseToken,
+        baseTokenId,
+        quoteToken,
+        bestBidPrice: 0n,
+        bestBidAmount: 0n,
+        bestAskPrice: 0n,
+        bestAskAmount: 0n,
+        lastTradePrice: 0n,
+        volume24h: 0n,
+        tradeCount24h: 0n,
+        openOrderCount: 1n,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })
+      .onConflictDoNothing();
+  } else {
+    await context.db.update(marketData, { id: marketId }).set({
+      openOrderCount: existing.openOrderCount + 1n,
+      updatedAt: timestamp,
+    });
   }
 }

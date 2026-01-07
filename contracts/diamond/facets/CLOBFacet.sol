@@ -4,6 +4,8 @@ pragma solidity ^0.8.28;
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 /**
  * @title CLOBFacet
@@ -11,10 +13,24 @@ import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/I
  * @dev Combines CLOB interaction logic with full order book, trades, and liquidity pools
  */
 contract CLOBFacet is Initializable {
+    // Original market-based OrderPlaced event (for backward compatibility)
     event OrderPlaced(
         bytes32 indexed orderId,
         address indexed maker,
         bytes32 indexed marketId,
+        uint256 price,
+        uint256 amount,
+        bool isBuy,
+        uint8 orderType
+    );
+    
+    // Token-based OrderPlaced event (matches standalone CLOB format for indexer)
+    event OrderPlacedWithTokens(
+        bytes32 indexed orderId,
+        address indexed maker,
+        address indexed baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
         uint256 price,
         uint256 amount,
         bool isBuy,
@@ -382,5 +398,514 @@ contract CLOBFacet is Initializable {
             z = (x / z + z) / 2;
         }
         return y;
+    }
+
+    // ==========================================================================
+    // NODE SELL ORDER FUNCTIONS - Direct token-based orders from Diamond
+    // ==========================================================================
+
+    /**
+     * @notice Place a sell order from node inventory (called by NodesFacet)
+     * @dev Tokens should already be held by Diamond. This creates the order internally.
+     * @param _nodeOwner The node owner who will receive proceeds
+     * @param _baseToken The ERC1155 token contract address
+     * @param _baseTokenId The token ID being sold
+     * @param _quoteToken The payment token (USDC, AURA, etc.)
+     * @param _price Price per unit in quote token (wei)
+     * @param _amount Amount of tokens to sell
+     * @return orderId The generated order ID
+     */
+    function placeNodeSellOrder(
+        address _nodeOwner,
+        address _baseToken,
+        uint256 _baseTokenId,
+        address _quoteToken,
+        uint256 _price,
+        uint256 _amount
+    ) external returns (bytes32 orderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(_price > 0, 'Invalid price');
+        require(_amount > 0, 'Invalid amount');
+        
+        // Generate market ID from token params
+        bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
+        
+        // Create or verify market exists
+        if (!s.markets[marketId].active) {
+            // Auto-create market for this token pair
+            s.markets[marketId] = DiamondStorage.Market({
+                baseToken: _addressToString(_baseToken),
+                baseTokenId: _baseTokenId,
+                quoteToken: _addressToString(_quoteToken),
+                active: true,
+                createdAt: block.timestamp
+            });
+            s.marketIds.push(marketId);
+            s.totalMarkets++;
+        }
+
+        // Generate unique order ID
+        orderId = keccak256(
+            abi.encodePacked(_nodeOwner, marketId, _price, _amount, false, uint8(0), block.timestamp, s.totalCLOBOrders)
+        );
+
+        // Store order
+        s.clobOrders[orderId] = DiamondStorage.CLOBOrder({
+            maker: _nodeOwner,
+            marketId: marketId,
+            price: _price,
+            amount: _amount,
+            filledAmount: 0,
+            isBuy: false, // Sell order
+            orderType: 0, // Limit
+            status: 0, // Open
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
+        });
+
+        s.clobOrderIds.push(orderId);
+        s.totalCLOBOrders++;
+        
+        // Add to ask orders at this price level
+        s.askOrders[marketId][_price].push(orderId);
+        _addPriceLevel(s.askPrices[marketId], _price);
+
+        // Emit both events for indexer compatibility
+        emit OrderPlaced(orderId, _nodeOwner, marketId, _price, _amount, false, 0);
+        emit OrderPlacedWithTokens(orderId, _nodeOwner, _baseToken, _baseTokenId, _quoteToken, _price, _amount, false, 0);
+
+        // Try to match with existing buy orders
+        _matchSellOrder(s, marketId, orderId);
+
+        return orderId;
+    }
+
+    /**
+     * @notice Place a buy order for tokens
+     * @dev Buyer must have approved Diamond to spend quote tokens
+     * @param _baseToken The ERC1155 token contract address
+     * @param _baseTokenId The token ID to buy
+     * @param _quoteToken The payment token
+     * @param _price Price per unit in quote token (wei)
+     * @param _amount Amount of tokens to buy
+     * @return orderId The generated order ID
+     */
+    function placeBuyOrder(
+        address _baseToken,
+        uint256 _baseTokenId,
+        address _quoteToken,
+        uint256 _price,
+        uint256 _amount
+    ) external returns (bytes32 orderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(_price > 0, 'Invalid price');
+        require(_amount > 0, 'Invalid amount');
+        
+        // Calculate total quote amount needed
+        uint256 totalQuote = _price * _amount;
+        
+        // Transfer quote tokens from buyer to Diamond (escrow)
+        IERC20(_quoteToken).transferFrom(msg.sender, address(this), totalQuote);
+        
+        // Generate market ID
+        bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
+        
+        // Create or verify market exists
+        if (!s.markets[marketId].active) {
+            s.markets[marketId] = DiamondStorage.Market({
+                baseToken: _addressToString(_baseToken),
+                baseTokenId: _baseTokenId,
+                quoteToken: _addressToString(_quoteToken),
+                active: true,
+                createdAt: block.timestamp
+            });
+            s.marketIds.push(marketId);
+            s.totalMarkets++;
+        }
+
+        // Generate unique order ID
+        orderId = keccak256(
+            abi.encodePacked(msg.sender, marketId, _price, _amount, true, uint8(0), block.timestamp, s.totalCLOBOrders)
+        );
+
+        // Store order
+        s.clobOrders[orderId] = DiamondStorage.CLOBOrder({
+            maker: msg.sender,
+            marketId: marketId,
+            price: _price,
+            amount: _amount,
+            filledAmount: 0,
+            isBuy: true,
+            orderType: 0, // Limit
+            status: 0, // Open
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
+        });
+
+        s.clobOrderIds.push(orderId);
+        s.totalCLOBOrders++;
+        
+        // Add to bid orders at this price level
+        s.bidOrders[marketId][_price].push(orderId);
+        _addPriceLevel(s.bidPrices[marketId], _price);
+
+        // Emit both events
+        emit OrderPlaced(orderId, msg.sender, marketId, _price, _amount, true, 0);
+        emit OrderPlacedWithTokens(orderId, msg.sender, _baseToken, _baseTokenId, _quoteToken, _price, _amount, true, 0);
+
+        // Try to match with existing sell orders
+        _matchBuyOrder(s, marketId, orderId, _baseToken, _baseTokenId, _quoteToken);
+
+        return orderId;
+    }
+
+    /**
+     * @notice Cancel an open order
+     * @param _orderId The order to cancel
+     */
+    function cancelCLOBOrder(bytes32 _orderId) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
+        
+        require(order.maker == msg.sender, 'Not order maker');
+        require(order.status == 0 || order.status == 1, 'Order not cancellable');
+        
+        uint256 remaining = order.amount - order.filledAmount;
+        order.status = 3; // Cancelled
+        order.updatedAt = block.timestamp;
+        
+        // If buy order, refund quote tokens
+        if (order.isBuy && remaining > 0) {
+            // Parse market to get quote token
+            DiamondStorage.Market storage market = s.markets[order.marketId];
+            address quoteToken = _stringToAddress(market.quoteToken);
+            uint256 refundAmount = order.price * remaining;
+            IERC20(quoteToken).transfer(msg.sender, refundAmount);
+        }
+        
+        // If sell order, tokens stay in Diamond (node owner can withdraw via NodesFacet)
+        
+        emit OrderCancelled(_orderId, msg.sender, remaining);
+    }
+
+    // ==========================================================================
+    // INTERNAL MATCHING FUNCTIONS
+    // ==========================================================================
+
+    function _matchSellOrder(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _sellOrderId
+    ) internal {
+        DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
+        uint256 remaining = sellOrder.amount - sellOrder.filledAmount;
+        
+        // Get market info for token transfers
+        DiamondStorage.Market storage market = s.markets[_marketId];
+        address baseToken = _stringToAddress(market.baseToken);
+        address quoteToken = _stringToAddress(market.quoteToken);
+        uint256 baseTokenId = market.baseTokenId;
+        
+        // Iterate through bid prices from highest to lowest
+        uint256[] storage bidPrices = s.bidPrices[_marketId];
+        
+        for (uint256 i = bidPrices.length; i > 0 && remaining > 0; i--) {
+            uint256 bidPrice = bidPrices[i - 1];
+            
+            // Only match if bid price >= ask price
+            if (bidPrice < sellOrder.price) break;
+            
+            bytes32[] storage ordersAtPrice = s.bidOrders[_marketId][bidPrice];
+            
+            for (uint256 j = 0; j < ordersAtPrice.length && remaining > 0; j++) {
+                bytes32 buyOrderId = ordersAtPrice[j];
+                DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[buyOrderId];
+                
+                if (buyOrder.status != 0 && buyOrder.status != 1) continue;
+                
+                uint256 buyRemaining = buyOrder.amount - buyOrder.filledAmount;
+                uint256 fillAmount = remaining < buyRemaining ? remaining : buyRemaining;
+                uint256 fillPrice = bidPrice; // Price improvement for seller
+                uint256 quoteAmount = fillAmount * fillPrice;
+                
+                // Execute trade
+                bytes32 tradeId = keccak256(abi.encodePacked(_sellOrderId, buyOrderId, block.timestamp));
+                
+                // Transfer base tokens from Diamond to buyer
+                IERC1155(baseToken).safeTransferFrom(address(this), buyOrder.maker, baseTokenId, fillAmount, "");
+                
+                // Transfer quote tokens from Diamond (escrowed) to seller
+                IERC20(quoteToken).transfer(sellOrder.maker, quoteAmount);
+                
+                // Update orders
+                sellOrder.filledAmount += fillAmount;
+                sellOrder.updatedAt = block.timestamp;
+                buyOrder.filledAmount += fillAmount;
+                buyOrder.updatedAt = block.timestamp;
+                
+                // Update statuses
+                if (sellOrder.filledAmount >= sellOrder.amount) sellOrder.status = 2;
+                else sellOrder.status = 1;
+                
+                if (buyOrder.filledAmount >= buyOrder.amount) buyOrder.status = 2;
+                else buyOrder.status = 1;
+                
+                // Record trade
+                s.trades[tradeId] = DiamondStorage.Trade({
+                    takerOrderId: _sellOrderId,
+                    makerOrderId: buyOrderId,
+                    taker: sellOrder.maker,
+                    maker: buyOrder.maker,
+                    marketId: _marketId,
+                    price: fillPrice,
+                    amount: fillAmount,
+                    quoteAmount: quoteAmount,
+                    timestamp: block.timestamp,
+                    createdAt: block.timestamp
+                });
+                s.tradeIds.push(tradeId);
+                s.totalTrades++;
+                
+                emit TradeExecuted(tradeId, sellOrder.maker, buyOrder.maker, _marketId, fillPrice, fillAmount, quoteAmount, block.timestamp);
+                emit OrderMatched(_sellOrderId, buyOrderId, tradeId, fillAmount, fillPrice, quoteAmount);
+                
+                remaining = sellOrder.amount - sellOrder.filledAmount;
+            }
+        }
+    }
+
+    function _matchBuyOrder(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _marketId,
+        bytes32 _buyOrderId,
+        address _baseToken,
+        uint256 _baseTokenId,
+        address _quoteToken
+    ) internal {
+        DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
+        uint256 remaining = buyOrder.amount - buyOrder.filledAmount;
+        
+        // Iterate through ask prices from lowest to highest
+        uint256[] storage askPrices = s.askPrices[_marketId];
+        
+        for (uint256 i = 0; i < askPrices.length && remaining > 0; i++) {
+            uint256 askPrice = askPrices[i];
+            
+            // Only match if ask price <= bid price
+            if (askPrice > buyOrder.price) break;
+            
+            bytes32[] storage ordersAtPrice = s.askOrders[_marketId][askPrice];
+            
+            for (uint256 j = 0; j < ordersAtPrice.length && remaining > 0; j++) {
+                bytes32 sellOrderId = ordersAtPrice[j];
+                DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[sellOrderId];
+                
+                if (sellOrder.status != 0 && sellOrder.status != 1) continue;
+                
+                uint256 sellRemaining = sellOrder.amount - sellOrder.filledAmount;
+                uint256 fillAmount = remaining < sellRemaining ? remaining : sellRemaining;
+                uint256 fillPrice = askPrice; // Price improvement for buyer
+                uint256 quoteAmount = fillAmount * fillPrice;
+                
+                // Execute trade
+                bytes32 tradeId = keccak256(abi.encodePacked(_buyOrderId, sellOrderId, block.timestamp));
+                
+                // Transfer base tokens from Diamond to buyer
+                IERC1155(_baseToken).safeTransferFrom(address(this), buyOrder.maker, _baseTokenId, fillAmount, "");
+                
+                // Transfer quote tokens to seller (from buyer's escrowed amount)
+                IERC20(_quoteToken).transfer(sellOrder.maker, quoteAmount);
+                
+                // Refund excess quote tokens to buyer if price improvement
+                if (fillPrice < buyOrder.price) {
+                    uint256 refund = (buyOrder.price - fillPrice) * fillAmount;
+                    IERC20(_quoteToken).transfer(buyOrder.maker, refund);
+                }
+                
+                // Update orders
+                buyOrder.filledAmount += fillAmount;
+                buyOrder.updatedAt = block.timestamp;
+                sellOrder.filledAmount += fillAmount;
+                sellOrder.updatedAt = block.timestamp;
+                
+                // Update statuses
+                if (buyOrder.filledAmount >= buyOrder.amount) buyOrder.status = 2;
+                else buyOrder.status = 1;
+                
+                if (sellOrder.filledAmount >= sellOrder.amount) sellOrder.status = 2;
+                else sellOrder.status = 1;
+                
+                // Record trade
+                s.trades[tradeId] = DiamondStorage.Trade({
+                    takerOrderId: _buyOrderId,
+                    makerOrderId: sellOrderId,
+                    taker: buyOrder.maker,
+                    maker: sellOrder.maker,
+                    marketId: _marketId,
+                    price: fillPrice,
+                    amount: fillAmount,
+                    quoteAmount: quoteAmount,
+                    timestamp: block.timestamp,
+                    createdAt: block.timestamp
+                });
+                s.tradeIds.push(tradeId);
+                s.totalTrades++;
+                
+                emit TradeExecuted(tradeId, buyOrder.maker, sellOrder.maker, _marketId, fillPrice, fillAmount, quoteAmount, block.timestamp);
+                emit OrderMatched(_buyOrderId, sellOrderId, tradeId, fillAmount, fillPrice, quoteAmount);
+                
+                remaining = buyOrder.amount - buyOrder.filledAmount;
+            }
+        }
+    }
+
+    function _addPriceLevel(uint256[] storage prices, uint256 price) internal {
+        // Check if price already exists
+        for (uint256 i = 0; i < prices.length; i++) {
+            if (prices[i] == price) return;
+        }
+        // Add and sort (simple insertion for now)
+        prices.push(price);
+        // Sort ascending
+        for (uint256 i = prices.length - 1; i > 0; i--) {
+            if (prices[i] < prices[i - 1]) {
+                uint256 temp = prices[i];
+                prices[i] = prices[i - 1];
+                prices[i - 1] = temp;
+            } else {
+                break;
+            }
+        }
+    }
+
+    function _addressToString(address _addr) internal pure returns (string memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory data = abi.encodePacked(_addr);
+        bytes memory str = new bytes(42);
+        str[0] = "0";
+        str[1] = "x";
+        for (uint256 i = 0; i < 20; i++) {
+            str[2 + i * 2] = alphabet[uint8(data[i] >> 4)];
+            str[3 + i * 2] = alphabet[uint8(data[i] & 0x0f)];
+        }
+        return string(str);
+    }
+
+    function _stringToAddress(string memory _str) internal pure returns (address) {
+        bytes memory b = bytes(_str);
+        require(b.length == 42, "Invalid address string");
+        
+        uint160 result = 0;
+        for (uint256 i = 2; i < 42; i++) {
+            result *= 16;
+            uint8 c = uint8(b[i]);
+            if (c >= 48 && c <= 57) {
+                result += c - 48;
+            } else if (c >= 97 && c <= 102) {
+                result += c - 87;
+            } else if (c >= 65 && c <= 70) {
+                result += c - 55;
+            }
+        }
+        return address(result);
+    }
+
+    // ==========================================================================
+    // VIEW FUNCTIONS FOR ORDER BOOK
+    // ==========================================================================
+
+    /**
+     * @notice Get open orders for a market
+     * @param _baseToken Base token address
+     * @param _baseTokenId Token ID
+     * @param _quoteToken Quote token address
+     * @return buyOrders Array of buy order IDs
+     * @return sellOrders Array of sell order IDs
+     */
+    function getOpenOrders(
+        address _baseToken,
+        uint256 _baseTokenId,
+        address _quoteToken
+    ) external view returns (bytes32[] memory buyOrders, bytes32[] memory sellOrders) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
+        
+        // Count open orders
+        uint256 buyCount = 0;
+        uint256 sellCount = 0;
+        
+        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+            bytes32 orderId = s.clobOrderIds[i];
+            DiamondStorage.CLOBOrder storage order = s.clobOrders[orderId];
+            if (order.marketId == marketId && (order.status == 0 || order.status == 1)) {
+                if (order.isBuy) buyCount++;
+                else sellCount++;
+            }
+        }
+        
+        buyOrders = new bytes32[](buyCount);
+        sellOrders = new bytes32[](sellCount);
+        
+        uint256 buyIdx = 0;
+        uint256 sellIdx = 0;
+        
+        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+            bytes32 orderId = s.clobOrderIds[i];
+            DiamondStorage.CLOBOrder storage order = s.clobOrders[orderId];
+            if (order.marketId == marketId && (order.status == 0 || order.status == 1)) {
+                if (order.isBuy) {
+                    buyOrders[buyIdx++] = orderId;
+                } else {
+                    sellOrders[sellIdx++] = orderId;
+                }
+            }
+        }
+        
+        return (buyOrders, sellOrders);
+    }
+
+    /**
+     * @notice Get order details with token info
+     * @param _orderId The order ID
+     * @return maker Order maker address
+     * @return baseToken Base token address
+     * @return baseTokenId Token ID
+     * @return quoteToken Quote token address
+     * @return price Price per unit
+     * @return amount Total amount
+     * @return filledAmount Amount filled
+     * @return isBuy True if buy order
+     * @return status Order status (0=open, 1=partial, 2=filled, 3=cancelled)
+     */
+    function getOrderWithTokens(bytes32 _orderId)
+        external
+        view
+        returns (
+            address maker,
+            address baseToken,
+            uint256 baseTokenId,
+            address quoteToken,
+            uint256 price,
+            uint256 amount,
+            uint256 filledAmount,
+            bool isBuy,
+            uint8 status
+        )
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
+        DiamondStorage.Market storage market = s.markets[order.marketId];
+        
+        return (
+            order.maker,
+            _stringToAddress(market.baseToken),
+            market.baseTokenId,
+            _stringToAddress(market.quoteToken),
+            order.price,
+            order.amount,
+            order.filledAmount,
+            order.isBuy,
+            order.status
+        );
     }
 }

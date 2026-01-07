@@ -109,27 +109,28 @@ export class BlockchainNodeRepository implements NodeRepository {
   }
 
   /**
-   * Approve CLOB to transfer this node's ERC1155 tokens
-   * This must be called before the node can place sell orders on the CLOB
+   * DEPRECATED: CLOB approval is no longer needed since CLOBFacet is internal to Diamond
+   * Kept for backward compatibility - always succeeds immediately
    */
   async approveClobForTokens(
     nodeAddress: string,
     clobAddress: string,
   ): Promise<void> {
-    const nodeContract = await this.getNodeContract(nodeAddress);
-    const tx = await (nodeContract as any).approveClobForTokens(clobAddress);
-    await tx.wait();
+    // No-op: CLOB is now internal to Diamond via CLOBFacet
+    console.log(
+      '[NodeRepository] CLOB approval not needed - CLOBFacet is internal to Diamond',
+    );
   }
 
   /**
-   * Check if CLOB is approved to transfer this node's tokens
+   * DEPRECATED: CLOB is always "approved" since it's internal to Diamond
    */
   async isClobApproved(
     nodeAddress: string,
     clobAddress: string,
   ): Promise<boolean> {
-    const nodeContract = await this.getNodeContract(nodeAddress);
-    return await (nodeContract as any).isClobApproved(clobAddress);
+    // CLOBFacet is internal to Diamond, always "approved"
+    return true;
   }
 
   /**

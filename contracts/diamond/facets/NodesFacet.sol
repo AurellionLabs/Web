@@ -7,9 +7,9 @@ import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 
 /**
- * @dev Interface for CLOB's node sell order function
+ * @dev Interface for Diamond's CLOBFacet node sell order function
  */
-interface ICLOBNodeSell {
+interface ICLOBFacet {
     function placeNodeSellOrder(
         address nodeOwner,
         address baseToken,
@@ -58,6 +58,7 @@ contract NodesFacet is Initializable {
         bytes32 indexed nodeHash,
         uint256 count
     );
+    // DEPRECATED: These events are no longer used since CLOB is internal to Diamond
     event ClobApprovalGranted(bytes32 indexed nodeHash, address indexed clobAddress);
     event ClobApprovalRevoked(bytes32 indexed nodeHash, address indexed clobAddress);
     
@@ -92,22 +93,25 @@ contract NodesFacet is Initializable {
     // ======= ADMIN FUNCTIONS =======
 
     /**
-     * @notice Set the CLOB contract address (admin only)
-     * @param _clobAddress The CLOB contract address
+     * @notice Set the CLOB contract address (DEPRECATED - CLOB is now internal to Diamond)
+     * @dev Kept for backward compatibility. New code should not use external CLOB.
+     * @param _clobAddress The CLOB contract address (unused)
      */
     function setClobAddress(address _clobAddress) external {
         LibDiamond.enforceIsContractOwner();
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         s.clobAddress = _clobAddress;
+        // Note: This is deprecated. CLOBFacet is now part of the Diamond.
     }
 
     /**
-     * @notice Get the CLOB contract address
-     * @return The CLOB contract address
+     * @notice Get the CLOB contract address (DEPRECATED)
+     * @dev Returns Diamond address since CLOB is now internal
+     * @return The Diamond address (CLOB is internal)
      */
     function getClobAddress() external view returns (address) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.clobAddress;
+        // CLOB functionality is now internal to Diamond via CLOBFacet
+        return address(this);
     }
 
     function registerNode(
@@ -404,37 +408,39 @@ contract NodesFacet is Initializable {
         return s.auraAssetAddress;
     }
 
+    /**
+     * @notice DEPRECATED - CLOB is now internal to Diamond, no external approval needed
+     * @dev Kept for backward compatibility. Does nothing since Diamond holds tokens internally.
+     */
     function approveClobForTokens(bytes32 _node, address _clobAddress) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
-        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
-        
-        IERC1155(s.auraAssetAddress).setApprovalForAll(_clobAddress, true);
-        
+        // No-op: CLOB is internal to Diamond, tokens are already held by Diamond
         emit ClobApprovalGranted(_node, _clobAddress);
     }
 
+    /**
+     * @notice DEPRECATED - CLOB is now internal to Diamond
+     */
     function revokeClobApproval(bytes32 _node, address _clobAddress) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
-        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
-        
-        IERC1155(s.auraAssetAddress).setApprovalForAll(_clobAddress, false);
-        
+        // No-op: CLOB is internal to Diamond
         emit ClobApprovalRevoked(_node, _clobAddress);
     }
 
-    function isClobApproved(address _clobAddress) external view returns (bool) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(s.auraAssetAddress != address(0), 'AuraAsset not set');
-        
-        return IERC1155(s.auraAssetAddress).isApprovedForAll(address(this), _clobAddress);
+    /**
+     * @notice DEPRECATED - CLOB is now internal to Diamond
+     * @dev Always returns true since Diamond holds tokens and CLOBFacet is internal
+     */
+    function isClobApproved(address /* _clobAddress */) external pure returns (bool) {
+        // CLOB is internal to Diamond, always "approved"
+        return true;
     }
 
     /**
-     * @notice Place a sell order on the CLOB from node's inventory
-     * @dev Node operator must first deposit tokens to Diamond via depositTokensToNode().
-     *      Diamond then transfers actual ERC1155 tokens to CLOB escrow.
+     * @notice Place a sell order on the Diamond CLOB from node's inventory
+     * @dev Uses Diamond's internal CLOBFacet - no external contract calls
      * @param _node The node hash whose inventory to sell from
      * @param _tokenId The ERC1155 token ID to sell
      * @param _quoteToken The payment token (USDC, etc.)
@@ -452,21 +458,15 @@ contract NodesFacet is Initializable {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
-        require(s.clobAddress != address(0), 'CLOB not set');
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance - deposit tokens first');
 
         // Debit node's internal balance
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
 
-        // Ensure CLOB is approved to receive tokens from Diamond
-        if (!IERC1155(s.auraAssetAddress).isApprovedForAll(address(this), s.clobAddress)) {
-            IERC1155(s.auraAssetAddress).setApprovalForAll(s.clobAddress, true);
-        }
-
-        // Call CLOB to place sell order (Diamond transfers tokens to CLOB escrow)
-        // The CLOB's placeNodeSellOrder function will transfer tokens from Diamond
-        orderId = ICLOBNodeSell(s.clobAddress).placeNodeSellOrder(
+        // Call Diamond's own CLOBFacet via delegatecall (same contract)
+        // This keeps all logic within the Diamond - no external CLOB contract needed
+        orderId = ICLOBFacet(address(this)).placeNodeSellOrder(
             msg.sender,           // nodeOwner receives proceeds
             s.auraAssetAddress,   // baseToken
             _tokenId,             // baseTokenId
@@ -624,7 +624,7 @@ contract NodesFacet is Initializable {
 
     /**
      * @notice Debit tokens from a node (for sales/transfers out)
-     * @dev Called by CLOB or other authorized contracts when tokens are sold
+     * @dev Called by node owner or internal Diamond facets when tokens are sold
      * @param _node The node hash to debit
      * @param _tokenId The ERC1155 token ID
      * @param _amount The amount to debit
@@ -635,9 +635,9 @@ contract NodesFacet is Initializable {
         uint256 _amount
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        // Only node owner or CLOB can debit
+        // Only node owner or Diamond itself (internal facet calls) can debit
         require(
-            s.nodes[_node].owner == msg.sender || msg.sender == s.clobAddress,
+            s.nodes[_node].owner == msg.sender || msg.sender == address(this),
             'Not authorized'
         );
         require(_amount > 0, 'Amount must be positive');

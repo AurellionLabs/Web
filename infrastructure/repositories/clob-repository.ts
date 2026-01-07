@@ -11,9 +11,10 @@ import {
 } from '../shared/graph-queries';
 import {
   NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
-  NEXT_PUBLIC_CLOB_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '@/chain-constants';
+// NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
 import { formatEther, parseEther } from 'viem';
 import { ethers } from 'ethers';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
@@ -148,13 +149,14 @@ export interface OrderPlacementResult {
 export class CLOBRepository {
   private graphQLEndpoint: string;
   private repositoryContext: RepositoryContext;
-  private clobAddress: string;
+  private diamondAddress: string;
   private quoteTokenAddress: string;
 
   constructor() {
     this.graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
     this.repositoryContext = RepositoryContext.getInstance();
-    this.clobAddress = NEXT_PUBLIC_CLOB_ADDRESS;
+    // Diamond address - all CLOB operations go through Diamond CLOBFacet
+    this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
     this.quoteTokenAddress =
       NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS ||
       '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
@@ -448,27 +450,31 @@ export class CLOBRepository {
   // ============================================================================
 
   /**
-   * Get the CLOB contract instance with signer
+   * Get the Diamond contract instance with signer for CLOB operations
+   * All CLOB functionality is now in the Diamond's CLOBFacet
    */
   private async getContractWithSigner(): Promise<ethers.Contract> {
     const signer = this.repositoryContext.getSigner();
     const provider = this.repositoryContext.getProvider();
 
-    // Get CLOB ABI (minimal interface for trading)
-    const clobABI = [
-      'function placeLimitOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, bool isBuy) external returns (bytes32)',
-      'function placeMarketOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 amount, bool isBuy, uint256 maxPrice) external returns (bytes32)',
-      'function cancelOrder(bytes32 orderId) external',
-      'function orders(bytes32 orderId) external view returns (bytes32 id, address maker, address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, uint256 filledAmount, bool isBuy, uint8 orderType, uint8 status, uint256 createdAt, uint256 updatedAt)',
+    // Diamond CLOBFacet ABI (minimal interface for trading)
+    const diamondCLOBABI = [
+      // Buy orders - user places buy order, tokens escrowed from their wallet
+      'function placeBuyOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount) external returns (bytes32)',
+      // Cancel order - works for both buy and sell orders
+      'function cancelCLOBOrder(bytes32 orderId) external',
+      // View functions
+      'function getOrderWithTokens(bytes32 orderId) external view returns (address maker, address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, uint256 filledAmount, bool isBuy, uint8 status)',
+      'function getOpenOrders(address baseToken, uint256 baseTokenId, address quoteToken) external view returns (bytes32[] buyOrders, bytes32[] sellOrders)',
     ];
 
-    const clobContract = new ethers.Contract(
-      this.clobAddress,
-      clobABI,
+    const diamondContract = new ethers.Contract(
+      this.diamondAddress,
+      diamondCLOBABI,
       provider,
     );
 
-    return clobContract.connect(signer) as ethers.Contract;
+    return diamondContract.connect(signer) as ethers.Contract;
   }
 
   /**
@@ -492,7 +498,7 @@ export class CLOBRepository {
   }
 
   /**
-   * Ensure quote token allowance for CLOB contract
+   * Ensure quote token allowance for Diamond contract (CLOBFacet)
    */
   private async ensureQuoteTokenApproval(
     quoteToken: ethers.Contract,
@@ -501,14 +507,17 @@ export class CLOBRepository {
     const signerAddress = await this.repositoryContext.getSignerAddress();
     const currentAllowance = await quoteToken.allowance(
       signerAddress,
-      this.clobAddress,
+      this.diamondAddress,
     );
 
     if (currentAllowance < amount) {
-      console.log('[CLOBRepository] Approving quote token for CLOB...');
-      const tx = await quoteToken.approve(this.clobAddress, amount);
+      console.log('[CLOBRepository] Approving quote token for Diamond...');
+      const tx = await quoteToken.approve(this.diamondAddress, amount);
       await tx.wait();
-      console.log('[CLOBRepository] Quote token approved:', tx.hash);
+      console.log(
+        '[CLOBRepository] Quote token approved for Diamond:',
+        tx.hash,
+      );
     }
   }
 
@@ -531,26 +540,29 @@ export class CLOBRepository {
       provider,
     ).connect(signer) as ethers.Contract;
 
+    // Approve Diamond to transfer base tokens (for sell orders)
     const isApproved = await baseTokenContract.isApprovedForAll(
       signerAddress,
-      this.clobAddress,
+      this.diamondAddress,
     );
 
     if (!isApproved) {
       console.log(
-        '[CLOBRepository] Approving base token (ERC1155) for CLOB...',
+        '[CLOBRepository] Approving base token (ERC1155) for Diamond...',
       );
       const tx = await baseTokenContract.setApprovalForAll(
-        this.clobAddress,
+        this.diamondAddress,
         true,
       );
       await tx.wait();
-      console.log('[CLOBRepository] Base token approved:', tx.hash);
+      console.log('[CLOBRepository] Base token approved for Diamond:', tx.hash);
     }
   }
 
   /**
-   * Place a limit order on the CLOB
+   * Place a limit order on the Diamond CLOB
+   * NOTE: For SELL orders, use DiamondProvider.placeSellOrderFromNode() instead
+   * This method is primarily for BUY orders via Diamond CLOBFacet
    * @param params Order placement parameters
    * @returns Order placement result
    */
@@ -558,37 +570,46 @@ export class CLOBRepository {
     params: PlaceLimitOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
-      console.log('[CLOBRepository] Placing limit order:', params);
+      console.log('[CLOBRepository] Placing limit order via Diamond:', params);
 
-      const [clobContract, quoteToken] = await Promise.all([
+      // Sell orders should go through DiamondProvider.placeSellOrderFromNode()
+      // which handles node inventory management
+      if (!params.isBuy) {
+        console.warn(
+          '[CLOBRepository] Sell orders should use DiamondProvider.placeSellOrderFromNode()',
+        );
+        return {
+          success: false,
+          error:
+            'Sell orders must be placed through DiamondProvider.placeSellOrderFromNode()',
+        };
+      }
+
+      const [diamondContract, quoteToken] = await Promise.all([
         this.getContractWithSigner(),
         this.getQuoteTokenWithSigner(),
       ]);
 
-      // For buy orders: approve quote token (ERC20)
-      // For sell orders: approve base token (ERC1155)
-      if (params.isBuy) {
-        const totalCost = params.price * params.amount;
-        await this.ensureQuoteTokenApproval(quoteToken, totalCost);
-      } else {
-        // Sell order - need to approve the ERC1155 base token
-        await this.ensureBaseTokenApproval(params.baseToken);
-      }
+      // For buy orders: approve quote token (ERC20) for Diamond
+      const totalCost = params.price * params.amount;
+      await this.ensureQuoteTokenApproval(quoteToken, totalCost);
 
-      // Place the order
-      const tx = await clobContract.placeLimitOrder(
+      // Place the buy order via Diamond CLOBFacet
+      const tx = await diamondContract.placeBuyOrder(
         params.baseToken,
         params.baseTokenId,
         params.quoteToken,
         params.price,
         params.amount,
-        params.isBuy,
       );
 
       const receipt = await tx.wait();
-      console.log('[CLOBRepository] Limit order placed, tx:', receipt.hash);
+      console.log(
+        '[CLOBRepository] Buy order placed via Diamond, tx:',
+        receipt.hash,
+      );
 
-      // Parse order ID from transaction logs (simplified - would need actual event parsing)
+      // Parse order ID from transaction logs
       const orderId = this.extractOrderIdFromTransaction(receipt, params.isBuy);
 
       return {
@@ -597,7 +618,7 @@ export class CLOBRepository {
         transactionHash: receipt.hash,
       };
     } catch (error) {
-      console.error('[CLOBRepository] Failed to place limit order:', error);
+      console.error('[CLOBRepository] Failed to place buy order:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -661,7 +682,7 @@ export class CLOBRepository {
   }
 
   /**
-   * Cancel an existing order on the CLOB
+   * Cancel an existing order on the Diamond CLOB
    * @param orderId The order ID to cancel
    * @returns Cancellation result
    */
@@ -669,13 +690,16 @@ export class CLOBRepository {
     orderId: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('[CLOBRepository] Cancelling order:', orderId);
+      console.log('[CLOBRepository] Cancelling order via Diamond:', orderId);
 
-      const clobContract = await this.getContractWithSigner();
-      const tx = await clobContract.cancelOrder(orderId);
+      const diamondContract = await this.getContractWithSigner();
+      const tx = await diamondContract.cancelCLOBOrder(orderId);
       const receipt = await tx.wait();
 
-      console.log('[CLOBRepository] Order cancelled, tx:', receipt.hash);
+      console.log(
+        '[CLOBRepository] Order cancelled via Diamond, tx:',
+        receipt.hash,
+      );
 
       return { success: true };
     } catch (error) {
@@ -697,11 +721,11 @@ export class CLOBRepository {
     receipt: ethers.TransactionReceipt,
     isBuy: boolean,
   ): string {
-    // CLOB contract emits OrderPlaced event with this signature:
-    // OrderPlaced(bytes32 indexed orderId, address indexed maker, address indexed baseToken,
-    //             uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, bool isBuy, uint8 orderType)
+    // Diamond CLOBFacet emits OrderPlacedWithTokens event with this signature:
+    // OrderPlacedWithTokens(bytes32 indexed orderId, address indexed maker, address indexed baseToken,
+    //                       uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, bool isBuy, uint8 orderType)
     const orderPlacedSignature =
-      'OrderPlaced(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)';
+      'OrderPlacedWithTokens(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)';
     const orderPlacedTopic = ethers.id(orderPlacedSignature);
 
     for (const log of receipt.logs) {

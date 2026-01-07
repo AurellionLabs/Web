@@ -356,7 +356,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
-  // Get node's deposited token balance (available for selling on CLOB)
+// Get node's deposited token balance (available for selling on CLOB)
   const getNodeTokenBalance = useCallback(
     async (nodeHash: string, tokenId: string): Promise<bigint> => {
       if (!diamondContext) {
@@ -377,42 +377,24 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
-  // Approve CLOB to transfer tokens from Diamond (for node selling)
+  // DEPRECATED: CLOB approval is no longer needed since CLOBFacet is internal to Diamond
+  // Kept for backward compatibility - always succeeds immediately
   const approveClobForTokens = useCallback(
     async (nodeHash: string): Promise<void> => {
-      if (!diamondContext) {
-        throw new Error('Diamond not initialized');
-      }
-      const diamond = diamondContext.getDiamond();
-      const { NEXT_PUBLIC_CLOB_ADDRESS } = await import('@/chain-constants');
-
-      // Check if already approved
-      const isApproved = await diamond.isClobApproved(NEXT_PUBLIC_CLOB_ADDRESS);
-      if (isApproved) {
-        console.log('[DiamondProvider] CLOB already approved');
-        return;
-      }
-
-      console.log('[DiamondProvider] Approving CLOB for token transfers...');
-      const tx = await diamond.approveClobForTokens(
-        nodeHash,
-        NEXT_PUBLIC_CLOB_ADDRESS,
+      // No-op: CLOB is now internal to Diamond via CLOBFacet
+      // Tokens are held by Diamond and CLOBFacet can access them directly
+      console.log(
+        '[DiamondProvider] CLOB approval not needed - CLOBFacet is internal to Diamond',
       );
-      await tx.wait();
-      console.log('[DiamondProvider] CLOB approved successfully');
     },
-    [diamondContext],
+    [],
   );
 
-  // Check if CLOB is approved
+  // DEPRECATED: CLOB is always "approved" since it's internal to Diamond
   const isClobApproved = useCallback(async (): Promise<boolean> => {
-    if (!diamondContext) {
-      return false;
-    }
-    const diamond = diamondContext.getDiamond();
-    const { NEXT_PUBLIC_CLOB_ADDRESS } = await import('@/chain-constants');
-    return await diamond.isClobApproved(NEXT_PUBLIC_CLOB_ADDRESS);
-  }, [diamondContext]);
+    // CLOBFacet is internal to Diamond, always "approved"
+    return true;
+  }, []);
 
   // Place sell order directly from node inventory (no withdrawal to wallet needed)
   const placeSellOrderFromNode = useCallback(
