@@ -629,7 +629,14 @@ export class CLOBRepository {
     params: PlaceMarketOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
-      console.log('[CLOBRepository] Placing market order:', params);
+      console.log('[CLOBRepository] Placing market order:', {
+        baseToken: params.baseToken,
+        baseTokenId: params.baseTokenId,
+        quoteToken: params.quoteToken,
+        amount: params.amount.toString(),
+        isBuy: params.isBuy,
+        maxPrice: params.maxPrice.toString(),
+      });
 
       const [clobContract, quoteToken] = await Promise.all([
         this.getContractWithSigner(),
