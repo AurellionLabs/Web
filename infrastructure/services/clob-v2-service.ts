@@ -291,16 +291,18 @@ export class CLOBV2Service implements ICLOBService {
       const contract = await this.getCLOBContract();
 
       // Create commitment hash
+      const tifNum = this.timeInForceToNumber(params.timeInForce);
+      const expiryVal = params.expiry || 0;
       const commitment = keccak256(
         encodePacked(
           ['bytes32', 'uint96', 'uint96', 'bool', 'uint8', 'uint40', 'bytes32'],
           [
             params.marketId as `0x${string}`,
-            params.price,
-            params.amount,
+            BigInt(params.price),
+            BigInt(params.amount),
             params.isBuy,
-            this.timeInForceToNumber(params.timeInForce),
-            BigInt(params.expiry || 0),
+            tifNum,
+            expiryVal,
             params.salt as `0x${string}`,
           ],
         ),
