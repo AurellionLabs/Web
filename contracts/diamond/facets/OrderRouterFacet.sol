@@ -225,6 +225,86 @@ contract OrderRouterFacet is ReentrancyGuard {
     }
     
     // ============================================================================
+    // CONVENIENCE FUNCTIONS - Simplified interfaces for common use cases
+    // ============================================================================
+    
+    /**
+     * @notice Place a buy order (convenience wrapper for placeOrder)
+     * @dev Simplified interface for buying tokens. Equivalent to calling
+     *      placeOrder() with isBuy=true, timeInForce=GTC, expiry=0
+     * @param baseToken ERC1155 token address to buy
+     * @param baseTokenId Token ID to buy
+     * @param quoteToken Payment token (ERC20)
+     * @param price Price per unit in quote token (wei)
+     * @param amount Amount of base tokens to buy
+     * @return orderId The generated order ID
+     */
+    function placeBuyOrder(
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint96 price,
+        uint96 amount
+    ) external nonReentrant returns (bytes32 orderId) {
+        _validateOrderParams(price, amount, CLOBLib.TIF_GTC, 0);
+        
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        bytes32 marketId = _getOrCreateMarket(s, baseToken, baseTokenId, quoteToken);
+        
+        // Transfer quote tokens to escrow
+        uint256 totalCost = CLOBLib.calculateQuoteAmount(price, amount);
+        IERC20(quoteToken).transferFrom(msg.sender, address(this), totalCost);
+        
+        // Create order using V2 storage
+        orderId = _createOrder(s, marketId, msg.sender, price, amount, true, CLOBLib.TIF_GTC, 0, false);
+        
+        emit OrderRouted(orderId, msg.sender, 0, true);
+        
+        // Match order
+        _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
+        
+        // No time-in-force handling needed for GTC orders
+    }
+    
+    /**
+     * @notice Place a sell order (convenience wrapper for placeOrder)
+     * @dev Simplified interface for selling tokens. Equivalent to calling
+     *      placeOrder() with isBuy=false, timeInForce=GTC, expiry=0
+     *      Seller must have approved Diamond to transfer their tokens.
+     * @param baseToken ERC1155 token address to sell
+     * @param baseTokenId Token ID to sell
+     * @param quoteToken Payment token (ERC20) to receive
+     * @param price Price per unit in quote token (wei)
+     * @param amount Amount of base tokens to sell
+     * @return orderId The generated order ID
+     */
+    function placeSellOrder(
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint96 price,
+        uint96 amount
+    ) external nonReentrant returns (bytes32 orderId) {
+        _validateOrderParams(price, amount, CLOBLib.TIF_GTC, 0);
+        
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        bytes32 marketId = _getOrCreateMarket(s, baseToken, baseTokenId, quoteToken);
+        
+        // Transfer base tokens to escrow
+        IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
+        
+        // Create order using V2 storage
+        orderId = _createOrder(s, marketId, msg.sender, price, amount, false, CLOBLib.TIF_GTC, 0, false);
+        
+        emit OrderRouted(orderId, msg.sender, 0, false);
+        
+        // Match order
+        _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
+        
+        // No time-in-force handling needed for GTC orders
+    }
+    
+    // ============================================================================
     // ORDER CANCELLATION
     // ============================================================================
     

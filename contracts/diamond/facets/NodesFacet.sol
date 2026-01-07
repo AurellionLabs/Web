@@ -115,21 +115,31 @@ contract NodesFacet is Initializable {
      * @notice Set the CLOB contract address (DEPRECATED - CLOB is now internal to Diamond)
      * @dev Kept for backward compatibility. New code should not use external CLOB.
      * @param _clobAddress The CLOB contract address (unused)
+     * 
+     * @custom:deprecated This function is deprecated and will be removed in v2.0.
+     *                    CLOB functionality is now internal to the Diamond via CLOBFacet.
+     *                    Setting this value has no effect on order placement.
      */
     function setClobAddress(address _clobAddress) external {
         LibDiamond.enforceIsContractOwner();
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         s.clobAddress = _clobAddress;
-        // Note: This is deprecated. CLOBFacet is now part of the Diamond.
+        // DEPRECATED: CLOBFacet is now part of the Diamond.
+        // This value is no longer used for order routing.
     }
 
     /**
      * @notice Get the CLOB contract address (DEPRECATED)
      * @dev Returns Diamond address since CLOB is now internal
      * @return The Diamond address (CLOB is internal)
+     * 
+     * @custom:deprecated This function is deprecated and will be removed in v2.0.
+     *                    CLOB functionality is now internal to the Diamond.
+     *                    Use OrderRouterFacet for all order operations.
      */
     function getClobAddress() external view returns (address) {
-        // CLOB functionality is now internal to Diamond via CLOBFacet
+        // DEPRECATED: CLOB functionality is now internal to Diamond via CLOBFacet
+        // All orders should go through OrderRouterFacet
         return address(this);
     }
 
@@ -430,30 +440,47 @@ contract NodesFacet is Initializable {
     /**
      * @notice DEPRECATED - CLOB is now internal to Diamond, no external approval needed
      * @dev Kept for backward compatibility. Does nothing since Diamond holds tokens internally.
+     * 
+     * @custom:deprecated This function is deprecated and will be removed in v2.0.
+     *                    CLOB is now internal to the Diamond - no external approval needed.
+     *                    Tokens deposited to a node are automatically available for trading.
+     *                    Use depositTokensToNode() to add tokens, then placeSellOrderFromNode()
+     *                    or OrderRouterFacet.placeOrder() to trade.
      */
     function approveClobForTokens(bytes32 _node, address _clobAddress) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
-        // No-op: CLOB is internal to Diamond, tokens are already held by Diamond
+        // DEPRECATED NO-OP: CLOB is internal to Diamond, tokens are already held by Diamond
+        // Emit event for backward compatibility with frontends that may be listening
         emit ClobApprovalGranted(_node, _clobAddress);
     }
 
     /**
      * @notice DEPRECATED - CLOB is now internal to Diamond
+     * @dev Kept for backward compatibility. Does nothing since Diamond holds tokens internally.
+     * 
+     * @custom:deprecated This function is deprecated and will be removed in v2.0.
+     *                    CLOB is now internal to the Diamond - no external approval needed.
+     *                    To prevent a node from trading, use withdrawTokensFromNode() instead.
      */
     function revokeClobApproval(bytes32 _node, address _clobAddress) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
-        // No-op: CLOB is internal to Diamond
+        // DEPRECATED NO-OP: CLOB is internal to Diamond
+        // Emit event for backward compatibility with frontends that may be listening
         emit ClobApprovalRevoked(_node, _clobAddress);
     }
 
     /**
      * @notice DEPRECATED - CLOB is now internal to Diamond
      * @dev Always returns true since Diamond holds tokens and CLOBFacet is internal
+     * 
+     * @custom:deprecated This function is deprecated and will be removed in v2.0.
+     *                    CLOB is now internal to the Diamond - always "approved".
+     *                    This check is no longer meaningful.
      */
     function isClobApproved(address /* _clobAddress */) external pure returns (bool) {
-        // CLOB is internal to Diamond, always "approved"
+        // DEPRECATED: CLOB is internal to Diamond, always "approved"
         return true;
     }
 
@@ -744,5 +771,119 @@ contract NodesFacet is Initializable {
         isBalanced = (diamondBalance >= sumNodeBalances);
         
         return (diamondBalance, sumNodeBalances, isBalanced);
+    }
+
+    // ======= UNIFIED INVENTORY VIEW (METADATA + BALANCE) =======
+
+    /**
+     * @notice Struct combining asset metadata with actual tradable balance
+     * @dev This struct clarifies the distinction between:
+     *      - capacity: The MAXIMUM amount a node can hold (from nodeAssets, set by node owner)
+     *      - balance: The ACTUAL amount currently in the node's inventory (from nodeTokenBalances)
+     *      
+     *      The 'balance' is what matters for trading - it's what the CLOB checks when
+     *      executing sell orders. The 'capacity' is metadata/configuration.
+     */
+    struct AssetWithBalance {
+        address token;        // ERC1155 token contract address
+        uint256 tokenId;      // Token ID
+        uint256 price;        // Price per unit (set by node owner)
+        uint256 capacity;     // Maximum capacity (metadata, set by node owner)
+        uint256 balance;      // Actual tradable balance (from nodeTokenBalances)
+        uint256 createdAt;    // When the asset was added
+        bool active;          // Whether the asset is active
+    }
+
+    /**
+     * @notice Get all assets for a node with both metadata AND actual balances
+     * @dev This function combines data from two sources:
+     *      1. nodeAssets (metadata): token, tokenId, price, capacity, createdAt, active
+     *      2. nodeTokenBalances: actual tradable inventory
+     *      
+     *      Use this function when you need to display sellable assets with correct quantities.
+     *      The 'balance' field shows what can actually be sold, while 'capacity' shows the
+     *      configured maximum.
+     *      
+     * @param _node The node hash
+     * @return assets Array of assets with both metadata and actual balances
+     */
+    function getNodeInventoryWithMetadata(bytes32 _node) 
+        external 
+        view 
+        returns (AssetWithBalance[] memory assets) 
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 count = s.nodeAssetIds[_node].length;
+        assets = new AssetWithBalance[](count);
+        
+        for (uint256 i = 0; i < count; i++) {
+            uint256 assetId = s.nodeAssetIds[_node][i];
+            DiamondStorage.NodeAsset storage nodeAsset = s.nodeAssets[_node][assetId];
+            
+            assets[i] = AssetWithBalance({
+                token: nodeAsset.token,
+                tokenId: nodeAsset.tokenId,
+                price: nodeAsset.price,
+                capacity: nodeAsset.capacity,
+                // Get ACTUAL tradable balance from nodeTokenBalances
+                balance: s.nodeTokenBalances[_node][nodeAsset.tokenId],
+                createdAt: nodeAsset.createdAt,
+                active: nodeAsset.active
+            });
+        }
+        
+        return assets;
+    }
+
+    /**
+     * @notice Get sellable assets for a node (assets with balance > 0)
+     * @dev Convenience function that filters to only assets that can actually be sold.
+     *      This is what the frontend should use for displaying sellable inventory.
+     * @param _node The node hash
+     * @return assets Array of assets with balance > 0
+     * @return count Number of sellable assets
+     */
+    function getNodeSellableAssets(bytes32 _node) 
+        external 
+        view 
+        returns (AssetWithBalance[] memory assets, uint256 count) 
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 totalAssets = s.nodeAssetIds[_node].length;
+        
+        // First pass: count sellable assets
+        count = 0;
+        for (uint256 i = 0; i < totalAssets; i++) {
+            uint256 assetId = s.nodeAssetIds[_node][i];
+            DiamondStorage.NodeAsset storage nodeAsset = s.nodeAssets[_node][assetId];
+            uint256 balance = s.nodeTokenBalances[_node][nodeAsset.tokenId];
+            if (balance > 0 && nodeAsset.active) {
+                count++;
+            }
+        }
+        
+        // Second pass: populate array
+        assets = new AssetWithBalance[](count);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < totalAssets; i++) {
+            uint256 assetId = s.nodeAssetIds[_node][i];
+            DiamondStorage.NodeAsset storage nodeAsset = s.nodeAssets[_node][assetId];
+            uint256 balance = s.nodeTokenBalances[_node][nodeAsset.tokenId];
+            
+            if (balance > 0 && nodeAsset.active) {
+                assets[idx] = AssetWithBalance({
+                    token: nodeAsset.token,
+                    tokenId: nodeAsset.tokenId,
+                    price: nodeAsset.price,
+                    capacity: nodeAsset.capacity,
+                    balance: balance,
+                    createdAt: nodeAsset.createdAt,
+                    active: nodeAsset.active
+                });
+                idx++;
+            }
+        }
+        
+        return (assets, count);
     }
 }

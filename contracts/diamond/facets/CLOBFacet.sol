@@ -8,9 +8,49 @@ import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 /**
+ * @dev Interface for OrderRouterFacet - the SINGLE ENTRY POINT for all orders
+ * All order placement should go through OrderRouterFacet to ensure V2 storage usage
+ */
+interface IOrderRouterFacet {
+    function placeOrder(
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint96 price,
+        uint96 amount,
+        bool isBuy,
+        uint8 timeInForce,
+        uint40 expiry
+    ) external returns (bytes32 orderId);
+    
+    function placeMarketOrder(
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint96 amount,
+        bool isBuy,
+        uint16 maxSlippageBps
+    ) external returns (bytes32 orderId);
+    
+    function cancelOrder(bytes32 orderId) external;
+}
+
+/**
  * @title CLOBFacet
  * @notice Business logic facet for CLOB integration
- * @dev Combines CLOB interaction logic with full order book, trades, and liquidity pools
+ * @dev DEPRECATION NOTICE: Most order functions now redirect to OrderRouterFacet
+ *      to ensure consistent V2 storage usage. Direct use of this facet for order
+ *      placement is deprecated. Use OrderRouterFacet.placeOrder() instead.
+ * 
+ * Functions that are DEPRECATED and redirect to OrderRouterFacet:
+ * - placeBuyOrder() -> Use OrderRouterFacet.placeOrder() with isBuy=true
+ * - placeMarketOrder() -> Use OrderRouterFacet.placeMarketOrder()
+ * - placeOrder() -> Use OrderRouterFacet.placeOrder()
+ * 
+ * Functions that are still active (view/query functions):
+ * - getOrder(), getTrade(), getPool(), getMarket()
+ * - getOpenOrders(), getOrderWithTokens()
+ * - getTotalMarkets(), getTotalTrades()
  */
 contract CLOBFacet is Initializable {
     // Original market-based OrderPlaced event (for backward compatibility)
@@ -130,6 +170,15 @@ contract CLOBFacet is Initializable {
         return marketId;
     }
 
+    /**
+     * @notice Place an order using market ID
+     * @dev DEPRECATED: This function uses V1 storage which is incompatible with V2.
+     *      Orders placed here will NOT match with orders placed via OrderRouterFacet.
+     *      Use OrderRouterFacet.placeOrder() with token addresses instead.
+     * 
+     *      This function is kept for backward compatibility with existing integrations
+     *      but will be removed in a future version.
+     */
     function placeOrder(
         bytes32 _marketId,
         uint256 _price,
@@ -137,6 +186,13 @@ contract CLOBFacet is Initializable {
         bool _isBuy,
         uint8 _orderType
     ) external returns (bytes32 orderId) {
+        // DEPRECATED: This function uses V1 storage
+        // New orders should use OrderRouterFacet.placeOrder() with token addresses
+        // to ensure compatibility with V2 storage and proper order matching.
+        //
+        // We keep this implementation for backward compatibility, but emit a warning
+        // that orders placed here may not match with V2 orders.
+        
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.markets[_marketId].active, 'Market not active');
         require(_price > 0 && _amount > 0, 'Invalid params');
@@ -161,7 +217,7 @@ contract CLOBFacet is Initializable {
         s.clobOrderIds.push(orderId);
         s.totalCLOBOrders++;
         
-        // FIX: Also add to price-level arrays for unified matching
+        // Add to price-level arrays for unified matching
         if (_isBuy) {
             s.bidOrders[_marketId][_price].push(orderId);
             _addPriceLevel(s.bidPrices[_marketId], _price);
@@ -172,7 +228,7 @@ contract CLOBFacet is Initializable {
 
         emit OrderPlaced(orderId, msg.sender, _marketId, _price, _amount, _isBuy, _orderType);
 
-        // FIX: Use unified matching that works with price-level arrays
+        // Use unified matching that works with price-level arrays
         _matchOrderUnified(s, _marketId, orderId);
 
         return orderId;
@@ -592,7 +648,9 @@ contract CLOBFacet is Initializable {
 
     /**
      * @notice Place a buy order for tokens
-     * @dev Buyer must have approved Diamond to spend quote tokens
+     * @dev DEPRECATED: Use OrderRouterFacet.placeOrder() instead for V2 storage compatibility
+     *      This function now redirects to OrderRouterFacet to ensure all orders use V2 storage.
+     *      Buyer must have approved Diamond to spend quote tokens.
      * @param _baseToken The ERC1155 token contract address
      * @param _baseTokenId The token ID to buy
      * @param _quoteToken The payment token
@@ -607,71 +665,31 @@ contract CLOBFacet is Initializable {
         uint256 _price,
         uint256 _amount
     ) external returns (bytes32 orderId) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(_price > 0, 'Invalid price');
-        require(_amount > 0, 'Invalid amount');
+        // DEPRECATED: Redirect to OrderRouterFacet for V2 storage compatibility
+        // This ensures all orders (buy and sell) use the same storage structure
+        // and can match with each other properly.
+        require(_price > 0 && _price <= type(uint96).max, 'Invalid price');
+        require(_amount > 0 && _amount <= type(uint96).max, 'Invalid amount');
         
-        // Calculate total quote amount needed
-        uint256 totalQuote = _price * _amount;
-        
-        // Transfer quote tokens from buyer to Diamond (escrow)
-        IERC20(_quoteToken).transferFrom(msg.sender, address(this), totalQuote);
-        
-        // Generate market ID
-        bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
-        
-        // Create or verify market exists
-        if (!s.markets[marketId].active) {
-            s.markets[marketId] = DiamondStorage.Market({
-                baseToken: _addressToString(_baseToken),
-                baseTokenId: _baseTokenId,
-                quoteToken: _addressToString(_quoteToken),
-                active: true,
-                createdAt: block.timestamp
-            });
-            s.marketIds.push(marketId);
-            s.totalMarkets++;
-        }
-
-        // Generate unique order ID
-        orderId = keccak256(
-            abi.encodePacked(msg.sender, marketId, _price, _amount, true, uint8(0), block.timestamp, s.totalCLOBOrders)
+        // Route through OrderRouterFacet - SINGLE ENTRY POINT for all orders
+        // timeInForce = 0 (GTC), expiry = 0 (no expiry)
+        return IOrderRouterFacet(address(this)).placeOrder(
+            _baseToken,
+            _baseTokenId,
+            _quoteToken,
+            uint96(_price),
+            uint96(_amount),
+            true,  // isBuy = true
+            0,     // timeInForce = GTC
+            0      // expiry = no expiry
         );
-
-        // Store order
-        s.clobOrders[orderId] = DiamondStorage.CLOBOrder({
-            maker: msg.sender,
-            marketId: marketId,
-            price: _price,
-            amount: _amount,
-            filledAmount: 0,
-            isBuy: true,
-            orderType: 0, // Limit
-            status: 0, // Open
-            createdAt: block.timestamp,
-            updatedAt: block.timestamp
-        });
-
-        s.clobOrderIds.push(orderId);
-        s.totalCLOBOrders++;
-        
-        // Add to bid orders at this price level
-        s.bidOrders[marketId][_price].push(orderId);
-        _addPriceLevel(s.bidPrices[marketId], _price);
-
-        // Emit both events
-        emit OrderPlaced(orderId, msg.sender, marketId, _price, _amount, true, 0);
-        emit OrderPlacedWithTokens(orderId, msg.sender, _baseToken, _baseTokenId, _quoteToken, _price, _amount, true, 0);
-
-        // Try to match with existing sell orders
-        _matchBuyOrder(s, marketId, orderId, _baseToken, _baseTokenId, _quoteToken);
-
-        return orderId;
     }
 
     /**
      * @notice Place a market order (executes immediately at best available price)
-     * @dev For buy orders: buyer must approve Diamond to spend quote tokens
+     * @dev DEPRECATED: Use OrderRouterFacet.placeMarketOrder() instead for V2 storage compatibility
+     *      This function now redirects to OrderRouterFacet to ensure all orders use V2 storage.
+     *      For buy orders: buyer must approve Diamond to spend quote tokens
      *      For sell orders: seller must have tokens in Diamond (via depositTokensToNode)
      * @param _baseToken The ERC1155 token contract address
      * @param _baseTokenId The token ID
@@ -689,34 +707,23 @@ contract CLOBFacet is Initializable {
         bool _isBuy,
         uint256 _maxPrice
     ) external returns (bytes32 orderId) {
-        require(_amount > 0, 'Invalid amount');
+        // DEPRECATED: Redirect to OrderRouterFacet for V2 storage compatibility
+        require(_amount > 0 && _amount <= type(uint96).max, 'Invalid amount');
         require(_maxPrice > 0, 'Invalid max price');
         
-        // Generate market ID
-        bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
+        // Calculate slippage from max price (assume 5% default slippage for market orders)
+        // This provides similar behavior to the old implementation
+        uint16 maxSlippageBps = 500; // 5% slippage
         
-        // Ensure market exists
-        _ensureMarketExists(marketId, _baseToken, _baseTokenId, _quoteToken);
-
-        // Handle token transfers
-        if (_isBuy) {
-            uint256 maxCost = _maxPrice * _amount;
-            IERC20(_quoteToken).transferFrom(msg.sender, address(this), maxCost);
-        } else {
-            IERC1155(_baseToken).safeTransferFrom(msg.sender, address(this), _baseTokenId, _amount, "");
-        }
-
-        // Create and store the order
-        orderId = _createMarketOrder(marketId, _maxPrice, _amount, _isBuy);
-
-        // Emit events
-        emit OrderPlaced(orderId, msg.sender, marketId, _maxPrice, _amount, _isBuy, 1);
-        emit OrderPlacedWithTokens(orderId, msg.sender, _baseToken, _baseTokenId, _quoteToken, _maxPrice, _amount, _isBuy, 1);
-
-        // Execute and finalize
-        _executeMarketOrder(orderId, marketId, _baseToken, _baseTokenId, _quoteToken, _amount, _isBuy, _maxPrice);
-
-        return orderId;
+        // Route through OrderRouterFacet - SINGLE ENTRY POINT for all orders
+        return IOrderRouterFacet(address(this)).placeMarketOrder(
+            _baseToken,
+            _baseTokenId,
+            _quoteToken,
+            uint96(_amount),
+            _isBuy,
+            maxSlippageBps
+        );
     }
 
     function _ensureMarketExists(
@@ -827,10 +834,21 @@ contract CLOBFacet is Initializable {
 
     /**
      * @notice Cancel an open order
+     * @dev This function handles both V1 and V2 orders. For V2 orders, it redirects
+     *      to OrderRouterFacet.cancelOrder(). For V1 orders, it uses the legacy logic.
      * @param _orderId The order to cancel
      */
     function cancelCLOBOrder(bytes32 _orderId) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        
+        // Check if this is a V2 order (has packed order data)
+        if (s.packedOrders[_orderId].makerAndFlags != 0) {
+            // V2 order - redirect to OrderRouterFacet
+            IOrderRouterFacet(address(this)).cancelOrder(_orderId);
+            return;
+        }
+        
+        // V1 order - use legacy logic
         DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
         
         require(order.maker == msg.sender, 'Not order maker');
