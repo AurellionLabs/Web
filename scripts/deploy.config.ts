@@ -307,6 +307,22 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     chainConstantKey: 'NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS',
   },
 
+  // CLOBMEVFacet - MEV protection via commit-reveal
+  CLOBMEVFacet: {
+    name: 'CLOBMEVFacet',
+    contractName: 'CLOBMEVFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_CLOB_MEV_FACET_ADDRESS',
+  },
+
+  // OrderMatchingFacet - Order matching logic (split from OrderRouterFacet)
+  OrderMatchingFacet: {
+    name: 'OrderMatchingFacet',
+    contractName: 'OrderMatchingFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_ORDER_MATCHING_FACET_ADDRESS',
+  },
+
   // Diamond itself
   Diamond: {
     name: 'Diamond',
@@ -1171,6 +1187,146 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       inputs: [{ name: 'interfaceId', type: 'bytes4' }],
       outputs: [{ name: '', type: 'bool' }],
       stateMutability: 'view',
+    },
+  ],
+
+  // CLOBMEVFacet - MEV protection via commit-reveal for large orders
+  CLOBMEVFacet: [
+    {
+      type: 'function',
+      name: 'commitOrder',
+      inputs: [{ name: 'commitment', type: 'bytes32' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'revealOrder',
+      inputs: [
+        { name: 'commitmentId', type: 'bytes32' },
+        { name: 'baseToken', type: 'address' },
+        { name: 'baseTokenId', type: 'uint256' },
+        { name: 'quoteToken', type: 'address' },
+        { name: 'price', type: 'uint96' },
+        { name: 'amount', type: 'uint96' },
+        { name: 'isBuy', type: 'bool' },
+        { name: 'timeInForce', type: 'uint8' },
+        { name: 'expiry', type: 'uint40' },
+        { name: 'salt', type: 'bytes32' },
+      ],
+      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'requiresCommitReveal',
+      inputs: [{ name: 'quoteAmount', type: 'uint256' }],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getCommitmentThreshold',
+      inputs: [],
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+    },
+    // Events
+    {
+      type: 'event',
+      name: 'OrderCommitted',
+      inputs: [
+        { name: 'commitmentId', type: 'bytes32', indexed: true },
+        { name: 'committer', type: 'address', indexed: true },
+        { name: 'commitBlock', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'OrderRevealed',
+      inputs: [
+        { name: 'commitmentId', type: 'bytes32', indexed: true },
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'maker', type: 'address', indexed: true },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'OrderCreated',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'marketId', type: 'bytes32', indexed: true },
+        { name: 'maker', type: 'address', indexed: true },
+        { name: 'price', type: 'uint256', indexed: false },
+        { name: 'amount', type: 'uint256', indexed: false },
+        { name: 'isBuy', type: 'bool', indexed: false },
+        { name: 'orderType', type: 'uint8', indexed: false },
+        { name: 'timeInForce', type: 'uint8', indexed: false },
+        { name: 'expiry', type: 'uint256', indexed: false },
+        { name: 'nonce', type: 'uint256', indexed: false },
+      ],
+    },
+  ],
+
+  // OrderMatchingFacet - Order matching logic (internal, called by OrderRouterFacet)
+  OrderMatchingFacet: [
+    {
+      type: 'function',
+      name: 'matchOrder',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        { name: 'marketId', type: 'bytes32' },
+        { name: 'baseToken', type: 'address' },
+        { name: 'baseTokenId', type: 'uint256' },
+        { name: 'quoteToken', type: 'address' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'cancelOrderInternal',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        { name: 'reason', type: 'uint8' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // Events
+    {
+      type: 'event',
+      name: 'OrderFilled',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'tradeId', type: 'bytes32', indexed: true },
+        { name: 'fillAmount', type: 'uint256', indexed: false },
+        { name: 'fillPrice', type: 'uint256', indexed: false },
+        { name: 'remainingAmount', type: 'uint256', indexed: false },
+        { name: 'cumulativeFilled', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'TradeExecuted',
+      inputs: [
+        { name: 'tradeId', type: 'bytes32', indexed: true },
+        { name: 'takerOrderId', type: 'bytes32', indexed: true },
+        { name: 'makerOrderId', type: 'bytes32', indexed: true },
+        { name: 'price', type: 'uint256', indexed: false },
+        { name: 'amount', type: 'uint256', indexed: false },
+        { name: 'quoteAmount', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'OrderCancelled',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'maker', type: 'address', indexed: true },
+        { name: 'remainingAmount', type: 'uint256', indexed: false },
+        { name: 'reason', type: 'uint8', indexed: false },
+      ],
     },
   ],
 };

@@ -69,46 +69,8 @@ contract CLOBFacetV2 is ReentrancyGuard {
         bool takerIsBuy
     );
     
-    event OrderCommitted(
-        bytes32 indexed commitmentId,
-        address indexed committer,
-        uint256 commitBlock
-    );
-    
-    event OrderRevealed(
-        bytes32 indexed commitmentId,
-        bytes32 indexed orderId,
-        address indexed maker
-    );
-    
-    event CircuitBreakerTripped(
-        bytes32 indexed marketId,
-        uint256 triggerPrice,
-        uint256 previousPrice,
-        uint256 changePercent,
-        uint256 cooldownUntil
-    );
-    
-    event CircuitBreakerReset(
-        bytes32 indexed marketId,
-        uint256 resetAt
-    );
-    
-    event MarketDepthChanged(
-        bytes32 indexed marketId,
-        uint256 bestBid,
-        uint256 bestBidSize,
-        uint256 bestAsk,
-        uint256 bestAskSize,
-        uint256 spread
-    );
-    
-    event EmergencyWithdrawal(
-        address indexed user,
-        bytes32 indexed orderId,
-        address token,
-        uint256 amount
-    );
+    // Note: OrderCommitted, OrderRevealed, CircuitBreakerTripped, CircuitBreakerReset, 
+    // EmergencyWithdrawal, MarketDepthChanged events moved to other facets
     
     event MarketCreated(
         bytes32 indexed marketId,
@@ -127,30 +89,17 @@ contract CLOBFacetV2 is ReentrancyGuard {
     error OrderNotFound();
     error OrderNotActive();
     error NotOrderMaker();
-    error MarketNotActive();
     error MarketPaused();
     error CircuitBreakerTrippedError();
-    error CommitmentNotFound();
-    error CommitmentAlreadyRevealed();
-    error RevealTooEarly();
-    error RevealTooLate();
-    error InvalidCommitment();
-    error OrderRequiresCommitReveal();
     error RateLimitExceeded();
-    error InsufficientBalance();
     error FOKNotFilled();
     error OrderExpiredError();
-    error EmergencyTimelockActive();
-    error NotPaused();
-    error ZeroAddress();
     
     // ============================================================================
     // CONSTANTS
     // ============================================================================
     
-    uint256 public constant MAX_REVEAL_DELAY = 50;  // ~10 minutes at 12s blocks
     uint256 public constant BASIS_POINTS = 10000;
-    uint256 public constant DEFAULT_COMMITMENT_THRESHOLD = 10000e18;  // 10k quote tokens
     
     // ============================================================================
     // MODIFIERS
@@ -196,97 +145,16 @@ contract CLOBFacetV2 is ReentrancyGuard {
         s.defaultCooldownPeriod = _defaultCooldownPeriod;
         s.emergencyTimelock = _emergencyTimelock;
         s.minRevealDelay = 2;  // 2 blocks minimum
-        s.commitmentThreshold = DEFAULT_COMMITMENT_THRESHOLD;
+        s.commitmentThreshold = 10000e18;  // 10k quote tokens for commit-reveal
         s.maxOrdersPerBlock = 100;
         s.maxVolumePerBlock = 1000000e18;
     }
     
     // ============================================================================
-    // MEV PROTECTION - COMMIT-REVEAL
-    // ============================================================================
-    
-    /**
-     * @notice Commit to placing an order (for large orders to prevent front-running)
-     * @param commitment keccak256(abi.encodePacked(marketId, price, amount, isBuy, timeInForce, expiry, salt))
-     */
-    function commitOrder(bytes32 commitment) external whenNotPaused {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        
-        bytes32 commitmentId = keccak256(abi.encodePacked(msg.sender, commitment, block.number));
-        
-        s.committedOrders[commitmentId] = DiamondStorage.CommittedOrder({
-            commitment: commitment,
-            commitBlock: block.number,
-            committer: msg.sender,
-            revealed: false,
-            expired: false
-        });
-        
-        emit OrderCommitted(commitmentId, msg.sender, block.number);
-    }
-    
-    /**
-     * @notice Reveal and execute a committed order
-     * @param commitmentId The commitment ID from commitOrder
-     * @param baseToken Base token address
-     * @param baseTokenId Token ID for ERC1155
-     * @param quoteToken Quote token address
-     * @param price Order price
-     * @param amount Order amount
-     * @param isBuy True for buy order
-     * @param timeInForce Time-in-force type
-     * @param expiry Expiration timestamp (0 for GTC)
-     * @param salt Random salt used in commitment
-     */
-    function revealOrder(
-        bytes32 commitmentId,
-        address baseToken,
-        uint256 baseTokenId,
-        address quoteToken,
-        uint96 price,
-        uint96 amount,
-        bool isBuy,
-        uint8 timeInForce,
-        uint40 expiry,
-        bytes32 salt
-    ) external nonReentrant whenNotPaused returns (bytes32 orderId) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        DiamondStorage.CommittedOrder storage committed = s.committedOrders[commitmentId];
-        
-        if (committed.commitment == bytes32(0)) revert CommitmentNotFound();
-        if (committed.revealed) revert CommitmentAlreadyRevealed();
-        if (committed.committer != msg.sender) revert NotOrderMaker();
-        if (block.number < committed.commitBlock + s.minRevealDelay) revert RevealTooEarly();
-        if (block.number > committed.commitBlock + MAX_REVEAL_DELAY) revert RevealTooLate();
-        
-        // Verify commitment
-        bytes32 marketId = keccak256(abi.encodePacked(baseToken, baseTokenId, quoteToken));
-        bytes32 expectedCommitment = keccak256(abi.encodePacked(
-            marketId, price, amount, isBuy, timeInForce, expiry, salt
-        ));
-        
-        if (committed.commitment != expectedCommitment) revert InvalidCommitment();
-        
-        committed.revealed = true;
-        
-        // Place the order
-        orderId = _placeOrder(
-            baseToken,
-            baseTokenId,
-            quoteToken,
-            price,
-            amount,
-            isBuy,
-            timeInForce,
-            expiry
-        );
-        
-        emit OrderRevealed(commitmentId, orderId, msg.sender);
-    }
-    
-    // ============================================================================
     // ORDER PLACEMENT
     // ============================================================================
+    
+    // Note: MEV protection (commit-reveal) moved to CLOBMEVFacet
     
     /**
      * @notice Place a limit order with time-in-force
@@ -309,14 +177,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
         uint8 timeInForce,
         uint40 expiry
     ) external nonReentrant whenNotPaused checkRateLimit returns (bytes32 orderId) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        
-        // Check if order requires commit-reveal (large orders)
-        uint256 quoteAmount = CLOBLib.calculateQuoteAmount(price, amount);
-        if (quoteAmount >= s.commitmentThreshold) {
-            revert OrderRequiresCommitReveal();
-        }
-        
+        // Note: For large orders, use CLOBMEVFacet.commitOrder/revealOrder
         orderId = _placeOrder(
             baseToken,
             baseTokenId,
@@ -346,22 +207,14 @@ contract CLOBFacetV2 is ReentrancyGuard {
         bool isBuy,
         uint256 maxSlippageBps
     ) external nonReentrant whenNotPaused checkRateLimit returns (bytes32 orderId) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         bytes32 marketId = keccak256(abi.encodePacked(baseToken, baseTokenId, quoteToken));
-        
-        // Get reference price
         uint256 refPrice = _getMarketPrice(marketId, isBuy);
         if (refPrice == 0) revert InvalidPrice();
         
-        // Calculate limit price with slippage
-        uint96 limitPrice;
-        if (isBuy) {
-            limitPrice = uint96((refPrice * (BASIS_POINTS + maxSlippageBps)) / BASIS_POINTS);
-        } else {
-            limitPrice = uint96((refPrice * (BASIS_POINTS - maxSlippageBps)) / BASIS_POINTS);
-        }
+        uint96 limitPrice = isBuy 
+            ? uint96((refPrice * (BASIS_POINTS + maxSlippageBps)) / BASIS_POINTS)
+            : uint96((refPrice * (BASIS_POINTS - maxSlippageBps)) / BASIS_POINTS);
         
-        // Place as IOC order
         orderId = _placeOrder(
             baseToken,
             baseTokenId,
@@ -428,27 +281,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
         _cancelOrderInternal(orderId, 0);  // reason 0 = user cancelled
     }
     
-    /**
-     * @notice Cancel multiple orders in one transaction
-     * @param orderIds Array of order IDs to cancel
-     */
-    function cancelOrders(bytes32[] calldata orderIds) external nonReentrant {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        
-        for (uint256 i = 0; i < orderIds.length; i++) {
-            DiamondStorage.PackedOrder storage order = s.packedOrders[orderIds[i]];
-            
-            if (order.makerAndFlags == 0) continue;
-            
-            address maker = CLOBLib.unpackMaker(order.makerAndFlags);
-            if (maker != msg.sender) continue;
-            
-            uint8 status = CLOBLib.unpackStatus(order.makerAndFlags);
-            if (status == CLOBLib.STATUS_OPEN || status == CLOBLib.STATUS_PARTIAL) {
-                _cancelOrderInternal(orderIds[i], 0);
-            }
-        }
-    }
+    // Note: cancelOrders batch function moved to CLOBAdminFacet for size optimization
     
     // ============================================================================
     // INTERNAL ORDER FUNCTIONS
@@ -564,8 +397,8 @@ contract CLOBFacetV2 is ReentrancyGuard {
             revert FOKNotFilled();
         }
         
-        // Emit market depth change
-        _emitMarketDepth(marketId);
+        // Note: MarketDepthChanged event removed for size optimization
+        // Use CLOBViewFacet.getMarketDepth() for off-chain indexing
     }
     
     function _addToOrderBook(
@@ -1083,9 +916,9 @@ contract CLOBFacetV2 is ReentrancyGuard {
         
         if (!s.markets[marketId].active) {
             s.markets[marketId] = DiamondStorage.Market({
-                baseToken: _addressToString(baseToken),
+                baseToken: CLOBLib.addressToString(baseToken),
                 baseTokenId: baseTokenId,
-                quoteToken: _addressToString(quoteToken),
+                quoteToken: CLOBLib.addressToString(quoteToken),
                 active: true,
                 createdAt: block.timestamp
             });
@@ -1120,33 +953,6 @@ contract CLOBFacetV2 is ReentrancyGuard {
         
         // Fallback to last trade price
         return s.circuitBreakers[marketId].lastPrice;
-    }
-    
-    function _emitMarketDepth(bytes32 marketId) internal {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        
-        uint256 bestBid = _getBestPrice(s.bidTreeMeta[marketId], s.bidTreeNodes[marketId], false);
-        uint256 bestAsk = _getBestPrice(s.askTreeMeta[marketId], s.askTreeNodes[marketId], true);
-        
-        uint256 bestBidSize = bestBid != 0 ? s.bidLevels[marketId][bestBid].totalAmount : 0;
-        uint256 bestAskSize = bestAsk != 0 ? s.askLevels[marketId][bestAsk].totalAmount : 0;
-        
-        uint256 spread = (bestBid != 0 && bestAsk != 0 && bestAsk > bestBid) ? bestAsk - bestBid : 0;
-        
-        emit MarketDepthChanged(marketId, bestBid, bestBidSize, bestAsk, bestAskSize, spread);
-    }
-    
-    function _addressToString(address _addr) internal pure returns (string memory) {
-        bytes memory alphabet = "0123456789abcdef";
-        bytes memory data = abi.encodePacked(_addr);
-        bytes memory str = new bytes(42);
-        str[0] = "0";
-        str[1] = "x";
-        for (uint256 i = 0; i < 20; i++) {
-            str[2 + i * 2] = alphabet[uint8(data[i] >> 4)];
-            str[3 + i * 2] = alphabet[uint8(data[i] & 0x0f)];
-        }
-        return string(str);
     }
     
     // ============================================================================

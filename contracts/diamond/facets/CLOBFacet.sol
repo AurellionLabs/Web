@@ -576,87 +576,18 @@ contract CLOBFacet is Initializable {
     // ==========================================================================
 
     /**
-     * @notice Place a sell order from node inventory (called by NodesFacet)
-     * @dev Tokens should already be held by Diamond. This creates the order internally.
-     * @param _nodeOwner The node owner who will receive proceeds
-     * @param _baseToken The ERC1155 token contract address
-     * @param _baseTokenId The token ID being sold
-     * @param _quoteToken The payment token (USDC, AURA, etc.)
-     * @param _price Price per unit in quote token (wei)
-     * @param _amount Amount of tokens to sell
-     * @return orderId The generated order ID
-     * @dev DEPRECATED: This function uses array-based storage which is incompatible with 
-     *      CLOBFacetV2's tree-based storage. Orders placed here will NOT match with V2 orders.
-     *      Use placeNodeSellOrderV2 in CLOBFacetV2 instead.
+     * @notice DEPRECATED - Use placeNodeSellOrderV2 in CLOBFacetV2 instead
+     * @dev This function uses array-based storage incompatible with V2's tree-based storage
      */
     function placeNodeSellOrder(
-        address _nodeOwner,
-        address _baseToken,
-        uint256 _baseTokenId,
-        address _quoteToken,
-        uint256 _price,
-        uint256 _amount
-    ) external returns (bytes32 orderId) {
-        // DEPRECATED: This function uses array-based storage incompatible with V2.
-        // Revert to prevent accidental usage - use placeNodeSellOrderV2 instead.
-        revert("DEPRECATED: Use placeNodeSellOrderV2 - this function uses incompatible storage");
-        
-        // Original implementation kept for reference:
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(_price > 0, 'Invalid price');
-        require(_amount > 0, 'Invalid amount');
-        
-        // Generate market ID from token params
-        bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
-        
-        // Create or verify market exists
-        if (!s.markets[marketId].active) {
-            // Auto-create market for this token pair
-            s.markets[marketId] = DiamondStorage.Market({
-                baseToken: _addressToString(_baseToken),
-                baseTokenId: _baseTokenId,
-                quoteToken: _addressToString(_quoteToken),
-                active: true,
-                createdAt: block.timestamp
-            });
-            s.marketIds.push(marketId);
-            s.totalMarkets++;
-        }
-
-        // Generate unique order ID
-        orderId = keccak256(
-            abi.encodePacked(_nodeOwner, marketId, _price, _amount, false, uint8(0), block.timestamp, s.totalCLOBOrders)
-        );
-
-        // Store order
-        s.clobOrders[orderId] = DiamondStorage.CLOBOrder({
-            maker: _nodeOwner,
-            marketId: marketId,
-            price: _price,
-            amount: _amount,
-            filledAmount: 0,
-            isBuy: false, // Sell order
-            orderType: 0, // Limit
-            status: 0, // Open
-            createdAt: block.timestamp,
-            updatedAt: block.timestamp
-        });
-
-        s.clobOrderIds.push(orderId);
-        s.totalCLOBOrders++;
-        
-        // Add to ask orders at this price level
-        s.askOrders[marketId][_price].push(orderId);
-        _addPriceLevel(s.askPrices[marketId], _price);
-
-        // Emit both events for indexer compatibility
-        emit OrderPlaced(orderId, _nodeOwner, marketId, _price, _amount, false, 0);
-        emit OrderPlacedWithTokens(orderId, _nodeOwner, _baseToken, _baseTokenId, _quoteToken, _price, _amount, false, 0);
-
-        // Try to match with existing buy orders
-        _matchSellOrder(s, marketId, orderId);
-
-        return orderId;
+        address,
+        address,
+        uint256,
+        address,
+        uint256,
+        uint256
+    ) external pure returns (bytes32) {
+        revert("DEPRECATED: Use placeNodeSellOrderV2");
     }
 
     /**
@@ -1191,48 +1122,33 @@ contract CLOBFacet is Initializable {
         }
         
         // Update orders
-        _updateOrderAfterFill(buyOrder, fillAmount);
-        _updateOrderAfterFill(sellOrder, fillAmount);
+        buyOrder.filledAmount += fillAmount;
+        buyOrder.updatedAt = block.timestamp;
+        buyOrder.status = buyOrder.filledAmount >= buyOrder.amount ? 2 : 1;
         
-        // Record and emit trade
-        _recordTrade(s, _buyOrderId, _sellOrderId, _fillPrice, fillAmount, quoteAmount, ctx.marketId, buyOrder.maker, sellOrder.maker);
-    }
-
-    function _updateOrderAfterFill(DiamondStorage.CLOBOrder storage order, uint256 fillAmount) internal {
-        order.filledAmount += fillAmount;
-        order.updatedAt = block.timestamp;
-        order.status = order.filledAmount >= order.amount ? 2 : 1;
-    }
-
-    function _recordTrade(
-        DiamondStorage.AppStorage storage s,
-        bytes32 _takerOrderId,
-        bytes32 _makerOrderId,
-        uint256 _price,
-        uint256 _amount,
-        uint256 _quoteAmount,
-        bytes32 _marketId,
-        address _taker,
-        address _maker
-    ) internal {
-        bytes32 tradeId = keccak256(abi.encodePacked(_takerOrderId, _makerOrderId, block.timestamp));
+        sellOrder.filledAmount += fillAmount;
+        sellOrder.updatedAt = block.timestamp;
+        sellOrder.status = sellOrder.filledAmount >= sellOrder.amount ? 2 : 1;
+        
+        // Record trade inline
+        bytes32 tradeId = keccak256(abi.encodePacked(_buyOrderId, _sellOrderId, block.timestamp));
         s.trades[tradeId] = DiamondStorage.Trade({
-            takerOrderId: _takerOrderId,
-            makerOrderId: _makerOrderId,
-            taker: _taker,
-            maker: _maker,
-            marketId: _marketId,
-            price: _price,
-            amount: _amount,
-            quoteAmount: _quoteAmount,
+            takerOrderId: _buyOrderId,
+            makerOrderId: _sellOrderId,
+            taker: buyOrder.maker,
+            maker: sellOrder.maker,
+            marketId: ctx.marketId,
+            price: _fillPrice,
+            amount: fillAmount,
+            quoteAmount: quoteAmount,
             timestamp: block.timestamp,
             createdAt: block.timestamp
         });
         s.tradeIds.push(tradeId);
         s.totalTrades++;
         
-        emit TradeExecuted(tradeId, _taker, _maker, _marketId, _price, _amount, _quoteAmount, block.timestamp);
-        emit OrderMatched(_takerOrderId, _makerOrderId, tradeId, _amount, _price, _quoteAmount);
+        emit TradeExecuted(tradeId, buyOrder.maker, sellOrder.maker, ctx.marketId, _fillPrice, fillAmount, quoteAmount, block.timestamp);
+        emit OrderMatched(_buyOrderId, _sellOrderId, tradeId, fillAmount, _fillPrice, quoteAmount);
     }
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {

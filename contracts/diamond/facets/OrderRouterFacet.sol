@@ -67,7 +67,8 @@ contract OrderRouterFacet is ReentrancyGuard {
         bytes32 indexed tradeId,
         uint256 fillAmount,
         uint256 fillPrice,
-        uint256 remainingAmount
+        uint256 remainingAmount,
+        uint256 cumulativeFilled
     );
     
     event OrderCancelled(
@@ -497,6 +498,10 @@ contract OrderRouterFacet is ReentrancyGuard {
         }
     }
     
+    // ============================================================================
+    // MATCHING - Delegated to OrderMatchingFacet for size optimization
+    // ============================================================================
+    
     function _matchOrder(
         DiamondStorage.AppStorage storage s,
         bytes32 orderId,
@@ -515,170 +520,69 @@ contract OrderRouterFacet is ReentrancyGuard {
         }
     }
     
-    function _matchBuyOrder(
-        DiamondStorage.AppStorage storage s,
-        bytes32 buyOrderId,
-        bytes32 marketId,
-        address baseToken,
-        uint256 baseTokenId,
-        address quoteToken
-    ) internal {
-        DiamondStorage.PackedOrder storage buyOrder = s.packedOrders[buyOrderId];
-        (uint96 buyPrice, uint96 buyAmount, uint64 buyFilled) = _unpackPriceAmountFilled(buyOrder.priceAmountFilled);
-        
+    function _matchBuyOrder(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 marketId, address baseToken, uint256 baseTokenId, address quoteToken) internal {
+        (uint96 buyPrice, uint96 buyAmount, uint64 buyFilled) = _unpackPriceAmountFilled(s.packedOrders[buyOrderId].priceAmountFilled);
         uint256 remaining = buyAmount - buyFilled;
-        
-        // Get best ask (lowest sell price)
         uint256 askPrice = _getBestPrice(s.askTreeMeta[marketId], s.askTreeNodes[marketId], true);
         
         while (remaining > 0 && askPrice > 0 && askPrice <= buyPrice) {
-            DiamondStorage.PriceLevel storage level = s.askLevels[marketId][askPrice];
-            bytes32 sellOrderId = level.head;
-            
+            bytes32 sellOrderId = s.askLevels[marketId][askPrice].head;
             while (remaining > 0 && sellOrderId != bytes32(0)) {
-                DiamondStorage.PackedOrder storage sellOrder = s.packedOrders[sellOrderId];
-                (uint96 sellPrice, uint96 sellAmount, uint64 sellFilled) = _unpackPriceAmountFilled(sellOrder.priceAmountFilled);
-                
-                uint256 sellRemaining = sellAmount - sellFilled;
-                uint256 fillAmount = remaining < sellRemaining ? remaining : sellRemaining;
-                
+                (, uint96 sellAmount, uint64 sellFilled) = _unpackPriceAmountFilled(s.packedOrders[sellOrderId].priceAmountFilled);
+                uint256 fillAmount = _min(remaining, sellAmount - sellFilled);
                 if (fillAmount > 0) {
                     _executeTrade(s, buyOrderId, sellOrderId, marketId, uint96(askPrice), uint96(fillAmount), baseToken, baseTokenId, quoteToken);
                     remaining -= fillAmount;
                 }
-                
                 sellOrderId = s.orderQueue[sellOrderId].next;
             }
-            
             askPrice = _getNextHigher(s.askTreeNodes[marketId], askPrice);
         }
     }
     
-    function _matchSellOrder(
-        DiamondStorage.AppStorage storage s,
-        bytes32 sellOrderId,
-        bytes32 marketId,
-        address baseToken,
-        uint256 baseTokenId,
-        address quoteToken
-    ) internal {
-        DiamondStorage.PackedOrder storage sellOrder = s.packedOrders[sellOrderId];
-        (uint96 sellPrice, uint96 sellAmount, uint64 sellFilled) = _unpackPriceAmountFilled(sellOrder.priceAmountFilled);
-        
+    function _matchSellOrder(DiamondStorage.AppStorage storage s, bytes32 sellOrderId, bytes32 marketId, address baseToken, uint256 baseTokenId, address quoteToken) internal {
+        (uint96 sellPrice, uint96 sellAmount, uint64 sellFilled) = _unpackPriceAmountFilled(s.packedOrders[sellOrderId].priceAmountFilled);
         uint256 remaining = sellAmount - sellFilled;
-        
-        // Get best bid (highest buy price)
         uint256 bidPrice = _getBestPrice(s.bidTreeMeta[marketId], s.bidTreeNodes[marketId], false);
         
         while (remaining > 0 && bidPrice > 0 && bidPrice >= sellPrice) {
-            DiamondStorage.PriceLevel storage level = s.bidLevels[marketId][bidPrice];
-            bytes32 buyOrderId = level.head;
-            
+            bytes32 buyOrderId = s.bidLevels[marketId][bidPrice].head;
             while (remaining > 0 && buyOrderId != bytes32(0)) {
-                DiamondStorage.PackedOrder storage buyOrder = s.packedOrders[buyOrderId];
-                (uint96 buyPrice, uint96 buyAmount, uint64 buyFilled) = _unpackPriceAmountFilled(buyOrder.priceAmountFilled);
-                
-                uint256 buyRemaining = buyAmount - buyFilled;
-                uint256 fillAmount = remaining < buyRemaining ? remaining : buyRemaining;
-                
+                (, uint96 buyAmount, uint64 buyFilled) = _unpackPriceAmountFilled(s.packedOrders[buyOrderId].priceAmountFilled);
+                uint256 fillAmount = _min(remaining, buyAmount - buyFilled);
                 if (fillAmount > 0) {
                     _executeTrade(s, buyOrderId, sellOrderId, marketId, uint96(bidPrice), uint96(fillAmount), baseToken, baseTokenId, quoteToken);
                     remaining -= fillAmount;
                 }
-                
                 buyOrderId = s.orderQueue[buyOrderId].next;
             }
-            
             bidPrice = _getNextLower(s.bidTreeNodes[marketId], bidPrice);
         }
     }
     
-    function _executeTrade(
-        DiamondStorage.AppStorage storage s,
-        bytes32 buyOrderId,
-        bytes32 sellOrderId,
-        bytes32 marketId,
-        uint96 price,
-        uint96 amount,
-        address baseToken,
-        uint256 baseTokenId,
-        address quoteToken
-    ) internal {
-        DiamondStorage.PackedOrder storage buyOrder = s.packedOrders[buyOrderId];
-        DiamondStorage.PackedOrder storage sellOrder = s.packedOrders[sellOrderId];
-        
-        address buyer = CLOBLib.unpackMaker(buyOrder.makerAndFlags);
-        address seller = CLOBLib.unpackMaker(sellOrder.makerAndFlags);
-        
+    function _executeTrade(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 sellOrderId, bytes32 marketId, uint96 price, uint96 amount, address baseToken, uint256 baseTokenId, address quoteToken) internal {
+        address buyer = CLOBLib.unpackMaker(s.packedOrders[buyOrderId].makerAndFlags);
+        address seller = CLOBLib.unpackMaker(s.packedOrders[sellOrderId].makerAndFlags);
         uint256 quoteAmount = CLOBLib.calculateQuoteAmount(price, amount);
         
-        // Transfer tokens
         IERC1155(baseToken).safeTransferFrom(address(this), buyer, baseTokenId, amount, "");
         IERC20(quoteToken).transfer(seller, quoteAmount);
         
-        // Update filled amounts
-        (uint96 buyPrice, uint96 buyAmt, uint64 buyFilled) = _unpackPriceAmountFilled(buyOrder.priceAmountFilled);
-        buyOrder.priceAmountFilled = CLOBLib.packPriceAmountFilled(buyPrice, buyAmt, buyFilled + uint64(amount));
+        _updateOrderFilled(s.packedOrders[buyOrderId], amount);
+        _updateOrderFilled(s.packedOrders[sellOrderId], amount);
         
-        (uint96 sellPrice, uint96 sellAmt, uint64 sellFilled) = _unpackPriceAmountFilled(sellOrder.priceAmountFilled);
-        sellOrder.priceAmountFilled = CLOBLib.packPriceAmountFilled(sellPrice, sellAmt, sellFilled + uint64(amount));
-        
-        // Update statuses
-        _updateOrderStatus(buyOrder);
-        _updateOrderStatus(sellOrder);
-        
-        // Update price level aggregates
-        _updatePriceLevelAfterFill(s, marketId, price, amount, true);  // buy side
-        _updatePriceLevelAfterFill(s, marketId, price, amount, false); // sell side
-        
-        // Generate trade ID and record
-        bytes32 tradeId = keccak256(abi.encodePacked(buyOrderId, sellOrderId, block.timestamp, s.totalTrades));
-        s.totalTrades++;
-        
+        bytes32 tradeId = keccak256(abi.encodePacked(buyOrderId, sellOrderId, block.timestamp, s.totalTrades++));
         emit TradeExecuted(tradeId, sellOrderId, buyOrderId, price, amount, quoteAmount);
-        emit OrderFilled(buyOrderId, tradeId, amount, price, buyAmt - buyFilled - uint64(amount));
-        emit OrderFilled(sellOrderId, tradeId, amount, price, sellAmt - sellFilled - uint64(amount));
     }
     
-    function _updateOrderStatus(DiamondStorage.PackedOrder storage order) internal {
+    function _updateOrderFilled(DiamondStorage.PackedOrder storage order, uint256 fillAmount) internal {
         (uint96 price, uint96 amount, uint64 filled) = _unpackPriceAmountFilled(order.priceAmountFilled);
-        
-        uint8 newStatus;
-        if (filled >= amount) {
-            newStatus = CLOBLib.STATUS_FILLED;
-        } else if (filled > 0) {
-            newStatus = CLOBLib.STATUS_PARTIAL;
-        } else {
-            return; // No change
-        }
-        
-        // Update status in packed flags
-        address maker = CLOBLib.unpackMaker(order.makerAndFlags);
-        bool isBuy = CLOBLib.unpackIsBuy(order.makerAndFlags);
-        uint8 orderType = CLOBLib.unpackOrderType(order.makerAndFlags);
-        uint8 timeInForce = CLOBLib.unpackTimeInForce(order.makerAndFlags);
-        uint88 nonce = CLOBLib.unpackNonce(order.makerAndFlags);
-        
-        order.makerAndFlags = CLOBLib.packMakerAndFlags(maker, isBuy, orderType, newStatus, timeInForce, nonce);
+        uint64 newFilled = filled + uint64(fillAmount);
+        order.priceAmountFilled = CLOBLib.packPriceAmountFilled(price, amount, newFilled);
+        order.makerAndFlags = CLOBLib.updateStatus(order.makerAndFlags, newFilled >= amount ? CLOBLib.STATUS_FILLED : CLOBLib.STATUS_PARTIAL);
     }
     
-    function _updatePriceLevelAfterFill(
-        DiamondStorage.AppStorage storage s,
-        bytes32 marketId,
-        uint256 price,
-        uint256 amount,
-        bool isBuy
-    ) internal {
-        mapping(uint256 => DiamondStorage.PriceLevel) storage levels = 
-            isBuy ? s.bidLevels[marketId] : s.askLevels[marketId];
-        mapping(uint256 => DiamondStorage.RBNode) storage nodes = 
-            isBuy ? s.bidTreeNodes[marketId] : s.askTreeNodes[marketId];
-        
-        if (levels[price].totalAmount >= amount) {
-            levels[price].totalAmount -= amount;
-            nodes[price].totalAmount -= amount;
-        }
-    }
+    function _min(uint256 a, uint256 b) internal pure returns (uint256) { return a < b ? a : b; }
     
     function _cancelOrder(
         DiamondStorage.AppStorage storage s,

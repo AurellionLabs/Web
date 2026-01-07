@@ -68,7 +68,7 @@ export const NEXT_PUBLIC_CLOB_FACET_ADDRESS =
   '0xEb8B895110f8321B06b06A516f03a3d12D6387a6';
 // OrderRouterFacet - SINGLE ENTRY POINT for all order operations
 export const NEXT_PUBLIC_ORDER_ROUTER_FACET_ADDRESS =
-  '0x8508036add9AB812911E5770CD27aA6f776b7983';
+  '0x8A679A9E376508cE99119a3567bFc9224a97D148';
 
 // Diamond deployment block (for indexer start block)
 export const DIAMOND_DEPLOY_BLOCK = 35859031;
