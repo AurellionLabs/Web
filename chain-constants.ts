@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-07T14:48:22.597Z
+// Deployed: 2026-01-07T23:41:16.280Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -43,35 +43,37 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 // =============================================================================
 // EIP-2535 DIAMOND CONTRACTS - Base Sepolia
 // =============================================================================
+// FRESH DIAMOND V2 - Deployed 2026-01-08 with clean V2 storage
+// This replaces the old Diamond which had corrupted V1/V2 storage conflicts
 
 export const NEXT_PUBLIC_DIAMOND_ADDRESS =
-  '0x2516CAdb7b3d4E94094bC4580C271B8559902e3f';
+  '0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58';
 export const NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS =
-  '0x128AB1F0F066B9330277Aeb5b0EC3752A67D392f';
+  '0x00A8dc79e9D061bA29C46a041389ADf246b021aA';
 export const NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS =
-  '0x6f275755D83bc5E82f116BD7a9F39573bdc8fAA9';
+  '0x9D950F6B7363314a0c304C90997FAbcd281225FE';
 export const NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS =
-  '0xD3ed4760b987DA1e57790d92b60692199265b553';
+  '0xa5F85fBC22369A9c5FCaF72ce15FC2fE0e2DeF5c';
 export const NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS =
-  '0xc633B31068729CFF175dcBBee6A7B81EFbc4f2f8';
+  '0xf67afE54c7F2E1d898Ee87a7783432026Fe26d43';
 export const NEXT_PUBLIC_NODES_FACET_ADDRESS =
-  '0x4C513E121860782691F822e08192ac9ad98B7238';
+  '0xf26E7C1146c3CC3bD4cD53007D0b17727CDf7518';
 export const NEXT_PUBLIC_ASSETS_FACET_ADDRESS =
-  '0x5e3Cbf2d774eB618eC541c1A67EF09ffcd7C3C31';
+  '0xf70063c7C12C790247fE89F963b85c35568F48f0';
 export const NEXT_PUBLIC_ORDERS_FACET_ADDRESS =
-  '0x7FA30b3Ae2780803Ef3f0E67EB92931cD41C3411';
+  '0x22A9B8F70AdF0bE73ee4c7b237E617B053B65a6d';
 export const NEXT_PUBLIC_STAKING_FACET_ADDRESS =
-  '0x407D13F6cAa876297975a4847Bd75403f43EdD94';
+  '0xa9E03bAB4dB2fAC44C6e4b7eB8e9D3bEfF26CcF5';
 export const NEXT_PUBLIC_BRIDGE_FACET_ADDRESS =
-  '0xab99C57492A7e1f060560139FeAf3e642fF1e8E1';
+  '0x9889C9Dc7b78eDad79073ac80bfaF975F7db9025';
 export const NEXT_PUBLIC_CLOB_FACET_ADDRESS =
-  '0xEb8B895110f8321B06b06A516f03a3d12D6387a6';
-// OrderRouterFacet - SINGLE ENTRY POINT for all order operations
+  '0x4266D981D864106F872e449FfeBCBE4e3F462a7b';
+// OrderRouterFacet - SINGLE ENTRY POINT for all order operations (V2 storage)
 export const NEXT_PUBLIC_ORDER_ROUTER_FACET_ADDRESS =
-  '0x8A679A9E376508cE99119a3567bFc9224a97D148';
+  '0x549Adb2a4d24607DCa383700C43e2c01dbaa060f';
 
 // Diamond deployment block (for indexer start block)
-export const DIAMOND_DEPLOY_BLOCK = 35859031;
+export const DIAMOND_DEPLOY_BLOCK = 36030424;
 
 // =============================================================================
 // RPC URLS

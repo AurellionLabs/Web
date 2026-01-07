@@ -492,6 +492,27 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
     ],
   },
 
+  // Diamond V2 deployment - FRESH START with all V2 facets
+  // Use this to deploy a completely new Diamond with clean storage
+  'diamond-v2': {
+    name: 'Diamond V2 Fresh Deployment',
+    description: 'Deploy fresh Diamond with V2 facets (OrderRouterFacet, etc.)',
+    contracts: [
+      'DiamondCutFacet',
+      'DiamondLoupeFacet',
+      'OwnershipFacet',
+      'ERC1155ReceiverFacet',
+      'NodesFacet',
+      'AssetsFacet',
+      'OrdersFacet',
+      'StakingFacet',
+      'BridgeFacet',
+      'CLOBFacet',
+      'OrderRouterFacet',
+      'Diamond',
+    ],
+  },
+
   // RWY Vault only
   rwy: {
     name: 'RWY Vault Deployment',
