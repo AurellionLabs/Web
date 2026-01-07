@@ -3,10 +3,10 @@
   "chainId": 84532,
   "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF",
   "contracts": {
-    "NodesFacet": {
-      "address": "0x7C3dc2A7fb69DEF36856F059b88a0900970b1dBD",
-      "blockNumber": 35988608
+    "CLOBFacet": {
+      "address": "0x86F2245959dab5a4EEFE1aeA4165aD6DB56Ec10e",
+      "blockNumber": 35989323
     }
   },
-  "timestamp": "2026-01-07T00:25:10.767Z"
+  "timestamp": "2026-01-07T00:49:00.768Z"
 }

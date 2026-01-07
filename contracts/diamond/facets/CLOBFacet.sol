@@ -90,6 +90,14 @@ contract CLOBFacet is Initializable {
     uint8 public constant MAKER_FEE = 5;
     uint8 public constant LP_FEE = 5;
 
+    // Struct to reduce stack depth in matching functions
+    struct MatchContext {
+        bytes32 marketId;
+        address baseToken;
+        uint256 baseTokenId;
+        address quoteToken;
+    }
+
     function initialize() public initializer {}
 
     function createMarket(
@@ -560,6 +568,162 @@ contract CLOBFacet is Initializable {
     }
 
     /**
+     * @notice Place a market order (executes immediately at best available price)
+     * @dev For buy orders: buyer must approve Diamond to spend quote tokens
+     *      For sell orders: seller must have tokens in Diamond (via depositTokensToNode)
+     * @param _baseToken The ERC1155 token contract address
+     * @param _baseTokenId The token ID
+     * @param _quoteToken The payment token
+     * @param _amount Amount of tokens to buy/sell
+     * @param _isBuy True for buy order, false for sell order
+     * @param _maxPrice Maximum price willing to pay (for buys) or minimum price willing to accept (for sells)
+     * @return orderId The generated order ID
+     */
+    function placeMarketOrder(
+        address _baseToken,
+        uint256 _baseTokenId,
+        address _quoteToken,
+        uint256 _amount,
+        bool _isBuy,
+        uint256 _maxPrice
+    ) external returns (bytes32 orderId) {
+        require(_amount > 0, 'Invalid amount');
+        require(_maxPrice > 0, 'Invalid max price');
+        
+        // Generate market ID
+        bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
+        
+        // Ensure market exists
+        _ensureMarketExists(marketId, _baseToken, _baseTokenId, _quoteToken);
+
+        // Handle token transfers
+        if (_isBuy) {
+            uint256 maxCost = _maxPrice * _amount;
+            IERC20(_quoteToken).transferFrom(msg.sender, address(this), maxCost);
+        } else {
+            IERC1155(_baseToken).safeTransferFrom(msg.sender, address(this), _baseTokenId, _amount, "");
+        }
+
+        // Create and store the order
+        orderId = _createMarketOrder(marketId, _maxPrice, _amount, _isBuy);
+
+        // Emit events
+        emit OrderPlaced(orderId, msg.sender, marketId, _maxPrice, _amount, _isBuy, 1);
+        emit OrderPlacedWithTokens(orderId, msg.sender, _baseToken, _baseTokenId, _quoteToken, _maxPrice, _amount, _isBuy, 1);
+
+        // Execute and finalize
+        _executeMarketOrder(orderId, marketId, _baseToken, _baseTokenId, _quoteToken, _amount, _isBuy, _maxPrice);
+
+        return orderId;
+    }
+
+    function _ensureMarketExists(
+        bytes32 _marketId,
+        address _baseToken,
+        uint256 _baseTokenId,
+        address _quoteToken
+    ) internal {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        if (!s.markets[_marketId].active) {
+            s.markets[_marketId] = DiamondStorage.Market({
+                baseToken: _addressToString(_baseToken),
+                baseTokenId: _baseTokenId,
+                quoteToken: _addressToString(_quoteToken),
+                active: true,
+                createdAt: block.timestamp
+            });
+            s.marketIds.push(_marketId);
+            s.totalMarkets++;
+        }
+    }
+
+    function _createMarketOrder(
+        bytes32 _marketId,
+        uint256 _price,
+        uint256 _amount,
+        bool _isBuy
+    ) internal returns (bytes32 orderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        
+        orderId = keccak256(
+            abi.encodePacked(msg.sender, _marketId, _price, _amount, _isBuy, uint8(1), block.timestamp, s.totalCLOBOrders)
+        );
+
+        s.clobOrders[orderId] = DiamondStorage.CLOBOrder({
+            maker: msg.sender,
+            marketId: _marketId,
+            price: _price,
+            amount: _amount,
+            filledAmount: 0,
+            isBuy: _isBuy,
+            orderType: 1, // Market order
+            status: 0,
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
+        });
+
+        s.clobOrderIds.push(orderId);
+        s.totalCLOBOrders++;
+        
+        return orderId;
+    }
+
+    function _executeMarketOrder(
+        bytes32 _orderId,
+        bytes32 _marketId,
+        address _baseToken,
+        uint256 _baseTokenId,
+        address _quoteToken,
+        uint256 _amount,
+        bool _isBuy,
+        uint256 _maxPrice
+    ) internal {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        
+        if (_isBuy) {
+            _matchBuyOrder(s, _marketId, _orderId, _baseToken, _baseTokenId, _quoteToken);
+            _refundUnusedQuote(_orderId, _quoteToken, _amount, _maxPrice);
+        } else {
+            _matchSellOrder(s, _marketId, _orderId);
+            _returnUnsoldTokens(_orderId, _baseToken, _baseTokenId, _amount);
+        }
+
+        // Finalize order status
+        DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
+        order.status = order.filledAmount >= order.amount ? 2 : 3; // Filled or Cancelled
+        order.updatedAt = block.timestamp;
+    }
+
+    function _refundUnusedQuote(
+        bytes32 _orderId,
+        address _quoteToken,
+        uint256 _amount,
+        uint256 _maxPrice
+    ) internal {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 filled = s.clobOrders[_orderId].filledAmount;
+        if (filled < _amount) {
+            uint256 refund = _maxPrice * (_amount - filled);
+            if (refund > 0) {
+                IERC20(_quoteToken).transfer(msg.sender, refund);
+            }
+        }
+    }
+
+    function _returnUnsoldTokens(
+        bytes32 _orderId,
+        address _baseToken,
+        uint256 _baseTokenId,
+        uint256 _amount
+    ) internal {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 unsold = _amount - s.clobOrders[_orderId].filledAmount;
+        if (unsold > 0) {
+            IERC1155(_baseToken).safeTransferFrom(address(this), msg.sender, _baseTokenId, unsold, "");
+        }
+    }
+
+    /**
      * @notice Cancel an open order
      * @param _orderId The order to cancel
      */
@@ -682,81 +846,109 @@ contract CLOBFacet is Initializable {
         uint256 _baseTokenId,
         address _quoteToken
     ) internal {
+        MatchContext memory ctx = MatchContext(_marketId, _baseToken, _baseTokenId, _quoteToken);
         DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
-        uint256 remaining = buyOrder.amount - buyOrder.filledAmount;
-        
-        // Iterate through ask prices from lowest to highest
         uint256[] storage askPrices = s.askPrices[_marketId];
         
-        for (uint256 i = 0; i < askPrices.length && remaining > 0; i++) {
-            uint256 askPrice = askPrices[i];
+        for (uint256 i = 0; i < askPrices.length; i++) {
+            if (buyOrder.filledAmount >= buyOrder.amount) break;
+            if (askPrices[i] > buyOrder.price) break;
             
-            // Only match if ask price <= bid price
-            if (askPrice > buyOrder.price) break;
-            
-            bytes32[] storage ordersAtPrice = s.askOrders[_marketId][askPrice];
-            
-            for (uint256 j = 0; j < ordersAtPrice.length && remaining > 0; j++) {
-                bytes32 sellOrderId = ordersAtPrice[j];
-                DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[sellOrderId];
-                
-                if (sellOrder.status != 0 && sellOrder.status != 1) continue;
-                
-                uint256 sellRemaining = sellOrder.amount - sellOrder.filledAmount;
-                uint256 fillAmount = remaining < sellRemaining ? remaining : sellRemaining;
-                uint256 fillPrice = askPrice; // Price improvement for buyer
-                uint256 quoteAmount = fillAmount * fillPrice;
-                
-                // Execute trade
-                bytes32 tradeId = keccak256(abi.encodePacked(_buyOrderId, sellOrderId, block.timestamp));
-                
-                // Transfer base tokens from Diamond to buyer
-                IERC1155(_baseToken).safeTransferFrom(address(this), buyOrder.maker, _baseTokenId, fillAmount, "");
-                
-                // Transfer quote tokens to seller (from buyer's escrowed amount)
-                IERC20(_quoteToken).transfer(sellOrder.maker, quoteAmount);
-                
-                // Refund excess quote tokens to buyer if price improvement
-                if (fillPrice < buyOrder.price) {
-                    uint256 refund = (buyOrder.price - fillPrice) * fillAmount;
-                    IERC20(_quoteToken).transfer(buyOrder.maker, refund);
-                }
-                
-                // Update orders
-                buyOrder.filledAmount += fillAmount;
-                buyOrder.updatedAt = block.timestamp;
-                sellOrder.filledAmount += fillAmount;
-                sellOrder.updatedAt = block.timestamp;
-                
-                // Update statuses
-                if (buyOrder.filledAmount >= buyOrder.amount) buyOrder.status = 2;
-                else buyOrder.status = 1;
-                
-                if (sellOrder.filledAmount >= sellOrder.amount) sellOrder.status = 2;
-                else sellOrder.status = 1;
-                
-                // Record trade
-                s.trades[tradeId] = DiamondStorage.Trade({
-                    takerOrderId: _buyOrderId,
-                    makerOrderId: sellOrderId,
-                    taker: buyOrder.maker,
-                    maker: sellOrder.maker,
-                    marketId: _marketId,
-                    price: fillPrice,
-                    amount: fillAmount,
-                    quoteAmount: quoteAmount,
-                    timestamp: block.timestamp,
-                    createdAt: block.timestamp
-                });
-                s.tradeIds.push(tradeId);
-                s.totalTrades++;
-                
-                emit TradeExecuted(tradeId, buyOrder.maker, sellOrder.maker, _marketId, fillPrice, fillAmount, quoteAmount, block.timestamp);
-                emit OrderMatched(_buyOrderId, sellOrderId, tradeId, fillAmount, fillPrice, quoteAmount);
-                
-                remaining = buyOrder.amount - buyOrder.filledAmount;
-            }
+            _matchBuyAtPrice(s, _buyOrderId, askPrices[i], ctx);
         }
+    }
+
+    function _matchBuyAtPrice(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _buyOrderId,
+        uint256 _askPrice,
+        MatchContext memory ctx
+    ) internal {
+        DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
+        bytes32[] storage ordersAtPrice = s.askOrders[ctx.marketId][_askPrice];
+        
+        for (uint256 j = 0; j < ordersAtPrice.length; j++) {
+            if (buyOrder.filledAmount >= buyOrder.amount) break;
+            
+            bytes32 sellOrderId = ordersAtPrice[j];
+            if (s.clobOrders[sellOrderId].status > 1) continue;
+            
+            _executeBuyMatch(s, _buyOrderId, sellOrderId, _askPrice, ctx);
+        }
+    }
+
+    function _executeBuyMatch(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _buyOrderId,
+        bytes32 _sellOrderId,
+        uint256 _fillPrice,
+        MatchContext memory ctx
+    ) internal {
+        DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
+        DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
+        
+        uint256 fillAmount = _min(
+            buyOrder.amount - buyOrder.filledAmount,
+            sellOrder.amount - sellOrder.filledAmount
+        );
+        uint256 quoteAmount = fillAmount * _fillPrice;
+        
+        // Transfer tokens
+        IERC1155(ctx.baseToken).safeTransferFrom(address(this), buyOrder.maker, ctx.baseTokenId, fillAmount, "");
+        IERC20(ctx.quoteToken).transfer(sellOrder.maker, quoteAmount);
+        
+        // Refund price improvement to buyer
+        if (_fillPrice < buyOrder.price) {
+            IERC20(ctx.quoteToken).transfer(buyOrder.maker, (buyOrder.price - _fillPrice) * fillAmount);
+        }
+        
+        // Update orders
+        _updateOrderAfterFill(buyOrder, fillAmount);
+        _updateOrderAfterFill(sellOrder, fillAmount);
+        
+        // Record and emit trade
+        _recordTrade(s, _buyOrderId, _sellOrderId, _fillPrice, fillAmount, quoteAmount, ctx.marketId, buyOrder.maker, sellOrder.maker);
+    }
+
+    function _updateOrderAfterFill(DiamondStorage.CLOBOrder storage order, uint256 fillAmount) internal {
+        order.filledAmount += fillAmount;
+        order.updatedAt = block.timestamp;
+        order.status = order.filledAmount >= order.amount ? 2 : 1;
+    }
+
+    function _recordTrade(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _takerOrderId,
+        bytes32 _makerOrderId,
+        uint256 _price,
+        uint256 _amount,
+        uint256 _quoteAmount,
+        bytes32 _marketId,
+        address _taker,
+        address _maker
+    ) internal {
+        bytes32 tradeId = keccak256(abi.encodePacked(_takerOrderId, _makerOrderId, block.timestamp));
+        s.trades[tradeId] = DiamondStorage.Trade({
+            takerOrderId: _takerOrderId,
+            makerOrderId: _makerOrderId,
+            taker: _taker,
+            maker: _maker,
+            marketId: _marketId,
+            price: _price,
+            amount: _amount,
+            quoteAmount: _quoteAmount,
+            timestamp: block.timestamp,
+            createdAt: block.timestamp
+        });
+        s.tradeIds.push(tradeId);
+        s.totalTrades++;
+        
+        emit TradeExecuted(tradeId, _taker, _maker, _marketId, _price, _amount, _quoteAmount, block.timestamp);
+        emit OrderMatched(_takerOrderId, _makerOrderId, tradeId, _amount, _price, _quoteAmount);
+    }
+
+    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
     }
 
     function _addPriceLevel(uint256[] storage prices, uint256 price) internal {

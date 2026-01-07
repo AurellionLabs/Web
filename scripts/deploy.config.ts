@@ -546,6 +546,7 @@ export const FACET_SELECTORS: Record<string, string[]> = {
     // New token-based functions
     '0x631adcef', // placeNodeSellOrder - for node sell orders
     '0x069e403f', // placeBuyOrder - for buy orders
+    '0x36f0b24d', // placeMarketOrder - for market orders (immediate execution)
     '0x5cc519cd', // cancelCLOBOrder - cancel any order
     '0x337cd847', // getOpenOrders - view open orders
     '0x882363ae', // getOrderWithTokens - get order with token info
