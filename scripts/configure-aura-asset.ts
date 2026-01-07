@@ -61,10 +61,14 @@ async function main() {
 
   console.log('Nodes registered through the Diamond can now use:');
   console.log(
-    '  - approveClobForTokens(bytes32 nodeHash, address clobAddress)',
+    '  - placeSellOrderFromNode() - Place sell orders from node inventory',
   );
-  console.log('  - revokeClobApproval(bytes32 nodeHash, address clobAddress)');
-  console.log('  - isClobApproved(address clobAddress)\n');
+  console.log('  - creditNodeTokens() - Credit tokens to node inventory');
+  console.log('  - getNodeTokenBalance() - Check node token balances');
+  console.log('\nNote: CLOB approval functions are deprecated.');
+  console.log(
+    'CLOBFacet is now internal to Diamond - no external approval needed.\n',
+  );
 }
 
 main()

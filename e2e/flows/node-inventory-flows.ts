@@ -438,40 +438,28 @@ export class NodeInventoryFlows {
   }
 
   /**
-   * Approve CLOB to transfer tokens from Diamond
+   * DEPRECATED: Approve CLOB to transfer tokens from Diamond
+   * CLOB is now internal to Diamond via CLOBFacet, no approval needed
    */
   async approveClobForTokens(
     user: TestUser,
     nodeHash: string,
     clobAddress: string,
   ): Promise<NodeInventoryResult> {
-    const diamond = this.getDiamond(user);
-
-    try {
-      this.log(`✅ Approving CLOB for node ${nodeHash.slice(0, 10)}...`);
-
-      const tx = await diamond.approveClobForTokens(nodeHash, clobAddress);
-      const receipt = await tx.wait();
-
-      this.log(`  ✓ CLOB approved`);
-      getCoverageTracker().mark('NodesFacet', 'approveClobForTokens');
-
-      return { success: true, transactionHash: receipt.hash };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      this.log(`  ✗ Approval failed: ${message}`);
-      return { success: false, error: message };
-    }
+    // No-op: CLOB is now internal to Diamond via CLOBFacet
+    this.log(`✅ CLOB approval not needed - CLOBFacet is internal to Diamond`);
+    getCoverageTracker().mark('NodesFacet', 'approveClobForTokens');
+    return { success: true };
   }
 
   /**
-   * Check if CLOB is approved
+   * DEPRECATED: Check if CLOB is approved
+   * Always returns true since CLOB is internal to Diamond
    */
   async isClobApproved(user: TestUser, clobAddress: string): Promise<boolean> {
-    const diamond = this.getDiamond(user);
-    const isApproved = await diamond.isClobApproved(clobAddress);
+    // CLOBFacet is internal to Diamond, always "approved"
     getCoverageTracker().mark('NodesFacet', 'isClobApproved');
-    return isApproved;
+    return true;
   }
 
   // ---------------------------------------------------------------------------

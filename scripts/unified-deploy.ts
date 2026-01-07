@@ -3,23 +3,42 @@
 /**
  * Unified Deployment Script
  *
+ * Features:
+ *   - Deploy contracts using predefined modes (full, diamond, rwy, etc.)
+ *   - Deploy individual contracts
+ *   - Smart facet upgrades with automatic selector detection
+ *   - Dry run mode to preview changes
+ *
  * Usage (set environment variables for options):
  *   DEPLOY_MODE=full npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_MODE=diamond npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_MODE=rwy npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_CONTRACT=RWYVault npx hardhat run scripts/unified-deploy.ts --network baseSepolia
- *   DEPLOY_FACET=NodesFacet DEPLOY_ACTION=add npx hardhat run scripts/unified-deploy.ts --network baseSepolia
+ *   DEPLOY_FACET=NodesFacet npx hardhat run scripts/unified-deploy.ts --network baseSepolia
+ *   DEPLOY_FACET=CLOBFacet DEPLOY_ACTION=replace npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_LIST_MODES=true npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *
  * Environment Variables:
  *   DEPLOY_MODE         Deploy using a predefined mode (full, diamond, rwy, bridge, standalone, all)
  *   DEPLOY_CONTRACT     Deploy a single contract by name
- *   DEPLOY_FACET        Deploy/update a single facet (requires DEPLOY_ACTION)
- *   DEPLOY_ACTION       For facets: add, replace, or remove
+ *   DEPLOY_FACET        Deploy/update a single facet (auto-detects selector changes by default)
+ *   DEPLOY_ACTION       For facets: auto (default - smart detection), add, replace, or remove
  *   DEPLOY_LIST_MODES   Set to 'true' to list all available deployment modes
  *   DEPLOY_LIST_CONTRACTS Set to 'true' to list all available contracts
  *   DEPLOY_DRY_RUN      Set to 'true' for dry run without deploying
  *   DEPLOY_SKIP_CONFIG  Set to 'true' to skip updating config files
+ *
+ * Smart Facet Upgrade (DEPLOY_ACTION=auto or omitted):
+ *   When upgrading a facet, the script automatically:
+ *   1. Queries the Diamond's on-chain state via DiamondLoupe
+ *   2. Compares on-chain selectors with FACET_SELECTORS in deploy.config.ts
+ *   3. Determines which selectors need to be added, replaced, or removed
+ *   4. Executes a single diamondCut with all necessary changes
+ *
+ *   This prevents issues where:
+ *   - New functions are added to a facet but not registered in Diamond
+ *   - Selectors still point to old facet addresses after deployment
+ *   - Removed functions leave orphaned selectors
  */
 
 import { ethers, network } from 'hardhat';
@@ -48,7 +67,7 @@ interface CLIArgs {
   mode?: string;
   contract?: string;
   facet?: string;
-  action?: 'add' | 'replace' | 'remove';
+  action?: 'add' | 'replace' | 'remove' | 'auto';
   listModes?: boolean;
   listContracts?: boolean;
   dryRun?: boolean;
@@ -73,7 +92,11 @@ function parseArgs(): CLIArgs {
     args.facet = process.env.DEPLOY_FACET;
   }
   if (process.env.DEPLOY_ACTION) {
-    args.action = process.env.DEPLOY_ACTION as 'add' | 'replace' | 'remove';
+    args.action = process.env.DEPLOY_ACTION as
+      | 'add'
+      | 'replace'
+      | 'remove'
+      | 'auto';
   }
   if (process.env.DEPLOY_LIST_MODES === 'true') {
     args.listModes = true;
@@ -590,9 +613,92 @@ function loadExistingAddresses(): Record<string, string> {
   return addresses;
 }
 
+/**
+ * Analyzes on-chain Diamond state to determine which selectors need to be added, replaced, or removed
+ */
+async function analyzeSelectorsForFacet(
+  diamondAddress: string,
+  facetName: string,
+  newFacetAddress: string,
+): Promise<{
+  toAdd: string[];
+  toReplace: string[];
+  toRemove: string[];
+  unchanged: string[];
+  existingFacetAddress: string | null;
+}> {
+  const diamondLoupe = await ethers.getContractAt(
+    'IDiamondLoupe',
+    diamondAddress,
+  );
+  const configSelectors = FACET_SELECTORS[facetName] || [];
+
+  const toAdd: string[] = [];
+  const toReplace: string[] = [];
+  const toRemove: string[] = [];
+  const unchanged: string[] = [];
+
+  // Get all facets and their selectors from the Diamond
+  const facets = await diamondLoupe.facets();
+  const existingSelectorsMap = new Map<string, string>(); // selector -> facetAddress
+
+  for (const facet of facets) {
+    for (const selector of facet.functionSelectors) {
+      existingSelectorsMap.set(
+        selector.toLowerCase(),
+        facet.facetAddress.toLowerCase(),
+      );
+    }
+  }
+
+  // Get the existing facet address from chain-constants (if any)
+  const existingAddresses = loadExistingAddresses();
+  const existingFacetAddress =
+    existingAddresses[CONTRACTS[facetName]?.chainConstantKey || ''] || null;
+
+  // Analyze each selector in our config
+  for (const selector of configSelectors) {
+    const normalizedSelector = selector.toLowerCase();
+    const existingFacet = existingSelectorsMap.get(normalizedSelector);
+
+    if (!existingFacet) {
+      // Selector doesn't exist in Diamond - needs to be added
+      toAdd.push(selector);
+    } else if (
+      newFacetAddress !== ethers.ZeroAddress &&
+      existingFacet !== newFacetAddress.toLowerCase()
+    ) {
+      // Selector exists but points to different facet - needs to be replaced
+      toReplace.push(selector);
+    } else if (existingFacet === newFacetAddress.toLowerCase()) {
+      // Selector already points to our new facet - no change needed
+      unchanged.push(selector);
+    } else {
+      // In dry-run mode (newFacetAddress is ZeroAddress), treat existing selectors as needing replacement
+      // since we'll be deploying a new facet
+      toReplace.push(selector);
+    }
+  }
+
+  // Check for selectors that exist in Diamond for this facet but aren't in our config
+  // (This would indicate selectors that should be removed)
+  if (existingFacetAddress) {
+    for (const [selector, facetAddr] of existingSelectorsMap) {
+      if (
+        facetAddr === existingFacetAddress.toLowerCase() &&
+        !configSelectors.map((s) => s.toLowerCase()).includes(selector)
+      ) {
+        toRemove.push(selector);
+      }
+    }
+  }
+
+  return { toAdd, toReplace, toRemove, unchanged, existingFacetAddress };
+}
+
 async function updateFacet(
   facetName: string,
-  action: 'add' | 'replace' | 'remove',
+  action: 'add' | 'replace' | 'remove' | 'auto',
   dryRun: boolean = false,
 ): Promise<DeploymentResult> {
   const config = CONTRACTS[facetName];
@@ -603,17 +709,6 @@ async function updateFacet(
   }
 
   console.log(`\n🚀 ${action.toUpperCase()} Facet: ${facetName}\n`);
-
-  if (dryRun) {
-    console.log('🔍 DRY RUN - Facet will not be deployed/updated\n');
-    return {
-      network: network.name,
-      chainId: 0,
-      deployer: '',
-      contracts: {},
-      timestamp: new Date().toISOString(),
-    };
-  }
 
   const [deployer] = await ethers.getSigners();
   const chainId = Number((await ethers.provider.getNetwork()).chainId);
@@ -633,9 +728,7 @@ async function updateFacet(
   console.log(`Deployer: ${deployer.address}`);
   console.log(`Diamond: ${diamondAddress}\n`);
 
-  const diamondCut = await ethers.getContractAt('IDiamondCut', diamondAddress);
   const selectors = FACET_SELECTORS[facetName];
-
   if (!selectors || selectors.length === 0) {
     throw new Error(`No selectors defined for ${facetName}`);
   }
@@ -643,18 +736,160 @@ async function updateFacet(
   let facetAddress = ethers.ZeroAddress;
   let blockNumber = 0;
 
+  // Deploy new facet if not removing
   if (action !== 'remove') {
-    // Deploy new facet
     console.log(`📦 Deploying new ${facetName}...`);
-    const Factory = await ethers.getContractFactory(config.contractName);
-    const facet = await Factory.deploy();
-    await waitForConfirmations(facet.deploymentTransaction());
-    facetAddress = await facet.getAddress();
-    blockNumber = await getDeploymentBlock(facet.deploymentTransaction());
-    console.log(`   ✓ ${facetName}: ${facetAddress} (block ${blockNumber})\n`);
+
+    if (dryRun) {
+      console.log('   [DRY RUN] Would deploy facet contract\n');
+      facetAddress = '0x' + '0'.repeat(40);
+    } else {
+      const Factory = await ethers.getContractFactory(config.contractName);
+      const facet = await Factory.deploy();
+      await waitForConfirmations(facet.deploymentTransaction());
+      facetAddress = await facet.getAddress();
+      blockNumber = await getDeploymentBlock(facet.deploymentTransaction());
+      console.log(
+        `   ✓ ${facetName}: ${facetAddress} (block ${blockNumber})\n`,
+      );
+    }
   }
 
-  // Perform diamond cut
+  // If action is 'auto', analyze and perform smart update
+  if (action === 'auto') {
+    console.log('🔍 Analyzing on-chain selector state...\n');
+
+    const analysis = await analyzeSelectorsForFacet(
+      diamondAddress,
+      facetName,
+      facetAddress,
+    );
+
+    if (analysis.existingFacetAddress) {
+      console.log(`   Current facet address: ${analysis.existingFacetAddress}`);
+    }
+    console.log(`   New facet address:     ${facetAddress}`);
+    console.log('');
+    console.log(`   Selectors to ADD:     ${analysis.toAdd.length}`);
+    console.log(`   Selectors to REPLACE: ${analysis.toReplace.length}`);
+    console.log(`   Selectors to REMOVE:  ${analysis.toRemove.length}`);
+    console.log(`   Selectors unchanged:  ${analysis.unchanged.length}\n`);
+
+    if (
+      analysis.toAdd.length === 0 &&
+      analysis.toReplace.length === 0 &&
+      analysis.toRemove.length === 0
+    ) {
+      console.log(
+        '✅ All selectors already point to correct facet. No changes needed.\n',
+      );
+      return {
+        network: network.name,
+        chainId,
+        deployer: deployer.address,
+        contracts: {},
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    if (dryRun) {
+      console.log('🔍 DRY RUN - Would perform the following diamond cuts:\n');
+      if (analysis.toAdd.length > 0) {
+        console.log(`   ADD ${analysis.toAdd.length} selectors:`);
+        analysis.toAdd.forEach((s) => console.log(`      ${s}`));
+      }
+      if (analysis.toReplace.length > 0) {
+        console.log(`   REPLACE ${analysis.toReplace.length} selectors:`);
+        analysis.toReplace.forEach((s) => console.log(`      ${s}`));
+      }
+      if (analysis.toRemove.length > 0) {
+        console.log(`   REMOVE ${analysis.toRemove.length} selectors:`);
+        analysis.toRemove.forEach((s) => console.log(`      ${s}`));
+      }
+      console.log('');
+      return {
+        network: network.name,
+        chainId: 0,
+        deployer: '',
+        contracts: {},
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    const diamondCut = await ethers.getContractAt(
+      'IDiamondCut',
+      diamondAddress,
+    );
+    const facetCuts: Array<{
+      facetAddress: string;
+      action: number;
+      functionSelectors: string[];
+    }> = [];
+
+    // Build facet cuts array
+    if (analysis.toAdd.length > 0) {
+      facetCuts.push({
+        facetAddress: facetAddress,
+        action: 0, // Add
+        functionSelectors: analysis.toAdd,
+      });
+    }
+
+    if (analysis.toReplace.length > 0) {
+      facetCuts.push({
+        facetAddress: facetAddress,
+        action: 1, // Replace
+        functionSelectors: analysis.toReplace,
+      });
+    }
+
+    if (analysis.toRemove.length > 0) {
+      facetCuts.push({
+        facetAddress: ethers.ZeroAddress,
+        action: 2, // Remove
+        functionSelectors: analysis.toRemove,
+      });
+    }
+
+    // Execute all cuts in a single transaction
+    console.log('⚙️  Performing diamondCut with smart selector updates...');
+    const tx = await diamondCut.diamondCut(facetCuts, ethers.ZeroAddress, '0x');
+    await tx.wait();
+
+    console.log('   ✓ Diamond cut completed successfully');
+    if (analysis.toAdd.length > 0) {
+      console.log(`   ✓ Added ${analysis.toAdd.length} new selectors`);
+    }
+    if (analysis.toReplace.length > 0) {
+      console.log(`   ✓ Replaced ${analysis.toReplace.length} selectors`);
+    }
+    if (analysis.toRemove.length > 0) {
+      console.log(`   ✓ Removed ${analysis.toRemove.length} selectors`);
+    }
+    console.log('');
+
+    return {
+      network: network.name,
+      chainId,
+      deployer: deployer.address,
+      contracts: { [facetName]: { address: facetAddress, blockNumber } },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // Manual action mode (add/replace/remove)
+  if (dryRun) {
+    console.log(`🔍 DRY RUN - Would ${action} ${selectors.length} selectors\n`);
+    return {
+      network: network.name,
+      chainId: 0,
+      deployer: '',
+      contracts: {},
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  const diamondCut = await ethers.getContractAt('IDiamondCut', diamondAddress);
   const actionCode = action === 'add' ? 0 : action === 'replace' ? 1 : 2;
 
   console.log(`⚙️  Performing diamondCut (${action})...`);
@@ -711,12 +946,24 @@ async function main() {
     console.log('  --mode <name>       Deploy using a predefined mode');
     console.log('  --contract <name>   Deploy a single contract');
     console.log(
-      '  --facet <name>      Deploy/update a single facet (requires --action)',
+      '  --facet <name>      Deploy/update a facet (auto-detects selector changes)',
+    );
+    console.log(
+      '  --action <action>   For facets: auto (default), add, replace, or remove',
     );
     console.log('  --list-modes        List all available deployment modes');
     console.log('  --list-contracts    List all available contracts');
     console.log('  --dry-run           Show what would be deployed');
     console.log('  --skip-config       Skip updating config files\n');
+    console.log('Examples:');
+    console.log(
+      '  DEPLOY_FACET=NodesFacet npx hardhat run scripts/unified-deploy.ts --network baseSepolia',
+    );
+    console.log('    → Auto-detects which selectors need add/replace/remove\n');
+    console.log(
+      '  DEPLOY_FACET=CLOBFacet DEPLOY_ACTION=replace npx hardhat run scripts/unified-deploy.ts --network baseSepolia',
+    );
+    console.log('    → Forces replace of all selectors\n');
     printModes();
     return;
   }
@@ -724,12 +971,9 @@ async function main() {
   let deployment: DeploymentResult;
 
   if (args.facet) {
-    if (!args.action) {
-      throw new Error(
-        '--action (add|replace|remove) is required when using --facet',
-      );
-    }
-    deployment = await updateFacet(args.facet, args.action, args.dryRun);
+    // Default to 'auto' if no action specified - smart selector detection
+    const action = args.action || 'auto';
+    deployment = await updateFacet(args.facet, action, args.dryRun);
   } else if (args.contract) {
     deployment = await deploySingleContract(args.contract, args.dryRun);
   } else if (args.mode) {

@@ -3,21 +3,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Upgrade NodesFacet to add placeSellOrderFromNode function
- * and deploy updated CLOB with placeNodeSellOrder
+ * DEPRECATED: This script was for upgrading with external CLOB
  *
- * This script:
- * 1. Deploys a new NodesFacet with placeSellOrderFromNode
- * 2. Adds the new selector to the Diamond
- * 3. Deploys updated CLOB with placeNodeSellOrder
- * 4. Updates chain-constants.ts
+ * CLOB functionality is now internal to Diamond via CLOBFacet.
+ * Use scripts/upgrade-clob-facet.ts instead.
+ *
+ * The new architecture:
+ * - NodesFacet.placeSellOrderFromNode() calls CLOBFacet.placeNodeSellOrder() internally
+ * - No external CLOB contract is needed
+ * - All CLOB events are emitted from the Diamond contract
  */
 
-// New selectors for NodesFacet
+// New selectors for NodesFacet (DEPRECATED - use upgrade-clob-facet.ts)
 const NEW_NODES_SELECTORS = [
   '0xbcd542d1', // placeSellOrderFromNode(bytes32,uint256,address,uint256,uint256)
-  '0xd1a69b35', // setClobAddress(address)
-  '0x0f392fb4', // getClobAddress()
+  '0xd1a69b35', // setClobAddress(address) - DEPRECATED
+  '0x0f392fb4', // getClobAddress() - DEPRECATED, returns Diamond address
 ];
 
 async function main() {
