@@ -36,7 +36,8 @@
     "test:e2e:watch": "vitest --config e2e/vitest.config.ts",
     "test:e2e:anvil": "cross-env CHAIN=anvil vitest run --config e2e/vitest.config.ts",
     "test:e2e:verbose": "cross-env VERBOSE=true vitest run --config e2e/vitest.config.ts",
-    "test:e2e:coverage": "cross-env VALIDATE_COVERAGE=true FAIL_ON_COVERAGE=true vitest run --config e2e/vitest.config.ts"
+    "test:e2e:coverage": "cross-env VALIDATE_COVERAGE=true FAIL_ON_COVERAGE=true vitest run --config e2e/vitest.config.ts",
+    "generate:abi": "node -r ts-node/register scripts/generate-diamond-abi.ts"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json,css,md}": "npm run format"

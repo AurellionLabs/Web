@@ -457,22 +457,14 @@ export class CLOBRepository {
     const signer = this.repositoryContext.getSigner();
     const provider = this.repositoryContext.getProvider();
 
-    // Diamond CLOBFacet ABI (minimal interface for trading)
-    const diamondCLOBABI = [
-      // Limit orders - user places buy order, tokens escrowed from their wallet
-      'function placeBuyOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount) external returns (bytes32)',
-      // Market orders - immediate execution at best available price
-      'function placeMarketOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint256 amount, bool isBuy, uint256 maxPrice) external returns (bytes32)',
-      // Cancel order - works for both buy and sell orders
-      'function cancelCLOBOrder(bytes32 orderId) external',
-      // View functions
-      'function getOrderWithTokens(bytes32 orderId) external view returns (address maker, address baseToken, uint256 baseTokenId, address quoteToken, uint256 price, uint256 amount, uint256 filledAmount, bool isBuy, uint8 status)',
-      'function getOpenOrders(address baseToken, uint256 baseTokenId, address quoteToken) external view returns (bytes32[] buyOrders, bytes32[] sellOrders)',
-    ];
+    // Import Diamond ABI from generated file (single source of truth)
+    const { CLOBFACET_ABI } = await import(
+      '@/infrastructure/contracts/diamond-abi.generated'
+    );
 
     const diamondContract = new ethers.Contract(
       this.diamondAddress,
-      diamondCLOBABI,
+      CLOBFACET_ABI,
       provider,
     );
 
