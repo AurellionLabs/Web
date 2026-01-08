@@ -507,13 +507,13 @@ function ClassDetailPageContent() {
           }
         }
 
-        // For MARKET SELL orders: use placeSellOrderFromNode with best bid price
+        // For MARKET SELL orders: use placeNodeMarketSellOrder with best bid price
         if (order.side === 'sell' && order.type === 'market') {
           console.log(
             '[ClassTradingPage] Market sell order - checking node inventory...',
           );
 
-          // Use the nodeHash from the selected asset (passed via order.nodeHash)
+          // Use the nodeHash from the order (passed via order.nodeHash)
           let nodeHash = order.nodeHash;
 
           if (!nodeHash) {

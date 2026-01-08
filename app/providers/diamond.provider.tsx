@@ -88,6 +88,14 @@ interface DiamondContextType {
     price: bigint,
     amount: bigint,
   ) => Promise<string>; // Returns orderId
+  placeNodeMarketSellOrder: (
+    nodeHash: string,
+    tokenId: string,
+    quoteToken: string,
+    price: bigint,
+    amount: bigint,
+    maxSlippageBps: number,
+  ) => Promise<string>; // Returns orderId
 
   // Order management
   cancelCLOBOrder: (orderId: string) => Promise<void>;
@@ -459,6 +467,49 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       );
       const receipt = await tx.wait();
       console.log('[DiamondProvider] Sell order placed, tx:', receipt.hash);
+
+      // Extract orderId from events if available
+      // For now, return tx hash as order reference
+      return receipt.hash;
+    },
+    [diamondContext],
+  );
+
+  // Place market sell order from node inventory (executes immediately at best price)
+  const placeNodeMarketSellOrder = useCallback(
+    async (
+      nodeHash: string,
+      tokenId: string,
+      quoteToken: string,
+      price: bigint,
+      amount: bigint,
+      maxSlippageBps: number,
+    ): Promise<string> => {
+      if (!diamondContext) {
+        throw new Error('Diamond not initialized');
+      }
+      const diamond = diamondContext.getDiamond();
+      console.log('[DiamondProvider] Placing market sell order from node:', {
+        nodeHash,
+        tokenId,
+        quoteToken,
+        price: price.toString(),
+        amount: amount.toString(),
+        maxSlippageBps,
+      });
+      const tx = await diamond.placeNodeMarketSellOrder(
+        nodeHash,
+        tokenId,
+        quoteToken,
+        price,
+        amount,
+        maxSlippageBps,
+      );
+      const receipt = await tx.wait();
+      console.log(
+        '[DiamondProvider] Market sell order placed, tx:',
+        receipt.hash,
+      );
 
       // Extract orderId from events if available
       // For now, return tx hash as order reference

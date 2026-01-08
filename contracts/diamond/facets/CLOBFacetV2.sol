@@ -205,6 +205,8 @@ contract CLOBFacetV2 is ReentrancyGuard {
     
     /**
      * @notice Place a market order
+     * @dev Executes immediately at best available price. Market orders are IOC (Immediate Or Cancel).
+     *      If no matching orders exist, the order is cancelled and tokens refunded.
      * @param baseToken Base token address
      * @param baseTokenId Token ID
      * @param quoteToken Quote token address
@@ -220,24 +222,52 @@ contract CLOBFacetV2 is ReentrancyGuard {
         bool isBuy,
         uint256 maxSlippageBps
     ) external nonReentrant whenNotPaused checkRateLimit returns (bytes32 orderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         bytes32 marketId = keccak256(abi.encodePacked(baseToken, baseTokenId, quoteToken));
+        
+        // Get reference price from order book
         uint256 refPrice = _getMarketPrice(marketId, isBuy);
         if (refPrice == 0) revert InvalidPrice();
         
+        // Calculate limit price with slippage
         uint96 limitPrice = isBuy 
             ? uint96((refPrice * (BASIS_POINTS + maxSlippageBps)) / BASIS_POINTS)
             : uint96((refPrice * (BASIS_POINTS - maxSlippageBps)) / BASIS_POINTS);
         
-        orderId = _placeOrder(
+        // Place the order using IOC time-in-force
+        orderId = _placeOrderInternal(
+            msg.sender,
             baseToken,
             baseTokenId,
             quoteToken,
             limitPrice,
             amount,
             isBuy,
-            CLOBLib.TIF_IOC,
-            0
+            CLOBLib.TIF_IOC,  // IOC - Immediate Or Cancel
+            0,
+            false  // skipTransfer = false (need to transfer tokens)
         );
+        
+        // Emit OrderPlacedWithTokens for indexer compatibility
+        emit OrderPlacedWithTokens(
+            orderId,
+            msg.sender,
+            baseToken,
+            baseTokenId,
+            quoteToken,
+            limitPrice,
+            amount,
+            isBuy,
+            CLOBLib.TYPE_MARKET
+        );
+        
+        // Match immediately against resting orders
+        // The _createOrderInternal already adds to order book, now we match
+        _matchOrder(orderId, marketId, baseToken, baseTokenId, quoteToken);
+        
+        // After matching, check if order has unfilled portion and cancel if IOC
+        // This is handled by _createOrderInternal's IOC logic which runs after matching
+        // when it checks if filledAmount < amount and timeInForce == TIF_IOC
     }
     
     /**

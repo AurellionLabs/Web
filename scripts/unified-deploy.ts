@@ -1349,6 +1349,131 @@ async function main() {
     console.log(`  ${name}: ${data.address} (block ${data.blockNumber})`);
   }
   console.log('\n' + '='.repeat(60) + '\n');
+
+  // Run post-deployment verification for facet deployments
+  if (
+    args.facet &&
+    !args.dryRun &&
+    Object.keys(deployment.contracts).length > 0
+  ) {
+    await verifyFacetUpdate(args.facet, deployment);
+  }
+
+  // Prompt for git push if not skipped
+  if (
+    args.facet &&
+    !args.dryRun &&
+    Object.keys(deployment.contracts).length > 0
+  ) {
+    await promptGitPush(args.facet);
+  }
+}
+
+// =============================================================================
+// POST-DEPLOYMENT VERIFICATION
+// =============================================================================
+
+async function verifyFacetUpdate(
+  facetName: string,
+  deployment: DeploymentResult,
+): Promise<void> {
+  console.log('\n🔍 VERIFICATION');
+  console.log('='.repeat(60));
+
+  const deployedFacet = deployment.contracts[facetName];
+  if (!deployedFacet) {
+    console.log('⚠️  No contract deployed, skipping verification');
+    return;
+  }
+
+  const diamondAddress = loadExistingAddresses()['NEXT_PUBLIC_DIAMOND_ADDRESS'];
+  if (!diamondAddress) {
+    console.log(
+      '⚠️  Diamond address not found, skipping on-chain verification',
+    );
+    return;
+  }
+
+  console.log(`Diamond: ${diamondAddress}`);
+  console.log(`New ${facetName}: ${deployedFacet.address}`);
+  console.log('');
+
+  // Get selectors for this facet
+  const selectors = FACET_SELECTORS[facetName];
+  if (!selectors || selectors.length === 0) {
+    console.log('⚠️  No selectors defined for this facet');
+    return;
+  }
+
+  // Verify key selectors point to the new facet
+  console.log('📋 Verifying selectors...');
+
+  const diamondLoupe = await ethers.getContractAt(
+    'IDiamondLoupe',
+    diamondAddress,
+  );
+
+  let allVerified = true;
+  for (const selector of selectors) {
+    try {
+      const facetAddress = await diamondLoupe.facetAddress(selector);
+      const isCorrect =
+        facetAddress.toLowerCase() === deployedFacet.address.toLowerCase();
+
+      if (isCorrect) {
+        console.log(
+          `   ✓ ${selector} → ${facetAddress.slice(0, 6)}...${facetAddress.slice(-4)}`,
+        );
+      } else {
+        console.log(
+          `   ✗ ${selector} → ${facetAddress.slice(0, 6)}...${facetAddress.slice(-4)} (WRONG!)`,
+        );
+        allVerified = false;
+      }
+    } catch (error: any) {
+      console.log(`   ✗ ${selector} → ERROR: ${error.message}`);
+      allVerified = false;
+    }
+  }
+
+  console.log('');
+  if (allVerified) {
+    console.log('✅ All selectors verified successfully!');
+  } else {
+    console.log(
+      '⚠️  Some selectors did not verify correctly. Check deployment.',
+    );
+  }
+
+  // Print cast commands for manual verification
+  console.log('\n📝 Manual verification commands:');
+  console.log('   # Verify specific selector:');
+  console.log(
+    `   cast call ${diamondAddress} "facetAddress(bytes4)" <selector> --rpc-url <RPC_URL>`,
+  );
+  console.log('');
+  console.log('   # List all facets:');
+  console.log(`   cast call ${diamondAddress} "facets()" --rpc-url <RPC_URL>`);
+  console.log('');
+  console.log('   # Get facet for placeMarketOrder (key function):');
+  console.log(
+    '   cast call ${diamondAddress} "facetAddress(bytes4)" 0x4c4c96c4 --rpc-url <RPC_URL>',
+  );
+}
+
+async function promptGitPush(facetName: string): Promise<void> {
+  console.log('\n🚀 Git Push to Trigger Indexer Restart');
+  console.log('='.repeat(60));
+  console.log('To push changes and restart the indexer, run:');
+  console.log('');
+  console.log('   git add -A');
+  console.log(`   git commit -m "feat: Update ${facetName} with fixes"`);
+  console.log('   git push origin <branch>');
+  console.log('');
+  console.log(
+    'This will trigger the deployment pipeline and restart the indexer.',
+  );
+  console.log('');
 }
 
 main()
