@@ -1373,8 +1373,70 @@ ponder.on('Diamond:FeesCollected', async ({ event, context }) => {
 // =============================================================================
 
 /**
+ * Decode token addresses from transaction input for CLOB order functions.
+ * Supports: placeBuyOrder, placeSellOrder, placeOrder, placeLimitOrder
+ * Function signatures:
+ * - 0xe463f6e5: placeBuyOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint96 price, uint96 amount)
+ * - 0x5ba77869: placeLimitOrder(address baseToken, uint256 baseTokenId, address quoteToken, uint96 price, uint96 amount, bool isBuy)
+ * - Other order functions follow similar patterns
+ */
+function decodeTokensFromInput(input: string): {
+  baseToken: `0x${string}`;
+  baseTokenId: bigint;
+  quoteToken: `0x${string}`;
+} | null {
+  // Minimum length: 4 bytes selector + 3 params * 32 bytes = 100 bytes = 200 hex chars + 2 for 0x
+  if (!input || input.length < 202) {
+    return null;
+  }
+
+  try {
+    // Skip the function selector (first 4 bytes = 8 hex chars after 0x)
+    const data = input.slice(10);
+
+    // Standard ABI encoding for address,uint256,address:
+    // Param 1 (address baseToken): bytes 0-31, address is right-padded in last 20 bytes
+    // Param 2 (uint256 baseTokenId): bytes 32-63
+    // Param 3 (address quoteToken): bytes 64-95, address is right-padded in last 20 bytes
+
+    // Extract baseToken (last 20 bytes of first 32-byte word)
+    const baseTokenHex = data.slice(24, 64); // chars 24-64 = bytes 12-32 of first word
+    const baseToken = `0x${baseTokenHex}`.toLowerCase() as `0x${string}`;
+
+    // Extract baseTokenId (full 32-byte word)
+    const baseTokenIdHex = data.slice(64, 128); // chars 64-128 = second 32-byte word
+    const baseTokenId = BigInt(`0x${baseTokenIdHex}`);
+
+    // Extract quoteToken (last 20 bytes of third 32-byte word)
+    const quoteTokenHex = data.slice(152, 192); // chars 152-192 = bytes 12-32 of third word
+    const quoteToken = `0x${quoteTokenHex}`.toLowerCase() as `0x${string}`;
+
+    // Validate addresses are non-zero
+    if (
+      baseToken === ZERO_ADDRESS ||
+      quoteToken === ZERO_ADDRESS ||
+      !baseToken.startsWith('0x') ||
+      !quoteToken.startsWith('0x')
+    ) {
+      return null;
+    }
+
+    return { baseToken, baseTokenId, quoteToken };
+  } catch (e) {
+    log.warn('Failed to decode tokens from input', {
+      input: input.slice(0, 50),
+      error: e,
+    });
+    return null;
+  }
+}
+
+/**
  * Handle OrderCreated event from Diamond CLOBFacetV2
  * V2 event with timeInForce and expiry support
+ *
+ * Since the deployed OrderRouterFacet doesn't emit OrderPlacedWithTokens,
+ * we decode token addresses directly from the transaction input.
  */
 ponder.on(
   'Diamond:OrderCreated(bytes32 indexed orderId, bytes32 indexed marketId, address indexed maker, uint256 price, uint256 amount, bool isBuy, uint8 orderType, uint8 timeInForce, uint256 expiry, uint256 nonce)',
@@ -1393,6 +1455,31 @@ ponder.on(
     } = event.args;
     const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
+    // Decode token addresses from transaction input
+    const txInput = event.transaction.input;
+    const decodedTokens = decodeTokensFromInput(txInput);
+
+    let baseToken = ZERO_ADDRESS;
+    let baseTokenId = 0n;
+    let quoteToken = ZERO_ADDRESS;
+
+    if (decodedTokens) {
+      baseToken = decodedTokens.baseToken;
+      baseTokenId = decodedTokens.baseTokenId;
+      quoteToken = decodedTokens.quoteToken;
+      log.debug('Decoded tokens from transaction input', {
+        orderId,
+        baseToken,
+        baseTokenId: baseTokenId.toString(),
+        quoteToken,
+      });
+    } else {
+      log.warn('Could not decode tokens from transaction input', {
+        orderId,
+        txInput: txInput.slice(0, 50),
+      });
+    }
+
     log.debug('OrderCreated V2 processing', {
       orderId,
       marketId,
@@ -1404,17 +1491,20 @@ ponder.on(
       timeInForce,
       expiry: expiry.toString(),
       nonce: nonce.toString(),
+      baseToken,
+      baseTokenId: baseTokenId.toString(),
+      quoteToken,
     });
 
-    // Insert CLOB Order entity with V2 fields
+    // Insert CLOB Order entity with V2 fields and decoded tokens
     await context.db
       .insert(clobOrders)
       .values({
         id: orderId,
         maker,
-        baseToken: ZERO_ADDRESS, // Will be updated by OrderPlacedWithTokens
-        baseTokenId: 0n,
-        quoteToken: ZERO_ADDRESS,
+        baseToken,
+        baseTokenId,
+        quoteToken,
         price,
         amount,
         filledAmount: 0n,
@@ -1428,12 +1518,20 @@ ponder.on(
         transactionHash: event.transaction.hash,
       })
       .onConflictDoUpdate({
-        // Update with V2 data if order already exists
+        // Update with V2 data if order already exists (e.g., from NodeSellOrderPlaced)
         price,
         amount,
         isBuy,
         orderType,
         updatedAt: event.block.timestamp,
+        // Only update tokens if we have valid data
+        ...(decodedTokens
+          ? {
+              baseToken,
+              baseTokenId,
+              quoteToken,
+            }
+          : {}),
       });
 
     // Update user trading stats
