@@ -314,6 +314,100 @@ export const DiamondABI = [
     name: 'ClobApprovalGranted',
     type: 'event',
   },
+  // Node token inventory events
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'minter',
+        type: 'address',
+      },
+    ],
+    name: 'TokensMintedToNode',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'recipient',
+        type: 'address',
+      },
+    ],
+    name: 'TokensWithdrawnFromNode',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'depositor',
+        type: 'address',
+      },
+    ],
+    name: 'TokensDepositedToNode',
+    type: 'event',
+  },
   {
     anonymous: false,
     inputs: [
@@ -504,6 +598,41 @@ export const DiamondABI = [
     name: 'creditNodeTokens',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // Deposit tokens from user wallet to node inventory
+  {
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
+      { internalType: 'uint256', name: '_amount', type: 'uint256' },
+    ],
+    name: 'depositTokensToNode',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // Withdraw tokens from node inventory to user wallet
+  {
+    inputs: [
+      { internalType: 'bytes32', name: '_node', type: 'bytes32' },
+      { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
+      { internalType: 'uint256', name: '_amount', type: 'uint256' },
+    ],
+    name: 'withdrawTokensFromNode',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // Get full node inventory (all tokenIds and balances)
+  {
+    inputs: [{ internalType: 'bytes32', name: '_node', type: 'bytes32' }],
+    name: 'getNodeInventory',
+    outputs: [
+      { internalType: 'uint256[]', name: 'tokenIds', type: 'uint256[]' },
+      { internalType: 'uint256[]', name: 'balances', type: 'uint256[]' },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
