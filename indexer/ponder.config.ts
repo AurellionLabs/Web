@@ -15,6 +15,8 @@ import { RWYVaultAbi } from './abis/RWYVault';
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
 
 // Import contract addresses and deployment blocks from chain-constants
+// Note: In Docker, chain-constants.ts is copied to ./chain-constants.ts
+// Locally it's at ../chain-constants.ts - we use a symlink or copy
 import {
   NEXT_PUBLIC_AUSYS_ADDRESS,
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
@@ -24,7 +26,7 @@ import {
   NEXT_PUBLIC_RWY_VAULT_ADDRESS,
   NEXT_PUBLIC_RPC_URL_84532,
   DEPLOYMENT_BLOCKS,
-} from '../chain-constants';
+} from './chain-constants';
 
 // Base Sepolia Chain ID
 const BASE_SEPOLIA_CHAIN_ID = 84532;

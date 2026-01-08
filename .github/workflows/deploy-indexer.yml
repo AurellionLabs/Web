@@ -7,6 +7,7 @@ on:
       - dev
     paths:
       - 'indexer/**'
+      - 'chain-constants.ts'
       - '.github/workflows/deploy-indexer.yml'
   workflow_dispatch:
     inputs:
@@ -57,7 +58,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./indexer
+          context: .
+          file: ./indexer/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -78,13 +80,17 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           script: |
+            cd /srv/Web
+
+            # Pull latest code (for chain-constants.ts and other config)
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
             cd /srv/Web/indexer
 
-            # Pull latest image
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose -f docker-compose.prod.yml pull
-
-            # Restart services
+            # Rebuild and restart with latest code
+            docker compose -f docker-compose.prod.yml build --no-cache indexer
             docker compose -f docker-compose.prod.yml up -d
 
             # Clean up old images
