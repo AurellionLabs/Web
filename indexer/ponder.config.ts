@@ -3,10 +3,15 @@ import { http } from 'viem';
 
 // Import generated ABI from code generator
 import { DiamondABI } from './abis/generated';
+import { AuraAssetABI } from './abis/generated/AuraAsset';
 
 // Import constants
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
-import { NEXT_PUBLIC_RPC_URL_84532 } from './chain-constants';
+import {
+  NEXT_PUBLIC_RPC_URL_84532,
+  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+} from './chain-constants';
+import { DEPLOYMENT_BLOCKS } from './chain-constants';
 
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
@@ -26,6 +31,12 @@ export default createConfig({
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
     },
-    // Legacy contracts removed - see abis/deprecated/ and src/deprecated/
+    // AuraAsset - ERC1155 asset contract
+    AuraAsset: {
+      network: 'baseSepolia',
+      abi: AuraAssetABI,
+      address: NEXT_PUBLIC_AURA_ASSET_ADDRESS as `0x${string}`,
+      startBlock: BigInt(DEPLOYMENT_BLOCKS.auraAsset),
+    },
   },
 });
