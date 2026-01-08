@@ -557,7 +557,11 @@ export const GET_CLOB_OPEN_ORDERS = gql`
     $limit: Int = 50
   ) {
     clobOrderss(
-      where: { baseToken: $baseToken, baseTokenId: $baseTokenId, status: 0 }
+      where: {
+        baseToken: $baseToken
+        baseTokenId: $baseTokenId
+        status_in: [0, 1]
+      }
       limit: $limit
       orderBy: "price"
       orderDirection: "asc"
