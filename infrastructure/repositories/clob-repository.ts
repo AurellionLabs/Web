@@ -590,7 +590,16 @@ export class CLOBRepository {
     params: PlaceLimitOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
-      console.log('[CLOBRepository] Placing limit order via Diamond:', params);
+      console.log('[CLOBRepository] Placing limit order via Diamond:', {
+        baseToken: params.baseToken,
+        baseTokenId: params.baseTokenId,
+        quoteToken: params.quoteToken,
+        price: params.price.toString(),
+        amount: params.amount.toString(),
+        isBuy: params.isBuy,
+        diamondAddress: this.diamondAddress,
+        quoteTokenAddress: this.quoteTokenAddress,
+      });
 
       // Sell orders should go through DiamondProvider.placeSellOrderFromNode()
       // which handles node inventory management
@@ -605,16 +614,30 @@ export class CLOBRepository {
         };
       }
 
+      console.log('[CLOBRepository] Getting contracts with signer...');
       const [diamondContract, quoteToken] = await Promise.all([
         this.getContractWithSigner(),
         this.getQuoteTokenWithSigner(),
       ]);
 
+      const diamondContractAddress = await diamondContract.getAddress();
+      const quoteTokenContractAddress = await quoteToken.getAddress();
+      console.log('[CLOBRepository] Contract addresses:', {
+        diamondContract: diamondContractAddress,
+        quoteToken: quoteTokenContractAddress,
+      });
+
       // For buy orders: approve quote token (ERC20) for Diamond
       const totalCost = params.price * params.amount;
+      console.log(
+        '[CLOBRepository] Total cost for approval:',
+        totalCost.toString(),
+      );
       await this.ensureQuoteTokenApproval(quoteToken, totalCost);
+      console.log('[CLOBRepository] Approval check complete');
 
       // Place the buy order via Diamond CLOBFacet
+      console.log('[CLOBRepository] Calling placeBuyOrder on Diamond...');
       const tx = await diamondContract.placeBuyOrder(
         params.baseToken,
         params.baseTokenId,
