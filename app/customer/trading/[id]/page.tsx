@@ -668,85 +668,29 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           );
           return true;
         } else {
-          // Market order - convert to limit order at best available price
-          // NOTE: The contract's placeMarketOrder has issues with the price tree,
-          // so we use placeLimitOrder with the best available price instead.
+          // Market order - use the contract's placeMarketOrder which:
+          // 1. Gets best price from order book
+          // 2. Creates an IOC (Immediate Or Cancel) order
+          // 3. Matches immediately against existing orders
+          // 4. Cancels any unfilled portion
 
-          // Fetch current order book to get best prices
-          const orderBookData = await clobRepository.getOrderBook(
-            NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-            tokenId,
-            10,
-          );
+          console.log('[TradingPage] Placing market order via contract...');
 
-          let marketPrice: bigint;
-
-          if (order.side === 'buy') {
-            // For buy market orders: use best ask (lowest sell price) + 10% slippage
-            const bestAsk = orderBookData.asks[0]?.price;
-            if (bestAsk && bestAsk > 0) {
-              const bestAskWei = BigInt(Math.round(bestAsk * 1e18));
-              // Add 10% slippage to ensure order fills
-              marketPrice = (bestAskWei * BigInt(110)) / BigInt(100);
-              console.log(
-                '[TradingPage] Market buy: using best ask',
-                bestAsk,
-                'with 10% slippage, price:',
-                marketPrice.toString(),
-              );
-            } else {
-              // No asks available - cannot execute market buy
-              console.error('[TradingPage] No asks available for market buy');
-              return false;
-            }
-          } else {
-            // For sell market orders: use best bid (highest buy price) - 10% slippage
-            const bestBid = orderBookData.bids[0]?.price;
-            if (bestBid && bestBid > 0) {
-              const bestBidWei = BigInt(Math.round(bestBid * 1e18));
-              // Subtract 10% to set minimum acceptable price
-              marketPrice = (bestBidWei * BigInt(90)) / BigInt(100);
-              console.log(
-                '[TradingPage] Market sell: using best bid',
-                bestBid,
-                'with 10% slippage, price:',
-                marketPrice.toString(),
-              );
-            } else {
-              // No bids available - cannot execute market sell
-              console.error('[TradingPage] No bids available for market sell');
-              return false;
-            }
-          }
-
-          // Use limit order at market price instead of market order
-          // This works around the contract's price tree issue
-          console.log(
-            '[TradingPage] Converting market order to limit order at price:',
-            marketPrice.toString(),
-          );
-          const limitParams: PlaceLimitOrderParams = {
-            ...clobParams,
-            price: marketPrice,
-          };
-
-          const result = await orderBridgeService.placeLimitOrderAndBridge(
-            limitParams,
-            false,
-          );
+          const result = await orderBridgeService.placeMarketOrder({
+            baseToken: clobParams.baseToken,
+            baseTokenId: clobParams.baseTokenId,
+            quoteToken: clobParams.quoteToken,
+            amount: clobParams.amount,
+            isBuy: clobParams.isBuy,
+            maxSlippageBps: 1000, // 10% slippage
+          });
 
           if (!result.success) {
-            console.error(
-              '[TradingPage] Market order (as limit) failed:',
-              result.error,
-            );
+            console.error('[TradingPage] Market order failed:', result.error);
             return false;
           }
 
-          console.log(
-            '[TradingPage] Market order executed as limit:',
-            result.unifiedOrderId,
-          );
+          console.log('[TradingPage] Market order executed:', result.orderId);
           return true;
         }
       } catch (error) {
