@@ -2162,28 +2162,30 @@ export const CLOBFACET_ABI = [
     stateMutability: 'nonpayable',
   },
   {
+    // NOTE: Using uint96 for price/amount to call OrderRouterFacet (not CLOBFacet)
+    // The uint256 version in CLOBFacet has a bug where it transfers from Diamond to Diamond
     type: 'function',
     name: 'placeBuyOrder',
     inputs: [
       {
-        name: '_baseToken',
+        name: 'baseToken',
         type: 'address',
       },
       {
-        name: '_baseTokenId',
+        name: 'baseTokenId',
         type: 'uint256',
       },
       {
-        name: '_quoteToken',
+        name: 'quoteToken',
         type: 'address',
       },
       {
-        name: '_price',
-        type: 'uint256',
+        name: 'price',
+        type: 'uint96',
       },
       {
-        name: '_amount',
-        type: 'uint256',
+        name: 'amount',
+        type: 'uint96',
       },
     ],
     outputs: [
