@@ -2178,6 +2178,50 @@ export const DiamondABI = [
     name: 'OrderExpired',
     type: 'event',
   },
+  // TradeExecuted from OrderMatchingFacet - simple version with order IDs
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'takerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'makerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+    ],
+    name: 'TradeExecuted',
+    type: 'event',
+  },
   // TradeExecuted V2 - with fees and takerIsBuy
   {
     anonymous: false,

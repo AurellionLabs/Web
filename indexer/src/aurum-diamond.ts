@@ -1143,77 +1143,174 @@ ponder.on(
 );
 
 /**
- * Handle TradeExecuted event from Diamond CLOBFacet
+ * Handle TradeExecuted event from OrderMatchingFacet
+ * This is the simple version with order IDs (takerOrderId, makerOrderId)
+ * Signature: TradeExecuted(bytes32 indexed tradeId, bytes32 indexed takerOrderId, bytes32 indexed makerOrderId, uint256 price, uint256 amount, uint256 quoteAmount)
  */
-ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
-  const {
-    tradeId,
-    taker,
-    maker,
-    marketId,
-    price,
-    amount,
-    quoteAmount,
-    timestamp,
-  } = event.args;
-  const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+ponder.on(
+  'Diamond:TradeExecuted(bytes32 indexed tradeId, bytes32 indexed takerOrderId, bytes32 indexed makerOrderId, uint256 price, uint256 amount, uint256 quoteAmount)',
+  async ({ event, context }) => {
+    const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } =
+      event.args;
+    const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
 
-  // Get market info
-  const baseToken = ZERO_ADDRESS;
-  const baseTokenId = 0n;
-  const quoteToken = ZERO_ADDRESS;
+    log.info('TradeExecuted (OrderMatchingFacet) processing', {
+      tradeId,
+      takerOrderId,
+      makerOrderId,
+      price: price.toString(),
+      amount: amount.toString(),
+      quoteAmount: quoteAmount.toString(),
+    });
 
-  // Insert CLOB Trade entity
-  await context.db.insert(clobTrades).values({
-    id: tradeId,
-    takerOrderId: ZERO_BYTES32,
-    makerOrderId: ZERO_BYTES32,
-    taker,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    amount,
-    quoteAmount,
-    timestamp,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+    // Decode token info from transaction input (same as OrderCreated)
+    const txInput = event.transaction.input;
+    const decodedTokens = decodeTokensFromInput(txInput);
 
-  // Insert TradeExecuted event
-  await context.db.insert(tradeExecutedEvents).values({
-    id: eventId,
-    tradeId,
-    taker,
-    maker,
-    baseToken,
-    baseTokenId,
-    price,
-    amount,
-    quoteAmount,
-    timestamp,
-    blockNumber: event.block.number,
-    blockTimestamp: event.block.timestamp,
-    transactionHash: event.transaction.hash,
-  });
+    const baseToken = decodedTokens?.baseToken ?? ZERO_ADDRESS;
+    const baseTokenId = decodedTokens?.baseTokenId ?? 0n;
+    const quoteToken = decodedTokens?.quoteToken ?? ZERO_ADDRESS;
 
-  // Update user trading stats for both parties
-  await updateDiamondUserTradingStats(
-    context,
-    taker,
-    event.block.timestamp,
-    'tradeAsTaker',
-    quoteAmount,
-  );
-  await updateDiamondUserTradingStats(
-    context,
-    maker,
-    event.block.timestamp,
-    'tradeAsMaker',
-    quoteAmount,
-  );
-});
+    // Insert CLOB Trade entity
+    await context.db
+      .insert(clobTrades)
+      .values({
+        id: tradeId,
+        takerOrderId,
+        makerOrderId,
+        taker: event.transaction.from, // Taker is the transaction sender
+        maker: ZERO_ADDRESS, // We don't have maker address in this event
+        baseToken,
+        baseTokenId,
+        quoteToken,
+        price,
+        amount,
+        quoteAmount,
+        timestamp: event.block.timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
+
+    // Update taker order (the market order that initiated the trade)
+    await context.db.update(clobOrders, { id: takerOrderId }).set({
+      filledAmount: amount,
+      remainingAmount: 0n,
+      status: 2, // Filled
+      updatedAt: event.block.timestamp,
+    });
+
+    // Update maker order (the resting order that was matched)
+    // Note: We can't easily get the new remaining amount here, so we just mark it as partially filled
+    // The actual remaining amount should come from OrderFilled event
+    await context.db.update(clobOrders, { id: makerOrderId }).set({
+      updatedAt: event.block.timestamp,
+    });
+
+    // Insert TradeExecuted event
+    await context.db.insert(tradeExecutedEvents).values({
+      id: eventId,
+      tradeId,
+      taker: event.transaction.from,
+      maker: ZERO_ADDRESS,
+      baseToken,
+      baseTokenId,
+      price,
+      amount,
+      quoteAmount,
+      timestamp: event.block.timestamp,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    });
+
+    log.info('TradeExecuted processed successfully', {
+      tradeId,
+      takerOrderId,
+      makerOrderId,
+    });
+  },
+);
+
+/**
+ * Handle TradeExecuted event from Diamond CLOBFacet (legacy format)
+ * This is the old version with taker/maker addresses
+ */
+ponder.on(
+  'Diamond:TradeExecuted(bytes32 indexed tradeId, address indexed taker, address indexed maker, bytes32 marketId, uint256 price, uint256 amount, uint256 quoteAmount, uint256 timestamp)',
+  async ({ event, context }) => {
+    const {
+      tradeId,
+      taker,
+      maker,
+      marketId,
+      price,
+      amount,
+      quoteAmount,
+      timestamp,
+    } = event.args;
+    const eventId = makeEventId(event.transaction.hash, event.log.logIndex);
+
+    // Get market info
+    const baseToken = ZERO_ADDRESS;
+    const baseTokenId = 0n;
+    const quoteToken = ZERO_ADDRESS;
+
+    // Insert CLOB Trade entity
+    await context.db
+      .insert(clobTrades)
+      .values({
+        id: tradeId,
+        takerOrderId: ZERO_BYTES32,
+        makerOrderId: ZERO_BYTES32,
+        taker,
+        maker,
+        baseToken,
+        baseTokenId,
+        quoteToken,
+        price,
+        amount,
+        quoteAmount,
+        timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
+
+    // Insert TradeExecuted event
+    await context.db.insert(tradeExecutedEvents).values({
+      id: eventId,
+      tradeId,
+      taker,
+      maker,
+      baseToken,
+      baseTokenId,
+      price,
+      amount,
+      quoteAmount,
+      timestamp,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    });
+
+    // Update user trading stats for both parties
+    await updateDiamondUserTradingStats(
+      context,
+      taker,
+      event.block.timestamp,
+      'tradeAsTaker',
+      quoteAmount,
+    );
+    await updateDiamondUserTradingStats(
+      context,
+      maker,
+      event.block.timestamp,
+      'tradeAsMaker',
+      quoteAmount,
+    );
+  },
+);
 
 /**
  * Handle PoolCreated event from Diamond CLOBFacet
