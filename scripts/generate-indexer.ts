@@ -1,0 +1,739 @@
+#!/usr/bin/env ts-node
+/**
+ * Smart Contract-First Indexer Generator
+ *
+ * Generates Ponder indexer configuration from Hardhat artifacts:
+ * - Per-facet ABI files (eliminates duplicate event conflicts)
+ * - Ponder schema with proper indexes and relationships
+ * - Handler stubs with correct event signatures
+ *
+ * Usage: npx ts-node scripts/generate-indexer.ts
+ *
+ * @author Staff Engineer Implementation
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { keccak256, toBytes } from 'viem';
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+const ARTIFACTS_DIR = path.join(
+  __dirname,
+  '../artifacts/contracts/diamond/facets',
+);
+const INDEXER_DIR = path.join(__dirname, '../indexer');
+const GENERATED_ABIS_DIR = path.join(INDEXER_DIR, 'abis/generated');
+const GENERATED_HANDLERS_DIR = path.join(INDEXER_DIR, 'src/handlers');
+const GENERATED_SCHEMA_FILE = path.join(INDEXER_DIR, 'generated-schema.ts');
+
+// Facets to index - maps to Hardhat artifact paths
+const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
+  NodesFacet: { domain: 'nodes', priority: 1 },
+  CLOBFacetV2: { domain: 'clob', priority: 2 },
+  OrderMatchingFacet: { domain: 'clob', priority: 3 },
+  OrderRouterFacet: { domain: 'clob', priority: 4 },
+  BridgeFacet: { domain: 'bridge', priority: 5 },
+  StakingFacet: { domain: 'staking', priority: 6 },
+  CLOBAdminFacet: { domain: 'clob-admin', priority: 7 },
+  DiamondCutFacet: { domain: 'diamond', priority: 8 },
+  OwnershipFacet: { domain: 'diamond', priority: 9 },
+};
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface AbiItem {
+  type: string;
+  name?: string;
+  inputs?: AbiInput[];
+  outputs?: AbiOutput[];
+  anonymous?: boolean;
+  stateMutability?: string;
+}
+
+interface AbiInput {
+  name: string;
+  type: string;
+  indexed?: boolean;
+  internalType?: string;
+  components?: AbiInput[];
+}
+
+interface AbiOutput {
+  name: string;
+  type: string;
+  internalType?: string;
+  components?: AbiOutput[];
+}
+
+interface EventInfo {
+  name: string;
+  facet: string;
+  domain: string;
+  signature: string;
+  signatureHash: string;
+  inputs: AbiInput[];
+  abi: AbiItem;
+}
+
+interface FacetInfo {
+  name: string;
+  domain: string;
+  events: EventInfo[];
+  functions: AbiItem[];
+  abi: AbiItem[];
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+function ensureDir(dir: string): void {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+function computeEventSignature(event: AbiItem): string {
+  if (!event.inputs) return `${event.name}()`;
+  const params = event.inputs.map((i) => i.type).join(',');
+  return `${event.name}(${params})`;
+}
+
+function computeSignatureHash(signature: string): string {
+  const hash = keccak256(toBytes(signature));
+  return hash.slice(0, 10); // First 4 bytes = 10 hex chars including 0x
+}
+
+function solidityTypeToTsType(type: string): string {
+  if (type.startsWith('uint') || type.startsWith('int')) return 'bigint';
+  if (type === 'address') return '`0x${string}`';
+  if (type === 'bool') return 'boolean';
+  if (type.startsWith('bytes32')) return '`0x${string}`';
+  if (type.startsWith('bytes')) return '`0x${string}`';
+  if (type === 'string') return 'string';
+  if (type.endsWith('[]'))
+    return `${solidityTypeToTsType(type.slice(0, -2))}[]`;
+  return 'unknown';
+}
+
+function solidityTypeToPonderType(type: string): string {
+  if (type.startsWith('uint') || type.startsWith('int')) return 't.bigint()';
+  if (type === 'address') return 't.hex()';
+  if (type === 'bool') return 't.boolean()';
+  if (type.startsWith('bytes32')) return 't.hex()';
+  if (type.startsWith('bytes')) return 't.hex()';
+  if (type === 'string') return 't.text()';
+  return 't.text()';
+}
+
+function camelToSnake(str: string): string {
+  return str
+    .replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
+    .replace(/^_/, '');
+}
+
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+// ============================================================================
+// ARTIFACT PARSING
+// ============================================================================
+
+function loadFacetArtifact(facetName: string): AbiItem[] | null {
+  const artifactPath = path.join(
+    ARTIFACTS_DIR,
+    `${facetName}.sol/${facetName}.json`,
+  );
+
+  if (!fs.existsSync(artifactPath)) {
+    console.warn(`⚠️  Artifact not found: ${artifactPath}`);
+    return null;
+  }
+
+  try {
+    const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+    return artifact.abi;
+  } catch (error) {
+    console.error(`❌ Error loading ${facetName}:`, error);
+    return null;
+  }
+}
+
+function extractEvents(
+  abi: AbiItem[],
+  facetName: string,
+  domain: string,
+): EventInfo[] {
+  return abi
+    .filter((item) => item.type === 'event' && item.name)
+    .map((event) => {
+      const signature = computeEventSignature(event);
+      return {
+        name: event.name!,
+        facet: facetName,
+        domain,
+        signature,
+        signatureHash: computeSignatureHash(signature),
+        inputs: event.inputs || [],
+        abi: event,
+      };
+    });
+}
+
+function parseFacets(): Map<string, FacetInfo> {
+  const facets = new Map<string, FacetInfo>();
+
+  for (const [facetName, config] of Object.entries(FACETS_TO_INDEX)) {
+    const abi = loadFacetArtifact(facetName);
+    if (!abi) continue;
+
+    const events = extractEvents(abi, facetName, config.domain);
+    const functions = abi.filter((item) => item.type === 'function');
+
+    facets.set(facetName, {
+      name: facetName,
+      domain: config.domain,
+      events,
+      functions,
+      abi,
+    });
+
+    console.log(
+      `✓ Parsed ${facetName}: ${events.length} events, ${functions.length} functions`,
+    );
+  }
+
+  return facets;
+}
+
+// ============================================================================
+// ABI GENERATION
+// ============================================================================
+
+function generatePerFacetAbis(facets: Map<string, FacetInfo>): void {
+  ensureDir(GENERATED_ABIS_DIR);
+
+  // Generate individual facet ABI files
+  for (const [facetName, facet] of facets) {
+    const content = `// Auto-generated from ${facetName}.sol - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+
+export const ${facetName}ABI = ${JSON.stringify(facet.abi, null, 2)} as const;
+
+export const ${facetName}Events = ${JSON.stringify(
+      facet.events.map((e) => ({
+        name: e.name,
+        signature: e.signature,
+        signatureHash: e.signatureHash,
+      })),
+      null,
+      2,
+    )} as const;
+`;
+
+    fs.writeFileSync(path.join(GENERATED_ABIS_DIR, `${facetName}.ts`), content);
+  }
+
+  // Generate combined Diamond ABI (events only, deduplicated by signature hash)
+  const allEvents = new Map<string, EventInfo>();
+  const allFunctions = new Map<string, AbiItem>();
+
+  for (const facet of facets.values()) {
+    for (const event of facet.events) {
+      // Use signature hash as key to deduplicate
+      const key = event.signatureHash;
+      if (!allEvents.has(key)) {
+        allEvents.set(key, event);
+      }
+    }
+    for (const fn of facet.functions) {
+      if (fn.name && !allFunctions.has(fn.name)) {
+        allFunctions.set(fn.name, fn);
+      }
+    }
+  }
+
+  const combinedAbi = [
+    ...Array.from(allEvents.values()).map((e) => e.abi),
+    ...Array.from(allFunctions.values()),
+  ];
+
+  const indexContent = `// Auto-generated Diamond ABI - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+// 
+// This file combines ABIs from all facets with events deduplicated by signature hash.
+// For per-facet ABIs, import from the individual files.
+
+${Array.from(facets.keys())
+  .map((name) => `export { ${name}ABI, ${name}Events } from './${name}';`)
+  .join('\n')}
+
+// Combined ABI for Diamond contract (deduplicated events)
+export const DiamondABI = ${JSON.stringify(combinedAbi, null, 2)} as const;
+
+// Event signature registry for disambiguation
+export const EventSignatureRegistry = ${JSON.stringify(
+    Object.fromEntries(
+      Array.from(allEvents.values()).map((e) => [
+        e.signatureHash,
+        {
+          name: e.name,
+          facet: e.facet,
+          signature: e.signature,
+        },
+      ]),
+    ),
+    null,
+    2,
+  )} as const;
+`;
+
+  fs.writeFileSync(path.join(GENERATED_ABIS_DIR, 'index.ts'), indexContent);
+  console.log(`\n✓ Generated ${facets.size} per-facet ABIs + combined index`);
+}
+
+// ============================================================================
+// SCHEMA GENERATION
+// ============================================================================
+
+interface SchemaTable {
+  name: string;
+  columns: {
+    name: string;
+    type: string;
+    indexed?: boolean;
+    primaryKey?: boolean;
+  }[];
+  indexes: string[];
+}
+
+function generateEventTable(event: EventInfo): SchemaTable {
+  const tableName = `${camelToSnake(event.name)}_events`;
+  const columns: SchemaTable['columns'] = [
+    { name: 'id', type: 't.text().primaryKey()', primaryKey: true },
+  ];
+  const indexes: string[] = [];
+
+  for (const input of event.inputs) {
+    const colName = camelToSnake(input.name);
+    let colType = solidityTypeToPonderType(input.type);
+
+    if (input.indexed) {
+      indexes.push(colName);
+    }
+
+    columns.push({
+      name: colName,
+      type: `${colType}.notNull()`,
+      indexed: input.indexed,
+    });
+  }
+
+  // Add metadata columns
+  columns.push(
+    { name: 'block_number', type: 't.bigint().notNull()' },
+    { name: 'block_timestamp', type: 't.bigint().notNull()' },
+    { name: 'transaction_hash', type: 't.hex().notNull()' },
+  );
+
+  return { name: tableName, columns, indexes };
+}
+
+function generateEntityTables(): SchemaTable[] {
+  // Core entity tables that aggregate event data
+  return [
+    {
+      name: 'nodes',
+      columns: [
+        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
+        { name: 'owner', type: 't.hex().notNull()', indexed: true },
+        { name: 'node_type', type: 't.text().notNull()' },
+        { name: 'status', type: 't.text().notNull()' },
+        { name: 'address_name', type: 't.text()' },
+        { name: 'lat', type: 't.text()' },
+        { name: 'lng', type: 't.text()' },
+        { name: 'created_at', type: 't.bigint().notNull()' },
+        { name: 'updated_at', type: 't.bigint().notNull()' },
+      ],
+      indexes: ['owner', 'status'],
+    },
+    {
+      name: 'node_assets',
+      columns: [
+        { name: 'id', type: 't.text().primaryKey()', primaryKey: true },
+        { name: 'node_id', type: 't.hex().notNull()', indexed: true },
+        { name: 'token', type: 't.hex().notNull()' },
+        { name: 'token_id', type: 't.bigint().notNull()' },
+        { name: 'price', type: 't.bigint().notNull()' },
+        { name: 'capacity', type: 't.bigint().notNull()' },
+        { name: 'balance', type: 't.bigint().notNull()' },
+        { name: 'created_at', type: 't.bigint().notNull()' },
+        { name: 'updated_at', type: 't.bigint().notNull()' },
+      ],
+      indexes: ['node_id', 'token'],
+    },
+    {
+      name: 'clob_orders',
+      columns: [
+        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
+        { name: 'maker', type: 't.hex().notNull()', indexed: true },
+        { name: 'market_id', type: 't.hex().notNull()', indexed: true },
+        { name: 'base_token', type: 't.hex().notNull()' },
+        { name: 'base_token_id', type: 't.bigint().notNull()' },
+        { name: 'quote_token', type: 't.hex().notNull()' },
+        { name: 'price', type: 't.bigint().notNull()' },
+        { name: 'amount', type: 't.bigint().notNull()' },
+        { name: 'filled_amount', type: 't.bigint().notNull()' },
+        { name: 'remaining_amount', type: 't.bigint().notNull()' },
+        { name: 'is_buy', type: 't.boolean().notNull()' },
+        { name: 'order_type', type: 't.integer().notNull()' },
+        { name: 'time_in_force', type: 't.integer()' },
+        { name: 'status', type: 't.integer().notNull()', indexed: true },
+        { name: 'created_at', type: 't.bigint().notNull()' },
+        { name: 'updated_at', type: 't.bigint().notNull()' },
+        { name: 'block_number', type: 't.bigint().notNull()' },
+        { name: 'transaction_hash', type: 't.hex().notNull()' },
+      ],
+      indexes: ['maker', 'market_id', 'status', 'base_token'],
+    },
+    {
+      name: 'clob_trades',
+      columns: [
+        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
+        { name: 'taker_order_id', type: 't.hex().notNull()', indexed: true },
+        { name: 'maker_order_id', type: 't.hex().notNull()', indexed: true },
+        { name: 'taker', type: 't.hex().notNull()', indexed: true },
+        { name: 'maker', type: 't.hex().notNull()', indexed: true },
+        { name: 'market_id', type: 't.hex().notNull()', indexed: true },
+        { name: 'price', type: 't.bigint().notNull()' },
+        { name: 'amount', type: 't.bigint().notNull()' },
+        { name: 'quote_amount', type: 't.bigint().notNull()' },
+        { name: 'taker_fee', type: 't.bigint()' },
+        { name: 'maker_fee', type: 't.bigint()' },
+        { name: 'taker_is_buy', type: 't.boolean()' },
+        { name: 'timestamp', type: 't.bigint().notNull()' },
+        { name: 'block_number', type: 't.bigint().notNull()' },
+        { name: 'transaction_hash', type: 't.hex().notNull()' },
+      ],
+      indexes: [
+        'taker',
+        'maker',
+        'market_id',
+        'taker_order_id',
+        'maker_order_id',
+      ],
+    },
+    {
+      name: 'unified_orders',
+      columns: [
+        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
+        { name: 'buyer', type: 't.hex().notNull()', indexed: true },
+        { name: 'seller', type: 't.hex().notNull()', indexed: true },
+        { name: 'token', type: 't.hex().notNull()' },
+        { name: 'token_id', type: 't.bigint().notNull()' },
+        { name: 'quantity', type: 't.bigint().notNull()' },
+        { name: 'price', type: 't.bigint().notNull()' },
+        { name: 'status', type: 't.integer().notNull()', indexed: true },
+        { name: 'created_at', type: 't.bigint().notNull()' },
+        { name: 'updated_at', type: 't.bigint().notNull()' },
+        { name: 'block_number', type: 't.bigint().notNull()' },
+        { name: 'transaction_hash', type: 't.hex().notNull()' },
+      ],
+      indexes: ['buyer', 'seller', 'status'],
+    },
+    {
+      name: 'stakes',
+      columns: [
+        { name: 'id', type: 't.text().primaryKey()', primaryKey: true },
+        { name: 'user', type: 't.hex().notNull()', indexed: true },
+        { name: 'amount', type: 't.bigint().notNull()' },
+        { name: 'rewards_claimed', type: 't.bigint().notNull()' },
+        { name: 'created_at', type: 't.bigint().notNull()' },
+        { name: 'updated_at', type: 't.bigint().notNull()' },
+      ],
+      indexes: ['user'],
+    },
+  ];
+}
+
+function generateSchema(facets: Map<string, FacetInfo>): void {
+  const eventTables: SchemaTable[] = [];
+  const seenSignatures = new Set<string>();
+
+  // Generate event tables (deduplicated by signature)
+  for (const facet of facets.values()) {
+    for (const event of facet.events) {
+      if (seenSignatures.has(event.signatureHash)) continue;
+      seenSignatures.add(event.signatureHash);
+      eventTables.push(generateEventTable(event));
+    }
+  }
+
+  // Get entity tables
+  const entityTables = generateEntityTables();
+  const allTables = [...entityTables, ...eventTables];
+
+  // Generate schema file
+  let schemaContent = `// Auto-generated Ponder Schema - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+// 
+// This schema is derived from Diamond facet events.
+// Regenerate with: npm run generate:indexer
+
+import { onchainTable, index } from '@ponder/core';
+
+`;
+
+  for (const table of allTables) {
+    const indexDefs =
+      table.indexes.length > 0
+        ? `,\n  (table) => ({\n${table.indexes
+            .map(
+              (idx) => `    ${snakeToCamel(idx)}Idx: index().on(table.${idx}),`,
+            )
+            .join('\n')}\n  })`
+        : '';
+
+    schemaContent += `export const ${snakeToCamel(table.name)} = onchainTable(
+  '${table.name}',
+  (t) => ({
+${table.columns.map((col) => `    ${col.name}: ${col.type},`).join('\n')}
+  })${indexDefs}
+);
+
+`;
+  }
+
+  // Add export list
+  schemaContent += `// Export all tables
+export const tables = {
+${allTables.map((t) => `  ${snakeToCamel(t.name)},`).join('\n')}
+};
+`;
+
+  fs.writeFileSync(GENERATED_SCHEMA_FILE, schemaContent);
+  console.log(
+    `✓ Generated schema with ${entityTables.length} entity tables + ${eventTables.length} event tables`,
+  );
+}
+
+// ============================================================================
+// HANDLER GENERATION
+// ============================================================================
+
+function generateHandlerStub(domain: string, events: EventInfo[]): string {
+  const imports = new Set<string>();
+  imports.add("import { ponder } from '@/generated';");
+
+  // Group events by facet for comments
+  const eventsByFacet = new Map<string, EventInfo[]>();
+  for (const event of events) {
+    if (!eventsByFacet.has(event.facet)) {
+      eventsByFacet.set(event.facet, []);
+    }
+    eventsByFacet.get(event.facet)!.push(event);
+  }
+
+  let content = `// Auto-generated handler stubs for ${domain} domain - IMPLEMENT ME
+// Generated at: ${new Date().toISOString()}
+// 
+// Events from: ${Array.from(eventsByFacet.keys()).join(', ')}
+
+import { ponder } from '@/generated';
+import { eq } from '@ponder/core';
+
+// Import entity tables (add as needed)
+// import { nodes, nodeAssets, clobOrders, clobTrades } from '../../generated-schema';
+
+// Utility functions
+const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\`;
+const log = {
+  info: (msg: string, data?: any) => console.log(\`[${domain}] \${msg}\`, data || ''),
+  warn: (msg: string, data?: any) => console.warn(\`[${domain}] \${msg}\`, data || ''),
+  error: (msg: string, data?: any) => console.error(\`[${domain}] \${msg}\`, data || ''),
+};
+
+`;
+
+  for (const [facetName, facetEvents] of eventsByFacet) {
+    content += `// =============================================================================
+// ${facetName} Events
+// =============================================================================
+
+`;
+
+    for (const event of facetEvents) {
+      const paramTypes = event.inputs
+        .map((i) => {
+          const tsType = solidityTypeToTsType(i.type);
+          return `${i.name}: ${tsType}`;
+        })
+        .join(', ');
+
+      const destructure = event.inputs.map((i) => i.name).join(', ');
+
+      content += `/**
+ * Handle ${event.name} event from ${facetName}
+ * Signature: ${event.signature}
+ * Hash: ${event.signatureHash}
+ */
+ponder.on('Diamond:${event.name}', async ({ event, context }) => {
+  const { ${destructure} } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+  
+  log.info('${event.name}', { ${event.inputs
+    .slice(0, 3)
+    .map((i) => i.name)
+    .join(', ')} });
+  
+  // TODO: Implement handler
+  // await context.db.insert(table).values({ ... });
+});
+
+`;
+    }
+  }
+
+  return content;
+}
+
+function generateHandlers(facets: Map<string, FacetInfo>): void {
+  ensureDir(GENERATED_HANDLERS_DIR);
+
+  // Group events by domain
+  const eventsByDomain = new Map<string, EventInfo[]>();
+
+  for (const facet of facets.values()) {
+    if (!eventsByDomain.has(facet.domain)) {
+      eventsByDomain.set(facet.domain, []);
+    }
+    eventsByDomain.get(facet.domain)!.push(...facet.events);
+  }
+
+  // Generate handler file for each domain
+  for (const [domain, events] of eventsByDomain) {
+    const content = generateHandlerStub(domain, events);
+    const fileName = `${domain}.generated.ts`;
+    fs.writeFileSync(path.join(GENERATED_HANDLERS_DIR, fileName), content);
+    console.log(`✓ Generated ${fileName} with ${events.length} event handlers`);
+  }
+
+  // Generate index file
+  const domains = Array.from(eventsByDomain.keys());
+  const indexContent = `// Auto-generated handler index - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+
+${domains.map((d) => `import './${d}.generated';`).join('\n')}
+
+// Handler domains: ${domains.join(', ')}
+`;
+
+  fs.writeFileSync(path.join(GENERATED_HANDLERS_DIR, 'index.ts'), indexContent);
+}
+
+// ============================================================================
+// PONDER CONFIG GENERATION
+// ============================================================================
+
+function generatePonderConfig(facets: Map<string, FacetInfo>): void {
+  const configContent = `// Auto-generated Ponder config - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+
+import { createConfig } from '@ponder/core';
+import { http } from 'viem';
+
+// Import generated ABIs
+import { DiamondABI } from './abis/generated';
+
+// Import chain constants
+import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
+import { NEXT_PUBLIC_RPC_URL_84532 } from './chain-constants';
+
+const BASE_SEPOLIA_CHAIN_ID = 84532;
+
+export default createConfig({
+  networks: {
+    baseSepolia: {
+      chainId: BASE_SEPOLIA_CHAIN_ID,
+      transport: http(NEXT_PUBLIC_RPC_URL_84532),
+    },
+  },
+  contracts: {
+    Diamond: {
+      network: 'baseSepolia',
+      abi: DiamondABI,
+      address: DIAMOND_ADDRESS,
+      startBlock: DIAMOND_DEPLOY_BLOCK,
+    },
+  },
+});
+`;
+
+  fs.writeFileSync(
+    path.join(INDEXER_DIR, 'ponder.config.generated.ts'),
+    configContent,
+  );
+  console.log('✓ Generated ponder.config.generated.ts');
+}
+
+// ============================================================================
+// MAIN
+// ============================================================================
+
+async function main(): Promise<void> {
+  console.log('🔧 Smart Contract-First Indexer Generator\n');
+  console.log('━'.repeat(60));
+
+  // Step 1: Parse facets
+  console.log('\n📖 Parsing facet artifacts...\n');
+  const facets = parseFacets();
+
+  if (facets.size === 0) {
+    console.error('❌ No facets found. Run `npx hardhat compile` first.');
+    process.exit(1);
+  }
+
+  // Step 2: Generate per-facet ABIs
+  console.log('\n📝 Generating per-facet ABIs...\n');
+  generatePerFacetAbis(facets);
+
+  // Step 3: Generate schema
+  console.log('\n📊 Generating Ponder schema...\n');
+  generateSchema(facets);
+
+  // Step 4: Generate handler stubs
+  console.log('\n🔌 Generating handler stubs...\n');
+  generateHandlers(facets);
+
+  // Step 5: Generate Ponder config
+  console.log('\n⚙️  Generating Ponder config...\n');
+  generatePonderConfig(facets);
+
+  // Summary
+  console.log('\n━'.repeat(60));
+  console.log('✅ Generation complete!\n');
+
+  let totalEvents = 0;
+  for (const facet of facets.values()) {
+    totalEvents += facet.events.length;
+  }
+
+  console.log(`   Facets:  ${facets.size}`);
+  console.log(`   Events:  ${totalEvents}`);
+  console.log(
+    `   Domains: ${new Set(Array.from(facets.values()).map((f) => f.domain)).size}`,
+  );
+  console.log('\nNext steps:');
+  console.log('  1. Review generated files in indexer/');
+  console.log('  2. Implement handler logic in src/handlers/*.generated.ts');
+  console.log('  3. Run tests: cd indexer && npm test');
+  console.log('  4. Start indexer: cd indexer && npm run dev');
+}
+
+main().catch(console.error);

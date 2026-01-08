@@ -1,10 +1,13 @@
+// Auto-generated Ponder config - DO NOT EDIT
+// Generated at: 2026-01-08T21:02:23.733Z
+
 import { createConfig } from '@ponder/core';
 import { http } from 'viem';
 
-// Import generated ABI from code generator
+// Import generated ABIs
 import { DiamondABI } from './abis/generated';
 
-// Import constants
+// Import chain constants
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
 import { NEXT_PUBLIC_RPC_URL_84532 } from './chain-constants';
 
@@ -18,14 +21,11 @@ export default createConfig({
     },
   },
   contracts: {
-    // Diamond - Single proxy for all functionality
-    // Uses generated ABI with deduplicated events from all facets
     Diamond: {
       network: 'baseSepolia',
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
     },
-    // Legacy contracts removed - see abis/deprecated/ and src/deprecated/
   },
 });

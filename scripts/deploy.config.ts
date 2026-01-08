@@ -1572,33 +1572,7 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       outputs: [],
       stateMutability: 'nonpayable',
     },
-    // ERC1155 receiver functions
-    {
-      type: 'function',
-      name: 'onERC1155Received',
-      inputs: [
-        { name: '', type: 'address' },
-        { name: '', type: 'address' },
-        { name: '', type: 'uint256' },
-        { name: '', type: 'uint256' },
-        { name: '', type: 'bytes' },
-      ],
-      outputs: [{ name: '', type: 'bytes4' }],
-      stateMutability: 'pure',
-    },
-    {
-      type: 'function',
-      name: 'onERC1155BatchReceived',
-      inputs: [
-        { name: '', type: 'address' },
-        { name: '', type: 'address' },
-        { name: '', type: 'uint256[]' },
-        { name: '', type: 'uint256[]' },
-        { name: '', type: 'bytes' },
-      ],
-      outputs: [{ name: '', type: 'bytes4' }],
-      stateMutability: 'pure',
-    },
+    // NOTE: ERC1155 receiver functions are in ERC1155ReceiverFacet, NOT here
     // Events - OrderCreated (basic event)
     {
       type: 'event',
