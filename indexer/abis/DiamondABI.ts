@@ -458,6 +458,50 @@ export const DiamondABI = [
     name: 'ClobApprovalRevoked',
     type: 'event',
   },
+  // NodeSellOrderPlaced - emitted when a node places a sell order
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'NodeSellOrderPlaced',
+    type: 'event',
+  },
 
   // ======= NodesFacet Functions =======
   {

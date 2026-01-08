@@ -780,6 +780,89 @@ ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
   log.info(`FeeRecipientUpdated from ${oldRecipient} to ${newRecipient}`);
 });
 
+/**
+ * Handle NodeSellOrderPlaced event from Diamond NodesFacet
+ * This event is emitted when a node places a sell order via placeSellOrderFromNode()
+ * We use this to update the CLOB order with the correct token addresses
+ */
+ponder.on(
+  'Diamond:NodeSellOrderPlaced(bytes32 indexed nodeHash, uint256 indexed tokenId, address quoteToken, uint256 price, uint256 amount, bytes32 orderId)',
+  async ({ event, context }) => {
+    const { nodeHash, tokenId, quoteToken, price, amount, orderId } =
+      event.args;
+
+    log.debug('NodeSellOrderPlaced processing', {
+      nodeHash,
+      tokenId: tokenId.toString(),
+      quoteToken,
+      price: price.toString(),
+      amount: amount.toString(),
+      orderId,
+    });
+
+    // Get the AuraAsset address (baseToken) from chain-constants
+    // This is the ERC1155 contract that holds the tokenized assets
+    // Import: NEXT_PUBLIC_AURA_ASSET_ADDRESS from chain-constants
+    const baseToken = '0x1235E39477752713902bCE541Fc02ADeb6FF465b'; // NEXT_PUBLIC_AURA_ASSET_ADDRESS
+
+    // Update the CLOB order with the correct token addresses
+    // The order was already created by OrderCreated event with zero addresses
+    const existingOrder = await context.db.find(clobOrders, { id: orderId });
+
+    if (existingOrder) {
+      await context.db.update(clobOrders, { id: orderId }).set({
+        baseToken: baseToken.toLowerCase() as `0x${string}`,
+        baseTokenId: tokenId,
+        quoteToken: quoteToken.toLowerCase() as `0x${string}`,
+        updatedAt: event.block.timestamp,
+      });
+
+      log.info('Updated CLOB order with token info from NodeSellOrderPlaced', {
+        orderId,
+        baseToken,
+        baseTokenId: tokenId.toString(),
+        quoteToken,
+      });
+    } else {
+      // Order doesn't exist yet - create it
+      // This can happen if NodeSellOrderPlaced is processed before OrderCreated
+      await context.db
+        .insert(clobOrders)
+        .values({
+          id: orderId,
+          maker: ZERO_ADDRESS, // Will be updated by OrderCreated
+          baseToken: baseToken.toLowerCase() as `0x${string}`,
+          baseTokenId: tokenId,
+          quoteToken: quoteToken.toLowerCase() as `0x${string}`,
+          price,
+          amount,
+          filledAmount: 0n,
+          remainingAmount: amount,
+          isBuy: false, // Node sell orders are always sells
+          orderType: 0, // Limit
+          status: 0, // Open
+          createdAt: event.block.timestamp,
+          updatedAt: event.block.timestamp,
+          blockNumber: event.block.number,
+          transactionHash: event.transaction.hash,
+        })
+        .onConflictDoUpdate({
+          baseToken: baseToken.toLowerCase() as `0x${string}`,
+          baseTokenId: tokenId,
+          quoteToken: quoteToken.toLowerCase() as `0x${string}`,
+          updatedAt: event.block.timestamp,
+        });
+
+      log.info('Created CLOB order from NodeSellOrderPlaced', {
+        orderId,
+        baseToken,
+        baseTokenId: tokenId.toString(),
+        quoteToken,
+      });
+    }
+  },
+);
+
 // =============================================================================
 // DIAMOND CLOB HANDLERS - CLOB events from Diamond CLOBFacet
 // =============================================================================

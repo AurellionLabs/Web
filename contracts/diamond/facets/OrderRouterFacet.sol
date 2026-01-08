@@ -49,6 +49,19 @@ contract OrderRouterFacet is ReentrancyGuard {
         bool isBuy
     );
     
+    // Token-based event for indexer compatibility
+    event OrderPlacedWithTokens(
+        bytes32 indexed orderId,
+        address indexed maker,
+        address indexed baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        uint256 price,
+        uint256 amount,
+        bool isBuy,
+        uint8 orderType
+    );
+    
     event OrderCreated(
         bytes32 indexed orderId,
         bytes32 indexed marketId,
@@ -130,6 +143,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, price, amount, isBuy, timeInForce, expiry, false);
         
         emit OrderRouted(orderId, msg.sender, 0, isBuy);
+        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, isBuy, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -170,6 +184,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, nodeOwner, price, amount, false, timeInForce, expiry, true);
         
         emit OrderRouted(orderId, nodeOwner, 1, false);
+        emit OrderPlacedWithTokens(orderId, nodeOwner, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -216,6 +231,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, limitPrice, amount, isBuy, CLOBLib.TIF_IOC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 2, isBuy);
+        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, limitPrice, amount, isBuy, CLOBLib.TYPE_MARKET);
         
         // Match immediately
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -259,6 +275,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, price, amount, true, CLOBLib.TIF_GTC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 0, true);
+        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, true, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -297,6 +314,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, price, amount, false, CLOBLib.TIF_GTC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 0, false);
+        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
