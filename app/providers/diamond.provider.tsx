@@ -559,6 +559,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     isClobApproved,
     placeSellOrderFromNode,
     cancelCLOBOrder,
+    placeNodeMarketSellOrder,
   };
 
   return (
