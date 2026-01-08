@@ -499,18 +499,44 @@ export class CLOBRepository {
     amount: bigint,
   ): Promise<void> {
     const signerAddress = await this.repositoryContext.getSignerAddress();
+
+    console.log('[CLOBRepository] Checking quote token allowance...', {
+      signerAddress,
+      diamondAddress: this.diamondAddress,
+      requiredAmount: amount.toString(),
+    });
+
     const currentAllowance = await quoteToken.allowance(
       signerAddress,
       this.diamondAddress,
     );
 
-    if (currentAllowance < amount) {
-      console.log('[CLOBRepository] Approving quote token for Diamond...');
-      const tx = await quoteToken.approve(this.diamondAddress, amount);
-      await tx.wait();
+    console.log(
+      '[CLOBRepository] Current allowance:',
+      currentAllowance.toString(),
+    );
+
+    if (BigInt(currentAllowance.toString()) < amount) {
+      console.log(
+        '[CLOBRepository] Insufficient allowance, approving unlimited amount for Diamond...',
+      );
+      // Approve unlimited (MaxUint256) to avoid needing to approve for every transaction
+      const tx = await quoteToken.approve(
+        this.diamondAddress,
+        ethers.MaxUint256,
+      );
+      console.log('[CLOBRepository] Approval transaction submitted:', tx.hash);
+      const receipt = await tx.wait();
+      if (!receipt || receipt.status !== 1) {
+        throw new Error('Quote token approval transaction failed');
+      }
       console.log(
         '[CLOBRepository] Quote token approved for Diamond:',
         tx.hash,
+      );
+    } else {
+      console.log(
+        '[CLOBRepository] Sufficient allowance exists, skipping approval',
       );
     }
   }
@@ -638,22 +664,34 @@ export class CLOBRepository {
         maxPrice: params.maxPrice.toString(),
       });
 
+      console.log('[CLOBRepository] Getting contracts with signer...');
       const [clobContract, quoteToken] = await Promise.all([
         this.getContractWithSigner(),
         this.getQuoteTokenWithSigner(),
       ]);
+      console.log('[CLOBRepository] Contracts obtained successfully');
 
       // For buy orders: approve quote token (ERC20)
       // For sell orders: approve base token (ERC1155)
       if (params.isBuy) {
         const totalCost = params.maxPrice * params.amount;
+        console.log(
+          '[CLOBRepository] Buy order - ensuring quote token approval for totalCost:',
+          totalCost.toString(),
+        );
         await this.ensureQuoteTokenApproval(quoteToken, totalCost);
+        console.log('[CLOBRepository] Quote token approval complete');
       } else {
         // Sell order - need to approve the ERC1155 base token
+        console.log(
+          '[CLOBRepository] Sell order - ensuring base token approval',
+        );
         await this.ensureBaseTokenApproval(params.baseToken);
+        console.log('[CLOBRepository] Base token approval complete');
       }
 
       // Place the order
+      console.log('[CLOBRepository] Placing order on contract...');
       const tx = await clobContract.placeMarketOrder(
         params.baseToken,
         params.baseTokenId,
