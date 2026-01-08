@@ -129,7 +129,7 @@ export interface PlaceMarketOrderParams {
   quoteToken: string;
   amount: bigint; // Amount of base tokens
   isBuy: boolean; // true for buy order, false for sell order
-  maxPrice: bigint; // Maximum price willing to pay (for buys) or minimum (for sells)
+  maxSlippageBps?: number; // Maximum slippage in basis points (e.g., 100 = 1%). Defaults to 100 (1%)
 }
 
 /**
@@ -680,13 +680,16 @@ export class CLOBRepository {
     params: PlaceMarketOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
+      // Default slippage to 1% (100 basis points) if not specified
+      const maxSlippageBps = params.maxSlippageBps ?? 100;
+
       console.log('[CLOBRepository] Placing market order:', {
         baseToken: params.baseToken,
         baseTokenId: params.baseTokenId,
         quoteToken: params.quoteToken,
         amount: params.amount.toString(),
         isBuy: params.isBuy,
-        maxPrice: params.maxPrice.toString(),
+        maxSlippageBps,
       });
 
       console.log('[CLOBRepository] Getting contracts with signer...');
@@ -696,15 +699,15 @@ export class CLOBRepository {
       ]);
       console.log('[CLOBRepository] Contracts obtained successfully');
 
-      // For buy orders: approve quote token (ERC20)
-      // For sell orders: approve base token (ERC1155)
+      // For market orders, we need to estimate the cost based on order book
+      // For now, approve a large amount (MaxUint256 already approved in most cases)
       if (params.isBuy) {
-        const totalCost = params.maxPrice * params.amount;
+        // For buy orders, we need quote token approval
+        // Use MaxUint256 since we don't know the exact fill price for market orders
         console.log(
-          '[CLOBRepository] Buy order - ensuring quote token approval for totalCost:',
-          totalCost.toString(),
+          '[CLOBRepository] Buy order - ensuring quote token approval',
         );
-        await this.ensureQuoteTokenApproval(quoteToken, totalCost);
+        await this.ensureQuoteTokenApproval(quoteToken, ethers.MaxUint256);
         console.log('[CLOBRepository] Quote token approval complete');
       } else {
         // Sell order - need to approve the ERC1155 base token
@@ -723,7 +726,7 @@ export class CLOBRepository {
         params.quoteToken,
         params.amount,
         params.isBuy,
-        params.maxPrice,
+        maxSlippageBps, // uint16 - basis points (e.g., 100 = 1%)
       );
 
       const receipt = await tx.wait();
