@@ -1171,13 +1171,20 @@ ponder.on(
     const baseTokenId = decodedTokens?.baseTokenId ?? 0n;
     const quoteToken = decodedTokens?.quoteToken ?? ZERO_ADDRESS;
 
+    // NOTE: The event naming is confusing - in the contract:
+    // - takerOrderId is the RESTING order (the maker order that was already on the book)
+    // - makerOrderId is the INCOMING order (the taker order that initiated the trade)
+    // This is backwards from typical terminology, so we swap them here for clarity
+    const restingOrderId = takerOrderId; // The order that was on the book (maker)
+    const incomingOrderId = makerOrderId; // The order that initiated the trade (taker)
+
     // Insert CLOB Trade entity
     await context.db
       .insert(clobTrades)
       .values({
         id: tradeId,
-        takerOrderId,
-        makerOrderId,
+        takerOrderId: incomingOrderId, // The order that initiated the trade
+        makerOrderId: restingOrderId, // The order that was on the book
         taker: event.transaction.from, // Taker is the transaction sender
         maker: ZERO_ADDRESS, // We don't have maker address in this event
         baseToken,
@@ -1192,20 +1199,51 @@ ponder.on(
       })
       .onConflictDoNothing();
 
-    // Update taker order (the market order that initiated the trade)
-    await context.db.update(clobOrders, { id: takerOrderId }).set({
-      filledAmount: amount,
-      remainingAmount: 0n,
-      status: 2, // Filled
-      updatedAt: event.block.timestamp,
+    // Update the incoming/taker order (market order that initiated the trade)
+    // For IOC market orders, they are fully filled or cancelled
+    const incomingOrder = await context.db.find(clobOrders, {
+      id: incomingOrderId,
     });
+    if (incomingOrder) {
+      const newFilledAmount =
+        BigInt(incomingOrder.filledAmount?.toString() ?? '0') + amount;
+      const newRemainingAmount =
+        BigInt(incomingOrder.amount?.toString() ?? '0') - newFilledAmount;
+      const newStatus = newRemainingAmount <= 0n ? 2 : 1; // 2=Filled, 1=PartiallyFilled
 
-    // Update maker order (the resting order that was matched)
-    // Note: We can't easily get the new remaining amount here, so we just mark it as partially filled
-    // The actual remaining amount should come from OrderFilled event
-    await context.db.update(clobOrders, { id: makerOrderId }).set({
-      updatedAt: event.block.timestamp,
+      await context.db.update(clobOrders, { id: incomingOrderId }).set({
+        filledAmount: newFilledAmount,
+        remainingAmount: newRemainingAmount > 0n ? newRemainingAmount : 0n,
+        status: newStatus,
+        updatedAt: event.block.timestamp,
+      });
+    }
+
+    // Update the resting/maker order (the order that was on the book)
+    const restingOrder = await context.db.find(clobOrders, {
+      id: restingOrderId,
     });
+    if (restingOrder) {
+      const newFilledAmount =
+        BigInt(restingOrder.filledAmount?.toString() ?? '0') + amount;
+      const newRemainingAmount =
+        BigInt(restingOrder.amount?.toString() ?? '0') - newFilledAmount;
+      const newStatus = newRemainingAmount <= 0n ? 2 : 1; // 2=Filled, 1=PartiallyFilled
+
+      await context.db.update(clobOrders, { id: restingOrderId }).set({
+        filledAmount: newFilledAmount,
+        remainingAmount: newRemainingAmount > 0n ? newRemainingAmount : 0n,
+        status: newStatus,
+        updatedAt: event.block.timestamp,
+      });
+
+      log.info('Updated resting order', {
+        orderId: restingOrderId,
+        newFilledAmount: newFilledAmount.toString(),
+        newRemainingAmount: newRemainingAmount.toString(),
+        newStatus,
+      });
+    }
 
     // Insert TradeExecuted event
     await context.db.insert(tradeExecutedEvents).values({
