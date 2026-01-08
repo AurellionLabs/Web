@@ -2,16 +2,16 @@
 pragma solidity ^0.8.28;
 
 import { Test, console2 } from 'forge-std/Test.sol';
-import { Diamond } from '../../src/diamond/Diamond.sol';
-import { IDiamondCut } from '../../src/diamond/interfaces/IDiamondCut.sol';
-import { IDiamondLoupe } from '../../src/diamond/interfaces/IDiamondLoupe.sol';
-import { IOwnership } from '../../src/diamond/interfaces/IOwnership.sol';
-import { DiamondCutFacet } from '../../src/diamond/facets/DiamondCutFacet.sol';
-import { DiamondLoupeFacet } from '../../src/diamond/facets/DiamondLoupeFacet.sol';
-import { OwnershipFacet } from '../../src/diamond/facets/OwnershipFacet.sol';
-import { NodesFacet } from '../../src/diamond/facets/NodesFacet.sol';
-import { AssetsFacet } from '../../src/diamond/facets/AssetsFacet.sol';
-import { OrdersFacet } from '../../src/diamond/facets/OrdersFacet.sol';
+import { Diamond } from 'contracts/diamond/Diamond.sol';
+import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
+import { IDiamondLoupe } from 'contracts/diamond/interfaces/IDiamondLoupe.sol';
+import { IOwnership } from 'contracts/diamond/interfaces/IOwnership.sol';
+import { DiamondCutFacet } from 'contracts/diamond/facets/DiamondCutFacet.sol';
+import { DiamondLoupeFacet } from 'contracts/diamond/facets/DiamondLoupeFacet.sol';
+import { OwnershipFacet } from 'contracts/diamond/facets/OwnershipFacet.sol';
+import { NodesFacet } from 'contracts/diamond/facets/NodesFacet.sol';
+import { AssetsFacet } from 'contracts/diamond/facets/AssetsFacet.sol';
+import { OrdersFacet } from 'contracts/diamond/facets/OrdersFacet.sol';
 
 /**
  * @title DiamondTest
@@ -51,35 +51,28 @@ contract DiamondTest is Test {
         diamond = new Diamond(owner, address(diamondCutFacet));
 
         // Add other facets to Diamond
-        IDiamondCut(address(diamond)).diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: address(diamondLoupeFacet),
-                action: IDiamondCut.FacetCutAction.Add,
-                functionSelectors: _getFacetSelectors('DiamondLoupeFacet')
-            }),
-            address(0),
-            ''
-        );
+        IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](1);
+        
+        cuts[0] = IDiamondCut.FacetCut({
+            facetAddress: address(diamondLoupeFacet),
+            action: IDiamondCut.FacetCutAction.Add,
+            functionSelectors: _getFacetSelectors('DiamondLoupeFacet')
+        });
+        IDiamondCut(address(diamond)).diamondCut(cuts, address(0), '');
 
-        IDiamondCut(address(diamond)).diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: address(ownershipFacet),
-                action: IDiamondCut.FacetCutAction.Add,
-                functionSelectors: _getFacetSelectors('OwnershipFacet')
-            }),
-            address(0),
-            ''
-        );
+        cuts[0] = IDiamondCut.FacetCut({
+            facetAddress: address(ownershipFacet),
+            action: IDiamondCut.FacetCutAction.Add,
+            functionSelectors: _getFacetSelectors('OwnershipFacet')
+        });
+        IDiamondCut(address(diamond)).diamondCut(cuts, address(0), '');
 
-        IDiamondCut(address(diamond)).diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: address(nodesFacet),
-                action: IDiamondCut.FacetCutAction.Add,
-                functionSelectors: _getFacetSelectors('NodesFacet')
-            }),
-            address(0),
-            ''
-        );
+        cuts[0] = IDiamondCut.FacetCut({
+            facetAddress: address(nodesFacet),
+            action: IDiamondCut.FacetCutAction.Add,
+            functionSelectors: _getFacetSelectors('NodesFacet')
+        });
+        IDiamondCut(address(diamond)).diamondCut(cuts, address(0), '');
     }
 
     // ============================================
@@ -87,7 +80,7 @@ contract DiamondTest is Test {
     // ============================================
 
     function testDeployment() public {
-        assertEq(address(diamond) != address(0), 'Diamond not deployed');
+        assertTrue(address(diamond) != address(0), 'Diamond not deployed');
 
         // Verify owner
         IOwnership ownership = IOwnership(address(diamond));
@@ -155,12 +148,9 @@ contract DiamondTest is Test {
         vm.prank(owner);
         ownership.transferOwnership(user1);
 
-        // Should be pending owner now
-        // Note: The actual implementation may vary
-
-        // Complete the transfer
+        // Complete the transfer by accepting
         vm.prank(user1);
-        ownership.transferOwnershipWithAcceptance(user1, user1);
+        ownership.acceptOwnership();
 
         assertEq(ownership.owner(), user1);
     }
@@ -257,28 +247,24 @@ contract DiamondTest is Test {
         // Get old selectors
         bytes4[] memory oldSelectors = _getFacetSelectors('NodesFacet');
 
+        IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](1);
+
         // Remove old facet
-        IDiamondCut(address(diamond)).diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: address(0), // Address(0) for removal
-                action: IDiamondCut.FacetCutAction.Remove,
-                functionSelectors: oldSelectors
-            }),
-            address(0),
-            ''
-        );
+        cuts[0] = IDiamondCut.FacetCut({
+            facetAddress: address(0), // Address(0) for removal
+            action: IDiamondCut.FacetCutAction.Remove,
+            functionSelectors: oldSelectors
+        });
+        IDiamondCut(address(diamond)).diamondCut(cuts, address(0), '');
 
         // Add new facet
         bytes4[] memory newSelectors = _getFacetSelectorsV2();
-        IDiamondCut(address(diamond)).diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: address(nodesFacetV2),
-                action: IDiamondCut.FacetCutAction.Add,
-                functionSelectors: newSelectors
-            }),
-            address(0),
-            ''
-        );
+        cuts[0] = IDiamondCut.FacetCut({
+            facetAddress: address(nodesFacetV2),
+            action: IDiamondCut.FacetCutAction.Add,
+            functionSelectors: newSelectors
+        });
+        IDiamondCut(address(diamond)).diamondCut(cuts, address(0), '');
 
         // Verify new facet is available
         IDiamondLoupe loupe = IDiamondLoupe(address(diamond));
@@ -293,7 +279,7 @@ contract DiamondTest is Test {
         this.registerNodeThroughDiamond('GOAT', 100, nodeHash);
 
         // Perform upgrade
-        this.upgradeNodesFacet();
+        upgradeNodesFacet();
 
         // Verify storage is preserved
         (address nodeOwner, , uint256 capacity, , ,) = this.getNodeThroughDiamond(nodeHash);
@@ -309,7 +295,7 @@ contract DiamondTest is Test {
         this.registerNodeThroughDiamond('GOAT', 100, nodeHash);
 
         // Upgrade to V2 which has additional functionality
-        this.upgradeNodesFacet();
+        upgradeNodesFacet();
 
         // The new functionality should be available
         // This would test the new function added in V2
@@ -384,27 +370,23 @@ contract DiamondTest is Test {
         // Get and remove old selectors
         bytes4[] memory oldSelectors = _getFacetSelectors('NodesFacet');
 
-        IDiamondCut(address(diamond)).diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: address(0),
-                action: IDiamondCut.FacetCutAction.Remove,
-                functionSelectors: oldSelectors
-            }),
-            address(0),
-            ''
-        );
+        IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](1);
+        
+        cuts[0] = IDiamondCut.FacetCut({
+            facetAddress: address(0),
+            action: IDiamondCut.FacetCutAction.Remove,
+            functionSelectors: oldSelectors
+        });
+        IDiamondCut(address(diamond)).diamondCut(cuts, address(0), '');
 
         // Add new selectors
         bytes4[] memory newSelectors = _getFacetSelectorsV2();
-        IDiamondCut(address(diamond)).diamondCut(
-            IDiamondCut.FacetCut({
-                facetAddress: address(nodesFacetV2),
-                action: IDiamondCut.FacetCutAction.Add,
-                functionSelectors: newSelectors
-            }),
-            address(0),
-            ''
-        );
+        cuts[0] = IDiamondCut.FacetCut({
+            facetAddress: address(nodesFacetV2),
+            action: IDiamondCut.FacetCutAction.Add,
+            functionSelectors: newSelectors
+        });
+        IDiamondCut(address(diamond)).diamondCut(cuts, address(0), '');
     }
 
     function _getFacetSelectors(string memory) internal pure returns (bytes4[] memory) {
