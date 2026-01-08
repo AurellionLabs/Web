@@ -140,7 +140,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         }
         
         // Create order using V2 storage
-        orderId = _createOrder(s, marketId, msg.sender, price, amount, isBuy, timeInForce, expiry, false);
+        orderId = _createOrder(s, marketId, msg.sender, price, amount, isBuy, CLOBLib.TYPE_LIMIT, timeInForce, expiry, false);
         
         emit OrderRouted(orderId, msg.sender, 0, isBuy);
         emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, isBuy, CLOBLib.TYPE_LIMIT);
@@ -181,7 +181,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         
         // Tokens already in Diamond from node inventory - no transfer needed
         // Create order using V2 storage (skipTransfer = true)
-        orderId = _createOrder(s, marketId, nodeOwner, price, amount, false, timeInForce, expiry, true);
+        orderId = _createOrder(s, marketId, nodeOwner, price, amount, false, CLOBLib.TYPE_LIMIT, timeInForce, expiry, true);
         
         emit OrderRouted(orderId, nodeOwner, 1, false);
         emit OrderPlacedWithTokens(orderId, nodeOwner, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
@@ -227,8 +227,8 @@ contract OrderRouterFacet is ReentrancyGuard {
             IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
         }
         
-        // Create as IOC order (Immediate Or Cancel)
-        orderId = _createOrder(s, marketId, msg.sender, limitPrice, amount, isBuy, CLOBLib.TIF_IOC, 0, false);
+        // Create as IOC order (Immediate Or Cancel) with MARKET type
+        orderId = _createOrder(s, marketId, msg.sender, limitPrice, amount, isBuy, CLOBLib.TYPE_MARKET, CLOBLib.TIF_IOC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 2, isBuy);
         emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, limitPrice, amount, isBuy, CLOBLib.TYPE_MARKET);
@@ -272,7 +272,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         IERC20(quoteToken).transferFrom(msg.sender, address(this), totalCost);
         
         // Create order using V2 storage
-        orderId = _createOrder(s, marketId, msg.sender, price, amount, true, CLOBLib.TIF_GTC, 0, false);
+        orderId = _createOrder(s, marketId, msg.sender, price, amount, true, CLOBLib.TYPE_LIMIT, CLOBLib.TIF_GTC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 0, true);
         emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, true, CLOBLib.TYPE_LIMIT);
@@ -311,7 +311,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
         
         // Create order using V2 storage
-        orderId = _createOrder(s, marketId, msg.sender, price, amount, false, CLOBLib.TIF_GTC, 0, false);
+        orderId = _createOrder(s, marketId, msg.sender, price, amount, false, CLOBLib.TYPE_LIMIT, CLOBLib.TIF_GTC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 0, false);
         emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
@@ -478,6 +478,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         uint96 price,
         uint96 amount,
         bool isBuy,
+        uint8 orderType,
         uint8 timeInForce,
         uint40 expiry,
         bool skipTransfer
@@ -490,7 +491,7 @@ contract OrderRouterFacet is ReentrancyGuard {
             makerAndFlags: CLOBLib.packMakerAndFlags(
                 maker,
                 isBuy,
-                CLOBLib.TYPE_LIMIT,
+                orderType,
                 CLOBLib.STATUS_OPEN,
                 timeInForce,
                 uint88(nonce)
@@ -503,7 +504,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         // Add to order book (V2 tree-based storage)
         _addToOrderBook(s, orderId, marketId, price, amount, isBuy);
         
-        emit OrderCreated(orderId, marketId, maker, price, amount, isBuy, CLOBLib.TYPE_LIMIT, timeInForce, expiry, nonce);
+        emit OrderCreated(orderId, marketId, maker, price, amount, isBuy, orderType, timeInForce, expiry, nonce);
     }
     
     function _addToOrderBook(
