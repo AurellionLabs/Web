@@ -22,9 +22,16 @@ import {
   TradingEmptyState,
   AssetTableSkeleton,
 } from '@/app/components/trading/shared';
-import { PriceChart } from '@/app/components/trading/price-chart';
+import {
+  PriceChart,
+  CandlestickData,
+  TimePeriod,
+} from '@/app/components/trading/price-chart';
 import { TradingErrorBoundary } from '@/app/components/error-boundary';
 import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
+
+// Services
+import { priceHistoryService } from '@/infrastructure/services/price-history-service';
 
 // Hooks
 import { useClassAssets } from '@/hooks/useClassAssets';
@@ -134,6 +141,9 @@ function ClassDetailPageContent() {
 
   // State
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [chartData, setChartData] = useState<CandlestickData[]>([]);
+  const [chartPeriod, setChartPeriod] = useState<TimePeriod>('1d');
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
 
   // Set user role on mount
   useEffect(() => {
@@ -199,6 +209,49 @@ function ClassDetailPageContent() {
   // Get best bid and ask prices from order book
   const bestAskPrice = orderBook?.asks[0]?.price || 0;
   const bestBidPrice = orderBook?.bids[0]?.price || 0;
+
+  // Fetch chart data when asset or period changes
+  useEffect(() => {
+    const fetchChartData = async () => {
+      if (!tradeableAsset?.tokenId || tradeableAsset.tokenId === '0') {
+        setChartData([]);
+        return;
+      }
+
+      setIsLoadingChart(true);
+      try {
+        const candles = await priceHistoryService.getCandlestickData(
+          NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          tradeableAsset.tokenId,
+          chartPeriod,
+        );
+
+        // Convert OHLCV candles to chart format
+        const formattedData: CandlestickData[] = candles.map((c) => ({
+          time: c.time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+        }));
+
+        setChartData(formattedData);
+      } catch (error) {
+        console.error('[ClassTradingPage] Error fetching chart data:', error);
+        setChartData([]);
+      } finally {
+        setIsLoadingChart(false);
+      }
+    };
+
+    fetchChartData();
+  }, [tradeableAsset?.tokenId, chartPeriod]);
+
+  // Handle chart period change
+  const handleChartPeriodChange = useCallback((period: TimePeriod) => {
+    setChartPeriod(period);
+  }, []);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
@@ -834,13 +887,14 @@ function ClassDetailPageContent() {
             ) : (
               /* Professional Price Chart */
               <PriceChart
-                data={[]} // Empty array triggers mock data generation
-                timePeriod="1d"
+                data={chartData}
+                timePeriod={chartPeriod}
                 mode="candlestick"
                 height={500}
                 showVolume={true}
                 assetName={selectedAssetType}
                 currentPrice={basePrice}
+                onTimePeriodChange={handleChartPeriodChange}
               />
             )}
           </div>
