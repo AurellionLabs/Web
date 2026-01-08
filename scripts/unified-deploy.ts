@@ -611,6 +611,77 @@ async function postDeploymentConfig(
       console.log(`   ⚠️  Could not add token: ${e.message}`);
     }
   }
+
+  // CRITICAL: Set Diamond as NodeManager for AuraAsset
+  // This allows AuraAsset.nodeMint() to validate the Diamond as a valid node
+  if (addresses.Diamond && addresses.AuraAsset) {
+    console.log('   Setting Diamond as NodeManager for AuraAsset...');
+    const auraAsset = await ethers.getContractAt(
+      'AuraAsset',
+      addresses.AuraAsset,
+    );
+    try {
+      // Check current NodeManager first
+      let currentNodeManager: string | null = null;
+      try {
+        currentNodeManager = await auraAsset.NodeManager();
+      } catch {
+        // NodeManager getter might not exist
+      }
+
+      if (
+        currentNodeManager &&
+        currentNodeManager.toLowerCase() === addresses.Diamond.toLowerCase()
+      ) {
+        console.log('   ✓ Diamond is already the NodeManager');
+      } else {
+        const tx = await auraAsset.setNodeManager(addresses.Diamond);
+        await tx.wait();
+        console.log('   ✓ Diamond set as NodeManager for AuraAsset');
+      }
+
+      // Verify the configuration works
+      const diamond = await ethers.getContractAt(
+        'NodesFacet',
+        addresses.Diamond,
+      );
+      try {
+        const status = await diamond.getNodeStatus(addresses.Diamond);
+        if (status === '0x01') {
+          console.log(
+            '   ✓ Verified: Diamond returns status 1 (valid node) for itself',
+          );
+        } else {
+          console.log(
+            `   ⚠️  Diamond.getNodeStatus(Diamond) returned: ${status}`,
+          );
+        }
+      } catch (e: any) {
+        console.log(`   ⚠️  Could not verify getNodeStatus: ${e.message}`);
+      }
+    } catch (e: any) {
+      console.log(`   ⚠️  Could not set Diamond as NodeManager: ${e.message}`);
+      console.log(
+        `      You may need to run: npx hardhat run scripts/set-aura-asset-node-manager.ts --network baseSepolia`,
+      );
+    }
+  }
+
+  // Set AuraAsset address in Diamond's NodesFacet storage
+  if (addresses.Diamond && addresses.AuraAsset) {
+    console.log('   Setting AuraAsset address in Diamond...');
+    const diamond = await ethers.getContractAt('NodesFacet', addresses.Diamond);
+    try {
+      const tx = await diamond.setAuraAssetAddress(addresses.AuraAsset);
+      await tx.wait();
+      console.log('   ✓ AuraAsset address set in Diamond');
+    } catch (e: any) {
+      // Might already be set or function might not exist
+      if (!e.message.includes('already set')) {
+        console.log(`   ⚠️  Could not set AuraAsset address: ${e.message}`);
+      }
+    }
+  }
 }
 
 async function deploySingleContract(
@@ -674,6 +745,12 @@ async function deploySingleContract(
   }
 
   const result = await deployContract(config, addresses, deployer.address);
+
+  // Add the new contract to addresses for post-deployment config
+  addresses[contractName] = result.address;
+
+  // Run post-deployment configuration (sets NodeManager, etc.)
+  await postDeploymentConfig(addresses, deployer.address);
 
   return {
     network: network.name,

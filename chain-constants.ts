@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-07T23:41:16.280Z
+// Deployed: 2026-01-08T01:17:58.713Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -15,7 +15,7 @@ export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
 export const NEXT_PUBLIC_AUSYS_ADDRESS =
   '0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde';
 export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
-  '0x2581599a24951307F32d976a06a2523acC05A1c7';
+  '0x1235E39477752713902bCE541Fc02ADeb6FF465b';
 export const NEXT_PUBLIC_CLOB_ADDRESS =
   '0x2f17AF60e5Ca09Eb55560bFB9A374701711a4C49';
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
@@ -112,7 +112,7 @@ export const DEPLOYMENT_BLOCKS = {
   auSys: 35859031,
   aurumNodeManager: 35927819,
   auStake: 35859031,
-  auraAsset: 35977495,
+  auraAsset: 36033385,
   clob: 35859031,
   rwyVault: 35861876,
 };
