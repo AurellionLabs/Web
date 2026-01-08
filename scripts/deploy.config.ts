@@ -33,8 +33,17 @@ export interface ContractConfig {
 export interface ABIFunction {
   type: 'function';
   name: string;
-  inputs: Array<{ name: string; type: string; indexed?: boolean }>;
-  outputs: Array<{ name: string; type: string }>;
+  inputs: Array<{
+    name: string;
+    type: string;
+    indexed?: boolean;
+    components?: Array<{ name: string; type: string }>;
+  }>;
+  outputs: Array<{
+    name: string;
+    type: string;
+    components?: Array<{ name: string; type: string }>;
+  }>;
   stateMutability: 'pure' | 'view' | 'nonpayable' | 'payable';
 }
 
