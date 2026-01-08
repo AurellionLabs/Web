@@ -13,7 +13,8 @@ import {
 
 // Re-export for convenience
 export { NEXT_PUBLIC_DIAMOND_ADDRESS };
-import { DiamondABI } from '@/indexer/abis/DiamondABI';
+// Use auto-generated ABI from deploy script - automatically updated on deployment
+import { DIAMOND_ABI } from '@/infrastructure/contracts/diamond-abi.generated';
 import { AuraAssetABI } from '@/lib/contracts/abis';
 
 export class DiamondContext {
@@ -33,7 +34,7 @@ export class DiamondContext {
     // Connect to Diamond proxy - all facet functions are called through this
     this.diamond = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
-      DiamondABI,
+      DIAMOND_ABI,
       this.signer,
     );
 
