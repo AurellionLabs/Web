@@ -7,7 +7,7 @@
  * To regenerate:
  *   npx ts-node scripts/generate-diamond-abi.ts
  *
- * Generated: 2026-01-08T10:06:13.766Z
+ * Generated: 2026-01-08T13:43:07.986Z
  * Facets: OrderRouterFacet, CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet
  */
 
@@ -2151,41 +2151,6 @@ export const CLOBFACET_ABI = [
       {
         name: '_maxPrice',
         type: 'uint256',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    // NOTE: Using uint96 for price/amount to call OrderRouterFacet (not CLOBFacet)
-    // The uint256 version in CLOBFacet has a bug where it transfers from Diamond to Diamond
-    type: 'function',
-    name: 'placeBuyOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
       },
     ],
     outputs: [

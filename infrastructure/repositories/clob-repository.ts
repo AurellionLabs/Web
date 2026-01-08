@@ -458,13 +458,15 @@ export class CLOBRepository {
     const provider = this.repositoryContext.getProvider();
 
     // Import Diamond ABI from generated file (single source of truth)
-    const { CLOBFACET_ABI } = await import(
+    // Use ORDERROUTERFACET_ABI - it has the correct placeBuyOrder with uint96
+    // CLOBFacet's placeBuyOrder (uint256) has a bug where it transfers Diamond->Diamond
+    const { ORDERROUTERFACET_ABI } = await import(
       '@/infrastructure/contracts/diamond-abi.generated'
     );
 
     const diamondContract = new ethers.Contract(
       this.diamondAddress,
-      CLOBFACET_ABI,
+      ORDERROUTERFACET_ABI,
       provider,
     );
 

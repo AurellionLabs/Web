@@ -688,20 +688,22 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       outputs: [{ name: 'orderId', type: 'bytes32' }],
       stateMutability: 'nonpayable',
     },
-    // Limit buy order - user places buy order with specific price
-    {
-      type: 'function',
-      name: 'placeBuyOrder',
-      inputs: [
-        { name: '_baseToken', type: 'address' },
-        { name: '_baseTokenId', type: 'uint256' },
-        { name: '_quoteToken', type: 'address' },
-        { name: '_price', type: 'uint256' },
-        { name: '_amount', type: 'uint256' },
-      ],
-      outputs: [{ name: 'orderId', type: 'bytes32' }],
-      stateMutability: 'nonpayable',
-    },
+    // DEPRECATED: placeBuyOrder with uint256 - has bug where it transfers Diamond->Diamond
+    // Use OrderRouterFacet.placeBuyOrder (uint96 version) instead
+    // Kept here for reference only - DO NOT USE
+    // {
+    //   type: 'function',
+    //   name: 'placeBuyOrder',
+    //   inputs: [
+    //     { name: '_baseToken', type: 'address' },
+    //     { name: '_baseTokenId', type: 'uint256' },
+    //     { name: '_quoteToken', type: 'address' },
+    //     { name: '_price', type: 'uint256' },
+    //     { name: '_amount', type: 'uint256' },
+    //   ],
+    //   outputs: [{ name: 'orderId', type: 'bytes32' }],
+    //   stateMutability: 'nonpayable',
+    // },
     // Node sell order V2 - called by NodesFacet for node inventory sales
     // Uses tree-based order book for proper matching with V2 buy orders
     {
