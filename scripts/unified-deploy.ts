@@ -299,6 +299,48 @@ export const DIAMOND_DEPLOY_BLOCK = ${deployment.contracts.Diamond.blockNumber};
 }
 
 // =============================================================================
+// INDEXER GENERATION
+// =============================================================================
+
+function runIndexerGeneration(): void {
+  console.log('\n🔧 Generating indexer from contract ABIs...\n');
+
+  try {
+    // Import and run the generator
+    const { spawn } = require('child_process');
+
+    const generateScript = path.resolve(__dirname, 'generate-indexer.ts');
+
+    if (!fs.existsSync(generateScript)) {
+      console.warn(
+        '⚠️  generate-indexer.ts not found, skipping indexer generation',
+      );
+      return;
+    }
+
+    // Run the generator synchronously by requiring it
+    // This ensures it completes before continuing
+    console.log('   Running indexer generator...');
+
+    // Clear require cache to get fresh generation
+    delete require.cache[require.resolve('./generate-indexer')];
+
+    // The generate-indexer script runs immediately when required
+    // We just need to ensure it has access to the compiled artifacts
+    require('./generate-indexer');
+
+    console.log('   ✓ Indexer generated successfully');
+  } catch (error: any) {
+    // Generator might fail if artifacts aren't compiled yet
+    // This is okay - user can run it manually after compiling
+    console.warn(`⚠️  Could not generate indexer: ${error.message}`);
+    console.log(
+      '   Run manually after deployment: npx ts-node scripts/generate-indexer.ts',
+    );
+  }
+}
+
+// =============================================================================
 // FRONTEND ABI GENERATION
 // =============================================================================
 
@@ -497,6 +539,14 @@ async function deployMode(
 
   // Post-deployment configuration
   await postDeploymentConfig(addresses, deployer.address);
+
+  // Generate indexer from new contract ABIs (if deploying facets)
+  const deployedFacets = mode.contracts.filter((name) =>
+    name.endsWith('Facet'),
+  );
+  if (deployedFacets.length > 0 && !dryRun) {
+    runIndexerGeneration();
+  }
 
   return {
     network: network.name,
@@ -751,6 +801,11 @@ async function deploySingleContract(
 
   // Run post-deployment configuration (sets NodeManager, etc.)
   await postDeploymentConfig(addresses, deployer.address);
+
+  // Generate indexer from new contract ABIs
+  if (contractName.endsWith('Facet') && !dryRun) {
+    runIndexerGeneration();
+  }
 
   return {
     network: network.name,
@@ -1185,6 +1240,11 @@ async function updateFacet(
       console.log(`   ✓ Removed ${analysis.toRemove.length} selectors`);
     }
     console.log('');
+
+    // Generate indexer from updated contract ABIs
+    if (!dryRun) {
+      runIndexerGeneration();
+    }
 
     return {
       network: network.name,
