@@ -1533,6 +1533,7 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       stateMutability: 'nonpayable',
     },
     // Place market order with slippage protection
+    // Returns (filledAmount, avgPrice) for true market order execution
     {
       type: 'function',
       name: 'placeMarketOrder',
@@ -1544,7 +1545,10 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
         { name: 'isBuy', type: 'bool' },
         { name: 'maxSlippageBps', type: 'uint256' },
       ],
-      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      outputs: [
+        { name: 'filledAmount', type: 'uint96' },
+        { name: 'avgPrice', type: 'uint256' },
+      ],
       stateMutability: 'nonpayable',
     },
     // Node sell order V2 - called by Diamond for node inventory sales

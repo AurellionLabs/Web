@@ -346,7 +346,8 @@ function generateEventTable(event: EventInfo): SchemaTable {
 }
 
 function generateEntityTables(): SchemaTable[] {
-  // Core entity tables that aggregate event data
+  // For "dumb indexer" pattern, entity tables are minimal
+  // Aggregations happen in repository layer from raw events
   return [
     {
       name: 'nodes',
@@ -363,102 +364,8 @@ function generateEntityTables(): SchemaTable[] {
       ],
       indexes: ['owner', 'status'],
     },
-    {
-      name: 'node_assets',
-      columns: [
-        { name: 'id', type: 't.text().primaryKey()', primaryKey: true },
-        { name: 'node_id', type: 't.hex().notNull()', indexed: true },
-        { name: 'token', type: 't.hex().notNull()' },
-        { name: 'token_id', type: 't.bigint().notNull()' },
-        { name: 'price', type: 't.bigint().notNull()' },
-        { name: 'capacity', type: 't.bigint().notNull()' },
-        { name: 'balance', type: 't.bigint().notNull()' },
-        { name: 'created_at', type: 't.bigint().notNull()' },
-        { name: 'updated_at', type: 't.bigint().notNull()' },
-      ],
-      indexes: ['node_id', 'token'],
-    },
-    {
-      name: 'clob_orders',
-      columns: [
-        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
-        { name: 'maker', type: 't.hex().notNull()', indexed: true },
-        { name: 'market_id', type: 't.hex().notNull()', indexed: true },
-        { name: 'base_token', type: 't.hex().notNull()' },
-        { name: 'base_token_id', type: 't.bigint().notNull()' },
-        { name: 'quote_token', type: 't.hex().notNull()' },
-        { name: 'price', type: 't.bigint().notNull()' },
-        { name: 'amount', type: 't.bigint().notNull()' },
-        { name: 'filled_amount', type: 't.bigint().notNull()' },
-        { name: 'remaining_amount', type: 't.bigint().notNull()' },
-        { name: 'is_buy', type: 't.boolean().notNull()' },
-        { name: 'order_type', type: 't.integer().notNull()' },
-        { name: 'time_in_force', type: 't.integer()' },
-        { name: 'status', type: 't.integer().notNull()', indexed: true },
-        { name: 'created_at', type: 't.bigint().notNull()' },
-        { name: 'updated_at', type: 't.bigint().notNull()' },
-        { name: 'block_number', type: 't.bigint().notNull()' },
-        { name: 'transaction_hash', type: 't.hex().notNull()' },
-      ],
-      indexes: ['maker', 'market_id', 'status', 'base_token'],
-    },
-    {
-      name: 'clob_trades',
-      columns: [
-        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
-        { name: 'taker_order_id', type: 't.hex().notNull()', indexed: true },
-        { name: 'maker_order_id', type: 't.hex().notNull()', indexed: true },
-        { name: 'taker', type: 't.hex().notNull()', indexed: true },
-        { name: 'maker', type: 't.hex().notNull()', indexed: true },
-        { name: 'market_id', type: 't.hex().notNull()', indexed: true },
-        { name: 'price', type: 't.bigint().notNull()' },
-        { name: 'amount', type: 't.bigint().notNull()' },
-        { name: 'quote_amount', type: 't.bigint().notNull()' },
-        { name: 'taker_fee', type: 't.bigint()' },
-        { name: 'maker_fee', type: 't.bigint()' },
-        { name: 'taker_is_buy', type: 't.boolean()' },
-        { name: 'timestamp', type: 't.bigint().notNull()' },
-        { name: 'block_number', type: 't.bigint().notNull()' },
-        { name: 'transaction_hash', type: 't.hex().notNull()' },
-      ],
-      indexes: [
-        'taker',
-        'maker',
-        'market_id',
-        'taker_order_id',
-        'maker_order_id',
-      ],
-    },
-    {
-      name: 'unified_orders',
-      columns: [
-        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
-        { name: 'buyer', type: 't.hex().notNull()', indexed: true },
-        { name: 'seller', type: 't.hex().notNull()', indexed: true },
-        { name: 'token', type: 't.hex().notNull()' },
-        { name: 'token_id', type: 't.bigint().notNull()' },
-        { name: 'quantity', type: 't.bigint().notNull()' },
-        { name: 'price', type: 't.bigint().notNull()' },
-        { name: 'status', type: 't.integer().notNull()', indexed: true },
-        { name: 'created_at', type: 't.bigint().notNull()' },
-        { name: 'updated_at', type: 't.bigint().notNull()' },
-        { name: 'block_number', type: 't.bigint().notNull()' },
-        { name: 'transaction_hash', type: 't.hex().notNull()' },
-      ],
-      indexes: ['buyer', 'seller', 'status'],
-    },
-    {
-      name: 'stakes',
-      columns: [
-        { name: 'id', type: 't.text().primaryKey()', primaryKey: true },
-        { name: 'user', type: 't.hex().notNull()', indexed: true },
-        { name: 'amount', type: 't.bigint().notNull()' },
-        { name: 'rewards_claimed', type: 't.bigint().notNull()' },
-        { name: 'created_at', type: 't.bigint().notNull()' },
-        { name: 'updated_at', type: 't.bigint().notNull()' },
-      ],
-      indexes: ['user'],
-    },
+    // Minimal entity tables - raw events are the source of truth
+    // All derived state computed from events in repositories
   ];
 }
 
@@ -540,29 +447,30 @@ function generateHandlerStub(domain: string, events: EventInfo[]): string {
     eventsByFacet.get(event.facet)!.push(event);
   }
 
-  let content = `// Auto-generated handler stubs for ${domain} domain - IMPLEMENT ME
+  let content = `// Auto-generated handler for ${domain} domain - Raw event storage only
 // Generated at: ${new Date().toISOString()}
 // 
+// Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: ${Array.from(eventsByFacet.keys()).join(', ')}
 
 import { ponder } from '@/generated';
-import { eq } from '@ponder/core';
 
-// Import entity tables (add as needed)
-// import { nodes, nodeAssets, clobOrders, clobTrades } from '../../generated-schema';
-
-// Utility functions
-const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\`;
-const log = {
-  info: (msg: string, data?: any) => console.log(\`[${domain}] \${msg}\`, data || ''),
-  warn: (msg: string, data?: any) => console.warn(\`[${domain}] \${msg}\`, data || ''),
-  error: (msg: string, data?: any) => console.error(\`[${domain}] \${msg}\`, data || ''),
-};
-
+// Import event tables (auto-generated from ABI)
 `;
 
   for (const [facetName, facetEvents] of eventsByFacet) {
-    content += `// =============================================================================
+    for (const event of facetEvents) {
+      const tableName = camelToSnake(event.name);
+      content += `import { ${snakeToCamel(tableName)} } from '../../generated-schema';\n`;
+    }
+  }
+
+  content += `\n// Utility functions
+const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\`;
+`;
+
+  for (const [facetName, facetEvents] of eventsByFacet) {
+    content += `\n// =============================================================================
 // ${facetName} Events
 // =============================================================================
 
@@ -577,6 +485,8 @@ const log = {
         .join(', ');
 
       const destructure = event.inputs.map((i) => i.name).join(', ');
+      const tableName = camelToSnake(event.name);
+      const camelTable = snakeToCamel(tableName);
 
       content += `/**
  * Handle ${event.name} event from ${facetName}
@@ -587,13 +497,14 @@ ponder.on('Diamond:${event.name}', async ({ event, context }) => {
   const { ${destructure} } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
-  log.info('${event.name}', { ${event.inputs
-    .slice(0, 3)
-    .map((i) => i.name)
-    .join(', ')} });
-  
-  // TODO: Implement handler
-  // await context.db.insert(table).values({ ... });
+  // Insert raw event into event table
+  await context.db.insert(${camelTable}).values({
+    id,
+${event.inputs.map((i) => `    ${camelToSnake(i.name)}: ${i.name},`).join('\n')}
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
 });
 
 `;
