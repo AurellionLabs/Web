@@ -1,5 +1,5 @@
 // Auto-generated from CLOBFacetV2.sol - DO NOT EDIT
-// Generated at: 2026-01-08T21:02:23.727Z
+// Generated at: 2026-01-12T23:41:16.505Z
 
 export const CLOBFacetV2ABI = [
   {
@@ -621,9 +621,14 @@ export const CLOBFacetV2ABI = [
     name: 'placeMarketOrder',
     outputs: [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
+        internalType: 'uint96',
+        name: 'filledAmount',
+        type: 'uint96',
+      },
+      {
+        internalType: 'uint256',
+        name: 'avgPrice',
+        type: 'uint256',
       },
     ],
     stateMutability: 'nonpayable',

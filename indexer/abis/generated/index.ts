@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-01-08T21:02:23.728Z
+// Generated at: 2026-01-12T23:41:16.508Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -2705,9 +2705,14 @@ export const DiamondABI = [
     name: 'placeMarketOrder',
     outputs: [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
+        internalType: 'uint96',
+        name: 'filledAmount',
+        type: 'uint96',
+      },
+      {
+        internalType: 'uint256',
+        name: 'avgPrice',
+        type: 'uint256',
       },
     ],
     stateMutability: 'nonpayable',

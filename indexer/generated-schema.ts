@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-08T21:02:23.731Z
+// Generated at: 2026-01-12T23:41:16.509Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -22,121 +22,6 @@ export const nodes = onchainTable(
   (table) => ({
     ownerIdx: index().on(table.owner),
     statusIdx: index().on(table.status),
-  }),
-);
-
-export const nodeAssets = onchainTable(
-  'node_assets',
-  (t) => ({
-    id: t.text().primaryKey(),
-    node_id: t.hex().notNull(),
-    token: t.hex().notNull(),
-    token_id: t.bigint().notNull(),
-    price: t.bigint().notNull(),
-    capacity: t.bigint().notNull(),
-    balance: t.bigint().notNull(),
-    created_at: t.bigint().notNull(),
-    updated_at: t.bigint().notNull(),
-  }),
-  (table) => ({
-    nodeIdIdx: index().on(table.node_id),
-    tokenIdx: index().on(table.token),
-  }),
-);
-
-export const clobOrders = onchainTable(
-  'clob_orders',
-  (t) => ({
-    id: t.hex().primaryKey(),
-    maker: t.hex().notNull(),
-    market_id: t.hex().notNull(),
-    base_token: t.hex().notNull(),
-    base_token_id: t.bigint().notNull(),
-    quote_token: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    filled_amount: t.bigint().notNull(),
-    remaining_amount: t.bigint().notNull(),
-    is_buy: t.boolean().notNull(),
-    order_type: t.integer().notNull(),
-    time_in_force: t.integer(),
-    status: t.integer().notNull(),
-    created_at: t.bigint().notNull(),
-    updated_at: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    makerIdx: index().on(table.maker),
-    marketIdIdx: index().on(table.market_id),
-    statusIdx: index().on(table.status),
-    baseTokenIdx: index().on(table.base_token),
-  }),
-);
-
-export const clobTrades = onchainTable(
-  'clob_trades',
-  (t) => ({
-    id: t.hex().primaryKey(),
-    taker_order_id: t.hex().notNull(),
-    maker_order_id: t.hex().notNull(),
-    taker: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    market_id: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    quote_amount: t.bigint().notNull(),
-    taker_fee: t.bigint(),
-    maker_fee: t.bigint(),
-    taker_is_buy: t.boolean(),
-    timestamp: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    takerIdx: index().on(table.taker),
-    makerIdx: index().on(table.maker),
-    marketIdIdx: index().on(table.market_id),
-    takerOrderIdIdx: index().on(table.taker_order_id),
-    makerOrderIdIdx: index().on(table.maker_order_id),
-  }),
-);
-
-export const unifiedOrders = onchainTable(
-  'unified_orders',
-  (t) => ({
-    id: t.hex().primaryKey(),
-    buyer: t.hex().notNull(),
-    seller: t.hex().notNull(),
-    token: t.hex().notNull(),
-    token_id: t.bigint().notNull(),
-    quantity: t.bigint().notNull(),
-    price: t.bigint().notNull(),
-    status: t.integer().notNull(),
-    created_at: t.bigint().notNull(),
-    updated_at: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    buyerIdx: index().on(table.buyer),
-    sellerIdx: index().on(table.seller),
-    statusIdx: index().on(table.status),
-  }),
-);
-
-export const stakes = onchainTable(
-  'stakes',
-  (t) => ({
-    id: t.text().primaryKey(),
-    user: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    rewards_claimed: t.bigint().notNull(),
-    created_at: t.bigint().notNull(),
-    updated_at: t.bigint().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
   }),
 );
 
@@ -1028,11 +913,6 @@ export const ownershipTransferredEvents = onchainTable(
 // Export all tables
 export const tables = {
   nodes,
-  nodeAssets,
-  clobOrders,
-  clobTrades,
-  unifiedOrders,
-  stakes,
   clobApprovalGrantedEvents,
   clobApprovalRevokedEvents,
   initializedEvents,

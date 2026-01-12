@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-08T01:17:58.713Z
+// Deployed: 2026-01-12T23:41:16.514Z
 // Chain ID: 84532
 
 // =============================================================================
