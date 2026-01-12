@@ -3,6 +3,8 @@
  *
  * Handles bridge-related events from BridgeFacet.
  *
+ * Note: Stores only raw events - repositories handle aggregation at query time.
+ *
  * Note: OrderCancelled has 2 versions - this handler uses the Bridge version.
  */
 
@@ -11,20 +13,9 @@ import {
   unifiedOrders,
   unifiedOrderCreatedEvents,
   tradeMatchedEvents,
+  logisticsOrderCreatedEvents,
   unifiedOrderSettledEvents,
 } from '../../ponder.schema';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const OrderStatus = {
-  Pending: 0,
-  Matched: 1,
-  Settled: 2,
-  Cancelled: 3,
-  Expired: 4,
-} as const;
 
 // ============================================================================
 // UTILITIES
@@ -33,7 +24,7 @@ const OrderStatus = {
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
 
 // ============================================================================
-// UNIFIED ORDER CREATION
+// UNIFIED ORDER CREATION - Store only raw event
 // ============================================================================
 
 ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
@@ -47,25 +38,56 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
     .insert(unifiedOrders)
     .values({
       id: orderId,
+      clobOrderId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      clobTradeId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      ausysOrderId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      journeyIds: '[]',
       buyer,
       seller,
+      sellerNode:
+        '0x0000000000000000000000000000000000000000000' as `0x${string}`,
       token,
       tokenId,
-      quantity,
+      tokenQuantity: quantity,
       price,
-      status: OrderStatus.Pending,
+      bounty: 0n,
+      status: 0,
+      logisticsStatus: 0,
+      startLocationLat: '',
+      startLocationLng: '',
+      endLocationLat: '',
+      endLocationLng: '',
+      startName: '',
+      endName: '',
       createdAt: event.block.timestamp,
-      updatedAt: event.block.timestamp,
+      matchedAt: 0n,
+      deliveredAt: 0n,
+      settledAt: 0n,
       blockNumber: event.block.number,
       transactionHash: event.transaction.hash,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      set: {
+        buyer,
+        seller,
+        token,
+        tokenId,
+        tokenQuantity: quantity,
+        price,
+        updatedAt: event.block.timestamp,
+      },
+    });
 
   await context.db
     .insert(unifiedOrderCreatedEvents)
     .values({
       id,
-      orderId,
+      unifiedOrderId: orderId,
+      clobOrderId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
       buyer,
       seller,
       token,
@@ -80,7 +102,7 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
 });
 
 // ============================================================================
-// TRADE MATCHING
+// TRADE MATCHING - Store only raw event
 // ============================================================================
 
 ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
@@ -90,12 +112,12 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
   console.log(`[bridge] TradeMatched: buy=${buyOrderId}, sell=${sellOrderId}`);
 
   await context.db.update(unifiedOrders, { id: buyOrderId }).set({
-    status: OrderStatus.Matched,
+    status: 2, // Matched
     updatedAt: event.block.timestamp,
   });
 
   await context.db.update(unifiedOrders, { id: sellOrderId }).set({
-    status: OrderStatus.Matched,
+    status: 2, // Matched
     updatedAt: event.block.timestamp,
   });
 
@@ -103,10 +125,13 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
     .insert(tradeMatchedEvents)
     .values({
       id,
-      buyOrderId,
-      sellOrderId,
-      matchedQuantity,
-      matchedPrice,
+      unifiedOrderId: buyOrderId,
+      clobTradeId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      clobOrderId: buyOrderId,
+      maker: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+      price: matchedPrice,
+      amount: matchedQuantity,
       blockNumber: event.block.number,
       blockTimestamp: event.block.timestamp,
       transactionHash: event.transaction.hash,
@@ -115,17 +140,54 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
 });
 
 // ============================================================================
-// ORDER SETTLEMENT
+// LOGISTICS ORDER CREATION - Store only raw event
+// ============================================================================
+
+ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
+  const { unifiedOrderId, ausysOrderId, journeyIds, bounty, node } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  console.log(`[bridge] LogisticsOrderCreated: ${unifiedOrderId}`);
+
+  await context.db.update(unifiedOrders, { id: unifiedOrderId }).set({
+    ausysOrderId,
+    journeyIds: JSON.stringify(journeyIds),
+    sellerNode: node,
+    bounty,
+    status: 3, // LogisticsCreated
+    logisticsStatus: 0, // Pending
+    updatedAt: event.block.timestamp,
+  });
+
+  await context.db
+    .insert(logisticsOrderCreatedEvents)
+    .values({
+      id,
+      unifiedOrderId,
+      ausysOrderId,
+      journeyIds: JSON.stringify(journeyIds),
+      bounty,
+      node,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
+});
+
+// ============================================================================
+// ORDER SETTLEMENT - Store only raw event
 // ============================================================================
 
 ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
-  const { orderId } = event.args;
+  const { orderId, seller, sellerAmount, driver, driverAmount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   console.log(`[bridge] OrderSettled: ${orderId}`);
 
   await context.db.update(unifiedOrders, { id: orderId }).set({
-    status: OrderStatus.Settled,
+    status: 4, // Settled
+    settledAt: event.block.timestamp,
     updatedAt: event.block.timestamp,
   });
 
@@ -133,7 +195,13 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
     .insert(unifiedOrderSettledEvents)
     .values({
       id,
-      orderId,
+      unifiedOrderId: orderId,
+      seller,
+      sellerAmount,
+      driver:
+        driver ||
+        ('0x0000000000000000000000000000000000000000' as `0x${string}`),
+      driverAmount,
       blockNumber: event.block.number,
       blockTimestamp: event.block.timestamp,
       transactionHash: event.transaction.hash,
@@ -149,11 +217,12 @@ ponder.on(
   'Diamond:OrderCancelled(bytes32 indexed unifiedOrderId, uint8 previousStatus)',
   async ({ event, context }) => {
     const { unifiedOrderId, previousStatus } = event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
 
     console.log(`[bridge] OrderCancelled: ${unifiedOrderId}`);
 
     await context.db.update(unifiedOrders, { id: unifiedOrderId }).set({
-      status: OrderStatus.Cancelled,
+      status: 5, // Cancelled
       updatedAt: event.block.timestamp,
     });
   },

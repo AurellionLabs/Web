@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock the ponder module
+// Mock the ponder module - Only event tables, no derived stats tables
 const mockDb = {
   journeys: {
     create: vi.fn(),
@@ -12,6 +12,7 @@ const mockDb = {
     update: vi.fn(),
     findUnique: vi.fn(),
   },
+  // Event tables only
   journeyCreatedEvents: { create: vi.fn() },
   journeyStatusUpdates: { create: vi.fn() },
   orderCreatedEvents: { create: vi.fn() },
@@ -19,16 +20,6 @@ const mockDb = {
   orderSettledEvents: { create: vi.fn() },
   packageSignatures: { create: vi.fn() },
   driverAssignments: { create: vi.fn() },
-  driverStats: {
-    create: vi.fn(),
-    update: vi.fn(),
-    findUnique: vi.fn(),
-  },
-  nodeStats: {
-    create: vi.fn(),
-    update: vi.fn(),
-    findUnique: vi.fn(),
-  },
   fundsEscrowedEvents: { create: vi.fn() },
   sellerPaidEvents: { create: vi.fn() },
   nodeFeeDistributedEvents: { create: vi.fn() },
@@ -68,7 +59,7 @@ function createMockEvent(args: any, overrides: Partial<any> = {}) {
   };
 }
 
-describe('AuSys Event Handlers', () => {
+describe('AuSys Event Handlers (Event-Only Storage)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -91,7 +82,7 @@ describe('AuSys Event Handlers', () => {
       // Mock contract call
       mockClient.readContract.mockResolvedValueOnce({
         bounty: 1000000000000000000n, // 1 ETH
-        ETA: 1704153600n,
+        eta: 1704153600n,
         parcelData: {
           startLocation: { lat: '40.7128', lng: '-74.0060' },
           endLocation: { lat: '34.0522', lng: '-118.2437' },
@@ -105,32 +96,42 @@ describe('AuSys Event Handlers', () => {
         '0x0000000000000000000000000000000000000000000000000000000000000000',
       );
 
-      // Simulate handler logic
-      const { journeyId: jId, sender: s, receiver: r } = event.args;
       const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-      const journey = await mockClient.readContract();
-
+      // Create journey entity
       await mockDb.journeys.create({
-        id: jId,
-        sender: s,
-        receiver: r,
+        id: journeyId,
+        sender,
+        receiver,
         driver: null,
         currentStatus: 0,
-        bounty: journey.bounty,
+        bounty: 1000000000000000000n,
         journeyStart: 0n,
         journeyEnd: 0n,
-        eta: journey.ETA,
-        startLocationLat: journey.parcelData.startLocation.lat,
-        startLocationLng: journey.parcelData.startLocation.lng,
-        endLocationLat: journey.parcelData.endLocation.lat,
-        endLocationLng: journey.parcelData.endLocation.lng,
-        startName: journey.parcelData.startName,
-        endName: journey.parcelData.endName,
+        eta: 1704153600n,
+        startLocationLat: '40.7128',
+        startLocationLng: '-74.0060',
+        endLocationLat: '34.0522',
+        endLocationLng: '-118.2437',
+        startName: 'New York',
+        endName: 'Los Angeles',
         orderId: null,
         createdAt: event.block.timestamp,
         updatedAt: event.block.timestamp,
         blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      });
+
+      // Create journey created event
+      await mockDb.journeyCreatedEvents.create({
+        id: eventId,
+        journeyId,
+        sender,
+        receiver,
+        bounty: 1000000000000000000n,
+        eta: 1704153600n,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
         transactionHash: event.transaction.hash,
       });
 
@@ -144,6 +145,13 @@ describe('AuSys Event Handlers', () => {
           bounty: 1000000000000000000n,
         }),
       );
+
+      expect(mockDb.journeyCreatedEvents.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          journeyId,
+          sender,
+        }),
+      );
     });
 
     it('should handle contract call failure gracefully', async () => {
@@ -151,6 +159,14 @@ describe('AuSys Event Handlers', () => {
         '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as `0x${string}`;
 
       mockClient.readContract.mockRejectedValueOnce(new Error('RPC error'));
+
+      const event = createMockEvent({
+        journeyId,
+        sender: '0xaaaa' as `0x${string}`,
+        receiver: '0xbbbb' as `0x${string}`,
+      });
+
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
       // Handler should still create journey with default values
       await mockDb.journeys.create({
@@ -168,13 +184,26 @@ describe('AuSys Event Handlers', () => {
         startName: '',
         endName: '',
         orderId: null,
-        createdAt: 1704067200n,
-        updatedAt: 1704067200n,
-        blockNumber: 12345678n,
-        transactionHash: '0xabc' as `0x${string}`,
+        createdAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      });
+
+      await mockDb.journeyCreatedEvents.create({
+        id: eventId,
+        journeyId,
+        sender: '0xaaaa' as `0x${string}`,
+        receiver: '0xbbbb' as `0x${string}`,
+        bounty: 0n,
+        eta: 0n,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
       });
 
       expect(mockDb.journeys.create).toHaveBeenCalled();
+      expect(mockDb.journeyCreatedEvents.create).toHaveBeenCalled();
     });
   });
 
@@ -193,6 +222,9 @@ describe('AuSys Event Handlers', () => {
         newStatus: 1, // InTransit
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+      // Update journey status
       await mockDb.journeys.update({
         id: journeyId,
         data: {
@@ -202,6 +234,17 @@ describe('AuSys Event Handlers', () => {
         },
       });
 
+      // Create status update event
+      await mockDb.journeyStatusUpdates.create({
+        id: eventId,
+        journeyId,
+        oldStatus: 0,
+        newStatus: 1,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      });
+
       expect(mockDb.journeys.update).toHaveBeenCalledWith(
         expect.objectContaining({
           id: journeyId,
@@ -209,6 +252,14 @@ describe('AuSys Event Handlers', () => {
             currentStatus: 1,
             journeyStart: 1704067200n,
           }),
+        }),
+      );
+
+      expect(mockDb.journeyStatusUpdates.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          journeyId,
+          oldStatus: 0,
+          newStatus: 1,
         }),
       );
     });
@@ -227,6 +278,8 @@ describe('AuSys Event Handlers', () => {
         newStatus: 2, // Delivered
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
       await mockDb.journeys.update({
         id: journeyId,
         data: {
@@ -234,6 +287,16 @@ describe('AuSys Event Handlers', () => {
           journeyEnd: event.block.timestamp,
           updatedAt: event.block.timestamp,
         },
+      });
+
+      await mockDb.journeyStatusUpdates.create({
+        id: eventId,
+        journeyId,
+        oldStatus: 1,
+        newStatus: 2,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
       });
 
       expect(mockDb.journeys.update).toHaveBeenCalledWith(
@@ -282,6 +345,8 @@ describe('AuSys Event Handlers', () => {
         },
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
       await mockDb.orders.create({
         id: orderId,
         buyer,
@@ -306,6 +371,18 @@ describe('AuSys Event Handlers', () => {
         transactionHash: event.transaction.hash,
       });
 
+      await mockDb.orderCreatedEvents.create({
+        id: eventId,
+        orderId,
+        buyer,
+        seller,
+        price: 1000000n,
+        tokenQuantity: 100n,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      });
+
       expect(mockDb.orders.create).toHaveBeenCalledWith(
         expect.objectContaining({
           id: orderId,
@@ -315,17 +392,20 @@ describe('AuSys Event Handlers', () => {
           price: 1000000n,
         }),
       );
+
+      expect(mockDb.orderCreatedEvents.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderId,
+          buyer,
+        }),
+      );
     });
   });
 
   describe('OrderSettled', () => {
-    it('should update order status to settled and update node stats', async () => {
+    it('should update order status and create settlement event', async () => {
       const orderId =
         '0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321' as `0x${string}`;
-      const nodes = [
-        '0x1111111111111111111111111111111111111111' as `0x${string}`,
-        '0x2222222222222222222222222222222222222222' as `0x${string}`,
-      ];
 
       mockClient.readContract.mockResolvedValueOnce({
         price: 1000000n,
@@ -334,14 +414,16 @@ describe('AuSys Event Handlers', () => {
 
       mockDb.orders.findUnique.mockResolvedValueOnce({
         id: orderId,
-        nodes: JSON.stringify(nodes),
+        nodes: JSON.stringify([
+          '0x1111' as `0x${string}`,
+          '0x2222' as `0x${string}`,
+        ]),
       });
 
-      mockDb.nodeStats.findUnique.mockResolvedValue(null);
-
       const event = createMockEvent({ orderId });
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
-      // Simulate handler
+      // Update order status
       await mockDb.orders.update({
         id: orderId,
         data: {
@@ -350,8 +432,9 @@ describe('AuSys Event Handlers', () => {
         },
       });
 
+      // Create settlement event
       await mockDb.orderSettledEvents.create({
-        id: `${event.transaction.hash}-${event.log.logIndex}`,
+        id: eventId,
         orderId,
         totalPrice: 1000000n,
         totalFee: 10000n,
@@ -374,19 +457,20 @@ describe('AuSys Event Handlers', () => {
   });
 
   describe('DriverAssigned', () => {
-    it('should update journey with driver and create/update driver stats', async () => {
+    it('should update journey with driver and create assignment event', async () => {
       const journeyId =
         '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as `0x${string}`;
       const driver =
         '0xffffffffffffffffffffffffffffffffffffffffff' as `0x${string}`;
-
-      mockDb.driverStats.findUnique.mockResolvedValueOnce(null);
 
       const event = createMockEvent({
         driver,
         journeyId,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+      // Update journey with driver
       await mockDb.journeys.update({
         id: journeyId,
         data: {
@@ -395,16 +479,15 @@ describe('AuSys Event Handlers', () => {
         },
       });
 
-      await mockDb.driverStats.create({
-        id: driver,
+      // Create driver assignment event
+      await mockDb.driverAssignments.create({
+        id: `${eventId}-assignment`,
         driver,
-        totalJourneys: 1n,
-        completedJourneys: 0n,
-        canceledJourneys: 0n,
-        totalEarnings: 0n,
-        averageRating: 0n,
-        lastActiveAt: event.block.timestamp,
-        updatedAt: event.block.timestamp,
+        journeyId,
+        assignedBy: event.transaction.from,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
       });
 
       expect(mockDb.journeys.update).toHaveBeenCalledWith(
@@ -414,44 +497,10 @@ describe('AuSys Event Handlers', () => {
         }),
       );
 
-      expect(mockDb.driverStats.create).toHaveBeenCalledWith(
+      expect(mockDb.driverAssignments.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: driver,
-          totalJourneys: 1n,
-        }),
-      );
-    });
-
-    it('should increment existing driver stats', async () => {
-      const driver =
-        '0xffffffffffffffffffffffffffffffffffffffffff' as `0x${string}`;
-
-      mockDb.driverStats.findUnique.mockResolvedValueOnce({
-        id: driver,
-        totalJourneys: 5n,
-        lastActiveAt: 1704000000n,
-      });
-
-      const event = createMockEvent({
-        driver,
-        journeyId: '0x123' as `0x${string}`,
-      });
-
-      await mockDb.driverStats.update({
-        id: driver,
-        data: {
-          totalJourneys: 6n,
-          lastActiveAt: event.block.timestamp,
-          updatedAt: event.block.timestamp,
-        },
-      });
-
-      expect(mockDb.driverStats.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: driver,
-          data: expect.objectContaining({
-            totalJourneys: 6n,
-          }),
+          driver,
+          journeyId,
         }),
       );
     });
@@ -477,8 +526,10 @@ describe('AuSys Event Handlers', () => {
         id: journeyId,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
       await mockDb.packageSignatures.create({
-        id: `${event.transaction.hash}-${event.log.logIndex}`,
+        id: eventId,
         journeyId,
         signer: sender,
         signatureType: 'sender',
@@ -514,8 +565,10 @@ describe('AuSys Event Handlers', () => {
         id: journeyId,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
       await mockDb.packageSignatures.create({
-        id: `${event.transaction.hash}-${event.log.logIndex}`,
+        id: eventId,
         journeyId,
         signer: receiver,
         signatureType: 'receiver',

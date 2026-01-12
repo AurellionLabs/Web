@@ -2,6 +2,7 @@
  * CLOB Handler
  *
  * Handles all CLOB-related events from CLOBFacetV2 and OrderMatchingFacet.
+ * Stores only raw blockchain events - repositories handle aggregation at query time.
  *
  * Events with multiple versions require full signatures:
  * - TradeExecuted: V2 (13 params with fees) vs Matching (6 params)
@@ -10,29 +11,14 @@
 
 import { ponder } from '@/generated';
 import {
-  clobOrders,
-  clobTrades,
   orderPlacedEvents,
+  orderMatchedEvents,
   orderCancelledEvents,
   tradeExecutedEvents,
-  marketData,
-  userTradingStats,
+  liquidityAddedEvents,
+  liquidityRemovedEvents,
+  poolCreatedEvents,
 } from '../../ponder.schema';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const OrderStatus = {
-  Open: 0,
-  PartialFill: 1,
-  Filled: 2,
-  Cancelled: 3,
-  Expired: 4,
-} as const;
-
-const ZERO_ADDRESS =
-  '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
 // ============================================================================
 // UTILITIES
@@ -41,43 +27,34 @@ const ZERO_ADDRESS =
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
 
 // ============================================================================
-// ORDER CREATION - Simple event name (only one version)
+// ORDER CREATION - Store only raw event
 // ============================================================================
 
 ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
   const { orderId, marketId, maker, price, amount, isBuy, orderType } =
     event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
   console.log(`[clob] OrderCreated: ${orderId}`);
 
   await context.db
-    .insert(clobOrders)
+    .insert(orderPlacedEvents)
     .values({
-      id: orderId,
+      id,
+      orderId,
       maker,
-      marketId,
-      baseToken: ZERO_ADDRESS,
+      baseToken: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       baseTokenId: 0n,
-      quoteToken: ZERO_ADDRESS,
+      quoteToken: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       price,
       amount,
-      filledAmount: 0n,
-      remainingAmount: amount,
       isBuy,
       orderType,
-      status: OrderStatus.Open,
-      createdAt: event.block.timestamp,
-      updatedAt: event.block.timestamp,
       blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
       transactionHash: event.transaction.hash,
     })
-    .onConflictDoUpdate({
-      price,
-      amount,
-      isBuy,
-      orderType,
-      updatedAt: event.block.timestamp,
-    });
+    .onConflictDoNothing();
 });
 
 ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
@@ -95,38 +72,6 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   console.log(`[clob] OrderPlacedWithTokens: ${orderId}`);
-
-  const marketId = `${baseToken.toLowerCase()}-${baseTokenId}-${quoteToken.toLowerCase()}`;
-
-  await context.db
-    .insert(clobOrders)
-    .values({
-      id: orderId,
-      maker,
-      marketId: marketId as `0x${string}`,
-      baseToken,
-      baseTokenId,
-      quoteToken,
-      price,
-      amount,
-      filledAmount: 0n,
-      remainingAmount: amount,
-      isBuy,
-      orderType,
-      status: OrderStatus.Open,
-      createdAt: event.block.timestamp,
-      updatedAt: event.block.timestamp,
-      blockNumber: event.block.number,
-      transactionHash: event.transaction.hash,
-    })
-    .onConflictDoUpdate({
-      baseToken,
-      baseTokenId,
-      quoteToken,
-      price,
-      amount,
-      updatedAt: event.block.timestamp,
-    });
 
   await context.db
     .insert(orderPlacedEvents)
@@ -149,23 +94,32 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
 });
 
 // ============================================================================
-// ORDER FILLS - Simple event name
+// ORDER FILLS - Store only raw event
 // ============================================================================
 
 ponder.on('Diamond:OrderFilled', async ({ event, context }) => {
   const { orderId, fillAmount, remainingAmount, cumulativeFilled } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
   console.log(`[clob] OrderFilled: ${orderId}, remaining: ${remainingAmount}`);
 
-  const newStatus =
-    remainingAmount === 0n ? OrderStatus.Filled : OrderStatus.PartialFill;
-
-  await context.db.update(clobOrders, { id: orderId }).set({
-    filledAmount: cumulativeFilled,
-    remainingAmount,
-    status: newStatus,
-    updatedAt: event.block.timestamp,
-  });
+  await context.db
+    .insert(orderMatchedEvents)
+    .values({
+      id,
+      takerOrderId: orderId,
+      makerOrderId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      tradeId:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      fillAmount,
+      fillPrice: 0n,
+      quoteAmount: 0n,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
 // ============================================================================
@@ -195,42 +149,22 @@ ponder.on(
 
     console.log(`[clob] TradeExecuted V2: ${tradeId}`);
 
-    const takerOrder = await context.db.find(clobOrders, { id: takerOrderId });
-
-    await context.db
-      .insert(clobTrades)
-      .values({
-        id: tradeId,
-        takerOrderId,
-        makerOrderId,
-        taker,
-        maker,
-        marketId,
-        baseToken: takerOrder?.baseToken ?? ZERO_ADDRESS,
-        baseTokenId: takerOrder?.baseTokenId ?? 0n,
-        quoteToken: takerOrder?.quoteToken ?? ZERO_ADDRESS,
-        price,
-        amount,
-        quoteAmount,
-        takerFee,
-        makerFee,
-        takerIsBuy,
-        timestamp,
-        blockNumber: event.block.number,
-        transactionHash: event.transaction.hash,
-      })
-      .onConflictDoNothing();
-
     await context.db
       .insert(tradeExecutedEvents)
       .values({
         id,
         tradeId,
+        takerOrderId,
+        makerOrderId,
         taker,
         maker,
+        baseToken:
+          '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        baseTokenId: 0n,
         price,
         amount,
         quoteAmount,
+        timestamp,
         blockNumber: event.block.number,
         blockTimestamp: event.block.timestamp,
         transactionHash: event.transaction.hash,
@@ -245,32 +179,28 @@ ponder.on(
   async ({ event, context }) => {
     const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } =
       event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
 
     console.log(`[clob] TradeExecuted Matching: ${tradeId}`);
 
-    const takerOrder = await context.db.find(clobOrders, { id: takerOrderId });
-    const makerOrder = await context.db.find(clobOrders, { id: makerOrderId });
-
     await context.db
-      .insert(clobTrades)
+      .insert(tradeExecutedEvents)
       .values({
-        id: tradeId,
+        id,
+        tradeId,
         takerOrderId,
         makerOrderId,
-        taker: takerOrder?.maker ?? ZERO_ADDRESS,
-        maker: makerOrder?.maker ?? ZERO_ADDRESS,
-        marketId: takerOrder?.marketId ?? (ZERO_ADDRESS as `0x${string}`),
-        baseToken: takerOrder?.baseToken ?? ZERO_ADDRESS,
-        baseTokenId: takerOrder?.baseTokenId ?? 0n,
-        quoteToken: takerOrder?.quoteToken ?? ZERO_ADDRESS,
+        taker: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        maker: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        baseToken:
+          '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        baseTokenId: 0n,
         price,
         amount,
         quoteAmount,
-        takerFee: 0n,
-        makerFee: 0n,
-        takerIsBuy: takerOrder?.isBuy ?? true,
         timestamp: event.block.timestamp,
         blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
         transactionHash: event.transaction.hash,
       })
       .onConflictDoNothing();
@@ -290,12 +220,6 @@ ponder.on(
 
     console.log(`[clob] OrderCancelled: ${orderId}, reason: ${reason}`);
 
-    await context.db.update(clobOrders, { id: orderId }).set({
-      status: OrderStatus.Cancelled,
-      remainingAmount: 0n,
-      updatedAt: event.block.timestamp,
-    });
-
     await context.db
       .insert(orderCancelledEvents)
       .values({
@@ -303,7 +227,6 @@ ponder.on(
         orderId,
         maker,
         remainingAmount,
-        reason,
         blockNumber: event.block.number,
         blockTimestamp: event.block.timestamp,
         transactionHash: event.transaction.hash,
@@ -313,43 +236,86 @@ ponder.on(
 );
 
 // ============================================================================
-// ORDER EXPIRY
+// ORDER EXPIRY - Store only raw event (would need to add orderExpiredEvents table)
 // ============================================================================
 
-ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
-  const { orderId } = event.args;
-
-  console.log(`[clob] OrderExpired: ${orderId}`);
-
-  await context.db.update(clobOrders, { id: orderId }).set({
-    status: OrderStatus.Expired,
-    remainingAmount: 0n,
-    updatedAt: event.block.timestamp,
-  });
-});
+// Note: OrderExpired events would need an orderExpiredEvents table if tracking is needed
 
 // ============================================================================
-// MARKET MANAGEMENT
+// MARKET MANAGEMENT - Store only raw event
 // ============================================================================
 
 ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
   const { marketId, baseToken, baseTokenId, quoteToken } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
   console.log(`[clob] MarketCreated: ${marketId}`);
 
   await context.db
-    .insert(marketData)
+    .insert(poolCreatedEvents)
     .values({
-      id: marketId,
+      id,
+      poolId: marketId,
       baseToken,
       baseTokenId,
       quoteToken,
-      lastPrice: 0n,
-      volume24h: 0n,
-      high24h: 0n,
-      low24h: 0n,
-      createdAt: event.block.timestamp,
-      updatedAt: event.block.timestamp,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
+});
+
+// ============================================================================
+// LIQUIDITY EVENTS - Store only raw events
+// ============================================================================
+
+ponder.on('Diamond:LiquidityAdded', async ({ event, context }) => {
+  const { poolId, provider, baseAmount, quoteAmount, lpTokensMinted } =
+    event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  console.log(
+    `[clob] LiquidityAdded: ${lpTokensMinted} LP tokens to pool ${poolId}`,
+  );
+
+  await context.db
+    .insert(liquidityAddedEvents)
+    .values({
+      id,
+      poolId,
+      provider,
+      baseAmount,
+      quoteAmount,
+      lpTokensMinted,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
+});
+
+ponder.on('Diamond:LiquidityRemoved', async ({ event, context }) => {
+  const { poolId, provider, baseAmount, quoteAmount, lpTokensBurned } =
+    event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  console.log(
+    `[clob] LiquidityRemoved: ${lpTokensBurned} LP tokens from pool ${poolId}`,
+  );
+
+  await context.db
+    .insert(liquidityRemovedEvents)
+    .values({
+      id,
+      poolId,
+      provider,
+      baseAmount,
+      quoteAmount,
+      lpTokensBurned,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
     })
     .onConflictDoNothing();
 });

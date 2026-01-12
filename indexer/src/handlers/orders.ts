@@ -2,12 +2,16 @@
  * Orders Handler
  *
  * Handles order-related events from OrdersFacet.
- * Note: OrdersFacet emits simple events, but the orders table expects
- * more detailed data. We'll populate what we can and log warnings for missing data.
+ *
+ * Note: Stores only raw events - repositories handle aggregation at query time.
  */
 
 import { ponder } from '@/generated';
-import { orders, orderStatusUpdates } from '../../ponder.schema';
+import {
+  orders,
+  orderCreatedEvents,
+  orderStatusUpdates,
+} from '../../ponder.schema';
 
 // ============================================================================
 // UTILITIES
@@ -15,27 +19,8 @@ import { orders, orderStatusUpdates } from '../../ponder.schema';
 
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
 
-const OrderStatus = {
-  Created: 0,
-  Processing: 1,
-  Settled: 2,
-  Cancelled: 3,
-} as const;
-
-// Helper to convert string status to numeric
-function statusToNumber(status: string): number {
-  const upper = status.toUpperCase();
-  if (upper === 'CREATED' || upper === 'PENDING') return OrderStatus.Created;
-  if (upper === 'PROCESSING' || upper === 'IN_PROGRESS')
-    return OrderStatus.Processing;
-  if (upper === 'SETTLED' || upper === 'COMPLETED') return OrderStatus.Settled;
-  if (upper === 'CANCELLED' || upper === 'CANCELED')
-    return OrderStatus.Cancelled;
-  return OrderStatus.Created;
-}
-
 // ============================================================================
-// ORDER CREATION
+// ORDER CREATION - Store only raw event
 // ============================================================================
 
 ponder.on(
@@ -46,108 +31,92 @@ ponder.on(
 
     console.log(`[orders] OrderCreated (OrdersFacet): ${orderHash}`);
 
-    // Validate handler is working
+    // Try to read full order data from contract
+    let token = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+    let tokenId = 0n;
+    let tokenQuantity = amount;
+    let currentStatus = 0;
+    let startLocationLat = '';
+    let startLocationLng = '';
+    let endLocationLat = '';
+    let endLocationLng = '';
+    let startName = '';
+    let endName = '';
+    let nodes: string[] = [];
+
     try {
-      // Try to read full order data from contract
-      let token = '0x0000000000000000000000000000000000000000' as `0x${string}`;
-      let tokenId = 0n;
-      let tokenQuantity = amount;
-      let requestedTokenQuantity = amount;
-      let txFee = 0n;
-      let currentStatus = OrderStatus.Created;
-      let startLocationLat = '';
-      let startLocationLng = '';
-      let endLocationLat = '';
-      let endLocationLng = '';
-      let startName = '';
-      let endName = '';
-      let nodes: string[] = [];
+      const order = await context.client.readContract({
+        abi: context.contracts.Diamond.abi,
+        address: context.contracts.Diamond.address,
+        functionName: 'getOrder',
+        args: [orderHash],
+        blockNumber: event.block.number,
+      });
 
-      try {
-        const order = await context.client.readContract({
-          abi: context.contracts.Diamond.abi,
-          address: context.contracts.Diamond.address,
-          functionName: 'getOrder',
-          args: [orderHash],
-          blockNumber: event.block.number,
-        });
-
-        if (order) {
-          const o = order as any;
-          // OrdersFacet.getOrder returns: buyer, seller, price, amount, status, createdAt
-          // But orders table expects more fields. We'll use defaults for missing data.
-          currentStatus = statusToNumber(o.status || 'CREATED');
-        }
-      } catch (e) {
-        console.warn(`[orders] Could not read order data for ${orderHash}:`, e);
-        console.warn(
-          `[orders] This order will be created with minimal data. Some queries may fail.`,
-        );
+      if (order) {
+        const o = order as any;
+        currentStatus =
+          o.status === 'SETTLED' ? 2 : o.status === 'CANCELLED' ? 3 : 0;
       }
-
-      // Check if this order is linked to a unified order (which has more data)
-      try {
-        // Unified orders might have the ausysOrderId that matches this orderHash
-        // We could try to find it, but for now we'll create with available data
-      } catch (e) {
-        // Ignore - not critical
-      }
-
-      await context.db
-        .insert(orders)
-        .values({
-          id: orderHash,
-          buyer,
-          seller,
-          token,
-          tokenId,
-          tokenQuantity,
-          requestedTokenQuantity,
-          price,
-          txFee,
-          currentStatus,
-          startLocationLat,
-          startLocationLng,
-          endLocationLat,
-          endLocationLng,
-          startName,
-          endName,
-          nodes: JSON.stringify(nodes),
-          createdAt: event.block.timestamp,
-          updatedAt: event.block.timestamp,
-          blockNumber: event.block.number,
-          transactionHash: event.transaction.hash,
-        })
-        .onConflictDoUpdate({
-          set: {
-            price,
-            tokenQuantity: amount,
-            requestedTokenQuantity: amount,
-            updatedAt: event.block.timestamp,
-          },
-        });
-
-      console.warn(
-        `[orders] ⚠️  Order ${orderHash} created with minimal data. ` +
-          `Missing: token, tokenId, location data, nodes. ` +
-          `Frontend queries requiring these fields may return incomplete data.`,
-      );
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error(
-        `[orders] ❌ ERROR handling OrderCreated event for ${orderHash}: ${errorMsg}`,
-      );
-      console.error(
-        `[orders] Stack trace:`,
-        error instanceof Error ? error.stack : 'N/A',
-      );
-      throw error; // Re-throw to let Ponder retry
+    } catch (e) {
+      console.warn(`[orders] Could not read order data for ${orderHash}:`, e);
     }
+
+    // Create order entity
+    await context.db
+      .insert(orders)
+      .values({
+        id: orderHash,
+        buyer,
+        seller,
+        token,
+        tokenId,
+        tokenQuantity,
+        requestedTokenQuantity: tokenQuantity,
+        price,
+        txFee: 0n,
+        currentStatus,
+        startLocationLat,
+        startLocationLng,
+        endLocationLat,
+        endLocationLng,
+        startName,
+        endName,
+        nodes: JSON.stringify(nodes),
+        createdAt: event.block.timestamp,
+        updatedAt: event.block.timestamp,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoUpdate({
+        set: {
+          price,
+          tokenQuantity: amount,
+          requestedTokenQuantity: amount,
+          updatedAt: event.block.timestamp,
+        },
+      });
+
+    // Create event record
+    await context.db
+      .insert(orderCreatedEvents)
+      .values({
+        id,
+        orderId: orderHash,
+        buyer,
+        seller,
+        price,
+        tokenQuantity,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
   },
 );
 
 // ============================================================================
-// ORDER STATUS UPDATES
+// ORDER STATUS UPDATES - Store only raw event
 // ============================================================================
 
 ponder.on('Diamond:OrderUpdated', async ({ event, context }) => {
@@ -156,44 +125,32 @@ ponder.on('Diamond:OrderUpdated', async ({ event, context }) => {
 
   console.log(`[orders] OrderUpdated: ${orderHash}, status=${status}`);
 
-  try {
-    const existingOrder = await context.db.find(orders, { id: orderHash });
-    const oldStatus = existingOrder?.currentStatus ?? OrderStatus.Created;
-    const newStatus = statusToNumber(status);
+  const existingOrder = await context.db.find(orders, { id: orderHash });
+  const oldStatus = existingOrder?.currentStatus ?? 0;
+  const newStatus = status === 'SETTLED' ? 2 : status === 'CANCELLED' ? 3 : 1;
 
-    await context.db.update(orders, { id: orderHash }).set({
-      currentStatus: newStatus,
-      updatedAt: event.block.timestamp,
-    });
+  await context.db.update(orders, { id: orderHash }).set({
+    currentStatus: newStatus,
+    updatedAt: event.block.timestamp,
+  });
 
-    // Create status update event record
-    await context.db
-      .insert(orderStatusUpdates)
-      .values({
-        id,
-        orderId: orderHash,
-        oldStatus,
-        newStatus,
-        blockNumber: event.block.number,
-        blockTimestamp: event.block.timestamp,
-        transactionHash: event.transaction.hash,
-      })
-      .onConflictDoNothing();
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(
-      `[orders] ❌ ERROR handling OrderUpdated event for ${orderHash}: ${errorMsg}`,
-    );
-    console.error(
-      `[orders] Stack trace:`,
-      error instanceof Error ? error.stack : 'N/A',
-    );
-    throw error;
-  }
+  // Create status update event record
+  await context.db
+    .insert(orderStatusUpdates)
+    .values({
+      id,
+      orderId: orderHash,
+      oldStatus,
+      newStatus,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
 // ============================================================================
-// ORDER CANCELLATION
+// ORDER CANCELLATION - Store only raw event
 // ============================================================================
 
 ponder.on(
@@ -204,38 +161,26 @@ ponder.on(
 
     console.log(`[orders] OrderCancelled (OrdersFacet): ${orderHash}`);
 
-    try {
-      const existingOrder = await context.db.find(orders, { id: orderHash });
-      const oldStatus = existingOrder?.currentStatus ?? OrderStatus.Created;
+    const existingOrder = await context.db.find(orders, { id: orderHash });
+    const oldStatus = existingOrder?.currentStatus ?? 0;
 
-      await context.db.update(orders, { id: orderHash }).set({
-        currentStatus: OrderStatus.Cancelled,
-        updatedAt: event.block.timestamp,
-      });
+    await context.db.update(orders, { id: orderHash }).set({
+      currentStatus: 3, // Cancelled
+      updatedAt: event.block.timestamp,
+    });
 
-      // Create status update event record
-      await context.db
-        .insert(orderStatusUpdates)
-        .values({
-          id,
-          orderId: orderHash,
-          oldStatus,
-          newStatus: OrderStatus.Cancelled,
-          blockNumber: event.block.number,
-          blockTimestamp: event.block.timestamp,
-          transactionHash: event.transaction.hash,
-        })
-        .onConflictDoNothing();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error(
-        `[orders] ❌ ERROR handling OrderCancelled event for ${orderHash}: ${errorMsg}`,
-      );
-      console.error(
-        `[orders] Stack trace:`,
-        error instanceof Error ? error.stack : 'N/A',
-      );
-      throw error;
-    }
+    // Create status update event record
+    await context.db
+      .insert(orderStatusUpdates)
+      .values({
+        id,
+        orderId: orderHash,
+        oldStatus,
+        newStatus: 3,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
   },
 );

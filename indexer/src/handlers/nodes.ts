@@ -3,6 +3,8 @@
  *
  * Handles all node-related events from NodesFacet.
  * Uses simple event names - no signature disambiguation needed.
+ *
+ * Note: Stores only raw events - repositories handle aggregation at query time.
  */
 
 import { ponder } from '@/generated';
@@ -11,8 +13,11 @@ import {
   nodeAssets,
   nodeTokenBalances,
   nodeRegisteredEvents,
+  nodeOwnershipTransferredEvents,
+  nodeStatusUpdatedEvents,
   tokensDepositedToNodeEvents,
   tokensWithdrawnFromNodeEvents,
+  tokensMintedToNodeEvents,
   supportedAssetAddedEvents,
 } from '../../ponder.schema';
 
@@ -21,15 +26,11 @@ import {
 // ============================================================================
 
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
-const balanceId = (nodeHash: string, tokenId: bigint) =>
-  `${nodeHash}-${tokenId}`;
 const assetId = (nodeHash: string, token: string, tokenId: bigint) =>
   `${nodeHash}-${token.toLowerCase()}-${tokenId}`;
 
-const safeSub = (a: bigint, b: bigint): bigint => (a > b ? a - b : 0n);
-
 // ============================================================================
-// NODE REGISTRATION
+// NODE REGISTRATION - Store only raw events
 // ============================================================================
 
 ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
@@ -63,6 +64,7 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
     // Use defaults
   }
 
+  // Create or update node entity
   await context.db
     .insert(nodes)
     .values({
@@ -78,8 +80,17 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
       blockNumber: event.block.number,
       transactionHash: event.transaction.hash,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      set: {
+        status,
+        addressName: locationData.addressName,
+        lat: locationData.lat,
+        lng: locationData.lng,
+        updatedAt: event.block.timestamp,
+      },
+    });
 
+  // Create event record
   await context.db
     .insert(nodeRegisteredEvents)
     .values({
@@ -95,28 +106,60 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
 
 ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
   const { nodeHash } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  console.log(`[nodes] NodeUpdated: ${nodeHash}`);
+
   await context.db.update(nodes, { id: nodeHash }).set({
     status: 'Active',
     updatedAt: event.block.timestamp,
   });
+
+  await context.db
+    .insert(nodeStatusUpdatedEvents)
+    .values({
+      id,
+      nodeAddress: nodeHash,
+      status: 'Active',
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
 ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
   const { nodeHash } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  console.log(`[nodes] NodeDeactivated: ${nodeHash}`);
+
   await context.db.update(nodes, { id: nodeHash }).set({
     status: 'Inactive',
     updatedAt: event.block.timestamp,
   });
+
+  await context.db
+    .insert(nodeStatusUpdatedEvents)
+    .values({
+      id,
+      nodeAddress: nodeHash,
+      status: 'Inactive',
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
 // ============================================================================
-// TOKEN INVENTORY
+// TOKEN INVENTORY - Store only raw events
 // ============================================================================
 
 ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, depositor } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  const balId = balanceId(nodeHash, tokenId);
+  const balId = `${nodeHash}-${tokenId}`;
 
   console.log(`[nodes] TokensDeposited: ${amount} to ${nodeHash}`);
 
@@ -136,8 +179,10 @@ ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
       transactionHash: event.transaction.hash,
     })
     .onConflictDoUpdate({
-      balance: newBalance,
-      lastUpdatedAt: event.block.timestamp,
+      set: {
+        balance: newBalance,
+        lastUpdatedAt: event.block.timestamp,
+      },
     });
 
   await context.db
@@ -158,10 +203,15 @@ ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
 ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, recipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  const balId = balanceId(nodeHash, tokenId);
+  const balId = `${nodeHash}-${tokenId}`;
+
+  console.log(`[nodes] TokensWithdrawn: ${amount} from ${nodeHash}`);
 
   const existing = await context.db.find(nodeTokenBalances, { id: balId });
-  const newBalance = safeSub(existing?.balance ?? 0n, amount);
+  const newBalance =
+    (existing?.balance ?? 0n) > amount
+      ? (existing?.balance ?? 0n) - amount
+      : 0n;
 
   if (existing) {
     await context.db.update(nodeTokenBalances, { id: balId }).set({
@@ -186,8 +236,11 @@ ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
 });
 
 ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
-  const { nodeHash, tokenId, amount } = event.args;
-  const balId = balanceId(nodeHash, tokenId);
+  const { nodeHash, tokenId, amount, minter } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+  const balId = `${nodeHash}-${tokenId}`;
+
+  console.log(`[nodes] TokensMintedToNode: ${amount} to ${nodeHash}`);
 
   const existing = await context.db.find(nodeTokenBalances, { id: balId });
   const newBalance = (existing?.balance ?? 0n) + amount;
@@ -205,13 +258,31 @@ ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
       transactionHash: event.transaction.hash,
     })
     .onConflictDoUpdate({
-      balance: newBalance,
-      lastUpdatedAt: event.block.timestamp,
+      set: {
+        balance: newBalance,
+        lastUpdatedAt: event.block.timestamp,
+      },
     });
+
+  await context.db
+    .insert(tokensMintedToNodeEvents)
+    .values({
+      id,
+      nodeHash,
+      tokenId,
+      amount,
+      minter:
+        minter ||
+        ('0x0000000000000000000000000000000000000000' as `0x${string}`),
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
 // ============================================================================
-// ASSET CONFIGURATION
+// ASSET CONFIGURATION - Store only raw events
 // ============================================================================
 
 ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
@@ -236,9 +307,11 @@ ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
       transactionHash: event.transaction.hash,
     })
     .onConflictDoUpdate({
-      price,
-      capacity,
-      updatedAt: event.block.timestamp,
+      set: {
+        price,
+        capacity,
+        updatedAt: event.block.timestamp,
+      },
     });
 
   await context.db
@@ -258,11 +331,15 @@ ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
 });
 
 // ============================================================================
-// LOCATION & OWNERSHIP
+// LOCATION & OWNERSHIP - Store only raw events
 // ============================================================================
 
 ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
   const { addressName, lat, lng, node } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  console.log(`[nodes] UpdateLocation: ${node}`);
+
   await context.db.update(nodes, { id: node }).set({
     addressName,
     lat,
@@ -273,17 +350,55 @@ ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
 
 ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
   const { owner, node } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  console.log(`[nodes] UpdateOwner: ${node}`);
+
+  const existingNode = await context.db.find(nodes, { id: node });
+  const oldOwner = existingNode?.owner;
+
   await context.db.update(nodes, { id: node }).set({
     owner,
     updatedAt: event.block.timestamp,
   });
+
+  if (oldOwner && oldOwner !== owner) {
+    await context.db
+      .insert(nodeOwnershipTransferredEvents)
+      .values({
+        id,
+        nodeAddress: node,
+        oldOwner,
+        newOwner: owner,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
+  }
 });
 
 ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
   const { status, node } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
   const statusStr = status === '0x01' ? 'Active' : 'Inactive';
+
+  console.log(`[nodes] UpdateStatus: ${node} -> ${statusStr}`);
+
   await context.db.update(nodes, { id: node }).set({
     status: statusStr,
     updatedAt: event.block.timestamp,
   });
+
+  await context.db
+    .insert(nodeStatusUpdatedEvents)
+    .values({
+      id,
+      nodeAddress: node,
+      status: statusStr,
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
