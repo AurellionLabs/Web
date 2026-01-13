@@ -14,9 +14,11 @@ COPY . .
 # Install dependencies with force to bypass any cached resolutions
 RUN npm install --legacy-peer-deps --force
 
-# Debug: Verify OpenZeppelin contracts
+# Debug: Verify OpenZeppelin contracts BEFORE compile
+RUN pwd  
 RUN ls -la node_modules/@openzeppelin/contracts/security/ || echo "security folder not found"
 RUN cat node_modules/@openzeppelin/contracts/package.json | grep '"version"' | head -1
+RUN ls -la node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol
 
 # Compile Solidity contracts
 RUN npx hardhat compile
