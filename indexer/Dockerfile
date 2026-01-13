@@ -11,8 +11,8 @@ COPY package*.json ./
 # Copy all source code
 COPY . .
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Install dependencies with no cache to force fresh install
+RUN npm install --legacy-peer-deps --no-cache --prefer-offline=false
 
 # Manually download and extract OpenZeppelin contracts
 RUN mkdir -p node_modules/@openzeppelin/contracts && \
