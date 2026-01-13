@@ -14,6 +14,10 @@ COPY . .
 # Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
 RUN npm install --legacy-peer-deps
 
+# Debug: Check what's in @openzeppelin/contracts
+RUN ls -la node_modules/@openzeppelin/contracts/ || echo "openzeppelin folder not found"
+RUN ls -la node_modules/@openzeppelin/contracts/security/ 2>/dev/null || echo "security folder not found"
+
 # Compile Solidity contracts
 RUN npx hardhat compile
 
