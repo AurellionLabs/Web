@@ -55,6 +55,7 @@
   "dependencies": {
     "@anthropic-ai/claude-code": "^0.2.66",
     "@hookform/resolvers": "^3.9.1",
+    "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@privy-io/react-auth": "^2.11.0",
     "@privy-io/wagmi-connector": "^0.1.13",
