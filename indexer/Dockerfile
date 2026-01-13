@@ -1,6 +1,6 @@
 # Build stage
-# Cache-bust: indexer package.json updated with correct script path
-ARG CACHE_BUST=1
+# Cache-bust: force fresh build
+ARG CACHE_BUST
 FROM node:22-alpine AS builder
 
 WORKDIR /app
