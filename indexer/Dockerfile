@@ -5,15 +5,14 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files (with cache-bust to force rebuild)
-ARG CACHE_BUST
+# Copy package files
 COPY package*.json ./
-
-# Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
-RUN npm install --legacy-peer-deps --include=dev
 
 # Copy source code
 COPY . .
+
+# Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
+RUN npm install --legacy-peer-deps
 
 # Compile Solidity contracts
 RUN npx hardhat compile
