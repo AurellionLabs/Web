@@ -128,7 +128,7 @@
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-verify": "^2.0.12",
     "@nomicfoundation/ignition-core": "^0.15.9",
-    "@openzeppelin/contracts": "^4.9.3",
+    "@openzeppelin/contracts": "^5.4.0",
     "@playwright/test": "^1.57.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
