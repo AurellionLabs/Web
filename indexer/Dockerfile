@@ -11,11 +11,15 @@ COPY package*.json ./
 # Copy all source code
 COPY . .
 
-# Install dependencies with no cache to force fresh install
-RUN npm install --legacy-peer-deps --no-cache --prefer-offline=false
+# Force clear npm cache and install fresh
+RUN npm config set cache false --global && \
+    rm -rf ~/.npm/_cacache && \
+    rm -rf node_modules package-lock.json && \
+    npm install --legacy-peer-deps --force
 
 # Debug: Verify OpenZeppelin contracts
 RUN ls -la node_modules/@openzeppelin/contracts/security/ || echo "security folder not found"
+RUN cat node_modules/@openzeppelin/contracts/package.json | grep '"version"' | head -1
 
 # Compile Solidity contracts
 RUN npx hardhat compile
