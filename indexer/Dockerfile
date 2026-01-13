@@ -9,8 +9,8 @@ WORKDIR /app
 ARG CACHE_BUST
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
+RUN npm install --legacy-peer-deps --include=dev
 
 # Copy source code
 COPY . .
