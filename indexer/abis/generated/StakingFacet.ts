@@ -1,5 +1,5 @@
 // Auto-generated from StakingFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T01:01:55.549Z
+// Generated at: 2026-01-13T12:02:25.454Z
 
 export const StakingFacetABI = [
   {
