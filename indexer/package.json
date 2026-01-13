@@ -8,7 +8,7 @@
     "start": "ponder start",
     "serve": "ponder serve",
     "codegen": "ponder codegen",
-    "generate:indexer": "cd .. && npx tsx scripts/generate-indexer.ts",
+    "generate:indexer": "npx tsx ../scripts/generate-indexer.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
