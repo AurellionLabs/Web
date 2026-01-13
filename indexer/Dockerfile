@@ -11,15 +11,14 @@ COPY package*.json ./
 # Copy all source code
 COPY . .
 
-# Install dependencies with npm ci for reliability
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
-
-# Explicitly reinstall @openzeppelin/contracts to ensure all files are present
-RUN rm -rf node_modules/@openzeppelin/contracts && npm install --save-dev @openzeppelin/contracts@5.4.0 --legacy-peer-deps
+# Install dependencies without package-lock to force fresh resolution
+RUN rm -f package-lock.json
+RUN npm install --legacy-peer-deps --no-package-lock
 
 # Debug: Check what's in @openzeppelin/contracts
 RUN ls -la node_modules/@openzeppelin/contracts/ || echo "openzeppelin folder not found"
 RUN ls -la node_modules/@openzeppelin/contracts/security/ 2>/dev/null || echo "security folder not found"
+RUN cat node_modules/@openzeppelin/contracts/package.json | head -20
 
 # Compile Solidity contracts
 RUN npx hardhat compile
