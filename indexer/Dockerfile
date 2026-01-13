@@ -1,10 +1,12 @@
 # Build stage
 # Cache-bust: indexer package.json updated with correct script path
+ARG CACHE_BUST=1
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files (cache-bust: fixed generate:indexer script)
+# Copy package files (with cache-bust to force rebuild)
+ARG CACHE_BUST
 COPY package*.json ./
 
 # Install dependencies
@@ -51,4 +53,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Start command
 CMD ["npm", "run", "start"]
-
