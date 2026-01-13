@@ -14,6 +14,9 @@ COPY . .
 # Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
 RUN npm install --legacy-peer-deps
 
+# Explicitly install OpenZeppelin contracts to ensure they're present
+RUN npm install --save-dev @openzeppelin/contracts@5.4.0 --legacy-peer-deps
+
 # Compile Solidity contracts
 RUN npx hardhat compile
 
