@@ -1,9 +1,10 @@
 # Build stage
+# Cache-bust: indexer package.json updated with correct script path
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files (cache-bust: fixed generate:indexer script)
 COPY package*.json ./
 
 # Install dependencies
