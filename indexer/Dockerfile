@@ -14,12 +14,6 @@ COPY . .
 # Install dependencies with no cache to force fresh install
 RUN npm install --legacy-peer-deps --no-cache --prefer-offline=false
 
-# Manually download and extract OpenZeppelin contracts
-RUN mkdir -p node_modules/@openzeppelin/contracts && \
-    cd node_modules/@openzeppelin/contracts && \
-    curl -sL https://codeload.github.com/OpenZeppelin/openzeppelin-contracts/tar.gz/v5.4.0 | tar xz --strip-components=1 openzeppelin-contracts/contracts && \
-    ls -la security/
-
 # Debug: Verify OpenZeppelin contracts
 RUN ls -la node_modules/@openzeppelin/contracts/security/ || echo "security folder not found"
 
