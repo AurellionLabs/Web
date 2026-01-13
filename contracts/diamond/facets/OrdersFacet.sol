@@ -22,7 +22,7 @@ contract OrdersFacet is Initializable {
         bytes32 indexed orderHash,
         string status
     );
-    event OrderCancelled(
+    event AusysOrderCancelled(
         bytes32 indexed orderHash,
         address indexed buyer
     );
@@ -82,7 +82,7 @@ contract OrdersFacet is Initializable {
         );
 
         s.orders[_orderHash].status = 'CANCELLED';
-        emit OrderCancelled(_orderHash, msg.sender);
+        emit AusysOrderCancelled(_orderHash, msg.sender);
     }
 
     function getOrder(bytes32 _orderHash)

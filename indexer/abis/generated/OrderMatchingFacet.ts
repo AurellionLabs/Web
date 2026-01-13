@@ -1,5 +1,5 @@
 // Auto-generated from OrderMatchingFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T12:02:25.453Z
+// Generated at: 2026-01-13T14:14:28.780Z
 
 export const OrderMatchingFacetABI = [
   {
@@ -30,7 +30,7 @@ export const OrderMatchingFacetABI = [
         type: 'uint8',
       },
     ],
-    name: 'OrderCancelled',
+    name: 'MatchingOrderCancelled',
     type: 'event',
   },
   {
@@ -252,9 +252,9 @@ export const OrderMatchingFacetABI = [
 
 export const OrderMatchingFacetEvents = [
   {
-    name: 'OrderCancelled',
-    signature: 'OrderCancelled(bytes32,address,uint256,uint8)',
-    signatureHash: '0xa8d0580e',
+    name: 'MatchingOrderCancelled',
+    signature: 'MatchingOrderCancelled(bytes32,address,uint256,uint8)',
+    signatureHash: '0x6f7d737d',
   },
   {
     name: 'OrderFilled',

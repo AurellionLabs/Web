@@ -1,5 +1,5 @@
 // Auto-generated from OrderRouterFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T12:02:25.454Z
+// Generated at: 2026-01-13T14:14:28.781Z
 
 export const OrderRouterFacetABI = [
   {
@@ -70,7 +70,7 @@ export const OrderRouterFacetABI = [
         type: 'uint8',
       },
     ],
-    name: 'OrderCancelled',
+    name: 'CLOBOrderCancelled',
     type: 'event',
   },
   {
@@ -676,9 +676,9 @@ export const OrderRouterFacetABI = [
 
 export const OrderRouterFacetEvents = [
   {
-    name: 'OrderCancelled',
-    signature: 'OrderCancelled(bytes32,address,uint256,uint8)',
-    signatureHash: '0xa8d0580e',
+    name: 'CLOBOrderCancelled',
+    signature: 'CLOBOrderCancelled(bytes32,address,uint256,uint8)',
+    signatureHash: '0x8b4753f7',
   },
   {
     name: 'OrderCreated',

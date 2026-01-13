@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-01-13T12:02:25.455Z
+// Generated at: 2026-01-13T14:14:28.782Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -453,6 +453,37 @@ export const DiamondABI = [
       {
         indexed: true,
         internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'remainingAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'reason',
+        type: 'uint8',
+      },
+    ],
+    name: 'CLOBOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
         name: 'marketId',
         type: 'bytes32',
       },
@@ -476,37 +507,6 @@ export const DiamondABI = [
       },
     ],
     name: 'MarketCreated',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'remainingAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint8',
-        name: 'reason',
-        type: 'uint8',
-      },
-    ],
-    name: 'OrderCancelled',
     type: 'event',
   },
   {
@@ -790,6 +790,37 @@ export const DiamondABI = [
       {
         indexed: true,
         internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'remainingAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'reason',
+        type: 'uint8',
+      },
+    ],
+    name: 'MatchingOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
         name: 'tradeId',
         type: 'bytes32',
       },
@@ -882,6 +913,25 @@ export const DiamondABI = [
     inputs: [
       {
         indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'previousStatus',
+        type: 'uint8',
+      },
+    ],
+    name: 'BridgeOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
         internalType: 'address',
         name: 'oldRecipient',
         type: 'address',
@@ -956,25 +1006,6 @@ export const DiamondABI = [
       },
     ],
     name: 'LogisticsOrderCreated',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'unifiedOrderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint8',
-        name: 'previousStatus',
-        type: 'uint8',
-      },
-    ],
-    name: 'OrderCancelled',
     type: 'event',
   },
   {
@@ -2705,9 +2736,14 @@ export const DiamondABI = [
     name: 'placeMarketOrder',
     outputs: [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
+        internalType: 'uint96',
+        name: 'filledAmount',
+        type: 'uint96',
+      },
+      {
+        internalType: 'uint256',
+        name: 'avgPrice',
+        type: 'uint256',
       },
     ],
     stateMutability: 'nonpayable',
@@ -4149,15 +4185,15 @@ export const EventSignatureRegistry = {
     facet: 'NodesFacet',
     signature: 'UpdateStatus(bytes1,bytes32)',
   },
+  '0x8b4753f7': {
+    name: 'CLOBOrderCancelled',
+    facet: 'CLOBFacetV2',
+    signature: 'CLOBOrderCancelled(bytes32,address,uint256,uint8)',
+  },
   '0xb59e4751': {
     name: 'MarketCreated',
     facet: 'CLOBFacetV2',
     signature: 'MarketCreated(bytes32,address,uint256,address)',
-  },
-  '0xa8d0580e': {
-    name: 'OrderCancelled',
-    facet: 'CLOBFacetV2',
-    signature: 'OrderCancelled(bytes32,address,uint256,uint8)',
   },
   '0x43fe20c0': {
     name: 'OrderCreated',
@@ -4187,6 +4223,11 @@ export const EventSignatureRegistry = {
     signature:
       'TradeExecuted(bytes32,bytes32,bytes32,address,address,bytes32,uint256,uint256,uint256,uint256,uint256,uint256,bool)',
   },
+  '0x6f7d737d': {
+    name: 'MatchingOrderCancelled',
+    facet: 'OrderMatchingFacet',
+    signature: 'MatchingOrderCancelled(bytes32,address,uint256,uint8)',
+  },
   '0x4692eb38': {
     name: 'TradeExecuted',
     facet: 'OrderMatchingFacet',
@@ -4201,6 +4242,11 @@ export const EventSignatureRegistry = {
     name: 'BountyPaid',
     facet: 'BridgeFacet',
     signature: 'BountyPaid(bytes32,uint256)',
+  },
+  '0xfb630ff8': {
+    name: 'BridgeOrderCancelled',
+    facet: 'BridgeFacet',
+    signature: 'BridgeOrderCancelled(bytes32,uint8)',
   },
   '0xaaebcf1b': {
     name: 'FeeRecipientUpdated',
@@ -4217,11 +4263,6 @@ export const EventSignatureRegistry = {
     facet: 'BridgeFacet',
     signature:
       'LogisticsOrderCreated(bytes32,bytes32,bytes32[],uint256,address)',
-  },
-  '0xe3bb8b6a': {
-    name: 'OrderCancelled',
-    facet: 'BridgeFacet',
-    signature: 'OrderCancelled(bytes32,uint8)',
   },
   '0xe72627b4': {
     name: 'OrderSettled',

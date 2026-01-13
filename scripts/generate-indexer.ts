@@ -507,8 +507,10 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
       const camelTable = snakeToCamel(tableName);
 
-      // Use just the event name for Ponder.on
-      const eventKey = `Diamond:${event.name}`;
+      // Use full event signature if this event has duplicates with different signatures
+      const eventKey = event.fullSignature
+        ? `Diamond:${event.fullSignature}`
+        : `Diamond:${event.name}`;
 
       content += `/**
  * Handle ${event.name} event from ${facetName}
@@ -554,21 +556,28 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
   ]);
 
   // Track events by name to avoid duplicates (Ponder matches by name only)
-  const processedEventNames = new Set<string>();
+  // But if same name has different signatures, we need to use full signature
+  const processedEventNames = new Map<string, EventInfo>(); // name -> first event
   const eventsByDomain = new Map<string, EventInfo[]>();
 
   for (const [facetName, config] of facets.entries()) {
     const facet = facets.get(facetName)!;
 
     for (const event of facet.events) {
-      // Skip if already processed by name (Ponder matches by name only)
-      if (processedEventNames.has(event.name)) continue;
+      // Check if we've seen this event name before
+      const existing = processedEventNames.get(event.name);
+
+      if (existing) {
+        // Same name, different signature - use full signature for both
+        existing.fullSignature = existing.signature;
+        event.fullSignature = event.signature;
+      } else {
+        // First time seeing this event name
+        processedEventNames.set(event.name, event);
+      }
 
       // Skip common skip events
       if (skipEvents.has(event.name)) continue;
-
-      // Mark as processed
-      processedEventNames.add(event.name);
 
       // Add to domain
       if (!eventsByDomain.has(config.domain)) {

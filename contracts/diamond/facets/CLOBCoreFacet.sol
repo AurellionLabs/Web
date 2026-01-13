@@ -32,7 +32,7 @@ contract CLOBCoreFacet is ReentrancyGuard {
         uint256 nonce
     );
     
-    event OrderCancelled(
+    event CLOBOrderCancelled(
         bytes32 indexed orderId,
         address indexed maker,
         uint256 remainingAmount,
@@ -398,7 +398,7 @@ contract CLOBCoreFacet is ReentrancyGuard {
             emit OrderExpired(orderId, block.timestamp);
         }
         
-        emit OrderCancelled(orderId, maker, remaining, reason);
+        emit CLOBOrderCancelled(orderId, maker, remaining, reason);
     }
     
     function _removeFromOrderBook(bytes32 orderId) internal {

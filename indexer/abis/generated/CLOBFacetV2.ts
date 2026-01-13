@@ -1,5 +1,5 @@
 // Auto-generated from CLOBFacetV2.sol - DO NOT EDIT
-// Generated at: 2026-01-13T12:02:25.453Z
+// Generated at: 2026-01-13T14:14:28.780Z
 
 export const CLOBFacetV2ABI = [
   {
@@ -63,6 +63,37 @@ export const CLOBFacetV2ABI = [
       {
         indexed: true,
         internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'remainingAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'reason',
+        type: 'uint8',
+      },
+    ],
+    name: 'CLOBOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
         name: 'marketId',
         type: 'bytes32',
       },
@@ -86,37 +117,6 @@ export const CLOBFacetV2ABI = [
       },
     ],
     name: 'MarketCreated',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'remainingAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint8',
-        name: 'reason',
-        type: 'uint8',
-      },
-    ],
-    name: 'OrderCancelled',
     type: 'event',
   },
   {
@@ -621,9 +621,14 @@ export const CLOBFacetV2ABI = [
     name: 'placeMarketOrder',
     outputs: [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
+        internalType: 'uint96',
+        name: 'filledAmount',
+        type: 'uint96',
+      },
+      {
+        internalType: 'uint256',
+        name: 'avgPrice',
+        type: 'uint256',
       },
     ],
     stateMutability: 'nonpayable',
@@ -687,14 +692,14 @@ export const CLOBFacetV2ABI = [
 
 export const CLOBFacetV2Events = [
   {
+    name: 'CLOBOrderCancelled',
+    signature: 'CLOBOrderCancelled(bytes32,address,uint256,uint8)',
+    signatureHash: '0x8b4753f7',
+  },
+  {
     name: 'MarketCreated',
     signature: 'MarketCreated(bytes32,address,uint256,address)',
     signatureHash: '0xb59e4751',
-  },
-  {
-    name: 'OrderCancelled',
-    signature: 'OrderCancelled(bytes32,address,uint256,uint8)',
-    signatureHash: '0xa8d0580e',
   },
   {
     name: 'OrderCreated',

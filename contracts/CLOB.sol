@@ -137,7 +137,7 @@ contract CLOB is ReentrancyGuard, ERC1155Holder, Ownable, Pausable {
         uint256 quoteAmount
     );
 
-    event OrderCancelled(
+    event CLOBOrderCancelled(
         bytes32 indexed orderId,
         address indexed maker,
         uint256 remainingAmount
@@ -800,7 +800,7 @@ contract CLOB is ReentrancyGuard, ERC1155Holder, Ownable, Pausable {
             }
         }
 
-        emit OrderCancelled(orderId, order.maker, remainingAmount);
+        emit CLOBOrderCancelled(orderId, order.maker, remainingAmount);
         emit OrderUpdated(orderId, OrderStatus.Cancelled, order.filledAmount, 0);
     }
 

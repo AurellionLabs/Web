@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-01-13T12:02:25.463Z
+// Generated at: 2026-01-13T14:14:28.789Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: BridgeFacet
@@ -8,6 +8,7 @@ import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
 import { bountyPaid_8e7bEvents } from '../../generated-schema';
+import { bridgeOrderCancelledFb63Events } from '../../generated-schema';
 import { feeRecipientUpdatedAaebEvents } from '../../generated-schema';
 import { journeyStatusUpdatedF7daEvents } from '../../generated-schema';
 import { logisticsOrderCreated_9c83Events } from '../../generated-schema';
@@ -43,24 +44,47 @@ ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
 });
 
 /**
- * Handle FeeRecipientUpdated event from BridgeFacet
- * Signature: FeeRecipientUpdated(address,address)
- * Hash: 0xaaebcf1b
+ * Handle BridgeOrderCancelled event from BridgeFacet
+ * Signature: BridgeOrderCancelled(bytes32,uint8)
+ * Hash: 0xfb630ff8
  */
-ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
-  const { oldRecipient, newRecipient } = event.args;
+ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
+  const { unifiedOrderId, previousStatus } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Insert raw event into event table
-  await context.db.insert(feeRecipientUpdatedAaebEvents).values({
+  await context.db.insert(bridgeOrderCancelledFb63Events).values({
     id,
-    old_recipient: oldRecipient,
-    new_recipient: newRecipient,
+    unified_order_id: unifiedOrderId,
+    previous_status: previousStatus,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
 });
+
+/**
+ * Handle FeeRecipientUpdated event from BridgeFacet
+ * Signature: FeeRecipientUpdated(address,address)
+ * Hash: 0xaaebcf1b
+ */
+ponder.on(
+  'Diamond:FeeRecipientUpdated(address,address)',
+  async ({ event, context }) => {
+    const { oldRecipient, newRecipient } = event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
+
+    // Insert raw event into event table
+    await context.db.insert(feeRecipientUpdatedAaebEvents).values({
+      id,
+      old_recipient: oldRecipient,
+      new_recipient: newRecipient,
+      block_number: event.block.number,
+      block_timestamp: BigInt(event.block.timestamp),
+      transaction_hash: event.transaction.hash,
+    });
+  },
+);
 
 /**
  * Handle JourneyStatusUpdated event from BridgeFacet

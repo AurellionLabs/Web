@@ -1,5 +1,5 @@
 // Auto-generated handler for clob-admin domain - Raw event storage only
-// Generated at: 2026-01-13T12:02:25.464Z
+// Generated at: 2026-01-13T14:14:28.790Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBAdminFacet
@@ -14,6 +14,7 @@ import { emergencyActionCancelled_248bEvents } from '../../generated-schema';
 import { emergencyActionExecuted_4579Events } from '../../generated-schema';
 import { emergencyActionInitiatedCa04Events } from '../../generated-schema';
 import { emergencyWithdrawalC0f6Events } from '../../generated-schema';
+import { feeRecipientUpdatedAaebEvents } from '../../generated-schema';
 import { feesUpdatedB3efEvents } from '../../generated-schema';
 import { globalPauseA5feEvents } from '../../generated-schema';
 import { mEVProtectionUpdated_096cEvents } from '../../generated-schema';
@@ -189,6 +190,29 @@ ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+
+/**
+ * Handle FeeRecipientUpdated event from CLOBAdminFacet
+ * Signature: FeeRecipientUpdated(address,address)
+ * Hash: 0xaaebcf1b
+ */
+ponder.on(
+  'Diamond:FeeRecipientUpdated(address,address)',
+  async ({ event, context }) => {
+    const { oldRecipient, newRecipient } = event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
+
+    // Insert raw event into event table
+    await context.db.insert(feeRecipientUpdatedAaebEvents).values({
+      id,
+      old_recipient: oldRecipient,
+      new_recipient: newRecipient,
+      block_number: event.block.number,
+      block_timestamp: BigInt(event.block.timestamp),
+      transaction_hash: event.transaction.hash,
+    });
+  },
+);
 
 /**
  * Handle FeesUpdated event from CLOBAdminFacet

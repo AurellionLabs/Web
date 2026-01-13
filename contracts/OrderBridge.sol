@@ -160,7 +160,7 @@ contract OrderBridge is Ownable, ReentrancyGuard {
         uint256 driverAmount
     );
 
-    event OrderCancelled(
+    event BridgeOrderCancelled(
         bytes32 indexed unifiedOrderId,
         uint8 previousStatus,
         uint256 refundedAmount
@@ -286,7 +286,7 @@ contract OrderBridge is Ownable, ReentrancyGuard {
 
         if (previousStatus == UnifiedOrderStatus.PendingTrade) {
             order.status = UnifiedOrderStatus.Cancelled;
-            emit OrderCancelled(unifiedOrderId, uint8(previousStatus), 0);
+            emit BridgeOrderCancelled(unifiedOrderId, uint8(previousStatus), 0);
         } else {
             revert OrderNotOpen();
         }
