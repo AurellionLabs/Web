@@ -400,9 +400,8 @@ describe('Generated ABI Verification', () => {
     const indexPath = path.join(generatedDir, 'index.ts');
     const content = fs.readFileSync(indexPath, 'utf8');
 
-    expect(content).toContain('CLOBFacetV2ABI');
+    // Only NodesFacet is used in the simplified indexer
     expect(content).toContain('NodesFacetABI');
-    expect(content).toContain('OrderMatchingFacetABI');
   });
 });
 

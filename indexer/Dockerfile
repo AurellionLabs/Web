@@ -29,6 +29,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/ponder.config.ts ./
 COPY --from=builder /app/ponder.schema.ts ./
+COPY --from=builder /app/generated-schema.ts ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/abis ./abis

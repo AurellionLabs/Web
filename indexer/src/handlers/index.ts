@@ -1,5 +1,5 @@
 // Auto-generated handler index - DO NOT EDIT
-// Generated at: 2026-01-13T01:14:57.601Z
+// Generated at: 2026-01-13T11:36:16.814Z
 
 import './nodes.generated';
 

@@ -466,9 +466,12 @@ import { ponder } from '@/generated';
 // Import event tables (auto-generated from ABI)
 `;
 
+  // Generate import statements for event tables
   for (const [facetName, facetEvents] of eventsByFacet) {
     for (const event of facetEvents) {
-      const tableName = camelToSnake(event.name);
+      // Table names have hash suffix to handle duplicate event names
+      const shortHash = event.signatureHash.slice(2, 6);
+      const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
       content += `import { ${snakeToCamel(tableName)} } from '../../generated-schema';\n`;
     }
   }
@@ -493,7 +496,9 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
         .join(', ');
 
       const destructure = event.inputs.map((i) => i.name).join(', ');
-      const tableName = camelToSnake(event.name);
+      // Table names have hash suffix to handle duplicate event names
+      const shortHash = event.signatureHash.slice(2, 6);
+      const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
       const camelTable = snakeToCamel(tableName);
 
       // Use just the event name for Ponder.on (Ponder matches by name)
