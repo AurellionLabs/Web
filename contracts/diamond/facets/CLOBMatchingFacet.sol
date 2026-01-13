@@ -53,7 +53,7 @@ contract CLOBMatchingFacet is ReentrancyGuard {
         uint256 spread
     );
     
-    event OrderCancelled(
+    event CLOBOrderCancelled(
         bytes32 indexed orderId,
         address indexed maker,
         uint256 remainingAmount,
@@ -443,7 +443,7 @@ contract CLOBMatchingFacet is ReentrancyGuard {
             emit OrderExpired(orderId, block.timestamp);
         }
         
-        emit OrderCancelled(orderId, maker, remaining, reason);
+        emit CLOBOrderCancelled(orderId, maker, remaining, reason);
     }
     
     function _emitMarketDepth(bytes32 marketId) internal {

@@ -54,7 +54,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
         uint256 cumulativeFilled
     );
     
-    event OrderCancelled(
+    event CLOBOrderCancelled(
         bytes32 indexed orderId,
         address indexed maker,
         uint256 remainingAmount,
@@ -205,12 +205,16 @@ contract CLOBFacetV2 is ReentrancyGuard {
     
     /**
      * @notice Place a market order
+     * @dev Executes immediately at best available prices. Market orders are IOC.
+     *      Fills as much as possible at current best prices, remaining is cancelled.
      * @param baseToken Base token address
      * @param baseTokenId Token ID
      * @param quoteToken Quote token address
      * @param amount Amount to trade
      * @param isBuy True for buy
-     * @param maxSlippageBps Maximum slippage in basis points
+     * @param maxSlippageBps Maximum slippage in basis points (0 = no protection)
+     * @return filledAmount Total amount filled
+     * @return avgPrice Average execution price
      */
     function placeMarketOrder(
         address baseToken,
@@ -219,25 +223,147 @@ contract CLOBFacetV2 is ReentrancyGuard {
         uint96 amount,
         bool isBuy,
         uint256 maxSlippageBps
-    ) external nonReentrant whenNotPaused checkRateLimit returns (bytes32 orderId) {
+    ) external nonReentrant whenNotPaused checkRateLimit returns (uint96 filledAmount, uint256 avgPrice) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         bytes32 marketId = keccak256(abi.encodePacked(baseToken, baseTokenId, quoteToken));
+
+        // Ensure market exists
+        if (!s.markets[marketId].active) revert InvalidPrice();
+
+        // Get reference price for slippage protection
         uint256 refPrice = _getMarketPrice(marketId, isBuy);
         if (refPrice == 0) revert InvalidPrice();
+
+        // Calculate worst acceptable price with slippage protection
+        uint256 worstPrice = maxSlippageBps > 0
+            ? (isBuy
+                ? (refPrice * (BASIS_POINTS + maxSlippageBps)) / BASIS_POINTS
+                : (refPrice * (BASIS_POINTS - maxSlippageBps)) / BASIS_POINTS)
+            : (isBuy ? type(uint256).max : 0);
+
+        // Create market order ID and packed order
+        bytes32 marketOrderId = keccak256(abi.encodePacked(msg.sender, marketId, block.timestamp, s.orderNonce++));
         
-        uint96 limitPrice = isBuy 
-            ? uint96((refPrice * (BASIS_POINTS + maxSlippageBps)) / BASIS_POINTS)
-            : uint96((refPrice * (BASIS_POINTS - maxSlippageBps)) / BASIS_POINTS);
-        
-        orderId = _placeOrder(
-            baseToken,
-            baseTokenId,
-            quoteToken,
-            limitPrice,
-            amount,
-            isBuy,
-            CLOBLib.TIF_IOC,
-            0
-        );
+        // Pack order data directly
+        s.packedOrders[marketOrderId] = DiamondStorage.PackedOrder({
+            makerAndFlags: CLOBLib.packMakerAndFlags(msg.sender, isBuy, CLOBLib.TYPE_MARKET, CLOBLib.STATUS_OPEN, CLOBLib.TIF_IOC, uint88(s.orderNonce)),
+            priceAmountFilled: CLOBLib.packPriceAmountFilled(0, amount, 0),
+            expiryAndMeta: CLOBLib.packExpiryAndMeta(uint40(block.timestamp), uint40(block.timestamp), uint32(s.totalMarkets)),
+            marketId: marketId
+        });
+
+        // Execute matching - get total quote amount in price field
+        filledAmount = _executeMarketOrder(marketOrderId, marketId, baseToken, baseTokenId, quoteToken, isBuy, worstPrice);
+
+        // Calculate average price from stored values
+        if (filledAmount > 0) {
+            DiamondStorage.PackedOrder storage mo = s.packedOrders[marketOrderId];
+            uint256 totalQuote = CLOBLib.unpackPrice(mo.priceAmountFilled);
+            avgPrice = totalQuote / filledAmount;
+        }
+
+        // Clean up
+        delete s.packedOrders[marketOrderId];
+    }
+
+    /**
+     * @notice Execute market order against order book
+     */
+    function _executeMarketOrder(
+        bytes32 marketOrderId,
+        bytes32 marketId,
+        address baseToken,
+        uint256 baseTokenId,
+        address quoteToken,
+        bool isBuy,
+        uint256 worstPrice
+    ) internal returns (uint96 filledAmount) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.PackedOrder storage marketOrder = s.packedOrders[marketOrderId];
+
+        // Get opposite side tree
+        DiamondStorage.RBTreeMeta storage oppositeMeta = isBuy ? s.askTreeMeta[marketId] : s.bidTreeMeta[marketId];
+        mapping(uint256 => DiamondStorage.RBNode) storage oppositeNodes = isBuy ? s.askTreeNodes[marketId] : s.bidTreeNodes[marketId];
+
+        // Get best price
+        uint256 currentPrice = _getBestPrice(oppositeMeta, oppositeNodes, isBuy);
+        uint256 totalFilled;
+        uint256 totalQuote;
+
+        // Match against price levels
+        while (currentPrice != 0) {
+            // Check price limit
+            if (isBuy && currentPrice > worstPrice) break;
+            if (!isBuy && currentPrice < worstPrice) break;
+
+            // Get level info
+            mapping(uint256 => DiamondStorage.PriceLevel) storage levels = isBuy ? s.askLevels[marketId] : s.bidLevels[marketId];
+            DiamondStorage.PriceLevel storage level = levels[currentPrice];
+            bytes32 makerOrderId = level.head;
+
+            // Match against orders at this price
+            while (makerOrderId != bytes32(0)) {
+                DiamondStorage.PackedOrder storage makerOrder = s.packedOrders[makerOrderId];
+                uint96 remaining = CLOBLib.getRemainingAmount(marketOrder.priceAmountFilled);
+                if (remaining == 0) break;
+
+                // Check maker status
+                uint8 makerStatus = CLOBLib.unpackStatus(makerOrder.makerAndFlags);
+                if (makerStatus != CLOBLib.STATUS_OPEN && makerStatus != CLOBLib.STATUS_PARTIAL) {
+                    makerOrderId = s.orderQueue[makerOrderId].next;
+                    continue;
+                }
+
+                // Check expiry
+                if (CLOBLib.isExpired(makerOrder.expiryAndMeta)) {
+                    bytes32 nextOrder = s.orderQueue[makerOrderId].next;
+                    _cancelOrderInternal(makerOrderId, 1);
+                    makerOrderId = nextOrder;
+                    continue;
+                }
+
+                uint96 makerRemaining = CLOBLib.getRemainingAmount(makerOrder.priceAmountFilled);
+                uint96 fillAmount = remaining < makerRemaining ? remaining : makerRemaining;
+
+                if (fillAmount > 0) {
+                    _executeTrade(marketOrderId, makerOrderId, fillAmount, uint96(currentPrice), baseToken, baseTokenId, quoteToken, isBuy);
+                    totalFilled += fillAmount;
+                    totalQuote += CLOBLib.calculateQuoteAmount(uint96(currentPrice), fillAmount);
+                }
+
+                makerOrderId = s.orderQueue[makerOrderId].next;
+            }
+
+            if (totalFilled >= CLOBLib.unpackAmount(marketOrder.priceAmountFilled)) break;
+
+            // Get next price
+            currentPrice = _getNextPrice(oppositeNodes, currentPrice, isBuy);
+            if (currentPrice == 0) break;
+        }
+
+        // Store results
+        if (totalFilled > 0) {
+            marketOrder.priceAmountFilled = CLOBLib.updateFilledAmount(marketOrder.priceAmountFilled, uint64(totalFilled));
+            s.packedOrders[marketOrderId].priceAmountFilled = CLOBLib.packPriceAmountFilled(uint96(totalQuote), CLOBLib.unpackAmount(marketOrder.priceAmountFilled), uint64(totalFilled));
+        }
+
+        return uint96(totalFilled);
+    }
+
+    /**
+     * @notice Get total value executed by market order
+     */
+    function _getMarketOrderValue(
+        bytes32 marketOrderId,
+        bytes32 /* marketId */,
+        bool /* isBuy */
+    ) internal view returns (uint256 totalValue) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.PackedOrder storage marketOrder = s.packedOrders[marketOrderId];
+
+        // The priceAmountFilled stores totalQuoteAmount in the price field after execution
+        uint256 totalQuoteAmount = CLOBLib.unpackPrice(marketOrder.priceAmountFilled);
+        return totalQuoteAmount;
     }
     
     /**
@@ -883,7 +1009,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
             emit OrderExpired(orderId, block.timestamp);
         }
         
-        emit OrderCancelled(orderId, maker, remaining, reason);
+        emit CLOBOrderCancelled(orderId, maker, remaining, reason);
     }
     
     // ============================================================================

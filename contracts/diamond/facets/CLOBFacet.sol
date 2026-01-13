@@ -84,7 +84,7 @@ contract CLOBFacet is Initializable {
         uint256 fillPrice,
         uint256 quoteAmount
     );
-    event OrderCancelled(
+    event CLOBOrderCancelled(
         bytes32 indexed orderId,
         address indexed maker,
         uint256 remainingAmount
@@ -466,7 +466,7 @@ contract CLOBFacet is Initializable {
         s.clobOrders[_orderId].updatedAt = block.timestamp;
 
         uint256 remaining = s.clobOrders[_orderId].amount - s.clobOrders[_orderId].filledAmount;
-        emit OrderCancelled(_orderId, msg.sender, remaining);
+        emit CLOBOrderCancelled(_orderId, msg.sender, remaining);
     }
 
     function createPool(
@@ -869,7 +869,7 @@ contract CLOBFacet is Initializable {
         
         // If sell order, tokens stay in Diamond (node owner can withdraw via NodesFacet)
         
-        emit OrderCancelled(_orderId, msg.sender, remaining);
+        emit CLOBOrderCancelled(_orderId, msg.sender, remaining);
     }
 
     // ==========================================================================

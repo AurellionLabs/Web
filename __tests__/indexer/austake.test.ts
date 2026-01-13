@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock database
+// Mock database - Only event tables, no derived stats tables
 const mockDb = {
   operations: {
     create: vi.fn(),
@@ -12,21 +12,12 @@ const mockDb = {
     update: vi.fn(),
     findUnique: vi.fn(),
   },
+  // Event tables only
   operationCreatedEvents: { create: vi.fn() },
   stakedEvents: { create: vi.fn() },
   unstakedEvents: { create: vi.fn() },
   rewardPaidEvents: { create: vi.fn() },
   adminStatusChangedEvents: { create: vi.fn() },
-  userStakeStats: {
-    create: vi.fn(),
-    update: vi.fn(),
-    findUnique: vi.fn(),
-  },
-  tokenStakeStats: {
-    create: vi.fn(),
-    update: vi.fn(),
-    findUnique: vi.fn(),
-  },
 };
 
 const mockClient = {
@@ -51,7 +42,7 @@ function createMockEvent(args: any, overrides: Partial<any> = {}) {
   };
 }
 
-describe('AuStake Event Handlers', () => {
+describe('AuStake Event Handlers (Event-Only Storage)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -77,13 +68,13 @@ describe('AuStake Event Handlers', () => {
         assetPrice: 100000000n, // 100 USDT
       });
 
-      mockDb.tokenStakeStats.findUnique.mockResolvedValueOnce(null);
-
       const event = createMockEvent({
         operationId,
         name,
         token,
       });
+
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
       await mockDb.operations.create({
         id: operationId,
@@ -106,8 +97,8 @@ describe('AuStake Event Handlers', () => {
       });
 
       await mockDb.operationCreatedEvents.create({
-        id: `${event.transaction.hash}-${event.log.logIndex}`,
-        operationId,
+        id: eventId,
+        opCreatedOperationId: operationId,
         name,
         token,
         blockNumber: event.block.number,
@@ -122,6 +113,13 @@ describe('AuStake Event Handlers', () => {
           reward: 500n,
         }),
       );
+
+      expect(mockDb.operationCreatedEvents.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          opCreatedOperationId: operationId,
+          name,
+        }),
+      );
     });
 
     it('should handle contract call failure', async () => {
@@ -130,9 +128,9 @@ describe('AuStake Event Handlers', () => {
       const token = '0xeeee' as `0x${string}`;
 
       mockClient.readContract.mockRejectedValueOnce(new Error('RPC error'));
-      mockDb.tokenStakeStats.findUnique.mockResolvedValueOnce(null);
 
       const event = createMockEvent({ operationId, name, token });
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
 
       await mockDb.operations.create({
         id: operationId,
@@ -154,12 +152,23 @@ describe('AuStake Event Handlers', () => {
         transactionHash: event.transaction.hash,
       });
 
+      await mockDb.operationCreatedEvents.create({
+        id: eventId,
+        opCreatedOperationId: operationId,
+        name,
+        token,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      });
+
       expect(mockDb.operations.create).toHaveBeenCalled();
+      expect(mockDb.operationCreatedEvents.create).toHaveBeenCalled();
     });
   });
 
   describe('Staked', () => {
-    it('should create stake and update all stats', async () => {
+    it('should create stake and staked event', async () => {
       const token =
         '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as `0x${string}`;
       const user =
@@ -176,8 +185,6 @@ describe('AuStake Event Handlers', () => {
         id: operationId,
         tokenTvl: 0n,
       });
-      mockDb.userStakeStats.findUnique.mockResolvedValueOnce(null);
-      mockDb.tokenStakeStats.findUnique.mockResolvedValueOnce(null);
 
       const event = createMockEvent({
         token,
@@ -188,13 +195,15 @@ describe('AuStake Event Handlers', () => {
         time,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
       // Create staked event
       await mockDb.stakedEvents.create({
-        id: `${event.transaction.hash}-${event.log.logIndex}`,
+        id: eventId,
         token,
         user,
         amount,
-        operationId,
+        stakedOperationId: operationId,
         eType: 'deposit',
         time,
         blockNumber: event.block.number,
@@ -205,7 +214,7 @@ describe('AuStake Event Handlers', () => {
       // Create stake
       await mockDb.stakes.create({
         id: stakeId,
-        operationId,
+        stakeOperationId: operationId,
         user,
         token,
         amount,
@@ -217,50 +226,19 @@ describe('AuStake Event Handlers', () => {
         transactionHash: event.transaction.hash,
       });
 
-      // Update operation TVL
-      await mockDb.operations.update({
-        id: operationId,
-        data: {
-          tokenTvl: amount,
-          updatedAt: event.block.timestamp,
-        },
-      });
-
-      // Create user stake stats
-      await mockDb.userStakeStats.create({
-        id: user,
-        user,
-        totalStaked: amount,
-        totalRewarded: 0n,
-        activeStakes: 1n,
-        operationsCount: 1n,
-        firstStakeAt: event.block.timestamp,
-        lastActiveAt: event.block.timestamp,
-        updatedAt: event.block.timestamp,
-      });
-
-      // Create token stake stats
-      await mockDb.tokenStakeStats.create({
-        id: token,
-        token,
-        totalTvl: amount,
-        totalStakers: 1n,
-        totalOperations: 0n,
-        averageReward: 0n,
-        updatedAt: event.block.timestamp,
-      });
+      expect(mockDb.stakedEvents.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: eventId,
+          amount,
+          stakedOperationId: operationId,
+        }),
+      );
 
       expect(mockDb.stakes.create).toHaveBeenCalledWith(
         expect.objectContaining({
           id: stakeId,
           amount,
           isActive: true,
-        }),
-      );
-
-      expect(mockDb.operations.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ tokenTvl: amount }),
         }),
       );
     });
@@ -287,6 +265,23 @@ describe('AuStake Event Handlers', () => {
         time: 1704067200n,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+      // Create staked event
+      await mockDb.stakedEvents.create({
+        id: eventId,
+        token: '0xeeee' as `0x${string}`,
+        user,
+        amount: newAmount,
+        stakedOperationId: operationId,
+        eType: 'deposit',
+        time: 1704067200n,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      });
+
+      // Update stake
       await mockDb.stakes.update({
         id: stakeId,
         data: {
@@ -310,7 +305,7 @@ describe('AuStake Event Handlers', () => {
   });
 
   describe('Unstaked', () => {
-    it('should reduce stake amount and update stats', async () => {
+    it('should reduce stake amount and create unstaked event', async () => {
       const user = '0xaaaa' as `0x${string}`;
       const operationId = '0x1234' as `0x${string}`;
       const existingAmount = 1000n;
@@ -326,14 +321,6 @@ describe('AuStake Event Handlers', () => {
         id: operationId,
         tokenTvl: existingAmount,
       });
-      mockDb.userStakeStats.findUnique.mockResolvedValueOnce({
-        id: user,
-        totalStaked: existingAmount,
-      });
-      mockDb.tokenStakeStats.findUnique.mockResolvedValueOnce({
-        id: '0xeeee',
-        totalTvl: existingAmount,
-      });
 
       const event = createMockEvent({
         token: '0xeeee' as `0x${string}`,
@@ -342,6 +329,22 @@ describe('AuStake Event Handlers', () => {
         operationId,
         eType: 'withdraw',
         time: 1704067200n,
+      });
+
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+      // Create unstaked event
+      await mockDb.unstakedEvents.create({
+        id: eventId,
+        token: '0xeeee' as `0x${string}`,
+        user,
+        amount: unstakeAmount,
+        unstakedOperationId: operationId,
+        eType: 'withdraw',
+        time: 1704067200n,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
       });
 
       // Update stake
@@ -356,6 +359,12 @@ describe('AuStake Event Handlers', () => {
           transactionHash: event.transaction.hash,
         },
       });
+
+      expect(mockDb.unstakedEvents.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 400n,
+        }),
+      );
 
       expect(mockDb.stakes.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -388,6 +397,23 @@ describe('AuStake Event Handlers', () => {
         time: 1704067200n,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
+      // Create unstaked event
+      await mockDb.unstakedEvents.create({
+        id: eventId,
+        token: '0xeeee' as `0x${string}`,
+        user,
+        amount: existingAmount,
+        unstakedOperationId: operationId,
+        eType: 'withdraw',
+        time: 1704067200n,
+        blockNumber: event.block.number,
+        blockTimestamp: event.block.timestamp,
+        transactionHash: event.transaction.hash,
+      });
+
+      // Update stake to inactive
       await mockDb.stakes.update({
         id: stakeId,
         data: {
@@ -412,17 +438,12 @@ describe('AuStake Event Handlers', () => {
   });
 
   describe('RewardPaid', () => {
-    it('should create reward event and update user stats', async () => {
+    it('should create reward event', async () => {
       const user =
         '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as `0x${string}`;
       const operationId =
         '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as `0x${string}`;
       const amount = 50000000000000000n; // 0.05 tokens
-
-      mockDb.userStakeStats.findUnique.mockResolvedValueOnce({
-        id: user,
-        totalRewarded: 100000000000000000n,
-      });
 
       const event = createMockEvent({
         user,
@@ -430,31 +451,22 @@ describe('AuStake Event Handlers', () => {
         operationId,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
       await mockDb.rewardPaidEvents.create({
-        id: `${event.transaction.hash}-${event.log.logIndex}`,
+        id: eventId,
         user,
         amount,
-        operationId,
+        rewardOperationId: operationId,
         blockNumber: event.block.number,
         blockTimestamp: event.block.timestamp,
         transactionHash: event.transaction.hash,
       });
 
-      await mockDb.userStakeStats.update({
-        id: user,
-        data: {
-          totalRewarded: 150000000000000000n,
-          lastActiveAt: event.block.timestamp,
-          updatedAt: event.block.timestamp,
-        },
-      });
-
-      expect(mockDb.rewardPaidEvents.create).toHaveBeenCalled();
-      expect(mockDb.userStakeStats.update).toHaveBeenCalledWith(
+      expect(mockDb.rewardPaidEvents.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            totalRewarded: 150000000000000000n,
-          }),
+          user,
+          amount,
         }),
       );
     });
@@ -470,8 +482,10 @@ describe('AuStake Event Handlers', () => {
         status: true,
       });
 
+      const eventId = `${event.transaction.hash}-${event.log.logIndex}`;
+
       await mockDb.adminStatusChangedEvents.create({
-        id: `${event.transaction.hash}-${event.log.logIndex}`,
+        id: eventId,
         admin,
         status: true,
         blockNumber: event.block.number,

@@ -33,8 +33,17 @@ export interface ContractConfig {
 export interface ABIFunction {
   type: 'function';
   name: string;
-  inputs: Array<{ name: string; type: string; indexed?: boolean }>;
-  outputs: Array<{ name: string; type: string }>;
+  inputs: Array<{
+    name: string;
+    type: string;
+    indexed?: boolean;
+    components?: Array<{ name: string; type: string }>;
+  }>;
+  outputs: Array<{
+    name: string;
+    type: string;
+    components?: Array<{ name: string; type: string }>;
+  }>;
   stateMutability: 'pure' | 'view' | 'nonpayable' | 'payable';
 }
 
@@ -679,20 +688,22 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       outputs: [{ name: 'orderId', type: 'bytes32' }],
       stateMutability: 'nonpayable',
     },
-    // Limit buy order - user places buy order with specific price
-    {
-      type: 'function',
-      name: 'placeBuyOrder',
-      inputs: [
-        { name: '_baseToken', type: 'address' },
-        { name: '_baseTokenId', type: 'uint256' },
-        { name: '_quoteToken', type: 'address' },
-        { name: '_price', type: 'uint256' },
-        { name: '_amount', type: 'uint256' },
-      ],
-      outputs: [{ name: 'orderId', type: 'bytes32' }],
-      stateMutability: 'nonpayable',
-    },
+    // DEPRECATED: placeBuyOrder with uint256 - has bug where it transfers Diamond->Diamond
+    // Use OrderRouterFacet.placeBuyOrder (uint96 version) instead
+    // Kept here for reference only - DO NOT USE
+    // {
+    //   type: 'function',
+    //   name: 'placeBuyOrder',
+    //   inputs: [
+    //     { name: '_baseToken', type: 'address' },
+    //     { name: '_baseTokenId', type: 'uint256' },
+    //     { name: '_quoteToken', type: 'address' },
+    //     { name: '_price', type: 'uint256' },
+    //     { name: '_amount', type: 'uint256' },
+    //   ],
+    //   outputs: [{ name: 'orderId', type: 'bytes32' }],
+    //   stateMutability: 'nonpayable',
+    // },
     // Node sell order V2 - called by NodesFacet for node inventory sales
     // Uses tree-based order book for proper matching with V2 buy orders
     {
@@ -1522,6 +1533,7 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       stateMutability: 'nonpayable',
     },
     // Place market order with slippage protection
+    // Returns (filledAmount, avgPrice) for true market order execution
     {
       type: 'function',
       name: 'placeMarketOrder',
@@ -1533,7 +1545,10 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
         { name: 'isBuy', type: 'bool' },
         { name: 'maxSlippageBps', type: 'uint256' },
       ],
-      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      outputs: [
+        { name: 'filledAmount', type: 'uint96' },
+        { name: 'avgPrice', type: 'uint256' },
+      ],
       stateMutability: 'nonpayable',
     },
     // Node sell order V2 - called by Diamond for node inventory sales
@@ -1561,33 +1576,7 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       outputs: [],
       stateMutability: 'nonpayable',
     },
-    // ERC1155 receiver functions
-    {
-      type: 'function',
-      name: 'onERC1155Received',
-      inputs: [
-        { name: '', type: 'address' },
-        { name: '', type: 'address' },
-        { name: '', type: 'uint256' },
-        { name: '', type: 'uint256' },
-        { name: '', type: 'bytes' },
-      ],
-      outputs: [{ name: '', type: 'bytes4' }],
-      stateMutability: 'pure',
-    },
-    {
-      type: 'function',
-      name: 'onERC1155BatchReceived',
-      inputs: [
-        { name: '', type: 'address' },
-        { name: '', type: 'address' },
-        { name: '', type: 'uint256[]' },
-        { name: '', type: 'uint256[]' },
-        { name: '', type: 'bytes' },
-      ],
-      outputs: [{ name: '', type: 'bytes4' }],
-      stateMutability: 'pure',
-    },
+    // NOTE: ERC1155 receiver functions are in ERC1155ReceiverFacet, NOT here
     // Events - OrderCreated (basic event)
     {
       type: 'event',

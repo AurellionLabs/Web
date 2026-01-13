@@ -1,15 +1,24 @@
-// Export all event handlers
-// Ponder will automatically discover and register these
+/**
+ * Indexer Entry Point
+ *
+ * Imports all event handlers organized by domain.
+ * All handlers use the generated ABIs with deduplicated events.
+ *
+ * Handlers:
+ * - handlers/nodes.generated.ts: Node registration, assets, inventory
+ * - handlers/clob.generated.ts: Orders, trades, matching
+ * - handlers/bridge.generated.ts: Unified orders, settlements
+ * - handlers/staking.generated.ts: Stakes, rewards
+ * - handlers/clob-admin.generated.ts: CLOB admin functions
+ * - handlers/diamond.generated.ts: Diamond cut events
+ *
+ * @author Staff Engineer Implementation
+ */
 
-import './ausys';
-import './aurum';
-import './aurum-diamond';
-import './aura-asset';
-import './austake';
-// CLOB handlers removed - all CLOB events now come from Diamond CLOBFacet
-// See aurum-diamond.ts for Diamond:OrderPlacedWithTokens handler
-// import './clob';
-import './rwy-vault';
+import './handlers';
 
-// Export for TypeScript module resolution
+console.log(
+  '[indexer] Handlers loaded: nodes, clob, bridge, staking, aura-asset, journeys',
+);
+
 export {};

@@ -2,9 +2,11 @@
 pragma solidity ^0.8.28;
 
 import { Test, console2 } from 'forge-std/Test.sol';
-import { IDiamondCut } from '../contracts/diamond/interfaces/IDiamondCut.sol';
-import { LibDiamond } from '../contracts/diamond/libraries/LibDiamond.sol';
-import { DiamondStorage } from '../contracts/diamond/libraries/DiamondStorage.sol';
+import { Diamond } from 'contracts/diamond/Diamond.sol';
+import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
+import { IDiamondLoupe } from 'contracts/diamond/interfaces/IDiamondLoupe.sol';
+import { LibDiamond } from 'contracts/diamond/libraries/LibDiamond.sol';
+import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 
 /**
  * @title DiamondTest
@@ -599,8 +601,8 @@ contract DiamondCutFacetTest {
 }
 
 contract DiamondLoupeFacetTest {
-    function facets() external view returns (IDiamondCut.Facet[] memory facets_) {
-        facets_ = new IDiamondCut.Facet[](0);
+    function facets() external view returns (IDiamondLoupe.Facet[] memory facets_) {
+        facets_ = new IDiamondLoupe.Facet[](0);
     }
 
     function facetFunctionSelectors(address _facetAddress) external view returns (bytes4[] memory) {

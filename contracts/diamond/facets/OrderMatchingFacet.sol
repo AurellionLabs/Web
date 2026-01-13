@@ -22,7 +22,7 @@ contract OrderMatchingFacet {
     
     event OrderFilled(bytes32 indexed orderId, bytes32 indexed tradeId, uint256 fillAmount, uint256 fillPrice, uint256 remainingAmount, uint256 cumulativeFilled);
     event TradeExecuted(bytes32 indexed tradeId, bytes32 indexed takerOrderId, bytes32 indexed makerOrderId, uint256 price, uint256 amount, uint256 quoteAmount);
-    event OrderCancelled(bytes32 indexed orderId, address indexed maker, uint256 remainingAmount, uint8 reason);
+    event MatchingOrderCancelled(bytes32 indexed orderId, address indexed maker, uint256 remainingAmount, uint8 reason);
     
     // ============================================================================
     // MATCHING FUNCTIONS - Called by OrderRouterFacet
@@ -214,7 +214,7 @@ contract OrderMatchingFacet {
                 IERC1155(_stringToAddress(market.baseToken)).safeTransferFrom(address(this), maker, market.baseTokenId, remaining, "");
             }
         }
-        emit OrderCancelled(orderId, maker, remaining, reason);
+        emit MatchingOrderCancelled(orderId, maker, remaining, reason);
     }
     
     // ============================================================================

@@ -48,7 +48,7 @@ contract BridgeFacet is Initializable {
         address driver,
         uint256 driverAmount
     );
-    event OrderCancelled(
+    event BridgeOrderCancelled(
         bytes32 indexed unifiedOrderId,
         uint8 previousStatus
     );
@@ -239,7 +239,7 @@ contract BridgeFacet is Initializable {
         uint8 previousStatus = s.unifiedOrders[_unifiedOrderId].status;
         s.unifiedOrders[_unifiedOrderId].status = 5;
 
-        emit OrderCancelled(_unifiedOrderId, previousStatus);
+        emit BridgeOrderCancelled(_unifiedOrderId, previousStatus);
     }
 
     function getUnifiedOrder(bytes32 _orderId)

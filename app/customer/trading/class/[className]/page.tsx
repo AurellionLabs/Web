@@ -22,9 +22,16 @@ import {
   TradingEmptyState,
   AssetTableSkeleton,
 } from '@/app/components/trading/shared';
-import { PriceChart } from '@/app/components/trading/price-chart';
+import {
+  PriceChart,
+  CandlestickData,
+  TimePeriod,
+} from '@/app/components/trading/price-chart';
 import { TradingErrorBoundary } from '@/app/components/error-boundary';
 import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
+
+// Services
+import { priceHistoryService } from '@/infrastructure/services/price-history-service';
 
 // Hooks
 import { useClassAssets } from '@/hooks/useClassAssets';
@@ -134,6 +141,9 @@ function ClassDetailPageContent() {
 
   // State
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [chartData, setChartData] = useState<CandlestickData[]>([]);
+  const [chartPeriod, setChartPeriod] = useState<TimePeriod>('1d');
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
 
   // Set user role on mount
   useEffect(() => {
@@ -199,6 +209,49 @@ function ClassDetailPageContent() {
   // Get best bid and ask prices from order book
   const bestAskPrice = orderBook?.asks[0]?.price || 0;
   const bestBidPrice = orderBook?.bids[0]?.price || 0;
+
+  // Fetch chart data when asset or period changes
+  useEffect(() => {
+    const fetchChartData = async () => {
+      if (!tradeableAsset?.tokenId || tradeableAsset.tokenId === '0') {
+        setChartData([]);
+        return;
+      }
+
+      setIsLoadingChart(true);
+      try {
+        const candles = await priceHistoryService.getCandlestickData(
+          NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          tradeableAsset.tokenId,
+          chartPeriod,
+        );
+
+        // Convert OHLCV candles to chart format
+        const formattedData: CandlestickData[] = candles.map((c) => ({
+          time: c.time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+        }));
+
+        setChartData(formattedData);
+      } catch (error) {
+        console.error('[ClassTradingPage] Error fetching chart data:', error);
+        setChartData([]);
+      } finally {
+        setIsLoadingChart(false);
+      }
+    };
+
+    fetchChartData();
+  }, [tradeableAsset?.tokenId, chartPeriod]);
+
+  // Handle chart period change
+  const handleChartPeriodChange = useCallback((period: TimePeriod) => {
+    setChartPeriod(period);
+  }, []);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
@@ -454,13 +507,13 @@ function ClassDetailPageContent() {
           }
         }
 
-        // For MARKET SELL orders: use placeSellOrderFromNode with best bid price
+        // For MARKET SELL orders: use placeNodeMarketSellOrder with best bid price
         if (order.side === 'sell' && order.type === 'market') {
           console.log(
             '[ClassTradingPage] Market sell order - checking node inventory...',
           );
 
-          // Use the nodeHash from the selected asset (passed via order.nodeHash)
+          // Use the nodeHash from the order (passed via order.nodeHash)
           let nodeHash = order.nodeHash;
 
           if (!nodeHash) {
@@ -616,59 +669,18 @@ function ClassDetailPageContent() {
           return true;
         } else {
           // Market order - executes immediately at best available price
-          // For market orders, we need to use the best available price from the order book
-          const { clobRepository } = await import(
-            '@/infrastructure/repositories/clob-repository'
+          // Use 10% slippage (1000 basis points) for market orders
+          const maxSlippageBps = 1000; // 10% slippage
+
+          console.log(
+            '[ClassTradingPage] Placing market order with slippage:',
+            maxSlippageBps,
+            'bps',
           );
-
-          // Fetch current order book to get best prices
-          const orderBookData = await clobRepository.getOrderBook(
-            NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-            clobParams.baseTokenId,
-            10,
-          );
-
-          let marketMaxPrice: bigint;
-
-          if (order.side === 'buy') {
-            // For buy market orders: use best ask (lowest sell price) + 10% slippage
-            const bestAsk = orderBookData.asks[0]?.price;
-            if (bestAsk && bestAsk > 0) {
-              const bestAskWei = BigInt(Math.round(bestAsk * 1e18));
-              marketMaxPrice = (bestAskWei * BigInt(110)) / BigInt(100);
-              console.log(
-                '[ClassTradingPage] Market buy: using best ask',
-                bestAsk,
-                'with 10% slippage',
-              );
-            } else {
-              marketMaxPrice = (priceInWei * BigInt(150)) / BigInt(100);
-              console.log(
-                '[ClassTradingPage] Market buy: no asks, using fallback price',
-              );
-            }
-          } else {
-            // For sell market orders: use best bid (highest buy price) - 10% slippage
-            const bestBid = orderBookData.bids[0]?.price;
-            if (bestBid && bestBid > 0) {
-              const bestBidWei = BigInt(Math.round(bestBid * 1e18));
-              marketMaxPrice = (bestBidWei * BigInt(90)) / BigInt(100);
-              console.log(
-                '[ClassTradingPage] Market sell: using best bid',
-                bestBid,
-                'with 10% slippage',
-              );
-            } else {
-              marketMaxPrice = (priceInWei * BigInt(50)) / BigInt(100);
-              console.log(
-                '[ClassTradingPage] Market sell: no bids, using fallback price',
-              );
-            }
-          }
 
           const result = await orderBridgeService.placeMarketOrder({
             ...clobParams,
-            maxPrice: marketMaxPrice,
+            maxSlippageBps,
           });
 
           if (!result.success) {
@@ -875,13 +887,14 @@ function ClassDetailPageContent() {
             ) : (
               /* Professional Price Chart */
               <PriceChart
-                data={[]} // Empty array triggers mock data generation
-                timePeriod="1d"
+                data={chartData}
+                timePeriod={chartPeriod}
                 mode="candlestick"
                 height={500}
                 showVolume={true}
                 assetName={selectedAssetType}
                 currentPrice={basePrice}
+                onTimePeriodChange={handleChartPeriodChange}
               />
             )}
           </div>

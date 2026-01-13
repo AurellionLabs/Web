@@ -1,7 +1,7 @@
 import { onchainTable, relations, index } from '@ponder/core';
 
 // =============================================================================
-// AUSYS TABLES - Orders, Journeys, Signatures, Settlements
+// AUSYS TABLES - Orders, Journeys, Signatures, Settlements (Events Only)
 // =============================================================================
 
 /**
@@ -241,47 +241,6 @@ export const nodeFeeDistributedEvents = onchainTable(
     blockNumber: t.bigint().notNull(),
     blockTimestamp: t.bigint().notNull(),
     transactionHash: t.hex().notNull(),
-  }),
-);
-
-/**
- * Driver statistics (aggregated)
- */
-export const driverStats = onchainTable(
-  'driver_stats',
-  (t) => ({
-    id: t.hex().primaryKey(), // driver address
-    driver: t.hex().notNull(),
-    totalJourneys: t.bigint().notNull().default(0n),
-    completedJourneys: t.bigint().notNull().default(0n),
-    canceledJourneys: t.bigint().notNull().default(0n),
-    totalEarnings: t.bigint().notNull().default(0n),
-    averageRating: t.bigint().notNull().default(0n), // scaled by 1000
-    lastActiveAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    driverIdx: index().on(table.driver),
-  }),
-);
-
-/**
- * Node statistics for AuSys (aggregated)
- */
-export const nodeStats = onchainTable(
-  'node_stats',
-  (t) => ({
-    id: t.hex().primaryKey(), // node address
-    node: t.hex().notNull(),
-    totalOrders: t.bigint().notNull().default(0n),
-    completedOrders: t.bigint().notNull().default(0n),
-    totalRevenue: t.bigint().notNull().default(0n),
-    totalFeesEarned: t.bigint().notNull().default(0n),
-    lastActiveAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    nodeIdx: index().on(table.node),
   }),
 );
 
@@ -873,155 +832,9 @@ export const adminStatusChangedEvents = onchainTable(
   }),
 );
 
-/**
- * User statistics for staking (aggregated)
- */
-export const userStakeStats = onchainTable(
-  'user_stake_stats',
-  (t) => ({
-    id: t.hex().primaryKey(), // user address
-    user: t.hex().notNull(),
-    totalStaked: t.bigint().notNull().default(0n),
-    totalRewarded: t.bigint().notNull().default(0n),
-    activeStakes: t.bigint().notNull().default(0n),
-    operationsCount: t.bigint().notNull().default(0n),
-    firstStakeAt: t.bigint().notNull(),
-    lastActiveAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-  }),
-);
-
-/**
- * Token statistics for staking (aggregated)
- */
-export const tokenStakeStats = onchainTable(
-  'token_stake_stats',
-  (t) => ({
-    id: t.hex().primaryKey(), // token address
-    token: t.hex().notNull(),
-    totalTvl: t.bigint().notNull().default(0n),
-    totalStakers: t.bigint().notNull().default(0n),
-    totalOperations: t.bigint().notNull().default(0n),
-    averageReward: t.bigint().notNull().default(0n),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    tokenIdx: index().on(table.token),
-  }),
-);
-
 // =============================================================================
-// CLOB TABLES - Central Limit Order Book
+// CLOB TABLES - Central Limit Order Book (Events Only)
 // =============================================================================
-
-/**
- * Order status: 0=Open, 1=PartialFill, 2=Filled, 3=Cancelled
- * Order type: 0=Limit, 1=Market
- */
-export const clobOrders = onchainTable(
-  'clob_orders',
-  (t) => ({
-    id: t.hex().primaryKey(), // orderId (bytes32)
-    maker: t.hex().notNull(),
-    baseToken: t.hex().notNull(), // ERC1155 address
-    baseTokenId: t.bigint().notNull(),
-    quoteToken: t.hex().notNull(), // ERC20 address
-    price: t.bigint().notNull(), // wei per unit
-    amount: t.bigint().notNull(), // original order amount
-    filledAmount: t.bigint().notNull().default(0n),
-    remainingAmount: t.bigint().notNull(), // computed: amount - filledAmount
-    isBuy: t.boolean().notNull(),
-    orderType: t.integer().notNull(), // 0=Limit, 1=Market
-    status: t.integer().notNull().default(0), // 0=Open, 1=PartialFill, 2=Filled, 3=Cancelled
-    createdAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-    blockNumber: t.bigint().notNull(),
-    transactionHash: t.hex().notNull(),
-  }),
-  (table) => ({
-    makerIdx: index().on(table.maker),
-    baseTokenIdx: index().on(table.baseToken, table.baseTokenId),
-    quoteTokenIdx: index().on(table.quoteToken),
-    statusIdx: index().on(table.status),
-    priceIdx: index().on(table.price),
-  }),
-);
-
-/**
- * Trade execution records
- */
-export const clobTrades = onchainTable(
-  'clob_trades',
-  (t) => ({
-    id: t.hex().primaryKey(), // tradeId (bytes32)
-    takerOrderId: t.hex().notNull(),
-    makerOrderId: t.hex().notNull(),
-    taker: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    baseToken: t.hex().notNull(),
-    baseTokenId: t.bigint().notNull(),
-    quoteToken: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    quoteAmount: t.bigint().notNull(), // price * amount
-    timestamp: t.bigint().notNull(),
-    blockNumber: t.bigint().notNull(),
-    transactionHash: t.hex().notNull(),
-  }),
-  (table) => ({
-    takerIdx: index().on(table.taker),
-    makerIdx: index().on(table.maker),
-    baseTokenIdx: index().on(table.baseToken, table.baseTokenId),
-    timestampIdx: index().on(table.timestamp),
-  }),
-);
-
-/**
- * Liquidity pools for AMM integration
- */
-export const clobPools = onchainTable(
-  'clob_pools',
-  (t) => ({
-    id: t.hex().primaryKey(), // poolId (bytes32)
-    baseToken: t.hex().notNull(),
-    baseTokenId: t.bigint().notNull(),
-    quoteToken: t.hex().notNull(),
-    baseReserve: t.bigint().notNull().default(0n),
-    quoteReserve: t.bigint().notNull().default(0n),
-    totalLpTokens: t.bigint().notNull().default(0n),
-    isActive: t.boolean().notNull().default(true),
-    createdAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-    blockNumber: t.bigint().notNull(),
-    transactionHash: t.hex().notNull(),
-  }),
-  (table) => ({
-    baseTokenIdx: index().on(table.baseToken, table.baseTokenId),
-    quoteTokenIdx: index().on(table.quoteToken),
-  }),
-);
-
-/**
- * Liquidity positions for LP tracking
- */
-export const clobLiquidityPositions = onchainTable(
-  'clob_liquidity_positions',
-  (t) => ({
-    id: t.text().primaryKey(), // poolId-provider
-    poolId: t.hex().notNull(),
-    provider: t.hex().notNull(),
-    lpTokens: t.bigint().notNull().default(0n),
-    depositedAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    poolIdx: index().on(table.poolId),
-    providerIdx: index().on(table.provider),
-  }),
-);
 
 /**
  * Order placed events (immutable)
@@ -1174,59 +987,8 @@ export const poolCreatedEvents = onchainTable('pool_created_events', (t) => ({
   transactionHash: t.hex().notNull(),
 }));
 
-/**
- * Market aggregation - best bid/ask for each market
- */
-export const marketData = onchainTable(
-  'market_data',
-  (t) => ({
-    id: t.text().primaryKey(), // baseToken-baseTokenId-quoteToken
-    baseToken: t.hex().notNull(),
-    baseTokenId: t.bigint().notNull(),
-    quoteToken: t.hex().notNull(),
-    bestBidPrice: t.bigint().notNull().default(0n),
-    bestBidAmount: t.bigint().notNull().default(0n),
-    bestAskPrice: t.bigint().notNull().default(0n),
-    bestAskAmount: t.bigint().notNull().default(0n),
-    lastTradePrice: t.bigint().notNull().default(0n),
-    volume24h: t.bigint().notNull().default(0n),
-    tradeCount24h: t.bigint().notNull().default(0n),
-    openOrderCount: t.bigint().notNull().default(0n),
-    createdAt: t.bigint().notNull().default(0n),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    baseTokenIdx: index().on(table.baseToken, table.baseTokenId),
-    quoteTokenIdx: index().on(table.quoteToken),
-  }),
-);
-
-/**
- * User trading statistics
- */
-export const userTradingStats = onchainTable(
-  'user_trading_stats',
-  (t) => ({
-    id: t.hex().primaryKey(), // user address
-    user: t.hex().notNull(),
-    totalOrdersPlaced: t.bigint().notNull().default(0n),
-    totalOrdersFilled: t.bigint().notNull().default(0n),
-    totalOrdersCancelled: t.bigint().notNull().default(0n),
-    totalTradesAsMaker: t.bigint().notNull().default(0n),
-    totalTradesAsTaker: t.bigint().notNull().default(0n),
-    totalVolumeQuote: t.bigint().notNull().default(0n), // Total quote token volume
-    totalFeesPaid: t.bigint().notNull().default(0n),
-    firstTradeAt: t.bigint().notNull(),
-    lastTradeAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-  }),
-);
-
 // =============================================================================
-// ORDER BRIDGE TABLES - Unified CLOB → Ausys Order Flow
+// ORDER BRIDGE TABLES - Unified CLOB -> Ausys Order Flow
 // =============================================================================
 
 /**
@@ -1725,40 +1487,3 @@ export const rwyOperatorRevokedEvents = onchainTable(
     operatorIdx: index().on(table.operator),
   }),
 );
-
-/**
- * RWY User Stats (aggregated)
- */
-export const rwyUserStats = onchainTable(
-  'rwy_user_stats',
-  (t) => ({
-    id: t.hex().primaryKey(), // user address
-    user: t.hex().notNull(),
-    totalStaked: t.bigint().notNull().default(0n),
-    totalClaimed: t.bigint().notNull().default(0n),
-    totalProfit: t.bigint().notNull().default(0n),
-    activeStakes: t.integer().notNull().default(0),
-    completedStakes: t.integer().notNull().default(0),
-    firstStakeAt: t.bigint().notNull(),
-    lastStakeAt: t.bigint().notNull(),
-    updatedAt: t.bigint().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-  }),
-);
-
-/**
- * RWY Global Stats (aggregated)
- */
-export const rwyGlobalStats = onchainTable('rwy_global_stats', (t) => ({
-  id: t.text().primaryKey(), // 'global'
-  totalOpportunities: t.integer().notNull().default(0),
-  activeOpportunities: t.integer().notNull().default(0),
-  completedOpportunities: t.integer().notNull().default(0),
-  totalValueStaked: t.bigint().notNull().default(0n),
-  totalValueDistributed: t.bigint().notNull().default(0n),
-  totalOperators: t.integer().notNull().default(0),
-  totalStakers: t.integer().notNull().default(0),
-  updatedAt: t.bigint().notNull(),
-}));

@@ -1,0 +1,215 @@
+// Auto-generated handler for bridge domain - Raw event storage only
+// Generated at: 2026-01-13T14:14:28.789Z
+//
+// Dumb indexer pattern: Store raw events, aggregate in repository layer
+// Events from: BridgeFacet
+
+import { ponder } from '@/generated';
+
+// Import event tables (auto-generated from ABI)
+import { bountyPaid_8e7bEvents } from '../../generated-schema';
+import { bridgeOrderCancelledFb63Events } from '../../generated-schema';
+import { feeRecipientUpdatedAaebEvents } from '../../generated-schema';
+import { journeyStatusUpdatedF7daEvents } from '../../generated-schema';
+import { logisticsOrderCreated_9c83Events } from '../../generated-schema';
+import { orderSettledE726Events } from '../../generated-schema';
+import { tradeMatched_51d0Events } from '../../generated-schema';
+import { unifiedOrderCreatedC8b6Events } from '../../generated-schema';
+
+// Utility functions
+const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
+
+// =============================================================================
+// BridgeFacet Events
+// =============================================================================
+
+/**
+ * Handle BountyPaid event from BridgeFacet
+ * Signature: BountyPaid(bytes32,uint256)
+ * Hash: 0x8e7bc4ed
+ */
+ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
+  const { unifiedOrderId, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(bountyPaid_8e7bEvents).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle BridgeOrderCancelled event from BridgeFacet
+ * Signature: BridgeOrderCancelled(bytes32,uint8)
+ * Hash: 0xfb630ff8
+ */
+ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
+  const { unifiedOrderId, previousStatus } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(bridgeOrderCancelledFb63Events).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    previous_status: previousStatus,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle FeeRecipientUpdated event from BridgeFacet
+ * Signature: FeeRecipientUpdated(address,address)
+ * Hash: 0xaaebcf1b
+ */
+ponder.on(
+  'Diamond:FeeRecipientUpdated(address,address)',
+  async ({ event, context }) => {
+    const { oldRecipient, newRecipient } = event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
+
+    // Insert raw event into event table
+    await context.db.insert(feeRecipientUpdatedAaebEvents).values({
+      id,
+      old_recipient: oldRecipient,
+      new_recipient: newRecipient,
+      block_number: event.block.number,
+      block_timestamp: BigInt(event.block.timestamp),
+      transaction_hash: event.transaction.hash,
+    });
+  },
+);
+
+/**
+ * Handle JourneyStatusUpdated event from BridgeFacet
+ * Signature: JourneyStatusUpdated(bytes32,bytes32,uint8)
+ * Hash: 0xf7da2d1a
+ */
+ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
+  const { unifiedOrderId, journeyId, phase } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(journeyStatusUpdatedF7daEvents).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    journey_id: journeyId,
+    phase: phase,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle LogisticsOrderCreated event from BridgeFacet
+ * Signature: LogisticsOrderCreated(bytes32,bytes32,bytes32[],uint256,address)
+ * Hash: 0x9c831fa4
+ */
+ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
+  const { unifiedOrderId, ausysOrderId, journeyIds, bounty, node } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(logisticsOrderCreated_9c83Events).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    ausys_order_id: ausysOrderId,
+    journey_ids: journeyIds,
+    bounty: bounty,
+    node: node,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle OrderSettled event from BridgeFacet
+ * Signature: OrderSettled(bytes32,address,uint256,address,uint256)
+ * Hash: 0xe72627b4
+ */
+ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
+  const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } =
+    event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(orderSettledE726Events).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    seller: seller,
+    seller_amount: sellerAmount,
+    driver: driver,
+    driver_amount: driverAmount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle TradeMatched event from BridgeFacet
+ * Signature: TradeMatched(bytes32,bytes32,bytes32,address,uint256,uint256)
+ * Hash: 0x51d0a1e6
+ */
+ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
+  const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } =
+    event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(tradeMatched_51d0Events).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    clob_trade_id: clobTradeId,
+    clob_order_id: clobOrderId,
+    maker: maker,
+    price: price,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle UnifiedOrderCreated event from BridgeFacet
+ * Signature: UnifiedOrderCreated(bytes32,bytes32,address,address,address,uint256,uint256,uint256)
+ * Hash: 0xc8b6af07
+ */
+ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
+  const {
+    unifiedOrderId,
+    clobOrderId,
+    buyer,
+    seller,
+    token,
+    tokenId,
+    quantity,
+    price,
+  } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(unifiedOrderCreatedC8b6Events).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    clob_order_id: clobOrderId,
+    buyer: buyer,
+    seller: seller,
+    token: token,
+    token_id: tokenId,
+    quantity: quantity,
+    price: price,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});

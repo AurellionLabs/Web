@@ -20,7 +20,10 @@ services:
       - indexer_network
 
   indexer:
-    image: ghcr.io/${GITHUB_REPOSITORY:-aurellion/web}/indexer:latest
+    build:
+      context: .
+      dockerfile: indexer/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY:-aurellionlabs/web}/indexer:latest
     container_name: aurellion_indexer
     restart: always
     depends_on:
