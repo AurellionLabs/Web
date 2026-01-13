@@ -17,6 +17,9 @@ RUN npm install --legacy-peer-deps
 # Explicitly install OpenZeppelin contracts to ensure they're present
 RUN npm install --save-dev @openzeppelin/contracts@5.4.0 --legacy-peer-deps
 
+# Debug: verify OpenZeppelin contracts are installed
+RUN ls -la node_modules/@openzeppelin/contracts/security/ || echo "OpenZeppelin security folder not found"
+
 # Compile Solidity contracts
 RUN npx hardhat compile
 
