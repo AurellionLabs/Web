@@ -5,20 +5,14 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files from parent context
 COPY package*.json ./
 
-# Copy source code
-COPY . .
+# Copy source code from indexer directory
+COPY indexer/ ./indexer/
 
 # Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
 RUN npm install --legacy-peer-deps
-
-# Explicitly install OpenZeppelin contracts to ensure they're present
-RUN npm install --save-dev @openzeppelin/contracts@5.4.0 --legacy-peer-deps
-
-# Debug: verify OpenZeppelin contracts are installed
-RUN ls -la node_modules/@openzeppelin/contracts/security/ || echo "OpenZeppelin security folder not found"
 
 # Compile Solidity contracts
 RUN npx hardhat compile
@@ -42,10 +36,10 @@ COPY --from=builder /app/ponder.config.ts ./
 COPY --from=builder /app/ponder.schema.ts ./
 COPY --from=builder /app/generated-schema.ts ./
 COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/abis ./abis
-COPY --from=builder /app/chain-constants.ts ./chain-constants.ts
-COPY --from=builder /app/diamond-constants.ts ./diamond-constants.ts
+COPY --from=builder /app/indexer/src ./indexer/src
+COPY --from=builder /app/indexer/abis ./indexer/abis
+COPY --from=builder /app/chain-constants.ts ./
+COPY --from=builder /app/diamond-constants.ts ./
 
 # Set ownership
 RUN chown -R ponder:nodejs /app
