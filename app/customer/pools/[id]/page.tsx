@@ -465,23 +465,41 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 Completion Progress
               </h3>
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="text-trading-buy font-semibold">
-                    {poolData.completionPercentage.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full bg-glass-bg rounded-full h-3 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-accent to-secondary h-3 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(poolData.completionPercentage, 100)}%`,
-                    }}
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground text-center">
-                  ${poolData.tvl} of ${poolData.fundingGoal} raised
-                </div>
+                {parseFloat(poolData.fundingGoal) > 0 ? (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="text-trading-buy font-semibold">
+                        {poolData.completionPercentage.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-glass-bg rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-accent to-secondary h-3 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(poolData.completionPercentage, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="text-sm text-muted-foreground text-center">
+                      ${poolData.tvl} of ${poolData.fundingGoal} raised
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">
+                        Total Locked
+                      </span>
+                      <span className="text-accent font-semibold">
+                        ${poolData.tvl}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      No funding goal set - unlimited capacity
+                    </div>
+                  </>
+                )}
               </div>
             </GlassCard>
 

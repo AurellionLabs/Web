@@ -11,9 +11,12 @@ interface PoolRowProps {
 }
 
 export function PoolRow({ pool, index }: PoolRowProps) {
-  // Mock data for demonstration
-  const tvl = parseFloat(pool.totalValueLocked);
-  const mockVolume24h = tvl * 0.05;
+  // Format TVL from wei (18 decimals) to display value
+  const tvlFormatted = formatTokenAmount(pool.totalValueLocked || '0', 18, 2);
+  const tvlValue = parseFloat(tvlFormatted);
+
+  // Calculate mock volume as 5% of TVL for demonstration
+  const mockVolume24h = tvlValue * 0.05;
   const mockVolumeChange = Math.random() * 20 - 10;
   const isVolumePositive = mockVolumeChange > 0;
 
@@ -38,7 +41,7 @@ export function PoolRow({ pool, index }: PoolRowProps) {
         </Link>
       </td>
       <td className="py-4 px-4 text-right font-mono text-neutral-300">
-        ${formatTokenAmount(tvl, 0, 2)}
+        ${tvlFormatted}
       </td>
       <td className="py-4 px-4 text-right font-mono">
         <span
@@ -52,9 +55,7 @@ export function PoolRow({ pool, index }: PoolRowProps) {
       </td>
       <td className="py-4 px-4 text-right">
         <div className="flex flex-col items-end font-mono">
-          <span className="text-neutral-300">
-            ${formatTokenAmount(mockVolume24h, 0, 2)}
-          </span>
+          <span className="text-neutral-300">${mockVolume24h.toFixed(2)}</span>
           <span
             className={cn(
               'text-xs',

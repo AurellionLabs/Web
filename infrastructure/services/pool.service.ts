@@ -225,6 +225,27 @@ export class PoolService implements IPoolService {
 
       const tokenAddress = operation.token;
 
+      // Calculate total rewards needed (same calculation as in smart contract)
+      // totalRewardsNeeded = (tokenTvl * reward) / REWARD_PRECISION
+      const REWARD_PRECISION = 100n; // Same as in AuStake.sol
+      const totalRewardsNeeded =
+        (operation.tokenTvl * operation.reward) / REWARD_PRECISION;
+
+      console.log(
+        '[PoolService.unlockReward] Approving tokens for reward unlock:',
+        {
+          tokenAddress,
+          totalRewardsNeeded: totalRewardsNeeded.toString(),
+          poolId,
+        },
+      );
+
+      // Handle ERC20 approval for the reward amount
+      await this.handleTokenApproval(
+        tokenAddress,
+        totalRewardsNeeded.toString(),
+      );
+
       // Execute unlock reward transaction
       const txResponse = await this.contract.unlockReward(tokenAddress, poolId);
 

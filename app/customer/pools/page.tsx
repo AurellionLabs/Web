@@ -14,10 +14,11 @@ import { GlassCard } from '@/app/components/ui/glass-card';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { AnimatedNumber } from '@/app/components/ui/animated-number';
 import { StatusBadge } from '@/app/components/ui/status-badge';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { cn } from '@/lib/utils';
+import { formatTokenAmount } from '@/lib/formatters';
 
 /**
  * StatCard - Protocol stat card component
@@ -109,10 +110,55 @@ export default function PoolsPage() {
     setIsRefreshing(false);
   };
 
-  // Mock aggregate stats
-  const totalTvl = 12500000;
-  const totalVolume = 2340000;
-  const avgApy = 12.4;
+  // Calculate aggregate stats from actual pool data
+  const { totalTvl, totalVolume, avgApy } = useMemo(() => {
+    if (!pools || pools.length === 0) {
+      return {
+        totalTvl: 0,
+        totalVolume: 0,
+        avgApy: 0,
+      };
+    }
+
+    // Sum total TVL across all pools
+    const tvlSum = pools.reduce((sum, pool) => {
+      const tvl = parseFloat(
+        formatTokenAmount(pool.totalValueLocked || '0', 18, 2),
+      );
+      return sum + tvl;
+    }, 0);
+
+    // Sum 24h volume across all pools
+    const volumeSum = pools.reduce((sum, pool) => {
+      // Pool has PoolDynamicData merged in from getAllPoolsWithDynamicData
+      const volume24h = (pool as any).volume24h || '0';
+      const volume = parseFloat(formatTokenAmount(volume24h, 18, 2));
+      return sum + volume;
+    }, 0);
+
+    // Calculate weighted average APY (weighted by TVL)
+    const { weightedApySum, totalWeight } = pools.reduce(
+      (acc, pool) => {
+        const tvl = parseFloat(
+          formatTokenAmount(pool.totalValueLocked || '0', 18, 2),
+        );
+        const apy = pool.rewardRate || 0;
+        return {
+          weightedApySum: acc.weightedApySum + apy * tvl,
+          totalWeight: acc.totalWeight + tvl,
+        };
+      },
+      { weightedApySum: 0, totalWeight: 0 },
+    );
+
+    const weightedAvgApy = totalWeight > 0 ? weightedApySum / totalWeight : 0;
+
+    return {
+      totalTvl: tvlSum,
+      totalVolume: volumeSum,
+      avgApy: weightedAvgApy,
+    };
+  }, [pools]);
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -161,7 +207,7 @@ export default function PoolsPage() {
             prefix="$"
             icon={TrendingUp}
             iconColor="bg-green-500"
-            description="+12.5% from yesterday"
+            description="Last 24 hours"
           />
           <StatCard
             title="Average APY"

@@ -273,12 +273,11 @@ export class PoolRepository implements IPoolRepository {
 
   async getPoolStakeHistory(poolId: string): Promise<StakeEvent[]> {
     try {
-      const response: { stakeds: any[] } = await this.graphqlRequest(
-        STAKED_EVENTS_QUERY,
-        { operationId: poolId },
-      );
+      const response: { stakedEventss?: { items: any[] } } =
+        await this.graphqlRequest(STAKED_EVENTS_QUERY, { operationId: poolId });
 
-      return response.stakeds.map((event) => ({
+      const items = response.stakedEventss?.items || [];
+      return items.map((event) => ({
         poolId,
         stakerAddress: event.user as Address,
         amount: event.amount,
@@ -297,14 +296,16 @@ export class PoolRepository implements IPoolRepository {
   async findPoolsByInvestor(investorAddress: Address): Promise<Pool[]> {
     try {
       // Use GraphQL to get staked events by user
-      const response: { stakeds: any[] } = await this.graphqlRequest(
-        STAKED_EVENTS_BY_USER_QUERY,
-        { user: investorAddress },
-      );
+      const response: { stakedEventss?: { items: any[] } } =
+        await this.graphqlRequest(STAKED_EVENTS_BY_USER_QUERY, {
+          user: investorAddress,
+        });
+
+      const items = response.stakedEventss?.items || [];
 
       // Get unique pool IDs
       const poolIds = [
-        ...new Set(response.stakeds.map((event) => event.operationId)),
+        ...new Set(items.map((event) => event.stakedOperationId)),
       ].filter((id) => id);
 
       // Fetch all pools
@@ -327,15 +328,14 @@ export class PoolRepository implements IPoolRepository {
   async findPoolsByProvider(providerAddress: Address): Promise<Pool[]> {
     try {
       // Use GraphQL to get operation created events
-      const response: { operationCreateds: any[] } = await this.graphqlRequest(
-        OPERATION_CREATED_QUERY,
-      );
+      const response: { operationCreatedEventss?: { items: any[] } } =
+        await this.graphqlRequest(OPERATION_CREATED_QUERY);
+
+      const items = response.operationCreatedEventss?.items || [];
 
       // Fetch all pools and filter by provider
       const pools = await Promise.all(
-        response.operationCreateds.map((event) =>
-          this.getPoolById(event.operationId),
-        ),
+        items.map((event) => this.getPoolById(event.opCreatedOperationId)),
       );
 
       return pools.filter(
@@ -356,15 +356,19 @@ export class PoolRepository implements IPoolRepository {
   async getAllPools(): Promise<Pool[]> {
     try {
       // Use GraphQL to get all operation created events
-      const response: { operationCreateds: any[] } = await this.graphqlRequest(
-        OPERATION_CREATED_QUERY,
-      );
+      const response: { operationCreatedEventss?: { items: any[] } } =
+        await this.graphqlRequest(OPERATION_CREATED_QUERY);
+
+      const items = response.operationCreatedEventss?.items || [];
+
+      if (items.length === 0) {
+        console.log('[PoolRepository] No operations found');
+        return [];
+      }
 
       // Fetch all pools
       const pools = await Promise.all(
-        response.operationCreateds.map((event) =>
-          this.getPoolById(event.operationId),
-        ),
+        items.map((event) => this.getPoolById(event.opCreatedOperationId)),
       );
 
       return pools.filter((pool: any) => pool !== null);
@@ -688,12 +692,13 @@ export class PoolRepository implements IPoolRepository {
   async getAllPoolIds(): Promise<string[]> {
     try {
       // Use GraphQL to get all operation created events
-      const response: { operationCreateds: any[] } = await this.graphqlRequest(
-        OPERATION_CREATED_QUERY,
-      );
+      const response: { operationCreatedEventss?: { items: any[] } } =
+        await this.graphqlRequest(OPERATION_CREATED_QUERY);
 
-      return response.operationCreateds
-        .map((event) => event.operationId)
+      const items = response.operationCreatedEventss?.items || [];
+
+      return items
+        .map((event) => event.opCreatedOperationId)
         .filter((id) => id) as string[];
     } catch (error) {
       console.error(

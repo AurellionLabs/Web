@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Command,
@@ -32,6 +32,7 @@ const roles = [
 
 export function RoleSelector() {
   const [open, setOpen] = React.useState(false);
+  const [isNavigating, setIsNavigating] = React.useState(false);
   const { currentUserRole, setCurrentUserRole } = useMainProvider();
   const router = useRouter();
   const { isRegisteredNode: nodeStatus } = useNodes();
@@ -48,6 +49,7 @@ export function RoleSelector() {
   const handleRoleSelect = async (currentValue: string) => {
     setCurrentUserRole(currentValue as typeof currentUserRole);
     setOpen(false);
+    setIsNavigating(true);
 
     if (currentValue === 'node') {
       router.push('/node/overview');
@@ -56,6 +58,10 @@ export function RoleSelector() {
     } else if (currentValue === 'driver') {
       router.push('/driver/dashboard');
     }
+
+    // Reset navigating state after a brief moment
+    // The loading.tsx files will handle the actual loading UI
+    setTimeout(() => setIsNavigating(false), 1000);
   };
 
   return (
@@ -64,12 +70,17 @@ export function RoleSelector() {
         <button
           role="combobox"
           aria-expanded={open}
-          className="w-[140px] px-3 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-neutral-900/50 text-neutral-300 hover:bg-neutral-800 hover:text-white hover:border-neutral-600 transition-all duration-200 flex items-center justify-between"
+          disabled={isNavigating}
+          className="w-[140px] px-3 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-neutral-900/50 text-neutral-300 hover:bg-neutral-800 hover:text-white hover:border-neutral-600 transition-all duration-200 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {currentUserRole
             ? roles.find((r) => r.value === currentUserRole)?.label
             : 'Select role...'}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {isNavigating ? (
+            <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
+          ) : (
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[140px] p-0 bg-neutral-900 border-neutral-800">
