@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "codegen": "cd indexer && npm run codegen",
+    "generate:indexer": "cd indexer && npm run generate:indexer",
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && next build",
