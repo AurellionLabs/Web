@@ -11,8 +11,11 @@ COPY package*.json ./
 # Copy all source code
 COPY . .
 
-# Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
-RUN npm install --legacy-peer-deps
+# Install dependencies with npm ci for reliability
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+# Explicitly reinstall @openzeppelin/contracts to ensure all files are present
+RUN rm -rf node_modules/@openzeppelin/contracts && npm install --save-dev @openzeppelin/contracts@5.4.0 --legacy-peer-deps
 
 # Debug: Check what's in @openzeppelin/contracts
 RUN ls -la node_modules/@openzeppelin/contracts/ || echo "openzeppelin folder not found"
