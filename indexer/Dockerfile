@@ -13,7 +13,7 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Generate Ponder types
-RUN npm run codegen
+RUN npm run generate:indexer
 
 # Production stage
 FROM node:22-alpine AS runner
