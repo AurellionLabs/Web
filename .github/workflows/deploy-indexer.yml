@@ -41,6 +41,12 @@ jobs:
           echo "Deleting GitHub Actions cache..."
           gh cache delete --all || true
 
+      - name: Reset Docker Buildx
+        run: |
+          docker buildx rm default || true
+          docker buildx create --name default --driver docker-container --use || true
+          docker buildx inspect --bootstrap || true
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
