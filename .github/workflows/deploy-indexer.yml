@@ -62,15 +62,18 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        run: |
-          docker buildx build \
-            --no-cache \
-            --build-arg CACHE_BUST=${{ github.sha }} \
-            --file ./indexer/Dockerfile \
-            --tag ${{ steps.meta.outputs.tags }} \
-            --label ${{ steps.meta.outputs.labels }} \
-            --push \
-            .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./indexer/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CACHE_BUST=${{ github.sha }}
+          cache-from: ""
+          cache-to: ""
+          no-cache: true
 
   deploy:
     needs: build
