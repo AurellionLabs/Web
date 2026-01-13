@@ -21,7 +21,7 @@ services:
 
   indexer:
     build:
-      context: ..
+      context: .
       dockerfile: indexer/Dockerfile
     image: ghcr.io/${GITHUB_REPOSITORY:-aurellionlabs/web}/indexer:latest
     container_name: aurellion_indexer

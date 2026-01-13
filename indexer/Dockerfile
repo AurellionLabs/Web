@@ -5,11 +5,11 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files from parent context
+# Copy package files
 COPY package*.json ./
 
-# Copy source code from indexer directory
-COPY indexer/ ./indexer/
+# Copy all source code
+COPY . .
 
 # Install dependencies (including devDependencies for Hardhat + OpenZeppelin)
 RUN npm install --legacy-peer-deps
