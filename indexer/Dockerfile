@@ -15,6 +15,9 @@ RUN npm install --legacy-peer-deps
 # Copy source code
 COPY . .
 
+# Compile Solidity contracts
+RUN npx hardhat compile
+
 # Generate Ponder types
 RUN npm run generate:indexer
 
