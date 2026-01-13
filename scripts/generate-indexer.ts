@@ -24,6 +24,7 @@ const ARTIFACTS_DIR = path.join(
   __dirname,
   '../artifacts/contracts/diamond/facets',
 );
+const CONTRACTS_DIR = path.join(__dirname, '../artifacts/contracts');
 const INDEXER_DIR = path.join(__dirname, '../indexer');
 const GENERATED_ABIS_DIR = path.join(INDEXER_DIR, 'abis/generated');
 const GENERATED_HANDLERS_DIR = path.join(INDEXER_DIR, 'src/handlers');
@@ -40,6 +41,23 @@ const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
   CLOBAdminFacet: { domain: 'clob-admin', priority: 7 },
   DiamondCutFacet: { domain: 'diamond', priority: 8 },
   OwnershipFacet: { domain: 'diamond', priority: 9 },
+};
+
+// External contracts (not facets) that emit events we want to index
+const EXTERNAL_CONTRACTS: Record<
+  string,
+  { domain: string; artifactPath: string; priority: number }
+> = {
+  RWYVault: {
+    domain: 'rwy-vault',
+    artifactPath: 'RWYVault.sol/RWYVault.json',
+    priority: 10,
+  },
+  AuraAsset: {
+    domain: 'aura-asset',
+    artifactPath: 'AuraAsset.sol/AuraAsset.json',
+    priority: 11,
+  },
 };
 
 // ============================================================================
@@ -186,16 +204,36 @@ function extractEvents(
     });
 }
 
+function loadArtifact(
+  contractName: string,
+  artifactPath: string,
+): AbiItem[] | null {
+  const fullPath = path.join(CONTRACTS_DIR, artifactPath);
+
+  if (!fs.existsSync(fullPath)) {
+    console.warn(`Artifact not found: ${fullPath}`);
+    return null;
+  }
+
+  try {
+    const artifact = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+    return artifact.abi;
+  } catch (error) {
+    console.error(`Error loading ${contractName}:`, error);
+    return null;
+  }
+}
+
 function parseFacets(): Map<string, FacetInfo> {
   const facets = new Map<string, FacetInfo>();
 
+  // Parse Diamond facets
   for (const [facetName, config] of Object.entries(FACETS_TO_INDEX)) {
     const abi = loadFacetArtifact(facetName);
     if (!abi) continue;
 
     const allEvents = extractEvents(abi, facetName, config.domain);
 
-    // Deduplicate events by signature hash within the same facet
     const seenSignatures = new Set<string>();
     const events = [];
     for (const event of allEvents) {
@@ -216,7 +254,38 @@ function parseFacets(): Map<string, FacetInfo> {
     });
 
     console.log(
-      `✓ Parsed ${facetName}: ${events.length} events, ${functions.length} functions`,
+      `Parsed ${facetName}: ${events.length} events, ${functions.length} functions`,
+    );
+  }
+
+  // Parse external contracts (RWYVault, AuraAsset, etc.)
+  for (const [contractName, config] of Object.entries(EXTERNAL_CONTRACTS)) {
+    const abi = loadArtifact(contractName, config.artifactPath);
+    if (!abi) continue;
+
+    const allEvents = extractEvents(abi, contractName, config.domain);
+
+    const seenSignatures = new Set<string>();
+    const events = [];
+    for (const event of allEvents) {
+      if (!seenSignatures.has(event.signatureHash)) {
+        seenSignatures.add(event.signatureHash);
+        events.push(event);
+      }
+    }
+
+    const functions = abi.filter((item) => item.type === 'function');
+
+    facets.set(contractName, {
+      name: contractName,
+      domain: config.domain,
+      events,
+      functions,
+      abi,
+    });
+
+    console.log(
+      `Parsed ${contractName}: ${events.length} events, ${functions.length} functions`,
     );
   }
 
@@ -507,9 +576,13 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
       const camelTable = snakeToCamel(tableName);
 
-      // Use full event signature if this event has duplicates with different signatures
-      const eventKey = event.fullSignature
-        ? `Diamond:${event.fullSignature}`
+      // Use contract name as prefix for all events
+      // Diamond contract events use "Diamond:" prefix
+      // External contracts (RWYVault, AuraAsset) use their contract name
+      const contractName = event.facet;
+      const isExternalContract = !!EXTERNAL_CONTRACTS[contractName];
+      const eventKey = isExternalContract
+        ? `${contractName}:${event.name}`
         : `Diamond:${event.name}`;
 
       content += `/**
@@ -625,7 +698,27 @@ ${domains.map((d) => `import './${d}.generated';`).join('\n')}
 // PONDER CONFIG GENERATION
 // ============================================================================
 
+// ============================================================================
+// PONDER CONFIG GENERATION
+// ============================================================================
+
 function generatePonderConfig(facets: Map<string, FacetInfo>): void {
+  // Generate contract configurations for external contracts
+  const externalContracts = Array.from(facets.values())
+    .filter((f) => EXTERNAL_CONTRACTS[f.name])
+    .map((facet) => {
+      const config = EXTERNAL_CONTRACTS[facet.name];
+      const addressConstant = `NEXT_PUBLIC_${facet.name.toUpperCase()}_ADDRESS`;
+      const startBlockConstant = `${facet.name.toUpperCase()}_DEPLOY_BLOCK`;
+      return `    ${facet.name}: {
+      network: 'baseSepolia',
+      abi: ${facet.name}ABI,
+      address: ${addressConstant} as \`0x\${string}\`,
+      startBlock: ${startBlockConstant},
+    }`;
+    })
+    .join(',\n');
+
   const configContent = `// Auto-generated Ponder config - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
 
@@ -634,10 +727,20 @@ import { http } from 'viem';
 
 // Import generated ABIs
 import { DiamondABI } from './abis/generated';
+${Array.from(facets.values())
+  .filter((f) => EXTERNAL_CONTRACTS[f.name])
+  .map((f) => `import { ${f.name}ABI } from './abis/generated/${f.name}';`)
+  .join('\n')}
 
 // Import chain constants
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
-import { NEXT_PUBLIC_RPC_URL_84532 } from './chain-constants';
+import {
+  NEXT_PUBLIC_RPC_URL_84532,
+  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+  NEXT_PUBLIC_RWY_VAULT_ADDRESS,
+  AURA_ASSET_DEPLOY_BLOCK,
+  RWY_VAULT_DEPLOY_BLOCK,
+} from './chain-constants';
 
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
@@ -655,6 +758,7 @@ export default createConfig({
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
     },
+${externalContracts},
   },
 });
 `;

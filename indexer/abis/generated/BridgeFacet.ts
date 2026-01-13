@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T14:14:28.781Z
+// Generated at: 2026-01-13T22:55:31.501Z
 
 export const BridgeFacetABI = [
   {
@@ -29,25 +29,6 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'BountyPaid',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'unifiedOrderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint8',
-        name: 'previousStatus',
-        type: 'uint8',
-      },
-    ],
-    name: 'BridgeOrderCancelled',
     type: 'event',
   },
   {
@@ -142,6 +123,25 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'LogisticsOrderCreated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'previousStatus',
+        type: 'uint8',
+      },
+    ],
+    name: 'OrderCancelled',
     type: 'event',
   },
   {
@@ -594,11 +594,6 @@ export const BridgeFacetEvents = [
     signatureHash: '0x8e7bc4ed',
   },
   {
-    name: 'BridgeOrderCancelled',
-    signature: 'BridgeOrderCancelled(bytes32,uint8)',
-    signatureHash: '0xfb630ff8',
-  },
-  {
     name: 'FeeRecipientUpdated',
     signature: 'FeeRecipientUpdated(address,address)',
     signatureHash: '0xaaebcf1b',
@@ -618,6 +613,11 @@ export const BridgeFacetEvents = [
     signature:
       'LogisticsOrderCreated(bytes32,bytes32,bytes32[],uint256,address)',
     signatureHash: '0x9c831fa4',
+  },
+  {
+    name: 'OrderCancelled',
+    signature: 'OrderCancelled(bytes32,uint8)',
+    signatureHash: '0xe3bb8b6a',
   },
   {
     name: 'OrderSettled',

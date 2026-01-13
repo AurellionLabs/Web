@@ -1,5 +1,5 @@
 // Auto-generated from OwnershipFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T14:14:28.782Z
+// Generated at: 2026-01-13T22:55:31.501Z
 
 export const OwnershipFacetABI = [
   {

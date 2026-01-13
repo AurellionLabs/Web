@@ -1,11 +1,10 @@
 // Auto-generated handler index - DO NOT EDIT
-// Generated at: 2026-01-13T14:14:28.791Z
+// Generated at: 2026-01-13T22:55:31.504Z
 
 import './nodes.generated';
-import './clob.generated';
 import './bridge.generated';
 import './staking.generated';
-import './clob-admin.generated';
+import './rwy-vault.generated';
 import './aura-asset.generated';
 
-// Handler domains: nodes, clob, bridge, staking, clob-admin, aura-asset
+// Handler domains: nodes, bridge, staking, rwy-vault, aura-asset

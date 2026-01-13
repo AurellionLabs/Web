@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-13T14:14:28.787Z
+// Generated at: 2026-01-13T22:55:31.503Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: NodesFacet
@@ -12,7 +12,6 @@ import { clobApprovalRevokedBdd4Events } from '../../generated-schema';
 import { nodeCapacityUpdated_0ba8Events } from '../../generated-schema';
 import { nodeDeactivated_62b3Events } from '../../generated-schema';
 import { nodeRegistered_8326Events } from '../../generated-schema';
-import { nodeSellOrderPlaced_3de5Events } from '../../generated-schema';
 import { nodeUpdated_9c97Events } from '../../generated-schema';
 import { supportedAssetAdded_9f0aEvents } from '../../generated-schema';
 import { supportedAssetsUpdated_1af7Events } from '../../generated-schema';
@@ -125,30 +124,6 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
     node_hash: nodeHash,
     owner: owner,
     node_type: nodeType,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle NodeSellOrderPlaced event from NodesFacet
- * Signature: NodeSellOrderPlaced(bytes32,uint256,address,uint256,uint256,bytes32)
- * Hash: 0x3de5f088
- */
-ponder.on('Diamond:NodeSellOrderPlaced', async ({ event, context }) => {
-  const { nodeHash, tokenId, quoteToken, price, amount, orderId } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Insert raw event into event table
-  await context.db.insert(nodeSellOrderPlaced_3de5Events).values({
-    id,
-    node_hash: nodeHash,
-    token_id: tokenId,
-    quote_token: quoteToken,
-    price: price,
-    amount: amount,
-    order_id: orderId,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

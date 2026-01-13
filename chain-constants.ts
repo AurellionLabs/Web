@@ -116,3 +116,7 @@ export const DEPLOYMENT_BLOCKS = {
   clob: 35859031,
   rwyVault: 35861876,
 };
+
+// Export individual constants for generator
+export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
+export const RWY_VAULT_DEPLOY_BLOCK = 35861876;

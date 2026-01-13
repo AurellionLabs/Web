@@ -1,5 +1,5 @@
 // Auto-generated from NodesFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T14:14:28.779Z
+// Generated at: 2026-01-13T22:55:31.499Z
 
 export const NodesFacetABI = [
   {
@@ -118,49 +118,6 @@ export const NodesFacetABI = [
       },
     ],
     name: 'NodeRegistered',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    name: 'NodeSellOrderPlaced',
     type: 'event',
   },
   {
@@ -590,19 +547,6 @@ export const NodesFacetABI = [
     type: 'function',
   },
   {
-    inputs: [],
-    name: 'getClobAddress',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -744,123 +688,6 @@ export const NodesFacetABI = [
   {
     inputs: [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
-    ],
-    name: 'getNodeInventoryWithMetadata',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'address',
-            name: 'token',
-            type: 'address',
-          },
-          {
-            internalType: 'uint256',
-            name: 'tokenId',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'price',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'capacity',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'balance',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'createdAt',
-            type: 'uint256',
-          },
-          {
-            internalType: 'bool',
-            name: 'active',
-            type: 'bool',
-          },
-        ],
-        internalType: 'struct NodesFacet.AssetWithBalance[]',
-        name: 'assets',
-        type: 'tuple[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
-    ],
-    name: 'getNodeSellableAssets',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'address',
-            name: 'token',
-            type: 'address',
-          },
-          {
-            internalType: 'uint256',
-            name: 'tokenId',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'price',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'capacity',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'balance',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'createdAt',
-            type: 'uint256',
-          },
-          {
-            internalType: 'bool',
-            name: 'active',
-            type: 'bool',
-          },
-        ],
-        internalType: 'struct NodesFacet.AssetWithBalance[]',
-        name: 'assets',
-        type: 'tuple[]',
-      },
-      {
-        internalType: 'uint256',
-        name: 'count',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
         internalType: 'address',
         name: '_node',
         type: 'address',
@@ -982,7 +809,7 @@ export const NodesFacetABI = [
     inputs: [
       {
         internalType: 'address',
-        name: '',
+        name: '_clobAddress',
         type: 'address',
       },
     ],
@@ -994,46 +821,7 @@ export const NodesFacetABI = [
         type: 'bool',
       },
     ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'address',
-        name: '_quoteToken',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: '_price',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'placeSellOrderFromNode',
-    outputs: [
-      {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -1107,19 +895,6 @@ export const NodesFacetABI = [
       },
     ],
     name: 'setAuraAssetAddress',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '_clobAddress',
-        type: 'address',
-      },
-    ],
-    name: 'setClobAddress',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1379,12 +1154,6 @@ export const NodesFacetEvents = [
     name: 'NodeRegistered',
     signature: 'NodeRegistered(bytes32,address,string)',
     signatureHash: '0x8326de45',
-  },
-  {
-    name: 'NodeSellOrderPlaced',
-    signature:
-      'NodeSellOrderPlaced(bytes32,uint256,address,uint256,uint256,bytes32)',
-    signatureHash: '0x3de5f088',
   },
   {
     name: 'NodeUpdated',

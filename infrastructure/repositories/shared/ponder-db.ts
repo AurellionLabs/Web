@@ -146,6 +146,41 @@ export interface PonderUserBalance {
   last_updated: bigint;
 }
 
+// RWY Vault Types
+export interface PonderRWYOpportunity {
+  id: string;
+  opportunity_id: string;
+  operator: string;
+  input_token: string;
+  input_amount: bigint;
+  output_token_id: bigint;
+  output_amount: bigint;
+  status: string;
+  total_funded: bigint;
+  total_staked: bigint;
+  created_at: bigint;
+  updated_at: bigint;
+}
+
+export interface PonderRWYStake {
+  id: string;
+  opportunity_id: string;
+  staker: string;
+  principal: bigint;
+  amount_staked: bigint;
+  amount_unstaked: bigint;
+  last_updated: bigint;
+}
+
+export interface PonderRWYOperator {
+  id: string;
+  operator: string;
+  status: 'Approved' | 'Revoked';
+  total_slashed: bigint;
+  created_at: bigint;
+  updated_at: bigint;
+}
+
 // Helper functions to convert Ponder rows to domain types
 export function convertPonderNodeToDomain(row: PonderNode): any {
   return {
@@ -357,7 +392,96 @@ export const PonderQueries = {
       [userAddress.toLowerCase(), BigInt(tokenId)],
     );
   },
+
+  // RWY Vault Queries
+  getRWYOpportunityById: async (opportunityId: string) => {
+    return queryOne<PonderRWYOpportunity>(
+      'SELECT * FROM rwy_opportunities WHERE opportunity_id = $1',
+      [opportunityId],
+    );
+  },
+
+  getRWYOpportunitiesByOperator: async (operatorAddress: string) => {
+    return query<PonderRWYOpportunity>(
+      'SELECT * FROM rwy_opportunities WHERE operator = $1 ORDER BY created_at DESC',
+      [operatorAddress.toLowerCase()],
+    );
+  },
+
+  getRWYOpportunitiesByStatus: async (status: string) => {
+    return query<PonderRWYOpportunity>(
+      'SELECT * FROM rwy_opportunities WHERE status = $1 ORDER BY created_at DESC',
+      [status],
+    );
+  },
+
+  getAllRWYOpportunities: async (limit = 100, offset = 0) => {
+    return query<PonderRWYOpportunity>(
+      'SELECT * FROM rwy_opportunities ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset],
+    );
+  },
+
+  getRWYStakesByUser: async (userAddress: string) => {
+    return query<PonderRWYStake>(
+      'SELECT * FROM rwy_stakes WHERE staker = $1 ORDER BY last_updated DESC',
+      [userAddress.toLowerCase()],
+    );
+  },
+
+  getRWYStakesByOpportunity: async (opportunityId: string) => {
+    return query<PonderRWYStake>(
+      'SELECT * FROM rwy_stakes WHERE opportunity_id = $1 ORDER BY last_updated DESC',
+      [opportunityId],
+    );
+  },
+
+  getRWYOperatorByAddress: async (operatorAddress: string) => {
+    return queryOne<PonderRWYOperator>(
+      'SELECT * FROM rwy_operators WHERE operator = $1',
+      [operatorAddress.toLowerCase()],
+    );
+  },
 };
+
+export function convertPonderRWYOpportunityToDomain(row: any): any {
+  return {
+    id: row.opportunity_id,
+    operator: row.operator,
+    inputToken: row.input_token,
+    inputAmount: row.input_amount.toString(),
+    outputTokenId: row.output_token_id.toString(),
+    outputAmount: row.output_amount.toString(),
+    status: row.status,
+    totalFunded: row.total_funded?.toString() || '0',
+    totalStaked: row.total_staked?.toString() || '0',
+    createdAt: row.created_at?.toString() || '0',
+    updatedAt: row.updated_at?.toString() || '0',
+  };
+}
+
+export function convertPonderRWYStakeToDomain(row: any): any {
+  return {
+    id: row.id,
+    opportunityId: row.opportunity_id,
+    staker: row.staker,
+    principal: row.principal?.toString() || '0',
+    amountStaked: row.amount_staked?.toString() || '0',
+    amountUnstaked: row.amount_unstaked?.toString() || '0',
+    lastUpdated: row.last_updated?.toString() || '0',
+  };
+}
+
+export function convertPonderRWYOperatorToDomain(row: any): any {
+  return {
+    id: row.id,
+    operator: row.operator,
+    status: row.status,
+    totalSlashed: row.total_slashed?.toString() || '0',
+    createdAt: row.created_at?.toString() || '0',
+    updatedAt: row.updated_at?.toString() || '0',
+  };
+}
 
 // Check if Ponder database is available
 export async function isPonderAvailable(): Promise<boolean> {
@@ -388,4 +512,7 @@ export default {
   convertPonderNodeToDomain,
   convertPonderOrderToDomain,
   convertPonderJourneyToDomain,
+  convertPonderRWYOpportunityToDomain,
+  convertPonderRWYStakeToDomain,
+  convertPonderRWYOperatorToDomain,
 };
