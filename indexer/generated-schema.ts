@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-12T23:41:16.509Z
+// Generated at: 2026-01-13T01:14:57.599Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -25,8 +25,8 @@ export const nodes = onchainTable(
   }),
 );
 
-export const clobApprovalGrantedEvents = onchainTable(
-  'clob_approval_granted_events',
+export const clobApprovalGrantedD512Events = onchainTable(
+  'clob_approval_granted_d512_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -41,8 +41,8 @@ export const clobApprovalGrantedEvents = onchainTable(
   }),
 );
 
-export const clobApprovalRevokedEvents = onchainTable(
-  'clob_approval_revoked_events',
+export const clobApprovalRevokedBdd4Events = onchainTable(
+  'clob_approval_revoked_bdd4_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -57,16 +57,19 @@ export const clobApprovalRevokedEvents = onchainTable(
   }),
 );
 
-export const initializedEvents = onchainTable('initialized_events', (t) => ({
-  id: t.text().primaryKey(),
-  version: t.bigint().notNull(),
-  block_number: t.bigint().notNull(),
-  block_timestamp: t.bigint().notNull(),
-  transaction_hash: t.hex().notNull(),
-}));
+export const initializedC7f5Events = onchainTable(
+  'initialized_c7f5_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    version: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+);
 
-export const nodeCapacityUpdatedEvents = onchainTable(
-  'node_capacity_updated_events',
+export const nodeCapacityUpdated_0ba8Events = onchainTable(
+  'node_capacity_updated_0ba8_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -80,8 +83,8 @@ export const nodeCapacityUpdatedEvents = onchainTable(
   }),
 );
 
-export const nodeDeactivatedEvents = onchainTable(
-  'node_deactivated_events',
+export const nodeDeactivated_62b3Events = onchainTable(
+  'node_deactivated_62b3_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -94,8 +97,8 @@ export const nodeDeactivatedEvents = onchainTable(
   }),
 );
 
-export const nodeRegisteredEvents = onchainTable(
-  'node_registered_events',
+export const nodeRegistered_8326Events = onchainTable(
+  'node_registered_8326_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -111,8 +114,8 @@ export const nodeRegisteredEvents = onchainTable(
   }),
 );
 
-export const nodeSellOrderPlacedEvents = onchainTable(
-  'node_sell_order_placed_events',
+export const nodeSellOrderPlaced_3de5Events = onchainTable(
+  'node_sell_order_placed_3de5_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -131,8 +134,8 @@ export const nodeSellOrderPlacedEvents = onchainTable(
   }),
 );
 
-export const nodeUpdatedEvents = onchainTable(
-  'node_updated_events',
+export const nodeUpdated_9c97Events = onchainTable(
+  'node_updated_9c97_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -147,8 +150,8 @@ export const nodeUpdatedEvents = onchainTable(
   }),
 );
 
-export const supportedAssetAddedEvents = onchainTable(
-  'supported_asset_added_events',
+export const supportedAssetAdded_9f0aEvents = onchainTable(
+  'supported_asset_added_9f0a_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -165,8 +168,8 @@ export const supportedAssetAddedEvents = onchainTable(
   }),
 );
 
-export const supportedAssetsUpdatedEvents = onchainTable(
-  'supported_assets_updated_events',
+export const supportedAssetsUpdated_1af7Events = onchainTable(
+  'supported_assets_updated_1af7_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -180,8 +183,8 @@ export const supportedAssetsUpdatedEvents = onchainTable(
   }),
 );
 
-export const tokensDepositedToNodeEvents = onchainTable(
-  'tokens_deposited_to_node_events',
+export const tokensDepositedToNode_9d99Events = onchainTable(
+  'tokens_deposited_to_node_9d99_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -199,8 +202,8 @@ export const tokensDepositedToNodeEvents = onchainTable(
   }),
 );
 
-export const tokensMintedToNodeEvents = onchainTable(
-  'tokens_minted_to_node_events',
+export const tokensMintedToNode_1177Events = onchainTable(
+  'tokens_minted_to_node_1177_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -218,8 +221,8 @@ export const tokensMintedToNodeEvents = onchainTable(
   }),
 );
 
-export const tokensTransferredBetweenNodesEvents = onchainTable(
-  'tokens_transferred_between_nodes_events',
+export const tokensTransferredBetweenNodes_5ceeEvents = onchainTable(
+  'tokens_transferred_between_nodes_5cee_events',
   (t) => ({
     id: t.text().primaryKey(),
     from_node: t.hex().notNull(),
@@ -237,8 +240,8 @@ export const tokensTransferredBetweenNodesEvents = onchainTable(
   }),
 );
 
-export const tokensWithdrawnFromNodeEvents = onchainTable(
-  'tokens_withdrawn_from_node_events',
+export const tokensWithdrawnFromNode_5994Events = onchainTable(
+  'tokens_withdrawn_from_node_5994_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -256,8 +259,8 @@ export const tokensWithdrawnFromNodeEvents = onchainTable(
   }),
 );
 
-export const updateLocationEvents = onchainTable(
-  'update_location_events',
+export const updateLocation_6d4fEvents = onchainTable(
+  'update_location_6d4f_events',
   (t) => ({
     id: t.text().primaryKey(),
     address_name: t.text().notNull(),
@@ -274,8 +277,8 @@ export const updateLocationEvents = onchainTable(
   }),
 );
 
-export const updateOwnerEvents = onchainTable(
-  'update_owner_events',
+export const updateOwnerEa9dEvents = onchainTable(
+  'update_owner_ea9d_events',
   (t) => ({
     id: t.text().primaryKey(),
     owner: t.hex().notNull(),
@@ -290,8 +293,8 @@ export const updateOwnerEvents = onchainTable(
   }),
 );
 
-export const updateStatusEvents = onchainTable(
-  'update_status_events',
+export const updateStatusCf4eEvents = onchainTable(
+  'update_status_cf4e_events',
   (t) => ({
     id: t.text().primaryKey(),
     status: t.hex().notNull(),
@@ -306,664 +309,24 @@ export const updateStatusEvents = onchainTable(
   }),
 );
 
-export const marketCreatedEvents = onchainTable(
-  'market_created_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    market_id: t.hex().notNull(),
-    base_token: t.hex().notNull(),
-    base_token_id: t.bigint().notNull(),
-    quote_token: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    marketIdIdx: index().on(table.market_id),
-    baseTokenIdx: index().on(table.base_token),
-    quoteTokenIdx: index().on(table.quote_token),
-  }),
-);
-
-export const orderCancelledEvents = onchainTable(
-  'order_cancelled_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    remaining_amount: t.bigint().notNull(),
-    reason: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-    makerIdx: index().on(table.maker),
-  }),
-);
-
-export const orderCreatedEvents = onchainTable(
-  'order_created_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    market_id: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    is_buy: t.boolean().notNull(),
-    order_type: t.bigint().notNull(),
-    time_in_force: t.bigint().notNull(),
-    expiry: t.bigint().notNull(),
-    nonce: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-    marketIdIdx: index().on(table.market_id),
-    makerIdx: index().on(table.maker),
-  }),
-);
-
-export const orderExpiredEvents = onchainTable(
-  'order_expired_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    expired_at: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-  }),
-);
-
-export const orderFilledEvents = onchainTable(
-  'order_filled_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    trade_id: t.hex().notNull(),
-    fill_amount: t.bigint().notNull(),
-    fill_price: t.bigint().notNull(),
-    remaining_amount: t.bigint().notNull(),
-    cumulative_filled: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-    tradeIdIdx: index().on(table.trade_id),
-  }),
-);
-
-export const orderPlacedWithTokensEvents = onchainTable(
-  'order_placed_with_tokens_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    base_token: t.hex().notNull(),
-    base_token_id: t.bigint().notNull(),
-    quote_token: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    is_buy: t.boolean().notNull(),
-    order_type: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-    makerIdx: index().on(table.maker),
-    baseTokenIdx: index().on(table.base_token),
-  }),
-);
-
-export const tradeExecutedEvents = onchainTable(
-  'trade_executed_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    trade_id: t.hex().notNull(),
-    taker_order_id: t.hex().notNull(),
-    maker_order_id: t.hex().notNull(),
-    taker: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    market_id: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    quote_amount: t.bigint().notNull(),
-    taker_fee: t.bigint().notNull(),
-    maker_fee: t.bigint().notNull(),
-    timestamp: t.bigint().notNull(),
-    taker_is_buy: t.boolean().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    tradeIdIdx: index().on(table.trade_id),
-    takerOrderIdIdx: index().on(table.taker_order_id),
-    makerOrderIdIdx: index().on(table.maker_order_id),
-  }),
-);
-
-export const tradeExecutedEvents = onchainTable(
-  'trade_executed_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    trade_id: t.hex().notNull(),
-    taker_order_id: t.hex().notNull(),
-    maker_order_id: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    quote_amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    tradeIdIdx: index().on(table.trade_id),
-    takerOrderIdIdx: index().on(table.taker_order_id),
-    makerOrderIdIdx: index().on(table.maker_order_id),
-  }),
-);
-
-export const orderRoutedEvents = onchainTable(
-  'order_routed_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    order_source: t.bigint().notNull(),
-    is_buy: t.boolean().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-    makerIdx: index().on(table.maker),
-  }),
-);
-
-export const bountyPaidEvents = onchainTable(
-  'bounty_paid_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-  }),
-);
-
-export const feeRecipientUpdatedEvents = onchainTable(
-  'fee_recipient_updated_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    old_recipient: t.hex().notNull(),
-    new_recipient: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    oldRecipientIdx: index().on(table.old_recipient),
-    newRecipientIdx: index().on(table.new_recipient),
-  }),
-);
-
-export const journeyStatusUpdatedEvents = onchainTable(
-  'journey_status_updated_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    journey_id: t.hex().notNull(),
-    phase: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-    journeyIdIdx: index().on(table.journey_id),
-  }),
-);
-
-export const logisticsOrderCreatedEvents = onchainTable(
-  'logistics_order_created_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    ausys_order_id: t.hex().notNull(),
-    journey_ids: t.hex().notNull(),
-    bounty: t.bigint().notNull(),
-    node: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-  }),
-);
-
-export const orderCancelledEvents = onchainTable(
-  'order_cancelled_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    previous_status: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-  }),
-);
-
-export const orderSettledEvents = onchainTable(
-  'order_settled_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    seller: t.hex().notNull(),
-    seller_amount: t.bigint().notNull(),
-    driver: t.hex().notNull(),
-    driver_amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-  }),
-);
-
-export const tradeMatchedEvents = onchainTable(
-  'trade_matched_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    clob_trade_id: t.hex().notNull(),
-    clob_order_id: t.hex().notNull(),
-    maker: t.hex().notNull(),
-    price: t.bigint().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-  }),
-);
-
-export const unifiedOrderCreatedEvents = onchainTable(
-  'unified_order_created_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    clob_order_id: t.hex().notNull(),
-    buyer: t.hex().notNull(),
-    seller: t.hex().notNull(),
-    token: t.hex().notNull(),
-    token_id: t.bigint().notNull(),
-    quantity: t.bigint().notNull(),
-    price: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-    clobOrderIdIdx: index().on(table.clob_order_id),
-  }),
-);
-
-export const rewardRateUpdatedEvents = onchainTable(
-  'reward_rate_updated_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    old_rate: t.bigint().notNull(),
-    new_rate: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-);
-
-export const rewardsClaimedEvents = onchainTable(
-  'rewards_claimed_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    user: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-  }),
-);
-
-export const stakedEvents = onchainTable(
-  'staked_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    user: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-  }),
-);
-
-export const withdrawnEvents = onchainTable(
-  'withdrawn_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    user: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-  }),
-);
-
-export const circuitBreakerConfiguredEvents = onchainTable(
-  'circuit_breaker_configured_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    market_id: t.hex().notNull(),
-    price_change_threshold: t.bigint().notNull(),
-    cooldown_period: t.bigint().notNull(),
-    is_enabled: t.boolean().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    marketIdIdx: index().on(table.market_id),
-  }),
-);
-
-export const circuitBreakerResetEvents = onchainTable(
-  'circuit_breaker_reset_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    market_id: t.hex().notNull(),
-    reset_at: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    marketIdIdx: index().on(table.market_id),
-  }),
-);
-
-export const circuitBreakerTrippedEvents = onchainTable(
-  'circuit_breaker_tripped_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    market_id: t.hex().notNull(),
-    trigger_price: t.bigint().notNull(),
-    previous_price: t.bigint().notNull(),
-    change_percent: t.bigint().notNull(),
-    cooldown_until: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    marketIdIdx: index().on(table.market_id),
-  }),
-);
-
-export const emergencyActionCancelledEvents = onchainTable(
-  'emergency_action_cancelled_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    action_id: t.hex().notNull(),
-    canceller: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    actionIdIdx: index().on(table.action_id),
-    cancellerIdx: index().on(table.canceller),
-  }),
-);
-
-export const emergencyActionExecutedEvents = onchainTable(
-  'emergency_action_executed_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    action_id: t.hex().notNull(),
-    executor: t.hex().notNull(),
-    token: t.hex().notNull(),
-    recipient: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    actionIdIdx: index().on(table.action_id),
-    executorIdx: index().on(table.executor),
-  }),
-);
-
-export const emergencyActionInitiatedEvents = onchainTable(
-  'emergency_action_initiated_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    action_id: t.hex().notNull(),
-    initiator: t.hex().notNull(),
-    token: t.hex().notNull(),
-    recipient: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    execute_after: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    actionIdIdx: index().on(table.action_id),
-    initiatorIdx: index().on(table.initiator),
-  }),
-);
-
-export const emergencyWithdrawalEvents = onchainTable(
-  'emergency_withdrawal_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    user: t.hex().notNull(),
-    order_id: t.hex().notNull(),
-    token: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    userIdx: index().on(table.user),
-    orderIdIdx: index().on(table.order_id),
-  }),
-);
-
-export const feesUpdatedEvents = onchainTable('fees_updated_events', (t) => ({
-  id: t.text().primaryKey(),
-  taker_fee_bps: t.bigint().notNull(),
-  maker_fee_bps: t.bigint().notNull(),
-  lp_fee_bps: t.bigint().notNull(),
-  block_number: t.bigint().notNull(),
-  block_timestamp: t.bigint().notNull(),
-  transaction_hash: t.hex().notNull(),
-}));
-
-export const globalPauseEvents = onchainTable('global_pause_events', (t) => ({
-  id: t.text().primaryKey(),
-  paused: t.boolean().notNull(),
-  block_number: t.bigint().notNull(),
-  block_timestamp: t.bigint().notNull(),
-  transaction_hash: t.hex().notNull(),
-}));
-
-export const mEVProtectionUpdatedEvents = onchainTable(
-  'm_e_v_protection_updated_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    min_reveal_delay: t.bigint().notNull(),
-    commitment_threshold: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-);
-
-export const marketPausedEvents = onchainTable(
-  'market_paused_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    market_id: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    marketIdIdx: index().on(table.market_id),
-  }),
-);
-
-export const marketUnpausedEvents = onchainTable(
-  'market_unpaused_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    market_id: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    marketIdIdx: index().on(table.market_id),
-  }),
-);
-
-export const rateLimitsUpdatedEvents = onchainTable(
-  'rate_limits_updated_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    max_orders_per_block: t.bigint().notNull(),
-    max_volume_per_block: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-);
-
-export const diamondCutEvents = onchainTable('diamond_cut_events', (t) => ({
-  id: t.text().primaryKey(),
-  diamond_cut: t.text().notNull(),
-  init: t.hex().notNull(),
-  calldata: t.hex().notNull(),
-  block_number: t.bigint().notNull(),
-  block_timestamp: t.bigint().notNull(),
-  transaction_hash: t.hex().notNull(),
-}));
-
-export const ownershipTransferredEvents = onchainTable(
-  'ownership_transferred_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    previous_owner: t.hex().notNull(),
-    new_owner: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    previousOwnerIdx: index().on(table.previous_owner),
-    newOwnerIdx: index().on(table.new_owner),
-  }),
-);
-
 // Export all tables
 export const tables = {
   nodes,
-  clobApprovalGrantedEvents,
-  clobApprovalRevokedEvents,
-  initializedEvents,
-  nodeCapacityUpdatedEvents,
-  nodeDeactivatedEvents,
-  nodeRegisteredEvents,
-  nodeSellOrderPlacedEvents,
-  nodeUpdatedEvents,
-  supportedAssetAddedEvents,
-  supportedAssetsUpdatedEvents,
-  tokensDepositedToNodeEvents,
-  tokensMintedToNodeEvents,
-  tokensTransferredBetweenNodesEvents,
-  tokensWithdrawnFromNodeEvents,
-  updateLocationEvents,
-  updateOwnerEvents,
-  updateStatusEvents,
-  marketCreatedEvents,
-  orderCancelledEvents,
-  orderCreatedEvents,
-  orderExpiredEvents,
-  orderFilledEvents,
-  orderPlacedWithTokensEvents,
-  tradeExecutedEvents,
-  tradeExecutedEvents,
-  orderRoutedEvents,
-  bountyPaidEvents,
-  feeRecipientUpdatedEvents,
-  journeyStatusUpdatedEvents,
-  logisticsOrderCreatedEvents,
-  orderCancelledEvents,
-  orderSettledEvents,
-  tradeMatchedEvents,
-  unifiedOrderCreatedEvents,
-  rewardRateUpdatedEvents,
-  rewardsClaimedEvents,
-  stakedEvents,
-  withdrawnEvents,
-  circuitBreakerConfiguredEvents,
-  circuitBreakerResetEvents,
-  circuitBreakerTrippedEvents,
-  emergencyActionCancelledEvents,
-  emergencyActionExecutedEvents,
-  emergencyActionInitiatedEvents,
-  emergencyWithdrawalEvents,
-  feesUpdatedEvents,
-  globalPauseEvents,
-  mEVProtectionUpdatedEvents,
-  marketPausedEvents,
-  marketUnpausedEvents,
-  rateLimitsUpdatedEvents,
-  diamondCutEvents,
-  ownershipTransferredEvents,
+  clobApprovalGrantedD512Events,
+  clobApprovalRevokedBdd4Events,
+  initializedC7f5Events,
+  nodeCapacityUpdated_0ba8Events,
+  nodeDeactivated_62b3Events,
+  nodeRegistered_8326Events,
+  nodeSellOrderPlaced_3de5Events,
+  nodeUpdated_9c97Events,
+  supportedAssetAdded_9f0aEvents,
+  supportedAssetsUpdated_1af7Events,
+  tokensDepositedToNode_9d99Events,
+  tokensMintedToNode_1177Events,
+  tokensTransferredBetweenNodes_5ceeEvents,
+  tokensWithdrawnFromNode_5994Events,
+  updateLocation_6d4fEvents,
+  updateOwnerEa9dEvents,
+  updateStatusCf4eEvents,
 };

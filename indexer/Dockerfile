@@ -3,17 +3,14 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files from indexer directory
-COPY indexer/package*.json ./
+# Copy package files
+COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
-# Copy indexer source code
-COPY indexer/ .
-
-# Copy chain-constants from parent directory
-COPY chain-constants.ts ./chain-constants.ts
+# Copy source code
+COPY . .
 
 # Generate Ponder types
 RUN npm run codegen

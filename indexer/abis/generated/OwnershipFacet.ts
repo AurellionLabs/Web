@@ -1,5 +1,5 @@
 // Auto-generated from OwnershipFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-12T23:41:16.508Z
+// Generated at: 2026-01-13T00:47:01.388Z
 
 export const OwnershipFacetABI = [
   {
@@ -123,11 +123,6 @@ export const OwnershipFacetEvents = [
     name: 'Initialized',
     signature: 'Initialized(uint64)',
     signatureHash: '0xc7f505b2',
-  },
-  {
-    name: 'OwnershipTransferred',
-    signature: 'OwnershipTransferred(address,address)',
-    signatureHash: '0x8be0079c',
   },
   {
     name: 'OwnershipTransferred',

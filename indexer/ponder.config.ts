@@ -36,7 +36,7 @@ export default createConfig({
       network: 'baseSepolia',
       abi: AuraAssetABI,
       address: NEXT_PUBLIC_AURA_ASSET_ADDRESS as `0x${string}`,
-      startBlock: BigInt(DEPLOYMENT_BLOCKS.auraAsset),
+      startBlock: DEPLOYMENT_BLOCKS.auraAsset,
     },
   },
 });

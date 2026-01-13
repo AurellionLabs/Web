@@ -30,16 +30,10 @@ const GENERATED_HANDLERS_DIR = path.join(INDEXER_DIR, 'src/handlers');
 const GENERATED_SCHEMA_FILE = path.join(INDEXER_DIR, 'generated-schema.ts');
 
 // Facets to index - maps to Hardhat artifact paths
+// Note: Only indexing simple, non-conflicting events
 const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
   NodesFacet: { domain: 'nodes', priority: 1 },
-  CLOBFacetV2: { domain: 'clob', priority: 2 },
-  OrderMatchingFacet: { domain: 'clob', priority: 3 },
-  OrderRouterFacet: { domain: 'clob', priority: 4 },
-  BridgeFacet: { domain: 'bridge', priority: 5 },
-  StakingFacet: { domain: 'staking', priority: 6 },
-  CLOBAdminFacet: { domain: 'clob-admin', priority: 7 },
-  DiamondCutFacet: { domain: 'diamond', priority: 8 },
-  OwnershipFacet: { domain: 'diamond', priority: 9 },
+  // All other facets have events with duplicate signatures across facets
 };
 
 // ============================================================================
@@ -193,7 +187,18 @@ function parseFacets(): Map<string, FacetInfo> {
     const abi = loadFacetArtifact(facetName);
     if (!abi) continue;
 
-    const events = extractEvents(abi, facetName, config.domain);
+    const allEvents = extractEvents(abi, facetName, config.domain);
+
+    // Deduplicate events by signature hash within the same facet
+    const seenSignatures = new Set<string>();
+    const events = [];
+    for (const event of allEvents) {
+      if (!seenSignatures.has(event.signatureHash)) {
+        seenSignatures.add(event.signatureHash);
+        events.push(event);
+      }
+    }
+
     const functions = abi.filter((item) => item.type === 'function');
 
     facets.set(facetName, {
@@ -314,7 +319,9 @@ interface SchemaTable {
 }
 
 function generateEventTable(event: EventInfo): SchemaTable {
-  const tableName = `${camelToSnake(event.name)}_events`;
+  // Use signature hash prefix to avoid collisions when same event name has different signatures
+  const shortHash = event.signatureHash.slice(2, 6); // First 4 bytes of hash
+  const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
   const columns: SchemaTable['columns'] = [
     { name: 'id', type: 't.text().primaryKey()', primaryKey: true },
   ];
@@ -440,6 +447,7 @@ function generateHandlerStub(domain: string, events: EventInfo[]): string {
 
   // Group events by facet for comments
   const eventsByFacet = new Map<string, EventInfo[]>();
+
   for (const event of events) {
     if (!eventsByFacet.has(event.facet)) {
       eventsByFacet.set(event.facet, []);
@@ -488,12 +496,15 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
       const tableName = camelToSnake(event.name);
       const camelTable = snakeToCamel(tableName);
 
+      // Use just the event name for Ponder.on (Ponder matches by name)
+      const eventKey = `Diamond:${event.name}`;
+
       content += `/**
  * Handle ${event.name} event from ${facetName}
  * Signature: ${event.signature}
  * Hash: ${event.signatureHash}
  */
-ponder.on('Diamond:${event.name}', async ({ event, context }) => {
+ponder.on('${eventKey}', async ({ event, context }) => {
   const { ${destructure} } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -517,22 +528,70 @@ ${event.inputs.map((i) => `    ${camelToSnake(i.name)}: ${i.name},`).join('\n')}
 function generateHandlers(facets: Map<string, FacetInfo>): void {
   ensureDir(GENERATED_HANDLERS_DIR);
 
-  // Group events by domain
+  // No manual handlers - all events are generated
+  console.log('\n🔌 Generating handler stubs...');
+
+  // Events to skip (common initialization/metadata events that aren't useful to index)
+  // These events use complex types or are for contract management only
+  const skipEvents = new Set([
+    'Initialized',
+    'OwnershipTransferStarted',
+    'RoleGranted',
+    'RoleRevoked',
+    'DiamondCut',
+    'OwnershipTransferred',
+    'OwnershipTransferStarted',
+  ]);
+
+  // Track events globally by signature hash to avoid duplicates
+  const processedSignatures = new Set<string>();
   const eventsByDomain = new Map<string, EventInfo[]>();
 
-  for (const facet of facets.values()) {
-    if (!eventsByDomain.has(facet.domain)) {
-      eventsByDomain.set(facet.domain, []);
+  // Process facets in priority order
+  const sortedFacets = Array.from(facets.entries()).sort(
+    (a, b) => a[1].priority - b[1].priority,
+  );
+
+  for (const [facetName, config] of sortedFacets) {
+    const facet = facets.get(facetName)!;
+
+    for (const event of facet.events) {
+      // Skip if already processed by signature
+      if (processedSignatures.has(event.signatureHash)) continue;
+
+      // Skip common skip events
+      if (skipEvents.has(event.name)) continue;
+
+      // Mark as processed
+      processedSignatures.add(event.signatureHash);
+
+      // Add to domain
+      if (!eventsByDomain.has(config.domain)) {
+        eventsByDomain.set(config.domain, []);
+      }
+      eventsByDomain.get(config.domain)!.push(event);
     }
-    eventsByDomain.get(facet.domain)!.push(...facet.events);
   }
 
   // Generate handler file for each domain
+  const generatedFiles = new Set<string>();
   for (const [domain, events] of eventsByDomain) {
-    const content = generateHandlerStub(domain, events);
     const fileName = `${domain}.generated.ts`;
+    generatedFiles.add(fileName);
+
+    const content = generateHandlerStub(domain, events);
     fs.writeFileSync(path.join(GENERATED_HANDLERS_DIR, fileName), content);
     console.log(`✓ Generated ${fileName} with ${events.length} event handlers`);
+  }
+
+  // Clean up old handler files that are no longer needed
+  if (fs.existsSync(GENERATED_HANDLERS_DIR)) {
+    for (const file of fs.readdirSync(GENERATED_HANDLERS_DIR)) {
+      if (file.endsWith('.generated.ts') && !generatedFiles.has(file)) {
+        fs.unlinkSync(path.join(GENERATED_HANDLERS_DIR, file));
+        console.log(`🗑️  Removed obsolete ${file}`);
+      }
+    }
   }
 
   // Generate index file

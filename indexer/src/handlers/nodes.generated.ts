@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-12T23:41:16.510Z
+// Generated at: 2026-01-13T01:14:57.600Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: NodesFacet
@@ -9,7 +9,6 @@ import { ponder } from '@/generated';
 // Import event tables (auto-generated from ABI)
 import { clobApprovalGranted } from '../../generated-schema';
 import { clobApprovalRevoked } from '../../generated-schema';
-import { initialized } from '../../generated-schema';
 import { nodeCapacityUpdated } from '../../generated-schema';
 import { nodeDeactivated } from '../../generated-schema';
 import { nodeRegistered } from '../../generated-schema';
@@ -66,25 +65,6 @@ ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
     id,
     node_hash: nodeHash,
     clob_address: clobAddress,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle Initialized event from NodesFacet
- * Signature: Initialized(uint64)
- * Hash: 0xc7f505b2
- */
-ponder.on('Diamond:Initialized', async ({ event, context }) => {
-  const { version } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Insert raw event into event table
-  await context.db.insert(initialized).values({
-    id,
-    version: version,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

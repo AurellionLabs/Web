@@ -1,5 +1,5 @@
 // Auto-generated Ponder config - DO NOT EDIT
-// Generated at: 2026-01-12T23:41:16.513Z
+// Generated at: 2026-01-13T01:14:57.601Z
 
 import { createConfig } from '@ponder/core';
 import { http } from 'viem';
