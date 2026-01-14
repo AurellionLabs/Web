@@ -54,9 +54,11 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
         runs: 200,
-      },
-      yul: {
-        stackAllocation: true,
+        details: {
+          yulDetails: {
+            stackAllocation: true,
+          },
+        },
       },
     },
   },

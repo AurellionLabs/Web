@@ -211,7 +211,7 @@ contract CLOB is ReentrancyGuard, ERC1155Holder, Ownable, Pausable {
     // CONSTRUCTOR
     // =============================================================================
 
-    constructor(address _initialOwner, address _feeRecipient) Ownable(_initialOwner) {
+    constructor(address _initialOwner, address _feeRecipient) Ownable(_initialOwner) ReentrancyGuard() ERC1155Holder() Pausable() {
         feeRecipient = _feeRecipient;
     }
 
