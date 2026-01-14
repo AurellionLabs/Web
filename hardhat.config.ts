@@ -53,7 +53,10 @@ const config: HardhatUserConfig = {
       viaIR: true,
       optimizer: {
         enabled: true,
-        runs: 1, // Minimum runs = smallest bytecode
+        runs: 200,
+      },
+      yul: {
+        stackAllocation: true,
       },
     },
   },
