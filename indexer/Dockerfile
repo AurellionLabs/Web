@@ -25,6 +25,9 @@ RUN npx hardhat compile
 # Generate Ponder types
 RUN npm run generate:indexer
 
+# Build Next.js app
+RUN npm run build
+
 # Production stage
 FROM node:22-alpine AS runner
 
@@ -45,6 +48,7 @@ COPY --from=builder /app/indexer/src ./indexer/src
 COPY --from=builder /app/indexer/abis ./indexer/abis
 COPY --from=builder /app/indexer/chain-constants.ts ./
 COPY --from=builder /app/indexer/diamond-constants.ts ./
+COPY --from=builder /app/.next ./.next
 
 # Set ownership
 RUN chown -R ponder:nodejs /app
