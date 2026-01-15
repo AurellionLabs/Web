@@ -11,14 +11,13 @@ COPY package*.json ./
 # Copy all source code
 COPY . .
 
-# Install dependencies with force to bypass any cached resolutions
-RUN npm install --legacy-peer-deps --force
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
 # Debug: Verify OpenZeppelin contracts BEFORE compile
-RUN pwd  
-RUN ls -la node_modules/@openzeppelin/contracts/security/ || echo "security folder not found"
-RUN cat node_modules/@openzeppelin/contracts/package.json | grep '"version"' | head -1
-RUN ls -la node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol
 
 # Compile Solidity contracts
 RUN npx hardhat compile
@@ -38,14 +37,14 @@ RUN adduser --system --uid 1001 ponder
 # Copy built application
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/ponder.config.ts ./
-COPY --from=builder /app/ponder.schema.ts ./
-COPY --from=builder /app/generated-schema.ts ./
+COPY --from=builder /app/indexer/ponder.config.ts ./
+COPY --from=builder /app/indexer/ponder.schema.ts ./
+COPY --from=builder /app/indexer/generated-schema.ts ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/indexer/src ./indexer/src
 COPY --from=builder /app/indexer/abis ./indexer/abis
-COPY --from=builder /app/chain-constants.ts ./
-COPY --from=builder /app/diamond-constants.ts ./
+COPY --from=builder /app/indexer/chain-constants.ts ./
+COPY --from=builder /app/indexer/diamond-constants.ts ./
 
 # Set ownership
 RUN chown -R ponder:nodejs /app

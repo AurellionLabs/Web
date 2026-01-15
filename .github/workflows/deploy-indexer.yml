@@ -104,9 +104,9 @@ jobs:
 
             cd /srv/Web/indexer
 
-            # Rebuild and restart with latest code
-            docker compose -f docker-compose.prod.yml build --no-cache indexer
+            # Pull latest Docker image from GHCR and restart
+            docker compose -f docker-compose.prod.yml pull indexer
             docker compose -f docker-compose.prod.yml up -d
 
-            # Clean up old images
+            # Clean up unused images
             docker image prune -f

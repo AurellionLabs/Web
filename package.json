@@ -2,6 +2,7 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.x",
   "scripts": {
     "codegen": "cd indexer && npm run codegen",
     "generate:indexer": "cd indexer && npm run generate:indexer",
