@@ -5,6 +5,7 @@ WORKDIR /app
 
 # Copy workspace config and root package files
 COPY pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
 COPY package*.json ./
 
 # Copy indexer package
