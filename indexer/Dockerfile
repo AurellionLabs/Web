@@ -25,8 +25,8 @@ RUN npx hardhat compile
 # Generate Ponder types
 RUN npm run generate:indexer
 
-# Build Next.js app
-RUN npm run build
+# Build Next.js app (skip typecheck since it was done locally)
+RUN npx next build
 
 # Production stage
 FROM node:22-alpine AS runner
