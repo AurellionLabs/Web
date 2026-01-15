@@ -1,32 +1,24 @@
-# Build stage
-# Cache-bust: force fresh build
-ARG CACHE_BUST
+# Build stage for Ponder indexer
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy workspace config and root package files
+COPY pnpm-workspace.yaml ./
 COPY package*.json ./
 
-# Copy all source code
-COPY . .
+# Copy indexer package
+COPY indexer/package*.json ./indexer/
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install dependencies (from workspace)
+RUN npm install -g pnpm && \
+    pnpm install --frozen-lockfile
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Copy indexer source
+COPY indexer/ ./indexer/
 
-# Debug: Verify OpenZeppelin contracts BEFORE compile
-
-# Compile Solidity contracts
-RUN npx hardhat compile
-
-# Generate Ponder types
-RUN npm run generate:indexer
-
-# Build Next.js app (skip typecheck since it was done locally)
-RUN npx next build
+# Generate indexer types
+RUN cd indexer && pnpm run generate:indexer
 
 # Production stage
 FROM node:22-alpine AS runner
@@ -37,30 +29,16 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 ponder
 
-# Copy built application
+# Copy only what's needed from builder
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/indexer/ponder.config.ts ./
-COPY --from=builder /app/indexer/ponder.schema.ts ./
-COPY --from=builder /app/indexer/generated-schema.ts ./
-COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/indexer/src ./indexer/src
-COPY --from=builder /app/indexer/abis ./indexer/abis
-COPY --from=builder /app/indexer/chain-constants.ts ./
-COPY --from=builder /app/indexer/diamond-constants.ts ./
-COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/indexer ./indexer
 
 # Set ownership
 RUN chown -R ponder:nodejs /app
 
 USER ponder
 
-# Expose Ponder port
 EXPOSE 42069
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:42069/health || exit 1
-
-# Start command
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "cd indexer && pnpm run start"]
