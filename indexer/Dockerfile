@@ -18,6 +18,13 @@ RUN npm install -g pnpm && \
 # Copy indexer source
 COPY indexer/ ./indexer/
 
+# Copy scripts needed for generate:indexer
+COPY scripts/ ./scripts/
+
+# Copy chain constants needed by indexer
+COPY chain-constants.ts ./
+COPY config/ ./config/
+
 # Generate indexer types
 RUN cd indexer && pnpm run generate:indexer
 
