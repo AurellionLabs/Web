@@ -25,6 +25,9 @@ COPY scripts/ ./scripts/
 COPY chain-constants.ts ./
 COPY config/ ./config/
 
+# Compile Solidity contracts (needed for generate:indexer)
+RUN npx hardhat compile
+
 # Generate indexer types
 RUN cd indexer && pnpm run generate:indexer
 
