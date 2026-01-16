@@ -28,6 +28,9 @@ COPY hardhat.config.ts ./
 COPY tsconfig.json ./
 COPY remappings.txt ./
 
+# Copy contracts source for compilation
+COPY contracts/ ./contracts/
+
 # Compile Solidity contracts (needed for generate:indexer)
 RUN npx hardhat compile
 
