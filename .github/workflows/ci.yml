@@ -75,7 +75,7 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./indexer
+          context: .
           push: false
           tags: indexer:test
           cache-from: type=gha
