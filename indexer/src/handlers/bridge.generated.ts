@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-01-13T22:55:31.504Z
+// Generated at: 2026-01-16T14:47:49.783Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: BridgeFacet
@@ -8,10 +8,10 @@ import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
 import { bountyPaid_8e7bEvents } from '../../generated-schema';
+import { bridgeOrderCancelledFb63Events } from '../../generated-schema';
 import { feeRecipientUpdatedAaebEvents } from '../../generated-schema';
 import { journeyStatusUpdatedF7daEvents } from '../../generated-schema';
 import { logisticsOrderCreated_9c83Events } from '../../generated-schema';
-import { orderCancelledE3bbEvents } from '../../generated-schema';
 import { orderSettledE726Events } from '../../generated-schema';
 import { tradeMatched_51d0Events } from '../../generated-schema';
 import { unifiedOrderCreatedC8b6Events } from '../../generated-schema';
@@ -37,6 +37,26 @@ ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
     id,
     unified_order_id: unifiedOrderId,
     amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle BridgeOrderCancelled event from BridgeFacet
+ * Signature: BridgeOrderCancelled(bytes32,uint8)
+ * Hash: 0xfb630ff8
+ */
+ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
+  const { unifiedOrderId, previousStatus } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(bridgeOrderCancelledFb63Events).values({
+    id,
+    unified_order_id: unifiedOrderId,
+    previous_status: previousStatus,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
@@ -101,26 +121,6 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
     journey_ids: journeyIds,
     bounty: bounty,
     node: node,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle OrderCancelled event from BridgeFacet
- * Signature: OrderCancelled(bytes32,uint8)
- * Hash: 0xe3bb8b6a
- */
-ponder.on('Diamond:OrderCancelled', async ({ event, context }) => {
-  const { unifiedOrderId, previousStatus } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Insert raw event into event table
-  await context.db.insert(orderCancelledE3bbEvents).values({
-    id,
-    unified_order_id: unifiedOrderId,
-    previous_status: previousStatus,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

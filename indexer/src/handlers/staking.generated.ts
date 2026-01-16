@@ -1,5 +1,5 @@
 // Auto-generated handler for staking domain - Raw event storage only
-// Generated at: 2026-01-13T22:55:31.504Z
+// Generated at: 2026-01-16T14:47:49.783Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: StakingFacet

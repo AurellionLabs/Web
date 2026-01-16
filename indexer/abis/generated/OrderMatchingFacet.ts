@@ -1,38 +1,7 @@
 // Auto-generated from OrderMatchingFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T14:14:28.780Z
+// Generated at: 2026-01-16T14:47:49.776Z
 
 export const OrderMatchingFacetABI = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'remainingAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint8',
-        name: 'reason',
-        type: 'uint8',
-      },
-    ],
-    name: 'MatchingOrderCancelled',
-    type: 'event',
-  },
   {
     anonymous: false,
     inputs: [
@@ -73,7 +42,38 @@ export const OrderMatchingFacetABI = [
         type: 'uint256',
       },
     ],
-    name: 'OrderFilled',
+    name: 'AusysOrderFilled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'remainingAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'reason',
+        type: 'uint8',
+      },
+    ],
+    name: 'MatchingOrderCancelled',
     type: 'event',
   },
   {
@@ -252,14 +252,15 @@ export const OrderMatchingFacetABI = [
 
 export const OrderMatchingFacetEvents = [
   {
+    name: 'AusysOrderFilled',
+    signature:
+      'AusysOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)',
+    signatureHash: '0x3e2e10ef',
+  },
+  {
     name: 'MatchingOrderCancelled',
     signature: 'MatchingOrderCancelled(bytes32,address,uint256,uint8)',
     signatureHash: '0x6f7d737d',
-  },
-  {
-    name: 'OrderFilled',
-    signature: 'OrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)',
-    signatureHash: '0x6746ae7b',
   },
   {
     name: 'TradeExecuted',

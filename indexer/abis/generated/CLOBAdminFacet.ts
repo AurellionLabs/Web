@@ -1,5 +1,5 @@
 // Auto-generated from CLOBAdminFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-13T14:14:28.781Z
+// Generated at: 2026-01-16T14:47:49.777Z
 
 export const CLOBAdminFacetABI = [
   {
@@ -50,6 +50,11 @@ export const CLOBAdminFacetABI = [
   {
     inputs: [],
     name: 'NotPaused',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ReentrancyGuardReentrantCall',
     type: 'error',
   },
   {

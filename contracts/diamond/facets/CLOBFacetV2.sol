@@ -45,7 +45,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
         uint8 orderType
     );
     
-    event OrderFilled(
+    event CLOBOrderFilled(
         bytes32 indexed orderId,
         bytes32 indexed tradeId,
         uint256 fillAmount,
@@ -968,7 +968,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
             takerIsBuy
         );
         
-        emit OrderFilled(
+        emit CLOBOrderFilled(
             takerOrderId,
             tradeId,
             fillAmount,
@@ -977,7 +977,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
             takerNewFilled
         );
         
-        emit OrderFilled(
+        emit CLOBOrderFilled(
             makerOrderId,
             tradeId,
             fillAmount,

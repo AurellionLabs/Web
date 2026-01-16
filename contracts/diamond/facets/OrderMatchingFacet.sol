@@ -20,7 +20,7 @@ contract OrderMatchingFacet {
         address quoteToken;
     }
     
-    event OrderFilled(bytes32 indexed orderId, bytes32 indexed tradeId, uint256 fillAmount, uint256 fillPrice, uint256 remainingAmount, uint256 cumulativeFilled);
+    event AusysOrderFilled(bytes32 indexed orderId, bytes32 indexed tradeId, uint256 fillAmount, uint256 fillPrice, uint256 remainingAmount, uint256 cumulativeFilled);
     event TradeExecuted(bytes32 indexed tradeId, bytes32 indexed takerOrderId, bytes32 indexed makerOrderId, uint256 price, uint256 amount, uint256 quoteAmount);
     event MatchingOrderCancelled(bytes32 indexed orderId, address indexed maker, uint256 remainingAmount, uint8 reason);
     

@@ -75,7 +75,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         uint256 nonce
     );
     
-    event OrderFilled(
+    event RouterOrderFilled(
         bytes32 indexed orderId,
         bytes32 indexed tradeId,
         uint256 fillAmount,

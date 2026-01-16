@@ -19,7 +19,7 @@ contract CLOBMatchingFacet is ReentrancyGuard {
     // EVENTS
     // ============================================================================
     
-    event OrderFilled(
+    event MatchingOrderFilled(
         bytes32 indexed orderId,
         bytes32 indexed tradeId,
         uint256 fillAmount,
@@ -299,8 +299,8 @@ contract CLOBMatchingFacet is ReentrancyGuard {
             takerIsBuy
         );
         
-        emit OrderFilled(takerOrderId, tradeId, fillAmount, price, takerAmount - takerNewFilled, takerNewFilled);
-        emit OrderFilled(makerOrderId, tradeId, fillAmount, price, makerAmount - makerNewFilled, makerNewFilled);
+        emit MatchingOrderFilled(takerOrderId, tradeId, fillAmount, price, takerAmount - takerNewFilled, takerNewFilled);
+        emit MatchingOrderFilled(makerOrderId, tradeId, fillAmount, price, makerAmount - makerNewFilled, makerNewFilled);
     }
     
     // ============================================================================

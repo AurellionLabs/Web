@@ -1,5 +1,5 @@
 // Auto-generated from CLOBFacetV2.sol - DO NOT EDIT
-// Generated at: 2026-01-13T14:14:28.780Z
+// Generated at: 2026-01-16T14:47:49.776Z
 
 export const CLOBFacetV2ABI = [
   {
@@ -58,6 +58,11 @@ export const CLOBFacetV2ABI = [
     type: 'error',
   },
   {
+    inputs: [],
+    name: 'ReentrancyGuardReentrantCall',
+    type: 'error',
+  },
+  {
     anonymous: false,
     inputs: [
       {
@@ -86,6 +91,49 @@ export const CLOBFacetV2ABI = [
       },
     ],
     name: 'CLOBOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'fillAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'fillPrice',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'remainingAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'cumulativeFilled',
+        type: 'uint256',
+      },
+    ],
+    name: 'CLOBOrderFilled',
     type: 'event',
   },
   {
@@ -203,49 +251,6 @@ export const CLOBFacetV2ABI = [
       },
     ],
     name: 'OrderExpired',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'tradeId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'fillAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'fillPrice',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'remainingAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'cumulativeFilled',
-        type: 'uint256',
-      },
-    ],
-    name: 'OrderFilled',
     type: 'event',
   },
   {
@@ -697,6 +702,12 @@ export const CLOBFacetV2Events = [
     signatureHash: '0x8b4753f7',
   },
   {
+    name: 'CLOBOrderFilled',
+    signature:
+      'CLOBOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)',
+    signatureHash: '0x2d540948',
+  },
+  {
     name: 'MarketCreated',
     signature: 'MarketCreated(bytes32,address,uint256,address)',
     signatureHash: '0xb59e4751',
@@ -711,11 +722,6 @@ export const CLOBFacetV2Events = [
     name: 'OrderExpired',
     signature: 'OrderExpired(bytes32,uint256)',
     signatureHash: '0xb558d548',
-  },
-  {
-    name: 'OrderFilled',
-    signature: 'OrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)',
-    signatureHash: '0x6746ae7b',
   },
   {
     name: 'OrderPlacedWithTokens',

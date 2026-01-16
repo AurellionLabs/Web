@@ -1,5 +1,5 @@
 // Auto-generated from AuraAsset.sol - DO NOT EDIT
-// Generated at: 2026-01-13T22:55:31.501Z
+// Generated at: 2026-01-16T14:46:36.415Z
 
 export const AuraAssetABI = [
   {
@@ -83,6 +83,62 @@ export const AuraAssetABI = [
       },
     ],
     name: 'AssetAttributeAdded',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'CustodyEstablished',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'redeemer',
+        type: 'address',
+      },
+    ],
+    name: 'CustodyReleased',
     type: 'event',
   },
   {
@@ -416,6 +472,30 @@ export const AuraAssetABI = [
   {
     inputs: [
       {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    name: 'getCustodyInfo',
+    outputs: [
+      {
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'bytes32',
         name: '',
         type: 'bytes32',
@@ -503,6 +583,25 @@ export const AuraAssetABI = [
       },
     ],
     name: 'isClassActive',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    name: 'isInCustody',
     outputs: [
       {
         internalType: 'bool',
@@ -769,6 +868,24 @@ export const AuraAssetABI = [
   {
     inputs: [
       {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'redeem',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         components: [
           {
             internalType: 'string',
@@ -1004,6 +1121,44 @@ export const AuraAssetABI = [
     inputs: [
       {
         internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    name: 'tokenCustodian',
+    outputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    name: 'tokenCustodyAmount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
         name: 'id',
         type: 'uint256',
       },
@@ -1063,6 +1218,16 @@ export const AuraAssetEvents = [
     name: 'AssetAttributeAdded',
     signature: 'AssetAttributeAdded(bytes32,uint256,string,string[],string)',
     signatureHash: '0xee7669d5',
+  },
+  {
+    name: 'CustodyEstablished',
+    signature: 'CustodyEstablished(uint256,address,uint256)',
+    signatureHash: '0x75e1dfdc',
+  },
+  {
+    name: 'CustodyReleased',
+    signature: 'CustodyReleased(uint256,address,uint256,address)',
+    signatureHash: '0x93d2bba3',
   },
   {
     name: 'MintedAsset',

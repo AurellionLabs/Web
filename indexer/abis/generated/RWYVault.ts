@@ -1,5 +1,5 @@
 // Auto-generated from RWYVault.sol - DO NOT EDIT
-// Generated at: 2026-01-13T22:55:31.501Z
+// Generated at: 2026-01-16T14:46:36.415Z
 
 export const RWYVaultABI = [
   {
