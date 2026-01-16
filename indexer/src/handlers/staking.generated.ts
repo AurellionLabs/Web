@@ -1,5 +1,5 @@
 // Auto-generated handler for staking domain - Raw event storage only
-// Generated at: 2026-01-16T14:47:49.783Z
+// Generated at: 2026-01-16T19:32:37.912Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: StakingFacet
@@ -24,7 +24,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Signature: RewardRateUpdated(uint256,uint256)
  * Hash: 0xc390a98a
  */
-ponder.on('Diamond:RewardRateUpdated', async ({ event, context }) => {
+ponder.on('StakingFacet:RewardRateUpdated', async ({ event, context }) => {
   const { oldRate, newRate } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -44,7 +44,7 @@ ponder.on('Diamond:RewardRateUpdated', async ({ event, context }) => {
  * Signature: RewardsClaimed(address,uint256)
  * Hash: 0xfc30cdde
  */
-ponder.on('Diamond:RewardsClaimed', async ({ event, context }) => {
+ponder.on('StakingFacet:RewardsClaimed', async ({ event, context }) => {
   const { user, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -64,7 +64,7 @@ ponder.on('Diamond:RewardsClaimed', async ({ event, context }) => {
  * Signature: Staked(address,uint256)
  * Hash: 0x9e71bc8e
  */
-ponder.on('Diamond:Staked', async ({ event, context }) => {
+ponder.on('StakingFacet:Staked', async ({ event, context }) => {
   const { user, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -84,7 +84,7 @@ ponder.on('Diamond:Staked', async ({ event, context }) => {
  * Signature: Withdrawn(address,uint256)
  * Hash: 0x7084f547
  */
-ponder.on('Diamond:Withdrawn', async ({ event, context }) => {
+ponder.on('StakingFacet:Withdrawn', async ({ event, context }) => {
   const { user, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 

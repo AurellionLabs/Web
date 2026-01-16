@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-16T14:47:49.781Z
+// Generated at: 2026-01-16T19:32:37.910Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: NodesFacet
@@ -36,7 +36,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Signature: ClobApprovalGranted(bytes32,address)
  * Hash: 0xd5126df4
  */
-ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
+ponder.on('NodesFacet:ClobApprovalGranted', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -56,7 +56,7 @@ ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
  * Signature: ClobApprovalRevoked(bytes32,address)
  * Hash: 0xbdd45b26
  */
-ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
+ponder.on('NodesFacet:ClobApprovalRevoked', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -76,7 +76,7 @@ ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
  * Signature: NodeCapacityUpdated(bytes32,uint256[])
  * Hash: 0x0ba8897d
  */
-ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
+ponder.on('NodesFacet:NodeCapacityUpdated', async ({ event, context }) => {
   const { nodeHash, quantities } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -96,7 +96,7 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
  * Signature: NodeDeactivated(bytes32)
  * Hash: 0x62b30865
  */
-ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
+ponder.on('NodesFacet:NodeDeactivated', async ({ event, context }) => {
   const { nodeHash } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -115,7 +115,7 @@ ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
  * Signature: NodeRegistered(bytes32,address,string)
  * Hash: 0x8326de45
  */
-ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
+ponder.on('NodesFacet:NodeRegistered', async ({ event, context }) => {
   const { nodeHash, owner, nodeType } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -136,7 +136,7 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
  * Signature: NodeSellOrderPlaced(bytes32,uint256,address,uint256,uint256,bytes32)
  * Hash: 0x3de5f088
  */
-ponder.on('Diamond:NodeSellOrderPlaced', async ({ event, context }) => {
+ponder.on('NodesFacet:NodeSellOrderPlaced', async ({ event, context }) => {
   const { nodeHash, tokenId, quoteToken, price, amount, orderId } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -160,7 +160,7 @@ ponder.on('Diamond:NodeSellOrderPlaced', async ({ event, context }) => {
  * Signature: NodeUpdated(bytes32,string,uint256)
  * Hash: 0x9c97a401
  */
-ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
+ponder.on('NodesFacet:NodeUpdated', async ({ event, context }) => {
   const { nodeHash, nodeType, capacity } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -181,7 +181,7 @@ ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
  * Signature: SupportedAssetAdded(bytes32,address,uint256,uint256,uint256)
  * Hash: 0x9f0a9fa6
  */
-ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
+ponder.on('NodesFacet:SupportedAssetAdded', async ({ event, context }) => {
   const { nodeHash, token, tokenId, price, capacity } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -204,7 +204,7 @@ ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
  * Signature: SupportedAssetsUpdated(bytes32,uint256)
  * Hash: 0x1af735b1
  */
-ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
+ponder.on('NodesFacet:SupportedAssetsUpdated', async ({ event, context }) => {
   const { nodeHash, count } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -224,7 +224,7 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
  * Signature: TokensDepositedToNode(bytes32,uint256,uint256,address)
  * Hash: 0x9d994707
  */
-ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
+ponder.on('NodesFacet:TokensDepositedToNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, depositor } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -246,7 +246,7 @@ ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
  * Signature: TokensMintedToNode(bytes32,uint256,uint256,address)
  * Hash: 0x1177d829
  */
-ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
+ponder.on('NodesFacet:TokensMintedToNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, minter } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -269,7 +269,7 @@ ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
  * Hash: 0x5cee2a26
  */
 ponder.on(
-  'Diamond:TokensTransferredBetweenNodes',
+  'NodesFacet:TokensTransferredBetweenNodes',
   async ({ event, context }) => {
     const { fromNode, toNode, tokenId, amount } = event.args;
     const id = eventId(event.transaction.hash, event.log.logIndex);
@@ -293,7 +293,7 @@ ponder.on(
  * Signature: TokensWithdrawnFromNode(bytes32,uint256,uint256,address)
  * Hash: 0x59947f68
  */
-ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
+ponder.on('NodesFacet:TokensWithdrawnFromNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, recipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -315,7 +315,7 @@ ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
  * Signature: UpdateLocation(string,string,string,bytes32)
  * Hash: 0x6d4f5fd0
  */
-ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
+ponder.on('NodesFacet:UpdateLocation', async ({ event, context }) => {
   const { addressName, lat, lng, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -337,7 +337,7 @@ ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
  * Signature: UpdateOwner(address,bytes32)
  * Hash: 0xea9df86c
  */
-ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
+ponder.on('NodesFacet:UpdateOwner', async ({ event, context }) => {
   const { owner, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -357,7 +357,7 @@ ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
  * Signature: UpdateStatus(bytes1,bytes32)
  * Hash: 0xcf4e8a63
  */
-ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
+ponder.on('NodesFacet:UpdateStatus', async ({ event, context }) => {
   const { status, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 

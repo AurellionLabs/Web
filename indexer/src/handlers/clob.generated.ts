@@ -1,5 +1,5 @@
 // Auto-generated handler for clob domain - Raw event storage only
-// Generated at: 2026-01-16T14:47:49.782Z
+// Generated at: 2026-01-16T19:32:37.911Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBFacetV2, OrderMatchingFacet, OrderRouterFacet
@@ -36,7 +36,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Signature: CLOBOrderCancelled(bytes32,address,uint256,uint8)
  * Hash: 0x8b4753f7
  */
-ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
+ponder.on('CLOBFacetV2:CLOBOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -58,7 +58,7 @@ ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
  * Signature: CLOBOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)
  * Hash: 0x2d540948
  */
-ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
+ponder.on('CLOBFacetV2:CLOBOrderFilled', async ({ event, context }) => {
   const {
     orderId,
     tradeId,
@@ -89,7 +89,7 @@ ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
  * Signature: MarketCreated(bytes32,address,uint256,address)
  * Hash: 0xb59e4751
  */
-ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
+ponder.on('CLOBFacetV2:MarketCreated', async ({ event, context }) => {
   const { marketId, baseToken, baseTokenId, quoteToken } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -111,7 +111,7 @@ ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
  * Signature: OrderCreated(bytes32,bytes32,address,uint256,uint256,bool,uint8,uint8,uint256,uint256)
  * Hash: 0x43fe20c0
  */
-ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
+ponder.on('CLOBFacetV2:OrderCreated', async ({ event, context }) => {
   const {
     orderId,
     marketId,
@@ -150,7 +150,7 @@ ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
  * Signature: OrderExpired(bytes32,uint256)
  * Hash: 0xb558d548
  */
-ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
+ponder.on('CLOBFacetV2:OrderExpired', async ({ event, context }) => {
   const { orderId, expiredAt } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -170,7 +170,7 @@ ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
  * Signature: OrderPlacedWithTokens(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)
  * Hash: 0xe764a4f2
  */
-ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
+ponder.on('CLOBFacetV2:OrderPlacedWithTokens', async ({ event, context }) => {
   const {
     orderId,
     maker,
@@ -207,7 +207,7 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
  * Signature: TradeExecuted(bytes32,bytes32,bytes32,address,address,bytes32,uint256,uint256,uint256,uint256,uint256,uint256,bool)
  * Hash: 0x47cd8e87
  */
-ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
+ponder.on('CLOBFacetV2:TradeExecuted', async ({ event, context }) => {
   const {
     tradeId,
     takerOrderId,
@@ -256,7 +256,7 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
  * Signature: AusysOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)
  * Hash: 0x3e2e10ef
  */
-ponder.on('Diamond:AusysOrderFilled', async ({ event, context }) => {
+ponder.on('OrderMatchingFacet:AusysOrderFilled', async ({ event, context }) => {
   const {
     orderId,
     tradeId,
@@ -287,29 +287,32 @@ ponder.on('Diamond:AusysOrderFilled', async ({ event, context }) => {
  * Signature: MatchingOrderCancelled(bytes32,address,uint256,uint8)
  * Hash: 0x6f7d737d
  */
-ponder.on('Diamond:MatchingOrderCancelled', async ({ event, context }) => {
-  const { orderId, maker, remainingAmount, reason } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on(
+  'OrderMatchingFacet:MatchingOrderCancelled',
+  async ({ event, context }) => {
+    const { orderId, maker, remainingAmount, reason } = event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(matchingOrderCancelled_6f7dEvents).values({
-    id,
-    order_id: orderId,
-    maker: maker,
-    remaining_amount: remainingAmount,
-    reason: reason,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
+    // Insert raw event into event table
+    await context.db.insert(matchingOrderCancelled_6f7dEvents).values({
+      id,
+      order_id: orderId,
+      maker: maker,
+      remaining_amount: remainingAmount,
+      reason: reason,
+      block_number: event.block.number,
+      block_timestamp: BigInt(event.block.timestamp),
+      transaction_hash: event.transaction.hash,
+    });
+  },
+);
 
 /**
  * Handle TradeExecuted event from OrderMatchingFacet
  * Signature: TradeExecuted(bytes32,bytes32,bytes32,uint256,uint256,uint256)
  * Hash: 0x4692eb38
  */
-ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
+ponder.on('OrderMatchingFacet:TradeExecuted', async ({ event, context }) => {
   const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } =
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
@@ -338,7 +341,7 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
  * Signature: CLOBOrderCancelled(bytes32,address,uint256,uint8)
  * Hash: 0x8b4753f7
  */
-ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
+ponder.on('OrderRouterFacet:CLOBOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -360,7 +363,7 @@ ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
  * Signature: OrderCreated(bytes32,bytes32,address,uint256,uint256,bool,uint8,uint8,uint256,uint256)
  * Hash: 0x43fe20c0
  */
-ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
+ponder.on('OrderRouterFacet:OrderCreated', async ({ event, context }) => {
   const {
     orderId,
     marketId,
@@ -399,44 +402,47 @@ ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
  * Signature: OrderPlacedWithTokens(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)
  * Hash: 0xe764a4f2
  */
-ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
-  const {
-    orderId,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    amount,
-    isBuy,
-    orderType,
-  } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on(
+  'OrderRouterFacet:OrderPlacedWithTokens',
+  async ({ event, context }) => {
+    const {
+      orderId,
+      maker,
+      baseToken,
+      baseTokenId,
+      quoteToken,
+      price,
+      amount,
+      isBuy,
+      orderType,
+    } = event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(orderPlacedWithTokensE764Events).values({
-    id,
-    order_id: orderId,
-    maker: maker,
-    base_token: baseToken,
-    base_token_id: baseTokenId,
-    quote_token: quoteToken,
-    price: price,
-    amount: amount,
-    is_buy: isBuy,
-    order_type: orderType,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
+    // Insert raw event into event table
+    await context.db.insert(orderPlacedWithTokensE764Events).values({
+      id,
+      order_id: orderId,
+      maker: maker,
+      base_token: baseToken,
+      base_token_id: baseTokenId,
+      quote_token: quoteToken,
+      price: price,
+      amount: amount,
+      is_buy: isBuy,
+      order_type: orderType,
+      block_number: event.block.number,
+      block_timestamp: BigInt(event.block.timestamp),
+      transaction_hash: event.transaction.hash,
+    });
+  },
+);
 
 /**
  * Handle OrderRouted event from OrderRouterFacet
  * Signature: OrderRouted(bytes32,address,uint8,bool)
  * Hash: 0x138298a5
  */
-ponder.on('Diamond:OrderRouted', async ({ event, context }) => {
+ponder.on('OrderRouterFacet:OrderRouted', async ({ event, context }) => {
   const { orderId, maker, orderSource, isBuy } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -458,7 +464,7 @@ ponder.on('Diamond:OrderRouted', async ({ event, context }) => {
  * Signature: RouterOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)
  * Hash: 0x6851fa52
  */
-ponder.on('Diamond:RouterOrderFilled', async ({ event, context }) => {
+ponder.on('OrderRouterFacet:RouterOrderFilled', async ({ event, context }) => {
   const {
     orderId,
     tradeId,
@@ -489,7 +495,7 @@ ponder.on('Diamond:RouterOrderFilled', async ({ event, context }) => {
  * Signature: TradeExecuted(bytes32,bytes32,bytes32,uint256,uint256,uint256)
  * Hash: 0x4692eb38
  */
-ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
+ponder.on('OrderRouterFacet:TradeExecuted', async ({ event, context }) => {
   const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } =
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);

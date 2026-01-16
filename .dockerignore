@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.cache
+
+# Artifacts (we compile inside Docker)
+artifacts
+cache
+typechain-types
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage
+
+# Indexer specific
+indexer/node_modules
+indexer/.env
+indexer/.env.local

@@ -576,14 +576,14 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
       const camelTable = snakeToCamel(tableName);
 
-      // Use contract name as prefix for all events
-      // Diamond contract events use "Diamond:" prefix
-      // External contracts (RWYVault, AuraAsset) use their contract name
+      // Use facet name as prefix for all events
+      // For per-facet contracts: "FacetName:EventName" (e.g., StakingFacet:RewardRateUpdated)
+      // External contracts (RWYVault, AuraAsset) use "ContractName:EventName"
       const contractName = event.facet;
       const isExternalContract = !!EXTERNAL_CONTRACTS[contractName];
       const eventKey = isExternalContract
         ? `${contractName}:${event.name}`
-        : `Diamond:${event.name}`;
+        : `${facetName}:${event.name}`;
 
       content += `/**
  * Handle ${event.name} event from ${facetName}
@@ -628,27 +628,13 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
     'OwnershipTransferStarted',
   ]);
 
-  // Track events by name to avoid duplicates (Ponder matches by name only)
-  // But if same name has different signatures, we need to use full signature
-  const processedEventNames = new Map<string, EventInfo>(); // name -> first event
+  // Group events by domain for handler generation
   const eventsByDomain = new Map<string, EventInfo[]>();
 
   for (const [facetName, config] of facets.entries()) {
     const facet = facets.get(facetName)!;
 
     for (const event of facet.events) {
-      // Check if we've seen this event name before
-      const existing = processedEventNames.get(event.name);
-
-      if (existing) {
-        // Same name, different signature - use full signature for both
-        existing.fullSignature = existing.signature;
-        event.fullSignature = event.signature;
-      } else {
-        // First time seeing this event name
-        processedEventNames.set(event.name, event);
-      }
-
       // Skip common skip events
       if (skipEvents.has(event.name)) continue;
 
@@ -703,6 +689,21 @@ ${domains.map((d) => `import './${d}.generated';`).join('\n')}
 // ============================================================================
 
 function generatePonderConfig(facets: Map<string, FacetInfo>): void {
+  // Generate contract configurations for all facets (not just external)
+  const facetContracts = Array.from(facets.values())
+    .filter((f) => !EXTERNAL_CONTRACTS[f.name]) // Skip external contracts
+    .map((facet) => {
+      const addressConstant = `DIAMOND_ADDRESS`;
+      const startBlockConstant = `DIAMOND_DEPLOY_BLOCK`;
+      return `    ${facet.name}: {
+      network: 'baseSepolia',
+      abi: ${facet.name}ABI,
+      address: ${addressConstant},
+      startBlock: ${startBlockConstant},
+    }`;
+    })
+    .join(',\n');
+
   // Generate contract configurations for external contracts
   const externalContracts = Array.from(facets.values())
     .filter((f) => EXTERNAL_CONTRACTS[f.name])
@@ -719,6 +720,10 @@ function generatePonderConfig(facets: Map<string, FacetInfo>): void {
     })
     .join(',\n');
 
+  const allContracts = [facetContracts, externalContracts]
+    .filter(Boolean)
+    .join(',\n');
+
   const configContent = `// Auto-generated Ponder config - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
 
@@ -726,9 +731,7 @@ import { createConfig } from '@ponder/core';
 import { http } from 'viem';
 
 // Import generated ABIs
-import { DiamondABI } from './abis/generated';
 ${Array.from(facets.values())
-  .filter((f) => EXTERNAL_CONTRACTS[f.name])
   .map((f) => `import { ${f.name}ABI } from './abis/generated/${f.name}';`)
   .join('\n')}
 
@@ -752,13 +755,7 @@ export default createConfig({
     },
   },
   contracts: {
-    Diamond: {
-      network: 'baseSepolia',
-      abi: DiamondABI,
-      address: DIAMOND_ADDRESS,
-      startBlock: DIAMOND_DEPLOY_BLOCK,
-    },
-${externalContracts},
+${allContracts}
   },
 });
 `;
