@@ -24,6 +24,9 @@ COPY scripts/ ./scripts/
 # Copy chain constants needed by indexer
 COPY chain-constants.ts ./
 COPY config/ ./config/
+COPY hardhat.config.ts ./
+COPY tsconfig.json ./
+COPY remappings.txt ./
 
 # Compile Solidity contracts (needed for generate:indexer)
 RUN npx hardhat compile
