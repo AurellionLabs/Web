@@ -18,7 +18,7 @@ RUN npm install -g pnpm && \
 COPY indexer/ ./indexer/
 
 # Install indexer dependencies separately to ensure they work in production
-RUN cd indexer && pnpm install --frozen-lockfile
+RUN cd indexer && pnpm install --no-frozen-lockfile
 
 # Copy scripts needed for generate:indexer
 COPY scripts/ ./scripts/
