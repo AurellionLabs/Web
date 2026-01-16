@@ -51,6 +51,7 @@ RUN adduser --system --uid 1001 ponder
 # Copy only what's needed from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/indexer ./indexer
+COPY --from=builder /app/indexer/node_modules ./indexer/node_modules
 
 # Set ownership
 RUN chown -R ponder:nodejs /app
