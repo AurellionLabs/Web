@@ -548,7 +548,7 @@ import { ponder } from '@/generated';
       // Table names have hash suffix to handle duplicate event names
       const shortHash = event.signatureHash.slice(2, 6);
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
-      content += `import { ${snakeToCamel(tableName)} } from '../../generated-schema';\n`;
+      content += `import { ${snakeToCamel(tableName)} } from '../../ponder.schema';\n`;
     }
   }
 
