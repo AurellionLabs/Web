@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-01-16T14:47:49.778Z
+// Generated at: 2026-01-16T23:56:51.262Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -527,6 +527,91 @@ export const DiamondABI = [
       {
         indexed: true,
         internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'takerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'makerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'taker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'takerFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'makerFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'timestamp',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'takerIsBuy',
+        type: 'bool',
+      },
+    ],
+    name: 'CLOBTradeExecuted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
         name: 'marketId',
         type: 'bytes32',
       },
@@ -705,91 +790,6 @@ export const DiamondABI = [
       {
         indexed: true,
         internalType: 'bytes32',
-        name: 'tradeId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'takerOrderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'makerOrderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'taker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'marketId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'quoteAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'takerFee',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'makerFee',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'timestamp',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'bool',
-        name: 'takerIsBuy',
-        type: 'bool',
-      },
-    ],
-    name: 'TradeExecuted',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
         name: 'orderId',
         type: 'bytes32',
       },
@@ -943,21 +943,9 @@ export const DiamondABI = [
       },
       {
         indexed: true,
-        internalType: 'bytes32',
-        name: 'tradeId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'fillAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'fillPrice',
-        type: 'uint256',
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
       },
       {
         indexed: false,
@@ -967,12 +955,183 @@ export const DiamondABI = [
       },
       {
         indexed: false,
+        internalType: 'uint8',
+        name: 'reason',
+        type: 'uint8',
+      },
+    ],
+    name: 'RouterOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
         internalType: 'uint256',
-        name: 'cumulativeFilled',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'isBuy',
+        type: 'bool',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'orderType',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'timeInForce',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'expiry',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'nonce',
         type: 'uint256',
       },
     ],
-    name: 'RouterOrderFilled',
+    name: 'RouterOrderCreated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'isBuy',
+        type: 'bool',
+      },
+      {
+        indexed: false,
+        internalType: 'uint8',
+        name: 'orderType',
+        type: 'uint8',
+      },
+    ],
+    name: 'RouterOrderPlaced',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'takerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'makerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+    ],
+    name: 'RouterTradeExecuted',
     type: 'event',
   },
   {
@@ -999,6 +1158,25 @@ export const DiamondABI = [
     inputs: [
       {
         indexed: true,
+        internalType: 'address',
+        name: 'oldRecipient',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'newRecipient',
+        type: 'address',
+      },
+    ],
+    name: 'BridgeFeeRecipientUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
         internalType: 'bytes32',
         name: 'unifiedOrderId',
         type: 'bytes32',
@@ -1011,25 +1189,6 @@ export const DiamondABI = [
       },
     ],
     name: 'BridgeOrderCancelled',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'oldRecipient',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'newRecipient',
-        type: 'address',
-      },
-    ],
-    name: 'FeeRecipientUpdated',
     type: 'event',
   },
   {
@@ -1520,6 +1679,25 @@ export const DiamondABI = [
       },
     ],
     name: 'EmergencyWithdrawal',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'oldRecipient',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'newRecipient',
+        type: 'address',
+      },
+    ],
+    name: 'FeeRecipientUpdated',
     type: 'event',
   },
   {
@@ -4282,6 +4460,12 @@ export const EventSignatureRegistry = {
     signature:
       'CLOBOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)',
   },
+  '0x57e60214': {
+    name: 'CLOBTradeExecuted',
+    facet: 'CLOBFacetV2',
+    signature:
+      'CLOBTradeExecuted(bytes32,bytes32,bytes32,address,address,bytes32,uint256,uint256,uint256,uint256,uint256,uint256,bool)',
+  },
   '0xb59e4751': {
     name: 'MarketCreated',
     facet: 'CLOBFacetV2',
@@ -4304,12 +4488,6 @@ export const EventSignatureRegistry = {
     signature:
       'OrderPlacedWithTokens(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)',
   },
-  '0x47cd8e87': {
-    name: 'TradeExecuted',
-    facet: 'CLOBFacetV2',
-    signature:
-      'TradeExecuted(bytes32,bytes32,bytes32,address,address,bytes32,uint256,uint256,uint256,uint256,uint256,uint256,bool)',
-  },
   '0x3e2e10ef': {
     name: 'AusysOrderFilled',
     facet: 'OrderMatchingFacet',
@@ -4331,26 +4509,43 @@ export const EventSignatureRegistry = {
     facet: 'OrderRouterFacet',
     signature: 'OrderRouted(bytes32,address,uint8,bool)',
   },
-  '0x6851fa52': {
-    name: 'RouterOrderFilled',
+  '0x8f112c49': {
+    name: 'RouterOrderCancelled',
+    facet: 'OrderRouterFacet',
+    signature: 'RouterOrderCancelled(bytes32,address,uint256,uint8)',
+  },
+  '0x7398300e': {
+    name: 'RouterOrderCreated',
     facet: 'OrderRouterFacet',
     signature:
-      'RouterOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)',
+      'RouterOrderCreated(bytes32,bytes32,address,uint256,uint256,bool,uint8,uint8,uint256,uint256)',
+  },
+  '0x0e2e2fa3': {
+    name: 'RouterOrderPlaced',
+    facet: 'OrderRouterFacet',
+    signature:
+      'RouterOrderPlaced(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)',
+  },
+  '0x54931e7e': {
+    name: 'RouterTradeExecuted',
+    facet: 'OrderRouterFacet',
+    signature:
+      'RouterTradeExecuted(bytes32,bytes32,bytes32,uint256,uint256,uint256)',
   },
   '0x8e7bc4ed': {
     name: 'BountyPaid',
     facet: 'BridgeFacet',
     signature: 'BountyPaid(bytes32,uint256)',
   },
+  '0xd240f26b': {
+    name: 'BridgeFeeRecipientUpdated',
+    facet: 'BridgeFacet',
+    signature: 'BridgeFeeRecipientUpdated(address,address)',
+  },
   '0xfb630ff8': {
     name: 'BridgeOrderCancelled',
     facet: 'BridgeFacet',
     signature: 'BridgeOrderCancelled(bytes32,uint8)',
-  },
-  '0xaaebcf1b': {
-    name: 'FeeRecipientUpdated',
-    facet: 'BridgeFacet',
-    signature: 'FeeRecipientUpdated(address,address)',
   },
   '0xf7da2d1a': {
     name: 'JourneyStatusUpdated',
@@ -4435,6 +4630,11 @@ export const EventSignatureRegistry = {
     name: 'EmergencyWithdrawal',
     facet: 'CLOBAdminFacet',
     signature: 'EmergencyWithdrawal(address,bytes32,address,uint256)',
+  },
+  '0xaaebcf1b': {
+    name: 'FeeRecipientUpdated',
+    facet: 'CLOBAdminFacet',
+    signature: 'FeeRecipientUpdated(address,address)',
   },
   '0xb3ef341b': {
     name: 'FeesUpdated',

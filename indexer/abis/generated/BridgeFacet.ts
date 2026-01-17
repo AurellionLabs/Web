@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-16T14:47:49.777Z
+// Generated at: 2026-01-16T23:56:51.261Z
 
 export const BridgeFacetABI = [
   {
@@ -36,6 +36,25 @@ export const BridgeFacetABI = [
     inputs: [
       {
         indexed: true,
+        internalType: 'address',
+        name: 'oldRecipient',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'newRecipient',
+        type: 'address',
+      },
+    ],
+    name: 'BridgeFeeRecipientUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
         internalType: 'bytes32',
         name: 'unifiedOrderId',
         type: 'bytes32',
@@ -48,25 +67,6 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'BridgeOrderCancelled',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'oldRecipient',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'newRecipient',
-        type: 'address',
-      },
-    ],
-    name: 'FeeRecipientUpdated',
     type: 'event',
   },
   {
@@ -594,14 +594,14 @@ export const BridgeFacetEvents = [
     signatureHash: '0x8e7bc4ed',
   },
   {
+    name: 'BridgeFeeRecipientUpdated',
+    signature: 'BridgeFeeRecipientUpdated(address,address)',
+    signatureHash: '0xd240f26b',
+  },
+  {
     name: 'BridgeOrderCancelled',
     signature: 'BridgeOrderCancelled(bytes32,uint8)',
     signatureHash: '0xfb630ff8',
-  },
-  {
-    name: 'FeeRecipientUpdated',
-    signature: 'FeeRecipientUpdated(address,address)',
-    signatureHash: '0xaaebcf1b',
   },
   {
     name: 'Initialized',

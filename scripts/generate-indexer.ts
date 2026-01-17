@@ -94,6 +94,7 @@ interface EventInfo {
   domain: string;
   signature: string;
   signatureHash: string;
+  fullSignature?: string; // Set when event name has duplicates with different signatures
   inputs: AbiInput[];
   abi: AbiItem;
 }
@@ -581,6 +582,9 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
       // External contracts (RWYVault, AuraAsset) use their contract name
       const contractName = event.facet;
       const isExternalContract = !!EXTERNAL_CONTRACTS[contractName];
+
+      // Use unique event name for event key
+      // Ponder only supports event names, not full signatures
       const eventKey = isExternalContract
         ? `${contractName}:${event.name}`
         : `Diamond:${event.name}`;

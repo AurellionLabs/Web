@@ -1,5 +1,5 @@
 // Auto-generated from OrderRouterFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-16T14:47:49.777Z
+// Generated at: 2026-01-16T23:56:51.261Z
 
 export const OrderRouterFacetABI = [
   {
@@ -64,6 +64,37 @@ export const OrderRouterFacetABI = [
       },
       {
         indexed: false,
+        internalType: 'uint8',
+        name: 'orderSource',
+        type: 'uint8',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'isBuy',
+        type: 'bool',
+      },
+    ],
+    name: 'OrderRouted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
         internalType: 'uint256',
         name: 'remainingAmount',
         type: 'uint256',
@@ -75,7 +106,7 @@ export const OrderRouterFacetABI = [
         type: 'uint8',
       },
     ],
-    name: 'CLOBOrderCancelled',
+    name: 'RouterOrderCancelled',
     type: 'event',
   },
   {
@@ -142,7 +173,7 @@ export const OrderRouterFacetABI = [
         type: 'uint256',
       },
     ],
-    name: 'OrderCreated',
+    name: 'RouterOrderCreated',
     type: 'event',
   },
   {
@@ -203,81 +234,7 @@ export const OrderRouterFacetABI = [
         type: 'uint8',
       },
     ],
-    name: 'OrderPlacedWithTokens',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint8',
-        name: 'orderSource',
-        type: 'uint8',
-      },
-      {
-        indexed: false,
-        internalType: 'bool',
-        name: 'isBuy',
-        type: 'bool',
-      },
-    ],
-    name: 'OrderRouted',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'tradeId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'fillAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'fillPrice',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'remainingAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'cumulativeFilled',
-        type: 'uint256',
-      },
-    ],
-    name: 'RouterOrderFilled',
+    name: 'RouterOrderPlaced',
     type: 'event',
   },
   {
@@ -320,7 +277,7 @@ export const OrderRouterFacetABI = [
         type: 'uint256',
       },
     ],
-    name: 'TradeExecuted',
+    name: 'RouterTradeExecuted',
     type: 'event',
   },
   {
@@ -681,36 +638,31 @@ export const OrderRouterFacetABI = [
 
 export const OrderRouterFacetEvents = [
   {
-    name: 'CLOBOrderCancelled',
-    signature: 'CLOBOrderCancelled(bytes32,address,uint256,uint8)',
-    signatureHash: '0x8b4753f7',
-  },
-  {
-    name: 'OrderCreated',
-    signature:
-      'OrderCreated(bytes32,bytes32,address,uint256,uint256,bool,uint8,uint8,uint256,uint256)',
-    signatureHash: '0x43fe20c0',
-  },
-  {
-    name: 'OrderPlacedWithTokens',
-    signature:
-      'OrderPlacedWithTokens(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)',
-    signatureHash: '0xe764a4f2',
-  },
-  {
     name: 'OrderRouted',
     signature: 'OrderRouted(bytes32,address,uint8,bool)',
     signatureHash: '0x138298a5',
   },
   {
-    name: 'RouterOrderFilled',
-    signature:
-      'RouterOrderFilled(bytes32,bytes32,uint256,uint256,uint256,uint256)',
-    signatureHash: '0x6851fa52',
+    name: 'RouterOrderCancelled',
+    signature: 'RouterOrderCancelled(bytes32,address,uint256,uint8)',
+    signatureHash: '0x8f112c49',
   },
   {
-    name: 'TradeExecuted',
-    signature: 'TradeExecuted(bytes32,bytes32,bytes32,uint256,uint256,uint256)',
-    signatureHash: '0x4692eb38',
+    name: 'RouterOrderCreated',
+    signature:
+      'RouterOrderCreated(bytes32,bytes32,address,uint256,uint256,bool,uint8,uint8,uint256,uint256)',
+    signatureHash: '0x7398300e',
+  },
+  {
+    name: 'RouterOrderPlaced',
+    signature:
+      'RouterOrderPlaced(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)',
+    signatureHash: '0x0e2e2fa3',
+  },
+  {
+    name: 'RouterTradeExecuted',
+    signature:
+      'RouterTradeExecuted(bytes32,bytes32,bytes32,uint256,uint256,uint256)',
+    signatureHash: '0x54931e7e',
   },
 ] as const;

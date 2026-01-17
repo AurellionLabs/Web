@@ -66,7 +66,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
         uint256 expiredAt
     );
     
-    event TradeExecuted(
+    event CLOBTradeExecuted(
         bytes32 indexed tradeId,
         bytes32 indexed takerOrderId,
         bytes32 indexed makerOrderId,
@@ -952,7 +952,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
         bytes32 tradeId = keccak256(abi.encodePacked(takerOrderId, makerOrderId, block.timestamp, s.totalTrades));
         s.totalTrades++;
         
-        emit TradeExecuted(
+        emit CLOBTradeExecuted(
             tradeId,
             takerOrderId,
             makerOrderId,

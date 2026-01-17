@@ -53,7 +53,7 @@ contract BridgeFacet is Initializable {
         uint8 previousStatus
     );
     event BountyPaid(bytes32 indexed unifiedOrderId, uint256 amount);
-    event FeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
+    event BridgeFeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
 
     uint256 public constant BOUNTY_PERCENTAGE = 100; // 1%
     uint256 public constant PROTOCOL_FEE_PERCENTAGE = 50; // 0.5%
@@ -303,6 +303,6 @@ contract BridgeFacet is Initializable {
         LibDiamond.enforceIsContractOwner();
         address oldRecipient = feeRecipient;
         feeRecipient = _newRecipient;
-        emit FeeRecipientUpdated(oldRecipient, _newRecipient);
+        emit BridgeFeeRecipientUpdated(oldRecipient, _newRecipient);
     }
 }
