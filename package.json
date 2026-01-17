@@ -51,7 +51,8 @@
     "postdeploy:verify": "npm run verify:deployment"
   },
   "lint-staged": {
-    "*.{js,ts,jsx,tsx,json,css,md}": "npm run format"
+    "*.{js,ts,jsx,tsx,json,css,md}": "npm run format",
+    "*.{yml,yaml}": "node -e \"require('js-yaml').load(require('fs').readFileSync(process.argv[1], 'utf8')); process.stdout.write('✅ YAML valid: ' + process.argv[1] + '\\n');\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -160,6 +161,7 @@
     "hardhat": "^2.22.17",
     "hardhat-gas-reporter": "^1.0.10",
     "husky": "^9.1.7",
+    "js-yaml": "^4.1.1",
     "jsdom": "^27.4.0",
     "lint-staged": "^15.4.2",
     "pg": "^8.16.3",
