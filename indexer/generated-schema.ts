@@ -1,29 +1,10 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-16T23:56:51.264Z
+// Generated at: 2026-01-17T00:31:46.781Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
 
 import { onchainTable, index } from '@ponder/core';
-
-export const nodes = onchainTable(
-  'nodes',
-  (t) => ({
-    id: t.hex().primaryKey(),
-    owner: t.hex().notNull(),
-    node_type: t.text().notNull(),
-    status: t.text().notNull(),
-    address_name: t.text(),
-    lat: t.text(),
-    lng: t.text(),
-    created_at: t.bigint().notNull(),
-    updated_at: t.bigint().notNull(),
-  }),
-  (table) => ({
-    ownerIdx: index().on(table.owner),
-    statusIdx: index().on(table.status),
-  }),
-);
 
 export const clobApprovalGrantedD512Events = onchainTable(
   'clob_approval_granted_d512_events',
@@ -1066,7 +1047,6 @@ export const ownershipTransferred_8be0Events = onchainTable(
 
 // Export all tables
 export const tables = {
-  nodes,
   clobApprovalGrantedD512Events,
   clobApprovalRevokedBdd4Events,
   initializedC7f5Events,

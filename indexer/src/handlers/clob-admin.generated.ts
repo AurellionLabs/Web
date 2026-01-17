@@ -1,5 +1,5 @@
 // Auto-generated handler for clob-admin domain - Raw event storage only
-// Generated at: 2026-01-17T00:14:39.047Z
+// Generated at: 2026-01-17T00:31:46.784Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBAdminFacet
@@ -7,20 +7,20 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { circuitBreakerConfigured_5880Events } from '../../ponder.schema';
-import { circuitBreakerResetBae5Events } from '../../ponder.schema';
-import { circuitBreakerTripped_5953Events } from '../../ponder.schema';
-import { emergencyActionCancelled_248bEvents } from '../../ponder.schema';
-import { emergencyActionExecuted_4579Events } from '../../ponder.schema';
-import { emergencyActionInitiatedCa04Events } from '../../ponder.schema';
-import { emergencyWithdrawalC0f6Events } from '../../ponder.schema';
-import { feeRecipientUpdatedAaebEvents } from '../../ponder.schema';
-import { feesUpdatedB3efEvents } from '../../ponder.schema';
-import { globalPauseA5feEvents } from '../../ponder.schema';
-import { mEVProtectionUpdated_096cEvents } from '../../ponder.schema';
-import { marketPaused_6136Events } from '../../ponder.schema';
-import { marketUnpausedB51dEvents } from '../../ponder.schema';
-import { rateLimitsUpdated_6675Events } from '../../ponder.schema';
+import { circuitBreakerConfigured_5880Events } from '../../generated-schema';
+import { circuitBreakerResetBae5Events } from '../../generated-schema';
+import { circuitBreakerTripped_5953Events } from '../../generated-schema';
+import { emergencyActionCancelled_248bEvents } from '../../generated-schema';
+import { emergencyActionExecuted_4579Events } from '../../generated-schema';
+import { emergencyActionInitiatedCa04Events } from '../../generated-schema';
+import { emergencyWithdrawalC0f6Events } from '../../generated-schema';
+import { feeRecipientUpdatedAaebEvents } from '../../generated-schema';
+import { feesUpdatedB3efEvents } from '../../generated-schema';
+import { globalPauseA5feEvents } from '../../generated-schema';
+import { mEVProtectionUpdated_096cEvents } from '../../generated-schema';
+import { marketPaused_6136Events } from '../../generated-schema';
+import { marketUnpausedB51dEvents } from '../../generated-schema';
+import { rateLimitsUpdated_6675Events } from '../../generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

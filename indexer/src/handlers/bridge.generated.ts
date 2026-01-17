@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-01-17T00:14:39.046Z
+// Generated at: 2026-01-17T00:31:46.783Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: BridgeFacet
@@ -7,14 +7,14 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { bountyPaid_8e7bEvents } from '../../ponder.schema';
-import { bridgeFeeRecipientUpdatedD240Events } from '../../ponder.schema';
-import { bridgeOrderCancelledFb63Events } from '../../ponder.schema';
-import { journeyStatusUpdatedF7daEvents } from '../../ponder.schema';
-import { logisticsOrderCreated_9c83Events } from '../../ponder.schema';
-import { orderSettledE726Events } from '../../ponder.schema';
-import { tradeMatched_51d0Events } from '../../ponder.schema';
-import { unifiedOrderCreatedC8b6Events } from '../../ponder.schema';
+import { bountyPaid_8e7bEvents } from '../../generated-schema';
+import { bridgeFeeRecipientUpdatedD240Events } from '../../generated-schema';
+import { bridgeOrderCancelledFb63Events } from '../../generated-schema';
+import { journeyStatusUpdatedF7daEvents } from '../../generated-schema';
+import { logisticsOrderCreated_9c83Events } from '../../generated-schema';
+import { orderSettledE726Events } from '../../generated-schema';
+import { tradeMatched_51d0Events } from '../../generated-schema';
+import { unifiedOrderCreatedC8b6Events } from '../../generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

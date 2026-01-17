@@ -1,5 +1,5 @@
 // Auto-generated handler for staking domain - Raw event storage only
-// Generated at: 2026-01-17T00:14:39.047Z
+// Generated at: 2026-01-17T00:31:46.784Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: StakingFacet
@@ -7,10 +7,10 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { rewardRateUpdatedC390Events } from '../../ponder.schema';
-import { rewardsClaimedFc30Events } from '../../ponder.schema';
-import { staked_9e71Events } from '../../ponder.schema';
-import { withdrawn_7084Events } from '../../ponder.schema';
+import { rewardRateUpdatedC390Events } from '../../generated-schema';
+import { rewardsClaimedFc30Events } from '../../generated-schema';
+import { staked_9e71Events } from '../../generated-schema';
+import { withdrawn_7084Events } from '../../generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

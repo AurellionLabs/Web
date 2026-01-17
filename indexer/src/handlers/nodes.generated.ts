@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-17T00:14:39.045Z
+// Generated at: 2026-01-17T00:31:46.782Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: NodesFacet
@@ -7,22 +7,22 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { clobApprovalGrantedD512Events } from '../../ponder.schema';
-import { clobApprovalRevokedBdd4Events } from '../../ponder.schema';
-import { nodeCapacityUpdated_0ba8Events } from '../../ponder.schema';
-import { nodeDeactivated_62b3Events } from '../../ponder.schema';
-import { nodeRegistered_8326Events } from '../../ponder.schema';
-import { nodeSellOrderPlaced_3de5Events } from '../../ponder.schema';
-import { nodeUpdated_9c97Events } from '../../ponder.schema';
-import { supportedAssetAdded_9f0aEvents } from '../../ponder.schema';
-import { supportedAssetsUpdated_1af7Events } from '../../ponder.schema';
-import { tokensDepositedToNode_9d99Events } from '../../ponder.schema';
-import { tokensMintedToNode_1177Events } from '../../ponder.schema';
-import { tokensTransferredBetweenNodes_5ceeEvents } from '../../ponder.schema';
-import { tokensWithdrawnFromNode_5994Events } from '../../ponder.schema';
-import { updateLocation_6d4fEvents } from '../../ponder.schema';
-import { updateOwnerEa9dEvents } from '../../ponder.schema';
-import { updateStatusCf4eEvents } from '../../ponder.schema';
+import { clobApprovalGrantedD512Events } from '../../generated-schema';
+import { clobApprovalRevokedBdd4Events } from '../../generated-schema';
+import { nodeCapacityUpdated_0ba8Events } from '../../generated-schema';
+import { nodeDeactivated_62b3Events } from '../../generated-schema';
+import { nodeRegistered_8326Events } from '../../generated-schema';
+import { nodeSellOrderPlaced_3de5Events } from '../../generated-schema';
+import { nodeUpdated_9c97Events } from '../../generated-schema';
+import { supportedAssetAdded_9f0aEvents } from '../../generated-schema';
+import { supportedAssetsUpdated_1af7Events } from '../../generated-schema';
+import { tokensDepositedToNode_9d99Events } from '../../generated-schema';
+import { tokensMintedToNode_1177Events } from '../../generated-schema';
+import { tokensTransferredBetweenNodes_5ceeEvents } from '../../generated-schema';
+import { tokensWithdrawnFromNode_5994Events } from '../../generated-schema';
+import { updateLocation_6d4fEvents } from '../../generated-schema';
+import { updateOwnerEa9dEvents } from '../../generated-schema';
+import { updateStatusCf4eEvents } from '../../generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

@@ -1,5 +1,5 @@
 // Auto-generated handler for clob domain - Raw event storage only
-// Generated at: 2026-01-17T00:14:39.045Z
+// Generated at: 2026-01-17T00:31:46.783Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBFacetV2, OrderMatchingFacet, OrderRouterFacet
@@ -7,21 +7,21 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { cLOBOrderCancelled_8b47Events } from '../../ponder.schema';
-import { cLOBOrderFilled_2d54Events } from '../../ponder.schema';
-import { cLOBTradeExecuted_57e6Events } from '../../ponder.schema';
-import { marketCreatedB59eEvents } from '../../ponder.schema';
-import { orderCreated_43feEvents } from '../../ponder.schema';
-import { orderExpiredB558Events } from '../../ponder.schema';
-import { orderPlacedWithTokensE764Events } from '../../ponder.schema';
-import { ausysOrderFilled_3e2eEvents } from '../../ponder.schema';
-import { matchingOrderCancelled_6f7dEvents } from '../../ponder.schema';
-import { tradeExecuted_4692Events } from '../../ponder.schema';
-import { orderRouted_1382Events } from '../../ponder.schema';
-import { routerOrderCancelled_8f11Events } from '../../ponder.schema';
-import { routerOrderCreated_7398Events } from '../../ponder.schema';
-import { routerOrderPlaced_0e2eEvents } from '../../ponder.schema';
-import { routerTradeExecuted_5493Events } from '../../ponder.schema';
+import { cLOBOrderCancelled_8b47Events } from '../../generated-schema';
+import { cLOBOrderFilled_2d54Events } from '../../generated-schema';
+import { cLOBTradeExecuted_57e6Events } from '../../generated-schema';
+import { marketCreatedB59eEvents } from '../../generated-schema';
+import { orderCreated_43feEvents } from '../../generated-schema';
+import { orderExpiredB558Events } from '../../generated-schema';
+import { orderPlacedWithTokensE764Events } from '../../generated-schema';
+import { ausysOrderFilled_3e2eEvents } from '../../generated-schema';
+import { matchingOrderCancelled_6f7dEvents } from '../../generated-schema';
+import { tradeExecuted_4692Events } from '../../generated-schema';
+import { orderRouted_1382Events } from '../../generated-schema';
+import { routerOrderCancelled_8f11Events } from '../../generated-schema';
+import { routerOrderCreated_7398Events } from '../../generated-schema';
+import { routerOrderPlaced_0e2eEvents } from '../../generated-schema';
+import { routerTradeExecuted_5493Events } from '../../generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

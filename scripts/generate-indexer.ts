@@ -429,27 +429,9 @@ function generateEventTable(event: EventInfo): SchemaTable {
 }
 
 function generateEntityTables(): SchemaTable[] {
-  // For "dumb indexer" pattern, entity tables are minimal
-  // Aggregations happen in repository layer from raw events
-  return [
-    {
-      name: 'nodes',
-      columns: [
-        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
-        { name: 'owner', type: 't.hex().notNull()', indexed: true },
-        { name: 'node_type', type: 't.text().notNull()' },
-        { name: 'status', type: 't.text().notNull()' },
-        { name: 'address_name', type: 't.text()' },
-        { name: 'lat', type: 't.text()' },
-        { name: 'lng', type: 't.text()' },
-        { name: 'created_at', type: 't.bigint().notNull()' },
-        { name: 'updated_at', type: 't.bigint().notNull()' },
-      ],
-      indexes: ['owner', 'status'],
-    },
-    // Minimal entity tables - raw events are the source of truth
-    // All derived state computed from events in repositories
-  ];
+  // Dumb indexer pattern: No entity tables, only event tables
+  // All state is derived from events at query time in repository layer
+  return [];
 }
 
 function generateSchema(facets: Map<string, FacetInfo>): void {
@@ -508,6 +490,24 @@ ${allTables.map((t) => `  ${snakeToCamel(t.name)},`).join('\n')}
 `;
 
   fs.writeFileSync(GENERATED_SCHEMA_FILE, schemaContent);
+
+  // Generate ponder.schema.ts that re-exports generated-schema
+  const ponderSchemaContent = `// Auto-generated Ponder Schema - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+//
+// This file re-exports the auto-generated schema from generated-schema.ts
+// Dumb indexer pattern: Store raw events, aggregate in repository layer.
+// Regenerate with: npm run generate:indexer
+
+// Import all generated tables
+export * from './generated-schema';
+`;
+
+  fs.writeFileSync(
+    path.join(INDEXER_DIR, 'ponder.schema.ts'),
+    ponderSchemaContent,
+  );
+
   console.log(
     `✓ Generated schema with ${entityTables.length} entity tables + ${eventTables.length} event tables`,
   );
@@ -548,7 +548,7 @@ import { ponder } from '@/generated';
       // Table names have hash suffix to handle duplicate event names
       const shortHash = event.signatureHash.slice(2, 6);
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
-      content += `import { ${snakeToCamel(tableName)} } from '../../ponder.schema';\n`;
+      content += `import { ${snakeToCamel(tableName)} } from '../../generated-schema';\n`;
     }
   }
 
