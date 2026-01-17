@@ -37,7 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Compile contracts
-        run: npx hardhat compile
+        run: npx hardhat clean && npx hardhat compile
 
       - name: Generate new schema
         run: pnpm run generate:indexer
