@@ -1,5 +1,5 @@
 // Auto-generated from CLOBFacetV2.sol - DO NOT EDIT
-// Generated at: 2026-01-16T19:32:37.901Z
+// Generated at: 2026-01-17T00:31:46.768Z
 
 export const CLOBFacetV2ABI = [
   {
@@ -134,6 +134,91 @@ export const CLOBFacetV2ABI = [
       },
     ],
     name: 'CLOBOrderFilled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'takerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'makerOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'taker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'takerFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'makerFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'timestamp',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'takerIsBuy',
+        type: 'bool',
+      },
+    ],
+    name: 'CLOBTradeExecuted',
     type: 'event',
   },
   {
@@ -312,91 +397,6 @@ export const CLOBFacetV2ABI = [
       },
     ],
     name: 'OrderPlacedWithTokens',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'tradeId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'takerOrderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'makerOrderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'taker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'marketId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'quoteAmount',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'takerFee',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'makerFee',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'timestamp',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'bool',
-        name: 'takerIsBuy',
-        type: 'bool',
-      },
-    ],
-    name: 'TradeExecuted',
     type: 'event',
   },
   {
@@ -708,6 +708,12 @@ export const CLOBFacetV2Events = [
     signatureHash: '0x2d540948',
   },
   {
+    name: 'CLOBTradeExecuted',
+    signature:
+      'CLOBTradeExecuted(bytes32,bytes32,bytes32,address,address,bytes32,uint256,uint256,uint256,uint256,uint256,uint256,bool)',
+    signatureHash: '0x57e60214',
+  },
+  {
     name: 'MarketCreated',
     signature: 'MarketCreated(bytes32,address,uint256,address)',
     signatureHash: '0xb59e4751',
@@ -728,11 +734,5 @@ export const CLOBFacetV2Events = [
     signature:
       'OrderPlacedWithTokens(bytes32,address,address,uint256,address,uint256,uint256,bool,uint8)',
     signatureHash: '0xe764a4f2',
-  },
-  {
-    name: 'TradeExecuted',
-    signature:
-      'TradeExecuted(bytes32,bytes32,bytes32,address,address,bytes32,uint256,uint256,uint256,uint256,uint256,uint256,bool)',
-    signatureHash: '0x47cd8e87',
   },
 ] as const;

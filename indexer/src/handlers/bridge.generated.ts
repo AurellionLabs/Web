@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-01-16T19:32:37.911Z
+// Generated at: 2026-01-17T00:31:46.783Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: BridgeFacet
@@ -8,8 +8,8 @@ import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
 import { bountyPaid_8e7bEvents } from '../../generated-schema';
+import { bridgeFeeRecipientUpdatedD240Events } from '../../generated-schema';
 import { bridgeOrderCancelledFb63Events } from '../../generated-schema';
-import { feeRecipientUpdatedAaebEvents } from '../../generated-schema';
 import { journeyStatusUpdatedF7daEvents } from '../../generated-schema';
 import { logisticsOrderCreated_9c83Events } from '../../generated-schema';
 import { orderSettledE726Events } from '../../generated-schema';
@@ -28,7 +28,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Signature: BountyPaid(bytes32,uint256)
  * Hash: 0x8e7bc4ed
  */
-ponder.on('BridgeFacet:BountyPaid', async ({ event, context }) => {
+ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
   const { unifiedOrderId, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -44,11 +44,31 @@ ponder.on('BridgeFacet:BountyPaid', async ({ event, context }) => {
 });
 
 /**
+ * Handle BridgeFeeRecipientUpdated event from BridgeFacet
+ * Signature: BridgeFeeRecipientUpdated(address,address)
+ * Hash: 0xd240f26b
+ */
+ponder.on('Diamond:BridgeFeeRecipientUpdated', async ({ event, context }) => {
+  const { oldRecipient, newRecipient } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Insert raw event into event table
+  await context.db.insert(bridgeFeeRecipientUpdatedD240Events).values({
+    id,
+    old_recipient: oldRecipient,
+    new_recipient: newRecipient,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
  * Handle BridgeOrderCancelled event from BridgeFacet
  * Signature: BridgeOrderCancelled(bytes32,uint8)
  * Hash: 0xfb630ff8
  */
-ponder.on('BridgeFacet:BridgeOrderCancelled', async ({ event, context }) => {
+ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
   const { unifiedOrderId, previousStatus } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -64,31 +84,11 @@ ponder.on('BridgeFacet:BridgeOrderCancelled', async ({ event, context }) => {
 });
 
 /**
- * Handle FeeRecipientUpdated event from BridgeFacet
- * Signature: FeeRecipientUpdated(address,address)
- * Hash: 0xaaebcf1b
- */
-ponder.on('BridgeFacet:FeeRecipientUpdated', async ({ event, context }) => {
-  const { oldRecipient, newRecipient } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Insert raw event into event table
-  await context.db.insert(feeRecipientUpdatedAaebEvents).values({
-    id,
-    old_recipient: oldRecipient,
-    new_recipient: newRecipient,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
  * Handle JourneyStatusUpdated event from BridgeFacet
  * Signature: JourneyStatusUpdated(bytes32,bytes32,uint8)
  * Hash: 0xf7da2d1a
  */
-ponder.on('BridgeFacet:JourneyStatusUpdated', async ({ event, context }) => {
+ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
   const { unifiedOrderId, journeyId, phase } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -109,7 +109,7 @@ ponder.on('BridgeFacet:JourneyStatusUpdated', async ({ event, context }) => {
  * Signature: LogisticsOrderCreated(bytes32,bytes32,bytes32[],uint256,address)
  * Hash: 0x9c831fa4
  */
-ponder.on('BridgeFacet:LogisticsOrderCreated', async ({ event, context }) => {
+ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
   const { unifiedOrderId, ausysOrderId, journeyIds, bounty, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -132,7 +132,7 @@ ponder.on('BridgeFacet:LogisticsOrderCreated', async ({ event, context }) => {
  * Signature: OrderSettled(bytes32,address,uint256,address,uint256)
  * Hash: 0xe72627b4
  */
-ponder.on('BridgeFacet:OrderSettled', async ({ event, context }) => {
+ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
   const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } =
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
@@ -156,7 +156,7 @@ ponder.on('BridgeFacet:OrderSettled', async ({ event, context }) => {
  * Signature: TradeMatched(bytes32,bytes32,bytes32,address,uint256,uint256)
  * Hash: 0x51d0a1e6
  */
-ponder.on('BridgeFacet:TradeMatched', async ({ event, context }) => {
+ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
   const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } =
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
@@ -181,7 +181,7 @@ ponder.on('BridgeFacet:TradeMatched', async ({ event, context }) => {
  * Signature: UnifiedOrderCreated(bytes32,bytes32,address,address,address,uint256,uint256,uint256)
  * Hash: 0xc8b6af07
  */
-ponder.on('BridgeFacet:UnifiedOrderCreated', async ({ event, context }) => {
+ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
   const {
     unifiedOrderId,
     clobOrderId,

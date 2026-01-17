@@ -50,7 +50,7 @@ contract OrderRouterFacet is ReentrancyGuard {
     );
     
     // Token-based event for indexer compatibility
-    event OrderPlacedWithTokens(
+    event RouterOrderPlaced(
         bytes32 indexed orderId,
         address indexed maker,
         address indexed baseToken,
@@ -62,7 +62,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         uint8 orderType
     );
     
-    event OrderCreated(
+    event RouterOrderCreated(
         bytes32 indexed orderId,
         bytes32 indexed marketId,
         address indexed maker,
@@ -75,23 +75,15 @@ contract OrderRouterFacet is ReentrancyGuard {
         uint256 nonce
     );
     
-    event RouterOrderFilled(
-        bytes32 indexed orderId,
-        bytes32 indexed tradeId,
-        uint256 fillAmount,
-        uint256 fillPrice,
-        uint256 remainingAmount,
-        uint256 cumulativeFilled
-    );
     
-    event CLOBOrderCancelled(
+    event RouterOrderCancelled(
         bytes32 indexed orderId,
         address indexed maker,
         uint256 remainingAmount,
         uint8 reason
     );
     
-    event TradeExecuted(
+    event RouterTradeExecuted(
         bytes32 indexed tradeId,
         bytes32 indexed takerOrderId,
         bytes32 indexed makerOrderId,
@@ -143,7 +135,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, price, amount, isBuy, CLOBLib.TYPE_LIMIT, timeInForce, expiry, false);
         
         emit OrderRouted(orderId, msg.sender, 0, isBuy);
-        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, isBuy, CLOBLib.TYPE_LIMIT);
+        emit RouterOrderPlaced(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, isBuy, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -184,7 +176,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, nodeOwner, price, amount, false, CLOBLib.TYPE_LIMIT, timeInForce, expiry, true);
         
         emit OrderRouted(orderId, nodeOwner, 1, false);
-        emit OrderPlacedWithTokens(orderId, nodeOwner, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
+        emit RouterOrderPlaced(orderId, nodeOwner, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -231,7 +223,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, limitPrice, amount, isBuy, CLOBLib.TYPE_MARKET, CLOBLib.TIF_IOC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 2, isBuy);
-        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, limitPrice, amount, isBuy, CLOBLib.TYPE_MARKET);
+        emit RouterOrderPlaced(orderId, msg.sender, baseToken, baseTokenId, quoteToken, limitPrice, amount, isBuy, CLOBLib.TYPE_MARKET);
         
         // Match immediately
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -275,7 +267,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, price, amount, true, CLOBLib.TYPE_LIMIT, CLOBLib.TIF_GTC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 0, true);
-        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, true, CLOBLib.TYPE_LIMIT);
+        emit RouterOrderPlaced(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, true, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -314,7 +306,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         orderId = _createOrder(s, marketId, msg.sender, price, amount, false, CLOBLib.TYPE_LIMIT, CLOBLib.TIF_GTC, 0, false);
         
         emit OrderRouted(orderId, msg.sender, 0, false);
-        emit OrderPlacedWithTokens(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
+        emit RouterOrderPlaced(orderId, msg.sender, baseToken, baseTokenId, quoteToken, price, amount, false, CLOBLib.TYPE_LIMIT);
         
         // Match order
         _matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
@@ -504,7 +496,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         // Add to order book (V2 tree-based storage)
         _addToOrderBook(s, orderId, marketId, price, amount, isBuy);
         
-        emit OrderCreated(orderId, marketId, maker, price, amount, isBuy, orderType, timeInForce, expiry, nonce);
+        emit RouterOrderCreated(orderId, marketId, maker, price, amount, isBuy, orderType, timeInForce, expiry, nonce);
     }
     
     function _addToOrderBook(
@@ -671,7 +663,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         _updateOrderFilled(s.packedOrders[sellOrderId], amount);
         
         bytes32 tradeId = keccak256(abi.encodePacked(buyOrderId, sellOrderId, block.timestamp, s.totalTrades++));
-        emit TradeExecuted(tradeId, sellOrderId, buyOrderId, price, amount, quoteAmount);
+        emit RouterTradeExecuted(tradeId, sellOrderId, buyOrderId, price, amount, quoteAmount);
     }
     
     function _updateOrderFilled(DiamondStorage.PackedOrder storage order, uint256 fillAmount) internal {
@@ -726,7 +718,7 @@ contract OrderRouterFacet is ReentrancyGuard {
             }
         }
         
-        emit CLOBOrderCancelled(orderId, maker, remaining, reason);
+        emit RouterOrderCancelled(orderId, maker, remaining, reason);
     }
     
     function _removeFromPriceLevel(

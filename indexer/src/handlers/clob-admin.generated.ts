@@ -1,5 +1,5 @@
 // Auto-generated handler for clob-admin domain - Raw event storage only
-// Generated at: 2026-01-16T19:32:37.912Z
+// Generated at: 2026-01-17T00:31:46.784Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBAdminFacet
@@ -34,33 +34,30 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Signature: CircuitBreakerConfigured(bytes32,uint256,uint256,bool)
  * Hash: 0x58807e46
  */
-ponder.on(
-  'CLOBAdminFacet:CircuitBreakerConfigured',
-  async ({ event, context }) => {
-    const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } =
-      event.args;
-    const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
+  const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } =
+    event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
-    // Insert raw event into event table
-    await context.db.insert(circuitBreakerConfigured_5880Events).values({
-      id,
-      market_id: marketId,
-      price_change_threshold: priceChangeThreshold,
-      cooldown_period: cooldownPeriod,
-      is_enabled: isEnabled,
-      block_number: event.block.number,
-      block_timestamp: BigInt(event.block.timestamp),
-      transaction_hash: event.transaction.hash,
-    });
-  },
-);
+  // Insert raw event into event table
+  await context.db.insert(circuitBreakerConfigured_5880Events).values({
+    id,
+    market_id: marketId,
+    price_change_threshold: priceChangeThreshold,
+    cooldown_period: cooldownPeriod,
+    is_enabled: isEnabled,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
 
 /**
  * Handle CircuitBreakerReset event from CLOBAdminFacet
  * Signature: CircuitBreakerReset(bytes32,uint256)
  * Hash: 0xbae506d4
  */
-ponder.on('CLOBAdminFacet:CircuitBreakerReset', async ({ event, context }) => {
+ponder.on('Diamond:CircuitBreakerReset', async ({ event, context }) => {
   const { marketId, resetAt } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -80,116 +77,104 @@ ponder.on('CLOBAdminFacet:CircuitBreakerReset', async ({ event, context }) => {
  * Signature: CircuitBreakerTripped(bytes32,uint256,uint256,uint256,uint256)
  * Hash: 0x5953204a
  */
-ponder.on(
-  'CLOBAdminFacet:CircuitBreakerTripped',
-  async ({ event, context }) => {
-    const {
-      marketId,
-      triggerPrice,
-      previousPrice,
-      changePercent,
-      cooldownUntil,
-    } = event.args;
-    const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
+  const {
+    marketId,
+    triggerPrice,
+    previousPrice,
+    changePercent,
+    cooldownUntil,
+  } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
-    // Insert raw event into event table
-    await context.db.insert(circuitBreakerTripped_5953Events).values({
-      id,
-      market_id: marketId,
-      trigger_price: triggerPrice,
-      previous_price: previousPrice,
-      change_percent: changePercent,
-      cooldown_until: cooldownUntil,
-      block_number: event.block.number,
-      block_timestamp: BigInt(event.block.timestamp),
-      transaction_hash: event.transaction.hash,
-    });
-  },
-);
+  // Insert raw event into event table
+  await context.db.insert(circuitBreakerTripped_5953Events).values({
+    id,
+    market_id: marketId,
+    trigger_price: triggerPrice,
+    previous_price: previousPrice,
+    change_percent: changePercent,
+    cooldown_until: cooldownUntil,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
 
 /**
  * Handle EmergencyActionCancelled event from CLOBAdminFacet
  * Signature: EmergencyActionCancelled(bytes32,address)
  * Hash: 0x248b189e
  */
-ponder.on(
-  'CLOBAdminFacet:EmergencyActionCancelled',
-  async ({ event, context }) => {
-    const { actionId, canceller } = event.args;
-    const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on('Diamond:EmergencyActionCancelled', async ({ event, context }) => {
+  const { actionId, canceller } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
-    // Insert raw event into event table
-    await context.db.insert(emergencyActionCancelled_248bEvents).values({
-      id,
-      action_id: actionId,
-      canceller: canceller,
-      block_number: event.block.number,
-      block_timestamp: BigInt(event.block.timestamp),
-      transaction_hash: event.transaction.hash,
-    });
-  },
-);
+  // Insert raw event into event table
+  await context.db.insert(emergencyActionCancelled_248bEvents).values({
+    id,
+    action_id: actionId,
+    canceller: canceller,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
 
 /**
  * Handle EmergencyActionExecuted event from CLOBAdminFacet
  * Signature: EmergencyActionExecuted(bytes32,address,address,address,uint256)
  * Hash: 0x4579d7c5
  */
-ponder.on(
-  'CLOBAdminFacet:EmergencyActionExecuted',
-  async ({ event, context }) => {
-    const { actionId, executor, token, recipient, amount } = event.args;
-    const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on('Diamond:EmergencyActionExecuted', async ({ event, context }) => {
+  const { actionId, executor, token, recipient, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
-    // Insert raw event into event table
-    await context.db.insert(emergencyActionExecuted_4579Events).values({
-      id,
-      action_id: actionId,
-      executor: executor,
-      token: token,
-      recipient: recipient,
-      amount: amount,
-      block_number: event.block.number,
-      block_timestamp: BigInt(event.block.timestamp),
-      transaction_hash: event.transaction.hash,
-    });
-  },
-);
+  // Insert raw event into event table
+  await context.db.insert(emergencyActionExecuted_4579Events).values({
+    id,
+    action_id: actionId,
+    executor: executor,
+    token: token,
+    recipient: recipient,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
 
 /**
  * Handle EmergencyActionInitiated event from CLOBAdminFacet
  * Signature: EmergencyActionInitiated(bytes32,address,address,address,uint256,uint256)
  * Hash: 0xca04aa1e
  */
-ponder.on(
-  'CLOBAdminFacet:EmergencyActionInitiated',
-  async ({ event, context }) => {
-    const { actionId, initiator, token, recipient, amount, executeAfter } =
-      event.args;
-    const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on('Diamond:EmergencyActionInitiated', async ({ event, context }) => {
+  const { actionId, initiator, token, recipient, amount, executeAfter } =
+    event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
-    // Insert raw event into event table
-    await context.db.insert(emergencyActionInitiatedCa04Events).values({
-      id,
-      action_id: actionId,
-      initiator: initiator,
-      token: token,
-      recipient: recipient,
-      amount: amount,
-      execute_after: executeAfter,
-      block_number: event.block.number,
-      block_timestamp: BigInt(event.block.timestamp),
-      transaction_hash: event.transaction.hash,
-    });
-  },
-);
+  // Insert raw event into event table
+  await context.db.insert(emergencyActionInitiatedCa04Events).values({
+    id,
+    action_id: actionId,
+    initiator: initiator,
+    token: token,
+    recipient: recipient,
+    amount: amount,
+    execute_after: executeAfter,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
 
 /**
  * Handle EmergencyWithdrawal event from CLOBAdminFacet
  * Signature: EmergencyWithdrawal(address,bytes32,address,uint256)
  * Hash: 0xc0f6eecd
  */
-ponder.on('CLOBAdminFacet:EmergencyWithdrawal', async ({ event, context }) => {
+ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
   const { user, orderId, token, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -211,7 +196,7 @@ ponder.on('CLOBAdminFacet:EmergencyWithdrawal', async ({ event, context }) => {
  * Signature: FeeRecipientUpdated(address,address)
  * Hash: 0xaaebcf1b
  */
-ponder.on('CLOBAdminFacet:FeeRecipientUpdated', async ({ event, context }) => {
+ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
   const { oldRecipient, newRecipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -231,7 +216,7 @@ ponder.on('CLOBAdminFacet:FeeRecipientUpdated', async ({ event, context }) => {
  * Signature: FeesUpdated(uint16,uint16,uint16)
  * Hash: 0xb3ef341b
  */
-ponder.on('CLOBAdminFacet:FeesUpdated', async ({ event, context }) => {
+ponder.on('Diamond:FeesUpdated', async ({ event, context }) => {
   const { takerFeeBps, makerFeeBps, lpFeeBps } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -252,7 +237,7 @@ ponder.on('CLOBAdminFacet:FeesUpdated', async ({ event, context }) => {
  * Signature: GlobalPause(bool)
  * Hash: 0xa5fea31b
  */
-ponder.on('CLOBAdminFacet:GlobalPause', async ({ event, context }) => {
+ponder.on('Diamond:GlobalPause', async ({ event, context }) => {
   const { paused } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -271,7 +256,7 @@ ponder.on('CLOBAdminFacet:GlobalPause', async ({ event, context }) => {
  * Signature: MEVProtectionUpdated(uint8,uint256)
  * Hash: 0x096cc317
  */
-ponder.on('CLOBAdminFacet:MEVProtectionUpdated', async ({ event, context }) => {
+ponder.on('Diamond:MEVProtectionUpdated', async ({ event, context }) => {
   const { minRevealDelay, commitmentThreshold } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -291,7 +276,7 @@ ponder.on('CLOBAdminFacet:MEVProtectionUpdated', async ({ event, context }) => {
  * Signature: MarketPaused(bytes32)
  * Hash: 0x613681e6
  */
-ponder.on('CLOBAdminFacet:MarketPaused', async ({ event, context }) => {
+ponder.on('Diamond:MarketPaused', async ({ event, context }) => {
   const { marketId } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -310,7 +295,7 @@ ponder.on('CLOBAdminFacet:MarketPaused', async ({ event, context }) => {
  * Signature: MarketUnpaused(bytes32)
  * Hash: 0xb51d033f
  */
-ponder.on('CLOBAdminFacet:MarketUnpaused', async ({ event, context }) => {
+ponder.on('Diamond:MarketUnpaused', async ({ event, context }) => {
   const { marketId } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
@@ -329,7 +314,7 @@ ponder.on('CLOBAdminFacet:MarketUnpaused', async ({ event, context }) => {
  * Signature: RateLimitsUpdated(uint256,uint256)
  * Hash: 0x6675ea6c
  */
-ponder.on('CLOBAdminFacet:RateLimitsUpdated', async ({ event, context }) => {
+ponder.on('Diamond:RateLimitsUpdated', async ({ event, context }) => {
   const { maxOrdersPerBlock, maxVolumePerBlock } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 

@@ -94,6 +94,7 @@ interface EventInfo {
   domain: string;
   signature: string;
   signatureHash: string;
+  fullSignature?: string; // Set when event name has duplicates with different signatures
   inputs: AbiInput[];
   abi: AbiItem;
 }
@@ -428,27 +429,9 @@ function generateEventTable(event: EventInfo): SchemaTable {
 }
 
 function generateEntityTables(): SchemaTable[] {
-  // For "dumb indexer" pattern, entity tables are minimal
-  // Aggregations happen in repository layer from raw events
-  return [
-    {
-      name: 'nodes',
-      columns: [
-        { name: 'id', type: 't.hex().primaryKey()', primaryKey: true },
-        { name: 'owner', type: 't.hex().notNull()', indexed: true },
-        { name: 'node_type', type: 't.text().notNull()' },
-        { name: 'status', type: 't.text().notNull()' },
-        { name: 'address_name', type: 't.text()' },
-        { name: 'lat', type: 't.text()' },
-        { name: 'lng', type: 't.text()' },
-        { name: 'created_at', type: 't.bigint().notNull()' },
-        { name: 'updated_at', type: 't.bigint().notNull()' },
-      ],
-      indexes: ['owner', 'status'],
-    },
-    // Minimal entity tables - raw events are the source of truth
-    // All derived state computed from events in repositories
-  ];
+  // Dumb indexer pattern: No entity tables, only event tables
+  // All state is derived from events at query time in repository layer
+  return [];
 }
 
 function generateSchema(facets: Map<string, FacetInfo>): void {
@@ -507,6 +490,24 @@ ${allTables.map((t) => `  ${snakeToCamel(t.name)},`).join('\n')}
 `;
 
   fs.writeFileSync(GENERATED_SCHEMA_FILE, schemaContent);
+
+  // Generate ponder.schema.ts that re-exports generated-schema
+  const ponderSchemaContent = `// Auto-generated Ponder Schema - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+//
+// This file re-exports the auto-generated schema from generated-schema.ts
+// Dumb indexer pattern: Store raw events, aggregate in repository layer.
+// Regenerate with: npm run generate:indexer
+
+// Import all generated tables
+export * from './generated-schema';
+`;
+
+  fs.writeFileSync(
+    path.join(INDEXER_DIR, 'ponder.schema.ts'),
+    ponderSchemaContent,
+  );
+
   console.log(
     `✓ Generated schema with ${entityTables.length} entity tables + ${eventTables.length} event tables`,
   );
@@ -576,14 +577,17 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
       const camelTable = snakeToCamel(tableName);
 
-      // Use facet name as prefix for all events
-      // For per-facet contracts: "FacetName:EventName" (e.g., StakingFacet:RewardRateUpdated)
-      // External contracts (RWYVault, AuraAsset) use "ContractName:EventName"
+      // Use contract name as prefix for all events
+      // Diamond contract events use "Diamond:" prefix
+      // External contracts (RWYVault, AuraAsset) use their contract name
       const contractName = event.facet;
       const isExternalContract = !!EXTERNAL_CONTRACTS[contractName];
+
+      // Use unique event name for event key
+      // Ponder only supports event names, not full signatures
       const eventKey = isExternalContract
         ? `${contractName}:${event.name}`
-        : `${facetName}:${event.name}`;
+        : `Diamond:${event.name}`;
 
       content += `/**
  * Handle ${event.name} event from ${facetName}
@@ -628,13 +632,27 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
     'OwnershipTransferStarted',
   ]);
 
-  // Group events by domain for handler generation
+  // Track events by name to avoid duplicates (Ponder matches by name only)
+  // But if same name has different signatures, we need to use full signature
+  const processedEventNames = new Map<string, EventInfo>(); // name -> first event
   const eventsByDomain = new Map<string, EventInfo[]>();
 
   for (const [facetName, config] of facets.entries()) {
     const facet = facets.get(facetName)!;
 
     for (const event of facet.events) {
+      // Check if we've seen this event name before
+      const existing = processedEventNames.get(event.name);
+
+      if (existing) {
+        // Same name, different signature - use full signature for both
+        existing.fullSignature = existing.signature;
+        event.fullSignature = event.signature;
+      } else {
+        // First time seeing this event name
+        processedEventNames.set(event.name, event);
+      }
+
       // Skip common skip events
       if (skipEvents.has(event.name)) continue;
 
@@ -689,21 +707,6 @@ ${domains.map((d) => `import './${d}.generated';`).join('\n')}
 // ============================================================================
 
 function generatePonderConfig(facets: Map<string, FacetInfo>): void {
-  // Generate contract configurations for all facets (not just external)
-  const facetContracts = Array.from(facets.values())
-    .filter((f) => !EXTERNAL_CONTRACTS[f.name]) // Skip external contracts
-    .map((facet) => {
-      const addressConstant = `DIAMOND_ADDRESS`;
-      const startBlockConstant = `DIAMOND_DEPLOY_BLOCK`;
-      return `    ${facet.name}: {
-      network: 'baseSepolia',
-      abi: ${facet.name}ABI,
-      address: ${addressConstant},
-      startBlock: ${startBlockConstant},
-    }`;
-    })
-    .join(',\n');
-
   // Generate contract configurations for external contracts
   const externalContracts = Array.from(facets.values())
     .filter((f) => EXTERNAL_CONTRACTS[f.name])
@@ -720,10 +723,6 @@ function generatePonderConfig(facets: Map<string, FacetInfo>): void {
     })
     .join(',\n');
 
-  const allContracts = [facetContracts, externalContracts]
-    .filter(Boolean)
-    .join(',\n');
-
   const configContent = `// Auto-generated Ponder config - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
 
@@ -731,7 +730,9 @@ import { createConfig } from '@ponder/core';
 import { http } from 'viem';
 
 // Import generated ABIs
+import { DiamondABI } from './abis/generated';
 ${Array.from(facets.values())
+  .filter((f) => EXTERNAL_CONTRACTS[f.name])
   .map((f) => `import { ${f.name}ABI } from './abis/generated/${f.name}';`)
   .join('\n')}
 
@@ -755,7 +756,12 @@ export default createConfig({
     },
   },
   contracts: {
-${allContracts}
+    Diamond: {
+      network: 'baseSepolia',
+      abi: DiamondABI,
+      address: DIAMOND_ADDRESS,
+      startBlock: DIAMOND_DEPLOY_BLOCK,
+    }${externalContracts ? `,\n${externalContracts}` : ''}
   },
 });
 `;
