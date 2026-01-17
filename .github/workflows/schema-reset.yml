@@ -25,17 +25,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
+       - name: Setup Node.js
+         uses: actions/setup-node@v4
+         with:
+           node-version: '22'
+           cache: pnpm
 
-      - name: Install dependencies
-        run: npm ci
+       - name: Setup pnpm
+         uses: pnpm/action-setup@v4
+         with:
+           version: 9.x
 
-      - name: Generate new schema
-        run: npm run generate:indexer
+       - name: Install dependencies
+         run: pnpm install --frozen-lockfile
+
+       - name: Generate new schema
+         run: pnpm run generate:indexer
 
       - name: Deploy to server and reset database
         uses: appleboy/ssh-action@v1.0.3
