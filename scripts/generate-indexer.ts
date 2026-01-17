@@ -537,24 +537,31 @@ function generateHandlerStub(domain: string, events: EventInfo[]): string {
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: ${Array.from(eventsByFacet.keys()).join(', ')}
 
-import { ponder } from '@/generated';
+import { ponder } from "@/generated";
 
-// Import event tables (auto-generated from ABI)
+// Import event tables from generated schema
 `;
 
-  // Generate import statements for event tables
+  // Collect all table imports
+  const tableImports: string[] = [];
   for (const [facetName, facetEvents] of eventsByFacet) {
     for (const event of facetEvents) {
       // Table names have hash suffix to handle duplicate event names
       const shortHash = event.signatureHash.slice(2, 6);
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
-      content += `import { ${snakeToCamel(tableName)} } from '../../generated-schema';\n`;
+      tableImports.push(snakeToCamel(tableName));
     }
   }
+
+  // Single import from generated schema
+  content += `import { ${tableImports.join(', ')} } from "@/generated-schema";\n`;
 
   content += `\n// Utility functions
 const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\`;
 `;
+
+  // Reserved variable names that conflict with our generated code
+  const reservedNames = new Set(['id', 'event', 'context', 'eventId', 'value']);
 
   for (const [facetName, facetEvents] of eventsByFacet) {
     content += `\n// =============================================================================
@@ -571,7 +578,24 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
         })
         .join(', ');
 
-      const destructure = event.inputs.map((i) => i.name).join(', ');
+      // Handle reserved names by renaming them in destructuring
+      // e.g., { id } becomes { id: arg_id }
+      const destructureParts: string[] = [];
+      const renamedInputs: Map<string, string> = new Map();
+
+      for (const input of event.inputs) {
+        if (reservedNames.has(input.name)) {
+          const renamed = `arg_${input.name}`;
+          destructureParts.push(`${input.name}: ${renamed}`);
+          renamedInputs.set(input.name, renamed);
+        } else {
+          destructureParts.push(input.name);
+          renamedInputs.set(input.name, input.name);
+        }
+      }
+
+      const destructure = destructureParts.join(', ');
+
       // Table names have hash suffix to handle duplicate event names
       const shortHash = event.signatureHash.slice(2, 6);
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
@@ -589,6 +613,15 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
         ? `${contractName}:${event.name}`
         : `Diamond:${event.name}`;
 
+      // Generate the values object with proper column names
+      // Column names use snake_case, variable names use the (possibly renamed) input names
+      const valueAssignments = event.inputs
+        .map((i) => {
+          const varName = renamedInputs.get(i.name)!;
+          return `    ${camelToSnake(i.name)}: ${varName},`;
+        })
+        .join('\n');
+
       content += `/**
  * Handle ${event.name} event from ${facetName}
  * Signature: ${event.signature}
@@ -600,8 +633,8 @@ ponder.on('${eventKey}', async ({ event, context }) => {
   
   // Insert raw event into event table
   await context.db.insert(${camelTable}).values({
-    id,
-${event.inputs.map((i) => `    ${camelToSnake(i.name)}: ${i.name},`).join('\n')}
+    id: id,
+${valueAssignments}
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
