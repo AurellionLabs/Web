@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-17T00:31:46.782Z
+// Generated at: 2026-01-17T12:26:21.578Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: NodesFacet
@@ -7,22 +7,22 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { clobApprovalGrantedD512Events } from '../../generated-schema';
-import { clobApprovalRevokedBdd4Events } from '../../generated-schema';
-import { nodeCapacityUpdated_0ba8Events } from '../../generated-schema';
-import { nodeDeactivated_62b3Events } from '../../generated-schema';
-import { nodeRegistered_8326Events } from '../../generated-schema';
-import { nodeSellOrderPlaced_3de5Events } from '../../generated-schema';
-import { nodeUpdated_9c97Events } from '../../generated-schema';
-import { supportedAssetAdded_9f0aEvents } from '../../generated-schema';
-import { supportedAssetsUpdated_1af7Events } from '../../generated-schema';
-import { tokensDepositedToNode_9d99Events } from '../../generated-schema';
-import { tokensMintedToNode_1177Events } from '../../generated-schema';
-import { tokensTransferredBetweenNodes_5ceeEvents } from '../../generated-schema';
-import { tokensWithdrawnFromNode_5994Events } from '../../generated-schema';
-import { updateLocation_6d4fEvents } from '../../generated-schema';
-import { updateOwnerEa9dEvents } from '../../generated-schema';
-import { updateStatusCf4eEvents } from '../../generated-schema';
+import { clobApprovalGrantedD512Events } from '@/generated-schema';
+import { clobApprovalRevokedBdd4Events } from '@/generated-schema';
+import { nodeCapacityUpdated_0ba8Events } from '@/generated-schema';
+import { nodeDeactivated_62b3Events } from '@/generated-schema';
+import { nodeRegistered_8326Events } from '@/generated-schema';
+import { nodeSellOrderPlaced_3de5Events } from '@/generated-schema';
+import { nodeUpdated_9c97Events } from '@/generated-schema';
+import { supportedAssetAdded_9f0aEvents } from '@/generated-schema';
+import { supportedAssetsUpdated_1af7Events } from '@/generated-schema';
+import { tokensDepositedToNode_9d99Events } from '@/generated-schema';
+import { tokensMintedToNode_1177Events } from '@/generated-schema';
+import { tokensTransferredBetweenNodes_5ceeEvents } from '@/generated-schema';
+import { tokensWithdrawnFromNode_5994Events } from '@/generated-schema';
+import { updateLocation_6d4fEvents } from '@/generated-schema';
+import { updateOwnerEa9dEvents } from '@/generated-schema';
+import { updateStatusCf4eEvents } from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -42,7 +42,7 @@ ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(clobApprovalGrantedD512Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     clob_address: clobAddress,
     block_number: event.block.number,
@@ -62,7 +62,7 @@ ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(clobApprovalRevokedBdd4Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     clob_address: clobAddress,
     block_number: event.block.number,
@@ -82,7 +82,7 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(nodeCapacityUpdated_0ba8Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     quantities: quantities,
     block_number: event.block.number,
@@ -102,7 +102,7 @@ ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(nodeDeactivated_62b3Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
@@ -121,7 +121,7 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(nodeRegistered_8326Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     owner: owner,
     node_type: nodeType,
@@ -142,7 +142,7 @@ ponder.on('Diamond:NodeSellOrderPlaced', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(nodeSellOrderPlaced_3de5Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     token_id: tokenId,
     quote_token: quoteToken,
@@ -166,7 +166,7 @@ ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(nodeUpdated_9c97Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     node_type: nodeType,
     capacity: capacity,
@@ -187,7 +187,7 @@ ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(supportedAssetAdded_9f0aEvents).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     token: token,
     token_id: tokenId,
@@ -210,7 +210,7 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(supportedAssetsUpdated_1af7Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     count: count,
     block_number: event.block.number,
@@ -230,7 +230,7 @@ ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(tokensDepositedToNode_9d99Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     token_id: tokenId,
     amount: amount,
@@ -252,7 +252,7 @@ ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(tokensMintedToNode_1177Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     token_id: tokenId,
     amount: amount,
@@ -299,7 +299,7 @@ ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(tokensWithdrawnFromNode_5994Events).values({
-    id,
+    id: id,
     node_hash: nodeHash,
     token_id: tokenId,
     amount: amount,
@@ -321,7 +321,7 @@ ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(updateLocation_6d4fEvents).values({
-    id,
+    id: id,
     address_name: addressName,
     lat: lat,
     lng: lng,
@@ -343,7 +343,7 @@ ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(updateOwnerEa9dEvents).values({
-    id,
+    id: id,
     owner: owner,
     node: node,
     block_number: event.block.number,
@@ -363,7 +363,7 @@ ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(updateStatusCf4eEvents).values({
-    id,
+    id: id,
     status: status,
     node: node,
     block_number: event.block.number,

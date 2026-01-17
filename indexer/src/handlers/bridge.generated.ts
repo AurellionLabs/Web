@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-01-17T00:31:46.783Z
+// Generated at: 2026-01-17T12:26:21.579Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: BridgeFacet
@@ -7,14 +7,14 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { bountyPaid_8e7bEvents } from '../../generated-schema';
-import { bridgeFeeRecipientUpdatedD240Events } from '../../generated-schema';
-import { bridgeOrderCancelledFb63Events } from '../../generated-schema';
-import { journeyStatusUpdatedF7daEvents } from '../../generated-schema';
-import { logisticsOrderCreated_9c83Events } from '../../generated-schema';
-import { orderSettledE726Events } from '../../generated-schema';
-import { tradeMatched_51d0Events } from '../../generated-schema';
-import { unifiedOrderCreatedC8b6Events } from '../../generated-schema';
+import { bountyPaid_8e7bEvents } from '@/generated-schema';
+import { bridgeFeeRecipientUpdatedD240Events } from '@/generated-schema';
+import { bridgeOrderCancelledFb63Events } from '@/generated-schema';
+import { journeyStatusUpdatedF7daEvents } from '@/generated-schema';
+import { logisticsOrderCreated_9c83Events } from '@/generated-schema';
+import { orderSettledE726Events } from '@/generated-schema';
+import { tradeMatched_51d0Events } from '@/generated-schema';
+import { unifiedOrderCreatedC8b6Events } from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -34,7 +34,7 @@ ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(bountyPaid_8e7bEvents).values({
-    id,
+    id: id,
     unified_order_id: unifiedOrderId,
     amount: amount,
     block_number: event.block.number,
@@ -54,7 +54,7 @@ ponder.on('Diamond:BridgeFeeRecipientUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(bridgeFeeRecipientUpdatedD240Events).values({
-    id,
+    id: id,
     old_recipient: oldRecipient,
     new_recipient: newRecipient,
     block_number: event.block.number,
@@ -74,7 +74,7 @@ ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(bridgeOrderCancelledFb63Events).values({
-    id,
+    id: id,
     unified_order_id: unifiedOrderId,
     previous_status: previousStatus,
     block_number: event.block.number,
@@ -94,7 +94,7 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(journeyStatusUpdatedF7daEvents).values({
-    id,
+    id: id,
     unified_order_id: unifiedOrderId,
     journey_id: journeyId,
     phase: phase,
@@ -115,7 +115,7 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(logisticsOrderCreated_9c83Events).values({
-    id,
+    id: id,
     unified_order_id: unifiedOrderId,
     ausys_order_id: ausysOrderId,
     journey_ids: journeyIds,
@@ -139,7 +139,7 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(orderSettledE726Events).values({
-    id,
+    id: id,
     unified_order_id: unifiedOrderId,
     seller: seller,
     seller_amount: sellerAmount,
@@ -163,7 +163,7 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(tradeMatched_51d0Events).values({
-    id,
+    id: id,
     unified_order_id: unifiedOrderId,
     clob_trade_id: clobTradeId,
     clob_order_id: clobOrderId,
@@ -196,7 +196,7 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(unifiedOrderCreatedC8b6Events).values({
-    id,
+    id: id,
     unified_order_id: unifiedOrderId,
     clob_order_id: clobOrderId,
     buyer: buyer,

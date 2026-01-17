@@ -1,5 +1,5 @@
 // Auto-generated handler for staking domain - Raw event storage only
-// Generated at: 2026-01-17T00:31:46.784Z
+// Generated at: 2026-01-17T12:26:21.579Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: StakingFacet
@@ -7,10 +7,10 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { rewardRateUpdatedC390Events } from '../../generated-schema';
-import { rewardsClaimedFc30Events } from '../../generated-schema';
-import { staked_9e71Events } from '../../generated-schema';
-import { withdrawn_7084Events } from '../../generated-schema';
+import { rewardRateUpdatedC390Events } from '@/generated-schema';
+import { rewardsClaimedFc30Events } from '@/generated-schema';
+import { staked_9e71Events } from '@/generated-schema';
+import { withdrawn_7084Events } from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -30,7 +30,7 @@ ponder.on('Diamond:RewardRateUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(rewardRateUpdatedC390Events).values({
-    id,
+    id: id,
     old_rate: oldRate,
     new_rate: newRate,
     block_number: event.block.number,
@@ -50,7 +50,7 @@ ponder.on('Diamond:RewardsClaimed', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(rewardsClaimedFc30Events).values({
-    id,
+    id: id,
     user: user,
     amount: amount,
     block_number: event.block.number,
@@ -70,7 +70,7 @@ ponder.on('Diamond:Staked', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(staked_9e71Events).values({
-    id,
+    id: id,
     user: user,
     amount: amount,
     block_number: event.block.number,
@@ -90,7 +90,7 @@ ponder.on('Diamond:Withdrawn', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(withdrawn_7084Events).values({
-    id,
+    id: id,
     user: user,
     amount: amount,
     block_number: event.block.number,

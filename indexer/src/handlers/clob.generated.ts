@@ -1,5 +1,5 @@
 // Auto-generated handler for clob domain - Raw event storage only
-// Generated at: 2026-01-17T00:31:46.783Z
+// Generated at: 2026-01-17T12:26:21.578Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBFacetV2, OrderMatchingFacet, OrderRouterFacet
@@ -7,21 +7,21 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { cLOBOrderCancelled_8b47Events } from '../../generated-schema';
-import { cLOBOrderFilled_2d54Events } from '../../generated-schema';
-import { cLOBTradeExecuted_57e6Events } from '../../generated-schema';
-import { marketCreatedB59eEvents } from '../../generated-schema';
-import { orderCreated_43feEvents } from '../../generated-schema';
-import { orderExpiredB558Events } from '../../generated-schema';
-import { orderPlacedWithTokensE764Events } from '../../generated-schema';
-import { ausysOrderFilled_3e2eEvents } from '../../generated-schema';
-import { matchingOrderCancelled_6f7dEvents } from '../../generated-schema';
-import { tradeExecuted_4692Events } from '../../generated-schema';
-import { orderRouted_1382Events } from '../../generated-schema';
-import { routerOrderCancelled_8f11Events } from '../../generated-schema';
-import { routerOrderCreated_7398Events } from '../../generated-schema';
-import { routerOrderPlaced_0e2eEvents } from '../../generated-schema';
-import { routerTradeExecuted_5493Events } from '../../generated-schema';
+import { cLOBOrderCancelled_8b47Events } from '@/generated-schema';
+import { cLOBOrderFilled_2d54Events } from '@/generated-schema';
+import { cLOBTradeExecuted_57e6Events } from '@/generated-schema';
+import { marketCreatedB59eEvents } from '@/generated-schema';
+import { orderCreated_43feEvents } from '@/generated-schema';
+import { orderExpiredB558Events } from '@/generated-schema';
+import { orderPlacedWithTokensE764Events } from '@/generated-schema';
+import { ausysOrderFilled_3e2eEvents } from '@/generated-schema';
+import { matchingOrderCancelled_6f7dEvents } from '@/generated-schema';
+import { tradeExecuted_4692Events } from '@/generated-schema';
+import { orderRouted_1382Events } from '@/generated-schema';
+import { routerOrderCancelled_8f11Events } from '@/generated-schema';
+import { routerOrderCreated_7398Events } from '@/generated-schema';
+import { routerOrderPlaced_0e2eEvents } from '@/generated-schema';
+import { routerTradeExecuted_5493Events } from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -41,7 +41,7 @@ ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(cLOBOrderCancelled_8b47Events).values({
-    id,
+    id: id,
     order_id: orderId,
     maker: maker,
     remaining_amount: remainingAmount,
@@ -70,7 +70,7 @@ ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(cLOBOrderFilled_2d54Events).values({
-    id,
+    id: id,
     order_id: orderId,
     trade_id: tradeId,
     fill_amount: fillAmount,
@@ -108,7 +108,7 @@ ponder.on('Diamond:CLOBTradeExecuted', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(cLOBTradeExecuted_57e6Events).values({
-    id,
+    id: id,
     trade_id: tradeId,
     taker_order_id: takerOrderId,
     maker_order_id: makerOrderId,
@@ -139,7 +139,7 @@ ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(marketCreatedB59eEvents).values({
-    id,
+    id: id,
     market_id: marketId,
     base_token: baseToken,
     base_token_id: baseTokenId,
@@ -172,7 +172,7 @@ ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(orderCreated_43feEvents).values({
-    id,
+    id: id,
     order_id: orderId,
     market_id: marketId,
     maker: maker,
@@ -200,7 +200,7 @@ ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(orderExpiredB558Events).values({
-    id,
+    id: id,
     order_id: orderId,
     expired_at: expiredAt,
     block_number: event.block.number,
@@ -230,7 +230,7 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(orderPlacedWithTokensE764Events).values({
-    id,
+    id: id,
     order_id: orderId,
     maker: maker,
     base_token: baseToken,
@@ -268,7 +268,7 @@ ponder.on('Diamond:AusysOrderFilled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(ausysOrderFilled_3e2eEvents).values({
-    id,
+    id: id,
     order_id: orderId,
     trade_id: tradeId,
     fill_amount: fillAmount,
@@ -292,7 +292,7 @@ ponder.on('Diamond:MatchingOrderCancelled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(matchingOrderCancelled_6f7dEvents).values({
-    id,
+    id: id,
     order_id: orderId,
     maker: maker,
     remaining_amount: remainingAmount,
@@ -315,7 +315,7 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(tradeExecuted_4692Events).values({
-    id,
+    id: id,
     trade_id: tradeId,
     taker_order_id: takerOrderId,
     maker_order_id: makerOrderId,
@@ -343,7 +343,7 @@ ponder.on('Diamond:OrderRouted', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(orderRouted_1382Events).values({
-    id,
+    id: id,
     order_id: orderId,
     maker: maker,
     order_source: orderSource,
@@ -365,7 +365,7 @@ ponder.on('Diamond:RouterOrderCancelled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(routerOrderCancelled_8f11Events).values({
-    id,
+    id: id,
     order_id: orderId,
     maker: maker,
     remaining_amount: remainingAmount,
@@ -398,7 +398,7 @@ ponder.on('Diamond:RouterOrderCreated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(routerOrderCreated_7398Events).values({
-    id,
+    id: id,
     order_id: orderId,
     market_id: marketId,
     maker: maker,
@@ -436,7 +436,7 @@ ponder.on('Diamond:RouterOrderPlaced', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(routerOrderPlaced_0e2eEvents).values({
-    id,
+    id: id,
     order_id: orderId,
     maker: maker,
     base_token: baseToken,
@@ -464,7 +464,7 @@ ponder.on('Diamond:RouterTradeExecuted', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(routerTradeExecuted_5493Events).values({
-    id,
+    id: id,
     trade_id: tradeId,
     taker_order_id: takerOrderId,
     maker_order_id: makerOrderId,

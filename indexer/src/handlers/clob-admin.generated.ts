@@ -1,5 +1,5 @@
 // Auto-generated handler for clob-admin domain - Raw event storage only
-// Generated at: 2026-01-17T00:31:46.784Z
+// Generated at: 2026-01-17T12:26:21.579Z
 //
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBAdminFacet
@@ -7,20 +7,20 @@
 import { ponder } from '@/generated';
 
 // Import event tables (auto-generated from ABI)
-import { circuitBreakerConfigured_5880Events } from '../../generated-schema';
-import { circuitBreakerResetBae5Events } from '../../generated-schema';
-import { circuitBreakerTripped_5953Events } from '../../generated-schema';
-import { emergencyActionCancelled_248bEvents } from '../../generated-schema';
-import { emergencyActionExecuted_4579Events } from '../../generated-schema';
-import { emergencyActionInitiatedCa04Events } from '../../generated-schema';
-import { emergencyWithdrawalC0f6Events } from '../../generated-schema';
-import { feeRecipientUpdatedAaebEvents } from '../../generated-schema';
-import { feesUpdatedB3efEvents } from '../../generated-schema';
-import { globalPauseA5feEvents } from '../../generated-schema';
-import { mEVProtectionUpdated_096cEvents } from '../../generated-schema';
-import { marketPaused_6136Events } from '../../generated-schema';
-import { marketUnpausedB51dEvents } from '../../generated-schema';
-import { rateLimitsUpdated_6675Events } from '../../generated-schema';
+import { circuitBreakerConfigured_5880Events } from '@/generated-schema';
+import { circuitBreakerResetBae5Events } from '@/generated-schema';
+import { circuitBreakerTripped_5953Events } from '@/generated-schema';
+import { emergencyActionCancelled_248bEvents } from '@/generated-schema';
+import { emergencyActionExecuted_4579Events } from '@/generated-schema';
+import { emergencyActionInitiatedCa04Events } from '@/generated-schema';
+import { emergencyWithdrawalC0f6Events } from '@/generated-schema';
+import { feeRecipientUpdatedAaebEvents } from '@/generated-schema';
+import { feesUpdatedB3efEvents } from '@/generated-schema';
+import { globalPauseA5feEvents } from '@/generated-schema';
+import { mEVProtectionUpdated_096cEvents } from '@/generated-schema';
+import { marketPaused_6136Events } from '@/generated-schema';
+import { marketUnpausedB51dEvents } from '@/generated-schema';
+import { rateLimitsUpdated_6675Events } from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -41,7 +41,7 @@ ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(circuitBreakerConfigured_5880Events).values({
-    id,
+    id: id,
     market_id: marketId,
     price_change_threshold: priceChangeThreshold,
     cooldown_period: cooldownPeriod,
@@ -63,7 +63,7 @@ ponder.on('Diamond:CircuitBreakerReset', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(circuitBreakerResetBae5Events).values({
-    id,
+    id: id,
     market_id: marketId,
     reset_at: resetAt,
     block_number: event.block.number,
@@ -89,7 +89,7 @@ ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(circuitBreakerTripped_5953Events).values({
-    id,
+    id: id,
     market_id: marketId,
     trigger_price: triggerPrice,
     previous_price: previousPrice,
@@ -112,7 +112,7 @@ ponder.on('Diamond:EmergencyActionCancelled', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(emergencyActionCancelled_248bEvents).values({
-    id,
+    id: id,
     action_id: actionId,
     canceller: canceller,
     block_number: event.block.number,
@@ -132,7 +132,7 @@ ponder.on('Diamond:EmergencyActionExecuted', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(emergencyActionExecuted_4579Events).values({
-    id,
+    id: id,
     action_id: actionId,
     executor: executor,
     token: token,
@@ -156,7 +156,7 @@ ponder.on('Diamond:EmergencyActionInitiated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(emergencyActionInitiatedCa04Events).values({
-    id,
+    id: id,
     action_id: actionId,
     initiator: initiator,
     token: token,
@@ -180,7 +180,7 @@ ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(emergencyWithdrawalC0f6Events).values({
-    id,
+    id: id,
     user: user,
     order_id: orderId,
     token: token,
@@ -202,7 +202,7 @@ ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(feeRecipientUpdatedAaebEvents).values({
-    id,
+    id: id,
     old_recipient: oldRecipient,
     new_recipient: newRecipient,
     block_number: event.block.number,
@@ -222,7 +222,7 @@ ponder.on('Diamond:FeesUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(feesUpdatedB3efEvents).values({
-    id,
+    id: id,
     taker_fee_bps: takerFeeBps,
     maker_fee_bps: makerFeeBps,
     lp_fee_bps: lpFeeBps,
@@ -243,7 +243,7 @@ ponder.on('Diamond:GlobalPause', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(globalPauseA5feEvents).values({
-    id,
+    id: id,
     paused: paused,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
@@ -262,7 +262,7 @@ ponder.on('Diamond:MEVProtectionUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(mEVProtectionUpdated_096cEvents).values({
-    id,
+    id: id,
     min_reveal_delay: minRevealDelay,
     commitment_threshold: commitmentThreshold,
     block_number: event.block.number,
@@ -282,7 +282,7 @@ ponder.on('Diamond:MarketPaused', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(marketPaused_6136Events).values({
-    id,
+    id: id,
     market_id: marketId,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
@@ -301,7 +301,7 @@ ponder.on('Diamond:MarketUnpaused', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(marketUnpausedB51dEvents).values({
-    id,
+    id: id,
     market_id: marketId,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
@@ -320,7 +320,7 @@ ponder.on('Diamond:RateLimitsUpdated', async ({ event, context }) => {
 
   // Insert raw event into event table
   await context.db.insert(rateLimitsUpdated_6675Events).values({
-    id,
+    id: id,
     max_orders_per_block: maxOrdersPerBlock,
     max_volume_per_block: maxVolumePerBlock,
     block_number: event.block.number,
