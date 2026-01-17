@@ -34,7 +34,7 @@ export function useRWYOpportunities() {
 
       // Use window.ethereum or a default provider
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
@@ -105,7 +105,7 @@ export function useOperatorRWYOpportunities(operator: Address | undefined) {
       setError(null);
 
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
@@ -158,7 +158,7 @@ export function useUserRWYStakes(userAddress: Address | undefined) {
       setError(null);
 
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);

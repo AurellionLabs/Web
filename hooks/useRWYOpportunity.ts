@@ -31,7 +31,7 @@ export function useRWYOpportunity(opportunityId: string | undefined) {
       setError(null);
 
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
@@ -82,7 +82,7 @@ export function useRWYStake(
       setError(null);
 
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
@@ -128,7 +128,7 @@ export function useRWYOpportunityStakers(opportunityId: string | undefined) {
       setError(null);
 
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
@@ -174,7 +174,7 @@ export function useRWYOperatorStats(operatorAddress: Address | undefined) {
       setError(null);
 
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
@@ -232,7 +232,7 @@ export function useRWYExpectedProfit(
       setError(null);
 
       const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum)
+        ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
       const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);

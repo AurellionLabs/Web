@@ -21,7 +21,7 @@ export class Wallet {
       }
 
       // Use the existing provider instead of creating a new one
-      this.provider = new BrowserProvider(window.ethereum);
+      this.provider = new BrowserProvider(window.ethereum as any);
 
       // Request accounts
       await this.provider.send('eth_requestAccounts', []);
@@ -44,15 +44,16 @@ export class Wallet {
     onChainChanged: () => void,
   ): (() => void) | undefined {
     if (typeof window.ethereum !== 'undefined') {
+      const ethereum = window.ethereum as any;
       // Handle account changes
-      window.ethereum.on('accountsChanged', onAccountsChanged);
+      ethereum.on('accountsChanged', onAccountsChanged);
       // Handle chain changes
-      window.ethereum.on('chainChanged', onChainChanged);
+      ethereum.on('chainChanged', onChainChanged);
 
       // Return cleanup function
       return () => {
-        window.ethereum?.removeListener('accountsChanged', onAccountsChanged);
-        window.ethereum?.removeListener('chainChanged', onChainChanged);
+        ethereum?.removeListener('accountsChanged', onAccountsChanged);
+        ethereum?.removeListener('chainChanged', onChainChanged);
       };
     }
   }
@@ -60,7 +61,8 @@ export class Wallet {
   public async getCurrentChainId(): Promise<string | null> {
     try {
       if (typeof window.ethereum !== 'undefined') {
-        const chainId = await window.ethereum.request({
+        const ethereum = window.ethereum as any;
+        const chainId = await ethereum.request({
           method: 'eth_chainId',
         });
         return chainId;
@@ -75,7 +77,8 @@ export class Wallet {
   public async switchNetwork(chainId: string): Promise<boolean> {
     try {
       if (typeof window.ethereum !== 'undefined') {
-        await window.ethereum.request({
+        const ethereum = window.ethereum as any;
+        await ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId }],
         });

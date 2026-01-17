@@ -43,7 +43,7 @@ export const initializeProvider = async (): Promise<{
         throw new Error('Please install MetaMask');
       }
 
-      provider = new BrowserProvider(window.ethereum);
+      provider = new BrowserProvider(window.ethereum as any);
       signer = await provider.getSigner();
 
       if (!provider || !signer) throw new Error('Failed to initialize wallet');

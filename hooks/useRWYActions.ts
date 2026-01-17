@@ -30,7 +30,7 @@ export function useRWYStakeActions() {
     if (!window.ethereum) {
       throw new Error('No wallet connected');
     }
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(window.ethereum as any);
     const signer = await provider.getSigner();
     return new RWYService(RWY_VAULT_ADDRESS, signer);
   }, []);
@@ -45,7 +45,7 @@ export function useRWYStakeActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -82,7 +82,7 @@ export function useRWYStakeActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -118,7 +118,7 @@ export function useRWYStakeActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -153,7 +153,7 @@ export function useRWYStakeActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -188,7 +188,7 @@ export function useRWYStakeActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -219,7 +219,7 @@ export function useRWYStakeActions() {
       try {
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -260,7 +260,7 @@ export function useRWYOperatorActions() {
     if (!window.ethereum) {
       throw new Error('No wallet connected');
     }
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(window.ethereum as any);
     const signer = await provider.getSigner();
     return new RWYService(RWY_VAULT_ADDRESS, signer);
   }, []);
@@ -274,7 +274,7 @@ export function useRWYOperatorActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -310,7 +310,7 @@ export function useRWYOperatorActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -347,7 +347,7 @@ export function useRWYOperatorActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -385,7 +385,7 @@ export function useRWYOperatorActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
@@ -423,7 +423,7 @@ export function useRWYOperatorActions() {
 
         const service = await getService();
         const signer = await new ethers.BrowserProvider(
-          window.ethereum,
+          window.ethereum as any,
         ).getSigner();
         const address = await signer.getAddress();
 
