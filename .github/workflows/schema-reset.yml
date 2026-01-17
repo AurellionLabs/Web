@@ -60,6 +60,9 @@ jobs:
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -c "DROP DATABASE IF EXISTS ponder_indexer;"
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -c "CREATE DATABASE ponder_indexer;"
 
+            echo "Clearing Ponder cache..."
+            rm -rf /srv/Web/indexer/.ponder/pglite/*
+
             echo "Pulling latest code changes..."
             cd /srv/Web
             git fetch origin

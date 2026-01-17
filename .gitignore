@@ -25,6 +25,9 @@ indexer/generated/
 indexer/.ponder/
 indexer/ponder-env.d.ts
 indexer/logs/
+indexer/ponder.config.generated.ts
+indexer/abis/generated/
+indexer/src/handlers/*.generated.ts
 
 # Temp scripts
 get-docker.sh
