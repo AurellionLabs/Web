@@ -761,8 +761,7 @@ export default createConfig({
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
-    },
-${externalContracts},
+    }${externalContracts ? `,\n${externalContracts}` : ''}
   },
 });
 `;
