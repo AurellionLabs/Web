@@ -2,7 +2,7 @@
   "name": "aurellion-monorepo",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10",
+  "packageManager": "pnpm@10.26.2",
   "scripts": {
     "codegen": "cd indexer && npm run codegen",
     "generate:indexer": "cd indexer && npm run generate:indexer",
