@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Compile contracts
+        run: npx hardhat compile
+
       - name: Generate new schema
         run: pnpm run generate:indexer
 
