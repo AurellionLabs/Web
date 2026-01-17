@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-push checks..."
+
+# Run full build to ensure everything compiles
+npm run build:full
+
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed! Please fix compilation errors before pushing."
+  exit 1
+fi
+
+echo "✅ All checks passed. Safe to push!"

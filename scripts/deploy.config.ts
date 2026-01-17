@@ -194,7 +194,7 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     name: 'CLOB',
     contractName: 'CLOB',
     category: 'core',
-    constructorArgs: (_, deployer) => [deployer],
+    constructorArgs: (_, deployer) => [deployer, deployer],
     chainConstantKey: 'NEXT_PUBLIC_CLOB_ADDRESS',
     indexerConfig: { abiName: 'CLOBAbi', startBlockKey: 'clob' },
   },

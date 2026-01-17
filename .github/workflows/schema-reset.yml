@@ -1,0 +1,71 @@
+name: Schema Reset
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'contracts/diamond/facets/*.sol'
+      - 'scripts/deploy.config.ts'
+      - 'scripts/generate-indexer.ts'
+      - 'indexer/ponder.config.ts'
+      - 'indexer/generated-schema.ts'
+      - 'chain-constants.ts'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual schema reset'
+        required: false
+        default: 'Manual trigger'
+
+jobs:
+  reset-schema:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate new schema
+        run: npm run generate:indexer
+
+      - name: Deploy to server and reset database
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
+          script: |
+            cd /srv/Web/indexer
+
+            echo "Stopping indexer service..."
+            docker compose -f docker-compose.prod.yml down indexer
+
+            echo "Resetting PostgreSQL database..."
+            # Drop and recreate the database
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -c "DROP DATABASE IF EXISTS ponder_indexer;"
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -c "CREATE DATABASE ponder_indexer;"
+
+            echo "Pulling latest code changes..."
+            cd /srv/Web
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+            echo "Regenerating schema..."
+            npm run generate:indexer
+
+            echo "Restarting indexer service..."
+            cd /srv/Web/indexer
+            docker compose -f docker-compose.prod.yml up -d indexer
+
+            echo "Schema reset complete. Indexer will rebuild from genesis."
