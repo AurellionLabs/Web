@@ -400,8 +400,22 @@ function generateEventTable(event: EventInfo): SchemaTable {
   ];
   const indexes: string[] = [];
 
+  // Reserved column names that conflict with our schema structure
+  const reservedColumns = new Set([
+    'id',
+    'block_number',
+    'block_timestamp',
+    'transaction_hash',
+  ]);
+
   for (const input of event.inputs) {
-    const colName = camelToSnake(input.name);
+    let colName = camelToSnake(input.name);
+
+    // Rename reserved column names to avoid conflicts with primary key and metadata
+    if (reservedColumns.has(colName)) {
+      colName = `event_${colName}`;
+    }
+
     let colType = solidityTypeToPonderType(input.type);
 
     if (input.indexed) {
@@ -610,12 +624,25 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
         ? `${contractName}:${event.name}`
         : `Diamond:${event.name}`;
 
+      // Reserved column names that need to be prefixed with 'event_' in the schema
+      const reservedColumns = new Set([
+        'id',
+        'block_number',
+        'block_timestamp',
+        'transaction_hash',
+      ]);
+
       // Generate the values object with proper column names
       // Column names use snake_case, variable names use the (possibly renamed) input names
       const valueAssignments = event.inputs
         .map((i) => {
           const varName = renamedInputs.get(i.name)!;
-          return `    ${camelToSnake(i.name)}: ${varName},`;
+          let colName = camelToSnake(i.name);
+          // Match the column renaming in generateEventTable
+          if (reservedColumns.has(colName)) {
+            colName = `event_${colName}`;
+          }
+          return `    ${colName}: ${varName},`;
         })
         .join('\n');
 
