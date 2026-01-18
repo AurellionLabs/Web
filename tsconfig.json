@@ -33,6 +33,7 @@
     "test",
     "__tests__",
     "dapp-connectors",
-    "typechain-types"
+    "typechain-types",
+    "ralph"
   ]
 }
