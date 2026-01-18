@@ -440,9 +440,63 @@ function generateEventTable(event: EventInfo): SchemaTable {
 }
 
 function generateEntityTables(): SchemaTable[] {
-  // Dumb indexer pattern: No entity tables, only event tables
-  // All state is derived from events at query time in repository layer
-  return [];
+  // Aggregate tables for entities the frontend queries
+  // These are populated by event handlers to provide a convenient view of state
+  return [
+    {
+      name: 'assets',
+      columns: [
+        { name: 'id', type: 't.bigint().primaryKey()' }, // tokenId
+        { name: 'name', type: 't.text().notNull()' },
+        { name: 'asset_class', type: 't.text().notNull()' },
+        { name: 'class_name', type: 't.text().notNull()' },
+        { name: 'hash', type: 't.hex().notNull()' },
+        { name: 'block_number', type: 't.bigint().notNull()' },
+        { name: 'block_timestamp', type: 't.bigint().notNull()' },
+        { name: 'transaction_hash', type: 't.hex().notNull()' },
+      ],
+      indexes: ['hash', 'asset_class'],
+    },
+    {
+      name: 'orders',
+      columns: [
+        { name: 'id', type: 't.hex().primaryKey()' }, // unified_order_id
+        { name: 'clob_order_id', type: 't.hex()' },
+        { name: 'ausys_order_id', type: 't.hex()' },
+        { name: 'buyer', type: 't.hex().notNull()' },
+        { name: 'seller', type: 't.hex().notNull()' },
+        { name: 'token', type: 't.hex().notNull()' },
+        { name: 'token_id', type: 't.bigint().notNull()' },
+        { name: 'quantity', type: 't.bigint().notNull()' },
+        { name: 'price', type: 't.bigint().notNull()' },
+        { name: 'bounty', type: 't.bigint()' },
+        { name: 'status', type: 't.text().notNull()' },
+        { name: 'logistics_status', type: 't.integer()' },
+        { name: 'block_number', type: 't.bigint().notNull()' },
+        { name: 'block_timestamp', type: 't.bigint().notNull()' },
+        { name: 'transaction_hash', type: 't.hex().notNull()' },
+      ],
+      indexes: ['buyer', 'seller', 'token', 'token_id', 'status'],
+    },
+    {
+      name: 'journeys',
+      columns: [
+        { name: 'id', type: 't.hex().primaryKey()' }, // journey_id
+        { name: 'unified_order_id', type: 't.hex().notNull()' },
+        { name: 'status', type: 't.bigint().notNull()' }, // Enum (phase)
+        { name: 'bounty', type: 't.bigint()' },
+        { name: 'eta', type: 't.bigint()' },
+        { name: 'start_lat', type: 't.text()' },
+        { name: 'start_lng', type: 't.text()' },
+        { name: 'end_lat', type: 't.text()' },
+        { name: 'end_lng', type: 't.text()' },
+        { name: 'block_number', type: 't.bigint().notNull()' },
+        { name: 'block_timestamp', type: 't.bigint().notNull()' },
+        { name: 'transaction_hash', type: 't.hex().notNull()' },
+      ],
+      indexes: ['unified_order_id', 'status'],
+    },
+  ];
 }
 
 function generateSchema(facets: Map<string, FacetInfo>): void {
