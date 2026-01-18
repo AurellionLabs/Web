@@ -213,28 +213,7 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     chainConstantKey: 'NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS',
   },
 
-  RWYVault: {
-    name: 'RWYVault',
-    contractName: 'RWYVault',
-    category: 'standalone',
-    constructorArgs: (_, deployer) => [
-      deployer, // fee recipient
-      '0x0000000000000000000000000000000000000000', // CLOB address (can be set later)
-      '0x0000000000000000000000000000000000000000', // quote token (can be set later)
-    ],
-    chainConstantKey: 'NEXT_PUBLIC_RWY_VAULT_ADDRESS',
-    indexerConfig: { abiName: 'RWYVaultAbi', startBlockKey: 'rwyVault' },
-    postDeploy: async (
-      contract: any,
-      _addresses: Record<string, string>,
-      deployer?: string,
-    ) => {
-      console.log('   Approving deployer as operator...');
-      const tx = await contract.approveOperator(deployer);
-      await tx.wait();
-      console.log('   ✓ Deployer approved as operator');
-    },
-  },
+  // RWYVault removed - replaced by RWYStakingFacet as a Diamond facet
 
   // Diamond Facets
   DiamondCutFacet: {
@@ -279,12 +258,7 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     chainConstantKey: 'NEXT_PUBLIC_ORDERS_FACET_ADDRESS',
   },
 
-  StakingFacet: {
-    name: 'StakingFacet',
-    contractName: 'StakingFacet',
-    category: 'facet',
-    chainConstantKey: 'NEXT_PUBLIC_STAKING_FACET_ADDRESS',
-  },
+  // StakingFacet removed - replaced by RWYStakingFacet (see below)
 
   BridgeFacet: {
     name: 'BridgeFacet',
@@ -322,6 +296,22 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     contractName: 'ERC1155ReceiverFacet',
     category: 'facet',
     chainConstantKey: 'NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS',
+  },
+
+  // RWY Staking Facet - Real World Yield commodity staking with token-based collateral
+  RWYStakingFacet: {
+    name: 'RWYStakingFacet',
+    contractName: 'RWYStakingFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS',
+  },
+
+  // Operator Facet - Operator approval, reputation, and slashing for RWY
+  OperatorFacet: {
+    name: 'OperatorFacet',
+    contractName: 'OperatorFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_OPERATOR_FACET_ADDRESS',
   },
 
   // CLOBMEVFacet - MEV protection via commit-reveal
@@ -457,7 +447,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'AuStake',
       'AuraAsset',
       'CLOB',
-      'RWYVault',
+      // RWYVault removed - replaced by RWYStakingFacet as a Diamond facet
       // Diamond for node inventory testing
       'DiamondCutFacet',
       'DiamondLoupeFacet',
@@ -494,7 +484,8 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'NodesFacet',
       'AssetsFacet',
       'OrdersFacet',
-      'StakingFacet',
+      'RWYStakingFacet',
+      'OperatorFacet',
       'BridgeFacet',
       'CLOBFacet',
       'Diamond',
@@ -514,7 +505,8 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'NodesFacet',
       'AssetsFacet',
       'OrdersFacet',
-      'StakingFacet',
+      'RWYStakingFacet',
+      'OperatorFacet',
       'BridgeFacet',
       'CLOBFacet',
       'OrderRouterFacet',
@@ -522,11 +514,11 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
     ],
   },
 
-  // RWY Vault only
+  // RWY Staking Facet only - Add RWYStakingFacet to existing Diamond
   rwy: {
-    name: 'RWY Vault Deployment',
-    description: 'Deploy only the RWY Vault contract',
-    contracts: ['RWYVault'],
+    name: 'RWY Staking Facet Deployment',
+    description: 'Deploy RWYStakingFacet and OperatorFacet to existing Diamond',
+    contracts: ['RWYStakingFacet', 'OperatorFacet'],
   },
 
   // Order Bridge only
@@ -539,8 +531,8 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
   // All standalone contracts
   standalone: {
     name: 'Standalone Contracts',
-    description: 'Deploy all standalone contracts (OrderBridge, RWYVault)',
-    contracts: ['OrderBridge', 'RWYVault'],
+    description: 'Deploy all standalone contracts (OrderBridge)',
+    contracts: ['OrderBridge'],
   },
 
   // Everything
@@ -562,13 +554,13 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'NodesFacet',
       'AssetsFacet',
       'OrdersFacet',
-      'StakingFacet',
+      'RWYStakingFacet',
+      'OperatorFacet',
       'BridgeFacet',
       'CLOBFacet',
       'Diamond',
       // Standalone
       'OrderBridge',
-      'RWYVault',
     ],
   },
 };
@@ -1734,6 +1726,457 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
         { name: 'maker', type: 'address', indexed: true },
         { name: 'remainingAmount', type: 'uint256', indexed: false },
         { name: 'reason', type: 'uint8', indexed: false },
+      ],
+    },
+  ],
+
+  // RWYStakingFacet ABI - Real World Yield commodity staking
+  RWYStakingFacet: [
+    // Initialization
+    {
+      type: 'function',
+      name: 'initializeRWYStaking',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // Operator functions
+    {
+      type: 'function',
+      name: 'createOpportunity',
+      inputs: [
+        { name: 'name', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'inputToken', type: 'address' },
+        { name: 'inputTokenId', type: 'uint256' },
+        { name: 'targetAmount', type: 'uint256' },
+        { name: 'outputToken', type: 'address' },
+        { name: 'expectedOutputAmount', type: 'uint256' },
+        { name: 'promisedYieldBps', type: 'uint256' },
+        { name: 'operatorFeeBps', type: 'uint256' },
+        { name: 'minSalePrice', type: 'uint256' },
+        { name: 'fundingDays', type: 'uint256' },
+        { name: 'processingDays', type: 'uint256' },
+        { name: 'collateralToken', type: 'address' },
+        { name: 'collateralTokenId', type: 'uint256' },
+        { name: 'collateralAmount', type: 'uint256' },
+      ],
+      outputs: [{ name: '', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'startDelivery',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'journeyId', type: 'bytes32' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'confirmDelivery',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'deliveredAmount', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'completeProcessing',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'outputTokenId', type: 'uint256' },
+        { name: 'actualOutputAmount', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'cancelOpportunity',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'reason', type: 'string' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // Staker functions
+    {
+      type: 'function',
+      name: 'stake',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'amount', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'unstake',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'amount', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'claimProfits',
+      inputs: [{ name: 'opportunityId', type: 'bytes32' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'emergencyClaim',
+      inputs: [{ name: 'opportunityId', type: 'bytes32' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // CLOB integration (internal call)
+    {
+      type: 'function',
+      name: 'recordSaleProceeds',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'proceeds', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // Admin functions
+    {
+      type: 'function',
+      name: 'setMinCollateralBps',
+      inputs: [{ name: 'bps', type: 'uint256' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'setMaxYieldBps',
+      inputs: [{ name: 'bps', type: 'uint256' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'setProtocolFeeBps',
+      inputs: [{ name: 'bps', type: 'uint256' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'setDefaultProcessingDays',
+      inputs: [{ name: 'days_', type: 'uint256' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'forceCancel',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'reason', type: 'string' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // View functions
+    {
+      type: 'function',
+      name: 'getOpportunity',
+      inputs: [{ name: 'opportunityId', type: 'bytes32' }],
+      outputs: [{ name: '', type: 'tuple' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getRWYStake',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'staker', type: 'address' },
+      ],
+      outputs: [{ name: '', type: 'tuple' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getOpportunityStakers',
+      inputs: [{ name: 'opportunityId', type: 'bytes32' }],
+      outputs: [{ name: '', type: 'address[]' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getOpportunityCount',
+      inputs: [],
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getAllOpportunities',
+      inputs: [],
+      outputs: [{ name: '', type: 'bytes32[]' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getSaleProceeds',
+      inputs: [{ name: 'opportunityId', type: 'bytes32' }],
+      outputs: [
+        { name: 'proceeds', type: 'uint256' },
+        { name: 'finalized', type: 'bool' },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getRWYConfig',
+      inputs: [],
+      outputs: [
+        { name: 'minOperatorCollateralBps', type: 'uint256' },
+        { name: 'maxYieldBps', type: 'uint256' },
+        { name: 'protocolFeeBps', type: 'uint256' },
+        { name: 'defaultProcessingDays', type: 'uint256' },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'calculateExpectedProfit',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'stakeAmount', type: 'uint256' },
+      ],
+      outputs: [
+        { name: 'expectedProfit', type: 'uint256' },
+        { name: 'userShareBps', type: 'uint256' },
+      ],
+      stateMutability: 'view',
+    },
+    // Events
+    {
+      type: 'event',
+      name: 'OpportunityCreated',
+      inputs: [
+        { name: 'id', type: 'bytes32', indexed: true },
+        { name: 'operator', type: 'address', indexed: true },
+        { name: 'inputToken', type: 'address', indexed: false },
+        { name: 'inputTokenId', type: 'uint256', indexed: false },
+        { name: 'targetAmount', type: 'uint256', indexed: false },
+        { name: 'promisedYieldBps', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'OpportunityFunded',
+      inputs: [
+        { name: 'id', type: 'bytes32', indexed: true },
+        { name: 'totalStaked', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'OpportunityCancelled',
+      inputs: [
+        { name: 'id', type: 'bytes32', indexed: true },
+        { name: 'reason', type: 'string', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'CommodityStaked',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'staker', type: 'address', indexed: true },
+        { name: 'amount', type: 'uint256', indexed: false },
+        { name: 'totalStaked', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'CommodityUnstaked',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'staker', type: 'address', indexed: true },
+        { name: 'amount', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'DeliveryStarted',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'journeyId', type: 'bytes32', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'DeliveryConfirmed',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'deliveredAmount', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'ProcessingStarted',
+      inputs: [{ name: 'opportunityId', type: 'bytes32', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'ProcessingCompleted',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'outputAmount', type: 'uint256', indexed: false },
+        { name: 'outputTokenId', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'SaleProceedsRecorded',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'proceeds', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'ProfitDistributed',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'staker', type: 'address', indexed: true },
+        { name: 'stakedAmount', type: 'uint256', indexed: false },
+        { name: 'profitShare', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'OpportunityCompleted',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'totalProceeds', type: 'uint256', indexed: false },
+      ],
+    },
+  ],
+
+  // OperatorFacet ABI
+  OperatorFacet: [
+    // Admin functions
+    {
+      type: 'function',
+      name: 'approveOperator',
+      inputs: [{ name: 'operator', type: 'address' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'revokeOperator',
+      inputs: [{ name: 'operator', type: 'address' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'slashOperator',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32' },
+        { name: 'amount', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'setOperatorReputation',
+      inputs: [
+        { name: 'operator', type: 'address' },
+        { name: 'newReputation', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    // View functions
+    {
+      type: 'function',
+      name: 'isApprovedOperator',
+      inputs: [{ name: 'operator', type: 'address' }],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getOperatorStats',
+      inputs: [{ name: 'operator', type: 'address' }],
+      outputs: [
+        { name: 'approved', type: 'bool' },
+        { name: 'reputation', type: 'uint256' },
+        { name: 'successfulOps', type: 'uint256' },
+        { name: 'totalValueProcessed', type: 'uint256' },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getOperatorReputation',
+      inputs: [{ name: 'operator', type: 'address' }],
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getOperatorSuccessfulOps',
+      inputs: [{ name: 'operator', type: 'address' }],
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getOperatorTotalValueProcessed',
+      inputs: [{ name: 'operator', type: 'address' }],
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+    },
+    // Events
+    {
+      type: 'event',
+      name: 'OperatorApproved',
+      inputs: [{ name: 'operator', type: 'address', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'OperatorRevoked',
+      inputs: [{ name: 'operator', type: 'address', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'OperatorSlashed',
+      inputs: [
+        { name: 'opportunityId', type: 'bytes32', indexed: true },
+        { name: 'operator', type: 'address', indexed: true },
+        { name: 'collateralToken', type: 'address', indexed: false },
+        { name: 'collateralTokenId', type: 'uint256', indexed: false },
+        { name: 'amount', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'OperatorReputationUpdated',
+      inputs: [
+        { name: 'operator', type: 'address', indexed: true },
+        { name: 'oldReputation', type: 'uint256', indexed: false },
+        { name: 'newReputation', type: 'uint256', indexed: false },
       ],
     },
   ],

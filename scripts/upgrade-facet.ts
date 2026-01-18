@@ -16,9 +16,10 @@
 
 import { ethers } from 'hardhat';
 import { FACET_SELECTORS, CONTRACTS } from './deploy.config';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '../chain-constants';
 
-// Diamond address - update this or read from chain-constants
-const DIAMOND_ADDRESS = '0x2516CAdb7b3d4E94094bC4580C271B8559902e3f';
+// Diamond address - read from chain-constants
+const DIAMOND_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS;
 
 interface FacetCut {
   facetAddress: string;

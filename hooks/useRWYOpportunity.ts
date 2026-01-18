@@ -9,7 +9,8 @@ import {
 } from '../domain/rwy';
 import { RWYRepository } from '../infrastructure/repositories/rwy-repository';
 
-const RWY_VAULT_ADDRESS = process.env.NEXT_PUBLIC_RWY_VAULT_ADDRESS || '';
+// RWY Staking is now part of the Diamond - use Diamond address
+const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
 
 /**
  * Hook to fetch a single RWY opportunity with dynamic data
@@ -21,7 +22,7 @@ export function useRWYOpportunity(opportunityId: string | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchOpportunity = useCallback(async () => {
-    if (!opportunityId || !RWY_VAULT_ADDRESS) {
+    if (!opportunityId || !RWY_CONTRACT_ADDRESS) {
       setLoading(false);
       return;
     }
@@ -34,7 +35,7 @@ export function useRWYOpportunity(opportunityId: string | undefined) {
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const opp = await repository.getOpportunityWithDynamicData(opportunityId);
 
       setOpportunity(opp);
@@ -72,7 +73,7 @@ export function useRWYStake(
   const [error, setError] = useState<string | null>(null);
 
   const fetchStake = useCallback(async () => {
-    if (!opportunityId || !userAddress || !RWY_VAULT_ADDRESS) {
+    if (!opportunityId || !userAddress || !RWY_CONTRACT_ADDRESS) {
       setLoading(false);
       return;
     }
@@ -85,7 +86,7 @@ export function useRWYStake(
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const userStake = await repository.getStake(opportunityId, userAddress);
 
       setStake(userStake);
@@ -118,7 +119,7 @@ export function useRWYOpportunityStakers(opportunityId: string | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStakers = useCallback(async () => {
-    if (!opportunityId || !RWY_VAULT_ADDRESS) {
+    if (!opportunityId || !RWY_CONTRACT_ADDRESS) {
       setLoading(false);
       return;
     }
@@ -131,7 +132,7 @@ export function useRWYOpportunityStakers(opportunityId: string | undefined) {
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const oppStakers = await repository.getOpportunityStakers(opportunityId);
 
       setStakers(oppStakers);
@@ -164,7 +165,7 @@ export function useRWYOperatorStats(operatorAddress: Address | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!operatorAddress || !RWY_VAULT_ADDRESS) {
+    if (!operatorAddress || !RWY_CONTRACT_ADDRESS) {
       setLoading(false);
       return;
     }
@@ -177,7 +178,7 @@ export function useRWYOperatorStats(operatorAddress: Address | undefined) {
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const operatorStats = await repository.getOperatorStats(operatorAddress);
 
       setStats(operatorStats);
@@ -219,7 +220,7 @@ export function useRWYExpectedProfit(
     if (
       !opportunityId ||
       !stakeAmount ||
-      !RWY_VAULT_ADDRESS ||
+      !RWY_CONTRACT_ADDRESS ||
       BigInt(stakeAmount) === 0n
     ) {
       setExpectedProfit('0');
@@ -235,7 +236,7 @@ export function useRWYExpectedProfit(
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const result = await repository.calculateExpectedProfit(
         opportunityId,
         stakeAmount,

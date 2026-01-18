@@ -8,7 +8,8 @@ import {
 } from '../domain/rwy';
 import { RWYService } from '../infrastructure/services/rwy-service';
 
-const RWY_VAULT_ADDRESS = process.env.NEXT_PUBLIC_RWY_VAULT_ADDRESS || '';
+// RWY Staking is now part of the Diamond - use Diamond address
+const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
 
 interface ActionState {
   loading: boolean;
@@ -32,7 +33,7 @@ export function useRWYStakeActions() {
     }
     const provider = new ethers.BrowserProvider(window.ethereum as any);
     const signer = await provider.getSigner();
-    return new RWYService(RWY_VAULT_ADDRESS, signer);
+    return new RWYService(RWY_CONTRACT_ADDRESS, signer);
   }, []);
 
   const stake = useCallback(
@@ -262,7 +263,7 @@ export function useRWYOperatorActions() {
     }
     const provider = new ethers.BrowserProvider(window.ethereum as any);
     const signer = await provider.getSigner();
-    return new RWYService(RWY_VAULT_ADDRESS, signer);
+    return new RWYService(RWY_CONTRACT_ADDRESS, signer);
   }, []);
 
   const createOpportunity = useCallback(

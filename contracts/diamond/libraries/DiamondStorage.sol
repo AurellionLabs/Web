@@ -38,7 +38,7 @@ library DiamondStorage {
         address[] orderList;
         uint256 totalOrders;
 
-        // ======= STAKING =======
+        // ======= STAKING (DEPRECATED - use RWYStorage for RWY staking) =======
         mapping(address => Stake) stakes;
         uint256 totalStaked;
         uint256 rewardRate;
@@ -46,6 +46,12 @@ library DiamondStorage {
         uint256 rewardPerTokenStored;
         mapping(address => uint256) userRewardPerTokenPaid;
         mapping(address => uint256) rewards;
+
+        // ======= OPERATORS (for RWY Staking) =======
+        mapping(address => bool) approvedOperators;
+        mapping(address => uint256) operatorReputation;
+        mapping(address => uint256) operatorSuccessfulOps;
+        mapping(address => uint256) operatorTotalValueProcessed;
 
         // ======= TOKEN ADDRESSES =======
         address auraAssetAddress;

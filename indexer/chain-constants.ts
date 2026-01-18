@@ -21,10 +21,8 @@ export const NEXT_PUBLIC_CLOB_ADDRESS =
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
   '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
 
-// RWY Vault address - Real World Yield commodity staking
-// Deploy with: DEPLOY_MODE=rwy npx hardhat run scripts/unified-deploy.ts --network baseSepolia
-export const NEXT_PUBLIC_RWY_VAULT_ADDRESS =
-  '0xfC2d5b8464f14a051661E6dE14DB3F703C601938';
+// RWY Staking is now part of the Diamond (RWYStakingFacet)
+// Use NEXT_PUBLIC_DIAMOND_ADDRESS for RWY staking operations
 
 // Quote token address for CLOB trading
 // For testnet: Using AURA token so testers have tokens to simulate payments
@@ -114,5 +112,5 @@ export const DEPLOYMENT_BLOCKS = {
   auStake: 35859031,
   auraAsset: 36033385,
   clob: 35859031,
-  rwyVault: 35861876,
+  // rwyVault removed - now part of Diamond as RWYStakingFacet
 };
