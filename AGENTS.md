@@ -271,3 +271,20 @@ Pre-push runs `npm run build:full`.
 - TypeChain generates ethers-v6 types in `typechain-types/`
 - E2E tests run sequentially (blockchain state dependency)
 - Test timeout: 30s (unit), 120s (E2E), 60s (Hardhat)
+
+## Git Rules for AI Agents
+
+- **NEVER push PRD files** (`prd.json`, `progress.txt`) to remote - these are local working files
+- **NEVER commit ralph/ directory contents** except for documentation updates to AGENTS.md or README files
+- PRDs should remain local for the developer/agent running them
+
+## Indexer Development Rules
+
+When working on the Ponder indexer (`indexer/` directory):
+
+1. **Schema-first approach**: Always define the Postgres schema in `ponder.schema.ts` or `generated-schema.ts` BEFORE writing handlers
+2. **Use `onchainTable`**: All tables must use Ponder's `onchainTable` with proper indexes
+3. **Snake_case columns**: Database columns use `snake_case` (e.g., `token_id`, not `tokenId`)
+4. **Aggregate tables**: Create materialized view tables for entities the frontend queries (assets, orders, journeys)
+5. **Event handlers update state**: Handlers should upsert into aggregate tables, not just store raw events
+6. **Test against real schema**: Smoke tests must query the actual GraphQL endpoint to verify schema
