@@ -1,16 +1,13 @@
 // Auto-generated handler for staking domain - Raw event storage only
-// Generated at: 2026-01-17T12:26:21.579Z
-//
+// Generated at: 2026-01-18T00:41:29.640Z
+// 
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: StakingFacet
 
-import { ponder } from '@/generated';
+import { ponder } from "@/generated";
 
-// Import event tables (auto-generated from ABI)
-import { rewardRateUpdatedC390Events } from '@/generated-schema';
-import { rewardsClaimedFc30Events } from '@/generated-schema';
-import { staked_9e71Events } from '@/generated-schema';
-import { withdrawn_7084Events } from '@/generated-schema';
+// Import event tables from generated schema
+import { rewardRateUpdatedC390Events, rewardsClaimedFc30Events, staked_9e71Events, withdrawn_7084Events } from "@/generated-schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -27,7 +24,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
 ponder.on('Diamond:RewardRateUpdated', async ({ event, context }) => {
   const { oldRate, newRate } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(rewardRateUpdatedC390Events).values({
     id: id,
@@ -47,7 +44,7 @@ ponder.on('Diamond:RewardRateUpdated', async ({ event, context }) => {
 ponder.on('Diamond:RewardsClaimed', async ({ event, context }) => {
   const { user, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(rewardsClaimedFc30Events).values({
     id: id,
@@ -67,7 +64,7 @@ ponder.on('Diamond:RewardsClaimed', async ({ event, context }) => {
 ponder.on('Diamond:Staked', async ({ event, context }) => {
   const { user, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(staked_9e71Events).values({
     id: id,
@@ -87,7 +84,7 @@ ponder.on('Diamond:Staked', async ({ event, context }) => {
 ponder.on('Diamond:Withdrawn', async ({ event, context }) => {
   const { user, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(withdrawn_7084Events).values({
     id: id,
@@ -98,3 +95,4 @@ ponder.on('Diamond:Withdrawn', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

@@ -1,11 +1,12 @@
 // Auto-generated Ponder config - DO NOT EDIT
-// Generated at: 2026-01-17T00:31:46.785Z
+// Generated at: 2026-01-18T00:41:29.642Z
 
 import { createConfig } from '@ponder/core';
 import { http } from 'viem';
 
 // Import generated ABIs
 import { DiamondABI } from './abis/generated';
+
 
 // Import chain constants
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
@@ -32,6 +33,6 @@ export default createConfig({
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
-    },
+    }
   },
 });

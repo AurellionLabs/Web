@@ -1,27 +1,13 @@
 // Auto-generated handler for clob domain - Raw event storage only
-// Generated at: 2026-01-17T12:26:21.578Z
-//
+// Generated at: 2026-01-18T00:41:29.639Z
+// 
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: CLOBFacetV2, OrderMatchingFacet, OrderRouterFacet
 
-import { ponder } from '@/generated';
+import { ponder } from "@/generated";
 
-// Import event tables (auto-generated from ABI)
-import { cLOBOrderCancelled_8b47Events } from '@/generated-schema';
-import { cLOBOrderFilled_2d54Events } from '@/generated-schema';
-import { cLOBTradeExecuted_57e6Events } from '@/generated-schema';
-import { marketCreatedB59eEvents } from '@/generated-schema';
-import { orderCreated_43feEvents } from '@/generated-schema';
-import { orderExpiredB558Events } from '@/generated-schema';
-import { orderPlacedWithTokensE764Events } from '@/generated-schema';
-import { ausysOrderFilled_3e2eEvents } from '@/generated-schema';
-import { matchingOrderCancelled_6f7dEvents } from '@/generated-schema';
-import { tradeExecuted_4692Events } from '@/generated-schema';
-import { orderRouted_1382Events } from '@/generated-schema';
-import { routerOrderCancelled_8f11Events } from '@/generated-schema';
-import { routerOrderCreated_7398Events } from '@/generated-schema';
-import { routerOrderPlaced_0e2eEvents } from '@/generated-schema';
-import { routerTradeExecuted_5493Events } from '@/generated-schema';
+// Import event tables from generated schema
+import { cLOBOrderCancelled_8b47Events, cLOBOrderFilled_2d54Events, cLOBTradeExecuted_57e6Events, marketCreatedB59eEvents, orderCreated_43feEvents, orderExpiredB558Events, orderPlacedWithTokensE764Events, ausysOrderFilled_3e2eEvents, matchingOrderCancelled_6f7dEvents, tradeExecuted_4692Events, orderRouted_1382Events, routerOrderCancelled_8f11Events, routerOrderCreated_7398Events, routerOrderPlaced_0e2eEvents, routerTradeExecuted_5493Events } from "@/generated-schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -38,7 +24,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
 ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(cLOBOrderCancelled_8b47Events).values({
     id: id,
@@ -58,16 +44,9 @@ ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
  * Hash: 0x2d540948
  */
 ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
-  const {
-    orderId,
-    tradeId,
-    fillAmount,
-    fillPrice,
-    remainingAmount,
-    cumulativeFilled,
-  } = event.args;
+  const { orderId, tradeId, fillAmount, fillPrice, remainingAmount, cumulativeFilled } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(cLOBOrderFilled_2d54Events).values({
     id: id,
@@ -89,23 +68,9 @@ ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
  * Hash: 0x57e60214
  */
 ponder.on('Diamond:CLOBTradeExecuted', async ({ event, context }) => {
-  const {
-    tradeId,
-    takerOrderId,
-    makerOrderId,
-    taker,
-    maker,
-    marketId,
-    price,
-    amount,
-    quoteAmount,
-    takerFee,
-    makerFee,
-    timestamp,
-    takerIsBuy,
-  } = event.args;
+  const { tradeId, takerOrderId, makerOrderId, taker, maker, marketId, price, amount, quoteAmount, takerFee, makerFee, timestamp, takerIsBuy } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(cLOBTradeExecuted_57e6Events).values({
     id: id,
@@ -136,7 +101,7 @@ ponder.on('Diamond:CLOBTradeExecuted', async ({ event, context }) => {
 ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
   const { marketId, baseToken, baseTokenId, quoteToken } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(marketCreatedB59eEvents).values({
     id: id,
@@ -156,20 +121,9 @@ ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
  * Hash: 0x43fe20c0
  */
 ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
-  const {
-    orderId,
-    marketId,
-    maker,
-    price,
-    amount,
-    isBuy,
-    orderType,
-    timeInForce,
-    expiry,
-    nonce,
-  } = event.args;
+  const { orderId, marketId, maker, price, amount, isBuy, orderType, timeInForce, expiry, nonce } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(orderCreated_43feEvents).values({
     id: id,
@@ -197,7 +151,7 @@ ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
 ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
   const { orderId, expiredAt } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(orderExpiredB558Events).values({
     id: id,
@@ -215,19 +169,9 @@ ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
  * Hash: 0xe764a4f2
  */
 ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
-  const {
-    orderId,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    amount,
-    isBuy,
-    orderType,
-  } = event.args;
+  const { orderId, maker, baseToken, baseTokenId, quoteToken, price, amount, isBuy, orderType } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(orderPlacedWithTokensE764Events).values({
     id: id,
@@ -246,6 +190,7 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
   });
 });
 
+
 // =============================================================================
 // OrderMatchingFacet Events
 // =============================================================================
@@ -256,16 +201,9 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
  * Hash: 0x3e2e10ef
  */
 ponder.on('Diamond:AusysOrderFilled', async ({ event, context }) => {
-  const {
-    orderId,
-    tradeId,
-    fillAmount,
-    fillPrice,
-    remainingAmount,
-    cumulativeFilled,
-  } = event.args;
+  const { orderId, tradeId, fillAmount, fillPrice, remainingAmount, cumulativeFilled } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(ausysOrderFilled_3e2eEvents).values({
     id: id,
@@ -289,7 +227,7 @@ ponder.on('Diamond:AusysOrderFilled', async ({ event, context }) => {
 ponder.on('Diamond:MatchingOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(matchingOrderCancelled_6f7dEvents).values({
     id: id,
@@ -309,10 +247,9 @@ ponder.on('Diamond:MatchingOrderCancelled', async ({ event, context }) => {
  * Hash: 0x4692eb38
  */
 ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
-  const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } =
-    event.args;
+  const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(tradeExecuted_4692Events).values({
     id: id,
@@ -328,6 +265,7 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
   });
 });
 
+
 // =============================================================================
 // OrderRouterFacet Events
 // =============================================================================
@@ -340,7 +278,7 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
 ponder.on('Diamond:OrderRouted', async ({ event, context }) => {
   const { orderId, maker, orderSource, isBuy } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(orderRouted_1382Events).values({
     id: id,
@@ -362,7 +300,7 @@ ponder.on('Diamond:OrderRouted', async ({ event, context }) => {
 ponder.on('Diamond:RouterOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(routerOrderCancelled_8f11Events).values({
     id: id,
@@ -382,20 +320,9 @@ ponder.on('Diamond:RouterOrderCancelled', async ({ event, context }) => {
  * Hash: 0x7398300e
  */
 ponder.on('Diamond:RouterOrderCreated', async ({ event, context }) => {
-  const {
-    orderId,
-    marketId,
-    maker,
-    price,
-    amount,
-    isBuy,
-    orderType,
-    timeInForce,
-    expiry,
-    nonce,
-  } = event.args;
+  const { orderId, marketId, maker, price, amount, isBuy, orderType, timeInForce, expiry, nonce } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(routerOrderCreated_7398Events).values({
     id: id,
@@ -421,19 +348,9 @@ ponder.on('Diamond:RouterOrderCreated', async ({ event, context }) => {
  * Hash: 0x0e2e2fa3
  */
 ponder.on('Diamond:RouterOrderPlaced', async ({ event, context }) => {
-  const {
-    orderId,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    amount,
-    isBuy,
-    orderType,
-  } = event.args;
+  const { orderId, maker, baseToken, baseTokenId, quoteToken, price, amount, isBuy, orderType } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(routerOrderPlaced_0e2eEvents).values({
     id: id,
@@ -458,10 +375,9 @@ ponder.on('Diamond:RouterOrderPlaced', async ({ event, context }) => {
  * Hash: 0x54931e7e
  */
 ponder.on('Diamond:RouterTradeExecuted', async ({ event, context }) => {
-  const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } =
-    event.args;
+  const { tradeId, takerOrderId, makerOrderId, price, amount, quoteAmount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-
+  
   // Insert raw event into event table
   await context.db.insert(routerTradeExecuted_5493Events).values({
     id: id,
@@ -476,3 +392,4 @@ ponder.on('Diamond:RouterTradeExecuted', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

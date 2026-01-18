@@ -43,21 +43,25 @@ const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
   OwnershipFacet: { domain: 'diamond', priority: 9 },
 };
 
-// External contracts (not facets) that emit events we want to index
+// EXTERNAL_CONTRACTS - These are deprecated and should not be indexed
+// They are kept for reference but not included in the generator
+// RWYVault and AuraAsset have been moved to legacy/contracts/
+// If needed in the future, they can be added back
 const EXTERNAL_CONTRACTS: Record<
   string,
   { domain: string; artifactPath: string; priority: number }
 > = {
-  RWYVault: {
-    domain: 'rwy-vault',
-    artifactPath: 'RWYVault.sol/RWYVault.json',
-    priority: 10,
-  },
-  AuraAsset: {
-    domain: 'aura-asset',
-    artifactPath: 'AuraAsset.sol/AuraAsset.json',
-    priority: 11,
-  },
+  // DEPRECATED - Commented out to only index Diamond facets
+  // RWYVault: {
+  //   domain: 'rwy-vault',
+  //   artifactPath: 'RWYVault.sol/RWYVault.json',
+  //   priority: 10,
+  // },
+  // AuraAsset: {
+  //   domain: 'aura-asset',
+  //   artifactPath: 'AuraAsset.sol/AuraAsset.json',
+  //   priority: 11,
+  // },
 };
 
 // ============================================================================

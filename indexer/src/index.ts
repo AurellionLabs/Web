@@ -18,7 +18,7 @@
 import './handlers';
 
 console.log(
-  '[indexer] Handlers loaded: nodes, clob, bridge, staking, aura-asset, journeys',
+  '[indexer] Handlers loaded: nodes, clob, bridge, staking, clob-admin',
 );
 
 export {};
