@@ -1,7 +1,10 @@
 /**
  * Contract addresses and ABIs for frontend integration
+ *
+ * Using abitype for type inference - no TypeChain generation needed
  */
 
+import type { Abi } from 'abitype';
 import {
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
   NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
@@ -15,29 +18,6 @@ import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '../chain-constants';
 
-// Re-export typechain types for contract interaction
-// Note: Legacy contracts - now handled via Diamond pattern
-export type { OrderBridge } from '@/typechain-types/contracts/OrderBridge';
-export type AuraAsset = any;
-export type Ausys = any;
-export type AurumNode = any;
-export type AurumNodeManager = any;
-export type AuraGoatRed = any;
-export type AuStake = any;
-export type CLOB = any;
-export type Diamond = any;
-
-// Re-export factories for contract instantiation
-export { OrderBridge__factory } from '@/typechain-types/factories/contracts/OrderBridge__factory';
-export const AuraAsset__factory = {} as any;
-export const Ausys__factory = {} as any;
-export const AurumNode__factory = {} as any;
-export const AurumNodeManager__factory = {} as any;
-export const AuraGoatRed__factory = {} as any;
-export const AuStake__factory = {} as any;
-export const CLOB__factory = {} as any;
-export const Diamond__factory = {} as any;
-
 // Re-export addresses for easy access
 export const auStakeAddress = NEXT_PUBLIC_AUSTAKE_ADDRESS as `0x${string}`;
 export const auraTokenAddress = NEXT_PUBLIC_AURA_TOKEN_ADDRESS as `0x${string}`;
@@ -48,10 +28,28 @@ export const clobAddress = NEXT_PUBLIC_CLOB_ADDRESS as `0x${string}`;
 export const orderBridgeAddress = NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS as `0x${string}`;
 export const rwyStakingFacetAddress = NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS as `0x${string}`;
 export const rwyVaultAddress = rwyStakingFacetAddress; // Alias for backwards compatibility
-export const quoteTokenAddress = NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS as `0x${string}`;
-export const diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS as `0x${string}`;
 
-// RWY Vault ABI (subset for frontend use)
+// Stub exports for backwards compatibility (legacy contracts now via Diamond pattern)
+// These types are no longer needed but kept for import compatibility
+export type AuraAsset = any;
+export type Ausys = any;
+export type AurumNode = any;
+export type AurumNodeManager = any;
+export type AuraGoatRed = any;
+export type AuStake = any;
+export type CLOB = any;
+export type Diamond = any;
+
+export const AuraAsset__factory = {} as any;
+export const Ausys__factory = {} as any;
+export const AurumNode__factory = {} as any;
+export const AurumNodeManager__factory = {} as any;
+export const AuraGoatRed__factory = {} as any;
+export const AuStake__factory = {} as any;
+export const CLOB__factory = {} as any;
+export const Diamond__factory = {} as any;
+
+// RWY Vault ABI (typed with abitype)
 export const rwyVaultABI = [
   // Events
   {
@@ -268,7 +266,7 @@ export const rwyVaultABI = [
     ],
     outputs: [],
   },
-] as const;
+] as const satisfies Abi;
 
 // ERC1155 ABI (for approval checks)
 export const erc1155ABI = [
@@ -302,5 +300,5 @@ export const erc1155ABI = [
     ],
     outputs: [{ type: 'uint256' }],
   },
-] as const;
+] as const satisfies Abi;
 
