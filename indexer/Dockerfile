@@ -28,7 +28,8 @@ COPY remappings.txt ./
 COPY contracts/ ./contracts/
 
 # Compile contracts and generate indexer
-RUN npx hardhat compile && \
+RUN rm -rf ~/.cache/hardhat && \
+    npx hardhat compile && \
     cd indexer && pnpm run generate:indexer
 
 # Production stage
