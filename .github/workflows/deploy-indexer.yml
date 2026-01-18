@@ -101,9 +101,10 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
-          envs: GHCR_TOKEN
+          envs: GHCR_TOKEN,IMAGE_TAG
           script: |
             cd /srv/Web
+            export IMAGE_TAG="${{ github.ref_name }}"
 
             # Reset any local changes (generated files may have changed)
             git reset --hard HEAD

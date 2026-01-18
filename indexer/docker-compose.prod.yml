@@ -23,7 +23,7 @@ services:
     build:
       context: ..
       dockerfile: indexer/Dockerfile
-    image: ghcr.io/${GITHUB_REPOSITORY:-aurellionlabs/web}/indexer:latest
+    image: ghcr.io/${GITHUB_REPOSITORY:-aurellionlabs/web}/indexer:${IMAGE_TAG:-dev}
     container_name: aurellion_indexer
     restart: always
     depends_on:
