@@ -61,6 +61,11 @@ jobs:
           docker buildx create --name default --driver docker-container --use || true
           docker buildx inspect --bootstrap || true
 
+      - name: Clear Hardhat cache
+        run: |
+          echo "Clearing Hardhat cache to force fresh compiler download..."
+          rm -rf ~/.cache/hardhat || true
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
