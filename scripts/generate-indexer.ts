@@ -582,6 +582,156 @@ export * from './generated-schema';
 // HANDLER GENERATION
 // ============================================================================
 
+interface AggregateMapping {
+  table: string;
+  action: 'insert' | 'update';
+  values: Record<string, string>;
+}
+
+const EVENT_TO_AGGREGATE_MAPPING: Record<string, AggregateMapping[]> = {
+  'Diamond:OrderPlacedWithTokens': [
+    {
+      table: 'orders',
+      action: 'insert',
+      values: {
+        id: 'orderId',
+        clob_order_id: 'orderId',
+        buyer: "isBuy ? maker : '0x0000000000000000000000000000000000000000'",
+        seller: "!isBuy ? maker : '0x0000000000000000000000000000000000000000'",
+        token: 'baseToken',
+        token_id: 'baseTokenId',
+        quantity: 'amount',
+        price: 'price',
+        status: "'OPEN'",
+        block_number: 'event.block.number',
+        block_timestamp: 'BigInt(event.block.timestamp)',
+        transaction_hash: 'event.transaction.hash',
+      },
+    },
+  ],
+  'Diamond:RouterOrderPlaced': [
+    {
+      table: 'orders',
+      action: 'insert',
+      values: {
+        id: 'orderId',
+        clob_order_id: 'orderId',
+        buyer: "isBuy ? maker : '0x0000000000000000000000000000000000000000'",
+        seller: "!isBuy ? maker : '0x0000000000000000000000000000000000000000'",
+        token: 'baseToken',
+        token_id: 'baseTokenId',
+        quantity: 'amount',
+        price: 'price',
+        status: "'OPEN'",
+        block_number: 'event.block.number',
+        block_timestamp: 'BigInt(event.block.timestamp)',
+        transaction_hash: 'event.transaction.hash',
+      },
+    },
+  ],
+  'Diamond:CLOBOrderFilled': [
+    {
+      table: 'orders',
+      action: 'update',
+      values: {
+        id: 'orderId',
+        status: "remainingAmount === 0n ? 'FILLED' : 'PARTIAL_FILL'",
+      },
+    },
+  ],
+  'Diamond:AusysOrderFilled': [
+    {
+      table: 'orders',
+      action: 'update',
+      values: {
+        id: 'orderId',
+        status: "remainingAmount === 0n ? 'FILLED' : 'PARTIAL_FILL'",
+      },
+    },
+  ],
+  'Diamond:CLOBOrderCancelled': [
+    {
+      table: 'orders',
+      action: 'update',
+      values: {
+        id: 'orderId',
+        status: "'CANCELLED'",
+      },
+    },
+  ],
+  'Diamond:MatchingOrderCancelled': [
+    {
+      table: 'orders',
+      action: 'update',
+      values: {
+        id: 'orderId',
+        status: "'CANCELLED'",
+      },
+    },
+  ],
+  'Diamond:RouterOrderCancelled': [
+    {
+      table: 'orders',
+      action: 'update',
+      values: {
+        id: 'orderId',
+        status: "'CANCELLED'",
+      },
+    },
+  ],
+  'Diamond:OrderExpired': [
+    {
+      table: 'orders',
+      action: 'update',
+      values: {
+        id: 'orderId',
+        status: "'EXPIRED'",
+      },
+    },
+  ],
+  'Diamond:JourneyStatusUpdated': [
+    {
+      table: 'journeys',
+      action: 'update',
+      values: {
+        id: 'journeyId',
+        status: 'phase',
+      },
+    },
+  ],
+  'Diamond:LogisticsOrderCreated': [
+    {
+      table: 'journeys',
+      action: 'insert',
+      values: {
+        id: 'journeyId',
+        unified_order_id: 'unifiedOrderId',
+        bounty: 'bounty',
+        status: 'BigInt(0)',
+        block_number: 'event.block.number',
+        block_timestamp: 'BigInt(event.block.timestamp)',
+        transaction_hash: 'event.transaction.hash',
+      },
+    },
+  ],
+  'AuraAsset:MintedAsset': [
+    {
+      table: 'assets',
+      action: 'insert',
+      values: {
+        id: 'tokenId',
+        name: 'name',
+        asset_class: 'assetClass',
+        class_name: 'className',
+        hash: 'hash',
+        block_number: 'event.block.number',
+        block_timestamp: 'BigInt(event.block.timestamp)',
+        transaction_hash: 'event.transaction.hash',
+      },
+    },
+  ],
+};
+
 function generateHandlerStub(domain: string, events: EventInfo[]): string {
   const imports = new Set<string>();
   imports.add("import { ponder } from '@/generated';");
@@ -609,17 +759,39 @@ import { ponder } from "@/generated";
 
   // Collect all table imports
   const tableImports: string[] = [];
+  const aggregateTables = new Set<string>();
+
   for (const [facetName, facetEvents] of eventsByFacet) {
     for (const event of facetEvents) {
       // Table names have hash suffix to handle duplicate event names
       const shortHash = event.signatureHash.slice(2, 6);
       const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
       tableImports.push(snakeToCamel(tableName));
+
+      // Check for aggregate mappings
+      const contractName = event.facet;
+      const isExternalContract = !!EXTERNAL_CONTRACTS[contractName];
+      const eventKey = isExternalContract
+        ? `${contractName}:${event.name}`
+        : `Diamond:${event.name}`;
+
+      const mapping = EVENT_TO_AGGREGATE_MAPPING[eventKey];
+      if (mapping) {
+        for (const map of mapping) {
+          aggregateTables.add(snakeToCamel(map.table));
+        }
+      }
     }
   }
 
+  // Add aggregate tables to imports
+  tableImports.push(...aggregateTables);
+
+  // Deduplicate imports
+  const uniqueTableImports = Array.from(new Set(tableImports));
+
   // Single import from generated schema
-  content += `import { ${tableImports.join(', ')} } from "@/generated-schema";\n`;
+  content += `import { ${uniqueTableImports.join(', ')} } from "@/generated-schema";\n`;
 
   content += `\n// Utility functions
 const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\`;
@@ -708,7 +880,7 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
 ponder.on('${eventKey}', async ({ event, context }) => {
   const { ${destructure} } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(${camelTable}).values({
     id: id,
@@ -716,7 +888,49 @@ ${valueAssignments}
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
-  });
+  });`;
+
+      // Add aggregate updates if mapped
+      const mapping = EVENT_TO_AGGREGATE_MAPPING[eventKey];
+      if (mapping) {
+        for (const map of mapping) {
+          const camelAggregateTable = snakeToCamel(map.table);
+          if (map.action === 'insert') {
+            const valuesObj = Object.entries(map.values)
+              .map(([key, val]) => `    ${key}: ${val},`)
+              .join('\n');
+
+            content += `
+
+  // Insert into ${map.table} aggregate
+  await context.db.insert(${camelAggregateTable}).values({
+${valuesObj}
+  }).onConflictDoUpdate({
+    conflictColumns: ['id'],
+    set: {
+${valuesObj}
+    }
+  });`;
+          } else if (map.action === 'update') {
+            const idVal = map.values['id'];
+            if (idVal) {
+              const setValues = Object.entries(map.values)
+                .filter(([k]) => k !== 'id')
+                .map(([key, val]) => `    ${key}: ${val},`)
+                .join('\n');
+
+              content += `
+
+  // Update ${map.table} aggregate
+  await context.db.update(${camelAggregateTable}, { id: ${idVal} }).set({
+${setValues}
+  });`;
+            }
+          }
+        }
+      }
+
+      content += `
 });
 
 `;

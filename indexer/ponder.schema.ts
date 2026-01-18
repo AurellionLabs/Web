@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-18T11:06:09.342Z
+// Generated at: 2026-01-18T22:19:57.456Z
 //
 // This file re-exports the auto-generated schema from generated-schema.ts
 // Dumb indexer pattern: Store raw events, aggregate in repository layer.

@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-01-18T11:06:09.352Z
+// Generated at: 2026-01-18T22:19:57.466Z
 // 
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: BridgeFacet
@@ -7,7 +7,7 @@
 import { ponder } from "@/generated";
 
 // Import event tables from generated schema
-import { bountyPaid_8e7bEvents, bridgeFeeRecipientUpdatedD240Events, bridgeOrderCancelledFb63Events, journeyStatusUpdatedF7daEvents, logisticsOrderCreated_9c83Events, orderSettledE726Events, tradeMatched_51d0Events, unifiedOrderCreatedC8b6Events } from "@/generated-schema";
+import { bountyPaid_8e7bEvents, bridgeFeeRecipientUpdatedD240Events, bridgeOrderCancelledFb63Events, journeyStatusUpdatedF7daEvents, logisticsOrderCreated_9c83Events, orderSettledE726Events, tradeMatched_51d0Events, unifiedOrderCreatedC8b6Events, journeys } from "@/generated-schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -24,7 +24,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
 ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
   const { unifiedOrderId, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(bountyPaid_8e7bEvents).values({
     id: id,
@@ -44,7 +44,7 @@ ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
 ponder.on('Diamond:BridgeFeeRecipientUpdated', async ({ event, context }) => {
   const { oldRecipient, newRecipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(bridgeFeeRecipientUpdatedD240Events).values({
     id: id,
@@ -64,7 +64,7 @@ ponder.on('Diamond:BridgeFeeRecipientUpdated', async ({ event, context }) => {
 ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
   const { unifiedOrderId, previousStatus } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(bridgeOrderCancelledFb63Events).values({
     id: id,
@@ -84,7 +84,7 @@ ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
 ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
   const { unifiedOrderId, journeyId, phase } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(journeyStatusUpdatedF7daEvents).values({
     id: id,
@@ -94,6 +94,11 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
+  });
+
+  // Update journeys aggregate
+  await context.db.update(journeys, { id: journeyId }).set({
+    status: phase,
   });
 });
 
@@ -105,7 +110,7 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
 ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
   const { unifiedOrderId, ausysOrderId, journeyIds, bounty, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(logisticsOrderCreated_9c83Events).values({
     id: id,
@@ -118,6 +123,28 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
+
+  // Insert into journeys aggregate
+  await context.db.insert(journeys).values({
+    id: journeyId,
+    unified_order_id: unifiedOrderId,
+    bounty: bounty,
+    status: BigInt(0),
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  }).onConflictDoUpdate({
+    conflictColumns: ['id'],
+    set: {
+    id: journeyId,
+    unified_order_id: unifiedOrderId,
+    bounty: bounty,
+    status: BigInt(0),
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+    }
+  });
 });
 
 /**
@@ -128,7 +155,7 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
 ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
   const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(orderSettledE726Events).values({
     id: id,
@@ -151,7 +178,7 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
 ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
   const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(tradeMatched_51d0Events).values({
     id: id,
@@ -175,7 +202,7 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
 ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
   const { unifiedOrderId, clobOrderId, buyer, seller, token, tokenId, quantity, price } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(unifiedOrderCreatedC8b6Events).values({
     id: id,

@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-18T17:16:02.964Z
+// Generated at: 2026-01-18T22:19:57.454Z
 // 
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -1361,154 +1361,6 @@ export const ownershipTransferred_8be0Events = onchainTable(
   })
 );
 
-export const approvalForAll_1730Events = onchainTable(
-  'approval_for_all_1730_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    account: t.hex().notNull(),
-    operator: t.hex().notNull(),
-    approved: t.boolean().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    accountIdx: index().on(table.account),
-    operatorIdx: index().on(table.operator),
-  })
-);
-
-export const assetAttributeAddedEe76Events = onchainTable(
-  'asset_attribute_added_ee76_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    hash: t.hex().notNull(),
-    attribute_index: t.bigint().notNull(),
-    name: t.text().notNull(),
-    values: t.text().notNull(),
-    description: t.text().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    hashIdx: index().on(table.hash),
-    attributeIndexIdx: index().on(table.attribute_index),
-  })
-);
-
-export const custodyEstablished_75e1Events = onchainTable(
-  'custody_established_75e1_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    token_id: t.bigint().notNull(),
-    custodian: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    tokenIdIdx: index().on(table.token_id),
-    custodianIdx: index().on(table.custodian),
-  })
-);
-
-export const custodyReleased_93d2Events = onchainTable(
-  'custody_released_93d2_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    token_id: t.bigint().notNull(),
-    custodian: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    redeemer: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    tokenIdIdx: index().on(table.token_id),
-    custodianIdx: index().on(table.custodian),
-    redeemerIdx: index().on(table.redeemer),
-  })
-);
-
-export const mintedAssetDa6fEvents = onchainTable(
-  'minted_asset_da6f_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    account: t.hex().notNull(),
-    hash: t.hex().notNull(),
-    token_id: t.bigint().notNull(),
-    name: t.text().notNull(),
-    asset_class: t.text().notNull(),
-    class_name: t.text().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    accountIdx: index().on(table.account),
-    hashIdx: index().on(table.hash),
-    tokenIdIdx: index().on(table.token_id),
-  })
-);
-
-export const transferBatch_4a39Events = onchainTable(
-  'transfer_batch_4a39_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    operator: t.hex().notNull(),
-    from: t.hex().notNull(),
-    to: t.hex().notNull(),
-    ids: t.bigint().notNull(),
-    values: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    operatorIdx: index().on(table.operator),
-    fromIdx: index().on(table.from),
-    toIdx: index().on(table.to),
-  })
-);
-
-export const transferSingleC3d5Events = onchainTable(
-  'transfer_single_c3d5_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    operator: t.hex().notNull(),
-    from: t.hex().notNull(),
-    to: t.hex().notNull(),
-    event_id: t.bigint().notNull(),
-    value: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    operatorIdx: index().on(table.operator),
-    fromIdx: index().on(table.from),
-    toIdx: index().on(table.to),
-  })
-);
-
-export const uRI_6bb7Events = onchainTable(
-  'u_r_i_6bb7_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    value: t.text().notNull(),
-    event_id: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    eventIdIdx: index().on(table.event_id),
-  })
-);
-
 // Export all tables
 export const tables = {
   assets,
@@ -1589,12 +1441,4 @@ export const tables = {
   rateLimitsUpdated_6675Events,
   diamondCutE785Events,
   ownershipTransferred_8be0Events,
-  approvalForAll_1730Events,
-  assetAttributeAddedEe76Events,
-  custodyEstablished_75e1Events,
-  custodyReleased_93d2Events,
-  mintedAssetDa6fEvents,
-  transferBatch_4a39Events,
-  transferSingleC3d5Events,
-  uRI_6bb7Events,
 };

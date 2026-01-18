@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-18T11:06:09.346Z
+// Generated at: 2026-01-18T22:19:57.460Z
 // 
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: NodesFacet
@@ -24,7 +24,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
 ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(clobApprovalGrantedD512Events).values({
     id: id,
@@ -44,7 +44,7 @@ ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
 ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(clobApprovalRevokedBdd4Events).values({
     id: id,
@@ -64,7 +64,7 @@ ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
 ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
   const { nodeHash, quantities } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(nodeCapacityUpdated_0ba8Events).values({
     id: id,
@@ -84,7 +84,7 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
 ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
   const { nodeHash } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(nodeDeactivated_62b3Events).values({
     id: id,
@@ -103,7 +103,7 @@ ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
 ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
   const { nodeHash, owner, nodeType } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(nodeRegistered_8326Events).values({
     id: id,
@@ -124,7 +124,7 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
 ponder.on('Diamond:NodeSellOrderPlaced', async ({ event, context }) => {
   const { nodeHash, tokenId, quoteToken, price, amount, orderId } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(nodeSellOrderPlaced_3de5Events).values({
     id: id,
@@ -148,7 +148,7 @@ ponder.on('Diamond:NodeSellOrderPlaced', async ({ event, context }) => {
 ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
   const { nodeHash, nodeType, capacity } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(nodeUpdated_9c97Events).values({
     id: id,
@@ -169,7 +169,7 @@ ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
 ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
   const { nodeHash, token, tokenId, price, capacity } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(supportedAssetAdded_9f0aEvents).values({
     id: id,
@@ -192,7 +192,7 @@ ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
 ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
   const { nodeHash, count } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(supportedAssetsUpdated_1af7Events).values({
     id: id,
@@ -212,7 +212,7 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
 ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, depositor } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(tokensDepositedToNode_9d99Events).values({
     id: id,
@@ -234,7 +234,7 @@ ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
 ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, minter } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(tokensMintedToNode_1177Events).values({
     id: id,
@@ -256,7 +256,7 @@ ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
 ponder.on('Diamond:TokensTransferredBetweenNodes', async ({ event, context }) => {
   const { fromNode, toNode, tokenId, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(tokensTransferredBetweenNodes_5ceeEvents).values({
     id: id,
@@ -278,7 +278,7 @@ ponder.on('Diamond:TokensTransferredBetweenNodes', async ({ event, context }) =>
 ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, recipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(tokensWithdrawnFromNode_5994Events).values({
     id: id,
@@ -300,7 +300,7 @@ ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
 ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
   const { addressName, lat, lng, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(updateLocation_6d4fEvents).values({
     id: id,
@@ -322,7 +322,7 @@ ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
 ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
   const { owner, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(updateOwnerEa9dEvents).values({
     id: id,
@@ -342,7 +342,7 @@ ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
 ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
   const { status, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
-  
+
   // Insert raw event into event table
   await context.db.insert(updateStatusCf4eEvents).values({
     id: id,

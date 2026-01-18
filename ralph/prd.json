@@ -1,0 +1,180 @@
+{
+  "project": "Indexer GraphQL Schema Alignment",
+  "branchName": "feat/generate-aggregate-tables",
+  "description": "Align Ponder indexer schema with frontend GraphQL query expectations using a generative approach. The generator automatically creates aggregate table definitions and handler code based on EVENT_TO_AGGREGATE_MAPPING configuration.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Define Assets aggregate table in Ponder schema",
+      "description": "As a frontend developer querying the indexer, I need an 'assets' table so that queries like `assetss(limit: 100)` resolve correctly.",
+      "acceptanceCriteria": [
+        "Assets table defined in generateEntityTables() in scripts/generate-indexer.ts",
+        "Schema fields: id (bigint PK), name (text), asset_class (text), class_name (text), hash (hex), block_number (bigint), block_timestamp (bigint), transaction_hash (hex)",
+        "Indexes on hash and asset_class",
+        "Regenerate: npm run generate:indexer",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Ponder pluralizes table names: 'assets' -> 'assetss'. Aggregate tables are generated automatically by the generator."
+    },
+    {
+      "id": "US-002",
+      "title": "Define Orders aggregate table in Ponder schema",
+      "description": "As a frontend developer, I need an 'orders' table so queries like `orderss(where: { buyer: $address })` work.",
+      "acceptanceCriteria": [
+        "Orders table defined in generateEntityTables() in scripts/generate-indexer.ts",
+        "Schema fields: id (hex PK), clob_order_id (hex), ausys_order_id (hex), buyer (hex), seller (hex), token (hex), token_id (bigint), quantity (bigint), price (bigint), bounty (bigint), status (text), logistics_status (integer), block_number (bigint), block_timestamp (bigint), transaction_hash (hex)",
+        "Indexes on buyer, seller, token, token_id, status",
+        "Regenerate: npm run generate:indexer",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Status values: OPEN, FILLED, PARTIAL_FILL, CANCELLED, EXPIRED, COMPLETED"
+    },
+    {
+      "id": "US-003",
+      "title": "Define Journeys aggregate table in Ponder schema",
+      "description": "As a frontend developer, I need a 'journeys' table so queries like `journeyss(where: { status: 0 })` work for driver availability.",
+      "acceptanceCriteria": [
+        "Journeys table defined in generateEntityTables() in scripts/generate-indexer.ts",
+        "Schema fields: id (hex PK), unified_order_id (hex), status (bigint), bounty (bigint), eta (bigint), start_lat (text), start_lng (text), end_lat (text), end_lng (text), block_number (bigint), block_timestamp (bigint), transaction_hash (hex)",
+        "Indexes on unified_order_id, status",
+        "Regenerate: npm run generate:indexer",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Status: 0=Available, 1=Accepted, 2=PickedUp, 3=InTransit, 4=Delivered, 5=Completed, 6=Cancelled"
+    },
+    {
+      "id": "US-004",
+      "title": "Add EVENT_TO_AGGREGATE_MAPPING interface and generator logic",
+      "description": "As a developer, I need a declarative configuration for mapping events to aggregate tables so the generator can produce handler code automatically.",
+      "acceptanceCriteria": [
+        "Define AggregateMapping interface in scripts/generate-indexer.ts",
+        "Define EVENT_TO_AGGREGATE_MAPPING constant with event -> aggregate mappings",
+        "Modify generateHandlerStub() to import aggregate tables",
+        "Generate aggregate inserts/updates in handler output",
+        "Regenerate: npm run generate:indexer",
+        "Verify handlers include aggregate updates"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "The generator approach eliminates need for manual handler files for aggregates."
+    },
+    {
+      "id": "US-005",
+      "title": "Map Orders events to aggregate updates",
+      "description": "As a system, order events should automatically populate the orders aggregate table.",
+      "acceptanceCriteria": [
+        "Add mappings for Diamond:OrderPlacedWithTokens -> orders insert",
+        "Add mappings for Diamond:RouterOrderPlaced -> orders insert",
+        "Add mappings for Diamond:CLOBOrderFilled, AusysOrderFilled -> orders update (status)",
+        "Add mappings for CLOBOrderCancelled, MatchingOrderCancelled, RouterOrderCancelled, OrderExpired -> orders update (status)",
+        "Verify generated clob.generated.ts includes aggregate logic"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Status logic: FILL_CHECK -> FILLED if remainingAmount=0, else PARTIAL_FILL"
+    },
+    {
+      "id": "US-006",
+      "title": "Map Journeys events to aggregate updates",
+      "description": "As a system, logistics events should automatically populate the journeys aggregate table.",
+      "acceptanceCriteria": [
+        "Add mapping for Diamond:LogisticsOrderCreated -> journeys insert",
+        "Add mapping for Diamond:JourneyStatusUpdated -> journeys update (status)",
+        "Verify generated handlers include journey aggregate updates"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "journeyId comes from event args, unifiedOrderId from logisticsOrderCreated"
+    },
+    {
+      "id": "US-007",
+      "title": "Map Assets events to aggregate updates",
+      "description": "As a system, AuraAsset events should automatically populate the assets aggregate table.",
+      "acceptanceCriteria": [
+        "Add mapping for AuraAsset:MintedAsset -> assets insert",
+        "AuraAsset artifact must exist in artifacts/contracts/",
+        "Verify generated aura-asset.generated.ts includes asset aggregate updates"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Requires AuraAsset.sol to be compiled. Currently artifact not present."
+    },
+    {
+      "id": "US-008",
+      "title": "Create smoke test for Assets GraphQL query",
+      "description": "As a developer, I need automated verification that the assets query works against the running indexer.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/assets-query.test.ts`",
+        "Test queries `assetss(limit: 10)` against INDEXER_URL env var",
+        "Verify response has shape: { assetss: { items: [...] } }",
+        "Test handles empty results gracefully",
+        "Run `cd indexer && npm test -- --grep 'assets-query'` passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Use graphql-request or fetch. INDEXER_URL defaults to http://localhost:42069"
+    },
+    {
+      "id": "US-009",
+      "title": "Create smoke test for Orders GraphQL query",
+      "description": "As a developer, I need automated verification that orders queries work including buyer/seller filters.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/orders-query.test.ts`",
+        "Test queries `orderss(limit: 10)` - verify structure",
+        "Test queries with buyer/seller filters",
+        "Run `cd indexer && npm test -- --grep 'orders-query'` passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Status values in schema are text strings, not integers"
+    },
+    {
+      "id": "US-010",
+      "title": "Create smoke test for Journeys GraphQL query",
+      "description": "As a developer, I need automated verification that journeys queries work including status filters.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/journeys-query.test.ts`",
+        "Test queries `journeyss(limit: 10)` - verify structure",
+        "Test queries with status filter",
+        "Run `cd indexer && npm test -- --grep 'journeys-query'` passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Status is BigInt, filter should use numeric value"
+    },
+    {
+      "id": "US-011",
+      "title": "Verify frontend GraphQL queries match Ponder schema",
+      "description": "As a frontend developer, I need confidence that repository queries align with the indexer schema.",
+      "acceptanceCriteria": [
+        "Audit infrastructure/shared/graph-queries.ts",
+        "Audit infrastructure/repositories/shared/graph-queries.ts",
+        "Document any field name mismatches (snake_case vs camelCase)",
+        "Typecheck passes: `npm run typecheck`"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Ponder schema uses snake_case. Frontend may need updates."
+    },
+    {
+      "id": "US-012",
+      "title": "Run full smoke test suite and document results",
+      "description": "As a developer completing this feature, I need all smoke tests passing and results documented.",
+      "acceptanceCriteria": [
+        "Start local indexer: `cd indexer && npm run dev`",
+        "Run all smoke tests: `cd indexer && npm test -- --grep smoke`",
+        "No GRAPHQL_VALIDATION_FAILED errors",
+        "Document results in progress.txt"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Final validation story"
+    }
+  ]
+}
