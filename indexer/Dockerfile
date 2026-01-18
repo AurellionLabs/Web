@@ -52,4 +52,4 @@ USER ponder
 
 EXPOSE 42069
 
-CMD ["sh", "-c", "cd indexer && pnpm run start"]
+CMD ["sh", "-c", "pnpm --filter aurellion-indexer run start"]
