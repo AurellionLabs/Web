@@ -1,5 +1,5 @@
 // Auto-generated handler for aura-asset domain - Raw event storage only
-// Generated at: 2026-01-17T12:26:21.580Z
+// Generated at: 2026-01-18T11:06:09.365Z
 // 
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: AuraAsset
@@ -7,16 +7,7 @@
 import { ponder } from "@/generated";
 
 // Import event tables from generated schema
-import { 
-  approvalForAll_1730Events,
-  assetAttributeAddedEe76Events,
-  custodyEstablished_75e1Events,
-  custodyReleased_93d2Events,
-  mintedAssetDa6fEvents,
-  transferBatch_4a39Events,
-  transferSingleC3d5Events,
-  uRI_6bb7Events
-} from "@/generated-schema";
+import { approvalForAll_1730Events, assetAttributeAddedEe76Events, custodyEstablished_75e1Events, custodyReleased_93d2Events, mintedAssetDa6fEvents, transferBatch_4a39Events, transferSingleC3d5Events, uRI_6bb7Events } from "@/generated-schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -30,7 +21,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Signature: ApprovalForAll(address,address,bool)
  * Hash: 0x17307eab
  */
-ponder.on("AuraAsset:ApprovalForAll", async ({ event, context }) => {
+ponder.on('AuraAsset:ApprovalForAll', async ({ event, context }) => {
   const { account, operator, approved } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -51,7 +42,7 @@ ponder.on("AuraAsset:ApprovalForAll", async ({ event, context }) => {
  * Signature: AssetAttributeAdded(bytes32,uint256,string,string[],string)
  * Hash: 0xee7669d5
  */
-ponder.on("AuraAsset:AssetAttributeAdded", async ({ event, context }) => {
+ponder.on('AuraAsset:AssetAttributeAdded', async ({ event, context }) => {
   const { hash, attributeIndex, name, values, description } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -74,7 +65,7 @@ ponder.on("AuraAsset:AssetAttributeAdded", async ({ event, context }) => {
  * Signature: CustodyEstablished(uint256,address,uint256)
  * Hash: 0x75e1dfdc
  */
-ponder.on("AuraAsset:CustodyEstablished", async ({ event, context }) => {
+ponder.on('AuraAsset:CustodyEstablished', async ({ event, context }) => {
   const { tokenId, custodian, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -95,7 +86,7 @@ ponder.on("AuraAsset:CustodyEstablished", async ({ event, context }) => {
  * Signature: CustodyReleased(uint256,address,uint256,address)
  * Hash: 0x93d2bba3
  */
-ponder.on("AuraAsset:CustodyReleased", async ({ event, context }) => {
+ponder.on('AuraAsset:CustodyReleased', async ({ event, context }) => {
   const { tokenId, custodian, amount, redeemer } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -117,7 +108,7 @@ ponder.on("AuraAsset:CustodyReleased", async ({ event, context }) => {
  * Signature: MintedAsset(address,bytes32,uint256,string,string,string)
  * Hash: 0xda6f2bc5
  */
-ponder.on("AuraAsset:MintedAsset", async ({ event, context }) => {
+ponder.on('AuraAsset:MintedAsset', async ({ event, context }) => {
   const { account, hash, tokenId, name, assetClass, className } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -141,7 +132,7 @@ ponder.on("AuraAsset:MintedAsset", async ({ event, context }) => {
  * Signature: TransferBatch(address,address,address,uint256[],uint256[])
  * Hash: 0x4a39dc06
  */
-ponder.on("AuraAsset:TransferBatch", async ({ event, context }) => {
+ponder.on('AuraAsset:TransferBatch', async ({ event, context }) => {
   const { operator, from, to, ids, values } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -164,7 +155,7 @@ ponder.on("AuraAsset:TransferBatch", async ({ event, context }) => {
  * Signature: TransferSingle(address,address,address,uint256,uint256)
  * Hash: 0xc3d58168
  */
-ponder.on("AuraAsset:TransferSingle", async ({ event, context }) => {
+ponder.on('AuraAsset:TransferSingle', async ({ event, context }) => {
   const { operator, from, to, id: arg_id, value: arg_value } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -174,7 +165,7 @@ ponder.on("AuraAsset:TransferSingle", async ({ event, context }) => {
     operator: operator,
     from: from,
     to: to,
-    token_id: arg_id,
+    id: arg_id,
     value: arg_value,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
@@ -187,7 +178,7 @@ ponder.on("AuraAsset:TransferSingle", async ({ event, context }) => {
  * Signature: URI(string,uint256)
  * Hash: 0x6bb7ff70
  */
-ponder.on("AuraAsset:URI", async ({ event, context }) => {
+ponder.on('AuraAsset:URI', async ({ event, context }) => {
   const { value: arg_value, id: arg_id } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
   
@@ -195,9 +186,10 @@ ponder.on("AuraAsset:URI", async ({ event, context }) => {
   await context.db.insert(uRI_6bb7Events).values({
     id: id,
     value: arg_value,
-    token_id: arg_id,
+    id: arg_id,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
 });
+

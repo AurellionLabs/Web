@@ -7,3497 +7,2736 @@
  * To regenerate:
  *   npx ts-node scripts/generate-diamond-abi.ts
  *
- * Generated: 2026-01-16T14:46:26.244Z
- * Facets: OrderRouterFacet, CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet
+ * Generated: 2026-01-18T11:06:09.394Z
+ * Facets: CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet
  */
 
 import { ABIFragment } from '@/scripts/deploy.config';
 
 export const DIAMOND_ABI: ABIFragment[] = [
   {
-    type: 'function',
-    name: 'placeOrder',
-    inputs: [
+    "type": "function",
+    "name": "placeMarketOrder",
+    "inputs": [
       {
-        name: 'baseToken',
-        type: 'address',
+        "name": "_baseToken",
+        "type": "address"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "_baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'address',
+        "name": "_quoteToken",
+        "type": "address"
       },
       {
-        name: 'price',
-        type: 'uint96',
+        "name": "_amount",
+        "type": "uint256"
       },
       {
-        name: 'amount',
-        type: 'uint96',
+        "name": "_isBuy",
+        "type": "bool"
       },
       {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
+        "name": "_maxPrice",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'placeNodeSellOrder',
-    inputs: [
+    "type": "function",
+    "name": "placeNodeSellOrderV2",
+    "inputs": [
       {
-        name: 'nodeOwner',
-        type: 'address',
+        "name": "nodeOwner",
+        "type": "address"
       },
       {
-        name: 'baseToken',
-        type: 'address',
+        "name": "baseToken",
+        "type": "address"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'address',
+        "name": "quoteToken",
+        "type": "address"
       },
       {
-        name: 'price',
-        type: 'uint96',
+        "name": "price",
+        "type": "uint96"
       },
       {
-        name: 'amount',
-        type: 'uint96',
+        "name": "amount",
+        "type": "uint96"
       },
       {
-        name: 'timeInForce',
-        type: 'uint8',
+        "name": "timeInForce",
+        "type": "uint8"
       },
       {
-        name: 'expiry',
-        type: 'uint40',
-      },
+        "name": "expiry",
+        "type": "uint40"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'placeMarketOrder',
-    inputs: [
+    "type": "function",
+    "name": "cancelCLOBOrder",
+    "inputs": [
       {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'maxSlippageBps',
-        type: 'uint16',
-      },
+        "name": "_orderId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'placeBuyOrder',
-    inputs: [
+    "type": "function",
+    "name": "getOpenOrders",
+    "inputs": [
       {
-        name: 'baseToken',
-        type: 'address',
+        "name": "_baseToken",
+        "type": "address"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "_baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
+        "name": "_quoteToken",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
+        "name": "buyOrders",
+        "type": "bytes32[]"
       },
+      {
+        "name": "sellOrders",
+        "type": "bytes32[]"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'placeSellOrder',
-    inputs: [
+    "type": "function",
+    "name": "getOrderWithTokens",
+    "inputs": [
       {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
+        "name": "_orderId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
+        "name": "maker",
+        "type": "address"
       },
+      {
+        "name": "baseToken",
+        "type": "address"
+      },
+      {
+        "name": "baseTokenId",
+        "type": "uint256"
+      },
+      {
+        "name": "quoteToken",
+        "type": "address"
+      },
+      {
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "name": "filledAmount",
+        "type": "uint256"
+      },
+      {
+        "name": "isBuy",
+        "type": "bool"
+      },
+      {
+        "name": "status",
+        "type": "uint8"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'cancelOrder',
-    inputs: [
+    "type": "function",
+    "name": "createMarket",
+    "inputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
+        "name": "_baseToken",
+        "type": "string"
       },
+      {
+        "name": "_baseTokenId",
+        "type": "uint256"
+      },
+      {
+        "name": "_quoteToken",
+        "type": "string"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [
+      {
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'cancelOrders',
-    inputs: [
+    "type": "function",
+    "name": "placeOrder",
+    "inputs": [
       {
-        name: 'orderIds',
-        type: 'bytes32[]',
+        "name": "_marketId",
+        "type": "bytes32"
       },
+      {
+        "name": "_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_amount",
+        "type": "uint256"
+      },
+      {
+        "name": "_isBuy",
+        "type": "bool"
+      },
+      {
+        "name": "_orderType",
+        "type": "uint8"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getOrder',
-    inputs: [
+    "type": "function",
+    "name": "getOrder",
+    "inputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "_orderId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'maker',
-        type: 'address',
+        "name": "maker",
+        "type": "address"
       },
       {
-        name: 'marketId',
-        type: 'bytes32',
+        "name": "marketId",
+        "type": "bytes32"
       },
       {
-        name: 'price',
-        type: 'uint96',
+        "name": "price",
+        "type": "uint256"
       },
       {
-        name: 'amount',
-        type: 'uint96',
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        name: 'filledAmount',
-        type: 'uint64',
+        "name": "filledAmount",
+        "type": "uint256"
       },
       {
-        name: 'isBuy',
-        type: 'bool',
+        "name": "isBuy",
+        "type": "bool"
       },
       {
-        name: 'status',
-        type: 'uint8',
+        "name": "orderType",
+        "type": "uint8"
       },
       {
-        name: 'timeInForce',
-        type: 'uint8',
+        "name": "status",
+        "type": "uint8"
       },
       {
-        name: 'expiry',
-        type: 'uint40',
+        "name": "createdAt",
+        "type": "uint256"
       },
       {
-        name: 'createdAt',
-        type: 'uint40',
-      },
+        "name": "updatedAt",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getBestPrices',
-    inputs: [
+    "type": "function",
+    "name": "getMarket",
+    "inputs": [
       {
-        name: 'marketId',
-        type: 'bytes32',
-      },
+        "name": "_marketId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'bestBid',
-        type: 'uint96',
+        "name": "baseToken",
+        "type": "string"
       },
       {
-        name: 'bestBidSize',
-        type: 'uint96',
+        "name": "baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'bestAsk',
-        type: 'uint96',
+        "name": "quoteToken",
+        "type": "string"
       },
       {
-        name: 'bestAskSize',
-        type: 'uint96',
-      },
+        "name": "active",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'OrderRouted',
-    inputs: [
+    "type": "function",
+    "name": "getTrade",
+    "inputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'orderSource',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
-      },
+        "name": "_tradeId",
+        "type": "bytes32"
+      }
     ],
+    "outputs": [
+      {
+        "name": "takerOrderId",
+        "type": "bytes32"
+      },
+      {
+        "name": "makerOrderId",
+        "type": "bytes32"
+      },
+      {
+        "name": "taker",
+        "type": "address"
+      },
+      {
+        "name": "maker",
+        "type": "address"
+      },
+      {
+        "name": "marketId",
+        "type": "bytes32"
+      },
+      {
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "name": "quoteAmount",
+        "type": "uint256"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'OrderCreated',
-    inputs: [
+    "type": "function",
+    "name": "getPool",
+    "inputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'marketId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
-      },
-      {
-        name: 'orderType',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'expiry',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'nonce',
-        type: 'uint256',
-        indexed: false,
-      },
+        "name": "_poolId",
+        "type": "bytes32"
+      }
     ],
+    "outputs": [
+      {
+        "name": "baseToken",
+        "type": "string"
+      },
+      {
+        "name": "baseTokenId",
+        "type": "uint256"
+      },
+      {
+        "name": "quoteToken",
+        "type": "string"
+      },
+      {
+        "name": "baseReserve",
+        "type": "uint256"
+      },
+      {
+        "name": "quoteReserve",
+        "type": "uint256"
+      },
+      {
+        "name": "totalLpTokens",
+        "type": "uint256"
+      },
+      {
+        "name": "isActive",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'OrderFilled',
-    inputs: [
+    "type": "function",
+    "name": "getTotalMarkets",
+    "inputs": [],
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'tradeId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'fillAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'fillPrice',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'OrderCancelled',
-    inputs: [
+    "type": "function",
+    "name": "getTotalTrades",
+    "inputs": [],
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'reason',
-        type: 'uint8',
-        indexed: false,
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'TradeExecuted',
-    inputs: [
+    "type": "event",
+    "name": "OrderPlacedWithTokens",
+    "inputs": [
       {
-        name: 'tradeId',
-        type: 'bytes32',
-        indexed: true,
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true
       },
       {
-        name: 'takerOrderId',
-        type: 'bytes32',
-        indexed: true,
+        "name": "maker",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'makerOrderId',
-        type: 'bytes32',
-        indexed: true,
+        "name": "baseToken",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
+        "name": "baseTokenId",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
+        "name": "quoteToken",
+        "type": "address",
+        "indexed": false
       },
       {
-        name: 'quoteAmount',
-        type: 'uint256',
-        indexed: false,
+        "name": "price",
+        "type": "uint256",
+        "indexed": false
       },
-    ],
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "isBuy",
+        "type": "bool",
+        "indexed": false
+      },
+      {
+        "name": "orderType",
+        "type": "uint8",
+        "indexed": false
+      }
+    ]
   },
   {
-    type: 'function',
-    name: 'placeNodeSellOrderV2',
-    inputs: [
+    "type": "event",
+    "name": "OrderCancelled",
+    "inputs": [
       {
-        name: 'nodeOwner',
-        type: 'address',
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true
       },
       {
-        name: 'baseToken',
-        type: 'address',
+        "name": "maker",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
+        "name": "remainingAmount",
+        "type": "uint256",
+        "indexed": false
+      }
+    ]
   },
   {
-    type: 'function',
-    name: 'cancelCLOBOrder',
-    inputs: [
+    "type": "event",
+    "name": "TradeExecuted",
+    "inputs": [
       {
-        name: '_orderId',
-        type: 'bytes32',
+        "name": "tradeId",
+        "type": "bytes32",
+        "indexed": true
       },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+      {
+        "name": "taker",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "name": "maker",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "name": "marketId",
+        "type": "bytes32",
+        "indexed": false
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "quoteAmount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false
+      }
+    ]
   },
   {
-    type: 'function',
-    name: 'getOpenOrders',
-    inputs: [
+    "type": "function",
+    "name": "registerNode",
+    "inputs": [
       {
-        name: '_baseToken',
-        type: 'address',
+        "name": "_nodeType",
+        "type": "string"
       },
       {
-        name: '_baseTokenId',
-        type: 'uint256',
+        "name": "_capacity",
+        "type": "uint256"
       },
       {
-        name: '_quoteToken',
-        type: 'address',
+        "name": "_assetHash",
+        "type": "bytes32"
       },
+      {
+        "name": "_addressName",
+        "type": "string"
+      },
+      {
+        "name": "_lat",
+        "type": "string"
+      },
+      {
+        "name": "_lng",
+        "type": "string"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'buyOrders',
-        type: 'bytes32[]',
-      },
-      {
-        name: 'sellOrders',
-        type: 'bytes32[]',
-      },
+        "name": "nodeHash",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getOrderWithTokens',
-    inputs: [
+    "type": "function",
+    "name": "getNode",
+    "inputs": [
       {
-        name: '_orderId',
-        type: 'bytes32',
-      },
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'maker',
-        type: 'address',
+        "name": "owner",
+        "type": "address"
       },
       {
-        name: 'baseToken',
-        type: 'address',
+        "name": "nodeType",
+        "type": "string"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "capacity",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'address',
+        "name": "createdAt",
+        "type": "uint256"
       },
       {
-        name: 'price',
-        type: 'uint256',
+        "name": "active",
+        "type": "bool"
       },
       {
-        name: 'amount',
-        type: 'uint256',
+        "name": "validNode",
+        "type": "bool"
       },
       {
-        name: 'filledAmount',
-        type: 'uint256',
+        "name": "assetHash",
+        "type": "bytes32"
       },
       {
-        name: 'isBuy',
-        type: 'bool',
+        "name": "addressName",
+        "type": "string"
       },
       {
-        name: 'status',
-        type: 'uint8',
+        "name": "lat",
+        "type": "string"
       },
+      {
+        "name": "lng",
+        "type": "string"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'createMarket',
-    inputs: [
+    "type": "function",
+    "name": "getOwnerNodes",
+    "inputs": [
       {
-        name: '_baseToken',
-        type: 'string',
-      },
-      {
-        name: '_baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: '_quoteToken',
-        type: 'string',
-      },
+        "name": "_owner",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'marketId',
-        type: 'bytes32',
-      },
+        "name": "",
+        "type": "bytes32[]"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getMarket',
-    inputs: [
+    "type": "function",
+    "name": "getTotalNodes",
+    "inputs": [],
+    "outputs": [
       {
-        name: '_marketId',
-        type: 'bytes32',
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    outputs: [
-      {
-        name: 'baseToken',
-        type: 'string',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'string',
-      },
-      {
-        name: 'active',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getTrade',
-    inputs: [
+    "type": "function",
+    "name": "updateNodeStatus",
+    "inputs": [
       {
-        name: '_tradeId',
-        type: 'bytes32',
+        "name": "_status",
+        "type": "bytes1"
       },
+      {
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
-      {
-        name: 'takerOrderId',
-        type: 'bytes32',
-      },
-      {
-        name: 'makerOrderId',
-        type: 'bytes32',
-      },
-      {
-        name: 'taker',
-        type: 'address',
-      },
-      {
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        name: 'marketId',
-        type: 'bytes32',
-      },
-      {
-        name: 'price',
-        type: 'uint256',
-      },
-      {
-        name: 'amount',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteAmount',
-        type: 'uint256',
-      },
-      {
-        name: 'timestamp',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getPool',
-    inputs: [
+    "type": "function",
+    "name": "updateNode",
+    "inputs": [
       {
-        name: '_poolId',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
+      {
+        "name": "_nodeType",
+        "type": "string"
+      },
+      {
+        "name": "_capacity",
+        "type": "uint256"
+      }
     ],
-    outputs: [
-      {
-        name: 'baseToken',
-        type: 'string',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'string',
-      },
-      {
-        name: 'baseReserve',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteReserve',
-        type: 'uint256',
-      },
-      {
-        name: 'totalLpTokens',
-        type: 'uint256',
-      },
-      {
-        name: 'isActive',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getTotalMarkets',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "deactivateNode",
+    "inputs": [
       {
-        name: '',
-        type: 'uint256',
-      },
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'view',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getTotalTrades',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "updateNodeLocation",
+    "inputs": [
       {
-        name: '',
-        type: 'uint256',
+        "name": "_addressName",
+        "type": "string"
       },
+      {
+        "name": "_lat",
+        "type": "string"
+      },
+      {
+        "name": "_lng",
+        "type": "string"
+      },
+      {
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'view',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'event',
-    name: 'OrderPlacedWithTokens',
-    inputs: [
+    "type": "function",
+    "name": "updateNodeOwner",
+    "inputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
+        "name": "_owner",
+        "type": "address"
       },
       {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'baseToken',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-        indexed: false,
-      },
-      {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
-      },
-      {
-        name: 'orderType',
-        type: 'uint8',
-        indexed: false,
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'registerNode',
-    inputs: [
+    "type": "function",
+    "name": "addSupportedAsset",
+    "inputs": [
       {
-        name: '_nodeType',
-        type: 'string',
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        name: '_capacity',
-        type: 'uint256',
+        "name": "_token",
+        "type": "address"
       },
       {
-        name: '_assetHash',
-        type: 'bytes32',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_addressName',
-        type: 'string',
+        "name": "_price",
+        "type": "uint256"
       },
       {
-        name: '_lat',
-        type: 'string',
-      },
-      {
-        name: '_lng',
-        type: 'string',
-      },
+        "name": "_capacity",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
+        "name": "assetId",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getNode',
-    inputs: [
+    "type": "function",
+    "name": "getNodeAssets",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'owner',
-        type: 'address',
-      },
-      {
-        name: 'nodeType',
-        type: 'string',
-      },
-      {
-        name: 'capacity',
-        type: 'uint256',
-      },
-      {
-        name: 'createdAt',
-        type: 'uint256',
-      },
-      {
-        name: 'active',
-        type: 'bool',
-      },
-      {
-        name: 'validNode',
-        type: 'bool',
-      },
-      {
-        name: 'assetHash',
-        type: 'bytes32',
-      },
-      {
-        name: 'addressName',
-        type: 'string',
-      },
-      {
-        name: 'lat',
-        type: 'string',
-      },
-      {
-        name: 'lng',
-        type: 'string',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'getOwnerNodes',
-    inputs: [
-      {
-        name: '_owner',
-        type: 'address',
-      },
-    ],
-    outputs: [
-      {
-        name: '',
-        type: 'bytes32[]',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'getTotalNodes',
-    inputs: [],
-    outputs: [
-      {
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'updateNodeStatus',
-    inputs: [
-      {
-        name: '_status',
-        type: 'bytes1',
-      },
-      {
-        name: '_node',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'updateNode',
-    inputs: [
-      {
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
-      {
-        name: '_nodeType',
-        type: 'string',
-      },
-      {
-        name: '_capacity',
-        type: 'uint256',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'deactivateNode',
-    inputs: [
-      {
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'updateNodeLocation',
-    inputs: [
-      {
-        name: '_addressName',
-        type: 'string',
-      },
-      {
-        name: '_lat',
-        type: 'string',
-      },
-      {
-        name: '_lng',
-        type: 'string',
-      },
-      {
-        name: '_node',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'updateNodeOwner',
-    inputs: [
-      {
-        name: '_owner',
-        type: 'address',
-      },
-      {
-        name: '_node',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'addSupportedAsset',
-    inputs: [
-      {
-        name: '_node',
-        type: 'bytes32',
-      },
-      {
-        name: '_token',
-        type: 'address',
-      },
-      {
-        name: '_tokenId',
-        type: 'uint256',
-      },
-      {
-        name: '_price',
-        type: 'uint256',
-      },
-      {
-        name: '_capacity',
-        type: 'uint256',
-      },
-    ],
-    outputs: [
-      {
-        name: 'assetId',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'getNodeAssets',
-    inputs: [
-      {
-        name: '_node',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple[]',
-        components: [
+        "name": "",
+        "type": "tuple[]",
+        "components": [
           {
-            name: 'token',
-            type: 'address',
+            "name": "token",
+            "type": "address"
           },
           {
-            name: 'tokenId',
-            type: 'uint256',
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            name: 'price',
-            type: 'uint256',
+            "name": "price",
+            "type": "uint256"
           },
           {
-            name: 'capacity',
-            type: 'uint256',
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            name: 'createdAt',
-            type: 'uint256',
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            name: 'active',
-            type: 'bool',
-          },
-        ],
-      },
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getNodeStatus',
-    inputs: [
+    "type": "function",
+    "name": "getNodeStatus",
+    "inputs": [
       {
-        name: '_node',
-        type: 'address',
-      },
+        "name": "_node",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bytes1',
-      },
+        "name": "",
+        "type": "bytes1"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'setAuraAssetAddress',
-    inputs: [
+    "type": "function",
+    "name": "setAuraAssetAddress",
+    "inputs": [
       {
-        name: '_auraAsset',
-        type: 'address',
-      },
+        "name": "_auraAsset",
+        "type": "address"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getAuraAssetAddress',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "getAuraAssetAddress",
+    "inputs": [],
+    "outputs": [
       {
-        name: '',
-        type: 'address',
-      },
+        "name": "",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'creditNodeTokens',
-    inputs: [
+    "type": "function",
+    "name": "creditNodeTokens",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getNodeTokenIds',
-    inputs: [
+    "type": "function",
+    "name": "getNodeTokenIds",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'uint256[]',
-      },
+        "name": "",
+        "type": "uint256[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getNodeInventoryWithMetadata',
-    inputs: [
+    "type": "function",
+    "name": "getNodeInventoryWithMetadata",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'assets',
-        type: 'tuple[]',
-        components: [
+        "name": "assets",
+        "type": "tuple[]",
+        "components": [
           {
-            name: 'token',
-            type: 'address',
-          },
-          {
-            name: 'tokenId',
-            type: 'uint256',
+            "name": "token",
+            "type": "address"
           },
           {
-            name: 'price',
-            type: 'uint256',
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            name: 'capacity',
-            type: 'uint256',
+            "name": "price",
+            "type": "uint256"
           },
           {
-            name: 'balance',
-            type: 'uint256',
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            name: 'createdAt',
-            type: 'uint256',
+            "name": "balance",
+            "type": "uint256"
           },
           {
-            name: 'active',
-            type: 'bool',
-          },
-        ],
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'getNodeSellableAssets',
-    inputs: [
-      {
-        name: '_node',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: 'assets',
-        type: 'tuple[]',
-        components: [
-          {
-            name: 'token',
-            type: 'address',
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            name: 'tokenId',
-            type: 'uint256',
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getNodeSellableAssets",
+    "inputs": [
+      {
+        "name": "_node",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "assets",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "token",
+            "type": "address"
           },
           {
-            name: 'price',
-            type: 'uint256',
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            name: 'capacity',
-            type: 'uint256',
+            "name": "price",
+            "type": "uint256"
           },
           {
-            name: 'balance',
-            type: 'uint256',
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            name: 'createdAt',
-            type: 'uint256',
+            "name": "balance",
+            "type": "uint256"
           },
           {
-            name: 'active',
-            type: 'bool',
+            "name": "createdAt",
+            "type": "uint256"
           },
-        ],
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
       },
       {
-        name: 'count',
-        type: 'uint256',
-      },
+        "name": "count",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'placeSellOrderFromNode',
-    inputs: [
+    "type": "function",
+    "name": "placeSellOrderFromNode",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_quoteToken',
-        type: 'address',
+        "name": "_quoteToken",
+        "type": "address"
       },
       {
-        name: '_price',
-        type: 'uint256',
+        "name": "_price",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'depositTokensToNode',
-    inputs: [
+    "type": "function",
+    "name": "depositTokensToNode",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'withdrawTokensFromNode',
-    inputs: [
+    "type": "function",
+    "name": "withdrawTokensFromNode",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getNodeTokenBalance',
-    inputs: [
+    "type": "function",
+    "name": "getNodeTokenBalance",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
-      },
+        "name": "_tokenId",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'uint256',
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getNodeInventory',
-    inputs: [
+    "type": "function",
+    "name": "getNodeInventory",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'tokenIds',
-        type: 'uint256[]',
+        "name": "tokenIds",
+        "type": "uint256[]"
       },
       {
-        name: 'balances',
-        type: 'uint256[]',
-      },
+        "name": "balances",
+        "type": "uint256[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'NodeSellOrderPlaced',
-    inputs: [
+    "type": "event",
+    "name": "NodeSellOrderPlaced",
+    "inputs": [
       {
-        name: 'nodeHash',
-        type: 'bytes32',
-        indexed: true,
+        "name": "nodeHash",
+        "type": "bytes32",
+        "indexed": true
       },
       {
-        name: 'tokenId',
-        type: 'uint256',
-        indexed: true,
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true
       },
       {
-        name: 'quoteToken',
-        type: 'address',
-        indexed: false,
+        "name": "quoteToken",
+        "type": "address",
+        "indexed": false
       },
       {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
+        "name": "price",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: false,
-      },
-    ],
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": false
+      }
+    ]
   },
   {
-    type: 'function',
-    name: 'facetAddress',
-    inputs: [
+    "type": "function",
+    "name": "facetAddress",
+    "inputs": [
       {
-        name: '_functionSelector',
-        type: 'bytes4',
-      },
+        "name": "_functionSelector",
+        "type": "bytes4"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'facetAddress_',
-        type: 'address',
-      },
+        "name": "facetAddress_",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'facets',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "facets",
+    "inputs": [],
+    "outputs": [
       {
-        name: 'facets_',
-        type: 'tuple[]',
-      },
+        "name": "facets_",
+        "type": "tuple[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'facetFunctionSelectors',
-    inputs: [
+    "type": "function",
+    "name": "facetFunctionSelectors",
+    "inputs": [
       {
-        name: '_facet',
-        type: 'address',
-      },
+        "name": "_facet",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'facetFunctionSelectors_',
-        type: 'bytes4[]',
-      },
+        "name": "facetFunctionSelectors_",
+        "type": "bytes4[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'facetAddresses',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "facetAddresses",
+    "inputs": [],
+    "outputs": [
       {
-        name: 'facetAddresses_',
-        type: 'address[]',
-      },
+        "name": "facetAddresses_",
+        "type": "address[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'supportsInterface',
-    inputs: [
+    "type": "function",
+    "name": "supportsInterface",
+    "inputs": [
       {
-        name: '_interfaceId',
-        type: 'bytes4',
-      },
+        "name": "_interfaceId",
+        "type": "bytes4"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bool',
-      },
+        "name": "",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'acceptOwnership',
-    inputs: [],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'initialize',
-    inputs: [
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
       {
-        name: '_owner',
-        type: 'address',
-      },
+        "name": "_owner",
+        "type": "address"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'owner',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
       {
-        name: '',
-        type: 'address',
-      },
+        "name": "",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'renounceOwnership',
-    inputs: [],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'transferOwnership',
-    inputs: [
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
       {
-        name: 'newOwner',
-        type: 'address',
-      },
+        "name": "newOwner",
+        "type": "address"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'onERC1155Received',
-    inputs: [
+    "type": "function",
+    "name": "onERC1155Received",
+    "inputs": [
       {
-        name: 'operator',
-        type: 'address',
+        "name": "operator",
+        "type": "address"
       },
       {
-        name: 'from',
-        type: 'address',
+        "name": "from",
+        "type": "address"
       },
       {
-        name: 'id',
-        type: 'uint256',
+        "name": "id",
+        "type": "uint256"
       },
       {
-        name: 'value',
-        type: 'uint256',
+        "name": "value",
+        "type": "uint256"
       },
       {
-        name: 'data',
-        type: 'bytes',
-      },
+        "name": "data",
+        "type": "bytes"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bytes4',
-      },
+        "name": "",
+        "type": "bytes4"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'onERC1155BatchReceived',
-    inputs: [
+    "type": "function",
+    "name": "onERC1155BatchReceived",
+    "inputs": [
       {
-        name: 'operator',
-        type: 'address',
+        "name": "operator",
+        "type": "address"
       },
       {
-        name: 'from',
-        type: 'address',
+        "name": "from",
+        "type": "address"
       },
       {
-        name: 'ids',
-        type: 'uint256[]',
+        "name": "ids",
+        "type": "uint256[]"
       },
       {
-        name: 'values',
-        type: 'uint256[]',
+        "name": "values",
+        "type": "uint256[]"
       },
       {
-        name: 'data',
-        type: 'bytes',
-      },
+        "name": "data",
+        "type": "bytes"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bytes4',
-      },
+        "name": "",
+        "type": "bytes4"
+      }
     ],
-    stateMutability: 'nonpayable',
-  },
+    "stateMutability": "nonpayable"
+  }
 ] as const;
 
 // Export individual facet ABIs for selective imports
-export const ORDERROUTERFACET_ABI = [
-  {
-    type: 'function',
-    name: 'placeOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeNodeSellOrder',
-    inputs: [
-      {
-        name: 'nodeOwner',
-        type: 'address',
-      },
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeMarketOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'maxSlippageBps',
-        type: 'uint16',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeBuyOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeSellOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'cancelOrder',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'cancelOrders',
-    inputs: [
-      {
-        name: 'orderIds',
-        type: 'bytes32[]',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'getOrder',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        name: 'marketId',
-        type: 'bytes32',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'filledAmount',
-        type: 'uint64',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'status',
-        type: 'uint8',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-      {
-        name: 'createdAt',
-        type: 'uint40',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'getBestPrices',
-    inputs: [
-      {
-        name: 'marketId',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: 'bestBid',
-        type: 'uint96',
-      },
-      {
-        name: 'bestBidSize',
-        type: 'uint96',
-      },
-      {
-        name: 'bestAsk',
-        type: 'uint96',
-      },
-      {
-        name: 'bestAskSize',
-        type: 'uint96',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'event',
-    name: 'OrderRouted',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'orderSource',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'OrderCreated',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'marketId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
-      },
-      {
-        name: 'orderType',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'expiry',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'nonce',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'OrderFilled',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'tradeId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'fillAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'fillPrice',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'OrderCancelled',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'reason',
-        type: 'uint8',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'TradeExecuted',
-    inputs: [
-      {
-        name: 'tradeId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'takerOrderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'makerOrderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'quoteAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
-  },
-] as const;
-
 export const CLOBFACET_ABI = [
   {
-    type: 'function',
-    name: 'placeMarketOrder',
-    inputs: [
+    "type": "function",
+    "name": "placeMarketOrder",
+    "inputs": [
       {
-        name: '_baseToken',
-        type: 'address',
+        "name": "_baseToken",
+        "type": "address"
       },
       {
-        name: '_baseTokenId',
-        type: 'uint256',
+        "name": "_baseTokenId",
+        "type": "uint256"
       },
       {
-        name: '_quoteToken',
-        type: 'address',
+        "name": "_quoteToken",
+        "type": "address"
       },
       {
-        name: '_amount',
-        type: 'uint256',
+        "name": "_amount",
+        "type": "uint256"
       },
       {
-        name: '_isBuy',
-        type: 'bool',
+        "name": "_isBuy",
+        "type": "bool"
       },
       {
-        name: '_maxPrice',
-        type: 'uint256',
-      },
+        "name": "_maxPrice",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'placeNodeSellOrderV2',
-    inputs: [
+    "type": "function",
+    "name": "placeNodeSellOrderV2",
+    "inputs": [
       {
-        name: 'nodeOwner',
-        type: 'address',
+        "name": "nodeOwner",
+        "type": "address"
       },
       {
-        name: 'baseToken',
-        type: 'address',
+        "name": "baseToken",
+        "type": "address"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'address',
+        "name": "quoteToken",
+        "type": "address"
       },
       {
-        name: 'price',
-        type: 'uint96',
+        "name": "price",
+        "type": "uint96"
       },
       {
-        name: 'amount',
-        type: 'uint96',
+        "name": "amount",
+        "type": "uint96"
       },
       {
-        name: 'timeInForce',
-        type: 'uint8',
+        "name": "timeInForce",
+        "type": "uint8"
       },
       {
-        name: 'expiry',
-        type: 'uint40',
-      },
+        "name": "expiry",
+        "type": "uint40"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'cancelCLOBOrder',
-    inputs: [
+    "type": "function",
+    "name": "cancelCLOBOrder",
+    "inputs": [
       {
-        name: '_orderId',
-        type: 'bytes32',
-      },
+        "name": "_orderId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getOpenOrders',
-    inputs: [
+    "type": "function",
+    "name": "getOpenOrders",
+    "inputs": [
       {
-        name: '_baseToken',
-        type: 'address',
+        "name": "_baseToken",
+        "type": "address"
       },
       {
-        name: '_baseTokenId',
-        type: 'uint256',
+        "name": "_baseTokenId",
+        "type": "uint256"
       },
       {
-        name: '_quoteToken',
-        type: 'address',
-      },
+        "name": "_quoteToken",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'buyOrders',
-        type: 'bytes32[]',
+        "name": "buyOrders",
+        "type": "bytes32[]"
       },
       {
-        name: 'sellOrders',
-        type: 'bytes32[]',
-      },
+        "name": "sellOrders",
+        "type": "bytes32[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getOrderWithTokens',
-    inputs: [
+    "type": "function",
+    "name": "getOrderWithTokens",
+    "inputs": [
       {
-        name: '_orderId',
-        type: 'bytes32',
-      },
+        "name": "_orderId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'maker',
-        type: 'address',
+        "name": "maker",
+        "type": "address"
       },
       {
-        name: 'baseToken',
-        type: 'address',
+        "name": "baseToken",
+        "type": "address"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'address',
+        "name": "quoteToken",
+        "type": "address"
       },
       {
-        name: 'price',
-        type: 'uint256',
+        "name": "price",
+        "type": "uint256"
       },
       {
-        name: 'amount',
-        type: 'uint256',
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        name: 'filledAmount',
-        type: 'uint256',
+        "name": "filledAmount",
+        "type": "uint256"
       },
       {
-        name: 'isBuy',
-        type: 'bool',
+        "name": "isBuy",
+        "type": "bool"
       },
       {
-        name: 'status',
-        type: 'uint8',
-      },
+        "name": "status",
+        "type": "uint8"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'createMarket',
-    inputs: [
+    "type": "function",
+    "name": "createMarket",
+    "inputs": [
       {
-        name: '_baseToken',
-        type: 'string',
+        "name": "_baseToken",
+        "type": "string"
       },
       {
-        name: '_baseTokenId',
-        type: 'uint256',
+        "name": "_baseTokenId",
+        "type": "uint256"
       },
       {
-        name: '_quoteToken',
-        type: 'string',
-      },
+        "name": "_quoteToken",
+        "type": "string"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'marketId',
-        type: 'bytes32',
-      },
+        "name": "marketId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'placeOrder',
-    inputs: [
+    "type": "function",
+    "name": "placeOrder",
+    "inputs": [
       {
-        name: '_marketId',
-        type: 'bytes32',
+        "name": "_marketId",
+        "type": "bytes32"
       },
       {
-        name: '_price',
-        type: 'uint256',
+        "name": "_price",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
+        "name": "_amount",
+        "type": "uint256"
       },
       {
-        name: '_isBuy',
-        type: 'bool',
+        "name": "_isBuy",
+        "type": "bool"
       },
       {
-        name: '_orderType',
-        type: 'uint8',
-      },
+        "name": "_orderType",
+        "type": "uint8"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getOrder',
-    inputs: [
+    "type": "function",
+    "name": "getOrder",
+    "inputs": [
       {
-        name: '_orderId',
-        type: 'bytes32',
-      },
+        "name": "_orderId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'maker',
-        type: 'address',
+        "name": "maker",
+        "type": "address"
       },
       {
-        name: 'marketId',
-        type: 'bytes32',
+        "name": "marketId",
+        "type": "bytes32"
       },
       {
-        name: 'price',
-        type: 'uint256',
+        "name": "price",
+        "type": "uint256"
       },
       {
-        name: 'amount',
-        type: 'uint256',
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        name: 'filledAmount',
-        type: 'uint256',
+        "name": "filledAmount",
+        "type": "uint256"
       },
       {
-        name: 'isBuy',
-        type: 'bool',
+        "name": "isBuy",
+        "type": "bool"
       },
       {
-        name: 'orderType',
-        type: 'uint8',
+        "name": "orderType",
+        "type": "uint8"
       },
       {
-        name: 'status',
-        type: 'uint8',
+        "name": "status",
+        "type": "uint8"
       },
       {
-        name: 'createdAt',
-        type: 'uint256',
+        "name": "createdAt",
+        "type": "uint256"
       },
       {
-        name: 'updatedAt',
-        type: 'uint256',
-      },
+        "name": "updatedAt",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getMarket',
-    inputs: [
+    "type": "function",
+    "name": "getMarket",
+    "inputs": [
       {
-        name: '_marketId',
-        type: 'bytes32',
-      },
+        "name": "_marketId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'baseToken',
-        type: 'string',
+        "name": "baseToken",
+        "type": "string"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'string',
+        "name": "quoteToken",
+        "type": "string"
       },
       {
-        name: 'active',
-        type: 'bool',
-      },
+        "name": "active",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getTrade',
-    inputs: [
+    "type": "function",
+    "name": "getTrade",
+    "inputs": [
       {
-        name: '_tradeId',
-        type: 'bytes32',
-      },
+        "name": "_tradeId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'takerOrderId',
-        type: 'bytes32',
+        "name": "takerOrderId",
+        "type": "bytes32"
       },
       {
-        name: 'makerOrderId',
-        type: 'bytes32',
+        "name": "makerOrderId",
+        "type": "bytes32"
       },
       {
-        name: 'taker',
-        type: 'address',
+        "name": "taker",
+        "type": "address"
       },
       {
-        name: 'maker',
-        type: 'address',
+        "name": "maker",
+        "type": "address"
       },
       {
-        name: 'marketId',
-        type: 'bytes32',
+        "name": "marketId",
+        "type": "bytes32"
       },
       {
-        name: 'price',
-        type: 'uint256',
+        "name": "price",
+        "type": "uint256"
       },
       {
-        name: 'amount',
-        type: 'uint256',
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        name: 'quoteAmount',
-        type: 'uint256',
+        "name": "quoteAmount",
+        "type": "uint256"
       },
       {
-        name: 'timestamp',
-        type: 'uint256',
-      },
+        "name": "timestamp",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getPool',
-    inputs: [
+    "type": "function",
+    "name": "getPool",
+    "inputs": [
       {
-        name: '_poolId',
-        type: 'bytes32',
-      },
+        "name": "_poolId",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'baseToken',
-        type: 'string',
+        "name": "baseToken",
+        "type": "string"
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
+        "name": "baseTokenId",
+        "type": "uint256"
       },
       {
-        name: 'quoteToken',
-        type: 'string',
+        "name": "quoteToken",
+        "type": "string"
       },
       {
-        name: 'baseReserve',
-        type: 'uint256',
+        "name": "baseReserve",
+        "type": "uint256"
       },
       {
-        name: 'quoteReserve',
-        type: 'uint256',
+        "name": "quoteReserve",
+        "type": "uint256"
       },
       {
-        name: 'totalLpTokens',
-        type: 'uint256',
+        "name": "totalLpTokens",
+        "type": "uint256"
       },
       {
-        name: 'isActive',
-        type: 'bool',
-      },
+        "name": "isActive",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getTotalMarkets',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "getTotalMarkets",
+    "inputs": [],
+    "outputs": [
       {
-        name: '',
-        type: 'uint256',
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getTotalTrades',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "getTotalTrades",
+    "inputs": [],
+    "outputs": [
       {
-        name: '',
-        type: 'uint256',
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'OrderPlacedWithTokens',
-    inputs: [
+    "type": "event",
+    "name": "OrderPlacedWithTokens",
+    "inputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true
       },
       {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
+        "name": "maker",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'baseToken',
-        type: 'address',
-        indexed: true,
+        "name": "baseToken",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'baseTokenId',
-        type: 'uint256',
-        indexed: false,
+        "name": "baseTokenId",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'quoteToken',
-        type: 'address',
-        indexed: false,
+        "name": "quoteToken",
+        "type": "address",
+        "indexed": false
       },
       {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
+        "name": "price",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
+        "name": "isBuy",
+        "type": "bool",
+        "indexed": false
       },
       {
-        name: 'orderType',
-        type: 'uint8',
-        indexed: false,
-      },
-    ],
+        "name": "orderType",
+        "type": "uint8",
+        "indexed": false
+      }
+    ]
   },
   {
-    type: 'event',
-    name: 'OrderCancelled',
-    inputs: [
+    "type": "event",
+    "name": "OrderCancelled",
+    "inputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true
       },
       {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
+        "name": "maker",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
+        "name": "remainingAmount",
+        "type": "uint256",
+        "indexed": false
+      }
+    ]
   },
   {
-    type: 'event',
-    name: 'TradeExecuted',
-    inputs: [
+    "type": "event",
+    "name": "TradeExecuted",
+    "inputs": [
       {
-        name: 'tradeId',
-        type: 'bytes32',
-        indexed: true,
+        "name": "tradeId",
+        "type": "bytes32",
+        "indexed": true
       },
       {
-        name: 'taker',
-        type: 'address',
-        indexed: true,
+        "name": "taker",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
+        "name": "maker",
+        "type": "address",
+        "indexed": true
       },
       {
-        name: 'marketId',
-        type: 'bytes32',
-        indexed: false,
+        "name": "marketId",
+        "type": "bytes32",
+        "indexed": false
       },
       {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
+        "name": "price",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'quoteAmount',
-        type: 'uint256',
-        indexed: false,
+        "name": "quoteAmount",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'timestamp',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
-  },
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false
+      }
+    ]
+  }
 ] as const;
 
 export const NODESFACET_ABI = [
   {
-    type: 'function',
-    name: 'registerNode',
-    inputs: [
+    "type": "function",
+    "name": "registerNode",
+    "inputs": [
       {
-        name: '_nodeType',
-        type: 'string',
+        "name": "_nodeType",
+        "type": "string"
       },
       {
-        name: '_capacity',
-        type: 'uint256',
+        "name": "_capacity",
+        "type": "uint256"
       },
       {
-        name: '_assetHash',
-        type: 'bytes32',
+        "name": "_assetHash",
+        "type": "bytes32"
       },
       {
-        name: '_addressName',
-        type: 'string',
+        "name": "_addressName",
+        "type": "string"
       },
       {
-        name: '_lat',
-        type: 'string',
+        "name": "_lat",
+        "type": "string"
       },
       {
-        name: '_lng',
-        type: 'string',
-      },
+        "name": "_lng",
+        "type": "string"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
+        "name": "nodeHash",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getNode',
-    inputs: [
+    "type": "function",
+    "name": "getNode",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'owner',
-        type: 'address',
+        "name": "owner",
+        "type": "address"
       },
       {
-        name: 'nodeType',
-        type: 'string',
+        "name": "nodeType",
+        "type": "string"
       },
       {
-        name: 'capacity',
-        type: 'uint256',
+        "name": "capacity",
+        "type": "uint256"
       },
       {
-        name: 'createdAt',
-        type: 'uint256',
+        "name": "createdAt",
+        "type": "uint256"
       },
       {
-        name: 'active',
-        type: 'bool',
+        "name": "active",
+        "type": "bool"
       },
       {
-        name: 'validNode',
-        type: 'bool',
+        "name": "validNode",
+        "type": "bool"
       },
       {
-        name: 'assetHash',
-        type: 'bytes32',
+        "name": "assetHash",
+        "type": "bytes32"
       },
       {
-        name: 'addressName',
-        type: 'string',
+        "name": "addressName",
+        "type": "string"
       },
       {
-        name: 'lat',
-        type: 'string',
+        "name": "lat",
+        "type": "string"
       },
       {
-        name: 'lng',
-        type: 'string',
-      },
+        "name": "lng",
+        "type": "string"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getOwnerNodes',
-    inputs: [
+    "type": "function",
+    "name": "getOwnerNodes",
+    "inputs": [
       {
-        name: '_owner',
-        type: 'address',
-      },
+        "name": "_owner",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bytes32[]',
-      },
+        "name": "",
+        "type": "bytes32[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getTotalNodes',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "getTotalNodes",
+    "inputs": [],
+    "outputs": [
       {
-        name: '',
-        type: 'uint256',
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'updateNodeStatus',
-    inputs: [
+    "type": "function",
+    "name": "updateNodeStatus",
+    "inputs": [
       {
-        name: '_status',
-        type: 'bytes1',
+        "name": "_status",
+        "type": "bytes1"
       },
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'updateNode',
-    inputs: [
+    "type": "function",
+    "name": "updateNode",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        name: '_nodeType',
-        type: 'string',
+        "name": "_nodeType",
+        "type": "string"
       },
       {
-        name: '_capacity',
-        type: 'uint256',
-      },
+        "name": "_capacity",
+        "type": "uint256"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'deactivateNode',
-    inputs: [
+    "type": "function",
+    "name": "deactivateNode",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'updateNodeLocation',
-    inputs: [
+    "type": "function",
+    "name": "updateNodeLocation",
+    "inputs": [
       {
-        name: '_addressName',
-        type: 'string',
+        "name": "_addressName",
+        "type": "string"
       },
       {
-        name: '_lat',
-        type: 'string',
+        "name": "_lat",
+        "type": "string"
       },
       {
-        name: '_lng',
-        type: 'string',
+        "name": "_lng",
+        "type": "string"
       },
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'updateNodeOwner',
-    inputs: [
+    "type": "function",
+    "name": "updateNodeOwner",
+    "inputs": [
       {
-        name: '_owner',
-        type: 'address',
+        "name": "_owner",
+        "type": "address"
       },
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'addSupportedAsset',
-    inputs: [
+    "type": "function",
+    "name": "addSupportedAsset",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        name: '_token',
-        type: 'address',
+        "name": "_token",
+        "type": "address"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_price',
-        type: 'uint256',
+        "name": "_price",
+        "type": "uint256"
       },
       {
-        name: '_capacity',
-        type: 'uint256',
-      },
+        "name": "_capacity",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'assetId',
-        type: 'uint256',
-      },
+        "name": "assetId",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getNodeAssets',
-    inputs: [
+    "type": "function",
+    "name": "getNodeAssets",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'tuple[]',
-        components: [
+        "name": "",
+        "type": "tuple[]",
+        "components": [
           {
-            name: 'token',
-            type: 'address',
+            "name": "token",
+            "type": "address"
           },
           {
-            name: 'tokenId',
-            type: 'uint256',
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            name: 'price',
-            type: 'uint256',
+            "name": "price",
+            "type": "uint256"
           },
           {
-            name: 'capacity',
-            type: 'uint256',
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            name: 'createdAt',
-            type: 'uint256',
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            name: 'active',
-            type: 'bool',
-          },
-        ],
-      },
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getNodeStatus',
-    inputs: [
+    "type": "function",
+    "name": "getNodeStatus",
+    "inputs": [
       {
-        name: '_node',
-        type: 'address',
-      },
+        "name": "_node",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bytes1',
-      },
+        "name": "",
+        "type": "bytes1"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'setAuraAssetAddress',
-    inputs: [
+    "type": "function",
+    "name": "setAuraAssetAddress",
+    "inputs": [
       {
-        name: '_auraAsset',
-        type: 'address',
-      },
+        "name": "_auraAsset",
+        "type": "address"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getAuraAssetAddress',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "getAuraAssetAddress",
+    "inputs": [],
+    "outputs": [
       {
-        name: '',
-        type: 'address',
-      },
+        "name": "",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'creditNodeTokens',
-    inputs: [
+    "type": "function",
+    "name": "creditNodeTokens",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getNodeTokenIds',
-    inputs: [
+    "type": "function",
+    "name": "getNodeTokenIds",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'uint256[]',
-      },
+        "name": "",
+        "type": "uint256[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getNodeInventoryWithMetadata',
-    inputs: [
+    "type": "function",
+    "name": "getNodeInventoryWithMetadata",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'assets',
-        type: 'tuple[]',
-        components: [
+        "name": "assets",
+        "type": "tuple[]",
+        "components": [
           {
-            name: 'token',
-            type: 'address',
+            "name": "token",
+            "type": "address"
           },
           {
-            name: 'tokenId',
-            type: 'uint256',
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            name: 'price',
-            type: 'uint256',
+            "name": "price",
+            "type": "uint256"
           },
           {
-            name: 'capacity',
-            type: 'uint256',
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            name: 'balance',
-            type: 'uint256',
+            "name": "balance",
+            "type": "uint256"
           },
           {
-            name: 'createdAt',
-            type: 'uint256',
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            name: 'active',
-            type: 'bool',
-          },
-        ],
-      },
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getNodeSellableAssets',
-    inputs: [
+    "type": "function",
+    "name": "getNodeSellableAssets",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
-      },
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'assets',
-        type: 'tuple[]',
-        components: [
+        "name": "assets",
+        "type": "tuple[]",
+        "components": [
           {
-            name: 'token',
-            type: 'address',
+            "name": "token",
+            "type": "address"
           },
           {
-            name: 'tokenId',
-            type: 'uint256',
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            name: 'price',
-            type: 'uint256',
+            "name": "price",
+            "type": "uint256"
           },
           {
-            name: 'capacity',
-            type: 'uint256',
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            name: 'balance',
-            type: 'uint256',
+            "name": "balance",
+            "type": "uint256"
           },
           {
-            name: 'createdAt',
-            type: 'uint256',
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            name: 'active',
-            type: 'bool',
-          },
-        ],
+            "name": "active",
+            "type": "bool"
+          }
+        ]
       },
       {
-        name: 'count',
-        type: 'uint256',
-      },
+        "name": "count",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'placeSellOrderFromNode',
-    inputs: [
+    "type": "function",
+    "name": "placeSellOrderFromNode",
+    "inputs": [
       {
-        name: '_node',
-        type: 'bytes32',
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_quoteToken',
-        type: 'address',
+        "name": "_quoteToken",
+        "type": "address"
       },
       {
-        name: '_price',
-        type: 'uint256',
+        "name": "_price",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'depositTokensToNode',
-    inputs: [
+    "type": "function",
+    "name": "depositTokensToNode",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'withdrawTokensFromNode',
-    inputs: [
+    "type": "function",
+    "name": "withdrawTokensFromNode",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        name: '_amount',
-        type: 'uint256',
-      },
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'getNodeTokenBalance',
-    inputs: [
+    "type": "function",
+    "name": "getNodeTokenBalance",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        name: '_tokenId',
-        type: 'uint256',
-      },
+        "name": "_tokenId",
+        "type": "uint256"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'uint256',
-      },
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'getNodeInventory',
-    inputs: [
+    "type": "function",
+    "name": "getNodeInventory",
+    "inputs": [
       {
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'tokenIds',
-        type: 'uint256[]',
+        "name": "tokenIds",
+        "type": "uint256[]"
       },
       {
-        name: 'balances',
-        type: 'uint256[]',
-      },
+        "name": "balances",
+        "type": "uint256[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'event',
-    name: 'NodeSellOrderPlaced',
-    inputs: [
+    "type": "event",
+    "name": "NodeSellOrderPlaced",
+    "inputs": [
       {
-        name: 'nodeHash',
-        type: 'bytes32',
-        indexed: true,
+        "name": "nodeHash",
+        "type": "bytes32",
+        "indexed": true
       },
       {
-        name: 'tokenId',
-        type: 'uint256',
-        indexed: true,
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true
       },
       {
-        name: 'quoteToken',
-        type: 'address',
-        indexed: false,
+        "name": "quoteToken",
+        "type": "address",
+        "indexed": false
       },
       {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
+        "name": "price",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
       },
       {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: false,
-      },
-    ],
-  },
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": false
+      }
+    ]
+  }
 ] as const;
 
 export const DIAMONDLOUPEFACET_ABI = [
   {
-    type: 'function',
-    name: 'facetAddress',
-    inputs: [
+    "type": "function",
+    "name": "facetAddress",
+    "inputs": [
       {
-        name: '_functionSelector',
-        type: 'bytes4',
-      },
+        "name": "_functionSelector",
+        "type": "bytes4"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'facetAddress_',
-        type: 'address',
-      },
+        "name": "facetAddress_",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'facets',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "facets",
+    "inputs": [],
+    "outputs": [
       {
-        name: 'facets_',
-        type: 'tuple[]',
-      },
+        "name": "facets_",
+        "type": "tuple[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'facetFunctionSelectors',
-    inputs: [
+    "type": "function",
+    "name": "facetFunctionSelectors",
+    "inputs": [
       {
-        name: '_facet',
-        type: 'address',
-      },
+        "name": "_facet",
+        "type": "address"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: 'facetFunctionSelectors_',
-        type: 'bytes4[]',
-      },
+        "name": "facetFunctionSelectors_",
+        "type": "bytes4[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'facetAddresses',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "facetAddresses",
+    "inputs": [],
+    "outputs": [
       {
-        name: 'facetAddresses_',
-        type: 'address[]',
-      },
+        "name": "facetAddresses_",
+        "type": "address[]"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'supportsInterface',
-    inputs: [
+    "type": "function",
+    "name": "supportsInterface",
+    "inputs": [
       {
-        name: '_interfaceId',
-        type: 'bytes4',
-      },
+        "name": "_interfaceId",
+        "type": "bytes4"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bool',
-      },
+        "name": "",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
-  },
+    "stateMutability": "view"
+  }
 ] as const;
 
 export const OWNERSHIPFACET_ABI = [
   {
-    type: 'function',
-    name: 'acceptOwnership',
-    inputs: [],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'initialize',
-    inputs: [
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
       {
-        name: '_owner',
-        type: 'address',
-      },
+        "name": "_owner",
+        "type": "address"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'owner',
-    inputs: [],
-    outputs: [
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
       {
-        name: '',
-        type: 'address',
-      },
+        "name": "",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
+    "stateMutability": "view"
   },
   {
-    type: 'function',
-    name: 'renounceOwnership',
-    inputs: [],
-    outputs: [],
-    stateMutability: 'nonpayable',
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'transferOwnership',
-    inputs: [
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
       {
-        name: 'newOwner',
-        type: 'address',
-      },
+        "name": "newOwner",
+        "type": "address"
+      }
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
 ] as const;
 
 export const ERC1155RECEIVERFACET_ABI = [
   {
-    type: 'function',
-    name: 'onERC1155Received',
-    inputs: [
+    "type": "function",
+    "name": "onERC1155Received",
+    "inputs": [
       {
-        name: 'operator',
-        type: 'address',
+        "name": "operator",
+        "type": "address"
       },
       {
-        name: 'from',
-        type: 'address',
+        "name": "from",
+        "type": "address"
       },
       {
-        name: 'id',
-        type: 'uint256',
+        "name": "id",
+        "type": "uint256"
       },
       {
-        name: 'value',
-        type: 'uint256',
+        "name": "value",
+        "type": "uint256"
       },
       {
-        name: 'data',
-        type: 'bytes',
-      },
+        "name": "data",
+        "type": "bytes"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bytes4',
-      },
+        "name": "",
+        "type": "bytes4"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'onERC1155BatchReceived',
-    inputs: [
+    "type": "function",
+    "name": "onERC1155BatchReceived",
+    "inputs": [
       {
-        name: 'operator',
-        type: 'address',
+        "name": "operator",
+        "type": "address"
       },
       {
-        name: 'from',
-        type: 'address',
+        "name": "from",
+        "type": "address"
       },
       {
-        name: 'ids',
-        type: 'uint256[]',
+        "name": "ids",
+        "type": "uint256[]"
       },
       {
-        name: 'values',
-        type: 'uint256[]',
+        "name": "values",
+        "type": "uint256[]"
       },
       {
-        name: 'data',
-        type: 'bytes',
-      },
+        "name": "data",
+        "type": "bytes"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bytes4',
-      },
+        "name": "",
+        "type": "bytes4"
+      }
     ],
-    stateMutability: 'nonpayable',
+    "stateMutability": "nonpayable"
   },
   {
-    type: 'function',
-    name: 'supportsInterface',
-    inputs: [
+    "type": "function",
+    "name": "supportsInterface",
+    "inputs": [
       {
-        name: 'interfaceId',
-        type: 'bytes4',
-      },
+        "name": "interfaceId",
+        "type": "bytes4"
+      }
     ],
-    outputs: [
+    "outputs": [
       {
-        name: '',
-        type: 'bool',
-      },
+        "name": "",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
-  },
+    "stateMutability": "view"
+  }
 ] as const;
 
 // Helper to get ABI as ethers-compatible format

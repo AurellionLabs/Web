@@ -1,5 +1,5 @@
 // Auto-generated from RWYVault.sol - DO NOT EDIT
-// Generated at: 2026-01-16T14:46:36.415Z
+// Generated at: 2026-01-17T12:26:21.574Z
 
 export const RWYVaultABI = [
   {
@@ -35,7 +35,17 @@ export const RWYVaultABI = [
   },
   {
     inputs: [],
+    name: 'EnforcedPause',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'ExceedsTarget',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ExpectedPause',
     type: 'error',
   },
   {
@@ -94,8 +104,46 @@ export const RWYVaultABI = [
     type: 'error',
   },
   {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
+    ],
+    name: 'OwnableInvalidOwner',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    name: 'OwnableUnauthorizedAccount',
+    type: 'error',
+  },
+  {
     inputs: [],
     name: 'ProcessingDeadlinePassed',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ReentrancyGuardReentrantCall',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+    ],
+    name: 'SafeERC20FailedOperation',
     type: 'error',
   },
   {
