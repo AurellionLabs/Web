@@ -8,8 +8,8 @@ import {
 } from '../domain/rwy';
 import { RWYRepository } from '../infrastructure/repositories/rwy-repository';
 
-// Contract address - should come from environment/config
-const RWY_VAULT_ADDRESS = process.env.NEXT_PUBLIC_RWY_VAULT_ADDRESS || '';
+// RWY Staking is now part of the Diamond - use Diamond address
+const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
 
 /**
  * Hook to fetch and manage RWY opportunities
@@ -22,8 +22,8 @@ export function useRWYOpportunities() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchOpportunities = useCallback(async () => {
-    if (!RWY_VAULT_ADDRESS) {
-      setError('RWY Vault address not configured');
+    if (!RWY_CONTRACT_ADDRESS) {
+      setError('Diamond address not configured');
       setLoading(false);
       return;
     }
@@ -37,7 +37,7 @@ export function useRWYOpportunities() {
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const opps = await repository.getAllOpportunitiesWithDynamicData();
 
       setOpportunities(opps);
@@ -95,7 +95,7 @@ export function useOperatorRWYOpportunities(operator: Address | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchOpportunities = useCallback(async () => {
-    if (!operator || !RWY_VAULT_ADDRESS) {
+    if (!operator || !RWY_CONTRACT_ADDRESS) {
       setLoading(false);
       return;
     }
@@ -108,7 +108,7 @@ export function useOperatorRWYOpportunities(operator: Address | undefined) {
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const allOpps = await repository.getAllOpportunitiesWithDynamicData();
       const operatorOpps = allOpps.filter(
         (opp) => opp.operator.toLowerCase() === operator.toLowerCase(),
@@ -148,7 +148,7 @@ export function useUserRWYStakes(userAddress: Address | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStakes = useCallback(async () => {
-    if (!userAddress || !RWY_VAULT_ADDRESS) {
+    if (!userAddress || !RWY_CONTRACT_ADDRESS) {
       setLoading(false);
       return;
     }
@@ -161,7 +161,7 @@ export function useUserRWYStakes(userAddress: Address | undefined) {
         ? new ethers.BrowserProvider(window.ethereum as any)
         : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
 
-      const repository = new RWYRepository(RWY_VAULT_ADDRESS, provider);
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const stakerOpps = await repository.getStakerOpportunities(userAddress);
 
       // Get dynamic data for each

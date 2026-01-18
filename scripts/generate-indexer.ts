@@ -37,31 +37,24 @@ const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
   OrderMatchingFacet: { domain: 'clob', priority: 3 },
   OrderRouterFacet: { domain: 'clob', priority: 4 },
   BridgeFacet: { domain: 'bridge', priority: 5 },
-  StakingFacet: { domain: 'staking', priority: 6 },
-  CLOBAdminFacet: { domain: 'clob-admin', priority: 7 },
-  DiamondCutFacet: { domain: 'diamond', priority: 8 },
-  OwnershipFacet: { domain: 'diamond', priority: 9 },
+  RWYStakingFacet: { domain: 'rwy-staking', priority: 6 },
+  OperatorFacet: { domain: 'operators', priority: 7 },
+  CLOBAdminFacet: { domain: 'clob-admin', priority: 8 },
+  DiamondCutFacet: { domain: 'diamond', priority: 9 },
+  OwnershipFacet: { domain: 'diamond', priority: 10 },
 };
 
-// EXTERNAL_CONTRACTS - These are deprecated and should not be indexed
-// They are kept for reference but not included in the generator
-// RWYVault and AuraAsset have been moved to legacy/contracts/
-// If needed in the future, they can be added back
+// External contracts (not facets) that emit events we want to index
+// Note: RWYVault removed - replaced by RWYStakingFacet in Diamond
 const EXTERNAL_CONTRACTS: Record<
   string,
   { domain: string; artifactPath: string; priority: number }
 > = {
-  // DEPRECATED - Commented out to only index Diamond facets
-  // RWYVault: {
-  //   domain: 'rwy-vault',
-  //   artifactPath: 'RWYVault.sol/RWYVault.json',
-  //   priority: 10,
-  // },
-  // AuraAsset: {
-  //   domain: 'aura-asset',
-  //   artifactPath: 'AuraAsset.sol/AuraAsset.json',
-  //   priority: 11,
-  // },
+  AuraAsset: {
+    domain: 'aura-asset',
+    artifactPath: 'AuraAsset.sol/AuraAsset.json',
+    priority: 11,
+  },
 };
 
 // ============================================================================
@@ -743,22 +736,58 @@ ${domains.map((d) => `import './${d}.generated';`).join('\n')}
 // PONDER CONFIG GENERATION
 // ============================================================================
 
+// Mapping of external contract names to their chain-constants variable names
+// This handles cases where the constant name doesn't match the contract name pattern
+const EXTERNAL_CONTRACT_ADDRESS_MAPPING: Record<
+  string,
+  { addressConst: string; blockConst: string }
+> = {
+  AuraAsset: {
+    addressConst: 'NEXT_PUBLIC_AURA_ASSET_ADDRESS',
+    blockConst: 'AURA_ASSET_DEPLOY_BLOCK',
+  },
+};
+
 function generatePonderConfig(facets: Map<string, FacetInfo>): void {
+  // Get external contracts that exist in our facets map
+  const externalFacets = Array.from(facets.values()).filter(
+    (f) => EXTERNAL_CONTRACTS[f.name],
+  );
+
   // Generate contract configurations for external contracts
-  const externalContracts = Array.from(facets.values())
-    .filter((f) => EXTERNAL_CONTRACTS[f.name])
+  const externalContracts = externalFacets
     .map((facet) => {
-      const config = EXTERNAL_CONTRACTS[facet.name];
-      const addressConstant = `NEXT_PUBLIC_${facet.name.toUpperCase()}_ADDRESS`;
-      const startBlockConstant = `${facet.name.toUpperCase()}_DEPLOY_BLOCK`;
+      const mapping = EXTERNAL_CONTRACT_ADDRESS_MAPPING[facet.name];
+      if (!mapping) {
+        console.warn(
+          `⚠️  No address mapping for external contract: ${facet.name}`,
+        );
+        return null;
+      }
       return `    ${facet.name}: {
       network: 'baseSepolia',
       abi: ${facet.name}ABI,
-      address: ${addressConstant} as \`0x\${string}\`,
-      startBlock: ${startBlockConstant},
+      address: ${mapping.addressConst} as \`0x\${string}\`,
+      startBlock: ${mapping.blockConst},
     }`;
     })
+    .filter(Boolean)
     .join(',\n');
+
+  // Generate ABI imports for external contracts
+  const abiImports = externalFacets
+    .map((f) => `import { ${f.name}ABI } from './abis/generated/${f.name}';`)
+    .join('\n');
+
+  // Generate chain constant imports based on what external contracts we have
+  const chainConstantImports: string[] = ['NEXT_PUBLIC_RPC_URL_84532'];
+  for (const facet of externalFacets) {
+    const mapping = EXTERNAL_CONTRACT_ADDRESS_MAPPING[facet.name];
+    if (mapping) {
+      chainConstantImports.push(mapping.addressConst);
+      chainConstantImports.push(mapping.blockConst);
+    }
+  }
 
   const configContent = `// Auto-generated Ponder config - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
@@ -768,19 +797,12 @@ import { http } from 'viem';
 
 // Import generated ABIs
 import { DiamondABI } from './abis/generated';
-${Array.from(facets.values())
-  .filter((f) => EXTERNAL_CONTRACTS[f.name])
-  .map((f) => `import { ${f.name}ABI } from './abis/generated/${f.name}';`)
-  .join('\n')}
+${abiImports}
 
 // Import chain constants
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
 import {
-  NEXT_PUBLIC_RPC_URL_84532,
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-  NEXT_PUBLIC_RWY_VAULT_ADDRESS,
-  AURA_ASSET_DEPLOY_BLOCK,
-  RWY_VAULT_DEPLOY_BLOCK,
+  ${chainConstantImports.join(',\n  ')},
 } from './chain-constants';
 
 const BASE_SEPOLIA_CHAIN_ID = 84532;

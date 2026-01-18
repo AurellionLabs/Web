@@ -3,30 +3,10 @@
   "chainId": 84532,
   "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF",
   "contracts": {
-    "Aura": {
-      "address": "0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6",
-      "blockNumber": 36423435
-    },
-    "AuSys": {
-      "address": "0x94a61417e11C2e4FB756DBF2a0CaC7f433eaE6Aa",
-      "blockNumber": 36423438
-    },
-    "AurumNodeManager": {
-      "address": "0x725793e4Ebb067df8167D43be56b4d86A6c964F3",
-      "blockNumber": 36423440
-    },
-    "AuStake": {
-      "address": "0x6d00C0cE97E10794d8771743915a2C0DB6d99492",
-      "blockNumber": 36423442
-    },
-    "AuraAsset": {
-      "address": "0xb3090aBF81918FF50e921b166126aD6AB9a03944",
-      "blockNumber": 36423444
-    },
-    "CLOB": {
-      "address": "0xDd33fF6AE3E20E59D1AC20336358F024a2861304",
-      "blockNumber": 36423451
+    "OperatorFacet": {
+      "address": "0xEe00987d75458F01e7FF84afa7551686bBA278C9",
+      "blockNumber": 36483035
     }
   },
-  "timestamp": "2026-01-17T01:59:55.750Z"
+  "timestamp": "2026-01-18T11:06:09.378Z"
 }

@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-18T00:41:29.639Z
+// Generated at: 2026-01-18T11:06:09.346Z
 // 
 // Dumb indexer pattern: Store raw events, aggregate in repository layer
 // Events from: NodesFacet

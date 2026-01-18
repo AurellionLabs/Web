@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-01-18T00:41:29.635Z
+// Generated at: 2026-01-18T11:06:09.333Z
 // 
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -9,10 +9,12 @@ export { CLOBFacetV2ABI, CLOBFacetV2Events } from './CLOBFacetV2';
 export { OrderMatchingFacetABI, OrderMatchingFacetEvents } from './OrderMatchingFacet';
 export { OrderRouterFacetABI, OrderRouterFacetEvents } from './OrderRouterFacet';
 export { BridgeFacetABI, BridgeFacetEvents } from './BridgeFacet';
-export { StakingFacetABI, StakingFacetEvents } from './StakingFacet';
+export { RWYStakingFacetABI, RWYStakingFacetEvents } from './RWYStakingFacet';
+export { OperatorFacetABI, OperatorFacetEvents } from './OperatorFacet';
 export { CLOBAdminFacetABI, CLOBAdminFacetEvents } from './CLOBAdminFacet';
 export { DiamondCutFacetABI, DiamondCutFacetEvents } from './DiamondCutFacet';
 export { OwnershipFacetABI, OwnershipFacetEvents } from './OwnershipFacet';
+export { AuraAssetABI, AuraAssetEvents } from './AuraAsset';
 
 // Combined ABI for Diamond contract (deduplicated events)
 export const DiamondABI = [
@@ -1386,6 +1388,7 @@ export const DiamondABI = [
     "anonymous": false,
     "inputs": [
       {
+<<<<<<< HEAD
         "indexed": false,
         "internalType": "uint256",
         "name": "oldRate",
@@ -1399,15 +1402,16 @@ export const DiamondABI = [
       }
     ],
     "name": "RewardRateUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
+=======
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
       {
         "indexed": true,
         "internalType": "address",
-        "name": "user",
+        "name": "operator",
         "type": "address"
       },
       {
@@ -1415,9 +1419,55 @@ export const DiamondABI = [
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      }
+    ],
+    "name": "CollateralReturned",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+<<<<<<< HEAD
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+=======
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "staker",
+        "type": "address"
+      },
+      {
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+<<<<<<< HEAD
       }
     ],
     "name": "RewardsClaimed",
+=======
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalStaked",
+        "type": "uint256"
+      }
+    ],
+    "name": "CommodityStaked",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
     "type": "event"
   },
   {
@@ -1425,18 +1475,36 @@ export const DiamondABI = [
     "inputs": [
       {
         "indexed": true,
+<<<<<<< HEAD
         "internalType": "address",
         "name": "user",
         "type": "address"
       },
       {
+=======
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "staker",
+        "type": "address"
+      },
+      {
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
         "indexed": false,
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
     ],
+<<<<<<< HEAD
     "name": "Staked",
+=======
+    "name": "CommodityUnstaked",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
     "type": "event"
   },
   {
@@ -1444,18 +1512,649 @@ export const DiamondABI = [
     "inputs": [
       {
         "indexed": true,
+<<<<<<< HEAD
         "internalType": "address",
         "name": "user",
         "type": "address"
+=======
+        "internalType": "string",
+        "name": "param",
+        "type": "string"
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
       },
       {
         "indexed": false,
         "internalType": "uint256",
+<<<<<<< HEAD
         "name": "amount",
         "type": "uint256"
       }
     ],
     "name": "Withdrawn",
+=======
+        "name": "oldValue",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newValue",
+        "type": "uint256"
+      }
+    ],
+    "name": "ConfigUpdated",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "marketId",
+=======
+        "name": "opportunityId",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+<<<<<<< HEAD
+        "name": "priceChangeThreshold",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "cooldownPeriod",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isEnabled",
+        "type": "bool"
+      }
+    ],
+    "name": "CircuitBreakerConfigured",
+=======
+        "name": "deliveredAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "DeliveryConfirmed",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "marketId",
+=======
+        "name": "opportunityId",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+<<<<<<< HEAD
+        "internalType": "uint256",
+        "name": "resetAt",
+        "type": "uint256"
+      }
+    ],
+    "name": "CircuitBreakerReset",
+=======
+        "internalType": "bytes32",
+        "name": "journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "DeliveryStarted",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "marketId",
+=======
+        "name": "id",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+<<<<<<< HEAD
+        "internalType": "uint256",
+        "name": "triggerPrice",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "previousPrice",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "changePercent",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "cooldownUntil",
+        "type": "uint256"
+      }
+    ],
+    "name": "CircuitBreakerTripped",
+=======
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "OpportunityCancelled",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "canceller",
+        "type": "address"
+      }
+    ],
+    "name": "EmergencyActionCancelled",
+=======
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalProceeds",
+        "type": "uint256"
+      }
+    ],
+    "name": "OpportunityCompleted",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "actionId",
+=======
+        "name": "id",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+<<<<<<< HEAD
+        "name": "executor",
+=======
+        "name": "operator",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+<<<<<<< HEAD
+        "name": "token",
+=======
+        "name": "inputToken",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "address"
+      },
+      {
+        "indexed": false,
+<<<<<<< HEAD
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+=======
+        "internalType": "uint256",
+        "name": "inputTokenId",
+        "type": "uint256"
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+<<<<<<< HEAD
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "EmergencyActionExecuted",
+=======
+        "name": "targetAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "promisedYieldBps",
+        "type": "uint256"
+      }
+    ],
+    "name": "OpportunityCreated",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "initiator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "executeAfter",
+        "type": "uint256"
+      }
+    ],
+    "name": "EmergencyActionInitiated",
+=======
+        "name": "id",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalStaked",
+        "type": "uint256"
+      }
+    ],
+    "name": "OpportunityFunded",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+<<<<<<< HEAD
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "EmergencyWithdrawal",
+=======
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "outputAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "outputTokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProcessingCompleted",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+<<<<<<< HEAD
+        "internalType": "address",
+        "name": "oldRecipient",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newRecipient",
+        "type": "address"
+      }
+    ],
+    "name": "FeeRecipientUpdated",
+=======
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ProcessingStarted",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+<<<<<<< HEAD
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "takerFeeBps",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "makerFeeBps",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "lpFeeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "FeesUpdated",
+=======
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "staker",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "stakedAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "profitShare",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProfitDistributed",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+<<<<<<< HEAD
+        "indexed": false,
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      }
+    ],
+    "name": "GlobalPause",
+=======
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "proceeds",
+        "type": "uint256"
+      }
+    ],
+    "name": "SaleProceedsRecorded",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+<<<<<<< HEAD
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "minRevealDelay",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "commitmentThreshold",
+        "type": "uint256"
+      }
+    ],
+    "name": "MEVProtectionUpdated",
+=======
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "OperatorApproved",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+<<<<<<< HEAD
+        "internalType": "bytes32",
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MarketPaused",
+=======
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldReputation",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newReputation",
+        "type": "uint256"
+      }
+    ],
+    "name": "OperatorReputationUpdated",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+<<<<<<< HEAD
+        "internalType": "bytes32",
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MarketUnpaused",
+=======
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "OperatorRevoked",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+<<<<<<< HEAD
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxOrdersPerBlock",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxVolumePerBlock",
+        "type": "uint256"
+      }
+    ],
+    "name": "RateLimitsUpdated",
+=======
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "collateralToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "collateralTokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "OperatorSlashed",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+<<<<<<< HEAD
+=======
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "successfulOps",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalValueProcessed",
+        "type": "uint256"
+      }
+    ],
+    "name": "OperatorStatsUpdated",
     "type": "event"
   },
   {
@@ -1800,6 +2499,7 @@ export const DiamondABI = [
     "anonymous": false,
     "inputs": [
       {
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
         "components": [
           {
             "internalType": "address",
@@ -1858,6 +2558,7 @@ export const DiamondABI = [
     "type": "event"
   },
   {
+<<<<<<< HEAD
     "inputs": [
       {
         "internalType": "bytes32",
@@ -1902,6 +2603,493 @@ export const DiamondABI = [
         "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_clobAddress",
+        "type": "address"
+      }
+    ],
+    "name": "approveClobForTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "creditNodeTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "deactivateNode",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "debitNodeTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "depositTokensToNode",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAuraAssetAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getClobAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+=======
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "ApprovalForAll",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "hash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "attributeIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string[]",
+        "name": "values",
+        "type": "string[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      }
+    ],
+    "name": "AssetAttributeAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "custodian",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "CustodyEstablished",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "custodian",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "redeemer",
+        "type": "address"
+      }
+    ],
+    "name": "CustodyReleased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "hash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "assetClass",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "className",
+        "type": "string"
+      }
+    ],
+    "name": "MintedAsset",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "values",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "TransferBatch",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "TransferSingle",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "value",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "URI",
+    "type": "event"
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getNode",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "nodeType",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "capacity",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "createdAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "validNode",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "assetHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "addressName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "lat",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "lng",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+=======
+        "name": "_node",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_capacity",
+        "type": "uint256"
+      }
+    ],
+    "name": "addSupportedAsset",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "assetId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+<<<<<<< HEAD
+      }
+    ],
+    "name": "getNodeAssets",
+    "outputs": [
+      {
+=======
       },
       {
         "internalType": "address",
@@ -2097,6 +3285,7 @@ export const DiamondABI = [
     "name": "getNodeAssets",
     "outputs": [
       {
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
         "components": [
           {
             "internalType": "address",
@@ -3709,6 +4898,7 @@ export const DiamondABI = [
     "type": "function"
   },
   {
+<<<<<<< HEAD
     "inputs": [],
     "name": "REWARD_DURATION",
     "outputs": [
@@ -3754,6 +4944,30 @@ export const DiamondABI = [
       {
         "internalType": "uint256",
         "name": "",
+=======
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "stakeAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "calculateExpectedProfit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "expectedProfit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "userShareBps",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
         "type": "uint256"
       }
     ],
@@ -3762,6 +4976,7 @@ export const DiamondABI = [
   },
   {
     "inputs": [
+<<<<<<< HEAD
       {
         "internalType": "address",
         "name": "_user",
@@ -3800,17 +5015,42 @@ export const DiamondABI = [
       }
     ],
     "stateMutability": "view",
+=======
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "cancelOpportunity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
     "type": "function"
   },
   {
     "inputs": [
       {
+<<<<<<< HEAD
         "internalType": "uint256",
         "name": "_newRate",
         "type": "uint256"
       }
     ],
     "name": "setRewardRate",
+=======
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "claimProfits",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -3818,6 +5058,7 @@ export const DiamondABI = [
   {
     "inputs": [
       {
+<<<<<<< HEAD
         "internalType": "uint256",
         "name": "_amount",
         "type": "uint256"
@@ -3837,6 +5078,1234 @@ export const DiamondABI = [
       }
     ],
     "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "cancelEmergencyRecovery",
+=======
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "outputTokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "actualOutputAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "completeProcessing",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "marketId",
+=======
+        "name": "opportunityId",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+<<<<<<< HEAD
+        "name": "priceChangeThreshold",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "cooldownPeriod",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isEnabled",
+        "type": "bool"
+      }
+    ],
+    "name": "configureCircuitBreaker",
+=======
+        "name": "deliveredAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "confirmDelivery",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+<<<<<<< HEAD
+        "internalType": "bytes32[]",
+        "name": "orderIds",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "emergencyUserWithdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "executeEmergencyRecovery",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getCircuitBreaker",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "lastPrice",
+=======
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "inputToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "inputTokenId",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+<<<<<<< HEAD
+        "name": "priceChangeThreshold",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "cooldownPeriod",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tripTimestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isTripped",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "isEnabled",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getEmergencyAction",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "initiator",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+=======
+        "name": "targetAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "outputToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expectedOutputAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "promisedYieldBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "operatorFeeBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minSalePrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "fundingDays",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "processingDays",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "collateralToken",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+<<<<<<< HEAD
+        "name": "amount",
+=======
+        "name": "collateralTokenId",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+<<<<<<< HEAD
+        "name": "initiatedAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "executeAfter",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "executed",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "cancelled",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getFeeConfig",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "takerFeeBps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "makerFeeBps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "lpFeeBps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "address",
+        "name": "feeRecipient",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getMEVConfig",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "minRevealDelay",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "commitmentThreshold",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRateLimitConfig",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "maxOrdersPerBlock",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxVolumePerBlock",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "initiateEmergencyRecovery",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      }
+    ],
+=======
+        "name": "collateralAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "createOpportunity",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "emergencyClaim",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "forceCancel",
+    "outputs": [],
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+<<<<<<< HEAD
+    "name": "isPaused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pauseStartTime",
+        "type": "uint256"
+=======
+    "name": "getAllOpportunities",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+<<<<<<< HEAD
+  },
+  {
+    "inputs": [],
+    "name": "pause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+=======
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+<<<<<<< HEAD
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "pauseMarket",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "resetCircuitBreaker",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "priceChangeThreshold",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "cooldownPeriod",
+        "type": "uint256"
+      }
+    ],
+    "name": "setDefaultCircuitBreakerParams",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "timelock",
+        "type": "uint256"
+      }
+    ],
+    "name": "setEmergencyTimelock",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "takerFeeBps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "makerFeeBps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "lpFeeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "setFees",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "minRevealDelay",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "commitmentThreshold",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMEVProtection",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "maxOrdersPerBlock",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxVolumePerBlock",
+        "type": "uint256"
+      }
+    ],
+    "name": "setRateLimits",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "tripCircuitBreaker",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "marketId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "unpauseMarket",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "facetAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "enum IDiamondCut.FacetCutAction",
+            "name": "action",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes4[]",
+            "name": "functionSelectors",
+            "type": "bytes4[]"
+          }
+        ],
+        "internalType": "struct IDiamondCut.FacetCut[]",
+        "name": "_diamondCut",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_init",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_calldata",
+        "type": "bytes"
+      }
+    ],
+    "name": "diamondCut",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+=======
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getOpportunity",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "id",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "operator",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "inputToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "inputTokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "targetAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "stakedAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "outputToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "outputTokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expectedOutputAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "promisedYieldBps",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "operatorFeeBps",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minSalePrice",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "fundingDeadline",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "processingDeadline",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "fundedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "completedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum RWYStorage.OpportunityStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct RWYStorage.CollateralInfo",
+            "name": "collateral",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct RWYStorage.Opportunity",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+    "type": "function"
+  },
+  {
+    "inputs": [],
+<<<<<<< HEAD
+    "name": "acceptOwnership",
+    "outputs": [],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+=======
+    "name": "getOpportunityCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+<<<<<<< HEAD
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_newOwner",
+        "type": "address"
+      }
+    ],
+=======
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getOpportunityStakers",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRWYConfig",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "minOperatorCollateralBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxYieldBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "protocolFeeBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "defaultProcessingDays",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "staker",
+        "type": "address"
+      }
+    ],
+    "name": "getRWYStake",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "stakedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "claimed",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct RWYStorage.RWYStake",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getSaleProceeds",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "proceeds",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "finalized",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "initializeRWYStaking",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "proceeds",
+        "type": "uint256"
+      }
+    ],
+    "name": "recordSaleProceeds",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "days_",
+        "type": "uint256"
+      }
+    ],
+    "name": "setDefaultProcessingDays",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "bps",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMaxYieldBps",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "bps",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMinCollateralBps",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "bps",
+        "type": "uint256"
+      }
+    ],
+    "name": "setProtocolFeeBps",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "stake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "startDelivery",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "unstake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "approveOperator",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "getOperatorReputation",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "getOperatorStats",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "reputation",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "successfulOps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalValueProcessed",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "getOperatorSuccessfulOps",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "getOperatorTotalValueProcessed",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "isApprovedOperator",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "revokeOperator",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "newReputation",
+        "type": "uint256"
+      }
+    ],
+    "name": "setOperatorReputation",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "slashOperator",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -4348,10 +6817,838 @@ export const DiamondABI = [
         "type": "address"
       }
     ],
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
     "name": "transferOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
+<<<<<<< HEAD
+=======
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "className",
+        "type": "string"
+      }
+    ],
+    "name": "addSupportedClass",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "balanceOf",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "accounts",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "balanceOfBatch",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "burn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "values",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "burnBatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "exists",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCustodyInfo",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "custodian",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "hashToClass",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "hashToTokenID",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "ipfsID",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "isApprovedForAll",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isClassActive",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isInCustody",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "assetClass",
+            "type": "string"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "internalType": "string[]",
+                "name": "values",
+                "type": "string[]"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct AuraAsset.Attribute[]",
+            "name": "attributes",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct AuraAsset.Asset",
+        "name": "asset",
+        "type": "tuple"
+      }
+    ],
+    "name": "lookupHash",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "amounts",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "mintBatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "nameToSupportedAssetIndex",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "nameToSupportedAssets",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "assetClass",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "nameToSupportedClass",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "nameToSupportedClassIndex",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "assetClass",
+            "type": "string"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "internalType": "string[]",
+                "name": "values",
+                "type": "string[]"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct AuraAsset.Attribute[]",
+            "name": "attributes",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct AuraAsset.Asset",
+        "name": "asset",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "className",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "nodeMint",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "hash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenID",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "redeem",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "assetClass",
+            "type": "string"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "internalType": "string[]",
+                "name": "values",
+                "type": "string[]"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct AuraAsset.Attribute[]",
+            "name": "attributes",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct AuraAsset.Asset",
+        "name": "asset",
+        "type": "tuple"
+      }
+    ],
+    "name": "removeSupportedAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "className",
+        "type": "string"
+      }
+    ],
+    "name": "removeSupportedClass",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "values",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "safeBatchTransferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "safeTransferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "setApprovalForAll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IAurumNodeManager",
+        "name": "_NodeManager",
+        "type": "address"
+      }
+    ],
+    "name": "setNodeManager",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "newuri",
+        "type": "string"
+      }
+    ],
+    "name": "setURI",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "supportedAssets",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "supportedClasses",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "interfaceId",
+        "type": "bytes4"
+      }
+    ],
+    "name": "supportsInterface",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "tokenCustodian",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "tokenCustodyAmount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalSupply",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "uri",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
   }
 ] as const;
 
@@ -4557,6 +7854,7 @@ export const EventSignatureRegistry = {
     "facet": "BridgeFacet",
     "signature": "UnifiedOrderCreated(bytes32,bytes32,address,address,address,uint256,uint256,uint256)"
   },
+<<<<<<< HEAD
   "0xc390a98a": {
     "name": "RewardRateUpdated",
     "facet": "StakingFacet",
@@ -4652,9 +7950,224 @@ export const EventSignatureRegistry = {
     "facet": "DiamondCutFacet",
     "signature": "DiamondCut(tuple[],address,bytes)"
   },
+=======
+  "0x8606a781": {
+    "name": "CollateralReturned",
+    "facet": "RWYStakingFacet",
+    "signature": "CollateralReturned(bytes32,address,uint256)"
+  },
+  "0xdbd49b34": {
+    "name": "CommodityStaked",
+    "facet": "RWYStakingFacet",
+    "signature": "CommodityStaked(bytes32,address,uint256,uint256)"
+  },
+  "0x24b492cf": {
+    "name": "CommodityUnstaked",
+    "facet": "RWYStakingFacet",
+    "signature": "CommodityUnstaked(bytes32,address,uint256)"
+  },
+  "0xd7474166": {
+    "name": "ConfigUpdated",
+    "facet": "RWYStakingFacet",
+    "signature": "ConfigUpdated(string,uint256,uint256)"
+  },
+  "0x1c0fcf44": {
+    "name": "DeliveryConfirmed",
+    "facet": "RWYStakingFacet",
+    "signature": "DeliveryConfirmed(bytes32,uint256)"
+  },
+  "0xec8d4528": {
+    "name": "DeliveryStarted",
+    "facet": "RWYStakingFacet",
+    "signature": "DeliveryStarted(bytes32,bytes32)"
+  },
+  "0xd3955fc1": {
+    "name": "OpportunityCancelled",
+    "facet": "RWYStakingFacet",
+    "signature": "OpportunityCancelled(bytes32,string)"
+  },
+  "0x5d494cc2": {
+    "name": "OpportunityCompleted",
+    "facet": "RWYStakingFacet",
+    "signature": "OpportunityCompleted(bytes32,uint256)"
+  },
+  "0x1e5c8915": {
+    "name": "OpportunityCreated",
+    "facet": "RWYStakingFacet",
+    "signature": "OpportunityCreated(bytes32,address,address,uint256,uint256,uint256)"
+  },
+  "0xef294796": {
+    "name": "OpportunityFunded",
+    "facet": "RWYStakingFacet",
+    "signature": "OpportunityFunded(bytes32,uint256)"
+  },
+  "0x85ee5e30": {
+    "name": "ProcessingCompleted",
+    "facet": "RWYStakingFacet",
+    "signature": "ProcessingCompleted(bytes32,uint256,uint256)"
+  },
+  "0xcc013089": {
+    "name": "ProcessingStarted",
+    "facet": "RWYStakingFacet",
+    "signature": "ProcessingStarted(bytes32)"
+  },
+  "0x275d0197": {
+    "name": "ProfitDistributed",
+    "facet": "RWYStakingFacet",
+    "signature": "ProfitDistributed(bytes32,address,uint256,uint256)"
+  },
+  "0x4f6725f3": {
+    "name": "SaleProceedsRecorded",
+    "facet": "RWYStakingFacet",
+    "signature": "SaleProceedsRecorded(bytes32,uint256)"
+  },
+  "0xf338da91": {
+    "name": "OperatorApproved",
+    "facet": "OperatorFacet",
+    "signature": "OperatorApproved(address)"
+  },
+  "0x8320ad02": {
+    "name": "OperatorReputationUpdated",
+    "facet": "OperatorFacet",
+    "signature": "OperatorReputationUpdated(address,uint256,uint256)"
+  },
+  "0xa5f3b762": {
+    "name": "OperatorRevoked",
+    "facet": "OperatorFacet",
+    "signature": "OperatorRevoked(address)"
+  },
+  "0x90e68b2e": {
+    "name": "OperatorSlashed",
+    "facet": "OperatorFacet",
+    "signature": "OperatorSlashed(bytes32,address,address,uint256,uint256)"
+  },
+  "0xd6d54f61": {
+    "name": "OperatorStatsUpdated",
+    "facet": "OperatorFacet",
+    "signature": "OperatorStatsUpdated(address,uint256,uint256)"
+  },
+  "0x58807e46": {
+    "name": "CircuitBreakerConfigured",
+    "facet": "CLOBAdminFacet",
+    "signature": "CircuitBreakerConfigured(bytes32,uint256,uint256,bool)"
+  },
+  "0xbae506d4": {
+    "name": "CircuitBreakerReset",
+    "facet": "CLOBAdminFacet",
+    "signature": "CircuitBreakerReset(bytes32,uint256)"
+  },
+  "0x5953204a": {
+    "name": "CircuitBreakerTripped",
+    "facet": "CLOBAdminFacet",
+    "signature": "CircuitBreakerTripped(bytes32,uint256,uint256,uint256,uint256)"
+  },
+  "0x248b189e": {
+    "name": "EmergencyActionCancelled",
+    "facet": "CLOBAdminFacet",
+    "signature": "EmergencyActionCancelled(bytes32,address)"
+  },
+  "0x4579d7c5": {
+    "name": "EmergencyActionExecuted",
+    "facet": "CLOBAdminFacet",
+    "signature": "EmergencyActionExecuted(bytes32,address,address,address,uint256)"
+  },
+  "0xca04aa1e": {
+    "name": "EmergencyActionInitiated",
+    "facet": "CLOBAdminFacet",
+    "signature": "EmergencyActionInitiated(bytes32,address,address,address,uint256,uint256)"
+  },
+  "0xc0f6eecd": {
+    "name": "EmergencyWithdrawal",
+    "facet": "CLOBAdminFacet",
+    "signature": "EmergencyWithdrawal(address,bytes32,address,uint256)"
+  },
+  "0xaaebcf1b": {
+    "name": "FeeRecipientUpdated",
+    "facet": "CLOBAdminFacet",
+    "signature": "FeeRecipientUpdated(address,address)"
+  },
+  "0xb3ef341b": {
+    "name": "FeesUpdated",
+    "facet": "CLOBAdminFacet",
+    "signature": "FeesUpdated(uint16,uint16,uint16)"
+  },
+  "0xa5fea31b": {
+    "name": "GlobalPause",
+    "facet": "CLOBAdminFacet",
+    "signature": "GlobalPause(bool)"
+  },
+  "0x096cc317": {
+    "name": "MEVProtectionUpdated",
+    "facet": "CLOBAdminFacet",
+    "signature": "MEVProtectionUpdated(uint8,uint256)"
+  },
+  "0x613681e6": {
+    "name": "MarketPaused",
+    "facet": "CLOBAdminFacet",
+    "signature": "MarketPaused(bytes32)"
+  },
+  "0xb51d033f": {
+    "name": "MarketUnpaused",
+    "facet": "CLOBAdminFacet",
+    "signature": "MarketUnpaused(bytes32)"
+  },
+  "0x6675ea6c": {
+    "name": "RateLimitsUpdated",
+    "facet": "CLOBAdminFacet",
+    "signature": "RateLimitsUpdated(uint256,uint256)"
+  },
+  "0xe785b7d4": {
+    "name": "DiamondCut",
+    "facet": "DiamondCutFacet",
+    "signature": "DiamondCut(tuple[],address,bytes)"
+  },
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
   "0x8be0079c": {
     "name": "OwnershipTransferred",
     "facet": "OwnershipFacet",
     "signature": "OwnershipTransferred(address,address)"
+<<<<<<< HEAD
+=======
+  },
+  "0x17307eab": {
+    "name": "ApprovalForAll",
+    "facet": "AuraAsset",
+    "signature": "ApprovalForAll(address,address,bool)"
+  },
+  "0xee7669d5": {
+    "name": "AssetAttributeAdded",
+    "facet": "AuraAsset",
+    "signature": "AssetAttributeAdded(bytes32,uint256,string,string[],string)"
+  },
+  "0x75e1dfdc": {
+    "name": "CustodyEstablished",
+    "facet": "AuraAsset",
+    "signature": "CustodyEstablished(uint256,address,uint256)"
+  },
+  "0x93d2bba3": {
+    "name": "CustodyReleased",
+    "facet": "AuraAsset",
+    "signature": "CustodyReleased(uint256,address,uint256,address)"
+  },
+  "0xda6f2bc5": {
+    "name": "MintedAsset",
+    "facet": "AuraAsset",
+    "signature": "MintedAsset(address,bytes32,uint256,string,string,string)"
+  },
+  "0x4a39dc06": {
+    "name": "TransferBatch",
+    "facet": "AuraAsset",
+    "signature": "TransferBatch(address,address,address,uint256[],uint256[])"
+  },
+  "0xc3d58168": {
+    "name": "TransferSingle",
+    "facet": "AuraAsset",
+    "signature": "TransferSingle(address,address,address,uint256,uint256)"
+  },
+  "0x6bb7ff70": {
+    "name": "URI",
+    "facet": "AuraAsset",
+    "signature": "URI(string,uint256)"
+>>>>>>> 92ce63fb80e460f5fa86561bfc33bb4481552274
   }
 } as const;

@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-18T00:41:29.634Z
+// Generated at: 2026-01-18T11:06:09.309Z
 
 export const BridgeFacetABI = [
   {

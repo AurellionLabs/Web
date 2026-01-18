@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-17T01:59:55.750Z
+// Deployed: 2026-01-18T11:06:09.378Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -21,10 +21,8 @@ export const NEXT_PUBLIC_CLOB_ADDRESS =
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
   '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
 
-// RWY Vault address - Real World Yield commodity staking
-// Deploy with: DEPLOY_MODE=rwy npx hardhat run scripts/unified-deploy.ts --network baseSepolia
-export const NEXT_PUBLIC_RWY_VAULT_ADDRESS =
-  '0xfC2d5b8464f14a051661E6dE14DB3F703C601938';
+// RWY Staking is now part of the Diamond (RWYStakingFacet)
+// Use NEXT_PUBLIC_DIAMOND_ADDRESS for RWY staking operations
 
 // Quote token address for CLOB trading
 // For testnet: Using AURA token so testers have tokens to simulate payments
@@ -114,9 +112,11 @@ export const DEPLOYMENT_BLOCKS = {
   auStake: 36423442,
   auraAsset: 36423444,
   clob: 36423451,
-  rwyVault: 35861876,
 };
 
 // Export individual constants for generator
 export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
-export const RWY_VAULT_DEPLOY_BLOCK = 35861876;
+// RWY_VAULT_DEPLOY_BLOCK removed - now part of Diamond
+
+export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
+  '0x8E23668B3c426D37B151abFED94BaE7Ca401De4F';
