@@ -93,6 +93,7 @@ jobs:
           context: .
           file: ./indexer/Dockerfile
           push: true
+          pull: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
