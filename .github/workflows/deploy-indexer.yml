@@ -29,9 +29,14 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/indexer
 
+concurrency:
+  group: deploy-indexer-${{ github.event.inputs.branch || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: write
@@ -40,11 +45,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Delete GitHub Actions cache
         run: |
           echo "Deleting GitHub Actions cache..."
           gh cache delete --all || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Reset Docker Buildx
         run: |
@@ -71,6 +80,7 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.branch }},enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -89,6 +99,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'workflow_dispatch'
 
     steps:
@@ -96,15 +107,25 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          DEPLOY_BRANCH: ${{ github.event.inputs.branch || github.ref_name }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
-          envs: GHCR_TOKEN,IMAGE_TAG
+          envs: GHCR_TOKEN,GITHUB_ACTOR,DEPLOY_BRANCH
+          script_stop: true
           script: |
+            set -e
+
             cd /srv/Web
-            export IMAGE_TAG="${{ github.ref_name }}"
+
+            # Use the correct branch (supports both push and workflow_dispatch)
+            BRANCH="$DEPLOY_BRANCH"
+            export IMAGE_TAG="$BRANCH"
+
+            echo "Deploying branch: $BRANCH"
 
             # Reset any local changes (generated files may have changed)
             git reset --hard HEAD
@@ -112,17 +133,68 @@ jobs:
 
             # Pull latest code (for chain-constants.ts and other config)
             git fetch origin
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
 
             cd /srv/Web/indexer
 
             # Login to GHCR
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u github --password-stdin || true
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
-            # Pull latest Docker image from GHCR and restart
+            # Save current image digest for potential rollback
+            PREVIOUS_IMAGE=$(docker inspect aurellion_indexer --format='{{.Image}}' 2>/dev/null || echo "")
+            echo "Previous image: $PREVIOUS_IMAGE"
+
+            # Stop existing container gracefully to prevent port conflicts
+            echo "Stopping existing container..."
+            docker compose -f docker-compose.prod.yml stop indexer || true
+
+            # Pull latest Docker image from GHCR
+            echo "Pulling new image..."
             docker compose -f docker-compose.prod.yml pull indexer
-            docker compose -f docker-compose.prod.yml up -d
+
+            # Start with fresh container
+            echo "Starting new container..."
+            docker compose -f docker-compose.prod.yml up -d indexer
+
+            # Health check with rollback capability
+            echo "Waiting for indexer to become healthy..."
+            TIMEOUT=60
+            ELAPSED=0
+            HEALTHY=false
+
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              if docker compose -f docker-compose.prod.yml ps indexer 2>/dev/null | grep -q "Up"; then
+                # Check container logs for successful startup
+                if docker compose -f docker-compose.prod.yml logs --tail=20 indexer 2>/dev/null | grep -qE "(Listening|Started|Ready|Indexed)"; then
+                  HEALTHY=true
+                  break
+                fi
+              fi
+              sleep 5
+              ELAPSED=$((ELAPSED + 5))
+              echo "Waiting... ($ELAPSED/$TIMEOUT seconds)"
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "ERROR: Deployment failed - container not healthy"
+              echo "Container logs:"
+              docker compose -f docker-compose.prod.yml logs --tail=50 indexer || true
+
+              if [ -n "$PREVIOUS_IMAGE" ] && [ "$PREVIOUS_IMAGE" != "" ]; then
+                echo "Attempting rollback to previous image..."
+                docker compose -f docker-compose.prod.yml stop indexer || true
+
+                # Tag the previous image and restart
+                docker tag "$PREVIOUS_IMAGE" "ghcr.io/aurellionlabs/web/indexer:$BRANCH" || true
+                docker compose -f docker-compose.prod.yml up -d indexer || true
+
+                echo "Rollback attempted. Check container status manually."
+              fi
+              exit 1
+            fi
+
+            echo "Deployment successful! Container is healthy."
 
             # Clean up unused images
             docker image prune -f
