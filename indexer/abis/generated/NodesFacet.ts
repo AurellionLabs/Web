@@ -1,5 +1,5 @@
 // Auto-generated from NodesFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-19T13:05:11.434Z
+// Generated at: 2026-01-19T23:20:26.029Z
 
 export const NodesFacetABI = [
   {
@@ -61,6 +61,32 @@ export const NodesFacetABI = [
       }
     ],
     "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "admin",
+        "type": "address"
+      }
+    ],
+    "name": "NodeAdminRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "admin",
+        "type": "address"
+      }
+    ],
+    "name": "NodeAdminSet",
     "type": "event"
   },
   {
@@ -441,6 +467,84 @@ export const NodesFacetABI = [
     "inputs": [
       {
         "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_itemOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "assetClass",
+            "type": "string"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "internalType": "string[]",
+                "name": "values",
+                "type": "string[]"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DiamondStorage.Attribute[]",
+            "name": "attributes",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct DiamondStorage.AssetDefinition",
+        "name": "_asset",
+        "type": "tuple"
+      },
+      {
+        "internalType": "string",
+        "name": "_className",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_data",
+        "type": "bytes"
+      }
+    ],
+    "name": "addNodeItem",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
       },
@@ -473,6 +577,19 @@ export const NodesFacetABI = [
         "type": "uint256"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "approveAusysForTokens",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -1000,6 +1117,79 @@ export const NodesFacetABI = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "isNodeAdmin",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nodeHandOn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nodeHandoff",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nodeSign",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
@@ -1033,6 +1223,34 @@ export const NodesFacetABI = [
         "type": "bytes32"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_quantityToReduce",
+        "type": "uint256"
+      }
+    ],
+    "name": "reduceCapacityForOrder",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -1084,6 +1302,19 @@ export const NodesFacetABI = [
     "inputs": [
       {
         "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "revokeAusysApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
       },
@@ -1094,6 +1325,19 @@ export const NodesFacetABI = [
       }
     ],
     "name": "revokeClobApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "revokeNodeAdmin",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1120,6 +1364,19 @@ export const NodesFacetABI = [
       }
     ],
     "name": "setClobAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "setNodeAdmin",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1364,6 +1621,16 @@ export const NodesFacetEvents = [
     "name": "Initialized",
     "signature": "Initialized(uint64)",
     "signatureHash": "0xc7f505b2"
+  },
+  {
+    "name": "NodeAdminRevoked",
+    "signature": "NodeAdminRevoked(address)",
+    "signatureHash": "0xd75e887b"
+  },
+  {
+    "name": "NodeAdminSet",
+    "signature": "NodeAdminSet(address)",
+    "signatureHash": "0x73fad87b"
   },
   {
     "name": "NodeCapacityUpdated",

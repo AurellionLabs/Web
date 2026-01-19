@@ -29,21 +29,20 @@ export interface ContractConfig {
   };
 }
 
+// ABI component type (recursive for nested tuples)
+export interface ABIComponent {
+  name: string;
+  type: string;
+  indexed?: boolean;
+  components?: ABIComponent[];
+}
+
 // ABI fragment type for function definitions
 export interface ABIFunction {
   type: 'function';
   name: string;
-  inputs: Array<{
-    name: string;
-    type: string;
-    indexed?: boolean;
-    components?: Array<{ name: string; type: string }>;
-  }>;
-  outputs: Array<{
-    name: string;
-    type: string;
-    components?: Array<{ name: string; type: string }>;
-  }>;
+  inputs: ABIComponent[];
+  outputs: ABIComponent[];
   stateMutability: 'pure' | 'view' | 'nonpayable' | 'payable';
 }
 
@@ -328,6 +327,22 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     contractName: 'OrderMatchingFacet',
     category: 'facet',
     chainConstantKey: 'NEXT_PUBLIC_ORDER_MATCHING_FACET_ADDRESS',
+  },
+
+  // AuSysFacet - Journey and order management (aligned with legacy AuSys.sol)
+  AuSysFacet: {
+    name: 'AuSysFacet',
+    contractName: 'AuSysFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_AUSYS_FACET_ADDRESS',
+  },
+
+  // CLOBLogisticsFacet - Driver and delivery logistics management
+  CLOBLogisticsFacet: {
+    name: 'CLOBLogisticsFacet',
+    contractName: 'CLOBLogisticsFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_CLOB_LOGISTICS_FACET_ADDRESS',
   },
 
   // Diamond itself
@@ -2177,6 +2192,616 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
         { name: 'operator', type: 'address', indexed: true },
         { name: 'oldReputation', type: 'uint256', indexed: false },
         { name: 'newReputation', type: 'uint256', indexed: false },
+      ],
+    },
+  ],
+
+  // AuSysFacet - Journey and order management (aligned with legacy AuSys.sol)
+  AuSysFacet: [
+    // Admin functions
+    {
+      type: 'function',
+      name: 'setPayToken',
+      inputs: [{ name: '_payToken', type: 'address' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'getPayToken',
+      inputs: [],
+      outputs: [{ name: '', type: 'address' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'setAuSysAdmin',
+      inputs: [{ name: 'admin', type: 'address' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'revokeAuSysAdmin',
+      inputs: [{ name: 'admin', type: 'address' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'setDriver',
+      inputs: [
+        { name: 'driver', type: 'address' },
+        { name: 'enable', type: 'bool' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'setDispatcher',
+      inputs: [
+        { name: 'dispatcher', type: 'address' },
+        { name: 'enable', type: 'bool' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'hasAuSysRole',
+      inputs: [
+        { name: 'role', type: 'bytes32' },
+        { name: 'account', type: 'address' },
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'view',
+    },
+    // Order functions
+    {
+      type: 'function',
+      name: 'createAuSysOrder',
+      inputs: [
+        { name: 'sender', type: 'address' },
+        { name: 'receiver', type: 'address' },
+        { name: 'seller', type: 'address' },
+        { name: 'tokenContract', type: 'address' },
+        { name: 'tokenId', type: 'uint256' },
+        { name: 'tokenQuantity', type: 'uint256' },
+        { name: 'price', type: 'uint256' },
+        { name: 'bounty', type: 'uint256' },
+      ],
+      outputs: [{ name: '', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'getAuSysOrder',
+      inputs: [{ name: 'id', type: 'bytes32' }],
+      outputs: [
+        {
+          name: '',
+          type: 'tuple',
+          components: [
+            { name: 'id', type: 'bytes32' },
+            { name: 'sender', type: 'address' },
+            { name: 'receiver', type: 'address' },
+            { name: 'seller', type: 'address' },
+            { name: 'tokenContract', type: 'address' },
+            { name: 'tokenId', type: 'uint256' },
+            { name: 'tokenQuantity', type: 'uint256' },
+            { name: 'bounty', type: 'uint256' },
+            { name: 'totalPrice', type: 'uint256' },
+            { name: 'status', type: 'uint8' },
+          ],
+        },
+      ],
+      stateMutability: 'view',
+    },
+    // Journey functions
+    {
+      type: 'function',
+      name: 'createJourney',
+      inputs: [
+        { name: 'sender', type: 'address' },
+        { name: 'receiver', type: 'address' },
+        { name: 'bounty', type: 'uint256' },
+      ],
+      outputs: [{ name: '', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'createOrderJourney',
+      inputs: [
+        { name: 'sender', type: 'address' },
+        { name: 'receiver', type: 'address' },
+        { name: 'seller', type: 'address' },
+        { name: 'tokenContract', type: 'address' },
+        { name: 'tokenId', type: 'uint256' },
+        { name: 'tokenQuantity', type: 'uint256' },
+        { name: 'price', type: 'uint256' },
+        { name: 'bounty', type: 'uint256' },
+      ],
+      outputs: [
+        { name: 'journeyId', type: 'bytes32' },
+        { name: 'orderId', type: 'bytes32' },
+      ],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'getJourney',
+      inputs: [{ name: 'id', type: 'bytes32' }],
+      outputs: [
+        {
+          name: '',
+          type: 'tuple',
+          components: [
+            { name: 'id', type: 'bytes32' },
+            { name: 'sender', type: 'address' },
+            { name: 'receiver', type: 'address' },
+            { name: 'driver', type: 'address' },
+            { name: 'bounty', type: 'uint256' },
+            { name: 'status', type: 'uint8' },
+            { name: 'createdAt', type: 'uint256' },
+            { name: 'updatedAt', type: 'uint256' },
+          ],
+        },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'assignDriverToJourney',
+      inputs: [
+        { name: 'driver', type: 'address' },
+        { name: 'journeyId', type: 'bytes32' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'packageSign',
+      inputs: [{ name: 'id', type: 'bytes32' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'handOn',
+      inputs: [{ name: 'id', type: 'bytes32' }],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'handOff',
+      inputs: [{ name: 'id', type: 'bytes32' }],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    },
+    // Events
+    {
+      type: 'event',
+      name: 'AuSysAdminSet',
+      inputs: [{ name: 'admin', type: 'address', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'AuSysAdminRevoked',
+      inputs: [{ name: 'admin', type: 'address', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'JourneyCreated',
+      inputs: [
+        { name: 'journeyId', type: 'bytes32', indexed: true },
+        { name: 'sender', type: 'address', indexed: true },
+        { name: 'receiver', type: 'address', indexed: true },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'DriverAssigned',
+      inputs: [
+        { name: 'driver', type: 'address', indexed: true },
+        { name: 'journeyId', type: 'bytes32', indexed: true },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'AuSysOrderSettled',
+      inputs: [{ name: 'orderId', type: 'bytes32', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'AuSysOrderStatusUpdated',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'newStatus', type: 'uint8', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'AuSysJourneyStatusUpdated',
+      inputs: [
+        { name: 'journeyId', type: 'bytes32', indexed: true },
+        { name: 'newStatus', type: 'uint8', indexed: false },
+      ],
+    },
+  ],
+
+  // CLOBLogisticsFacet - Driver and delivery logistics management
+  CLOBLogisticsFacet: [
+    // Driver management
+    {
+      type: 'function',
+      name: 'registerDriver',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'deactivateDriver',
+      inputs: [{ name: 'driver', type: 'address' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'setDriverAvailability',
+      inputs: [{ name: 'isAvailable', type: 'bool' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'updateDriverLocation',
+      inputs: [
+        {
+          name: 'location',
+          type: 'tuple',
+          components: [
+            { name: 'lat', type: 'string' },
+            { name: 'lng', type: 'string' },
+          ],
+        },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'getDriverInfo',
+      inputs: [{ name: 'driver', type: 'address' }],
+      outputs: [
+        {
+          name: '',
+          type: 'tuple',
+          components: [
+            { name: 'driver', type: 'address' },
+            { name: 'isActive', type: 'bool' },
+            { name: 'isAvailable', type: 'bool' },
+            {
+              name: 'currentLocation',
+              type: 'tuple',
+              components: [
+                { name: 'lat', type: 'string' },
+                { name: 'lng', type: 'string' },
+              ],
+            },
+            { name: 'totalDeliveries', type: 'uint256' },
+            { name: 'completedDeliveries', type: 'uint256' },
+            { name: 'totalEarnings', type: 'uint256' },
+            { name: 'rating', type: 'uint256' },
+          ],
+        },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getAllDrivers',
+      inputs: [],
+      outputs: [{ name: '', type: 'address[]' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getAvailableDrivers',
+      inputs: [],
+      outputs: [
+        { name: 'drivers', type: 'address[]' },
+        { name: 'count', type: 'uint256' },
+      ],
+      stateMutability: 'view',
+    },
+    // Logistics order functions
+    {
+      type: 'function',
+      name: 'createLogisticsOrder',
+      inputs: [
+        { name: 'tradeId', type: 'bytes32' },
+        { name: 'buyer', type: 'address' },
+        { name: 'seller', type: 'address' },
+        { name: 'sellerNode', type: 'address' },
+        { name: 'token', type: 'address' },
+        { name: 'tokenId', type: 'uint256' },
+        { name: 'quantity', type: 'uint256' },
+        { name: 'totalPrice', type: 'uint256' },
+        {
+          name: 'pickupLocation',
+          type: 'tuple',
+          components: [
+            { name: 'lat', type: 'string' },
+            { name: 'lng', type: 'string' },
+          ],
+        },
+        {
+          name: 'deliveryLocation',
+          type: 'tuple',
+          components: [
+            { name: 'lat', type: 'string' },
+            { name: 'lng', type: 'string' },
+          ],
+        },
+      ],
+      outputs: [{ name: 'orderId', type: 'bytes32' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'acceptDelivery',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        { name: 'estimatedPickupTime', type: 'uint256' },
+        { name: 'estimatedDeliveryTime', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'confirmPickup',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        { name: 'signature', type: 'bytes' },
+        {
+          name: 'location',
+          type: 'tuple',
+          components: [
+            { name: 'lat', type: 'string' },
+            { name: 'lng', type: 'string' },
+          ],
+        },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'updateDeliveryLocation',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        {
+          name: 'location',
+          type: 'tuple',
+          components: [
+            { name: 'lat', type: 'string' },
+            { name: 'lng', type: 'string' },
+          ],
+        },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'confirmDelivery',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        { name: 'receiverSignature', type: 'bytes' },
+        {
+          name: 'location',
+          type: 'tuple',
+          components: [
+            { name: 'lat', type: 'string' },
+            { name: 'lng', type: 'string' },
+          ],
+        },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'settleLogisticsOrder',
+      inputs: [{ name: 'orderId', type: 'bytes32' }],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'disputeOrder',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        { name: 'reason', type: 'string' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'cancelLogisticsOrder',
+      inputs: [
+        { name: 'orderId', type: 'bytes32' },
+        { name: 'reason', type: 'string' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'getLogisticsOrder',
+      inputs: [{ name: 'orderId', type: 'bytes32' }],
+      outputs: [
+        {
+          name: '',
+          type: 'tuple',
+          components: [
+            { name: 'orderId', type: 'bytes32' },
+            { name: 'tradeId', type: 'bytes32' },
+            { name: 'buyer', type: 'address' },
+            { name: 'seller', type: 'address' },
+            { name: 'sellerNode', type: 'address' },
+            { name: 'token', type: 'address' },
+            { name: 'tokenId', type: 'uint256' },
+            { name: 'quantity', type: 'uint256' },
+            { name: 'totalPrice', type: 'uint256' },
+            { name: 'escrowedAmount', type: 'uint256' },
+            { name: 'driverBounty', type: 'uint256' },
+            {
+              name: 'pickupLocation',
+              type: 'tuple',
+              components: [
+                { name: 'lat', type: 'string' },
+                { name: 'lng', type: 'string' },
+              ],
+            },
+            {
+              name: 'deliveryLocation',
+              type: 'tuple',
+              components: [
+                { name: 'lat', type: 'string' },
+                { name: 'lng', type: 'string' },
+              ],
+            },
+            { name: 'status', type: 'uint8' },
+            { name: 'assignedDriver', type: 'address' },
+            { name: 'createdAt', type: 'uint256' },
+            { name: 'deliveredAt', type: 'uint256' },
+          ],
+        },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getAllLogisticsOrders',
+      inputs: [],
+      outputs: [{ name: '', type: 'bytes32[]' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getNodeInventory',
+      inputs: [
+        { name: 'node', type: 'address' },
+        { name: 'token', type: 'address' },
+        { name: 'tokenId', type: 'uint256' },
+      ],
+      outputs: [
+        { name: 'available', type: 'uint256' },
+        { name: 'reserved', type: 'uint256' },
+        { name: 'price', type: 'uint256' },
+      ],
+      stateMutability: 'view',
+    },
+    // Events
+    {
+      type: 'event',
+      name: 'DriverRegistered',
+      inputs: [{ name: 'driver', type: 'address', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'DriverDeactivated',
+      inputs: [{ name: 'driver', type: 'address', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'DriverAvailabilityUpdated',
+      inputs: [
+        { name: 'driver', type: 'address', indexed: true },
+        { name: 'isAvailable', type: 'bool', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'DriverLocationUpdated',
+      inputs: [
+        { name: 'driver', type: 'address', indexed: true },
+        { name: 'lat', type: 'string', indexed: false },
+        { name: 'lng', type: 'string', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'LogisticsOrderCreated',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'tradeId', type: 'bytes32', indexed: true },
+        { name: 'buyer', type: 'address', indexed: true },
+        { name: 'seller', type: 'address', indexed: false },
+        { name: 'quantity', type: 'uint256', indexed: false },
+        { name: 'driverBounty', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'DeliveryAccepted',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'driver', type: 'address', indexed: true },
+        { name: 'estimatedPickupTime', type: 'uint256', indexed: false },
+        { name: 'estimatedDeliveryTime', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'PickupConfirmed',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'driver', type: 'address', indexed: true },
+        { name: 'lat', type: 'string', indexed: false },
+        { name: 'lng', type: 'string', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'DeliveryConfirmed',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'driver', type: 'address', indexed: true },
+        { name: 'lat', type: 'string', indexed: false },
+        { name: 'lng', type: 'string', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'LogisticsOrderSettled',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'driverPayout', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'LogisticsOrderDisputed',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'reason', type: 'string', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'LogisticsOrderCancelled',
+      inputs: [
+        { name: 'orderId', type: 'bytes32', indexed: true },
+        { name: 'reason', type: 'string', indexed: false },
       ],
     },
   ],

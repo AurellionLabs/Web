@@ -1,0 +1,12 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF",
+  "contracts": {
+    "OperatorFacet": {
+      "address": "0xEe00987d75458F01e7FF84afa7551686bBA278C9",
+      "blockNumber": 36483035
+    }
+  },
+  "timestamp": "2026-01-18T11:06:09.378Z"
+}

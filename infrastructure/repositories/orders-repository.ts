@@ -13,31 +13,144 @@ import {
 } from 'ethers';
 import { handleContractError } from '@/utils/error-handler';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
-import { Journey } from '@/domain/shared';
+import { Journey, JourneyStatus, ParcelData, Location } from '@/domain/shared';
 import { graphqlRequest } from './shared/graph';
-import { extractPonderItems } from '../shared/graph-queries';
 import {
-  GET_JOURNEYS_BY_SENDER,
-  GET_JOURNEYS_BY_RECEIVER,
-  GET_JOURNEY_BY_ID,
-  GET_ALL_JOURNEYS,
-  GET_ORDERS_BY_BUYER,
-  GET_ORDERS_BY_SELLER,
-  GET_ORDER_BY_ID,
-  GET_ORDERS_BY_NODE,
-  GET_JOURNEYS_BY_ORDER_ID,
-  convertGraphJourneyToDomain,
-  convertGraphOrderToDomain,
-  convertNumericToOrderStatus,
-  convertNumericToJourneyStatus,
-  JourneyGraphResponse,
-  OrderGraphResponse,
-} from './shared/order-queries';
+  GET_UNIFIED_ORDER_BY_BUYER,
+  GET_UNIFIED_ORDER_BY_SELLER,
+  GET_LOGISTICS_ORDER_CREATED_EVENTS,
+  GET_JOURNEY_STATUS_BY_JOURNEY,
+  GET_ALL_UNIFIED_ORDER_EVENTS,
+  GET_JOURNEY_STATUS_UPDATED_EVENTS,
+} from '../shared/graph-queries';
+import {
+  aggregateUnifiedOrders,
+  aggregateJourneys,
+} from '../shared/event-aggregators';
+import {
+  AggregatedUnifiedOrder,
+  AggregatedJourney,
+  UnifiedOrderCreatedEvent,
+  LogisticsOrderCreatedEvent,
+  JourneyStatusUpdatedEvent,
+} from '../shared/indexer-types';
 import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
+interface GraphQLResponse<T> {
+  items: T[];
+  pageInfo?: {
+    hasNextPage: boolean;
+    endCursor?: string;
+  };
+}
+
+interface JourneyEventsResponse {
+  diamondJourneyStatusUpdatedEventss: GraphQLResponse<JourneyStatusUpdatedEvent>;
+}
+
+interface LogisticsEventsResponse {
+  diamondLogisticsOrderCreatedEventss: GraphQLResponse<LogisticsOrderCreatedEvent>;
+}
+
+interface UnifiedOrderEventsResponse {
+  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
+}
+
+function buildLocation(lat?: string, lng?: string): Location | undefined {
+  if (!lat || !lng || lat === '' || lng === '') return undefined;
+  return { lat, lng };
+}
+
+function buildParcelData(
+  _journey: AggregatedJourney,
+  _logistics?: LogisticsOrderCreatedEvent,
+): ParcelData {
+  return {
+    startLocation: { lat: '', lng: '' },
+    endLocation: { lat: '', lng: '' },
+    startName: '',
+    endName: '',
+  };
+}
+
+function phaseToJourneyStatus(phase: string | number): JourneyStatus {
+  const phaseNum = typeof phase === 'string' ? parseInt(phase, 10) : phase;
+  switch (phaseNum) {
+    case 0:
+      return JourneyStatus.PENDING;
+    case 1:
+      return JourneyStatus.IN_TRANSIT;
+    case 2:
+      return JourneyStatus.DELIVERED;
+    case 3:
+      return JourneyStatus.CANCELLED;
+    default:
+      return JourneyStatus.PENDING;
+  }
+}
+
+function aggregatedUnifiedOrderToDomain(
+  order: AggregatedUnifiedOrder,
+  _logistics?: LogisticsOrderCreatedEvent,
+  _journey?: AggregatedJourney,
+): Order {
+  return {
+    id: order.unifiedOrderId,
+    token: order.token,
+    tokenId: order.tokenId,
+    tokenQuantity: order.quantity,
+    price: order.price,
+    txFee: '0',
+    buyer: order.buyer,
+    seller: order.seller,
+    journeyIds: order.journeyIds,
+    nodes: _logistics ? [_logistics.node] : [],
+    locationData: undefined,
+    currentStatus: mapOrderStatus(order.status),
+    contractualAgreement: '',
+  };
+}
+
+function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
+  switch (status) {
+    case 'settled':
+      return OrderStatus.SETTLED;
+    case 'cancelled':
+      return OrderStatus.CANCELLED;
+    case 'matched':
+    case 'created':
+      return OrderStatus.CREATED;
+    default:
+      return OrderStatus.CREATED;
+  }
+}
+
+function aggregatedJourneyToDomain(
+  journey: AggregatedJourney,
+  _logistics?: LogisticsOrderCreatedEvent,
+): Journey {
+  return {
+    journeyId: journey.journeyId,
+    currentStatus: phaseToJourneyStatus(journey.phase),
+    sender: '',
+    receiver: '',
+    driver: '',
+    bounty: BigInt(journey.bounty || '0'),
+    journeyStart: BigInt(journey.createdAt),
+    journeyEnd: BigInt(journey.updatedAt),
+    ETA: BigInt(journey.updatedAt),
+    parcelData: {
+      startLocation: { lat: '', lng: '' },
+      endLocation: { lat: '', lng: '' },
+      startName: '',
+      endName: '',
+    },
+  };
+}
+
 /**
- * Infrastructure implementation of the IOrderRepository interface - REFACTORED
- * Uses Ponder indexer for all read operations instead of The Graph
+ * Infrastructure implementation of the IOrderRepository interface
+ * Uses Ponder indexer with raw event tables and aggregation
  */
 export class OrderRepository implements IOrderRepository {
   private readContract: Ausys;
@@ -58,11 +171,9 @@ export class OrderRepository implements IOrderRepository {
     this.signer = signer;
     this.contractAddress = contract.target as string;
 
-    // Initialize with user provider as fallback
     this.readProvider = userProvider;
     this.readContract = contract;
 
-    // Asynchronously initialize read provider using dedicated RPC
     this.initializeReadProvider();
   }
 
@@ -94,184 +205,243 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  /**
-   * REFACTORED: Uses GraphQL query instead of on-chain iteration
-   * Updated for Ponder's response format
-   */
   async getNodeOrders(address: string): Promise<Order[]> {
     try {
-      // Ponder returns { orderss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        orderss: { items: OrderGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_ORDERS_BY_NODE, {
-        nodeAddress: address.toLowerCase(),
+      const nodeAddress = address.toLowerCase();
+
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_UNIFIED_ORDER_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
       });
 
-      // Add null checks to prevent TypeError
-      if (!response) {
-        console.warn('GraphQL response is null/undefined for getNodeOrders');
-        return [];
-      }
-
-      const orders = extractPonderItems(response.orderss || { items: [] });
-      if (orders.length === 0) {
-        return [];
-      }
-
-      // Also fetch journey ids per order (subgraph exposes journeys by order relation)
-      const results = await Promise.all(
-        orders.map(async (order: OrderGraphResponse) => {
-          try {
-            console.log(
-              '[OrderRepository] Fetching journeys for orderId:',
-              order.id,
-            );
-            // Ponder returns { journeyss: { items: [...] } }
-            const jRes = await graphqlRequest<{
-              journeyss: { items: { id: string }[] };
-            }>(this.graphQLEndpoint, GET_JOURNEYS_BY_ORDER_ID, {
-              orderId: order.id,
-            });
-            console.log('[OrderRepository] Journeys response:', jRes);
-            const mapped = convertGraphOrderToDomain(order);
-            const journeyItems = extractPonderItems(
-              jRes?.journeyss || { items: [] },
-            );
-            mapped.journeyIds = journeyItems.map((j) => j.id);
-            console.log(
-              '[OrderRepository] Mapped journeyIds:',
-              mapped.journeyIds,
-            );
-            return mapped;
-          } catch (e) {
-            console.error(
-              '[OrderRepository] Error fetching journeys for order:',
-              order.id,
-              e,
-            );
-            const mapped = convertGraphOrderToDomain(order);
-            mapped.journeyIds = [];
-            return mapped;
-          }
-        }),
+      const nodeOrders = orders.filter((order) =>
+        order.journeyIds.some((jid) => jid.toLowerCase() === nodeAddress),
       );
-      return results;
+
+      const logisticsByOrder = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.unifiedOrderId.toLowerCase(), l],
+        ) || [],
+      );
+
+      return nodeOrders.map((order) => {
+        const logistics = logisticsByOrder.get(
+          order.unifiedOrderId.toLowerCase(),
+        );
+        return aggregatedUnifiedOrderToDomain(order, logistics);
+      });
     } catch (error) {
-      console.error('Error fetching node orders from Graph:', error);
-      // Fallback to empty array instead of on-chain iteration
+      console.error('[OrderRepository] Error fetching node orders:', error);
       return [];
     }
   }
 
-  /**
-   * REFACTORED: Uses GraphQL query instead of on-chain iteration
-   * Updated for Ponder's response format
-   */
   async getCustomerJourneys(address?: string): Promise<Journey[]> {
     try {
       if (!address) {
         address = await this.signer.getAddress();
       }
+      const senderAddress = address.toLowerCase();
 
-      // Ponder returns { journeyss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        journeyss: { items: JourneyGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_JOURNEYS_BY_SENDER, {
-        senderAddress: address.toLowerCase(),
-      });
+      const [logisticsResponse, journeyResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
 
-      const journeys = extractPonderItems(response.journeyss || { items: [] });
-      return journeys.map((journey: JourneyGraphResponse) =>
-        convertGraphJourneyToDomain(journey),
+      const journeys = aggregateJourneys(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyResponse.diamondJourneyStatusUpdatedEventss?.items || [],
       );
+
+      const logisticsByJourney = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.journeyIds.toLowerCase(), l],
+        ) || [],
+      );
+
+      return journeys.map((journey) => {
+        const logistics = logisticsByJourney.get(
+          journey.journeyId.toLowerCase(),
+        );
+        return aggregatedJourneyToDomain(journey, logistics);
+      });
     } catch (error) {
-      console.error('Error fetching customer journeys from Graph:', error);
+      console.error(
+        '[OrderRepository] Error fetching customer journeys:',
+        error,
+      );
       return [];
     }
   }
 
-  /**
-   * REFACTORED: Uses GraphQL query instead of on-chain iteration
-   * Updated for Ponder's response format
-   */
   async getReceiverJourneys(address?: string): Promise<Journey[]> {
     try {
       if (!address) {
         address = await this.signer.getAddress();
       }
+      const receiverAddress = address.toLowerCase();
 
-      // Ponder returns { journeyss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        journeyss: { items: JourneyGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_JOURNEYS_BY_RECEIVER, {
-        receiverAddress: address.toLowerCase(),
-      });
+      const [logisticsResponse, journeyResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
 
-      const journeys = extractPonderItems(response.journeyss || { items: [] });
-      return journeys.map((journey: JourneyGraphResponse) =>
-        convertGraphJourneyToDomain(journey),
+      const journeys = aggregateJourneys(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyResponse.diamondJourneyStatusUpdatedEventss?.items || [],
       );
+
+      const logisticsByJourney = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.journeyIds.toLowerCase(), l],
+        ) || [],
+      );
+
+      return journeys.map((journey) => {
+        const logistics = logisticsByJourney.get(
+          journey.journeyId.toLowerCase(),
+        );
+        return aggregatedJourneyToDomain(journey, logistics);
+      });
     } catch (error) {
-      console.error('Error fetching receiver journeys from Graph:', error);
+      console.error(
+        '[OrderRepository] Error fetching receiver journeys:',
+        error,
+      );
       return [];
     }
   }
 
-  /**
-   * REFACTORED: Uses GraphQL query with pagination
-   * Updated for Ponder's response format
-   */
   async fetchAllJourneys(): Promise<Journey[]> {
     try {
-      // Ponder returns { journeyss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        journeyss: { items: JourneyGraphResponse[] };
-      }>(
-        this.graphQLEndpoint,
-        GET_ALL_JOURNEYS,
-        { limit: 1000 }, // Can be made configurable
+      const [logisticsResponse, journeyResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 1000 },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATED_EVENTS,
+          { limit: 1000 },
+        ),
+      ]);
+
+      const journeys = aggregateJourneys(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyResponse.diamondJourneyStatusUpdatedEventss?.items || [],
       );
 
-      const journeys = extractPonderItems(response.journeyss || { items: [] });
-      return journeys.map((journey: JourneyGraphResponse) =>
-        convertGraphJourneyToDomain(journey),
+      const logisticsByJourney = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.journeyIds.toLowerCase(), l],
+        ) || [],
       );
+
+      return journeys.map((journey) => {
+        const logistics = logisticsByJourney.get(
+          journey.journeyId.toLowerCase(),
+        );
+        return aggregatedJourneyToDomain(journey, logistics);
+      });
     } catch (error) {
-      console.error('Error fetching all journeys from Graph:', error);
+      console.error('[OrderRepository] Error fetching all journeys:', error);
       return [];
     }
   }
 
-  /**
-   * REFACTORED: Uses GraphQL query for single journey lookup
-   * Updated for Ponder's response format (single entity returns directly)
-   */
   async getJourneyById(journeyId: BytesLike): Promise<Journey> {
     try {
-      // Ponder returns single entity directly for singular queries
-      const response = await graphqlRequest<{
-        journeys: JourneyGraphResponse | null;
-      }>(this.graphQLEndpoint, GET_JOURNEY_BY_ID, {
-        journeyId: journeyId.toString(),
-      });
+      const journeyIdStr = journeyId.toString();
 
-      if (!response.journeys) {
+      const [logisticsResponse, journeyStatusResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetLogisticsByJourneyId($journeyId: String!) {
+            diamondLogisticsOrderCreatedEventss(where: { journeyIds: $journeyId }, limit: 1) {
+              items {
+                id
+                unifiedOrderId
+                ausysOrderId
+                journeyIds
+                bounty
+                node
+                blockTimestamp
+                transactionHash
+              }
+            }
+          }`,
+          { journeyId: journeyIdStr },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_BY_JOURNEY,
+          { journeyId: journeyIdStr },
+        ),
+      ]);
+
+      const logistics =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items[0];
+      const journeyStatus =
+        journeyStatusResponse.diamondJourneyStatusUpdatedEventss?.items[0];
+
+      if (!logistics) {
         throw new Error(`Journey ${journeyId} not found`);
       }
 
-      return convertGraphJourneyToDomain(response.journeys);
+      const aggregatedJourney: AggregatedJourney = {
+        journeyId: logistics.journeyIds,
+        unifiedOrderId: logistics.unifiedOrderId,
+        ausysOrderId: logistics.ausysOrderId,
+        bounty: logistics.bounty,
+        node: logistics.node,
+        phase: journeyStatus?.phase || '0',
+        createdAt: logistics.blockTimestamp,
+        updatedAt: journeyStatus?.blockTimestamp || logistics.blockTimestamp,
+      };
+
+      return aggregatedJourneyToDomain(aggregatedJourney, logistics);
     } catch (error) {
-      console.error('Error fetching journey by ID from Graph:', error);
-      // Fallback to on-chain call for critical path
+      console.error('[OrderRepository] Error fetching journey by ID:', error);
       await this.waitForInitialization();
       const contractJourney = await this.readContract.getjourney(journeyId);
 
       return {
         parcelData: contractJourney.parcelData,
         journeyId: contractJourney.journeyId,
-        currentStatus: convertNumericToJourneyStatus(
-          contractJourney.currentStatus,
-        ),
+        currentStatus: phaseToJourneyStatus(contractJourney.currentStatus),
         sender: contractJourney.sender,
         receiver: contractJourney.receiver,
         driver: contractJourney.driver,
@@ -283,9 +453,6 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  /**
-   * Uses direct contract call (mapping lookup is efficient)
-   */
   async getOrderIdByJourneyId(journeyId: BytesLike): Promise<BytesLike> {
     try {
       await this.waitForInitialization();
@@ -296,124 +463,161 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  /**
-   * REFACTORED: Uses GraphQL query (renamed from getCustomerOrders to getBuyerOrders)
-   * Updated for Ponder's response format
-   */
   async getBuyerOrders(address: string): Promise<Order[]> {
     try {
-      // Ponder returns { orderss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        orderss: { items: OrderGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_ORDERS_BY_BUYER, {
-        buyerAddress: address.toLowerCase(),
+      const buyerAddress = address.toLowerCase();
+
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_UNIFIED_ORDER_BY_BUYER,
+          { buyer: buyerAddress, limit: 100 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
       });
 
-      // Add null checks to prevent TypeError
-      if (!response) {
-        console.warn('GraphQL response is null/undefined for getBuyerOrders');
-        return [];
-      }
-
-      const orders = extractPonderItems(response.orderss || { items: [] });
-      if (orders.length === 0) {
-        return [];
-      }
-
-      // Also fetch journey ids per order (same as getNodeOrders)
-      const results = await Promise.all(
-        orders.map(async (order: OrderGraphResponse) => {
-          try {
-            console.log(
-              '[OrderRepository] Fetching journeys for buyer orderId:',
-              order.id,
-            );
-            // Ponder returns { journeyss: { items: [...] } }
-            const jRes = await graphqlRequest<{
-              journeyss: { items: { id: string }[] };
-            }>(this.graphQLEndpoint, GET_JOURNEYS_BY_ORDER_ID, {
-              orderId: order.id,
-            });
-            console.log('[OrderRepository] Journeys response:', jRes);
-            const mapped = convertGraphOrderToDomain(order);
-            const journeyItems = extractPonderItems(
-              jRes?.journeyss || { items: [] },
-            );
-            mapped.journeyIds = journeyItems.map((j) => j.id);
-            console.log(
-              '[OrderRepository] Mapped journeyIds:',
-              mapped.journeyIds,
-            );
-            return mapped;
-          } catch (e) {
-            console.error(
-              '[OrderRepository] Error fetching journeys for buyer order:',
-              order.id,
-              e,
-            );
-            const mapped = convertGraphOrderToDomain(order);
-            mapped.journeyIds = [];
-            return mapped;
-          }
-        }),
+      const logisticsByOrder = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.unifiedOrderId.toLowerCase(), l],
+        ) || [],
       );
-      return results;
+
+      return orders.map((order) => {
+        const logistics = logisticsByOrder.get(
+          order.unifiedOrderId.toLowerCase(),
+        );
+        return aggregatedUnifiedOrderToDomain(order, logistics);
+      });
     } catch (error) {
-      console.error('Error fetching buyer orders from Graph:', error);
+      console.error('[OrderRepository] Error fetching buyer orders:', error);
       return [];
     }
   }
 
-  /**
-   * NEW: Uses GraphQL query for seller orders
-   * Updated for Ponder's response format
-   */
   async getSellerOrders(address: string): Promise<Order[]> {
     try {
-      // Ponder returns { orderss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        orderss: { items: OrderGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_ORDERS_BY_SELLER, {
-        sellerAddress: address.toLowerCase(),
+      const sellerAddress = address.toLowerCase();
+
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_UNIFIED_ORDER_BY_SELLER,
+          { seller: sellerAddress, limit: 100 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
       });
 
-      // Add null checks to prevent TypeError
-      if (!response) {
-        console.warn('GraphQL response is null/undefined for getSellerOrders');
-        return [];
-      }
-
-      const orders = extractPonderItems(response.orderss || { items: [] });
-      return orders.map((order: OrderGraphResponse) =>
-        convertGraphOrderToDomain(order),
+      const logisticsByOrder = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.unifiedOrderId.toLowerCase(), l],
+        ) || [],
       );
+
+      return orders.map((order) => {
+        const logistics = logisticsByOrder.get(
+          order.unifiedOrderId.toLowerCase(),
+        );
+        return aggregatedUnifiedOrderToDomain(order, logistics);
+      });
     } catch (error) {
-      console.error('Error fetching seller orders from Graph:', error);
+      console.error('[OrderRepository] Error fetching seller orders:', error);
       return [];
     }
   }
 
-  /**
-   * REFACTORED: Uses GraphQL query for single order lookup
-   * Updated for Ponder's response format (single entity returns directly)
-   */
   async getOrderById(orderId: BytesLike): Promise<Order> {
     try {
-      // Ponder returns single entity directly for singular queries
-      const response = await graphqlRequest<{
-        orders: OrderGraphResponse | null;
-      }>(this.graphQLEndpoint, GET_ORDER_BY_ID, {
-        orderId: orderId.toString(),
-      });
+      const orderIdStr = orderId.toString();
 
-      if (!response.orders) {
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetOrderById($orderId: String!) {
+            diamondUnifiedOrderCreatedEventss(where: { unifiedOrderId: $orderId }, limit: 1) {
+              items {
+                id
+                unifiedOrderId
+                clobOrderId
+                buyer
+                seller
+                token
+                tokenId
+                quantity
+                price
+                blockNumber
+                blockTimestamp
+                transactionHash
+              }
+            }
+          }`,
+          { orderId: orderIdStr },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetLogisticsByOrderId($orderId: String!) {
+            diamondLogisticsOrderCreatedEventss(where: { unifiedOrderId: $orderId }, limit: 1) {
+              items {
+                id
+                unifiedOrderId
+                ausysOrderId
+                journeyIds
+                bounty
+                node
+                blockTimestamp
+              }
+            }
+          }`,
+          { orderId: orderIdStr },
+        ),
+      ]);
+
+      const order = orderResponse.diamondUnifiedOrderCreatedEventss?.items[0];
+      const logistics =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items[0];
+
+      if (!order) {
         throw new Error(`Order ${orderId} not found`);
       }
 
-      return convertGraphOrderToDomain(response.orders);
+      const aggregatedOrders = aggregateUnifiedOrders({
+        created: [order],
+        logistics: logistics ? [logistics] : [],
+        journeyUpdates: [],
+        settled: [],
+      });
+
+      const aggregatedOrder = aggregatedOrders[0];
+      if (!aggregatedOrder) {
+        throw new Error(`Failed to aggregate order ${orderId}`);
+      }
+
+      return aggregatedUnifiedOrderToDomain(aggregatedOrder, logistics);
     } catch (error) {
-      console.error('Error fetching order by ID from Graph:', error);
-      // Fallback to on-chain call for critical path
+      console.error('[OrderRepository] Error fetching order by ID:', error);
       await this.waitForInitialization();
       const contractOrder = await this.readContract.getOrder(orderId);
 
@@ -421,23 +625,26 @@ export class OrderRepository implements IOrderRepository {
         id: contractOrder.id,
         token: contractOrder.token,
         tokenId: String(contractOrder.tokenId),
-        tokenQuantity: String(contractOrder.tokenQuantity), // This is a count, not a USDT value
-        price: ethers.formatUnits(contractOrder.price, 6), // USDT has 6 decimals
-        txFee: ethers.formatUnits(contractOrder.txFee, 6), // USDT has 6 decimals
+        tokenQuantity: String(contractOrder.tokenQuantity),
+        price: ethers.formatUnits(contractOrder.price, 6),
+        txFee: ethers.formatUnits(contractOrder.txFee, 6),
         buyer: contractOrder.buyer,
         seller: contractOrder.seller,
         journeyIds: contractOrder.journeyIds,
         nodes: contractOrder.nodes,
         locationData: contractOrder.locationData,
-        currentStatus: convertNumericToOrderStatus(contractOrder.currentStatus),
-        contractualAgreement: '', // Default empty string for now
+        currentStatus: mapOrderStatus(
+          contractOrder.currentStatus === 3n
+            ? 'cancelled'
+            : contractOrder.currentStatus === 2n
+              ? 'settled'
+              : 'created',
+        ),
+        contractualAgreement: '',
       };
     }
   }
 
-  /**
-   * Placeholder for asset attributes (not stored in LocationContract)
-   */
   async getAssetAttributes(
     assetName: string,
   ): Promise<{ assetName: string; attributes: any[] }> {
@@ -450,14 +657,6 @@ export class OrderRepository implements IOrderRepository {
     };
   }
 
-  // =====================
-  // LEGACY COMPATIBILITY METHODS
-  // =====================
-
-  /**
-   * Legacy method - redirects to getBuyerOrders
-   * @deprecated Use getBuyerOrders instead
-   */
   async getCustomerOrders(address: string): Promise<Order[]> {
     console.warn('getCustomerOrders is deprecated, use getBuyerOrders instead');
     return this.getBuyerOrders(address);

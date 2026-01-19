@@ -3,85 +3,95 @@ import { Asset } from '@/domain/shared';
 import type { AuraAsset } from '@/lib/contracts';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
-import {
-  GET_ALL_ASSETS,
-  GET_SUPPORTED_CLASSES,
-  extractPonderItems,
-  extractPonderSupportedClasses,
-  SupportedClassesResponse,
-} from './shared/graph-queries';
-import { NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL } from '@/chain-constants';
+import { GET_SUPPORTED_ASSET_ADDED_EVENTS } from '../shared/graph-queries';
+import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { SupportedAssetAddedEvent } from '../shared/indexer-types';
+
+interface SupportedAssetEventsResponse {
+  diamondSupportedAssetAddedEventss: {
+    items: SupportedAssetAddedEvent[];
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  };
+}
 
 export class PlatformRepository implements IPlatformRepository {
   contract: AuraAsset;
   pinata: PinataSDK;
-  private graphEndpoint = NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL;
+  private graphEndpoint = NEXT_PUBLIC_INDEXER_URL;
+  private processedTokenIds = new Set<string>();
+
   constructor(_contract: AuraAsset, _pinata: PinataSDK) {
     this.contract = _contract;
     this.pinata = _pinata;
   }
+
   async getSupportedAssets(): Promise<Asset[]> {
     const PAGE = 500;
     const out: Asset[] = [];
     let after: string | undefined = undefined;
     let hasNextPage = true;
-    const MAX_ITERATIONS = 50; // Cap to avoid infinite loops
+    const MAX_ITERATIONS = 50;
     let iterations = 0;
+    this.processedTokenIds.clear();
 
     while (hasNextPage && iterations < MAX_ITERATIONS) {
-      const res: {
-        assetss: {
-          items: any[];
-          pageInfo: { hasNextPage: boolean; endCursor: string | null };
-        };
-      } = await graphqlRequest<{
-        assetss: {
-          items: any[];
-          pageInfo: { hasNextPage: boolean; endCursor: string | null };
-        };
-      }>(this.graphEndpoint, GET_ALL_ASSETS, {
-        limit: PAGE,
-        after: after,
-      });
+      const res: SupportedAssetEventsResponse =
+        await graphqlRequest<SupportedAssetEventsResponse>(
+          this.graphEndpoint,
+          GET_SUPPORTED_ASSET_ADDED_EVENTS,
+          { limit: PAGE, after },
+        );
 
-      const items = extractPonderItems(res.assetss || { items: [] });
+      const items = res.diamondSupportedAssetAddedEventss?.items || [];
       if (items.length === 0) break;
 
-      for (const a of items as any[]) {
-        // Handle attributes - can be array, object, or null/undefined
-        const attributesRaw = a.attributes;
-        let attributesArray: any[] = [];
+      for (const event of items) {
+        const tokenIdKey = `${event.token}-${event.tokenId}`;
+        if (this.processedTokenIds.has(tokenIdKey)) continue;
+        this.processedTokenIds.add(tokenIdKey);
 
-        if (Array.isArray(attributesRaw)) {
-          attributesArray = attributesRaw;
-        } else if (attributesRaw && typeof attributesRaw === 'object') {
-          // Single attribute object - wrap in array
-          attributesArray = [attributesRaw];
-        } else if (attributesRaw?.items) {
-          // Ponder format: { items: [...] }
-          attributesArray = Array.isArray(attributesRaw.items)
-            ? attributesRaw.items
-            : [];
+        let attributes: Asset['attributes'] = [];
+
+        try {
+          const cid = await this.getAssetCID(event.token, event.tokenId);
+          if (cid) {
+            const { data } = await this.pinata.gateways.public.get(cid);
+            const json = typeof data === 'string' ? JSON.parse(data) : data;
+            const contractAsset = json.asset as {
+              name?: string;
+              attributes?: Array<{
+                name?: string;
+                values?: string[];
+                description?: string;
+              }>;
+            };
+            attributes = (contractAsset?.attributes || [])
+              .map((attr) => ({
+                name: attr?.name ?? '',
+                values: Array.isArray(attr?.values) ? attr.values : [],
+                description: attr?.description ?? '',
+              }))
+              .filter((a) => typeof a.name === 'string' && a.name.length > 0);
+          }
+        } catch (e) {
+          console.warn(
+            `[PlatformRepository] Failed to fetch IPFS metadata for token ${event.tokenId}:`,
+            e,
+          );
         }
 
         out.push({
-          assetClass: a.class ?? a.className ?? a.assetClass ?? 'Unknown',
-          tokenId: String(a.tokenId),
-          name: a.name ?? 'Unknown Asset',
-          attributes: attributesArray
-            .map((attr: any) => ({
-              name: String(attr?.name ?? ''),
-              values: Array.isArray(attr?.values)
-                ? attr.values.map((v: any) => String(v))
-                : [],
-              description: String(attr?.description ?? ''),
-            }))
-            .filter((x: { name: string }) => x.name.length > 0),
+          assetClass: 'Unknown',
+          tokenId: String(event.tokenId),
+          name: '',
+          attributes,
         });
       }
 
-      hasNextPage = res.assetss?.pageInfo?.hasNextPage || false;
-      after = res.assetss?.pageInfo?.endCursor || undefined;
+      hasNextPage =
+        res.diamondSupportedAssetAddedEventss?.pageInfo?.hasNextPage || false;
+      after =
+        res.diamondSupportedAssetAddedEventss?.pageInfo?.endCursor ?? undefined;
       iterations++;
 
       if (items.length < PAGE) break;
@@ -90,117 +100,57 @@ export class PlatformRepository implements IPlatformRepository {
     return out;
   }
 
+  private async getAssetCID(
+    token: string,
+    tokenId: string,
+  ): Promise<string | null> {
+    try {
+      const list = await this.pinata.files.public
+        .list()
+        .keyvalues({ token: token, tokenId: tokenId })
+        .all();
+      if (!list || list.length === 0) return null;
+      return list[0].cid;
+    } catch {
+      return null;
+    }
+  }
+
   async getSupportedAssetClasses(): Promise<string[]> {
     console.log('[PlatformRepository] getSupportedAssetClasses: Starting...');
 
-    // Try GraphQL first (faster and more efficient)
+    // In the pure dumb indexer, we derive asset classes from IPFS metadata
+    // The supportedClassess aggregate table no longer exists
+    return this.getSupportedAssetClassesFromIPFS();
+  }
+
+  /**
+   * Fetch supported asset classes from IPFS metadata
+   * Queries all supported assets and extracts unique class names from their metadata
+   */
+  private async getSupportedAssetClassesFromIPFS(): Promise<string[]> {
+    console.log('[PlatformRepository] getSupportedAssetClassesFromIPFS...');
+    const classSet = new Set<string>();
+
     try {
-      const graphClasses = await this.getSupportedAssetClassesFromGraph();
-      if (graphClasses.length > 0) {
-        console.log(
-          `[PlatformRepository] Got ${graphClasses.length} classes from GraphQL`,
-        );
-        return graphClasses;
+      // Get all supported assets to extract class names from IPFS
+      const assets = await this.getSupportedAssets();
+      for (const asset of assets) {
+        if (asset.assetClass && asset.assetClass !== 'Unknown') {
+          classSet.add(asset.assetClass);
+        }
       }
       console.log(
-        '[PlatformRepository] GraphQL returned no classes, falling back to on-chain',
+        `[PlatformRepository] Found ${classSet.size} unique asset classes from IPFS`,
       );
-    } catch (graphErr) {
+    } catch (err) {
       console.warn(
-        '[PlatformRepository] GraphQL query failed, falling back to on-chain:',
-        graphErr,
+        '[PlatformRepository] Failed to get asset classes from IPFS:',
+        err,
       );
     }
 
-    // Fallback to on-chain query
-    return this.getSupportedAssetClassesFromChain();
-  }
-
-  /**
-   * Fetch supported asset classes from the indexer via GraphQL
-   */
-  private async getSupportedAssetClassesFromGraph(): Promise<string[]> {
-    const response = await graphqlRequest<SupportedClassesResponse>(
-      this.graphEndpoint,
-      GET_SUPPORTED_CLASSES,
-      {},
-    );
-    return extractPonderSupportedClasses(response);
-  }
-
-  /**
-   * Fetch supported asset classes directly from the smart contract (fallback)
-   */
-  private async getSupportedAssetClassesFromChain(): Promise<string[]> {
-    console.log('[PlatformRepository] getSupportedAssetClassesFromChain...');
-    const supportedClasses: string[] = [];
-    const MAX_ITERATIONS = 100;
-
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
-      try {
-        const className = await this.contract.supportedClasses(i);
-        console.log(
-          `[PlatformRepository] Successfully read supportedClasses[${i}]: "${className}"`,
-        );
-        // Filter out empty strings (tombstoned entries)
-        if (className && className.length > 0) {
-          supportedClasses.push(className);
-          console.log(
-            `[PlatformRepository] Added class "${className}" to array. Total: ${supportedClasses.length}`,
-          );
-        } else {
-          console.log(
-            `[PlatformRepository] Index ${i} returned empty string, skipping`,
-          );
-        }
-      } catch (err: unknown) {
-        const error = err as {
-          code?: string;
-          info?: { code?: string };
-          message?: string;
-          reason?: string;
-          data?: unknown;
-        };
-        // Check if this is an end-of-array error (expected when reaching the end)
-        const isEndOfArray =
-          error?.code === 'BAD_DATA' ||
-          error?.info?.code === 'BAD_DATA' ||
-          error?.code === 'CALL_EXCEPTION' ||
-          error?.code === 'UNPREDICTABLE_GAS_LIMIT' ||
-          error?.message?.includes('could not decode') ||
-          error?.message?.includes('execution reverted') ||
-          error?.message?.includes('missing revert data');
-
-        console.log(`[PlatformRepository] Error at index ${i}:`, {
-          code: error?.code,
-          message: error?.message,
-          isEndOfArray,
-          currentClassesCount: supportedClasses.length,
-        });
-
-        if (isEndOfArray) {
-          console.log(
-            `[PlatformRepository] Detected end of array at index ${i}. Breaking loop.`,
-          );
-          break;
-        }
-        console.warn(
-          `[PlatformRepository] Error reading supportedClasses[${i}]:`,
-          err,
-        );
-        if (supportedClasses.length > 0) {
-          console.log(
-            `[PlatformRepository] Have ${supportedClasses.length} classes, breaking on error at index ${i}`,
-          );
-          break;
-        }
-      }
-    }
-    console.log(
-      `[PlatformRepository] getSupportedAssetClassesFromChain: Returning ${supportedClasses.length} classes:`,
-      supportedClasses,
-    );
-    return supportedClasses;
+    return Array.from(classSet);
   }
 
   async getClassAssets(assetClass: string): Promise<Asset[]> {

@@ -40,17 +40,94 @@ import {
   extractPonderNodeAssets,
 } from './shared/graph-queries';
 import { graphqlRequest } from './shared/graph';
-import { extractPonderItems } from '../shared/graph-queries';
 import {
+  GET_LOGISTICS_ORDER_CREATED_EVENTS,
+  GET_ALL_UNIFIED_ORDER_EVENTS,
   GET_NODE_BY_ADDRESS,
-  GET_NODES_BY_OWNER,
-  GET_ALL_NODE_ASSETS,
-  GET_ORDERS_BY_NODE,
-  type NodeGraphResponse,
-  type OrderGraphResponse,
-  convertGraphNodeToDomain,
-  convertGraphOrderToDomain,
-} from './shared/node-queries';
+  GET_ALL_NODE_EVENTS,
+} from '../shared/graph-queries';
+import {
+  aggregateUnifiedOrders,
+  aggregateNodes,
+  NodeEventSources,
+} from '../shared/event-aggregators';
+import {
+  AggregatedUnifiedOrder,
+  LogisticsOrderCreatedEvent,
+  UnifiedOrderCreatedEvent,
+  NodeRegisteredEvent,
+  NodeDeactivatedEvent,
+  UpdateLocationEvent,
+  UpdateStatusEvent,
+  SupportedAssetAddedEvent,
+} from '../shared/indexer-types';
+import { Order, OrderStatus } from '@/domain/orders/order';
+
+interface GraphQLResponse<T> {
+  items: T[];
+  pageInfo?: {
+    hasNextPage: boolean;
+    endCursor?: string;
+  };
+}
+
+interface LogisticsEventsResponse {
+  diamondLogisticsOrderCreatedEventss: GraphQLResponse<LogisticsOrderCreatedEvent>;
+}
+
+interface UnifiedOrderEventsResponse {
+  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
+}
+
+interface NodeEventsResponse {
+  registered: GraphQLResponse<NodeRegisteredEvent>;
+  deactivated: GraphQLResponse<NodeDeactivatedEvent>;
+  locations: GraphQLResponse<UpdateLocationEvent>;
+  statuses: GraphQLResponse<UpdateStatusEvent>;
+  assets: GraphQLResponse<SupportedAssetAddedEvent>;
+}
+
+interface AllNodesEventsResponse {
+  registered: GraphQLResponse<NodeRegisteredEvent>;
+  deactivated: GraphQLResponse<NodeDeactivatedEvent>;
+  locations: GraphQLResponse<UpdateLocationEvent>;
+  statuses: GraphQLResponse<UpdateStatusEvent>;
+}
+
+function aggregatedUnifiedOrderToDomain(
+  order: AggregatedUnifiedOrder,
+  _logistics?: LogisticsOrderCreatedEvent,
+): Order {
+  return {
+    id: order.unifiedOrderId,
+    token: order.token,
+    tokenId: order.tokenId,
+    tokenQuantity: order.quantity,
+    price: order.price,
+    txFee: '0',
+    buyer: order.buyer,
+    seller: order.seller,
+    journeyIds: order.journeyIds,
+    nodes: [],
+    locationData: undefined,
+    currentStatus: mapOrderStatus(order.status),
+    contractualAgreement: '',
+  };
+}
+
+function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
+  switch (status) {
+    case 'settled':
+      return OrderStatus.SETTLED;
+    case 'cancelled':
+      return OrderStatus.CANCELLED;
+    case 'matched':
+    case 'created':
+      return OrderStatus.CREATED;
+    default:
+      return OrderStatus.CREATED;
+  }
+}
 
 /**
  * Infrastructure implementation of the NodeRepository interface - REFACTORED
@@ -134,55 +211,28 @@ export class BlockchainNodeRepository implements NodeRepository {
   }
 
   /**
-   * REFACTORED: Correctly maps contract Node struct with Asset[] to domain Node
+   * Get node data from raw events
    */
   async getNode(nodeAddress: string): Promise<Node | null> {
     try {
-      // Basic node info from Aurum subgraph (Ponder returns flat structure)
-      const response = await graphqlRequest<{
-        nodes: NodeGraphResponse | null;
-      }>(this.graphQLEndpoint, GET_NODE_BY_ADDRESS, {
-        nodeAddress: nodeAddress.toLowerCase(),
-      });
-      if (!response.nodes) return null;
+      const nodeAddr = nodeAddress.toLowerCase();
 
-      const node = response.nodes;
+      const response = await graphqlRequest<NodeEventsResponse>(
+        this.graphQLEndpoint,
+        GET_NODE_BY_ADDRESS,
+        { nodeAddress: nodeAddr },
+      );
 
-      // Fetch node asset capacities/prices from nodeAssets table (Ponder format)
-      const aurumAssetsResp = await graphqlRequest<{
-        nodeAssetss: { items: NodeAssetAurum[] };
-      }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_NODE_ASSETS_AURUM, {
-        nodeAddress: nodeAddress.toLowerCase(),
-      });
+      const sources: NodeEventSources = {
+        registered: response.registered?.items || [],
+        deactivated: response.deactivated?.items || [],
+        locationUpdates: response.locations?.items || [],
+        statusUpdates: response.statuses?.items || [],
+        assetsAdded: response.assets?.items || [],
+      };
 
-      const aurumAssets = extractPonderNodeAssets(aurumAssetsResp);
-      const nodeAssets: NodeAsset[] = aurumAssets.map((a) => ({
-        token: a.token,
-        tokenId: a.tokenId,
-        price: BigInt(a.price || '0'),
-        capacity: Number(a.capacity || '0'),
-      }));
-
-      return {
-        address: node.id,
-        owner: node.owner,
-        location: {
-          // Ponder uses flat structure - no nested location object
-          addressName: node.addressName,
-          location: {
-            lat: node.lat,
-            lng: node.lng,
-          },
-        },
-        validNode: Boolean(node.validNode),
-        status: ((s: string) => {
-          const x = (s || '').toLowerCase();
-          if (x === 'active' || x === '1' || x === 'true' || x === '0x01')
-            return 'Active';
-          return 'Inactive';
-        })(node.status),
-        assets: nodeAssets,
-      } as Node;
+      const nodes = aggregateNodes(sources);
+      return nodes.find((n) => n.address.toLowerCase() === nodeAddr) || null;
     } catch (error) {
       handleContractError(error, `get node ${nodeAddress}`);
       return null;
@@ -190,20 +240,28 @@ export class BlockchainNodeRepository implements NodeRepository {
   }
 
   /**
-   * REFACTORED: Uses GraphQL instead of on-chain iteration (when available)
-   * Falls back to on-chain iteration for now until GraphQL is fully implemented
+   * Get all nodes owned by an address using raw events
    */
   async getOwnedNodes(ownerAddress: string): Promise<string[]> {
     try {
-      // Ponder returns { nodess: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        nodess: { items: NodeGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_NODES_BY_OWNER, {
-        ownerAddress: ownerAddress,
-      });
-      console.log('response for getOwnedNodes', response);
-      const items = extractPonderItems(response.nodess || { items: [] });
-      return items.map((n) => n.id);
+      const response = await graphqlRequest<AllNodesEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_NODE_EVENTS,
+        { limit: 1000 },
+      );
+
+      const sources: NodeEventSources = {
+        registered: response.registered?.items || [],
+        deactivated: response.deactivated?.items || [],
+        locationUpdates: response.locations?.items || [],
+        statusUpdates: response.statuses?.items || [],
+        assetsAdded: [],
+      };
+
+      const nodes = aggregateNodes(sources);
+      return nodes
+        .filter((n) => n.owner.toLowerCase() === ownerAddress.toLowerCase())
+        .map((n) => n.address);
     } catch (error) {
       handleContractError(error, `get owned nodes for ${ownerAddress}`);
       return [];
@@ -229,16 +287,8 @@ export class BlockchainNodeRepository implements NodeRepository {
 
   async getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'> {
     try {
-      // Ponder returns single entity directly
-      const response = await graphqlRequest<{
-        nodes: NodeGraphResponse | null;
-      }>(this.graphQLEndpoint, GET_NODE_BY_ADDRESS, {
-        nodeAddress: nodeAddress.toLowerCase(),
-      });
-      const raw = (response.nodes?.status || '').toLowerCase();
-      if (raw === 'active' || raw === '1' || raw === '0x01' || raw === 'true')
-        return 'Active';
-      return 'Inactive';
+      const node = await this.getNode(nodeAddress);
+      return node?.status || 'Inactive';
     } catch (error) {
       handleContractError(error, `get node status for ${nodeAddress}`);
       return 'Inactive';
@@ -277,80 +327,12 @@ export class BlockchainNodeRepository implements NodeRepository {
         return [];
       }
 
-      // Step 3: Try to get asset metadata directly by tokenIds first
-      // Note: Using inline tokenIds because Ponder's BigInt filter requires [BigInt!]! not [String!]!
+      // Step 3: In the pure dumb indexer, asset metadata is fetched from IPFS directly
+      // The assetss table no longer exists, so we work with available data
       const tokenIds = nodeAssetsData.map((asset) => asset.tokenId);
-      let assetsMetadata: AssetsAuraResponse = { assetss: { items: [] } };
-
-      if (tokenIds.length > 0) {
-        try {
-          // Build inline tokenId list for the query (Ponder requires BigInt, not String)
-          const tokenIdList = tokenIds.map((id) => `"${id}"`).join(', ');
-          const query = `{
-            assetss(where: { tokenId_in: [${tokenIdList}] }, limit: 100) {
-              items {
-                id
-                hash
-                tokenId
-                name
-                assetClass
-                className
-                account
-                amount
-                attributes {
-                  items {
-                    name
-                    values
-                    description
-                  }
-                }
-              }
-            }
-          }`;
-
-          assetsMetadata = await graphqlRequest(
-            NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
-            query,
-          );
-          console.log(
-            '[NodeRepository] Found assets by tokenIds:',
-            assetsMetadata.assetss.items.length,
-          );
-        } catch (error) {
-          console.warn(
-            '[NodeRepository] Failed to get assets by tokenIds:',
-            error,
-          );
-
-          // Fallback: try to get by hashes from user balances
-          const balanceMap = new Map<string, UserBalanceAura>();
-          auraBalanceResponse.userBalancess?.items?.forEach((balance) => {
-            balanceMap.set(balance.tokenId, balance);
-          });
-
-          const assetHashes = Array.from(balanceMap.values()).map(
-            (b) => b.asset,
-          );
-          if (assetHashes.length > 0) {
-            try {
-              assetsMetadata = await graphqlRequest(
-                NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
-                GET_ASSETS_BY_HASHES,
-                { hashes: assetHashes },
-              );
-              console.log(
-                '[NodeRepository] Found assets by hashes:',
-                assetsMetadata.assetss.items.length,
-              );
-            } catch (hashError) {
-              console.warn(
-                '[NodeRepository] Failed to get assets by hashes:',
-                hashError,
-              );
-            }
-          }
-        }
-      }
+      console.log(
+        '[NodeRepository] Asset metadata will be fetched from IPFS in pure dumb pattern',
+      );
 
       // Step 4: Create maps for lookups
       const balanceMap = new Map<string, UserBalanceAura>();
@@ -358,32 +340,20 @@ export class BlockchainNodeRepository implements NodeRepository {
         balanceMap.set(balance.tokenId, balance);
       });
 
-      const metadataMap = new Map<string, AssetAura>();
-      assetsMetadata.assetss?.items?.forEach((asset) => {
-        metadataMap.set(asset.tokenId, asset);
-      });
-
       // Step 5: Get node location data
       const node = await this.getNode(nodeAddress);
 
-      // Step 6: Combine all data
+      // Step 6: Combine all data (without metadata from assetss table)
       return nodeAssetsData.map((nodeAsset) => {
         // Find balance for this token
         const balance = balanceMap.get(nodeAsset.tokenId);
 
-        // Find metadata for this token
-        const metadata = metadataMap.get(nodeAsset.tokenId);
-
-        console.log(
-          `[NodeRepository] Token ${nodeAsset.tokenId}: balance=${balance?.balance}, metadata=${!!metadata}`,
-        );
-
         return {
           id: nodeAsset.tokenId,
           amount: balance?.balance || '0',
-          name: metadata?.name || 'Unknown',
-          class: metadata?.assetClass || 'Unknown',
-          fileHash: metadata?.hash || '',
+          name: 'Unknown', // Would need IPFS metadata
+          class: 'Unknown', // Would need IPFS metadata
+          fileHash: '', // Would need IPFS metadata
           status:
             Number(balance?.balance || '0') > 0 ? 'Available' : 'Unavailable',
           nodeAddress,
@@ -440,40 +410,13 @@ export class BlockchainNodeRepository implements NodeRepository {
 
       if (allNodeAssets.length === 0) return [];
 
-      // Unique tokenIds for metadata query and map of tokenId -> list of node assets
-      const tokenIdSet = new Set<string>();
-      allNodeAssets.forEach((a) => tokenIdSet.add(a.tokenId));
-      const tokenIds = Array.from(tokenIdSet);
+      // In the pure dumb indexer, asset metadata is fetched from IPFS directly
+      // The assetss table no longer exists, so we work without metadata
+      console.log(
+        '[NodeRepository] Asset metadata will be fetched from IPFS in pure dumb pattern',
+      );
 
-      // Fetch metadata for all tokenIds from AuraAsset subgraph
-      let assetsMetadata: AssetsAuraResponse = { assetss: { items: [] } };
-      try {
-        // Batch tokenIds to avoid exceeding Graph limits
-        const BATCH = 500;
-        const metadataAccum: AssetAura[] = [] as any;
-        for (let i = 0; i < tokenIds.length; i += BATCH) {
-          const batch = tokenIds.slice(i, i + BATCH);
-          // Convert tokenIds to BigInt format (Ponder requires BigInt, not String)
-          const tokenIdsBigInt = batch.map((id: string) => BigInt(id));
-          const res: AssetsAuraResponse = await graphqlRequest(
-            NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
-            GET_ASSETS_BY_TOKEN_IDS,
-            { tokenIds: tokenIdsBigInt },
-          );
-          metadataAccum.push(...(res.assetss?.items || []));
-        }
-        assetsMetadata.assetss.items = metadataAccum;
-      } catch (error) {
-        console.warn(
-          '[NodeRepository] Failed to get assets metadata for all tokenIds:',
-          error,
-        );
-      }
-
-      const metadataMap = new Map<string, AssetAura>();
-      assetsMetadata.assetss?.items?.forEach((asset) => {
-        metadataMap.set(asset.tokenId, asset);
-      });
+      const metadataMap = new Map<string, AssetAura>(); // Empty in pure dumb pattern
 
       // Fetch per-node ERC1155 balances and node locations
       const nodeSet = new Set<string>();
@@ -540,39 +483,65 @@ export class BlockchainNodeRepository implements NodeRepository {
     nodeAddress: string,
   ): Promise<import('@/domain/orders/order').Order[]> {
     try {
-      // Ponder returns { orderss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        orderss: { items: OrderGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_ORDERS_BY_NODE, {
-        nodeAddress: nodeAddress.toLowerCase(),
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_UNIFIED_ORDER_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
       });
-      const items = extractPonderItems(response.orderss || { items: [] });
-      return items.map((o) => convertGraphOrderToDomain(o));
+
+      const nodeOrders = orders.filter((order) =>
+        order.journeyIds.some(
+          (jid) => jid.toLowerCase() === nodeAddress.toLowerCase(),
+        ),
+      );
+
+      return nodeOrders.map((order) => aggregatedUnifiedOrderToDomain(order));
     } catch (error) {
       handleContractError(error, `get orders for node ${nodeAddress}`);
       return [];
     }
   }
 
-  /**
-   * REFACTORED: Will use GraphQL aggregation instead of on-chain iteration
-   * Falls back to on-chain approach for now
-   */
   async loadAvailableAssets(): Promise<AggregateAssetAmount[]> {
     try {
-      // Ponder returns { nodeAssetss: { items: [...] } } for list queries
-      const response = await graphqlRequest<{
-        nodeAssetss: {
-          items: { token: string; tokenId: string; capacity: string }[];
-        };
-      }>(this.graphQLEndpoint, GET_ALL_NODE_ASSETS);
+      const response = await graphqlRequest<AllNodesEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_NODE_EVENTS,
+        { limit: 1000 },
+      );
 
-      const items = extractPonderItems(response.nodeAssetss || { items: [] });
+      const sources: NodeEventSources = {
+        registered: response.registered?.items || [],
+        deactivated: response.deactivated?.items || [],
+        locationUpdates: response.locations?.items || [],
+        statusUpdates: response.statuses?.items || [],
+        assetsAdded: [],
+      };
+
+      const nodes = aggregateNodes(sources);
+
       const assetAmounts: { [key: string]: number } = {};
-      items.forEach((a) => {
-        const key = `${a.token}-${a.tokenId}`;
-        assetAmounts[key] = (assetAmounts[key] || 0) + Number(a.capacity);
-      });
+      for (const node of nodes) {
+        for (const asset of node.assets) {
+          const key = `${asset.token}-${asset.tokenId}`;
+          assetAmounts[key] = (assetAmounts[key] || 0) + asset.capacity;
+        }
+      }
 
       return Object.entries(assetAmounts).map(([, amount], index) => ({
         id: index + 1,

@@ -165,6 +165,38 @@ async function waitForConfirmations(tx: any, confirmations: number = 2) {
   }
 }
 
+/**
+ * Extract function selectors directly from a compiled contract
+ * This is used when FACET_ABI is not defined for a facet
+ */
+async function extractSelectorsFromContract(
+  contractName: string,
+): Promise<string[]> {
+  try {
+    const factory = await ethers.getContractFactory(contractName);
+    const contractInterface = factory.interface;
+
+    // Get all function fragments and extract their selectors
+    const selectors: string[] = [];
+    for (const fragment of contractInterface.fragments) {
+      if (fragment.type === 'function') {
+        // Use the selector property from the FunctionFragment
+        const funcFragment = fragment as any;
+        if (funcFragment.selector) {
+          selectors.push(funcFragment.selector);
+        }
+      }
+    }
+
+    return selectors;
+  } catch (error: any) {
+    console.error(
+      `   ⚠️  Could not extract selectors from ${contractName}: ${error.message}`,
+    );
+    return [];
+  }
+}
+
 // =============================================================================
 // CHAIN CONSTANTS UPDATE
 // =============================================================================
@@ -840,6 +872,7 @@ async function analyzeSelectorsForFacet(
   diamondAddress: string,
   facetName: string,
   newFacetAddress: string,
+  providedSelectors?: string[],
 ): Promise<{
   toAdd: string[];
   toReplace: string[];
@@ -851,7 +884,8 @@ async function analyzeSelectorsForFacet(
     'IDiamondLoupe',
     diamondAddress,
   );
-  const configSelectors = FACET_SELECTORS[facetName] || [];
+  // Use provided selectors if given, otherwise fall back to FACET_SELECTORS
+  const configSelectors = providedSelectors || FACET_SELECTORS[facetName] || [];
 
   const toAdd: string[] = [];
   const toReplace: string[] = [];
@@ -1055,9 +1089,19 @@ async function updateFacet(
   console.log(`Deployer: ${deployer.address}`);
   console.log(`Diamond: ${diamondAddress}\n`);
 
-  const selectors = FACET_SELECTORS[facetName];
+  // Get selectors - try FACET_SELECTORS first, then auto-extract from contract
+  let selectors = FACET_SELECTORS[facetName];
   if (!selectors || selectors.length === 0) {
-    throw new Error(`No selectors defined for ${facetName}`);
+    console.log(
+      `📋 No FACET_ABI defined for ${facetName}, auto-extracting from contract...`,
+    );
+    selectors = await extractSelectorsFromContract(config.contractName);
+    if (selectors.length === 0) {
+      throw new Error(`Could not extract selectors for ${facetName}`);
+    }
+    console.log(
+      `   ✓ Extracted ${selectors.length} selectors from ${config.contractName}\n`,
+    );
   }
 
   let facetAddress = ethers.ZeroAddress;
@@ -1093,6 +1137,7 @@ async function updateFacet(
       diamondAddress,
       facetName,
       facetAddress,
+      selectors, // Pass the selectors (either from FACET_ABI or auto-extracted)
     );
 
     if (analysis.existingFacetAddress) {

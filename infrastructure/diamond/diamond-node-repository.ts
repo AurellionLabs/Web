@@ -21,6 +21,78 @@ import {
   NEXT_PUBLIC_INDEXER_URL,
   NEXT_PUBLIC_AURA_ASSET_ADDRESS,
 } from '@/chain-constants';
+import {
+  GET_LOGISTICS_ORDER_CREATED_EVENTS,
+  GET_ALL_UNIFIED_ORDER_EVENTS,
+  GET_SUPPORTED_ASSET_ADDED_EVENTS,
+} from '@/infrastructure/shared/graph-queries';
+import { aggregateUnifiedOrders } from '@/infrastructure/shared/event-aggregators';
+import {
+  AggregatedUnifiedOrder,
+  LogisticsOrderCreatedEvent,
+  UnifiedOrderCreatedEvent,
+  SupportedAssetAddedEvent,
+} from '@/infrastructure/shared/indexer-types';
+import { OrderStatus } from '@/domain/orders/order';
+
+interface GraphQLResponse<T> {
+  items: T[];
+  pageInfo?: {
+    hasNextPage: boolean;
+    endCursor?: string;
+  };
+}
+
+interface LogisticsEventsResponse {
+  diamondLogisticsOrderCreatedEventss: GraphQLResponse<LogisticsOrderCreatedEvent>;
+}
+
+interface UnifiedOrderEventsResponse {
+  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
+}
+
+interface AssetEventsResponse {
+  diamondSupportedAssetAddedEventss: GraphQLResponse<SupportedAssetAddedEvent>;
+}
+
+interface UnifiedOrderEventsResponse {
+  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
+}
+
+function aggregatedUnifiedOrderToDomain(
+  order: AggregatedUnifiedOrder,
+  _logistics?: LogisticsOrderCreatedEvent,
+): Order {
+  return {
+    id: order.unifiedOrderId,
+    token: order.token,
+    tokenId: order.tokenId,
+    tokenQuantity: order.quantity,
+    price: order.price,
+    txFee: '0',
+    buyer: order.buyer,
+    seller: order.seller,
+    journeyIds: order.journeyIds,
+    nodes: [],
+    locationData: undefined,
+    currentStatus: mapOrderStatus(order.status),
+    contractualAgreement: '',
+  };
+}
+
+function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
+  switch (status) {
+    case 'settled':
+      return OrderStatus.SETTLED;
+    case 'cancelled':
+      return OrderStatus.CANCELLED;
+    case 'matched':
+    case 'created':
+      return OrderStatus.CREATED;
+    default:
+      return OrderStatus.CREATED;
+  }
+}
 
 /**
  * Diamond-based implementation of NodeRepository
@@ -125,7 +197,7 @@ export class DiamondNodeRepository implements NodeRepository {
    *
    * Strategy:
    * 1. Get the node's inventory from Diamond (which tokens are credited to this node)
-   * 2. Enrich with metadata from the GraphQL indexer (name, class, attributes)
+   * 2. Query raw events from indexer for asset metadata
    *
    * Note: Assets are minted to the Diamond contract address, and Diamond internally
    * tracks which node owns which tokens via creditNodeTokens(). So we query the
@@ -150,67 +222,32 @@ export class DiamondNodeRepository implements NodeRepository {
         'assets in inventory',
       );
 
-      // Step 2: Get metadata for each token from the indexer
-      // Query by tokenId since assets are indexed by the Diamond contract address
-      const tokenIds = node.assets.map((a) => a.tokenId);
+      // Step 2: Query raw events to get asset details
+      // In the pure dumb indexer, we query diamondSupportedAssetAddedEventss
+      // for all assets and filter by nodeHash
+      const response = await graphqlRequest<AssetEventsResponse>(
+        this.graphQLEndpoint,
+        GET_SUPPORTED_ASSET_ADDED_EVENTS,
+        { limit: 1000 },
+      );
 
-      const query = `
-        query GetAssetsByTokenIds($tokenIds: [BigInt!]!) {
-          assetss(where: { tokenId_in: $tokenIds }, limit: 100) {
-            items {
-              id
-              hash
-              tokenId
-              name
-              assetClass
-              className
-              account
-              amount
-              attributes {
-                items {
-                  name
-                  values
-                  description
-                }
-              }
-            }
-          }
-        }
-      `;
+      const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
 
-      let indexedAssets: any[] = [];
-      try {
-        const response = await graphqlRequest<{
-          assetss: { items: any[] };
-        }>(this.graphQLEndpoint, query, {
-          tokenIds: tokenIds,
-        });
-        indexedAssets = response.assetss?.items || [];
-        console.log(
-          '[DiamondNodeRepository] Found',
-          indexedAssets.length,
-          'indexed assets for tokenIds',
-        );
-      } catch (error) {
-        console.warn(
-          '[DiamondNodeRepository] Failed to get indexed asset metadata:',
-          error,
-        );
-      }
-
-      // Step 3: Combine node inventory with indexed metadata
+      // Step 3: Combine node inventory with raw event data
       return node.assets.map((nodeAsset) => {
-        // Find matching indexed asset for metadata
-        const indexedAsset = indexedAssets.find(
-          (ia) => ia.tokenId.toString() === nodeAsset.tokenId,
+        // Find matching raw event for this asset on this node
+        const rawEvent = allAssets.find(
+          (e) =>
+            e.nodeHash.toLowerCase() === nodeAddress.toLowerCase() &&
+            e.tokenId === nodeAsset.tokenId,
         );
 
         return {
           id: nodeAsset.tokenId,
           amount: nodeAsset.capacity.toString(),
-          name: indexedAsset?.name || '',
-          class: indexedAsset?.assetClass || indexedAsset?.className || '',
-          fileHash: indexedAsset?.hash || '',
+          name: '', // Metadata would need IPFS - not available in raw events
+          class: '', // Metadata would need IPFS - not available in raw events
+          fileHash: '', // Metadata would need IPFS - not available in raw events
           status: 'Active',
           nodeAddress: nodeAddress,
           nodeLocation: node.location || {
@@ -235,38 +272,27 @@ export class DiamondNodeRepository implements NodeRepository {
    */
   async getAllNodeAssets(): Promise<TokenizedAsset[]> {
     try {
-      const query = `
-        query GetAllAssets {
-          assetss(limit: 1000) {
-            items {
-              id
-              hash
-              tokenId
-              name
-              assetClass
-              className
-              account
-              amount
-            }
-          }
-        }
-      `;
+      // Query raw events for all supported assets
+      const response = await graphqlRequest<AssetEventsResponse>(
+        this.graphQLEndpoint,
+        GET_SUPPORTED_ASSET_ADDED_EVENTS,
+        { limit: 1000 },
+      );
 
-      const response = await graphqlRequest<{
-        assetss: { items: any[] };
-      }>(this.graphQLEndpoint, query);
+      const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
 
-      return response.assetss.items.map((asset: any) => ({
-        id: asset.tokenId.toString(),
-        amount: asset.amount?.toString() || '0',
-        name: asset.name || '',
-        class: asset.assetClass || asset.className || '',
-        fileHash: asset.hash || '',
+      // Convert raw events to TokenizedAsset objects
+      return allAssets.map((event) => ({
+        id: event.tokenId,
+        amount: event.capacity,
+        name: '', // Would need IPFS metadata
+        class: '', // Would need IPFS metadata
+        fileHash: '', // Would need IPFS metadata
         status: 'Active',
-        nodeAddress: asset.account || '',
+        nodeAddress: event.nodeHash,
         nodeLocation: { addressName: '', location: { lat: '0', lng: '0' } },
-        price: '0',
-        capacity: '0',
+        price: event.price,
+        capacity: event.capacity,
       }));
     } catch (error) {
       console.error('[DiamondNodeRepository] Error getting all assets:', error);
@@ -275,51 +301,38 @@ export class DiamondNodeRepository implements NodeRepository {
   }
 
   /**
-   * Get orders for a node from GraphQL indexer
+   * Get orders for a node from GraphQL indexer using raw events
    */
   async getNodeOrders(nodeAddress: string): Promise<Order[]> {
     try {
-      const query = `
-        query GetNodeOrders($nodeAddress: String!) {
-          orderss(where: { seller: $nodeAddress }, limit: 100) {
-            items {
-              id
-              buyer
-              seller
-              token
-              tokenId
-              tokenQuantity
-              price
-              txFee
-              currentStatus
-            }
-          }
-        }
-      `;
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_UNIFIED_ORDER_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
 
-      const response = await graphqlRequest<{
-        orderss: { items: any[] };
-      }>(this.graphQLEndpoint, query, {
-        nodeAddress: nodeAddress.toLowerCase(),
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
       });
 
-      return (
-        response.orderss?.items?.map((order: any) => ({
-          id: order.id,
-          buyer: order.buyer,
-          seller: order.seller,
-          token: order.token,
-          tokenId: order.tokenId,
-          tokenQuantity: order.tokenQuantity?.toString() || '0',
-          price: order.price?.toString() || '0',
-          txFee: order.txFee?.toString() || '0',
-          currentStatus: order.currentStatus || 0,
-          journeyIds: [],
-          nodes: [nodeAddress],
-          locationData: undefined,
-          contractualAgreement: '',
-        })) || []
+      const nodeOrders = orders.filter((order) =>
+        order.journeyIds.some(
+          (jid) => jid.toLowerCase() === nodeAddress.toLowerCase(),
+        ),
       );
+
+      return nodeOrders.map((order) => aggregatedUnifiedOrderToDomain(order));
     } catch (error) {
       console.error(
         '[DiamondNodeRepository] Error getting node orders:',
@@ -380,43 +393,14 @@ export class DiamondNodeRepository implements NodeRepository {
   }
 
   /**
-   * Get asset attributes from GraphQL indexer
+   * Get asset attributes from IPFS
    */
   async getAssetAttributes(
-    fileHash: string,
+    _fileHash: string,
   ): Promise<TokenizedAssetAttribute[]> {
-    try {
-      const query = `
-        query GetAssetAttributes($hash: String!) {
-          assetAttributess(where: { assetId: $hash }, limit: 100) {
-            items {
-              name
-              values
-              description
-            }
-          }
-        }
-      `;
-
-      const response = await graphqlRequest<{
-        assetAttributess: { items: any[] };
-      }>(this.graphQLEndpoint, query, { hash: fileHash.toLowerCase() });
-
-      return (
-        response.assetAttributess?.items?.map((attr: any) => ({
-          name: attr.name || '',
-          value: Array.isArray(attr.values)
-            ? attr.values[0]
-            : attr.values || '',
-          description: attr.description || '',
-        })) || []
-      );
-    } catch (error) {
-      console.error(
-        '[DiamondNodeRepository] Error getting asset attributes:',
-        error,
-      );
-      return [];
-    }
+    // In the pure dumb indexer, asset attributes are stored on IPFS
+    // This method would need IPFS integration to fetch metadata
+    // For now, return empty array to avoid GraphQL errors
+    return [];
   }
 }

@@ -257,7 +257,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         uint256 amount,
         string memory className,
         bytes memory data
-    ) external validNode(account) returns (bytes32 hash, uint256 tokenID) {
+    ) external validNode(msg.sender) returns (bytes32 hash, uint256 tokenID) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         // Require class to be active

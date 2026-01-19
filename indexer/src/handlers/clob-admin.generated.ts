@@ -1,5 +1,5 @@
 // Auto-generated handler for clob-admin domain - Raw event storage only
-// Generated at: 2026-01-19T13:05:11.500Z
+// Generated at: 2026-01-19T23:20:26.241Z
 // 
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer

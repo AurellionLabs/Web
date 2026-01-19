@@ -7,6 +7,7 @@ import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
   NEXT_PUBLIC_AURA_ASSET_ADDRESS,
   NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+  NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
@@ -61,17 +62,21 @@ const ERC1155_ABI = [
 ];
 
 // GraphQL query to get all known assets from the indexer
-const GET_ALL_ASSETS = `
-  query GetAllAssets($limit: Int!) {
-    assetss(limit: $limit, orderBy: "tokenId", orderDirection: "asc") {
+const GET_ALL_SUPPORTED_ASSETS = `
+  query GetAllSupportedAssets($limit: Int!, $after: String) {
+    diamondSupportedAssetAddedEventss(limit: $limit, after: $after) {
       items {
         id
-        hash
+        nodeHash
+        token
         tokenId
-        name
-        assetClass
-        className
-        account
+        price
+        capacity
+        blockTimestamp
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -121,24 +126,61 @@ export function useUserHoldings(): UseUserHoldingsReturn {
     setState({ status: 'loading' });
 
     try {
-      // Step 1: Get all known assets from the indexer
-      const assetsResponse = await graphqlRequest<{
-        assetss: {
-          items: Array<{
-            id: string;
-            hash: string;
-            tokenId: string;
-            name: string;
-            assetClass: string;
-            className: string;
-            account: string;
-          }>;
+      // Step 1: Get all known tokenIds from the indexer via raw events
+      const PAGE = 500;
+      const tokenIdSet = new Set<string>();
+      let after: string | undefined = undefined;
+      let hasNextPage = true;
+      const MAX_ITERATIONS = 50;
+      let iterations = 0;
+
+      while (hasNextPage && iterations < MAX_ITERATIONS) {
+        type AssetsResponse = {
+          diamondSupportedAssetAddedEventss: {
+            items: Array<{
+              id: string;
+              nodeHash: string;
+              token: string;
+              tokenId: string;
+              price: string;
+              capacity: string;
+              blockTimestamp: string;
+            }>;
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          };
         };
-      }>(NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL, GET_ALL_ASSETS, { limit: 1000 });
+        const assetsResponse = (await graphqlRequest<AssetsResponse>(
+          NEXT_PUBLIC_INDEXER_URL,
+          GET_ALL_SUPPORTED_ASSETS,
+          { limit: PAGE, after },
+        )) as AssetsResponse;
 
-      const knownAssets = assetsResponse.assetss?.items || [];
+        const items =
+          assetsResponse.diamondSupportedAssetAddedEventss?.items || [];
+        if (items.length === 0) break;
 
-      if (knownAssets.length === 0) {
+        for (const item of items) {
+          const key = `${item.token}-${item.tokenId}`;
+          tokenIdSet.add(key);
+        }
+
+        hasNextPage =
+          assetsResponse.diamondSupportedAssetAddedEventss?.pageInfo
+            ?.hasNextPage || false;
+        after =
+          assetsResponse.diamondSupportedAssetAddedEventss?.pageInfo
+            ?.endCursor ?? undefined;
+        iterations++;
+
+        if (items.length < PAGE) break;
+      }
+
+      const uniqueAssets = Array.from(tokenIdSet).map((key) => {
+        const [token, tokenId] = key.split('-');
+        return { token, tokenId };
+      });
+
+      if (uniqueAssets.length === 0) {
         setState({ status: 'success', holdings: [] });
         return;
       }
@@ -155,17 +197,13 @@ export function useUserHoldings(): UseUserHoldingsReturn {
       );
 
       // Step 4: Query balances for all known tokenIds
-      // Use balanceOfBatch for efficiency
-      const tokenIds = knownAssets.map((a: { tokenId: string }) =>
-        BigInt(a.tokenId),
-      );
+      const tokenIds = uniqueAssets.map((a) => BigInt(a.tokenId));
       const accounts = tokenIds.map(() => address);
 
       let balances: bigint[];
       try {
         balances = await auraAssetContract.balanceOfBatch(accounts, tokenIds);
       } catch (batchError) {
-        // Fallback to individual queries if batch fails
         console.warn(
           '[useUserHoldings] Batch query failed, falling back to individual queries',
           batchError,
@@ -179,17 +217,17 @@ export function useUserHoldings(): UseUserHoldingsReturn {
 
       // Step 5: Filter to only holdings with balance > 0
       const userHoldings: UserHolding[] = [];
-      for (let i = 0; i < knownAssets.length; i++) {
+      for (let i = 0; i < uniqueAssets.length; i++) {
         const balance = balances[i];
         if (balance > 0n) {
-          const asset = knownAssets[i];
+          const asset = uniqueAssets[i];
           userHoldings.push({
             tokenId: asset.tokenId,
             balance: balance,
-            name: asset.name,
-            assetClass: asset.assetClass,
-            className: asset.className,
-            originNode: asset.account, // The node that minted the asset
+            name: '',
+            assetClass: '',
+            className: '',
+            originNode: '',
           });
         }
       }

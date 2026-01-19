@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-01-19T13:05:11.467Z
+// Generated at: 2026-01-19T23:20:26.136Z
 // 
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -66,6 +66,32 @@ export const DiamondABI = [
       }
     ],
     "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "admin",
+        "type": "address"
+      }
+    ],
+    "name": "NodeAdminRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "admin",
+        "type": "address"
+      }
+    ],
+    "name": "NodeAdminSet",
     "type": "event"
   },
   {
@@ -2231,6 +2257,84 @@ export const DiamondABI = [
     "inputs": [
       {
         "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_itemOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "assetClass",
+            "type": "string"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "internalType": "string[]",
+                "name": "values",
+                "type": "string[]"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DiamondStorage.Attribute[]",
+            "name": "attributes",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct DiamondStorage.AssetDefinition",
+        "name": "_asset",
+        "type": "tuple"
+      },
+      {
+        "internalType": "string",
+        "name": "_className",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_data",
+        "type": "bytes"
+      }
+    ],
+    "name": "addNodeItem",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
       },
@@ -2263,6 +2367,19 @@ export const DiamondABI = [
         "type": "uint256"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "approveAusysForTokens",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -2790,6 +2907,79 @@ export const DiamondABI = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "isNodeAdmin",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nodeHandOn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nodeHandoff",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nodeSign",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
@@ -2823,6 +3013,34 @@ export const DiamondABI = [
         "type": "bytes32"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_quantityToReduce",
+        "type": "uint256"
+      }
+    ],
+    "name": "reduceCapacityForOrder",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -2874,6 +3092,19 @@ export const DiamondABI = [
     "inputs": [
       {
         "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "revokeAusysApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
       },
@@ -2884,6 +3115,19 @@ export const DiamondABI = [
       }
     ],
     "name": "revokeClobApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "revokeNodeAdmin",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -2910,6 +3154,19 @@ export const DiamondABI = [
       }
     ],
     "name": "setClobAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "setNodeAdmin",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -3896,6 +4153,57 @@ export const DiamondABI = [
         "internalType": "uint256",
         "name": "_quantity",
         "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "lat",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "lng",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DiamondStorage.Location",
+            "name": "startLocation",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "lat",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "lng",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DiamondStorage.Location",
+            "name": "endLocation",
+            "type": "tuple"
+          },
+          {
+            "internalType": "string",
+            "name": "startName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "endName",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct DiamondStorage.ParcelData",
+        "name": "_deliveryData",
+        "type": "tuple"
       }
     ],
     "name": "createUnifiedOrder",
@@ -3917,6 +4225,44 @@ export const DiamondABI = [
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      }
+    ],
+    "name": "getBuyerOrders",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "getSellerOrders",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
       }
     ],
     "stateMutability": "view",
@@ -4037,6 +4383,57 @@ export const DiamondABI = [
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "clobOrderId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getUnifiedOrderFromClobOrder",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "clobTradeId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getUnifiedOrderFromClobTrade",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_percentage",
+        "type": "uint256"
+      }
+    ],
+    "name": "setBountyPercentage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_newRecipient",
         "type": "address"
@@ -4050,12 +4447,51 @@ export const DiamondABI = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_percentage",
+        "type": "uint256"
+      }
+    ],
+    "name": "setProtocolFeePercentage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "_unifiedOrderId",
         "type": "bytes32"
       }
     ],
     "name": "settleOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_ausys",
+        "type": "address"
+      }
+    ],
+    "name": "updateAusysAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_clob",
+        "type": "address"
+      }
+    ],
+    "name": "updateClobAddress",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -4489,6 +4925,19 @@ export const DiamondABI = [
   },
   {
     "inputs": [],
+    "name": "getRWYCLOBAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getRWYConfig",
     "outputs": [
       {
@@ -4510,6 +4959,32 @@ export const DiamondABI = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRWYFeeRecipient",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRWYQuoteToken",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -4588,6 +5063,26 @@ export const DiamondABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "isRWYPaused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pauseRWY",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -4660,6 +5155,45 @@ export const DiamondABI = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_clob",
+        "type": "address"
+      }
+    ],
+    "name": "setRWYCLOBAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_feeRecipient",
+        "type": "address"
+      }
+    ],
+    "name": "setRWYFeeRecipient",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_quoteToken",
+        "type": "address"
+      }
+    ],
+    "name": "setRWYQuoteToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "opportunityId",
         "type": "bytes32"
@@ -4689,6 +5223,13 @@ export const DiamondABI = [
       }
     ],
     "name": "startDelivery",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unpauseRWY",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -5413,6 +5954,16 @@ export const EventSignatureRegistry = {
     "name": "Initialized",
     "facet": "NodesFacet",
     "signature": "Initialized(uint64)"
+  },
+  "0xd75e887b": {
+    "name": "NodeAdminRevoked",
+    "facet": "NodesFacet",
+    "signature": "NodeAdminRevoked(address)"
+  },
+  "0x73fad87b": {
+    "name": "NodeAdminSet",
+    "facet": "NodesFacet",
+    "signature": "NodeAdminSet(address)"
   },
   "0x0ba8897d": {
     "name": "NodeCapacityUpdated",

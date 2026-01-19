@@ -538,6 +538,32 @@ export const GET_UNIFIED_ORDER_BY_BUYER = gql`
   }
 `;
 
+export const GET_UNIFIED_ORDER_BY_SELLER = gql`
+  query GetUnifiedOrderBySeller($seller: String!, $limit: Int = 100) {
+    diamondUnifiedOrderCreatedEventss(
+      where: { seller: $seller }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        unifiedOrderId
+        clobOrderId
+        buyer
+        seller
+        token
+        tokenId
+        quantity
+        price
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
 export const GET_LOGISTICS_ORDER_CREATED_EVENTS = gql`
   query GetLogisticsOrderCreatedEvents($limit: Int = 500, $after: String) {
     diamondLogisticsOrderCreatedEventss(
@@ -950,31 +976,139 @@ export function convertUnifiedOrderEventsResponse(
 
 export const GET_NODE_BY_ADDRESS = gql`
   query GetNodeByAddress($nodeAddress: String!) {
-    nodes(id: $nodeAddress) {
-      id
-      owner
-      addressName
-      lat
-      lng
-      validNode
-      status
-      createdAt
-      updatedAt
+    registered: diamondNodeRegisteredEventss(
+      where: { nodeHash: $nodeAddress }
+      limit: 1
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        nodeHash
+        owner
+        nodeType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    deactivated: diamondNodeDeactivatedEventss(
+      where: { nodeHash: $nodeAddress }
+      limit: 1
+    ) {
+      items {
+        id
+        nodeHash
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    locations: diamondUpdateLocationEventss(
+      where: { node: $nodeAddress }
+      limit: 1
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        addressName
+        lat
+        lng
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    statuses: diamondUpdateStatusEventss(
+      where: { node: $nodeAddress }
+      limit: 1
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        status
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    assets: diamondSupportedAssetAddedEventss(
+      where: { nodeHash: $nodeAddress }
+      limit: 100
+    ) {
+      items {
+        id
+        nodeHash
+        token
+        tokenId
+        price
+        capacity
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
     }
   }
 `;
 
 export const GET_ALL_ACTIVE_NODES = gql`
   query GetAllActiveNodes($limit: Int = 500) {
-    nodess(where: { validNode: true }, limit: $limit) {
+    registered: diamondNodeRegisteredEventss(
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
       items {
         id
+        nodeHash
         owner
+        nodeType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    deactivated: diamondNodeDeactivatedEventss(limit: $limit) {
+      items {
+        id
+        nodeHash
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    locations: diamondUpdateLocationEventss(
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
         addressName
         lat
         lng
-        validNode
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    statuses: diamondUpdateStatusEventss(
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
         status
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
       }
     }
   }

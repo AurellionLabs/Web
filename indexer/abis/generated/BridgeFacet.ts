@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-19T13:05:11.446Z
+// Generated at: 2026-01-19T23:20:26.073Z
 
 export const BridgeFacetABI = [
   {
@@ -396,6 +396,57 @@ export const BridgeFacetABI = [
         "internalType": "uint256",
         "name": "_quantity",
         "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "lat",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "lng",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DiamondStorage.Location",
+            "name": "startLocation",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "lat",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "lng",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DiamondStorage.Location",
+            "name": "endLocation",
+            "type": "tuple"
+          },
+          {
+            "internalType": "string",
+            "name": "startName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "endName",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct DiamondStorage.ParcelData",
+        "name": "_deliveryData",
+        "type": "tuple"
       }
     ],
     "name": "createUnifiedOrder",
@@ -417,6 +468,44 @@ export const BridgeFacetABI = [
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      }
+    ],
+    "name": "getBuyerOrders",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "getSellerOrders",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
       }
     ],
     "stateMutability": "view",
@@ -535,8 +624,59 @@ export const BridgeFacetABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "clobOrderId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getUnifiedOrderFromClobOrder",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "clobTradeId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getUnifiedOrderFromClobTrade",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_percentage",
+        "type": "uint256"
+      }
+    ],
+    "name": "setBountyPercentage",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -557,12 +697,51 @@ export const BridgeFacetABI = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_percentage",
+        "type": "uint256"
+      }
+    ],
+    "name": "setProtocolFeePercentage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "_unifiedOrderId",
         "type": "bytes32"
       }
     ],
     "name": "settleOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_ausys",
+        "type": "address"
+      }
+    ],
+    "name": "updateAusysAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_clob",
+        "type": "address"
+      }
+    ],
+    "name": "updateClobAddress",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

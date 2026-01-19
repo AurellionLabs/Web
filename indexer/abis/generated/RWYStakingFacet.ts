@@ -1,5 +1,5 @@
 // Auto-generated from RWYStakingFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-19T13:05:11.449Z
+// Generated at: 2026-01-19T23:20:26.084Z
 
 export const RWYStakingFacetABI = [
   {
@@ -836,6 +836,19 @@ export const RWYStakingFacetABI = [
   },
   {
     "inputs": [],
+    "name": "getRWYCLOBAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getRWYConfig",
     "outputs": [
       {
@@ -857,6 +870,32 @@ export const RWYStakingFacetABI = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRWYFeeRecipient",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRWYQuoteToken",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -935,6 +974,26 @@ export const RWYStakingFacetABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "isRWYPaused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pauseRWY",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -1007,6 +1066,45 @@ export const RWYStakingFacetABI = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_clob",
+        "type": "address"
+      }
+    ],
+    "name": "setRWYCLOBAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_feeRecipient",
+        "type": "address"
+      }
+    ],
+    "name": "setRWYFeeRecipient",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_quoteToken",
+        "type": "address"
+      }
+    ],
+    "name": "setRWYQuoteToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "opportunityId",
         "type": "bytes32"
@@ -1036,6 +1134,13 @@ export const RWYStakingFacetABI = [
       }
     ],
     "name": "startDelivery",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unpauseRWY",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-19T13:05:11.481Z
+// Generated at: 2026-01-19T23:20:26.181Z
 // 
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -8,7 +8,7 @@
 import { ponder } from "@/generated";
 
 // Import event tables from generated schema
-import { diamondClobApprovalGrantedEvents, diamondClobApprovalRevokedEvents, diamondNodeCapacityUpdatedEvents, diamondNodeDeactivatedEvents, diamondNodeRegisteredEvents, diamondNodeSellOrderPlacedEvents, diamondNodeUpdatedEvents, diamondSupportedAssetAddedEvents, diamondSupportedAssetsUpdatedEvents, diamondTokensDepositedToNodeEvents, diamondTokensMintedToNodeEvents, diamondTokensTransferredBetweenNodesEvents, diamondTokensWithdrawnFromNodeEvents, diamondUpdateLocationEvents, diamondUpdateOwnerEvents, diamondUpdateStatusEvents } from "@/generated-schema";
+import { diamondClobApprovalGrantedEvents, diamondClobApprovalRevokedEvents, diamondNodeAdminRevokedEvents, diamondNodeAdminSetEvents, diamondNodeCapacityUpdatedEvents, diamondNodeDeactivatedEvents, diamondNodeRegisteredEvents, diamondNodeSellOrderPlacedEvents, diamondNodeUpdatedEvents, diamondSupportedAssetAddedEvents, diamondSupportedAssetsUpdatedEvents, diamondTokensDepositedToNodeEvents, diamondTokensMintedToNodeEvents, diamondTokensTransferredBetweenNodesEvents, diamondTokensWithdrawnFromNodeEvents, diamondUpdateLocationEvents, diamondUpdateOwnerEvents, diamondUpdateStatusEvents } from "@/generated-schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -51,6 +51,44 @@ ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
     id: id,
     node_hash: nodeHash,
     clob_address: clobAddress,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle NodeAdminRevoked event from NodesFacet
+ * Signature: NodeAdminRevoked(address)
+ * Hash: 0xd75e887b
+ */
+ponder.on('Diamond:NodeAdminRevoked', async ({ event, context }) => {
+  const { admin } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondNodeAdminRevokedEvents).values({
+    id: id,
+    admin: admin,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle NodeAdminSet event from NodesFacet
+ * Signature: NodeAdminSet(address)
+ * Hash: 0x73fad87b
+ */
+ponder.on('Diamond:NodeAdminSet', async ({ event, context }) => {
+  const { admin } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondNodeAdminSetEvents).values({
+    id: id,
+    admin: admin,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

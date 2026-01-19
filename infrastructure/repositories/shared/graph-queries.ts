@@ -544,14 +544,20 @@ export const GET_ALL_ASSETS = gql`
 `;
 
 // =============================================================================
-// SUPPORTED CLASSES QUERIES
+// SUPPORTED CLASSES QUERIES (LEGACY - Deprecated in Pure Dumb Indexer)
 // =============================================================================
 
 /**
  * Query for all supported asset classes
+ * NOTE: In the pure dumb indexer, this table doesn't exist.
+ * Asset classes are derived from IPFS metadata instead.
+ * This query is kept for backward compatibility but will fail.
  */
 export const GET_SUPPORTED_CLASSES = gql`
   query GetSupportedClasses {
+    # In pure dumb indexer, we would need to add a SupportedAssetClassAddedEvent
+    # and aggregate from raw events. For now, this query will fail.
+    # Use getSupportedAssetClassesFromIPFS() instead.
     supportedClassess(where: { isActive: true }, limit: 100) {
       items {
         id

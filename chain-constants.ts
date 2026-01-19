@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-18T11:06:09.378Z
+// Deployed: 2026-01-19T23:20:26.275Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -32,7 +32,8 @@ export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)
 export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = 18; // Change to 6 for USDC in production
-export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL = 'AURA'; // Change to 'USDC' for production
+export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
+  'AURA'; // Change to 'USDC' for production
 
 //
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
@@ -57,13 +58,13 @@ export const NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS =
 export const NEXT_PUBLIC_NODES_FACET_ADDRESS =
   '0xf26E7C1146c3CC3bD4cD53007D0b17727CDf7518';
 export const NEXT_PUBLIC_ASSETS_FACET_ADDRESS =
-  '0xf70063c7C12C790247fE89F963b85c35568F48f0';
+  '0x838C4Ffa17d294d2dd5136B66Ad5F4E5370dFc25';
 export const NEXT_PUBLIC_ORDERS_FACET_ADDRESS =
   '0x22A9B8F70AdF0bE73ee4c7b237E617B053B65a6d';
 export const NEXT_PUBLIC_STAKING_FACET_ADDRESS =
   '0xa9E03bAB4dB2fAC44C6e4b7eB8e9D3bEfF26CcF5';
 export const NEXT_PUBLIC_BRIDGE_FACET_ADDRESS =
-  '0x9889C9Dc7b78eDad79073ac80bfaF975F7db9025';
+  '0xcD338753ceF77df64BD5950c13Ae4d33F8005c42';
 export const NEXT_PUBLIC_CLOB_FACET_ADDRESS =
   '0x4266D981D864106F872e449FfeBCBE4e3F462a7b';
 // OrderRouterFacet - SINGLE ENTRY POINT for all order operations (V2 storage)
@@ -119,4 +120,4 @@ export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
 // RWY_VAULT_DEPLOY_BLOCK removed - now part of Diamond
 
 export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
-  '0x8E23668B3c426D37B151abFED94BaE7Ca401De4F';
+  '0xf5fB721a347C3Ba4a87c41011D3293dC93370d74';
