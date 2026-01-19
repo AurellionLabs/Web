@@ -65,6 +65,12 @@ services:
       - 'traefik.http.routers.indexer.entrypoints=websecure'
       - 'traefik.http.routers.indexer.tls.certresolver=letsencrypt'
       - 'traefik.http.services.indexer.loadbalancer.server.port=42069'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:42069/graphql || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   # Optional: Traefik reverse proxy
   traefik:
