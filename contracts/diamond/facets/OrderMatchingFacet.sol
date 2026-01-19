@@ -41,63 +41,69 @@ contract OrderMatchingFacet {
     }
     
     function _matchBuyOrder(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 marketId, address baseToken, uint256 baseTokenId, address quoteToken) internal {
-        DiamondStorage.PackedOrder storage buyOrder = s.packedOrders[buyOrderId];
-        (uint96 buyPrice, uint96 buyAmount, uint64 buyFilled) = _unpack(buyOrder.priceAmountFilled);
+        TradeContext memory ctx = TradeContext(marketId, baseToken, baseTokenId, quoteToken);
+        (uint96 buyPrice, uint96 buyAmount, uint64 buyFilled) = _unpack(s.packedOrders[buyOrderId].priceAmountFilled);
         uint256 remaining = buyAmount - buyFilled;
         
         uint256 askPrice = _getBestPrice(s.askTreeMeta[marketId], s.askTreeNodes[marketId], true);
         
         while (remaining > 0 && askPrice > 0 && askPrice <= buyPrice) {
-            bytes32 sellOrderId = s.askLevels[marketId][askPrice].head;
-            
-            while (remaining > 0 && sellOrderId != bytes32(0)) {
-                DiamondStorage.PackedOrder storage sellOrder = s.packedOrders[sellOrderId];
-                (, uint96 sellAmount, uint64 sellFilled) = _unpack(sellOrder.priceAmountFilled);
-                uint256 fillAmount = _min(remaining, sellAmount - sellFilled);
-                
-                if (fillAmount > 0) {
-                    _executeTrade(s, buyOrderId, sellOrderId, marketId, uint96(askPrice), uint96(fillAmount), baseToken, baseTokenId, quoteToken);
-                    remaining -= fillAmount;
-                }
-                sellOrderId = s.orderQueue[sellOrderId].next;
-            }
+            remaining = _matchBuyAtPrice(s, buyOrderId, ctx, askPrice, remaining);
             askPrice = _getNextHigher(s.askTreeNodes[marketId], askPrice);
         }
         
         // Check V1 legacy orders
         if (remaining > 0) {
-            _matchBuyOrderV1(s, buyOrderId, TradeContext(marketId, baseToken, baseTokenId, quoteToken), buyPrice, remaining);
+            _matchBuyOrderV1(s, buyOrderId, ctx, buyPrice, remaining);
         }
     }
     
+    function _matchBuyAtPrice(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, TradeContext memory ctx, uint256 askPrice, uint256 remaining) internal returns (uint256) {
+        bytes32 sellOrderId = s.askLevels[ctx.marketId][askPrice].head;
+        
+        while (remaining > 0 && sellOrderId != bytes32(0)) {
+            uint256 fillAmount = _getFillAmount(s, sellOrderId, remaining);
+            
+            if (fillAmount > 0) {
+                _executeTradeWithContext(s, buyOrderId, sellOrderId, ctx, askPrice, fillAmount);
+                remaining -= fillAmount;
+            }
+            sellOrderId = s.orderQueue[sellOrderId].next;
+        }
+        return remaining;
+    }
+    
     function _matchSellOrder(DiamondStorage.AppStorage storage s, bytes32 sellOrderId, bytes32 marketId, address baseToken, uint256 baseTokenId, address quoteToken) internal {
-        DiamondStorage.PackedOrder storage sellOrder = s.packedOrders[sellOrderId];
-        (uint96 sellPrice, uint96 sellAmount, uint64 sellFilled) = _unpack(sellOrder.priceAmountFilled);
+        TradeContext memory ctx = TradeContext(marketId, baseToken, baseTokenId, quoteToken);
+        (uint96 sellPrice, uint96 sellAmount, uint64 sellFilled) = _unpack(s.packedOrders[sellOrderId].priceAmountFilled);
         uint256 remaining = sellAmount - sellFilled;
         
         uint256 bidPrice = _getBestPrice(s.bidTreeMeta[marketId], s.bidTreeNodes[marketId], false);
         
         while (remaining > 0 && bidPrice > 0 && bidPrice >= sellPrice) {
-            bytes32 buyOrderId = s.bidLevels[marketId][bidPrice].head;
-            
-            while (remaining > 0 && buyOrderId != bytes32(0)) {
-                DiamondStorage.PackedOrder storage buyOrder = s.packedOrders[buyOrderId];
-                (, uint96 buyAmount, uint64 buyFilled) = _unpack(buyOrder.priceAmountFilled);
-                uint256 fillAmount = _min(remaining, buyAmount - buyFilled);
-                
-                if (fillAmount > 0) {
-                    _executeTrade(s, buyOrderId, sellOrderId, marketId, uint96(bidPrice), uint96(fillAmount), baseToken, baseTokenId, quoteToken);
-                    remaining -= fillAmount;
-                }
-                buyOrderId = s.orderQueue[buyOrderId].next;
-            }
+            remaining = _matchSellAtPrice(s, sellOrderId, ctx, bidPrice, remaining);
             bidPrice = _getNextLower(s.bidTreeNodes[marketId], bidPrice);
         }
         
         // Check V1 legacy orders
         if (remaining > 0) {
-            _matchSellOrderV1(s, sellOrderId, TradeContext(marketId, baseToken, baseTokenId, quoteToken), sellPrice, remaining);
+            _matchSellOrderV1(s, sellOrderId, ctx, sellPrice, remaining);
         }
+    }
+    
+    function _matchSellAtPrice(DiamondStorage.AppStorage storage s, bytes32 sellOrderId, TradeContext memory ctx, uint256 bidPrice, uint256 remaining) internal returns (uint256) {
+        bytes32 buyOrderId = s.bidLevels[ctx.marketId][bidPrice].head;
+        
+        while (remaining > 0 && buyOrderId != bytes32(0)) {
+            uint256 fillAmount = _getFillAmount(s, buyOrderId, remaining);
+            
+            if (fillAmount > 0) {
+                _executeTradeWithContext(s, buyOrderId, sellOrderId, ctx, bidPrice, fillAmount);
+                remaining -= fillAmount;
+            }
+            buyOrderId = s.orderQueue[buyOrderId].next;
+        }
+        return remaining;
     }
     
     // ============================================================================
@@ -151,18 +157,31 @@ contract OrderMatchingFacet {
     // ============================================================================
     
     function _executeTrade(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 sellOrderId, bytes32 marketId, uint96 price, uint96 amount, address baseToken, uint256 baseTokenId, address quoteToken) internal {
+        // Get participants
         address buyer = CLOBLib.unpackMaker(s.packedOrders[buyOrderId].makerAndFlags);
         address seller = CLOBLib.unpackMaker(s.packedOrders[sellOrderId].makerAndFlags);
-        uint256 quoteAmount = CLOBLib.calculateQuoteAmount(price, amount);
         
-        IERC1155(baseToken).safeTransferFrom(address(this), buyer, baseTokenId, amount, "");
-        IERC20(quoteToken).transfer(seller, quoteAmount);
+        // Execute transfers
+        _executeTransfers(baseToken, quoteToken, buyer, seller, baseTokenId, price, amount);
         
+        // Update order state
         _updateOrderFilled(s.packedOrders[buyOrderId], amount);
         _updateOrderFilled(s.packedOrders[sellOrderId], amount);
         _updatePriceLevel(s, marketId, price, amount, true);
         _updatePriceLevel(s, marketId, price, amount, false);
         
+        // Emit event
+        _emitTradeEvent(s, buyOrderId, sellOrderId, price, amount);
+    }
+    
+    function _executeTransfers(address baseToken, address quoteToken, address buyer, address seller, uint256 baseTokenId, uint96 price, uint96 amount) internal {
+        uint256 quoteAmount = CLOBLib.calculateQuoteAmount(price, amount);
+        IERC1155(baseToken).safeTransferFrom(address(this), buyer, baseTokenId, amount, "");
+        IERC20(quoteToken).transfer(seller, quoteAmount);
+    }
+    
+    function _emitTradeEvent(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 sellOrderId, uint96 price, uint96 amount) internal {
+        uint256 quoteAmount = CLOBLib.calculateQuoteAmount(price, amount);
         bytes32 tradeId = keccak256(abi.encodePacked(buyOrderId, sellOrderId, block.timestamp, s.totalTrades++));
         emit TradeExecuted(tradeId, sellOrderId, buyOrderId, price, amount, quoteAmount);
     }
@@ -266,6 +285,15 @@ contract OrderMatchingFacet {
     }
     
     function _min(uint256 a, uint256 b) internal pure returns (uint256) { return a < b ? a : b; }
+    
+    function _getFillAmount(DiamondStorage.AppStorage storage s, bytes32 orderId, uint256 remaining) internal view returns (uint256) {
+        (, uint96 amount, uint64 filled) = _unpack(s.packedOrders[orderId].priceAmountFilled);
+        return _min(remaining, amount - filled);
+    }
+    
+    function _executeTradeWithContext(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 sellOrderId, TradeContext memory ctx, uint256 price, uint256 amount) internal {
+        _executeTrade(s, buyOrderId, sellOrderId, ctx.marketId, uint96(price), uint96(amount), ctx.baseToken, ctx.baseTokenId, ctx.quoteToken);
+    }
     
     function _stringToAddress(string memory _str) internal pure returns (address) {
         bytes memory b = bytes(_str);
