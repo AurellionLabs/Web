@@ -389,6 +389,13 @@ function regenerateFrontendABI() {
       'DiamondLoupeFacet',
       'OwnershipFacet',
       'ERC1155ReceiverFacet',
+      'OrderRouterFacet',
+      'AssetsFacet',
+      'AuSysFacet',
+      'BridgeFacet',
+      'RWYStakingFacet',
+      'CLOBLogisticsFacet',
+      'OperatorFacet',
     ];
 
     // Collect all ABI fragments
