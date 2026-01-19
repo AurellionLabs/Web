@@ -1,11 +1,953 @@
+/**
+ * GraphQL Queries for Raw Event Tables
+ *
+ * These queries fetch raw events from the Ponder indexer.
+ * Aggregation is performed in the repository layer using event-aggregators.ts.
+ *
+ * Table naming convention: diamond_{event_name}_events (snake_case in DB)
+ * GraphQL naming: camelCase (Ponder auto-converts)
+ *
+ * Query naming convention: diamondXxxEventss (note double 's' for list queries)
+ */
+
 import { gql } from 'graphql-request';
-import { OrderStatus, JourneyStatus } from '@/domain/orders/order';
+import {
+  NodeRegisteredEvent,
+  NodeDeactivatedEvent,
+  UpdateLocationEvent,
+  UpdateStatusEvent,
+  SupportedAssetAddedEvent,
+  OrderPlacedWithTokensEvent,
+  CLOBOrderFilledEvent,
+  CLOBOrderCancelledEvent,
+  OrderExpiredEvent,
+  UnifiedOrderCreatedEvent,
+  LogisticsOrderCreatedEvent,
+  JourneyStatusUpdatedEvent,
+  OrderSettledEvent,
+  RouterOrderPlacedEvent,
+  CLOBTradeExecutedEvent,
+  EventsGraphQLResponse,
+} from './indexer-types';
 
-// =====================
-// NODE QUERIES (Ponder schema)
-// =====================
+// ============================================================================
+// NODE EVENT QUERIES
+// ============================================================================
 
-// Single node by ID
+export const GET_NODE_REGISTERED_EVENTS = gql`
+  query GetNodeRegisteredEvents($limit: Int = 1000, $after: String) {
+    diamondNodeRegisteredEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        nodeHash
+        owner
+        nodeType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_NODE_REGISTERED_BY_OWNER = gql`
+  query GetNodeRegisteredByOwner($owner: String!, $limit: Int = 100) {
+    diamondNodeRegisteredEventss(
+      where: { owner: $owner }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        nodeHash
+        owner
+        nodeType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_NODE_DEACTIVATED_EVENTS = gql`
+  query GetNodeDeactivatedEvents($limit: Int = 1000) {
+    diamondNodeDeactivatedEventss(limit: $limit) {
+      items {
+        id
+        nodeHash
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_UPDATE_LOCATION_EVENTS = gql`
+  query GetUpdateLocationEvents($limit: Int = 1000, $after: String) {
+    diamondUpdateLocationEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        addressName
+        lat
+        lng
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_UPDATE_LOCATION_BY_NODE = gql`
+  query GetUpdateLocationByNode($node: String!, $limit: Int = 100) {
+    diamondUpdateLocationEventss(
+      where: { node: $node }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        addressName
+        lat
+        lng
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_UPDATE_STATUS_EVENTS = gql`
+  query GetUpdateStatusEvents($limit: Int = 1000) {
+    diamondUpdateStatusEventss(limit: $limit) {
+      items {
+        id
+        status
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_SUPPORTED_ASSET_ADDED_EVENTS = gql`
+  query GetSupportedAssetAddedEvents($limit: Int = 1000, $after: String) {
+    diamondSupportedAssetAddedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        nodeHash
+        token
+        tokenId
+        price
+        capacity
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_SUPPORTED_ASSETS_BY_NODE = gql`
+  query GetSupportedAssetsByNode($nodeHash: String!, $limit: Int = 100) {
+    diamondSupportedAssetAddedEventss(
+      where: { nodeHash: $nodeHash }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        nodeHash
+        token
+        tokenId
+        price
+        capacity
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// ============================================================================
+// ORDER PLACEMENT EVENT QUERIES
+// ============================================================================
+
+export const GET_ORDER_PLACED_WITH_TOKENS_EVENTS = gql`
+  query GetOrderPlacedWithTokensEvents($limit: Int = 500, $after: String) {
+    diamondOrderPlacedWithTokensEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        orderId
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        isBuy
+        orderType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_ORDER_PLACED_BY_MAKER = gql`
+  query GetOrderPlacedByMaker($maker: String!, $limit: Int = 100) {
+    diamondOrderPlacedWithTokensEventss(
+      where: { maker: $maker }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        orderId
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        isBuy
+        orderType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_ROUTER_ORDER_PLACED_EVENTS = gql`
+  query GetRouterOrderPlacedEvents($limit: Int = 500, $after: String) {
+    diamondRouterOrderPlacedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        orderId
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        isBuy
+        orderType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+// ============================================================================
+// ORDER FILL/CANCEL EVENT QUERIES
+// ============================================================================
+
+export const GET_CLOB_ORDER_FILLED_EVENTS = gql`
+  query GetCLOBOrderFilledEvents($limit: Int = 500, $after: String) {
+    diamondCLOBOrderFilledEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        orderId
+        tradeId
+        fillAmount
+        fillPrice
+        remainingAmount
+        cumulativeFilled
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_CLOB_ORDER_FILLED_BY_ORDER = gql`
+  query GetCLOBOrderFilledByOrder($orderId: String!, $limit: Int = 100) {
+    diamondCLOBOrderFilledEventss(
+      where: { orderId: $orderId }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        orderId
+        tradeId
+        fillAmount
+        fillPrice
+        remainingAmount
+        cumulativeFilled
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_CLOB_ORDER_CANCELLED_EVENTS = gql`
+  query GetCLOBOrderCancelledEvents($limit: Int = 500) {
+    diamondCLOBOrderCancelledEventss(limit: $limit) {
+      items {
+        id
+        orderId
+        maker
+        remainingAmount
+        reason
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_ORDER_EXPIRED_EVENTS = gql`
+  query GetOrderExpiredEvents($limit: Int = 500) {
+    diamondOrderExpiredEventss(limit: $limit) {
+      items {
+        id
+        orderId
+        expiredAt
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// ============================================================================
+// TRADE EVENT QUERIES
+// ============================================================================
+
+export const GET_CLOB_TRADE_EXECUTED_EVENTS = gql`
+  query GetCLOBTradeExecutedEvents($limit: Int = 500, $after: String) {
+    diamondCLOBTradeExecutedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        tradeId
+        takerOrderId
+        makerOrderId
+        taker
+        maker
+        marketId
+        price
+        amount
+        quoteAmount
+        takerFee
+        makerFee
+        timestamp
+        takerIsBuy
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_TRADES_BY_USER = gql`
+  query GetTradesByUser($user: String!, $limit: Int = 100) {
+    takerTrades: diamondCLOBTradeExecutedEventss(
+      where: { taker: $user }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        tradeId
+        takerOrderId
+        makerOrderId
+        taker
+        maker
+        marketId
+        price
+        amount
+        quoteAmount
+        takerIsBuy
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    makerTrades: diamondCLOBTradeExecutedEventss(
+      where: { maker: $user }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        tradeId
+        takerOrderId
+        makerOrderId
+        taker
+        maker
+        marketId
+        price
+        amount
+        quoteAmount
+        takerIsBuy
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// ============================================================================
+// UNIFIED ORDER / LOGISTICS EVENT QUERIES
+// ============================================================================
+
+export const GET_UNIFIED_ORDER_CREATED_EVENTS = gql`
+  query GetUnifiedOrderCreatedEvents($limit: Int = 500, $after: String) {
+    diamondUnifiedOrderCreatedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        unifiedOrderId
+        clobOrderId
+        buyer
+        seller
+        token
+        tokenId
+        quantity
+        price
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_UNIFIED_ORDER_BY_BUYER = gql`
+  query GetUnifiedOrderByBuyer($buyer: String!, $limit: Int = 100) {
+    diamondUnifiedOrderCreatedEventss(
+      where: { buyer: $buyer }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        unifiedOrderId
+        clobOrderId
+        buyer
+        seller
+        token
+        tokenId
+        quantity
+        price
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_LOGISTICS_ORDER_CREATED_EVENTS = gql`
+  query GetLogisticsOrderCreatedEvents($limit: Int = 500, $after: String) {
+    diamondLogisticsOrderCreatedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        unifiedOrderId
+        ausysOrderId
+        journeyIds
+        bounty
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_JOURNEY_STATUS_UPDATED_EVENTS = gql`
+  query GetJourneyStatusUpdatedEvents($limit: Int = 500, $after: String) {
+    diamondJourneyStatusUpdatedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "blockTimestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        unifiedOrderId
+        journeyId
+        phase
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_JOURNEY_STATUS_BY_JOURNEY = gql`
+  query GetJourneyStatusByJourney($journeyId: String!, $limit: Int = 100) {
+    diamondJourneyStatusUpdatedEventss(
+      where: { journeyId: $journeyId }
+      limit: $limit
+      orderBy: "blockTimestamp"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        unifiedOrderId
+        journeyId
+        phase
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+export const GET_ORDER_SETTLED_EVENTS = gql`
+  query GetOrderSettledEvents($limit: Int = 500) {
+    diamondOrderSettledEventss(limit: $limit) {
+      items {
+        id
+        unifiedOrderId
+        seller
+        sellerAmount
+        driver
+        driverAmount
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// ============================================================================
+// MARKET EVENT QUERIES
+// ============================================================================
+
+export const GET_MARKET_CREATED_EVENTS = gql`
+  query GetMarketCreatedEvents($limit: Int = 100) {
+    diamondMarketCreatedEventss(limit: $limit) {
+      items {
+        id
+        marketId
+        baseToken
+        baseTokenId
+        quoteToken
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// ============================================================================
+// BATCH QUERIES FOR AGGREGATION
+// ============================================================================
+
+/**
+ * Fetch all events needed to aggregate nodes
+ */
+export const GET_ALL_NODE_EVENTS = gql`
+  query GetAllNodeEvents($limit: Int = 1000) {
+    registered: diamondNodeRegisteredEventss(limit: $limit) {
+      items {
+        id
+        nodeHash
+        owner
+        nodeType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    deactivated: diamondNodeDeactivatedEventss(limit: $limit) {
+      items {
+        id
+        nodeHash
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    locations: diamondUpdateLocationEventss(limit: $limit) {
+      items {
+        id
+        addressName
+        lat
+        lng
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    statuses: diamondUpdateStatusEventss(limit: $limit) {
+      items {
+        id
+        status
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    assets: diamondSupportedAssetAddedEventss(limit: $limit) {
+      items {
+        id
+        nodeHash
+        token
+        tokenId
+        price
+        capacity
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+/**
+ * Fetch all events needed to aggregate orders
+ */
+export const GET_ALL_ORDER_EVENTS = gql`
+  query GetAllOrderEvents($limit: Int = 500) {
+    placed: diamondOrderPlacedWithTokensEventss(limit: $limit) {
+      items {
+        id
+        orderId
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        isBuy
+        orderType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    routerPlaced: diamondRouterOrderPlacedEventss(limit: $limit) {
+      items {
+        id
+        orderId
+        maker
+        baseToken
+        baseTokenId
+        quoteToken
+        price
+        amount
+        isBuy
+        orderType
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    filled: diamondCLOBOrderFilledEventss(limit: $limit) {
+      items {
+        id
+        orderId
+        tradeId
+        fillAmount
+        fillPrice
+        remainingAmount
+        cumulativeFilled
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    cancelled: diamondCLOBOrderCancelledEventss(limit: $limit) {
+      items {
+        id
+        orderId
+        maker
+        remainingAmount
+        reason
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    expired: diamondOrderExpiredEventss(limit: $limit) {
+      items {
+        id
+        orderId
+        expiredAt
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+/**
+ * Fetch all events needed to aggregate unified orders/journeys
+ */
+export const GET_ALL_UNIFIED_ORDER_EVENTS = gql`
+  query GetAllUnifiedOrderEvents($limit: Int = 500) {
+    created: diamondUnifiedOrderCreatedEventss(limit: $limit) {
+      items {
+        id
+        unifiedOrderId
+        clobOrderId
+        buyer
+        seller
+        token
+        tokenId
+        quantity
+        price
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    logistics: diamondLogisticsOrderCreatedEventss(limit: $limit) {
+      items {
+        id
+        unifiedOrderId
+        ausysOrderId
+        journeyIds
+        bounty
+        node
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    journeyUpdates: diamondJourneyStatusUpdatedEventss(limit: $limit) {
+      items {
+        id
+        unifiedOrderId
+        journeyId
+        phase
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+    settled: diamondOrderSettledEventss(limit: $limit) {
+      items {
+        id
+        unifiedOrderId
+        seller
+        sellerAmount
+        driver
+        driverAmount
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+// ============================================================================
+// RESPONSE TYPES
+// ============================================================================
+
+export interface NodeEventsResponse {
+  registered: EventsGraphQLResponse<NodeRegisteredEvent>;
+  deactivated: EventsGraphQLResponse<NodeDeactivatedEvent>;
+  locations: EventsGraphQLResponse<UpdateLocationEvent>;
+  statuses: EventsGraphQLResponse<UpdateStatusEvent>;
+  assets: EventsGraphQLResponse<SupportedAssetAddedEvent>;
+}
+
+export interface OrderEventsResponse {
+  placed: EventsGraphQLResponse<OrderPlacedWithTokensEvent>;
+  routerPlaced: EventsGraphQLResponse<RouterOrderPlacedEvent>;
+  filled: EventsGraphQLResponse<CLOBOrderFilledEvent>;
+  cancelled: EventsGraphQLResponse<CLOBOrderCancelledEvent>;
+  expired: EventsGraphQLResponse<OrderExpiredEvent>;
+}
+
+export interface UnifiedOrderEventsResponse {
+  created: EventsGraphQLResponse<UnifiedOrderCreatedEvent>;
+  logistics: EventsGraphQLResponse<LogisticsOrderCreatedEvent>;
+  journeyUpdates: EventsGraphQLResponse<JourneyStatusUpdatedEvent>;
+  settled: EventsGraphQLResponse<OrderSettledEvent>;
+}
+
+export interface TradesByUserResponse {
+  takerTrades: EventsGraphQLResponse<CLOBTradeExecutedEvent>;
+  makerTrades: EventsGraphQLResponse<CLOBTradeExecutedEvent>;
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Extract items from Ponder's paginated response
+ */
+export function extractPonderItems<T>(response: { items?: T[] } | T[]): T[] {
+  if (Array.isArray(response)) {
+    return response;
+  }
+  return response?.items || [];
+}
+
+/**
+ * Convert NodeEventsResponse to aggregator input format
+ */
+export function convertNodeEventsResponse(response: NodeEventsResponse) {
+  return {
+    registered: extractPonderItems(response.registered),
+    deactivated: extractPonderItems(response.deactivated),
+    locationUpdates: extractPonderItems(response.locations),
+    statusUpdates: extractPonderItems(response.statuses),
+    assetsAdded: extractPonderItems(response.assets),
+  };
+}
+
+/**
+ * Convert OrderEventsResponse to aggregator input format
+ */
+export function convertOrderEventsResponse(response: OrderEventsResponse) {
+  return {
+    placed: extractPonderItems(response.placed),
+    routerPlaced: extractPonderItems(response.routerPlaced),
+    filled: extractPonderItems(response.filled),
+    cancelled: extractPonderItems(response.cancelled),
+    expired: extractPonderItems(response.expired),
+  };
+}
+
+/**
+ * Convert UnifiedOrderEventsResponse to aggregator input format
+ */
+export function convertUnifiedOrderEventsResponse(
+  response: UnifiedOrderEventsResponse,
+) {
+  return {
+    created: extractPonderItems(response.created),
+    logistics: extractPonderItems(response.logistics),
+    journeyUpdates: extractPonderItems(response.journeyUpdates),
+    settled: extractPonderItems(response.settled),
+  };
+}
+
+// ============================================================================
+// LEGACY QUERIES - For backward compatibility during migration
+// These query aggregate tables (nodes, orders, journeys) which may not exist
+// in the pure dumb indexer. Use raw event queries above for new code.
+// ============================================================================
+
 export const GET_NODE_BY_ADDRESS = gql`
   query GetNodeByAddress($nodeAddress: String!) {
     nodes(id: $nodeAddress) {
@@ -22,26 +964,6 @@ export const GET_NODE_BY_ADDRESS = gql`
   }
 `;
 
-// Multiple nodes by owner (use nodess for list queries with filters)
-export const GET_NODES_BY_OWNER = gql`
-  query GetNodesByOwner($ownerAddress: String!) {
-    nodess(where: { owner: $ownerAddress }) {
-      items {
-        id
-        owner
-        addressName
-        lat
-        lng
-        validNode
-        status
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`;
-
-// All active nodes with locations (for route calculation)
 export const GET_ALL_ACTIVE_NODES = gql`
   query GetAllActiveNodes($limit: Int = 500) {
     nodess(where: { validNode: true }, limit: $limit) {
@@ -58,7 +980,6 @@ export const GET_ALL_ACTIVE_NODES = gql`
   }
 `;
 
-// Response type for GET_ALL_ACTIVE_NODES
 export interface ActiveNodeResponse {
   id: string;
   owner: string;
@@ -73,972 +994,4 @@ export interface GetAllActiveNodesResponse {
   nodess: {
     items: ActiveNodeResponse[];
   };
-}
-
-// All node assets
-export const GET_ALL_NODE_ASSETS = gql`
-  query GetAllNodeAssets($limit: Int = 1000) {
-    nodeAssetss(limit: $limit) {
-      items {
-        id
-        node
-        token
-        tokenId
-        price
-        capacity
-      }
-    }
-  }
-`;
-
-// Node assets for Aurum (used in TradeProvider)
-// Note: Ponder uses cursor-based pagination with limit/after
-export const GET_ALL_NODE_ASSETS_AURUM = gql`
-  query GetAllNodeAssetsAurum($limit: Int!, $after: String) {
-    nodeAssetss(
-      limit: $limit
-      after: $after
-      orderBy: "createdAt"
-      orderDirection: "desc"
-    ) {
-      items {
-        id
-        node
-        token
-        tokenId
-        price
-        capacity
-        createdAt
-        updatedAt
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-    }
-  }
-`;
-
-// =====================
-// JOURNEY QUERIES (Ponder schema)
-// =====================
-
-export const GET_JOURNEYS_BY_SENDER = gql`
-  query GetJourneysBySender($senderAddress: String!) {
-    journeyss(where: { sender: $senderAddress }) {
-      items {
-        id
-        sender
-        receiver
-        driver
-        currentStatus
-        bounty
-        journeyStart
-        journeyEnd
-        eta
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        orderId
-        createdAt
-      }
-    }
-  }
-`;
-
-export const GET_JOURNEYS_BY_RECEIVER = gql`
-  query GetJourneysByReceiver($receiverAddress: String!) {
-    journeyss(where: { receiver: $receiverAddress }) {
-      items {
-        id
-        sender
-        receiver
-        driver
-        currentStatus
-        bounty
-        journeyStart
-        journeyEnd
-        eta
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        orderId
-        createdAt
-      }
-    }
-  }
-`;
-
-export const GET_JOURNEYS_BY_DRIVER = gql`
-  query GetJourneysByDriver($driverAddress: String!) {
-    journeyss(where: { driver: $driverAddress }) {
-      items {
-        id
-        sender
-        receiver
-        driver
-        currentStatus
-        bounty
-        journeyStart
-        journeyEnd
-        eta
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        orderId
-        createdAt
-      }
-    }
-  }
-`;
-
-// Journeys available to accept: no driver assigned and status Pending (0)
-// Note: Ponder uses integer comparison for status
-export const GET_AVAILABLE_JOURNEYS = gql`
-  query GetAvailableJourneys($limit: Int = 100) {
-    journeyss(
-      limit: $limit
-      where: { currentStatus: 0 }
-      orderBy: "createdAt"
-      orderDirection: "desc"
-    ) {
-      items {
-        id
-        sender
-        receiver
-        driver
-        currentStatus
-        bounty
-        journeyStart
-        journeyEnd
-        eta
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        orderId
-        createdAt
-      }
-    }
-  }
-`;
-
-export const GET_JOURNEY_BY_ID = gql`
-  query GetJourneyById($journeyId: String!) {
-    journeys(id: $journeyId) {
-      id
-      sender
-      receiver
-      driver
-      currentStatus
-      bounty
-      journeyStart
-      journeyEnd
-      eta
-      startLocationLat
-      startLocationLng
-      endLocationLat
-      endLocationLng
-      startName
-      endName
-      orderId
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const GET_ALL_JOURNEYS = gql`
-  query GetAllJourneys($limit: Int = 100) {
-    journeyss(limit: $limit, orderBy: "createdAt", orderDirection: "desc") {
-      items {
-        id
-        sender
-        receiver
-        driver
-        currentStatus
-        bounty
-        journeyStart
-        journeyEnd
-        eta
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        orderId
-        createdAt
-      }
-    }
-  }
-`;
-
-// =====================
-// ORDER QUERIES (Ponder schema)
-// =====================
-
-export const GET_ORDERS_BY_BUYER = gql`
-  query GetOrdersByBuyer($buyerAddress: String!) {
-    orderss(where: { buyer: $buyerAddress }) {
-      items {
-        id
-        buyer
-        seller
-        token
-        tokenId
-        tokenQuantity
-        requestedTokenQuantity
-        price
-        txFee
-        currentStatus
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        nodes
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`;
-
-export const GET_ORDERS_BY_SELLER = gql`
-  query GetOrdersBySeller($sellerAddress: String!) {
-    orderss(where: { seller: $sellerAddress }) {
-      items {
-        id
-        buyer
-        seller
-        token
-        tokenId
-        tokenQuantity
-        requestedTokenQuantity
-        price
-        txFee
-        currentStatus
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        nodes
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`;
-
-export const GET_ORDER_BY_ID = gql`
-  query GetOrderById($orderId: String!) {
-    orders(id: $orderId) {
-      id
-      buyer
-      seller
-      token
-      tokenId
-      tokenQuantity
-      requestedTokenQuantity
-      price
-      txFee
-      currentStatus
-      startLocationLat
-      startLocationLng
-      endLocationLat
-      endLocationLng
-      startName
-      endName
-      nodes
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const GET_ORDERS_BY_NODE = gql`
-  query GetOrdersByNode($nodeAddress: String!) {
-    orderss(where: { nodes_contains: $nodeAddress }) {
-      items {
-        id
-        buyer
-        seller
-        token
-        tokenId
-        tokenQuantity
-        requestedTokenQuantity
-        price
-        txFee
-        currentStatus
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        nodes
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`;
-
-// Fetch journeys associated to an order by order ID
-export const GET_JOURNEYS_BY_ORDER_ID = gql`
-  query GetJourneysByOrderId($orderId: String!) {
-    journeyss(where: { orderId: $orderId }) {
-      items {
-        id
-      }
-    }
-  }
-`;
-
-// =====================
-// ASSET QUERIES (Ponder schema)
-// =====================
-
-export const GET_NODE_TOKENIDS = gql`
-  query GetNodeTokenIds($nodeAddress: String!) {
-    nodeAssetss(where: { node: $nodeAddress }) {
-      items {
-        tokenId
-      }
-    }
-  }
-`;
-
-export const GET_NODE_MINTED_ASSETS = gql`
-  query GetNodeMintedAssets($nodeAddress: String!) {
-    nodeAssetss(where: { node: $nodeAddress }) {
-      items {
-        id
-        tokenId
-        token
-        capacity
-        price
-      }
-    }
-  }
-`;
-
-export const GET_NODE_ASSETS_COMPLETE = gql`
-  query GetNodeAssetsComplete($nodeAddress: String!) {
-    nodeAssetss(where: { node: $nodeAddress }) {
-      items {
-        id
-        node
-        token
-        tokenId
-        capacity
-        price
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`;
-
-// =====================
-// ASSET METADATA QUERIES (for assets table)
-// Updated for Ponder schema: uses hash, assetClass, className, account, amount
-// =====================
-
-export const GET_ALL_ASSETS = gql`
-  query GetAllAssets($limit: Int!, $after: String) {
-    assetss(
-      limit: $limit
-      after: $after
-      orderBy: "tokenId"
-      orderDirection: "asc"
-    ) {
-      items {
-        id
-        hash
-        tokenId
-        name
-        assetClass
-        className
-        account
-        amount
-        attributes {
-          items {
-            name
-            values
-            description
-          }
-        }
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-    }
-  }
-`;
-
-export const GET_ASSET_BY_TOKEN_ID = gql`
-  query GetAssetByTokenId($tokenId: BigInt!) {
-    assetss(where: { tokenId: $tokenId }, limit: 1) {
-      items {
-        id
-        hash
-        tokenId
-        name
-        assetClass
-        className
-        account
-        amount
-        attributes {
-          items {
-            name
-            values
-            description
-          }
-        }
-      }
-    }
-  }
-`;
-
-// =====================
-// AGGREGATION QUERIES (Ponder schema)
-// =====================
-
-export const GET_ASSET_CAPACITY_AGGREGATION = gql`
-  query GetAssetCapacityAggregation {
-    assetCapacitys(limit: 1000) {
-      items {
-        id
-        token
-        tokenId
-        totalCapacity
-      }
-    }
-  }
-`;
-
-export const GET_DRIVER_STATISTICS = gql`
-  query GetDriverStatistics($driverAddress: String!) {
-    driverStats(id: $driverAddress) {
-      id
-      totalJourneys
-      completedJourneys
-      totalEarnings
-    }
-  }
-`;
-
-// =====================
-// CLOB / TRADING QUERIES (Ponder schema)
-// =====================
-
-// Get open orders for a specific market (baseToken + baseTokenId)
-export const GET_CLOB_OPEN_ORDERS = gql`
-  query GetCLOBOpenOrders(
-    $baseToken: String!
-    $baseTokenId: BigInt!
-    $limit: Int = 50
-  ) {
-    clobOrderss(
-      where: {
-        baseToken: $baseToken
-        baseTokenId: $baseTokenId
-        status_in: [0, 1]
-      }
-      limit: $limit
-      orderBy: "price"
-      orderDirection: "asc"
-    ) {
-      items {
-        id
-        maker
-        baseToken
-        baseTokenId
-        quoteToken
-        price
-        amount
-        filledAmount
-        remainingAmount
-        isBuy
-        orderType
-        status
-        createdAt
-      }
-    }
-  }
-`;
-
-// Get recent trades for a market
-export const GET_CLOB_TRADES = gql`
-  query GetCLOBTrades(
-    $baseToken: String!
-    $baseTokenId: BigInt!
-    $limit: Int = 50
-  ) {
-    clobTradess(
-      where: { baseToken: $baseToken, baseTokenId: $baseTokenId }
-      limit: $limit
-      orderBy: "timestamp"
-      orderDirection: "desc"
-    ) {
-      items {
-        id
-        takerOrderId
-        makerOrderId
-        taker
-        maker
-        baseToken
-        baseTokenId
-        quoteToken
-        price
-        amount
-        quoteAmount
-        timestamp
-        transactionHash
-      }
-    }
-  }
-`;
-
-// Get order history for a user
-export const GET_CLOB_USER_ORDERS = gql`
-  query GetCLOBUserOrders($maker: String!, $limit: Int = 50) {
-    clobOrderss(
-      where: { maker: $maker }
-      limit: $limit
-      orderBy: "createdAt"
-      orderDirection: "desc"
-    ) {
-      items {
-        id
-        maker
-        baseToken
-        baseTokenId
-        quoteToken
-        price
-        amount
-        filledAmount
-        remainingAmount
-        isBuy
-        orderType
-        status
-        createdAt
-      }
-    }
-  }
-`;
-
-// Get user's trade history
-export const GET_CLOB_USER_TRADES = gql`
-  query GetCLOBUserTrades($user: String!, $limit: Int = 50) {
-    clobTradess(
-      where: { OR: [{ taker: $user }, { maker: $user }] }
-      limit: $limit
-      orderBy: "timestamp"
-      orderDirection: "desc"
-    ) {
-      items {
-        id
-        takerOrderId
-        makerOrderId
-        taker
-        maker
-        baseToken
-        baseTokenId
-        quoteToken
-        price
-        amount
-        quoteAmount
-        timestamp
-        transactionHash
-      }
-    }
-  }
-`;
-
-// Get best bid and ask for a market
-export const GET_CLOB_BEST_PRICES = gql`
-  query GetCLOBBestPrices($baseToken: String!, $baseTokenId: BigInt!) {
-    # Best bid (highest buy price)
-    bestBids: clobOrderss(
-      where: {
-        baseToken: $baseToken
-        baseTokenId: $baseTokenId
-        isBuy: true
-        status: 0
-      }
-      limit: 1
-      orderBy: "price"
-      orderDirection: "desc"
-    ) {
-      items {
-        price
-        amount
-        remainingAmount
-      }
-    }
-    # Best ask (lowest sell price)
-    bestAsks: clobOrderss(
-      where: {
-        baseToken: $baseToken
-        baseTokenId: $baseTokenId
-        isBuy: false
-        status: 0
-      }
-      limit: 1
-      orderBy: "price"
-      orderDirection: "asc"
-    ) {
-      items {
-        price
-        amount
-        remainingAmount
-      }
-    }
-  }
-`;
-
-// CLOB response types
-export interface CLOBOrderGraphResponse {
-  id: string;
-  maker: string;
-  baseToken: string;
-  baseTokenId: string;
-  quoteToken: string;
-  price: string;
-  amount: string;
-  filledAmount: string;
-  remainingAmount: string;
-  isBuy: boolean;
-  orderType: string;
-  status: string;
-  createdAt: string;
-}
-
-export interface CLOBTradeGraphResponse {
-  id: string;
-  takerOrderId: string;
-  makerOrderId: string;
-  taker: string;
-  maker: string;
-  baseToken: string;
-  baseTokenId: string;
-  quoteToken: string;
-  price: string;
-  amount: string;
-  quoteAmount: string;
-  timestamp: string;
-  transactionHash: string;
-}
-
-export interface CLOBBestPricesResponse {
-  bestBids: {
-    items: { price: string; amount: string; remainingAmount: string }[];
-  };
-  bestAsks: {
-    items: { price: string; amount: string; remainingAmount: string }[];
-  };
-}
-
-// =====================
-// RESPONSE TYPES (Updated for Ponder's flat structure)
-// =====================
-
-// Ponder returns flat structure, no nested location object
-export interface NodeGraphResponse {
-  id: string;
-  owner: string;
-  addressName: string;
-  lat: string;
-  lng: string;
-  validNode: boolean;
-  status: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-// Ponder returns flat structure, no nested parcelData object
-export interface JourneyGraphResponse {
-  id: string;
-  sender: string;
-  receiver: string;
-  driver: string;
-  currentStatus: string;
-  bounty: string;
-  journeyStart: string;
-  journeyEnd: string;
-  eta: string;
-  startLocationLat: string;
-  startLocationLng: string;
-  endLocationLat: string;
-  endLocationLng: string;
-  startName: string;
-  endName: string;
-  orderId: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-// Ponder returns flat structure, no nested locationData object
-export interface OrderGraphResponse {
-  id: string;
-  buyer: string;
-  seller: string;
-  token: string;
-  tokenId: string;
-  tokenQuantity: string;
-  requestedTokenQuantity: string;
-  price: string;
-  txFee: string;
-  currentStatus: string;
-  startLocationLat: string;
-  startLocationLng: string;
-  endLocationLat: string;
-  endLocationLng: string;
-  startName: string;
-  endName: string;
-  nodes: string[];
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface NodeAssetGraphResponse {
-  id: string;
-  node: string;
-  token: string;
-  tokenId: string;
-  price: string;
-  capacity: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface AssetGraphResponse {
-  id: string;
-  tokenId: string;
-  name: string;
-  class: string;
-  unit: string;
-  description: string;
-  imageUri: string;
-  totalSupply: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-// Legacy types for compatibility (deprecated)
-export interface NodeAssetsGraphResponse {
-  nodeAssets: {
-    tokenId: string;
-    name: string;
-    class: string;
-    fileHash: string;
-    mintEvents: {
-      amount: string;
-      blockTimestamp: string;
-    }[];
-    transferEvents: {
-      from: string;
-      to: string;
-      amount: string;
-      blockTimestamp: string;
-    }[];
-  }[];
-}
-
-// =====================
-// HELPER FUNCTIONS
-// =====================
-
-/**
- * Calculate current balances from mint/transfer events (legacy, kept for compatibility)
- */
-export function calculateCurrentBalances(
-  nodeAssets: NodeAssetsGraphResponse['nodeAssets'],
-) {
-  const balances: { [tokenId: string]: number } = {};
-
-  nodeAssets.forEach((asset) => {
-    let balance = 0;
-
-    // Add minted amounts
-    asset.mintEvents.forEach((mint) => {
-      balance += parseInt(mint.amount);
-    });
-
-    // Subtract transferred amounts (outgoing)
-    asset.transferEvents.forEach((transfer) => {
-      if (transfer.from !== '0x0000000000000000000000000000000000000000') {
-        balance -= parseInt(transfer.amount);
-      }
-      if (transfer.to !== '0x0000000000000000000000000000000000000000') {
-        balance += parseInt(transfer.amount);
-      }
-    });
-
-    balances[asset.tokenId] = balance;
-  });
-
-  return balances;
-}
-
-/**
- * Helper: Convert contract/graph numeric status to JourneyStatus enum
- * Exported for use in repositories
- */
-export function convertNumericToJourneyStatus(
-  status: string | number | bigint,
-): JourneyStatus {
-  const statusNum = Number(status);
-  switch (statusNum) {
-    case 0:
-      return JourneyStatus.PENDING;
-    case 1:
-      return JourneyStatus.IN_TRANSIT;
-    case 2:
-      return JourneyStatus.DELIVERED;
-    case 3:
-      return JourneyStatus.CANCELLED;
-    default:
-      console.warn(`Unknown journey status: ${status}`);
-      return JourneyStatus.PENDING;
-  }
-}
-
-/**
- * Convert Graph response to domain Journey (updated for Ponder's flat structure)
- */
-export function convertGraphJourneyToDomain(
-  graphJourney: JourneyGraphResponse,
-) {
-  return {
-    parcelData: {
-      startLocation: {
-        lat: graphJourney.startLocationLat,
-        lng: graphJourney.startLocationLng,
-      },
-      endLocation: {
-        lat: graphJourney.endLocationLat,
-        lng: graphJourney.endLocationLng,
-      },
-      startName: graphJourney.startName,
-      endName: graphJourney.endName,
-    },
-    journeyId: graphJourney.id,
-    currentStatus: convertNumericToJourneyStatus(graphJourney.currentStatus),
-    sender: graphJourney.sender,
-    receiver: graphJourney.receiver,
-    driver: graphJourney.driver,
-    journeyStart: BigInt(graphJourney.journeyStart || '0'),
-    journeyEnd: BigInt(graphJourney.journeyEnd || '0'),
-    bounty: BigInt(graphJourney.bounty || '0'),
-    ETA: BigInt(graphJourney.eta || '0'),
-  };
-}
-
-/**
- * Helper: Convert contract/graph numeric status to OrderStatus enum
- * Exported for use in repositories
- */
-export function convertNumericToOrderStatus(
-  status: string | number | bigint,
-): OrderStatus {
-  const statusNum = Number(status);
-  switch (statusNum) {
-    case 0:
-      return OrderStatus.CREATED;
-    case 1:
-      return OrderStatus.PROCESSING;
-    case 2:
-      return OrderStatus.SETTLED;
-    case 3:
-      return OrderStatus.CANCELLED;
-    default:
-      console.warn(`Unknown order status: ${status}`);
-      return OrderStatus.CREATED;
-  }
-}
-
-/**
- * Convert Graph response to domain Order (updated for Ponder's flat structure)
- */
-export function convertGraphOrderToDomain(graphOrder: OrderGraphResponse) {
-  const domainOrder: any = {
-    id: graphOrder.id,
-    token: graphOrder.token,
-    tokenId: graphOrder.tokenId,
-    tokenQuantity: graphOrder.tokenQuantity,
-    requestedTokenQuantity: graphOrder.requestedTokenQuantity,
-    price: graphOrder.price,
-    txFee: graphOrder.txFee,
-    buyer: graphOrder.buyer,
-    seller: graphOrder.seller,
-    journeyIds: [],
-    nodes: graphOrder.nodes || [],
-    locationData: {
-      startLocation: {
-        lat: graphOrder.startLocationLat,
-        lng: graphOrder.startLocationLng,
-      },
-      endLocation: {
-        lat: graphOrder.endLocationLat,
-        lng: graphOrder.endLocationLng,
-      },
-      startName: graphOrder.startName,
-      endName: graphOrder.endName,
-    },
-    currentStatus: convertNumericToOrderStatus(graphOrder.currentStatus),
-    contractualAgreement: '',
-  };
-  return domainOrder;
-}
-
-/**
- * Convert Graph response to domain Node (updated for Ponder's flat structure)
- */
-export function convertGraphNodeToDomain(node: NodeGraphResponse) {
-  return {
-    address: node.id,
-    location: {
-      addressName: node.addressName,
-      location: { lat: node.lat, lng: node.lng },
-    },
-    validNode: Boolean(node.validNode),
-    owner: node.owner,
-    assets: [],
-    status: ((s: string) => {
-      const x = (s || '').toLowerCase();
-      if (x === 'active' || x === '1' || x === 'true' || x === '0x01')
-        return 'Active';
-      return 'Inactive';
-    })(node.status),
-  } as any;
-}
-
-/**
- * Extract items from Ponder's paginated response
- * Ponder returns { items: [...] } for list queries
- */
-export function extractPonderItems<T>(response: { items?: T[] } | T[]): T[] {
-  if (Array.isArray(response)) {
-    return response;
-  }
-  return response?.items || [];
 }

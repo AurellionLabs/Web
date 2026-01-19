@@ -1,3 +1,11 @@
+/**
+ * Mappers - Convert between GraphQL responses and domain types
+ *
+ * Note: With the "pure dumb" indexer pattern, most complex mapping is now
+ * done by event-aggregators.ts. These mappers handle simpler conversions
+ * and are kept for backward compatibility.
+ */
+
 import {
   Asset,
   AssetAttribute,
@@ -7,14 +15,11 @@ import {
   Journey,
 } from '@/domain/shared';
 import { Order, OrderStatus } from '@/domain/orders/order';
-import { Node, NodeLocation } from '@/domain/node';
-import {
-  AssetGraphQLItem,
-  OrderGraphQLItem,
-  JourneyGraphQLItem,
-  NodeGraphQLItem,
-  NodeAssetGraphQLItem,
-} from './indexer-types';
+import { Node, NodeLocation, NodeAsset } from '@/domain/node';
+
+// ============================================================================
+// Asset Mapping
+// ============================================================================
 
 export interface AssetGraphEntity {
   id: string;
@@ -47,16 +52,11 @@ export function mapAsset(graphAsset: AssetGraphEntity): Asset {
   };
 }
 
-export function mapGraphQLAssetToDomain(raw: AssetGraphQLItem): Asset {
-  return {
-    tokenId: raw.id,
-    assetClass: raw.assetClass,
-    name: raw.name,
-    attributes: [],
-  };
-}
+// ============================================================================
+// Status Conversion Helpers
+// ============================================================================
 
-function mapStatusToOrderStatus(status: string): OrderStatus {
+export function mapStatusToOrderStatus(status: string): OrderStatus {
   const normalizedStatus = status.toUpperCase();
   switch (normalizedStatus) {
     case 'OPEN':
@@ -67,6 +67,7 @@ function mapStatusToOrderStatus(status: string): OrderStatus {
     case 'CANCELLED':
     case 'EXPIRED':
       return OrderStatus.CANCELLED;
+    case 'PARTIAL':
     case 'PARTIAL_FILL':
       return OrderStatus.PROCESSING;
     default:
@@ -74,59 +75,7 @@ function mapStatusToOrderStatus(status: string): OrderStatus {
   }
 }
 
-function parseNodesArray(nodesJson?: string): string[] {
-  if (!nodesJson) return [];
-  try {
-    const parsed = JSON.parse(nodesJson);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function buildLocation(lat?: string, lng?: string): Location | undefined {
-  if (!lat || !lng) return undefined;
-  return { lat, lng };
-}
-
-function buildParcelData(raw: OrderGraphQLItem): ParcelData | undefined {
-  const startLocation = buildLocation(
-    raw.startLocationLat,
-    raw.startLocationLng,
-  );
-  const endLocation = buildLocation(raw.endLocationLat, raw.endLocationLng);
-
-  if (!startLocation && !endLocation && !raw.startName && !raw.endName) {
-    return undefined;
-  }
-
-  return {
-    startLocation: startLocation ?? { lat: '', lng: '' },
-    endLocation: endLocation ?? { lat: '', lng: '' },
-    startName: raw.startName ?? '',
-    endName: raw.endName ?? '',
-  };
-}
-
-export function mapGraphQLOrderToDomain(raw: OrderGraphQLItem): Order {
-  return {
-    id: raw.id,
-    token: raw.token,
-    tokenId: raw.tokenId,
-    tokenQuantity: raw.quantity,
-    price: raw.price,
-    txFee: '0',
-    buyer: raw.buyer,
-    seller: raw.seller,
-    journeyIds: [],
-    nodes: parseNodesArray(raw.nodes),
-    locationData: buildParcelData(raw),
-    currentStatus: mapStatusToOrderStatus(raw.status),
-    contractualAgreement: '',
-  };
-}
-
-function mapNumericStatusToJourneyStatus(
+export function mapNumericStatusToJourneyStatus(
   status: string | number,
 ): JourneyStatus {
   const numStatus = typeof status === 'string' ? parseInt(status, 10) : status;
@@ -144,30 +93,78 @@ function mapNumericStatusToJourneyStatus(
   }
 }
 
-export function mapGraphQLJourneyToDomain(raw: JourneyGraphQLItem): Journey {
-  const startLocation = buildLocation(raw.startLat, raw.startLng);
-  const endLocation = buildLocation(raw.endLat, raw.endLng);
+// ============================================================================
+// Location Helpers
+// ============================================================================
 
+export function parseNodesArray(nodesJson?: string): string[] {
+  if (!nodesJson) return [];
+  try {
+    const parsed = JSON.parse(nodesJson);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function buildLocation(
+  lat?: string,
+  lng?: string,
+): Location | undefined {
+  if (!lat || !lng) return undefined;
+  return { lat, lng };
+}
+
+// ============================================================================
+// Node Asset Mapping (from raw event data)
+// ============================================================================
+
+export interface NodeAssetEventData {
+  token: string;
+  tokenId: string;
+  price: string;
+  capacity: string;
+}
+
+export function mapNodeAssetFromEvent(raw: NodeAssetEventData): NodeAsset {
   return {
-    journeyId: raw.id,
-    parcelData: {
-      startLocation: startLocation ?? { lat: '', lng: '' },
-      endLocation: endLocation ?? { lat: '', lng: '' },
-      startName: raw.startName ?? '',
-      endName: raw.endName ?? '',
-    },
-    sender: raw.sender ?? '0x0000000000000000000000000000000000000000',
-    receiver: raw.receiver ?? '0x0000000000000000000000000000000000000000',
-    driver: raw.driver ?? '0x0000000000000000000000000000000000000000',
-    journeyStart: raw.createdAt ? BigInt(raw.createdAt) : 0n,
-    journeyEnd: 0n,
-    bounty: raw.bounty ? BigInt(raw.bounty) : 0n,
-    ETA: raw.eta ? BigInt(raw.eta) : 0n,
-    currentStatus: mapNumericStatusToJourneyStatus(raw.status),
+    token: raw.token,
+    tokenId: raw.tokenId,
+    price: BigInt(raw.price),
+    capacity: Number(raw.capacity),
   };
 }
 
-export function mapGraphQLNodeToDomain(raw: NodeGraphQLItem): Node {
+// ============================================================================
+// Hex Status Conversion
+// ============================================================================
+
+export function hexStatusToNodeStatus(
+  hexStatus: string,
+): 'Active' | 'Inactive' {
+  return hexStatus === '0x01' || hexStatus === '0x1' ? 'Active' : 'Inactive';
+}
+
+export function nodeStatusToHex(status: 'Active' | 'Inactive'): string {
+  return status === 'Active' ? '0x01' : '0x00';
+}
+
+// ============================================================================
+// Legacy Mappers (deprecated - use event-aggregators instead)
+// ============================================================================
+
+/**
+ * @deprecated Use aggregateNodes from event-aggregators.ts instead
+ */
+export function mapGraphQLNodeToDomain(raw: {
+  id: string;
+  owner: string;
+  addressName?: string;
+  lat?: string;
+  lng?: string;
+  validNode: boolean;
+  status?: string;
+}): Node {
   const nodeLocation: NodeLocation = {
     addressName: raw.addressName ?? '',
     location: {
@@ -183,19 +180,5 @@ export function mapGraphQLNodeToDomain(raw: NodeGraphQLItem): Node {
     owner: raw.owner,
     assets: [],
     status: raw.status === 'Active' ? 'Active' : 'Inactive',
-  };
-}
-
-export function mapNodeAssetToDomain(raw: NodeAssetGraphQLItem): {
-  token: string;
-  tokenId: string;
-  price: bigint;
-  capacity: number;
-} {
-  return {
-    token: raw.token,
-    tokenId: raw.tokenId,
-    price: BigInt(raw.price),
-    capacity: Number(raw.capacity),
   };
 }

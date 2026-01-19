@@ -40,17 +40,17 @@ import {
   extractPonderNodeAssets,
 } from './shared/graph-queries';
 import { graphqlRequest } from './shared/graph';
+import { extractPonderItems } from '../shared/graph-queries';
 import {
   GET_NODE_BY_ADDRESS,
   GET_NODES_BY_OWNER,
   GET_ALL_NODE_ASSETS,
-  convertGraphNodeToDomain,
-  type NodeGraphResponse,
   GET_ORDERS_BY_NODE,
+  type NodeGraphResponse,
   type OrderGraphResponse,
+  convertGraphNodeToDomain,
   convertGraphOrderToDomain,
-  extractPonderItems,
-} from '../shared/graph-queries';
+} from './shared/node-queries';
 
 /**
  * Infrastructure implementation of the NodeRepository interface - REFACTORED

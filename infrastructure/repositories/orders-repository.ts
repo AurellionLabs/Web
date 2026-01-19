@@ -15,6 +15,7 @@ import { handleContractError } from '@/utils/error-handler';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 import { Journey } from '@/domain/shared';
 import { graphqlRequest } from './shared/graph';
+import { extractPonderItems } from '../shared/graph-queries';
 import {
   GET_JOURNEYS_BY_SENDER,
   GET_JOURNEYS_BY_RECEIVER,
@@ -31,8 +32,7 @@ import {
   convertNumericToJourneyStatus,
   JourneyGraphResponse,
   OrderGraphResponse,
-  extractPonderItems,
-} from '../shared/graph-queries';
+} from './shared/order-queries';
 import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
 /**

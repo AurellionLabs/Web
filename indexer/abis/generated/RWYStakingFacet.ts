@@ -1,5 +1,5 @@
 // Auto-generated from RWYStakingFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-18T11:06:09.313Z
+// Generated at: 2026-01-19T13:05:11.449Z
 
 export const RWYStakingFacetABI = [
   {
@@ -29,11 +29,6 @@ export const RWYStakingFacetABI = [
   },
   {
     "inputs": [],
-    "name": "InsufficientCollateral",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "InsufficientStake",
     "type": "error"
   },
@@ -44,22 +39,7 @@ export const RWYStakingFacetABI = [
   },
   {
     "inputs": [],
-    "name": "InvalidCollateralToken",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "InvalidStatus",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidTimeline",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidYield",
     "type": "error"
   },
   {
@@ -462,12 +442,12 @@ export const RWYStakingFacetABI = [
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "expectedProfit",
+        "name": "",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "userShareBps",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -860,22 +840,22 @@ export const RWYStakingFacetABI = [
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "minOperatorCollateralBps",
+        "name": "",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "maxYieldBps",
+        "name": "",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "protocolFeeBps",
+        "name": "",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "defaultProcessingDays",
+        "name": "",
         "type": "uint256"
       }
     ],

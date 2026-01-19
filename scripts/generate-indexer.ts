@@ -233,7 +233,7 @@ function parseFacets(): Map<string, FacetInfo> {
     const allEvents = extractEvents(abi, facetName, config.domain);
 
     const seenSignatures = new Set<string>();
-    const events = [];
+    const events: EventInfo[] = [];
     for (const event of allEvents) {
       if (!seenSignatures.has(event.signatureHash)) {
         seenSignatures.add(event.signatureHash);
@@ -264,7 +264,7 @@ function parseFacets(): Map<string, FacetInfo> {
     const allEvents = extractEvents(abi, contractName, config.domain);
 
     const seenSignatures = new Set<string>();
-    const events = [];
+    const events: EventInfo[] = [];
     for (const event of allEvents) {
       if (!seenSignatures.has(event.signatureHash)) {
         seenSignatures.add(event.signatureHash);
@@ -391,10 +391,16 @@ interface SchemaTable {
   indexes: string[];
 }
 
-function generateEventTable(event: EventInfo): SchemaTable {
-  // Use signature hash prefix to avoid collisions when same event name has different signatures
-  const shortHash = event.signatureHash.slice(2, 6); // First 4 bytes of hash
-  const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
+function generateEventTable(
+  event: EventInfo,
+  contractName: string,
+): SchemaTable {
+  // Use contract prefix for readable names: {contract}_{event_name}_events
+  // External contracts use their name, Diamond facets use 'diamond'
+  const prefix = EXTERNAL_CONTRACTS[event.facet]
+    ? event.facet.toLowerCase()
+    : 'diamond';
+  const tableName = `${prefix}_${camelToSnake(event.name)}_events`;
   const columns: SchemaTable['columns'] = [
     { name: 'id', type: 't.text().primaryKey()', primaryKey: true },
   ];
@@ -439,82 +445,25 @@ function generateEventTable(event: EventInfo): SchemaTable {
   return { name: tableName, columns, indexes };
 }
 
-function generateEntityTables(): SchemaTable[] {
-  // Aggregate tables for entities the frontend queries
-  // These are populated by event handlers to provide a convenient view of state
-  return [
-    {
-      name: 'assets',
-      columns: [
-        { name: 'id', type: 't.bigint().primaryKey()' }, // tokenId
-        { name: 'name', type: 't.text().notNull()' },
-        { name: 'asset_class', type: 't.text().notNull()' },
-        { name: 'class_name', type: 't.text().notNull()' },
-        { name: 'hash', type: 't.hex().notNull()' },
-        { name: 'block_number', type: 't.bigint().notNull()' },
-        { name: 'block_timestamp', type: 't.bigint().notNull()' },
-        { name: 'transaction_hash', type: 't.hex().notNull()' },
-      ],
-      indexes: ['hash', 'asset_class'],
-    },
-    {
-      name: 'orders',
-      columns: [
-        { name: 'id', type: 't.hex().primaryKey()' }, // unified_order_id
-        { name: 'clob_order_id', type: 't.hex()' },
-        { name: 'ausys_order_id', type: 't.hex()' },
-        { name: 'buyer', type: 't.hex().notNull()' },
-        { name: 'seller', type: 't.hex().notNull()' },
-        { name: 'token', type: 't.hex().notNull()' },
-        { name: 'token_id', type: 't.bigint().notNull()' },
-        { name: 'quantity', type: 't.bigint().notNull()' },
-        { name: 'price', type: 't.bigint().notNull()' },
-        { name: 'bounty', type: 't.bigint()' },
-        { name: 'status', type: 't.text().notNull()' },
-        { name: 'logistics_status', type: 't.integer()' },
-        { name: 'block_number', type: 't.bigint().notNull()' },
-        { name: 'block_timestamp', type: 't.bigint().notNull()' },
-        { name: 'transaction_hash', type: 't.hex().notNull()' },
-      ],
-      indexes: ['buyer', 'seller', 'token', 'token_id', 'status'],
-    },
-    {
-      name: 'journeys',
-      columns: [
-        { name: 'id', type: 't.hex().primaryKey()' }, // journey_id
-        { name: 'unified_order_id', type: 't.hex().notNull()' },
-        { name: 'status', type: 't.bigint().notNull()' }, // Enum (phase)
-        { name: 'bounty', type: 't.bigint()' },
-        { name: 'eta', type: 't.bigint()' },
-        { name: 'start_lat', type: 't.text()' },
-        { name: 'start_lng', type: 't.text()' },
-        { name: 'end_lat', type: 't.text()' },
-        { name: 'end_lng', type: 't.text()' },
-        { name: 'block_number', type: 't.bigint().notNull()' },
-        { name: 'block_timestamp', type: 't.bigint().notNull()' },
-        { name: 'transaction_hash', type: 't.hex().notNull()' },
-      ],
-      indexes: ['unified_order_id', 'status'],
-    },
-  ];
-}
+// NOTE: Aggregate tables removed - Pure Dumb Indexer pattern
+// All aggregation happens in the frontend repository layer
 
 function generateSchema(facets: Map<string, FacetInfo>): void {
   const eventTables: SchemaTable[] = [];
   const seenSignatures = new Set<string>();
 
   // Generate event tables (deduplicated by signature)
+  // Pure Dumb Indexer: Only raw event tables, no aggregate tables
   for (const facet of facets.values()) {
     for (const event of facet.events) {
       if (seenSignatures.has(event.signatureHash)) continue;
       seenSignatures.add(event.signatureHash);
-      eventTables.push(generateEventTable(event));
+      eventTables.push(generateEventTable(event, facet.name));
     }
   }
 
-  // Get entity tables
-  const entityTables = generateEntityTables();
-  const allTables = [...entityTables, ...eventTables];
+  // Pure Dumb Indexer: Only event tables, no aggregate tables
+  const allTables = eventTables;
 
   // Generate schema file
   let schemaContent = `// Auto-generated Ponder Schema - DO NOT EDIT
@@ -574,7 +523,7 @@ export * from './generated-schema';
   );
 
   console.log(
-    `✓ Generated schema with ${entityTables.length} entity tables + ${eventTables.length} event tables`,
+    `✓ Generated schema with ${eventTables.length} raw event tables (Pure Dumb Indexer)`,
   );
 }
 
@@ -582,160 +531,10 @@ export * from './generated-schema';
 // HANDLER GENERATION
 // ============================================================================
 
-interface AggregateMapping {
-  table: string;
-  action: 'insert' | 'update';
-  values: Record<string, string>;
-}
-
-const EVENT_TO_AGGREGATE_MAPPING: Record<string, AggregateMapping[]> = {
-  'Diamond:OrderPlacedWithTokens': [
-    {
-      table: 'orders',
-      action: 'insert',
-      values: {
-        id: 'orderId',
-        clob_order_id: 'orderId',
-        buyer: "isBuy ? maker : '0x0000000000000000000000000000000000000000'",
-        seller: "!isBuy ? maker : '0x0000000000000000000000000000000000000000'",
-        token: 'baseToken',
-        token_id: 'baseTokenId',
-        quantity: 'amount',
-        price: 'price',
-        status: "'OPEN'",
-        block_number: 'event.block.number',
-        block_timestamp: 'BigInt(event.block.timestamp)',
-        transaction_hash: 'event.transaction.hash',
-      },
-    },
-  ],
-  'Diamond:RouterOrderPlaced': [
-    {
-      table: 'orders',
-      action: 'insert',
-      values: {
-        id: 'orderId',
-        clob_order_id: 'orderId',
-        buyer: "isBuy ? maker : '0x0000000000000000000000000000000000000000'",
-        seller: "!isBuy ? maker : '0x0000000000000000000000000000000000000000'",
-        token: 'baseToken',
-        token_id: 'baseTokenId',
-        quantity: 'amount',
-        price: 'price',
-        status: "'OPEN'",
-        block_number: 'event.block.number',
-        block_timestamp: 'BigInt(event.block.timestamp)',
-        transaction_hash: 'event.transaction.hash',
-      },
-    },
-  ],
-  'Diamond:CLOBOrderFilled': [
-    {
-      table: 'orders',
-      action: 'update',
-      values: {
-        id: 'orderId',
-        status: "remainingAmount === 0n ? 'FILLED' : 'PARTIAL_FILL'",
-      },
-    },
-  ],
-  'Diamond:AusysOrderFilled': [
-    {
-      table: 'orders',
-      action: 'update',
-      values: {
-        id: 'orderId',
-        status: "remainingAmount === 0n ? 'FILLED' : 'PARTIAL_FILL'",
-      },
-    },
-  ],
-  'Diamond:CLOBOrderCancelled': [
-    {
-      table: 'orders',
-      action: 'update',
-      values: {
-        id: 'orderId',
-        status: "'CANCELLED'",
-      },
-    },
-  ],
-  'Diamond:MatchingOrderCancelled': [
-    {
-      table: 'orders',
-      action: 'update',
-      values: {
-        id: 'orderId',
-        status: "'CANCELLED'",
-      },
-    },
-  ],
-  'Diamond:RouterOrderCancelled': [
-    {
-      table: 'orders',
-      action: 'update',
-      values: {
-        id: 'orderId',
-        status: "'CANCELLED'",
-      },
-    },
-  ],
-  'Diamond:OrderExpired': [
-    {
-      table: 'orders',
-      action: 'update',
-      values: {
-        id: 'orderId',
-        status: "'EXPIRED'",
-      },
-    },
-  ],
-  'Diamond:JourneyStatusUpdated': [
-    {
-      table: 'journeys',
-      action: 'update',
-      values: {
-        id: 'journeyId',
-        status: 'phase',
-      },
-    },
-  ],
-  'Diamond:LogisticsOrderCreated': [
-    {
-      table: 'journeys',
-      action: 'insert',
-      values: {
-        id: 'journeyId',
-        unified_order_id: 'unifiedOrderId',
-        bounty: 'bounty',
-        status: 'BigInt(0)',
-        block_number: 'event.block.number',
-        block_timestamp: 'BigInt(event.block.timestamp)',
-        transaction_hash: 'event.transaction.hash',
-      },
-    },
-  ],
-  'AuraAsset:MintedAsset': [
-    {
-      table: 'assets',
-      action: 'insert',
-      values: {
-        id: 'tokenId',
-        name: 'name',
-        asset_class: 'assetClass',
-        class_name: 'className',
-        hash: 'hash',
-        block_number: 'event.block.number',
-        block_timestamp: 'BigInt(event.block.timestamp)',
-        transaction_hash: 'event.transaction.hash',
-      },
-    },
-  ],
-};
+// NOTE: EVENT_TO_AGGREGATE_MAPPING removed - Pure Dumb Indexer pattern
+// All aggregation happens in the frontend repository layer
 
 function generateHandlerStub(domain: string, events: EventInfo[]): string {
-  const imports = new Set<string>();
-  imports.add("import { ponder } from '@/generated';");
-
   // Group events by facet for comments
   const eventsByFacet = new Map<string, EventInfo[]>();
 
@@ -749,7 +548,8 @@ function generateHandlerStub(domain: string, events: EventInfo[]): string {
   let content = `// Auto-generated handler for ${domain} domain - Raw event storage only
 // Generated at: ${new Date().toISOString()}
 // 
-// Dumb indexer pattern: Store raw events, aggregate in repository layer
+// Pure Dumb Indexer: Store raw events only, NO aggregate tables
+// All aggregation happens in frontend repository layer
 // Events from: ${Array.from(eventsByFacet.keys()).join(', ')}
 
 import { ponder } from "@/generated";
@@ -757,35 +557,19 @@ import { ponder } from "@/generated";
 // Import event tables from generated schema
 `;
 
-  // Collect all table imports
+  // Collect all table imports - Pure Dumb Indexer: only event tables, no aggregates
   const tableImports: string[] = [];
-  const aggregateTables = new Set<string>();
 
-  for (const [facetName, facetEvents] of eventsByFacet) {
+  for (const [, facetEvents] of eventsByFacet) {
     for (const event of facetEvents) {
-      // Table names have hash suffix to handle duplicate event names
-      const shortHash = event.signatureHash.slice(2, 6);
-      const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
+      // Table names use contract prefix: {contract}_{event_name}_events
+      const prefix = EXTERNAL_CONTRACTS[event.facet]
+        ? event.facet.toLowerCase()
+        : 'diamond';
+      const tableName = `${prefix}_${camelToSnake(event.name)}_events`;
       tableImports.push(snakeToCamel(tableName));
-
-      // Check for aggregate mappings
-      const contractName = event.facet;
-      const isExternalContract = !!EXTERNAL_CONTRACTS[contractName];
-      const eventKey = isExternalContract
-        ? `${contractName}:${event.name}`
-        : `Diamond:${event.name}`;
-
-      const mapping = EVENT_TO_AGGREGATE_MAPPING[eventKey];
-      if (mapping) {
-        for (const map of mapping) {
-          aggregateTables.add(snakeToCamel(map.table));
-        }
-      }
     }
   }
-
-  // Add aggregate tables to imports
-  tableImports.push(...aggregateTables);
 
   // Deduplicate imports
   const uniqueTableImports = Array.from(new Set(tableImports));
@@ -808,13 +592,6 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
 `;
 
     for (const event of facetEvents) {
-      const paramTypes = event.inputs
-        .map((i) => {
-          const tsType = solidityTypeToTsType(i.type);
-          return `${i.name}: ${tsType}`;
-        })
-        .join(', ');
-
       // Handle reserved names by renaming them in destructuring
       // e.g., { id } becomes { id: arg_id }
       const destructureParts: string[] = [];
@@ -833,21 +610,17 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
 
       const destructure = destructureParts.join(', ');
 
-      // Table names have hash suffix to handle duplicate event names
-      const shortHash = event.signatureHash.slice(2, 6);
-      const tableName = `${camelToSnake(event.name)}_${shortHash}_events`;
+      // Table names use contract prefix: {contract}_{event_name}_events
+      const prefix = EXTERNAL_CONTRACTS[event.facet]
+        ? event.facet.toLowerCase()
+        : 'diamond';
+      const tableName = `${prefix}_${camelToSnake(event.name)}_events`;
       const camelTable = snakeToCamel(tableName);
 
-      // Use contract name as prefix for all events
-      // Diamond contract events use "Diamond:" prefix
-      // External contracts (RWYVault, AuraAsset) use their contract name
-      const contractName = event.facet;
-      const isExternalContract = !!EXTERNAL_CONTRACTS[contractName];
-
-      // Use unique event name for event key
-      // Ponder only supports event names, not full signatures
+      // Use contract name as prefix for Ponder event key
+      const isExternalContract = !!EXTERNAL_CONTRACTS[event.facet];
       const eventKey = isExternalContract
-        ? `${contractName}:${event.name}`
+        ? `${event.facet}:${event.name}`
         : `Diamond:${event.name}`;
 
       // Reserved column names that need to be prefixed with 'event_' in the schema
@@ -859,12 +632,10 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
       ]);
 
       // Generate the values object with proper column names
-      // Column names use snake_case, variable names use the (possibly renamed) input names
       const valueAssignments = event.inputs
         .map((i) => {
           const varName = renamedInputs.get(i.name)!;
           let colName = camelToSnake(i.name);
-          // Match the column renaming in generateEventTable
           if (reservedColumns.has(colName)) {
             colName = `event_${colName}`;
           }
@@ -881,56 +652,14 @@ ponder.on('${eventKey}', async ({ event, context }) => {
   const { ${destructure} } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
   await context.db.insert(${camelTable}).values({
     id: id,
 ${valueAssignments}
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
-  });`;
-
-      // Add aggregate updates if mapped
-      const mapping = EVENT_TO_AGGREGATE_MAPPING[eventKey];
-      if (mapping) {
-        for (const map of mapping) {
-          const camelAggregateTable = snakeToCamel(map.table);
-          if (map.action === 'insert') {
-            const valuesObj = Object.entries(map.values)
-              .map(([key, val]) => `    ${key}: ${val},`)
-              .join('\n');
-
-            content += `
-
-  // Insert into ${map.table} aggregate
-  await context.db.insert(${camelAggregateTable}).values({
-${valuesObj}
-  }).onConflictDoUpdate({
-    conflictColumns: ['id'],
-    set: {
-${valuesObj}
-    }
-  });`;
-          } else if (map.action === 'update') {
-            const idVal = map.values['id'];
-            if (idVal) {
-              const setValues = Object.entries(map.values)
-                .filter(([k]) => k !== 'id')
-                .map(([key, val]) => `    ${key}: ${val},`)
-                .join('\n');
-
-              content += `
-
-  // Update ${map.table} aggregate
-  await context.db.update(${camelAggregateTable}, { id: ${idVal} }).set({
-${setValues}
-  });`;
-            }
-          }
-        }
-      }
-
-      content += `
+  });
 });
 
 `;

@@ -1,81 +1,13 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-18T22:19:57.454Z
-// 
+// Generated at: 2026-01-19T13:05:11.473Z
+//
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
 
 import { onchainTable, index } from '@ponder/core';
 
-export const assets = onchainTable(
-  'assets',
-  (t) => ({
-    id: t.bigint().primaryKey(),
-    name: t.text().notNull(),
-    asset_class: t.text().notNull(),
-    class_name: t.text().notNull(),
-    hash: t.hex().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    hashIdx: index().on(table.hash),
-    assetClassIdx: index().on(table.asset_class),
-  })
-);
-
-export const orders = onchainTable(
-  'orders',
-  (t) => ({
-    id: t.hex().primaryKey(),
-    clob_order_id: t.hex(),
-    ausys_order_id: t.hex(),
-    buyer: t.hex().notNull(),
-    seller: t.hex().notNull(),
-    token: t.hex().notNull(),
-    token_id: t.bigint().notNull(),
-    quantity: t.bigint().notNull(),
-    price: t.bigint().notNull(),
-    bounty: t.bigint(),
-    status: t.text().notNull(),
-    logistics_status: t.integer(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    buyerIdx: index().on(table.buyer),
-    sellerIdx: index().on(table.seller),
-    tokenIdx: index().on(table.token),
-    tokenIdIdx: index().on(table.token_id),
-    statusIdx: index().on(table.status),
-  })
-);
-
-export const journeys = onchainTable(
-  'journeys',
-  (t) => ({
-    id: t.hex().primaryKey(),
-    unified_order_id: t.hex().notNull(),
-    status: t.bigint().notNull(),
-    bounty: t.bigint(),
-    eta: t.bigint(),
-    start_lat: t.text(),
-    start_lng: t.text(),
-    end_lat: t.text(),
-    end_lng: t.text(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    unifiedOrderIdIdx: index().on(table.unified_order_id),
-    statusIdx: index().on(table.status),
-  })
-);
-
-export const clobApprovalGrantedD512Events = onchainTable(
-  'clob_approval_granted_d512_events',
+export const diamondClobApprovalGrantedEvents = onchainTable(
+  'diamond_clob_approval_granted_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -87,11 +19,11 @@ export const clobApprovalGrantedD512Events = onchainTable(
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
     clobAddressIdx: index().on(table.clob_address),
-  })
+  }),
 );
 
-export const clobApprovalRevokedBdd4Events = onchainTable(
-  'clob_approval_revoked_bdd4_events',
+export const diamondClobApprovalRevokedEvents = onchainTable(
+  'diamond_clob_approval_revoked_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -103,22 +35,22 @@ export const clobApprovalRevokedBdd4Events = onchainTable(
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
     clobAddressIdx: index().on(table.clob_address),
-  })
+  }),
 );
 
-export const initializedC7f5Events = onchainTable(
-  'initialized_c7f5_events',
+export const diamondInitializedEvents = onchainTable(
+  'diamond_initialized_events',
   (t) => ({
     id: t.text().primaryKey(),
     version: t.bigint().notNull(),
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
-  })
+  }),
 );
 
-export const nodeCapacityUpdated_0ba8Events = onchainTable(
-  'node_capacity_updated_0ba8_events',
+export const diamondNodeCapacityUpdatedEvents = onchainTable(
+  'diamond_node_capacity_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -129,11 +61,11 @@ export const nodeCapacityUpdated_0ba8Events = onchainTable(
   }),
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
-  })
+  }),
 );
 
-export const nodeDeactivated_62b3Events = onchainTable(
-  'node_deactivated_62b3_events',
+export const diamondNodeDeactivatedEvents = onchainTable(
+  'diamond_node_deactivated_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -143,11 +75,11 @@ export const nodeDeactivated_62b3Events = onchainTable(
   }),
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
-  })
+  }),
 );
 
-export const nodeRegistered_8326Events = onchainTable(
-  'node_registered_8326_events',
+export const diamondNodeRegisteredEvents = onchainTable(
+  'diamond_node_registered_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -160,11 +92,11 @@ export const nodeRegistered_8326Events = onchainTable(
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
     ownerIdx: index().on(table.owner),
-  })
+  }),
 );
 
-export const nodeSellOrderPlaced_3de5Events = onchainTable(
-  'node_sell_order_placed_3de5_events',
+export const diamondNodeSellOrderPlacedEvents = onchainTable(
+  'diamond_node_sell_order_placed_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -180,11 +112,11 @@ export const nodeSellOrderPlaced_3de5Events = onchainTable(
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
     tokenIdIdx: index().on(table.token_id),
-  })
+  }),
 );
 
-export const nodeUpdated_9c97Events = onchainTable(
-  'node_updated_9c97_events',
+export const diamondNodeUpdatedEvents = onchainTable(
+  'diamond_node_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -196,11 +128,11 @@ export const nodeUpdated_9c97Events = onchainTable(
   }),
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
-  })
+  }),
 );
 
-export const supportedAssetAdded_9f0aEvents = onchainTable(
-  'supported_asset_added_9f0a_events',
+export const diamondSupportedAssetAddedEvents = onchainTable(
+  'diamond_supported_asset_added_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -214,11 +146,11 @@ export const supportedAssetAdded_9f0aEvents = onchainTable(
   }),
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
-  })
+  }),
 );
 
-export const supportedAssetsUpdated_1af7Events = onchainTable(
-  'supported_assets_updated_1af7_events',
+export const diamondSupportedAssetsUpdatedEvents = onchainTable(
+  'diamond_supported_assets_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -229,11 +161,11 @@ export const supportedAssetsUpdated_1af7Events = onchainTable(
   }),
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
-  })
+  }),
 );
 
-export const tokensDepositedToNode_9d99Events = onchainTable(
-  'tokens_deposited_to_node_9d99_events',
+export const diamondTokensDepositedToNodeEvents = onchainTable(
+  'diamond_tokens_deposited_to_node_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -248,11 +180,11 @@ export const tokensDepositedToNode_9d99Events = onchainTable(
     nodeHashIdx: index().on(table.node_hash),
     tokenIdIdx: index().on(table.token_id),
     depositorIdx: index().on(table.depositor),
-  })
+  }),
 );
 
-export const tokensMintedToNode_1177Events = onchainTable(
-  'tokens_minted_to_node_1177_events',
+export const diamondTokensMintedToNodeEvents = onchainTable(
+  'diamond_tokens_minted_to_node_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -267,11 +199,11 @@ export const tokensMintedToNode_1177Events = onchainTable(
     nodeHashIdx: index().on(table.node_hash),
     tokenIdIdx: index().on(table.token_id),
     minterIdx: index().on(table.minter),
-  })
+  }),
 );
 
-export const tokensTransferredBetweenNodes_5ceeEvents = onchainTable(
-  'tokens_transferred_between_nodes_5cee_events',
+export const diamondTokensTransferredBetweenNodesEvents = onchainTable(
+  'diamond_tokens_transferred_between_nodes_events',
   (t) => ({
     id: t.text().primaryKey(),
     from_node: t.hex().notNull(),
@@ -286,11 +218,11 @@ export const tokensTransferredBetweenNodes_5ceeEvents = onchainTable(
     fromNodeIdx: index().on(table.from_node),
     toNodeIdx: index().on(table.to_node),
     tokenIdIdx: index().on(table.token_id),
-  })
+  }),
 );
 
-export const tokensWithdrawnFromNode_5994Events = onchainTable(
-  'tokens_withdrawn_from_node_5994_events',
+export const diamondTokensWithdrawnFromNodeEvents = onchainTable(
+  'diamond_tokens_withdrawn_from_node_events',
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
@@ -305,11 +237,11 @@ export const tokensWithdrawnFromNode_5994Events = onchainTable(
     nodeHashIdx: index().on(table.node_hash),
     tokenIdIdx: index().on(table.token_id),
     recipientIdx: index().on(table.recipient),
-  })
+  }),
 );
 
-export const updateLocation_6d4fEvents = onchainTable(
-  'update_location_6d4f_events',
+export const diamondUpdateLocationEvents = onchainTable(
+  'diamond_update_location_events',
   (t) => ({
     id: t.text().primaryKey(),
     address_name: t.text().notNull(),
@@ -323,11 +255,11 @@ export const updateLocation_6d4fEvents = onchainTable(
   (table) => ({
     addressNameIdx: index().on(table.address_name),
     nodeIdx: index().on(table.node),
-  })
+  }),
 );
 
-export const updateOwnerEa9dEvents = onchainTable(
-  'update_owner_ea9d_events',
+export const diamondUpdateOwnerEvents = onchainTable(
+  'diamond_update_owner_events',
   (t) => ({
     id: t.text().primaryKey(),
     owner: t.hex().notNull(),
@@ -339,11 +271,11 @@ export const updateOwnerEa9dEvents = onchainTable(
   (table) => ({
     ownerIdx: index().on(table.owner),
     nodeIdx: index().on(table.node),
-  })
+  }),
 );
 
-export const updateStatusCf4eEvents = onchainTable(
-  'update_status_cf4e_events',
+export const diamondUpdateStatusEvents = onchainTable(
+  'diamond_update_status_events',
   (t) => ({
     id: t.text().primaryKey(),
     status: t.hex().notNull(),
@@ -355,11 +287,11 @@ export const updateStatusCf4eEvents = onchainTable(
   (table) => ({
     statusIdx: index().on(table.status),
     nodeIdx: index().on(table.node),
-  })
+  }),
 );
 
-export const cLOBOrderCancelled_8b47Events = onchainTable(
-  'c_l_o_b_order_cancelled_8b47_events',
+export const diamondCLOBOrderCancelledEvents = onchainTable(
+  'diamond_c_l_o_b_order_cancelled_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -373,11 +305,11 @@ export const cLOBOrderCancelled_8b47Events = onchainTable(
   (table) => ({
     orderIdIdx: index().on(table.order_id),
     makerIdx: index().on(table.maker),
-  })
+  }),
 );
 
-export const cLOBOrderFilled_2d54Events = onchainTable(
-  'c_l_o_b_order_filled_2d54_events',
+export const diamondCLOBOrderFilledEvents = onchainTable(
+  'diamond_c_l_o_b_order_filled_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -393,11 +325,11 @@ export const cLOBOrderFilled_2d54Events = onchainTable(
   (table) => ({
     orderIdIdx: index().on(table.order_id),
     tradeIdIdx: index().on(table.trade_id),
-  })
+  }),
 );
 
-export const cLOBTradeExecuted_57e6Events = onchainTable(
-  'c_l_o_b_trade_executed_57e6_events',
+export const diamondCLOBTradeExecutedEvents = onchainTable(
+  'diamond_c_l_o_b_trade_executed_events',
   (t) => ({
     id: t.text().primaryKey(),
     trade_id: t.hex().notNull(),
@@ -421,11 +353,11 @@ export const cLOBTradeExecuted_57e6Events = onchainTable(
     tradeIdIdx: index().on(table.trade_id),
     takerOrderIdIdx: index().on(table.taker_order_id),
     makerOrderIdIdx: index().on(table.maker_order_id),
-  })
+  }),
 );
 
-export const marketCreatedB59eEvents = onchainTable(
-  'market_created_b59e_events',
+export const diamondMarketCreatedEvents = onchainTable(
+  'diamond_market_created_events',
   (t) => ({
     id: t.text().primaryKey(),
     market_id: t.hex().notNull(),
@@ -440,11 +372,11 @@ export const marketCreatedB59eEvents = onchainTable(
     marketIdIdx: index().on(table.market_id),
     baseTokenIdx: index().on(table.base_token),
     quoteTokenIdx: index().on(table.quote_token),
-  })
+  }),
 );
 
-export const orderCreated_43feEvents = onchainTable(
-  'order_created_43fe_events',
+export const diamondOrderCreatedEvents = onchainTable(
+  'diamond_order_created_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -465,11 +397,11 @@ export const orderCreated_43feEvents = onchainTable(
     orderIdIdx: index().on(table.order_id),
     marketIdIdx: index().on(table.market_id),
     makerIdx: index().on(table.maker),
-  })
+  }),
 );
 
-export const orderExpiredB558Events = onchainTable(
-  'order_expired_b558_events',
+export const diamondOrderExpiredEvents = onchainTable(
+  'diamond_order_expired_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -480,11 +412,11 @@ export const orderExpiredB558Events = onchainTable(
   }),
   (table) => ({
     orderIdIdx: index().on(table.order_id),
-  })
+  }),
 );
 
-export const orderPlacedWithTokensE764Events = onchainTable(
-  'order_placed_with_tokens_e764_events',
+export const diamondOrderPlacedWithTokensEvents = onchainTable(
+  'diamond_order_placed_with_tokens_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -504,11 +436,11 @@ export const orderPlacedWithTokensE764Events = onchainTable(
     orderIdIdx: index().on(table.order_id),
     makerIdx: index().on(table.maker),
     baseTokenIdx: index().on(table.base_token),
-  })
+  }),
 );
 
-export const ausysOrderFilled_3e2eEvents = onchainTable(
-  'ausys_order_filled_3e2e_events',
+export const diamondAusysOrderFilledEvents = onchainTable(
+  'diamond_ausys_order_filled_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -524,11 +456,11 @@ export const ausysOrderFilled_3e2eEvents = onchainTable(
   (table) => ({
     orderIdIdx: index().on(table.order_id),
     tradeIdIdx: index().on(table.trade_id),
-  })
+  }),
 );
 
-export const matchingOrderCancelled_6f7dEvents = onchainTable(
-  'matching_order_cancelled_6f7d_events',
+export const diamondMatchingOrderCancelledEvents = onchainTable(
+  'diamond_matching_order_cancelled_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -542,11 +474,11 @@ export const matchingOrderCancelled_6f7dEvents = onchainTable(
   (table) => ({
     orderIdIdx: index().on(table.order_id),
     makerIdx: index().on(table.maker),
-  })
+  }),
 );
 
-export const tradeExecuted_4692Events = onchainTable(
-  'trade_executed_4692_events',
+export const diamondTradeExecutedEvents = onchainTable(
+  'diamond_trade_executed_events',
   (t) => ({
     id: t.text().primaryKey(),
     trade_id: t.hex().notNull(),
@@ -563,11 +495,11 @@ export const tradeExecuted_4692Events = onchainTable(
     tradeIdIdx: index().on(table.trade_id),
     takerOrderIdIdx: index().on(table.taker_order_id),
     makerOrderIdIdx: index().on(table.maker_order_id),
-  })
+  }),
 );
 
-export const orderRouted_1382Events = onchainTable(
-  'order_routed_1382_events',
+export const diamondOrderRoutedEvents = onchainTable(
+  'diamond_order_routed_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -581,11 +513,11 @@ export const orderRouted_1382Events = onchainTable(
   (table) => ({
     orderIdIdx: index().on(table.order_id),
     makerIdx: index().on(table.maker),
-  })
+  }),
 );
 
-export const routerOrderCancelled_8f11Events = onchainTable(
-  'router_order_cancelled_8f11_events',
+export const diamondRouterOrderCancelledEvents = onchainTable(
+  'diamond_router_order_cancelled_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -599,11 +531,11 @@ export const routerOrderCancelled_8f11Events = onchainTable(
   (table) => ({
     orderIdIdx: index().on(table.order_id),
     makerIdx: index().on(table.maker),
-  })
+  }),
 );
 
-export const routerOrderCreated_7398Events = onchainTable(
-  'router_order_created_7398_events',
+export const diamondRouterOrderCreatedEvents = onchainTable(
+  'diamond_router_order_created_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -624,11 +556,11 @@ export const routerOrderCreated_7398Events = onchainTable(
     orderIdIdx: index().on(table.order_id),
     marketIdIdx: index().on(table.market_id),
     makerIdx: index().on(table.maker),
-  })
+  }),
 );
 
-export const routerOrderPlaced_0e2eEvents = onchainTable(
-  'router_order_placed_0e2e_events',
+export const diamondRouterOrderPlacedEvents = onchainTable(
+  'diamond_router_order_placed_events',
   (t) => ({
     id: t.text().primaryKey(),
     order_id: t.hex().notNull(),
@@ -648,11 +580,11 @@ export const routerOrderPlaced_0e2eEvents = onchainTable(
     orderIdIdx: index().on(table.order_id),
     makerIdx: index().on(table.maker),
     baseTokenIdx: index().on(table.base_token),
-  })
+  }),
 );
 
-export const routerTradeExecuted_5493Events = onchainTable(
-  'router_trade_executed_5493_events',
+export const diamondRouterTradeExecutedEvents = onchainTable(
+  'diamond_router_trade_executed_events',
   (t) => ({
     id: t.text().primaryKey(),
     trade_id: t.hex().notNull(),
@@ -669,11 +601,11 @@ export const routerTradeExecuted_5493Events = onchainTable(
     tradeIdIdx: index().on(table.trade_id),
     takerOrderIdIdx: index().on(table.taker_order_id),
     makerOrderIdIdx: index().on(table.maker_order_id),
-  })
+  }),
 );
 
-export const bountyPaid_8e7bEvents = onchainTable(
-  'bounty_paid_8e7b_events',
+export const diamondBountyPaidEvents = onchainTable(
+  'diamond_bounty_paid_events',
   (t) => ({
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
@@ -684,11 +616,11 @@ export const bountyPaid_8e7bEvents = onchainTable(
   }),
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
-  })
+  }),
 );
 
-export const bridgeFeeRecipientUpdatedD240Events = onchainTable(
-  'bridge_fee_recipient_updated_d240_events',
+export const diamondBridgeFeeRecipientUpdatedEvents = onchainTable(
+  'diamond_bridge_fee_recipient_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     old_recipient: t.hex().notNull(),
@@ -700,11 +632,11 @@ export const bridgeFeeRecipientUpdatedD240Events = onchainTable(
   (table) => ({
     oldRecipientIdx: index().on(table.old_recipient),
     newRecipientIdx: index().on(table.new_recipient),
-  })
+  }),
 );
 
-export const bridgeOrderCancelledFb63Events = onchainTable(
-  'bridge_order_cancelled_fb63_events',
+export const diamondBridgeOrderCancelledEvents = onchainTable(
+  'diamond_bridge_order_cancelled_events',
   (t) => ({
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
@@ -715,11 +647,11 @@ export const bridgeOrderCancelledFb63Events = onchainTable(
   }),
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
-  })
+  }),
 );
 
-export const journeyStatusUpdatedF7daEvents = onchainTable(
-  'journey_status_updated_f7da_events',
+export const diamondJourneyStatusUpdatedEvents = onchainTable(
+  'diamond_journey_status_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
@@ -732,11 +664,11 @@ export const journeyStatusUpdatedF7daEvents = onchainTable(
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
     journeyIdIdx: index().on(table.journey_id),
-  })
+  }),
 );
 
-export const logisticsOrderCreated_9c83Events = onchainTable(
-  'logistics_order_created_9c83_events',
+export const diamondLogisticsOrderCreatedEvents = onchainTable(
+  'diamond_logistics_order_created_events',
   (t) => ({
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
@@ -750,11 +682,11 @@ export const logisticsOrderCreated_9c83Events = onchainTable(
   }),
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
-  })
+  }),
 );
 
-export const orderSettledE726Events = onchainTable(
-  'order_settled_e726_events',
+export const diamondOrderSettledEvents = onchainTable(
+  'diamond_order_settled_events',
   (t) => ({
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
@@ -768,11 +700,11 @@ export const orderSettledE726Events = onchainTable(
   }),
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
-  })
+  }),
 );
 
-export const tradeMatched_51d0Events = onchainTable(
-  'trade_matched_51d0_events',
+export const diamondTradeMatchedEvents = onchainTable(
+  'diamond_trade_matched_events',
   (t) => ({
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
@@ -787,11 +719,11 @@ export const tradeMatched_51d0Events = onchainTable(
   }),
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
-  })
+  }),
 );
 
-export const unifiedOrderCreatedC8b6Events = onchainTable(
-  'unified_order_created_c8b6_events',
+export const diamondUnifiedOrderCreatedEvents = onchainTable(
+  'diamond_unified_order_created_events',
   (t) => ({
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
@@ -809,11 +741,11 @@ export const unifiedOrderCreatedC8b6Events = onchainTable(
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
     clobOrderIdIdx: index().on(table.clob_order_id),
-  })
+  }),
 );
 
-export const collateralReturned_8606Events = onchainTable(
-  'collateral_returned_8606_events',
+export const diamondCollateralReturnedEvents = onchainTable(
+  'diamond_collateral_returned_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -826,11 +758,11 @@ export const collateralReturned_8606Events = onchainTable(
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
     operatorIdx: index().on(table.operator),
-  })
+  }),
 );
 
-export const commodityStakedDbd4Events = onchainTable(
-  'commodity_staked_dbd4_events',
+export const diamondCommodityStakedEvents = onchainTable(
+  'diamond_commodity_staked_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -844,11 +776,11 @@ export const commodityStakedDbd4Events = onchainTable(
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
     stakerIdx: index().on(table.staker),
-  })
+  }),
 );
 
-export const commodityUnstaked_24b4Events = onchainTable(
-  'commodity_unstaked_24b4_events',
+export const diamondCommodityUnstakedEvents = onchainTable(
+  'diamond_commodity_unstaked_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -861,11 +793,11 @@ export const commodityUnstaked_24b4Events = onchainTable(
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
     stakerIdx: index().on(table.staker),
-  })
+  }),
 );
 
-export const configUpdatedD747Events = onchainTable(
-  'config_updated_d747_events',
+export const diamondConfigUpdatedEvents = onchainTable(
+  'diamond_config_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     param: t.text().notNull(),
@@ -877,11 +809,11 @@ export const configUpdatedD747Events = onchainTable(
   }),
   (table) => ({
     paramIdx: index().on(table.param),
-  })
+  }),
 );
 
-export const deliveryConfirmed_1c0fEvents = onchainTable(
-  'delivery_confirmed_1c0f_events',
+export const diamondDeliveryConfirmedEvents = onchainTable(
+  'diamond_delivery_confirmed_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -892,11 +824,11 @@ export const deliveryConfirmed_1c0fEvents = onchainTable(
   }),
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
-  })
+  }),
 );
 
-export const deliveryStartedEc8dEvents = onchainTable(
-  'delivery_started_ec8d_events',
+export const diamondDeliveryStartedEvents = onchainTable(
+  'diamond_delivery_started_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -907,11 +839,11 @@ export const deliveryStartedEc8dEvents = onchainTable(
   }),
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
-  })
+  }),
 );
 
-export const opportunityCancelledD395Events = onchainTable(
-  'opportunity_cancelled_d395_events',
+export const diamondOpportunityCancelledEvents = onchainTable(
+  'diamond_opportunity_cancelled_events',
   (t) => ({
     id: t.text().primaryKey(),
     event_id: t.hex().notNull(),
@@ -922,11 +854,11 @@ export const opportunityCancelledD395Events = onchainTable(
   }),
   (table) => ({
     eventIdIdx: index().on(table.event_id),
-  })
+  }),
 );
 
-export const opportunityCompleted_5d49Events = onchainTable(
-  'opportunity_completed_5d49_events',
+export const diamondOpportunityCompletedEvents = onchainTable(
+  'diamond_opportunity_completed_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -937,11 +869,11 @@ export const opportunityCompleted_5d49Events = onchainTable(
   }),
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
-  })
+  }),
 );
 
-export const opportunityCreated_1e5cEvents = onchainTable(
-  'opportunity_created_1e5c_events',
+export const diamondOpportunityCreatedEvents = onchainTable(
+  'diamond_opportunity_created_events',
   (t) => ({
     id: t.text().primaryKey(),
     event_id: t.hex().notNull(),
@@ -957,11 +889,11 @@ export const opportunityCreated_1e5cEvents = onchainTable(
   (table) => ({
     eventIdIdx: index().on(table.event_id),
     operatorIdx: index().on(table.operator),
-  })
+  }),
 );
 
-export const opportunityFundedEf29Events = onchainTable(
-  'opportunity_funded_ef29_events',
+export const diamondOpportunityFundedEvents = onchainTable(
+  'diamond_opportunity_funded_events',
   (t) => ({
     id: t.text().primaryKey(),
     event_id: t.hex().notNull(),
@@ -972,11 +904,11 @@ export const opportunityFundedEf29Events = onchainTable(
   }),
   (table) => ({
     eventIdIdx: index().on(table.event_id),
-  })
+  }),
 );
 
-export const processingCompleted_85eeEvents = onchainTable(
-  'processing_completed_85ee_events',
+export const diamondProcessingCompletedEvents = onchainTable(
+  'diamond_processing_completed_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -988,11 +920,11 @@ export const processingCompleted_85eeEvents = onchainTable(
   }),
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
-  })
+  }),
 );
 
-export const processingStartedCc01Events = onchainTable(
-  'processing_started_cc01_events',
+export const diamondProcessingStartedEvents = onchainTable(
+  'diamond_processing_started_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -1002,11 +934,11 @@ export const processingStartedCc01Events = onchainTable(
   }),
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
-  })
+  }),
 );
 
-export const profitDistributed_275dEvents = onchainTable(
-  'profit_distributed_275d_events',
+export const diamondProfitDistributedEvents = onchainTable(
+  'diamond_profit_distributed_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -1020,11 +952,11 @@ export const profitDistributed_275dEvents = onchainTable(
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
     stakerIdx: index().on(table.staker),
-  })
+  }),
 );
 
-export const saleProceedsRecorded_4f67Events = onchainTable(
-  'sale_proceeds_recorded_4f67_events',
+export const diamondSaleProceedsRecordedEvents = onchainTable(
+  'diamond_sale_proceeds_recorded_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -1035,11 +967,11 @@ export const saleProceedsRecorded_4f67Events = onchainTable(
   }),
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
-  })
+  }),
 );
 
-export const operatorApprovedF338Events = onchainTable(
-  'operator_approved_f338_events',
+export const diamondOperatorApprovedEvents = onchainTable(
+  'diamond_operator_approved_events',
   (t) => ({
     id: t.text().primaryKey(),
     operator: t.hex().notNull(),
@@ -1049,11 +981,11 @@ export const operatorApprovedF338Events = onchainTable(
   }),
   (table) => ({
     operatorIdx: index().on(table.operator),
-  })
+  }),
 );
 
-export const operatorReputationUpdated_8320Events = onchainTable(
-  'operator_reputation_updated_8320_events',
+export const diamondOperatorReputationUpdatedEvents = onchainTable(
+  'diamond_operator_reputation_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     operator: t.hex().notNull(),
@@ -1065,11 +997,11 @@ export const operatorReputationUpdated_8320Events = onchainTable(
   }),
   (table) => ({
     operatorIdx: index().on(table.operator),
-  })
+  }),
 );
 
-export const operatorRevokedA5f3Events = onchainTable(
-  'operator_revoked_a5f3_events',
+export const diamondOperatorRevokedEvents = onchainTable(
+  'diamond_operator_revoked_events',
   (t) => ({
     id: t.text().primaryKey(),
     operator: t.hex().notNull(),
@@ -1079,11 +1011,11 @@ export const operatorRevokedA5f3Events = onchainTable(
   }),
   (table) => ({
     operatorIdx: index().on(table.operator),
-  })
+  }),
 );
 
-export const operatorSlashed_90e6Events = onchainTable(
-  'operator_slashed_90e6_events',
+export const diamondOperatorSlashedEvents = onchainTable(
+  'diamond_operator_slashed_events',
   (t) => ({
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
@@ -1098,11 +1030,11 @@ export const operatorSlashed_90e6Events = onchainTable(
   (table) => ({
     opportunityIdIdx: index().on(table.opportunity_id),
     operatorIdx: index().on(table.operator),
-  })
+  }),
 );
 
-export const operatorStatsUpdatedD6d5Events = onchainTable(
-  'operator_stats_updated_d6d5_events',
+export const diamondOperatorStatsUpdatedEvents = onchainTable(
+  'diamond_operator_stats_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     operator: t.hex().notNull(),
@@ -1114,11 +1046,11 @@ export const operatorStatsUpdatedD6d5Events = onchainTable(
   }),
   (table) => ({
     operatorIdx: index().on(table.operator),
-  })
+  }),
 );
 
-export const circuitBreakerConfigured_5880Events = onchainTable(
-  'circuit_breaker_configured_5880_events',
+export const diamondCircuitBreakerConfiguredEvents = onchainTable(
+  'diamond_circuit_breaker_configured_events',
   (t) => ({
     id: t.text().primaryKey(),
     market_id: t.hex().notNull(),
@@ -1131,11 +1063,11 @@ export const circuitBreakerConfigured_5880Events = onchainTable(
   }),
   (table) => ({
     marketIdIdx: index().on(table.market_id),
-  })
+  }),
 );
 
-export const circuitBreakerResetBae5Events = onchainTable(
-  'circuit_breaker_reset_bae5_events',
+export const diamondCircuitBreakerResetEvents = onchainTable(
+  'diamond_circuit_breaker_reset_events',
   (t) => ({
     id: t.text().primaryKey(),
     market_id: t.hex().notNull(),
@@ -1146,11 +1078,11 @@ export const circuitBreakerResetBae5Events = onchainTable(
   }),
   (table) => ({
     marketIdIdx: index().on(table.market_id),
-  })
+  }),
 );
 
-export const circuitBreakerTripped_5953Events = onchainTable(
-  'circuit_breaker_tripped_5953_events',
+export const diamondCircuitBreakerTrippedEvents = onchainTable(
+  'diamond_circuit_breaker_tripped_events',
   (t) => ({
     id: t.text().primaryKey(),
     market_id: t.hex().notNull(),
@@ -1164,11 +1096,11 @@ export const circuitBreakerTripped_5953Events = onchainTable(
   }),
   (table) => ({
     marketIdIdx: index().on(table.market_id),
-  })
+  }),
 );
 
-export const emergencyActionCancelled_248bEvents = onchainTable(
-  'emergency_action_cancelled_248b_events',
+export const diamondEmergencyActionCancelledEvents = onchainTable(
+  'diamond_emergency_action_cancelled_events',
   (t) => ({
     id: t.text().primaryKey(),
     action_id: t.hex().notNull(),
@@ -1180,11 +1112,11 @@ export const emergencyActionCancelled_248bEvents = onchainTable(
   (table) => ({
     actionIdIdx: index().on(table.action_id),
     cancellerIdx: index().on(table.canceller),
-  })
+  }),
 );
 
-export const emergencyActionExecuted_4579Events = onchainTable(
-  'emergency_action_executed_4579_events',
+export const diamondEmergencyActionExecutedEvents = onchainTable(
+  'diamond_emergency_action_executed_events',
   (t) => ({
     id: t.text().primaryKey(),
     action_id: t.hex().notNull(),
@@ -1199,11 +1131,11 @@ export const emergencyActionExecuted_4579Events = onchainTable(
   (table) => ({
     actionIdIdx: index().on(table.action_id),
     executorIdx: index().on(table.executor),
-  })
+  }),
 );
 
-export const emergencyActionInitiatedCa04Events = onchainTable(
-  'emergency_action_initiated_ca04_events',
+export const diamondEmergencyActionInitiatedEvents = onchainTable(
+  'diamond_emergency_action_initiated_events',
   (t) => ({
     id: t.text().primaryKey(),
     action_id: t.hex().notNull(),
@@ -1219,11 +1151,11 @@ export const emergencyActionInitiatedCa04Events = onchainTable(
   (table) => ({
     actionIdIdx: index().on(table.action_id),
     initiatorIdx: index().on(table.initiator),
-  })
+  }),
 );
 
-export const emergencyWithdrawalC0f6Events = onchainTable(
-  'emergency_withdrawal_c0f6_events',
+export const diamondEmergencyWithdrawalEvents = onchainTable(
+  'diamond_emergency_withdrawal_events',
   (t) => ({
     id: t.text().primaryKey(),
     user: t.hex().notNull(),
@@ -1237,11 +1169,11 @@ export const emergencyWithdrawalC0f6Events = onchainTable(
   (table) => ({
     userIdx: index().on(table.user),
     orderIdIdx: index().on(table.order_id),
-  })
+  }),
 );
 
-export const feeRecipientUpdatedAaebEvents = onchainTable(
-  'fee_recipient_updated_aaeb_events',
+export const diamondFeeRecipientUpdatedEvents = onchainTable(
+  'diamond_fee_recipient_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     old_recipient: t.hex().notNull(),
@@ -1253,11 +1185,11 @@ export const feeRecipientUpdatedAaebEvents = onchainTable(
   (table) => ({
     oldRecipientIdx: index().on(table.old_recipient),
     newRecipientIdx: index().on(table.new_recipient),
-  })
+  }),
 );
 
-export const feesUpdatedB3efEvents = onchainTable(
-  'fees_updated_b3ef_events',
+export const diamondFeesUpdatedEvents = onchainTable(
+  'diamond_fees_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     taker_fee_bps: t.bigint().notNull(),
@@ -1266,22 +1198,22 @@ export const feesUpdatedB3efEvents = onchainTable(
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
-  })
+  }),
 );
 
-export const globalPauseA5feEvents = onchainTable(
-  'global_pause_a5fe_events',
+export const diamondGlobalPauseEvents = onchainTable(
+  'diamond_global_pause_events',
   (t) => ({
     id: t.text().primaryKey(),
     paused: t.boolean().notNull(),
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
-  })
+  }),
 );
 
-export const mEVProtectionUpdated_096cEvents = onchainTable(
-  'm_e_v_protection_updated_096c_events',
+export const diamondMEVProtectionUpdatedEvents = onchainTable(
+  'diamond_m_e_v_protection_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     min_reveal_delay: t.bigint().notNull(),
@@ -1289,11 +1221,11 @@ export const mEVProtectionUpdated_096cEvents = onchainTable(
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
-  })
+  }),
 );
 
-export const marketPaused_6136Events = onchainTable(
-  'market_paused_6136_events',
+export const diamondMarketPausedEvents = onchainTable(
+  'diamond_market_paused_events',
   (t) => ({
     id: t.text().primaryKey(),
     market_id: t.hex().notNull(),
@@ -1303,11 +1235,11 @@ export const marketPaused_6136Events = onchainTable(
   }),
   (table) => ({
     marketIdIdx: index().on(table.market_id),
-  })
+  }),
 );
 
-export const marketUnpausedB51dEvents = onchainTable(
-  'market_unpaused_b51d_events',
+export const diamondMarketUnpausedEvents = onchainTable(
+  'diamond_market_unpaused_events',
   (t) => ({
     id: t.text().primaryKey(),
     market_id: t.hex().notNull(),
@@ -1317,11 +1249,11 @@ export const marketUnpausedB51dEvents = onchainTable(
   }),
   (table) => ({
     marketIdIdx: index().on(table.market_id),
-  })
+  }),
 );
 
-export const rateLimitsUpdated_6675Events = onchainTable(
-  'rate_limits_updated_6675_events',
+export const diamondRateLimitsUpdatedEvents = onchainTable(
+  'diamond_rate_limits_updated_events',
   (t) => ({
     id: t.text().primaryKey(),
     max_orders_per_block: t.bigint().notNull(),
@@ -1329,11 +1261,11 @@ export const rateLimitsUpdated_6675Events = onchainTable(
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
-  })
+  }),
 );
 
-export const diamondCutE785Events = onchainTable(
-  'diamond_cut_e785_events',
+export const diamondDiamondCutEvents = onchainTable(
+  'diamond_diamond_cut_events',
   (t) => ({
     id: t.text().primaryKey(),
     diamond_cut: t.text().notNull(),
@@ -1342,11 +1274,11 @@ export const diamondCutE785Events = onchainTable(
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
-  })
+  }),
 );
 
-export const ownershipTransferred_8be0Events = onchainTable(
-  'ownership_transferred_8be0_events',
+export const diamondOwnershipTransferredEvents = onchainTable(
+  'diamond_ownership_transferred_events',
   (t) => ({
     id: t.text().primaryKey(),
     previous_owner: t.hex().notNull(),
@@ -1358,87 +1290,84 @@ export const ownershipTransferred_8be0Events = onchainTable(
   (table) => ({
     previousOwnerIdx: index().on(table.previous_owner),
     newOwnerIdx: index().on(table.new_owner),
-  })
+  }),
 );
 
 // Export all tables
 export const tables = {
-  assets,
-  orders,
-  journeys,
-  clobApprovalGrantedD512Events,
-  clobApprovalRevokedBdd4Events,
-  initializedC7f5Events,
-  nodeCapacityUpdated_0ba8Events,
-  nodeDeactivated_62b3Events,
-  nodeRegistered_8326Events,
-  nodeSellOrderPlaced_3de5Events,
-  nodeUpdated_9c97Events,
-  supportedAssetAdded_9f0aEvents,
-  supportedAssetsUpdated_1af7Events,
-  tokensDepositedToNode_9d99Events,
-  tokensMintedToNode_1177Events,
-  tokensTransferredBetweenNodes_5ceeEvents,
-  tokensWithdrawnFromNode_5994Events,
-  updateLocation_6d4fEvents,
-  updateOwnerEa9dEvents,
-  updateStatusCf4eEvents,
-  cLOBOrderCancelled_8b47Events,
-  cLOBOrderFilled_2d54Events,
-  cLOBTradeExecuted_57e6Events,
-  marketCreatedB59eEvents,
-  orderCreated_43feEvents,
-  orderExpiredB558Events,
-  orderPlacedWithTokensE764Events,
-  ausysOrderFilled_3e2eEvents,
-  matchingOrderCancelled_6f7dEvents,
-  tradeExecuted_4692Events,
-  orderRouted_1382Events,
-  routerOrderCancelled_8f11Events,
-  routerOrderCreated_7398Events,
-  routerOrderPlaced_0e2eEvents,
-  routerTradeExecuted_5493Events,
-  bountyPaid_8e7bEvents,
-  bridgeFeeRecipientUpdatedD240Events,
-  bridgeOrderCancelledFb63Events,
-  journeyStatusUpdatedF7daEvents,
-  logisticsOrderCreated_9c83Events,
-  orderSettledE726Events,
-  tradeMatched_51d0Events,
-  unifiedOrderCreatedC8b6Events,
-  collateralReturned_8606Events,
-  commodityStakedDbd4Events,
-  commodityUnstaked_24b4Events,
-  configUpdatedD747Events,
-  deliveryConfirmed_1c0fEvents,
-  deliveryStartedEc8dEvents,
-  opportunityCancelledD395Events,
-  opportunityCompleted_5d49Events,
-  opportunityCreated_1e5cEvents,
-  opportunityFundedEf29Events,
-  processingCompleted_85eeEvents,
-  processingStartedCc01Events,
-  profitDistributed_275dEvents,
-  saleProceedsRecorded_4f67Events,
-  operatorApprovedF338Events,
-  operatorReputationUpdated_8320Events,
-  operatorRevokedA5f3Events,
-  operatorSlashed_90e6Events,
-  operatorStatsUpdatedD6d5Events,
-  circuitBreakerConfigured_5880Events,
-  circuitBreakerResetBae5Events,
-  circuitBreakerTripped_5953Events,
-  emergencyActionCancelled_248bEvents,
-  emergencyActionExecuted_4579Events,
-  emergencyActionInitiatedCa04Events,
-  emergencyWithdrawalC0f6Events,
-  feeRecipientUpdatedAaebEvents,
-  feesUpdatedB3efEvents,
-  globalPauseA5feEvents,
-  mEVProtectionUpdated_096cEvents,
-  marketPaused_6136Events,
-  marketUnpausedB51dEvents,
-  rateLimitsUpdated_6675Events,
-  diamondCutE785Events,
-  ownershipTransferred_8be0Events,
+  diamondClobApprovalGrantedEvents,
+  diamondClobApprovalRevokedEvents,
+  diamondInitializedEvents,
+  diamondNodeCapacityUpdatedEvents,
+  diamondNodeDeactivatedEvents,
+  diamondNodeRegisteredEvents,
+  diamondNodeSellOrderPlacedEvents,
+  diamondNodeUpdatedEvents,
+  diamondSupportedAssetAddedEvents,
+  diamondSupportedAssetsUpdatedEvents,
+  diamondTokensDepositedToNodeEvents,
+  diamondTokensMintedToNodeEvents,
+  diamondTokensTransferredBetweenNodesEvents,
+  diamondTokensWithdrawnFromNodeEvents,
+  diamondUpdateLocationEvents,
+  diamondUpdateOwnerEvents,
+  diamondUpdateStatusEvents,
+  diamondCLOBOrderCancelledEvents,
+  diamondCLOBOrderFilledEvents,
+  diamondCLOBTradeExecutedEvents,
+  diamondMarketCreatedEvents,
+  diamondOrderCreatedEvents,
+  diamondOrderExpiredEvents,
+  diamondOrderPlacedWithTokensEvents,
+  diamondAusysOrderFilledEvents,
+  diamondMatchingOrderCancelledEvents,
+  diamondTradeExecutedEvents,
+  diamondOrderRoutedEvents,
+  diamondRouterOrderCancelledEvents,
+  diamondRouterOrderCreatedEvents,
+  diamondRouterOrderPlacedEvents,
+  diamondRouterTradeExecutedEvents,
+  diamondBountyPaidEvents,
+  diamondBridgeFeeRecipientUpdatedEvents,
+  diamondBridgeOrderCancelledEvents,
+  diamondJourneyStatusUpdatedEvents,
+  diamondLogisticsOrderCreatedEvents,
+  diamondOrderSettledEvents,
+  diamondTradeMatchedEvents,
+  diamondUnifiedOrderCreatedEvents,
+  diamondCollateralReturnedEvents,
+  diamondCommodityStakedEvents,
+  diamondCommodityUnstakedEvents,
+  diamondConfigUpdatedEvents,
+  diamondDeliveryConfirmedEvents,
+  diamondDeliveryStartedEvents,
+  diamondOpportunityCancelledEvents,
+  diamondOpportunityCompletedEvents,
+  diamondOpportunityCreatedEvents,
+  diamondOpportunityFundedEvents,
+  diamondProcessingCompletedEvents,
+  diamondProcessingStartedEvents,
+  diamondProfitDistributedEvents,
+  diamondSaleProceedsRecordedEvents,
+  diamondOperatorApprovedEvents,
+  diamondOperatorReputationUpdatedEvents,
+  diamondOperatorRevokedEvents,
+  diamondOperatorSlashedEvents,
+  diamondOperatorStatsUpdatedEvents,
+  diamondCircuitBreakerConfiguredEvents,
+  diamondCircuitBreakerResetEvents,
+  diamondCircuitBreakerTrippedEvents,
+  diamondEmergencyActionCancelledEvents,
+  diamondEmergencyActionExecutedEvents,
+  diamondEmergencyActionInitiatedEvents,
+  diamondEmergencyWithdrawalEvents,
+  diamondFeeRecipientUpdatedEvents,
+  diamondFeesUpdatedEvents,
+  diamondGlobalPauseEvents,
+  diamondMEVProtectionUpdatedEvents,
+  diamondMarketPausedEvents,
+  diamondMarketUnpausedEvents,
+  diamondRateLimitsUpdatedEvents,
+  diamondDiamondCutEvents,
+  diamondOwnershipTransferredEvents,
 };

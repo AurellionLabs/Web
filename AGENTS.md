@@ -31,7 +31,8 @@ npm run lint                   # Next.js ESLint
 
 ```bash
 npm run test                   # Run all Vitest tests
-npm run test:vitest            # Same as above
+npm run test:unit              # Run unit tests (excludes network-dependent deployment tests)
+npm run test:vitest            # Same as 'test'
 npm run test:coverage          # Run with coverage report
 
 # Run single test file
@@ -280,11 +281,75 @@ Pre-push runs `npm run build:full`.
 
 ## Indexer Development Rules
 
-When working on the Ponder indexer (`indexer/` directory):
+### Pure Dumb Indexer Pattern
 
-1. **Schema-first approach**: Always define the Postgres schema in `ponder.schema.ts` or `generated-schema.ts` BEFORE writing handlers
-2. **Use `onchainTable`**: All tables must use Ponder's `onchainTable` with proper indexes
-3. **Snake_case columns**: Database columns use `snake_case` (e.g., `token_id`, not `tokenId`)
-4. **Aggregate tables**: Create materialized view tables for entities the frontend queries (assets, orders, journeys)
-5. **Event handlers update state**: Handlers should upsert into aggregate tables, not just store raw events
-6. **Test against real schema**: Smoke tests must query the actual GraphQL endpoint to verify schema
+The indexer follows a "pure dumb" pattern where it ONLY stores raw blockchain events.
+All business logic and aggregation happens in the frontend repository layer.
+
+**Architecture:**
+
+```
+Blockchain Events
+       ↓
+Ponder Handlers (raw insert only)
+       ↓
+diamond_{event_name}_events tables
+       ↓
+Frontend GraphQL Queries (query raw event tables)
+       ↓
+Event Aggregators (pure functions in infrastructure/shared/)
+       ↓
+Domain Types (Order, Journey, Node, Asset)
+       ↓
+UI Components
+```
+
+**Key Rules:**
+
+1. **Raw events only**: The indexer stores raw events, NOT aggregate/materialized tables
+2. **No business logic in handlers**: Handlers only insert event data into tables
+3. **Schema is auto-generated**: Run `npm run generate:indexer` to regenerate from contract ABIs
+4. **Table naming**: `diamond_{event_name}_events` (e.g., `diamond_order_placed_with_tokens_events`)
+5. **Snake_case columns**: Database columns use `snake_case` (e.g., `token_id`, not `tokenId`)
+6. **Aggregation in frontend**: Use `infrastructure/shared/event-aggregators.ts` for aggregation
+
+**Key Files:**
+
+| File                                         | Purpose                                      |
+| -------------------------------------------- | -------------------------------------------- |
+| `scripts/generate-indexer.ts`                | Generator script (auto-generates everything) |
+| `indexer/generated-schema.ts`                | Ponder schema (auto-generated)               |
+| `indexer/src/handlers/*.generated.ts`        | Event handlers (auto-generated)              |
+| `infrastructure/shared/indexer-types.ts`     | TypeScript types for raw events              |
+| `infrastructure/shared/event-aggregators.ts` | Pure functions for aggregation               |
+| `infrastructure/shared/graph-queries.ts`     | GraphQL queries for raw event tables         |
+
+**Adding New Events:**
+
+1. Add the event to a Solidity facet contract
+2. Run `npm run build:full` to compile contracts
+3. Run `npm run generate:indexer` to regenerate schema and handlers
+4. No manual changes needed - the generator handles everything
+
+**Querying Events:**
+
+```typescript
+// Query raw events
+import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import {
+  GET_ALL_ORDER_EVENTS,
+  convertOrderEventsResponse,
+} from '@/infrastructure/shared/graph-queries';
+import { aggregateOrders } from '@/infrastructure/shared/event-aggregators';
+
+const response = await graphqlRequest(endpoint, GET_ALL_ORDER_EVENTS);
+const events = convertOrderEventsResponse(response);
+const orders = aggregateOrders(events); // Pure function
+```
+
+**Why Pure Dumb?**
+
+- **Simpler indexer**: No business logic to maintain in the indexer
+- **Faster iteration**: Schema changes don't require handler updates
+- **Testable aggregation**: Aggregators are pure functions, easy to unit test
+- **Flexible queries**: Frontend can query any combination of events

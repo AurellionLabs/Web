@@ -1,13 +1,14 @@
 // Auto-generated handler for clob-admin domain - Raw event storage only
-// Generated at: 2026-01-18T22:19:57.474Z
+// Generated at: 2026-01-19T13:05:11.500Z
 // 
-// Dumb indexer pattern: Store raw events, aggregate in repository layer
+// Pure Dumb Indexer: Store raw events only, NO aggregate tables
+// All aggregation happens in frontend repository layer
 // Events from: CLOBAdminFacet
 
 import { ponder } from "@/generated";
 
 // Import event tables from generated schema
-import { circuitBreakerConfigured_5880Events, circuitBreakerResetBae5Events, circuitBreakerTripped_5953Events, emergencyActionCancelled_248bEvents, emergencyActionExecuted_4579Events, emergencyActionInitiatedCa04Events, emergencyWithdrawalC0f6Events, feeRecipientUpdatedAaebEvents, feesUpdatedB3efEvents, globalPauseA5feEvents, mEVProtectionUpdated_096cEvents, marketPaused_6136Events, marketUnpausedB51dEvents, rateLimitsUpdated_6675Events } from "@/generated-schema";
+import { diamondCircuitBreakerConfiguredEvents, diamondCircuitBreakerResetEvents, diamondCircuitBreakerTrippedEvents, diamondEmergencyActionCancelledEvents, diamondEmergencyActionExecutedEvents, diamondEmergencyActionInitiatedEvents, diamondEmergencyWithdrawalEvents, diamondFeeRecipientUpdatedEvents, diamondFeesUpdatedEvents, diamondGlobalPauseEvents, diamondMEVProtectionUpdatedEvents, diamondMarketPausedEvents, diamondMarketUnpausedEvents, diamondRateLimitsUpdatedEvents } from "@/generated-schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -25,8 +26,8 @@ ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
   const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(circuitBreakerConfigured_5880Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondCircuitBreakerConfiguredEvents).values({
     id: id,
     market_id: marketId,
     price_change_threshold: priceChangeThreshold,
@@ -47,8 +48,8 @@ ponder.on('Diamond:CircuitBreakerReset', async ({ event, context }) => {
   const { marketId, resetAt } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(circuitBreakerResetBae5Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondCircuitBreakerResetEvents).values({
     id: id,
     market_id: marketId,
     reset_at: resetAt,
@@ -67,8 +68,8 @@ ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
   const { marketId, triggerPrice, previousPrice, changePercent, cooldownUntil } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(circuitBreakerTripped_5953Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondCircuitBreakerTrippedEvents).values({
     id: id,
     market_id: marketId,
     trigger_price: triggerPrice,
@@ -90,8 +91,8 @@ ponder.on('Diamond:EmergencyActionCancelled', async ({ event, context }) => {
   const { actionId, canceller } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(emergencyActionCancelled_248bEvents).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondEmergencyActionCancelledEvents).values({
     id: id,
     action_id: actionId,
     canceller: canceller,
@@ -110,8 +111,8 @@ ponder.on('Diamond:EmergencyActionExecuted', async ({ event, context }) => {
   const { actionId, executor, token, recipient, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(emergencyActionExecuted_4579Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondEmergencyActionExecutedEvents).values({
     id: id,
     action_id: actionId,
     executor: executor,
@@ -133,8 +134,8 @@ ponder.on('Diamond:EmergencyActionInitiated', async ({ event, context }) => {
   const { actionId, initiator, token, recipient, amount, executeAfter } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(emergencyActionInitiatedCa04Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondEmergencyActionInitiatedEvents).values({
     id: id,
     action_id: actionId,
     initiator: initiator,
@@ -157,8 +158,8 @@ ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
   const { user, orderId, token, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(emergencyWithdrawalC0f6Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondEmergencyWithdrawalEvents).values({
     id: id,
     user: user,
     order_id: orderId,
@@ -179,8 +180,8 @@ ponder.on('Diamond:FeeRecipientUpdated', async ({ event, context }) => {
   const { oldRecipient, newRecipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(feeRecipientUpdatedAaebEvents).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondFeeRecipientUpdatedEvents).values({
     id: id,
     old_recipient: oldRecipient,
     new_recipient: newRecipient,
@@ -199,8 +200,8 @@ ponder.on('Diamond:FeesUpdated', async ({ event, context }) => {
   const { takerFeeBps, makerFeeBps, lpFeeBps } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(feesUpdatedB3efEvents).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondFeesUpdatedEvents).values({
     id: id,
     taker_fee_bps: takerFeeBps,
     maker_fee_bps: makerFeeBps,
@@ -220,8 +221,8 @@ ponder.on('Diamond:GlobalPause', async ({ event, context }) => {
   const { paused } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(globalPauseA5feEvents).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondGlobalPauseEvents).values({
     id: id,
     paused: paused,
     block_number: event.block.number,
@@ -239,8 +240,8 @@ ponder.on('Diamond:MEVProtectionUpdated', async ({ event, context }) => {
   const { minRevealDelay, commitmentThreshold } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(mEVProtectionUpdated_096cEvents).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondMEVProtectionUpdatedEvents).values({
     id: id,
     min_reveal_delay: minRevealDelay,
     commitment_threshold: commitmentThreshold,
@@ -259,8 +260,8 @@ ponder.on('Diamond:MarketPaused', async ({ event, context }) => {
   const { marketId } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(marketPaused_6136Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondMarketPausedEvents).values({
     id: id,
     market_id: marketId,
     block_number: event.block.number,
@@ -278,8 +279,8 @@ ponder.on('Diamond:MarketUnpaused', async ({ event, context }) => {
   const { marketId } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(marketUnpausedB51dEvents).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondMarketUnpausedEvents).values({
     id: id,
     market_id: marketId,
     block_number: event.block.number,
@@ -297,8 +298,8 @@ ponder.on('Diamond:RateLimitsUpdated', async ({ event, context }) => {
   const { maxOrdersPerBlock, maxVolumePerBlock } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Insert raw event into event table
-  await context.db.insert(rateLimitsUpdated_6675Events).values({
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondRateLimitsUpdatedEvents).values({
     id: id,
     max_orders_per_block: maxOrdersPerBlock,
     max_volume_per_block: maxVolumePerBlock,

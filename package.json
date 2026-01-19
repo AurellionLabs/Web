@@ -28,6 +28,7 @@
     "test:repo:clob": "npx vitest run test/repositories/CLOBRepository.test.ts",
     "test:hooks": "npx vitest run test/hooks/useUnifiedOrder.test.ts",
     "test:vitest": "npx vitest run",
+    "test:unit": "npx vitest run --exclude 'test/deployment/**'",
     "test:coverage": "npx vitest run --coverage",
     "test": "npx vitest run",
     "deploy:diamond": "npx hardhat run scripts/deploy-diamond.ts --network baseSepolia",

@@ -1,82 +1,152 @@
 import { describe, it, expect } from 'vitest';
-import { orders } from '../../generated-schema';
+import {
+  diamondOrderPlacedWithTokensEvents,
+  diamondCLOBOrderFilledEvents,
+  diamondCLOBOrderCancelledEvents,
+  diamondUnifiedOrderCreatedEvents,
+} from '../../generated-schema';
 
-describe('Smoke Test: Orders GraphQL Query', () => {
-  it('should have the correct columns defined in the schema', () => {
-    expect(orders).toBeDefined();
-    expect(orders).toHaveProperty('id');
-    expect(orders).toHaveProperty('clob_order_id');
-    expect(orders).toHaveProperty('buyer');
-    expect(orders).toHaveProperty('seller');
-    expect(orders).toHaveProperty('price');
-    expect(orders).toHaveProperty('status');
-    expect(orders).toHaveProperty('token');
-    expect(orders).toHaveProperty('token_id');
-    expect(orders).toHaveProperty('quantity');
-    expect(orders).toHaveProperty('block_timestamp');
-  });
+/**
+ * Smoke Test: Raw Event Tables for Orders
+ *
+ * With the "pure dumb" indexer pattern, we no longer have aggregate tables.
+ * Instead, we test that the raw event tables exist and have the correct columns.
+ * Aggregation is done in the frontend repository layer.
+ */
+describe('Smoke Test: Order Event Tables', () => {
+  describe('OrderPlacedWithTokens Events', () => {
+    it('should have the correct columns defined', () => {
+      expect(diamondOrderPlacedWithTokensEvents).toBeDefined();
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('id');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('order_id');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('maker');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('base_token');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty(
+        'base_token_id',
+      );
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('price');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('amount');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('is_buy');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty('order_type');
+      expect(diamondOrderPlacedWithTokensEvents).toHaveProperty(
+        'block_timestamp',
+      );
+    });
 
-  it('should support the expected GraphQL query structure', () => {
-    const query = `
-      query GetOrders {
-        orders(limit: 10, orderBy: "block_timestamp", orderDirection: "desc") {
-          items {
-            id
-            clob_order_id
-            ausys_order_id
-            buyer
-            seller
-            token
-            token_id
-            quantity
-            price
-            bounty
-            status
-            logistics_status
-            block_number
-            block_timestamp
-            transaction_hash
-          }
-          pageInfo {
-            hasNextPage
-            endCursor
+    it('should support the expected GraphQL query structure', () => {
+      const query = `
+        query GetOrderPlacedEvents($limit: Int = 100) {
+          diamondOrderPlacedWithTokensEventss(
+            limit: $limit
+            orderBy: "blockTimestamp"
+            orderDirection: "desc"
+          ) {
+            items {
+              id
+              orderId
+              maker
+              baseToken
+              baseTokenId
+              quoteToken
+              price
+              amount
+              isBuy
+              orderType
+              blockNumber
+              blockTimestamp
+              transactionHash
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
-      }
-    `;
+      `;
 
-    expect(query).toContain('orders');
-    expect(query).toContain('items');
-    expect(query).toContain('id');
-    expect(query).toContain('buyer');
-    expect(query).toContain('seller');
-    expect(query).toContain('price');
-    expect(query).toContain('status');
+      expect(query).toContain('diamondOrderPlacedWithTokensEventss');
+      expect(query).toContain('orderId');
+      expect(query).toContain('maker');
+      expect(query).toContain('price');
+      expect(query).toContain('isBuy');
+    });
   });
 
-  it('should map table columns to GraphQL fields', () => {
-    const columns = Object.keys(orders);
+  describe('CLOBOrderFilled Events', () => {
+    it('should have the correct columns defined', () => {
+      expect(diamondCLOBOrderFilledEvents).toBeDefined();
+      expect(diamondCLOBOrderFilledEvents).toHaveProperty('id');
+      expect(diamondCLOBOrderFilledEvents).toHaveProperty('order_id');
+      expect(diamondCLOBOrderFilledEvents).toHaveProperty('trade_id');
+      expect(diamondCLOBOrderFilledEvents).toHaveProperty('fill_amount');
+      expect(diamondCLOBOrderFilledEvents).toHaveProperty('remaining_amount');
+      expect(diamondCLOBOrderFilledEvents).toHaveProperty('cumulative_filled');
+    });
+  });
 
-    const expectedFields = [
-      'id',
-      'clob_order_id',
-      'ausys_order_id',
-      'buyer',
-      'seller',
-      'token',
-      'token_id',
-      'quantity',
-      'price',
-      'bounty',
-      'status',
-      'logistics_status',
-      'block_number',
-      'block_timestamp',
-      'transaction_hash',
-    ];
+  describe('CLOBOrderCancelled Events', () => {
+    it('should have the correct columns defined', () => {
+      expect(diamondCLOBOrderCancelledEvents).toBeDefined();
+      expect(diamondCLOBOrderCancelledEvents).toHaveProperty('id');
+      expect(diamondCLOBOrderCancelledEvents).toHaveProperty('order_id');
+      expect(diamondCLOBOrderCancelledEvents).toHaveProperty('maker');
+      expect(diamondCLOBOrderCancelledEvents).toHaveProperty(
+        'remaining_amount',
+      );
+      expect(diamondCLOBOrderCancelledEvents).toHaveProperty('reason');
+    });
+  });
 
-    expectedFields.forEach((field) => {
-      expect(columns).toContain(field);
+  describe('UnifiedOrderCreated Events', () => {
+    it('should have the correct columns defined', () => {
+      expect(diamondUnifiedOrderCreatedEvents).toBeDefined();
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('id');
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty(
+        'unified_order_id',
+      );
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('clob_order_id');
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('buyer');
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('seller');
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('token');
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('token_id');
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('quantity');
+      expect(diamondUnifiedOrderCreatedEvents).toHaveProperty('price');
+    });
+
+    it('should support the expected GraphQL query structure', () => {
+      const query = `
+        query GetUnifiedOrderEvents($limit: Int = 100) {
+          diamondUnifiedOrderCreatedEventss(
+            limit: $limit
+            orderBy: "blockTimestamp"
+            orderDirection: "desc"
+          ) {
+            items {
+              id
+              unifiedOrderId
+              clobOrderId
+              buyer
+              seller
+              token
+              tokenId
+              quantity
+              price
+              blockNumber
+              blockTimestamp
+              transactionHash
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `;
+
+      expect(query).toContain('diamondUnifiedOrderCreatedEventss');
+      expect(query).toContain('unifiedOrderId');
+      expect(query).toContain('buyer');
+      expect(query).toContain('seller');
     });
   });
 });

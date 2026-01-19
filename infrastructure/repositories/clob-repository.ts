@@ -8,7 +8,7 @@ import {
   type CLOBOrderGraphResponse,
   type CLOBTradeGraphResponse,
   type CLOBBestPricesResponse,
-} from '../shared/graph-queries';
+} from './shared/graph-queries';
 import {
   NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
