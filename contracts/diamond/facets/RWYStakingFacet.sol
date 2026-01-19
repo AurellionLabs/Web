@@ -467,6 +467,75 @@ contract RWYStakingFacet {
         rs.defaultProcessingDays = days_;
     }
 
+    /**
+     * @notice Set CLOB address for RWY integration (from RWYVault.sol)
+     */
+    function setRWYCLOBAddress(address _clob) external onlyOwner {
+        RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
+        rs.clobAddress = _clob;
+    }
+
+    /**
+     * @notice Set quote token (payment token) address (from RWYVault.sol)
+     */
+    function setRWYQuoteToken(address _quoteToken) external onlyOwner {
+        RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
+        rs.quoteToken = _quoteToken;
+    }
+
+    /**
+     * @notice Set fee recipient address (from RWYVault.sol)
+     */
+    function setRWYFeeRecipient(address _feeRecipient) external onlyOwner {
+        require(_feeRecipient != address(0), "Invalid address");
+        RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
+        rs.feeRecipient = _feeRecipient;
+    }
+
+    /**
+     * @notice Pause RWY staking (from RWYVault.sol)
+     */
+    function pauseRWY() external onlyOwner {
+        RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
+        rs.paused = true;
+    }
+
+    /**
+     * @notice Unpause RWY staking (from RWYVault.sol)
+     */
+    function unpauseRWY() external onlyOwner {
+        RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
+        rs.paused = false;
+    }
+
+    /**
+     * @notice Check if RWY staking is paused
+     */
+    function isRWYPaused() external view returns (bool) {
+        return RWYStorage.rwyStorage().paused;
+    }
+
+    /**
+     * @notice Get CLOB address
+     */
+    function getRWYCLOBAddress() external view returns (address) {
+        return RWYStorage.rwyStorage().clobAddress;
+    }
+
+    /**
+     * @notice Get quote token address
+     */
+    function getRWYQuoteToken() external view returns (address) {
+        return RWYStorage.rwyStorage().quoteToken;
+    }
+
+    /**
+     * @notice Get fee recipient address
+     */
+    function getRWYFeeRecipient() external view returns (address) {
+        return RWYStorage.rwyStorage().feeRecipient;
+    }
+
     function forceCancel(
         bytes32 opportunityId,
         string memory reason
