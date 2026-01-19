@@ -55,8 +55,8 @@ contract BridgeFacet is Initializable {
     event BountyPaid(bytes32 indexed unifiedOrderId, uint256 amount);
     event BridgeFeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
 
-    uint256 public constant BOUNTY_PERCENTAGE = 100; // 1%
-    uint256 public constant PROTOCOL_FEE_PERCENTAGE = 50; // 0.5%
+    uint256 public constant BOUNTY_PERCENTAGE = 200; // 2% (aligned with OrderBridge.sol)
+    uint256 public constant PROTOCOL_FEE_PERCENTAGE = 25; // 0.25% (aligned with OrderBridge.sol)
 
     address public feeRecipient;
 
@@ -68,7 +68,8 @@ contract BridgeFacet is Initializable {
         bytes32 _clobOrderId,
         address _sellerNode,
         uint256 _price,
-        uint256 _quantity
+        uint256 _quantity,
+        DiamondStorage.ParcelData calldata _deliveryData
     ) external returns (bytes32 unifiedOrderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
@@ -78,28 +79,34 @@ contract BridgeFacet is Initializable {
 
         uint256 bounty = (_price * _quantity * BOUNTY_PERCENTAGE) / 10000;
 
-        s.unifiedOrders[unifiedOrderId] = DiamondStorage.UnifiedOrder({
-            clobOrderId: _clobOrderId,
-            clobTradeId: bytes32(0),
-            ausysOrderId: bytes32(0),
-            buyer: msg.sender,
-            seller: address(0),
-            sellerNode: _sellerNode,
-            token: address(0),
-            tokenId: 0,
-            tokenQuantity: _quantity,
-            price: _price,
-            bounty: bounty,
-            status: 0,
-            logisticsStatus: 0,
-            createdAt: block.timestamp,
-            matchedAt: 0,
-            deliveredAt: 0,
-            settledAt: 0
-        });
+        // Initialize the unified order
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[unifiedOrderId];
+        order.clobOrderId = _clobOrderId;
+        order.clobTradeId = bytes32(0);
+        order.ausysOrderId = bytes32(0);
+        order.buyer = msg.sender;
+        order.seller = address(0);
+        order.sellerNode = _sellerNode;
+        order.token = address(0);
+        order.tokenId = 0;
+        order.tokenQuantity = _quantity;
+        order.price = _price;
+        order.bounty = bounty;
+        order.status = 0;
+        order.logisticsStatus = 0;
+        order.createdAt = block.timestamp;
+        order.matchedAt = 0;
+        order.deliveredAt = 0;
+        order.settledAt = 0;
+        order.deliveryData = _deliveryData;
+        // journeyIds starts empty
 
         s.unifiedOrderIds.push(unifiedOrderId);
         s.totalUnifiedOrders++;
+        
+        // Add to buyer lookup
+        s.buyerUnifiedOrders[msg.sender].push(unifiedOrderId);
+        s.clobOrderToUnifiedOrder[_clobOrderId] = unifiedOrderId;
 
         emit UnifiedOrderCreated(
             unifiedOrderId,
@@ -299,10 +306,72 @@ contract BridgeFacet is Initializable {
         return s.totalUnifiedOrders;
     }
 
+    // ======= VIEW FUNCTIONS (from OrderBridge.sol) =======
+
+    /**
+     * @notice Get all unified orders for a buyer
+     */
+    function getBuyerOrders(address buyer) external view returns (bytes32[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.buyerUnifiedOrders[buyer];
+    }
+
+    /**
+     * @notice Get all unified orders for a seller
+     */
+    function getSellerOrders(address seller) external view returns (bytes32[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.sellerUnifiedOrders[seller];
+    }
+
+    /**
+     * @notice Get unified order ID from CLOB order ID
+     */
+    function getUnifiedOrderFromClobOrder(bytes32 clobOrderId) external view returns (bytes32) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.clobOrderToUnifiedOrder[clobOrderId];
+    }
+
+    /**
+     * @notice Get unified order ID from CLOB trade ID
+     */
+    function getUnifiedOrderFromClobTrade(bytes32 clobTradeId) external view returns (bytes32) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.clobTradeToUnifiedOrder[clobTradeId];
+    }
+
+    // ======= ADMIN FUNCTIONS (from OrderBridge.sol) =======
+
     function setFeeRecipient(address _newRecipient) external {
         LibDiamond.enforceIsContractOwner();
         address oldRecipient = feeRecipient;
         feeRecipient = _newRecipient;
         emit BridgeFeeRecipientUpdated(oldRecipient, _newRecipient);
+    }
+
+    function setBountyPercentage(uint256 _percentage) external {
+        LibDiamond.enforceIsContractOwner();
+        require(_percentage <= 1000, "Fee too high"); // Max 10%
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.bountyPercentage = _percentage;
+    }
+
+    function setProtocolFeePercentage(uint256 _percentage) external {
+        LibDiamond.enforceIsContractOwner();
+        require(_percentage <= 1000, "Fee too high"); // Max 10%
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.protocolFeePercentage = _percentage;
+    }
+
+    function updateClobAddress(address _clob) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.clobAddress = _clob;
+    }
+
+    function updateAusysAddress(address _ausys) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.ausysAddress = _ausys;
     }
 }

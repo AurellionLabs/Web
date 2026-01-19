@@ -7,9 +7,17 @@ import { CLOBLib } from './CLOBLib.sol';
  * @title DiamondStorage
  * @notice Library to access Diamond AppStorage at a specific storage slot
  * @dev Production-ready storage with gas-optimized CLOB structures
+ *      Aligned with legacy contracts: AuraAsset, Aurum, AuSys, RWYVault, OrderBridge
  */
 library DiamondStorage {
     bytes32 constant APP_STORAGE_POSITION = keccak256('diamond.app.storage');
+
+    // ============================================================================
+    // RBAC ROLE CONSTANTS (from AuSys.sol)
+    // ============================================================================
+    bytes32 constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 constant DRIVER_ROLE = keccak256("DRIVER_ROLE");
+    bytes32 constant DISPATCHER_ROLE = keccak256("DISPATCHER_ROLE");
 
     struct AppStorage {
         // ======= OWNERSHIP =======
@@ -25,13 +33,42 @@ library DiamondStorage {
         mapping(bytes32 => mapping(uint256 => NodeAsset)) nodeAssets;
         mapping(bytes32 => uint256[]) nodeAssetIds;
         mapping(bytes32 => uint256) totalNodeAssets;
+        // Node admin system (from AurumNodeManager)
+        mapping(address => bool) nodeAdmins;
 
-        // ======= ASSETS =======
+        // ======= ASSETS (LEGACY) =======
         mapping(uint256 => Asset) assets;
         mapping(bytes32 => uint256) assetByHash;
         uint256 totalAssets;
         mapping(string => bool) supportedClasses;
         string[] classList;
+
+        // ======= ERC1155 STORAGE (from AuraAsset.sol) =======
+        // Core ERC1155 balances and approvals
+        mapping(uint256 => mapping(address => uint256)) erc1155Balances;
+        mapping(address => mapping(address => bool)) erc1155OperatorApprovals;
+        string erc1155URI;
+        // ERC1155Supply tracking
+        mapping(uint256 => uint256) erc1155TotalSupply;
+        mapping(uint256 => bool) erc1155Exists;
+        
+        // ======= AURA ASSET REGISTRY (from AuraAsset.sol) =======
+        // Supported assets with full metadata
+        mapping(string => AssetDefinition) nameToSupportedAssets;
+        mapping(string => uint256) nameToSupportedAssetIndex;
+        string[] supportedAssetNames;
+        // Supported classes with tombstoning
+        mapping(string => string) nameToSupportedClass;
+        mapping(string => uint256) nameToSupportedClassIndex;
+        string[] supportedClassNames;
+        // Hash tracking for IPFS/metadata
+        mapping(bytes32 => string) hashToClass;
+        mapping(bytes32 => bool) isClassActive;
+        mapping(bytes32 => uint256) hashToTokenID;
+        bytes32[] ipfsID;
+        // Custody tracking (physical asset custody)
+        mapping(uint256 => address) tokenCustodian;
+        mapping(uint256 => uint256) tokenCustodyAmount;
 
         // ======= ORDERS =======
         mapping(bytes32 => Order) orders;
@@ -65,7 +102,7 @@ library DiamondStorage {
         // Quick lookup: does node have this token ID in their list?
         mapping(bytes32 => mapping(uint256 => bool)) nodeHasToken;
 
-        // ======= BRIDGE =======
+        // ======= BRIDGE (from OrderBridge.sol) =======
         address clobAddress;
         address ausysAddress;
         address quoteTokenAddress;
@@ -78,6 +115,39 @@ library DiamondStorage {
         mapping(bytes32 => Journey) journeys;
         mapping(bytes32 => bytes32[]) orderJourneys;
         mapping(bytes32 => uint256) totalJourneys;
+        // Bridge lookup mappings (from OrderBridge.sol)
+        mapping(bytes32 => bytes32) clobTradeToUnifiedOrder;
+        mapping(bytes32 => bytes32) clobOrderToUnifiedOrder;
+        mapping(address => bytes32[]) buyerUnifiedOrders;
+        mapping(address => bytes32[]) sellerUnifiedOrders;
+
+        // ======= AUSYS (from AuSys.sol) =======
+        // Payment token for bounties/settlements
+        address payToken;
+        // AuSys Orders
+        mapping(bytes32 => AuSysOrder) ausysOrders;
+        bytes32[] ausysOrderIds;
+        uint256 ausysOrderIdCounter;
+        // AuSys Journeys
+        mapping(bytes32 => AuSysJourney) ausysJourneys;
+        uint256 ausysJourneyIdCounter;
+        mapping(bytes32 => bytes32) journeyToAusysOrderId;
+        mapping(address => bytes32[]) driverToJourneyIds;
+        // Signature tracking
+        mapping(address => mapping(bytes32 => bool)) customerHandOff;
+        mapping(address => mapping(bytes32 => bool)) driverPickupSigned;
+        mapping(address => mapping(bytes32 => bool)) driverDeliverySigned;
+        mapping(bytes32 => bool) journeyRewardPaid;
+        // RBAC for AuSys
+        mapping(bytes32 => mapping(address => bool)) ausysRoles;
+
+        // ======= CLOB LOGISTICS (from IAuraCLOB) =======
+        // Driver management
+        mapping(address => DriverInfo) clobDrivers;
+        address[] clobDriverList;
+        // Logistics orders
+        mapping(bytes32 => LogisticsOrder) clobLogisticsOrders;
+        bytes32[] clobLogisticsOrderIds;
 
         // ======= CLOB =======
         mapping(bytes32 => Market) markets;
@@ -283,6 +353,113 @@ library DiamondStorage {
         bool active;
     }
 
+    // ============================================================================
+    // AURA ASSET STRUCTS (from AuraAsset.sol)
+    // ============================================================================
+
+    /// @notice Asset attribute with name, values, and description
+    struct Attribute {
+        string name;
+        string[] values;
+        string description;
+    }
+
+    /// @notice Full asset definition with attributes (for minting)
+    struct AssetDefinition {
+        string name;
+        string assetClass;
+        Attribute[] attributes;
+    }
+
+    // ============================================================================
+    // AUSYS STRUCTS (from AuSys.sol)
+    // ============================================================================
+
+    /// @notice Location with lat/lng coordinates
+    struct Location {
+        string lat;
+        string lng;
+    }
+
+    /// @notice Parcel data for journey start/end locations
+    struct ParcelData {
+        Location startLocation;
+        Location endLocation;
+        string startName;
+        string endName;
+    }
+
+    /// @notice AuSys Order (from AuSys.sol)
+    /// @dev Status: 0=Created, 1=Processing, 2=Settled, 3=Canceled
+    struct AuSysOrder {
+        bytes32 id;
+        address token;
+        uint256 tokenId;
+        uint256 tokenQuantity;
+        uint256 price;
+        uint256 txFee;
+        address buyer;
+        address seller;
+        bytes32[] journeyIds;
+        address[] nodes;
+        ParcelData locationData;
+        uint8 currentStatus;
+        bytes32 contractualAgreement;
+    }
+
+    /// @notice AuSys Journey (from AuSys.sol)
+    /// @dev Status: 0=Pending, 1=InTransit, 2=Delivered, 3=Canceled
+    struct AuSysJourney {
+        ParcelData parcelData;
+        bytes32 journeyId;
+        uint8 currentStatus;
+        address sender;
+        address receiver;
+        address driver;
+        uint256 journeyStart;
+        uint256 journeyEnd;
+        uint256 bounty;
+        uint256 ETA;
+    }
+
+    // ============================================================================
+    // CLOB LOGISTICS STRUCTS (from IAuraCLOB)
+    // ============================================================================
+
+    /// @notice Driver information for CLOB logistics
+    struct DriverInfo {
+        address driver;
+        bool isActive;
+        bool isAvailable;
+        Location currentLocation;
+        uint256 totalDeliveries;
+        uint256 completedDeliveries;
+        uint256 totalEarnings;
+        uint256 rating; // Scaled by 100 (450 = 4.50)
+    }
+
+    /// @notice Logistics order for physical delivery
+    /// @dev Status: 0=Created, 1=Assigned, 2=PickedUp, 3=InTransit, 4=Delivered, 5=Settled, 6=Cancelled, 7=Disputed
+    struct LogisticsOrder {
+        bytes32 orderId;
+        bytes32 tradeId;
+        address buyer;
+        address seller;
+        address sellerNode;
+        address token;
+        uint256 tokenId;
+        uint256 quantity;
+        uint256 totalPrice;
+        uint256 escrowedAmount;
+        uint256 driverBounty;
+        Location pickupLocation;
+        Location deliveryLocation;
+        uint8 status;
+        address assignedDriver;
+        uint256 createdAt;
+        uint256 deliveredAt;
+    }
+
     struct Order {
         address buyer;
         address seller;
@@ -299,6 +476,8 @@ library DiamondStorage {
         uint256 stakedAt;
     }
 
+    /// @notice Unified order bridging CLOB and AuSys (from OrderBridge.sol)
+    /// @dev Status: 0=PendingTrade, 1=TradeMatched, 2=LogisticsCreated, 3=InTransit, 4=Delivered, 5=Settled, 6=Cancelled
     struct UnifiedOrder {
         bytes32 clobOrderId;
         bytes32 clobTradeId;
@@ -317,6 +496,9 @@ library DiamondStorage {
         uint256 matchedAt;
         uint256 deliveredAt;
         uint256 settledAt;
+        // Added from OrderBridge.sol
+        ParcelData deliveryData;
+        bytes32[] journeyIds;
     }
 
     struct Journey {
@@ -473,5 +655,65 @@ library AppStorageLib {
         } else {
             return s().askLevels[marketId][price];
         }
+    }
+
+    // ============================================================================
+    // AUSYS HELPER FUNCTIONS
+    // ============================================================================
+
+    function getAuSysOrder(bytes32 orderId) internal view returns (DiamondStorage.AuSysOrder storage) {
+        return s().ausysOrders[orderId];
+    }
+
+    function getAuSysJourney(bytes32 journeyId) internal view returns (DiamondStorage.AuSysJourney storage) {
+        return s().ausysJourneys[journeyId];
+    }
+
+    function hasAuSysRole(bytes32 role, address account) internal view returns (bool) {
+        return s().ausysRoles[role][account];
+    }
+
+    // ============================================================================
+    // CLOB LOGISTICS HELPER FUNCTIONS
+    // ============================================================================
+
+    function getDriverInfo(address driver) internal view returns (DiamondStorage.DriverInfo storage) {
+        return s().clobDrivers[driver];
+    }
+
+    function getLogisticsOrder(bytes32 orderId) internal view returns (DiamondStorage.LogisticsOrder storage) {
+        return s().clobLogisticsOrders[orderId];
+    }
+
+    // ============================================================================
+    // ERC1155 HELPER FUNCTIONS
+    // ============================================================================
+
+    function getERC1155Balance(uint256 tokenId, address account) internal view returns (uint256) {
+        return s().erc1155Balances[tokenId][account];
+    }
+
+    function isERC1155ApprovedForAll(address account, address operator) internal view returns (bool) {
+        return s().erc1155OperatorApprovals[account][operator];
+    }
+
+    function getERC1155TotalSupply(uint256 tokenId) internal view returns (uint256) {
+        return s().erc1155TotalSupply[tokenId];
+    }
+
+    function erc1155TokenExists(uint256 tokenId) internal view returns (bool) {
+        return s().erc1155Exists[tokenId];
+    }
+
+    // ============================================================================
+    // CUSTODY HELPER FUNCTIONS
+    // ============================================================================
+
+    function getTokenCustodian(uint256 tokenId) internal view returns (address) {
+        return s().tokenCustodian[tokenId];
+    }
+
+    function getTokenCustodyAmount(uint256 tokenId) internal view returns (uint256) {
+        return s().tokenCustodyAmount[tokenId];
     }
 }
