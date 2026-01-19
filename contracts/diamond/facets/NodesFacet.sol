@@ -882,4 +882,202 @@ contract NodesFacet is Initializable {
         
         return (assets, count);
     }
+
+    // ============================================================================
+    // NODE ADMIN SYSTEM (from Aurum.sol)
+    // ============================================================================
+
+    event NodeAdminSet(address indexed admin);
+    event NodeAdminRevoked(address indexed admin);
+
+    /**
+     * @notice Set a node admin (from AurumNodeManager.setAdmin)
+     */
+    function setNodeAdmin(address _admin) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.nodeAdmins[_admin] = true;
+        emit NodeAdminSet(_admin);
+    }
+
+    /**
+     * @notice Revoke a node admin
+     */
+    function revokeNodeAdmin(address _admin) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.nodeAdmins[_admin] = false;
+        emit NodeAdminRevoked(_admin);
+    }
+
+    /**
+     * @notice Check if address is a node admin
+     */
+    function isNodeAdmin(address _admin) external view returns (bool) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.nodeAdmins[_admin];
+    }
+
+    // ============================================================================
+    // AUSYS INTEGRATION (from aurumNode.sol)
+    // ============================================================================
+
+    /**
+     * @notice Proxy to AuSysFacet.handOff for node (from aurumNode.nodeHandoff)
+     * @dev Allows node owner to call handOff on behalf of node
+     */
+    function nodeHandoff(bytes32 _nodeHash, bytes32 _journeyId) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        
+        // Call AuSysFacet via delegatecall (it's part of same Diamond)
+        // The node owner is the sender, AuSysFacet will verify journey participation
+        (bool success, ) = address(this).delegatecall(
+            abi.encodeWithSignature("handOff(bytes32)", _journeyId)
+        );
+        require(success, "handOff failed");
+    }
+
+    /**
+     * @notice Proxy to AuSysFacet.handOn for node (from aurumNode.nodeHandOn)
+     * @dev Allows node owner to call handOn on behalf of node
+     */
+    function nodeHandOn(bytes32 _nodeHash, bytes32 _journeyId) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        
+        (bool success, ) = address(this).delegatecall(
+            abi.encodeWithSignature("handOn(bytes32)", _journeyId)
+        );
+        require(success, "handOn failed");
+    }
+
+    /**
+     * @notice Proxy to AuSysFacet.packageSign for node (from aurumNode.nodeSign)
+     * @dev Allows node owner to sign for package on behalf of node
+     */
+    function nodeSign(bytes32 _nodeHash, bytes32 _journeyId) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        
+        (bool success, ) = address(this).delegatecall(
+            abi.encodeWithSignature("packageSign(bytes32)", _journeyId)
+        );
+        require(success, "packageSign failed");
+    }
+
+    /**
+     * @notice Approve AuSys to handle node's ERC1155 tokens (from aurumNode.approveAusysForTokens)
+     * @dev In Diamond pattern, AuSys is internal so this sets approval on external token contract
+     */
+    function approveAusysForTokens(bytes32 _nodeHash) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        
+        // In Diamond, AuSys is this contract, so we set approval for Diamond on external token
+        if (s.auraAssetAddress != address(0)) {
+            IERC1155(s.auraAssetAddress).setApprovalForAll(address(this), true);
+        }
+    }
+
+    /**
+     * @notice Revoke AuSys approval for node's tokens (from aurumNode.revokeAusysApproval)
+     */
+    function revokeAusysApproval(bytes32 _nodeHash) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        
+        if (s.auraAssetAddress != address(0)) {
+            IERC1155(s.auraAssetAddress).setApprovalForAll(address(this), false);
+        }
+    }
+
+    // ============================================================================
+    // CAPACITY MANAGEMENT (from AurumNodeManager)
+    // ============================================================================
+
+    /**
+     * @notice Reduce node capacity for an order (from AurumNodeManager.reduceCapacityForOrder)
+     * @dev Called by AuSysFacet when creating order journeys
+     */
+    function reduceCapacityForOrder(
+        bytes32 _nodeHash,
+        address _token,
+        uint256 _tokenId,
+        uint256 _quantityToReduce
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        
+        // Only callable by admin, AuSys (this contract), or node owner
+        require(
+            s.nodeAdmins[msg.sender] || 
+            msg.sender == address(this) || 
+            s.nodes[_nodeHash].owner == msg.sender,
+            "Not authorized"
+        );
+
+        // Reduce internal balance
+        require(
+            s.nodeTokenBalances[_nodeHash][_tokenId] >= _quantityToReduce,
+            "Insufficient balance"
+        );
+        s.nodeTokenBalances[_nodeHash][_tokenId] -= _quantityToReduce;
+
+        // Also reduce capacity in node asset if it exists
+        uint256 assetId = uint256(keccak256(abi.encodePacked(_token, _tokenId)));
+        if (s.nodeAssets[_nodeHash][assetId].active) {
+            if (s.nodeAssets[_nodeHash][assetId].capacity >= _quantityToReduce) {
+                s.nodeAssets[_nodeHash][assetId].capacity -= _quantityToReduce;
+            }
+        }
+    }
+
+    // ============================================================================
+    // NODE ITEM MINTING (from aurumNode.addItem)
+    // ============================================================================
+
+    /**
+     * @notice Mint asset via node (from aurumNode.addItem)
+     * @dev Calls AssetsFacet.nodeMint internally
+     */
+    function addNodeItem(
+        bytes32 _nodeHash,
+        address _itemOwner,
+        uint256 _amount,
+        DiamondStorage.AssetDefinition memory _asset,
+        string memory _className,
+        bytes memory _data
+    ) external returns (uint256 tokenId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        require(s.nodes[_nodeHash].validNode, 'Invalid node');
+
+        // Call AssetsFacet.nodeMint via delegatecall
+        (bool success, bytes memory result) = address(this).delegatecall(
+            abi.encodeWithSignature(
+                "nodeMint(address,(string,string,(string,string[],string)[]),uint256,string,bytes)",
+                _itemOwner,
+                _asset,
+                _amount,
+                _className,
+                _data
+            )
+        );
+        require(success, "nodeMint failed");
+
+        // Decode the returned tokenId
+        (, tokenId) = abi.decode(result, (bytes32, uint256));
+
+        // Update node's internal balance
+        s.nodeTokenBalances[_nodeHash][tokenId] += _amount;
+        
+        // Track token in node's list if not already
+        if (!s.nodeHasToken[_nodeHash][tokenId]) {
+            s.nodeTokenIds[_nodeHash].push(tokenId);
+            s.nodeHasToken[_nodeHash][tokenId] = true;
+        }
+
+        emit TokensMintedToNode(_nodeHash, tokenId, _amount, msg.sender);
+        return tokenId;
+    }
 }
