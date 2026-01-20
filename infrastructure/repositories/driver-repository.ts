@@ -14,9 +14,9 @@ import { graphqlRequest } from './shared/graph';
 import {
   GET_AVAILABLE_JOURNEYS,
   GET_JOURNEYS_BY_DRIVER,
-  JourneyGraphResponse,
   extractPonderItems,
-} from '../shared/graph-queries';
+} from './shared/graph-queries';
+import { JourneyGraphResponse } from './shared/order-queries';
 import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
 /**
