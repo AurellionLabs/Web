@@ -39,17 +39,17 @@ export const GET_NODE_REGISTERED_EVENTS = gql`
     diamondNodeRegisteredEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        nodeHash
+        node_hash
         owner
-        nodeType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -64,17 +64,17 @@ export const GET_NODE_REGISTERED_BY_OWNER = gql`
     diamondNodeRegisteredEventss(
       where: { owner: $owner }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        nodeHash
+        node_hash
         owner
-        nodeType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -85,10 +85,10 @@ export const GET_NODE_DEACTIVATED_EVENTS = gql`
     diamondNodeDeactivatedEventss(limit: $limit) {
       items {
         id
-        nodeHash
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_hash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -99,18 +99,18 @@ export const GET_UPDATE_LOCATION_EVENTS = gql`
     diamondUpdateLocationEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        addressName
+        address_name
         lat
         lng
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -125,18 +125,18 @@ export const GET_UPDATE_LOCATION_BY_NODE = gql`
     diamondUpdateLocationEventss(
       where: { node: $node }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        addressName
+        address_name
         lat
         lng
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -149,9 +149,9 @@ export const GET_UPDATE_STATUS_EVENTS = gql`
         id
         status
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -162,19 +162,19 @@ export const GET_SUPPORTED_ASSET_ADDED_EVENTS = gql`
     diamondSupportedAssetAddedEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        nodeHash
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -187,21 +187,21 @@ export const GET_SUPPORTED_ASSET_ADDED_EVENTS = gql`
 export const GET_SUPPORTED_ASSETS_BY_NODE = gql`
   query GetSupportedAssetsByNode($nodeHash: String!, $limit: Int = 100) {
     diamondSupportedAssetAddedEventss(
-      where: { nodeHash: $nodeHash }
+      where: { node_hash: $nodeHash }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        nodeHash
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -216,23 +216,23 @@ export const GET_ORDER_PLACED_WITH_TOKENS_EVENTS = gql`
     diamondOrderPlacedWithTokensEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        orderId
+        order_id
         maker
-        baseToken
-        baseTokenId
-        quoteToken
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        isBuy
-        orderType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        is_buy
+        order_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -247,23 +247,23 @@ export const GET_ORDER_PLACED_BY_MAKER = gql`
     diamondOrderPlacedWithTokensEventss(
       where: { maker: $maker }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        orderId
+        order_id
         maker
-        baseToken
-        baseTokenId
-        quoteToken
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        isBuy
-        orderType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        is_buy
+        order_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -274,23 +274,23 @@ export const GET_ROUTER_ORDER_PLACED_EVENTS = gql`
     diamondRouterOrderPlacedEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        orderId
+        order_id
         maker
-        baseToken
-        baseTokenId
-        quoteToken
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        isBuy
-        orderType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        is_buy
+        order_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -309,20 +309,20 @@ export const GET_CLOB_ORDER_FILLED_EVENTS = gql`
     diamondCLOBOrderFilledEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        orderId
-        tradeId
-        fillAmount
-        fillPrice
-        remainingAmount
-        cumulativeFilled
-        blockNumber
-        blockTimestamp
-        transactionHash
+        order_id
+        trade_id
+        fill_amount
+        fill_price
+        remaining_amount
+        cumulative_filled
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -335,22 +335,22 @@ export const GET_CLOB_ORDER_FILLED_EVENTS = gql`
 export const GET_CLOB_ORDER_FILLED_BY_ORDER = gql`
   query GetCLOBOrderFilledByOrder($orderId: String!, $limit: Int = 100) {
     diamondCLOBOrderFilledEventss(
-      where: { orderId: $orderId }
+      where: { order_id: $orderId }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "asc"
     ) {
       items {
         id
-        orderId
-        tradeId
-        fillAmount
-        fillPrice
-        remainingAmount
-        cumulativeFilled
-        blockNumber
-        blockTimestamp
-        transactionHash
+        order_id
+        trade_id
+        fill_amount
+        fill_price
+        remaining_amount
+        cumulative_filled
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -361,13 +361,13 @@ export const GET_CLOB_ORDER_CANCELLED_EVENTS = gql`
     diamondCLOBOrderCancelledEventss(limit: $limit) {
       items {
         id
-        orderId
+        order_id
         maker
-        remainingAmount
+        remaining_amount
         reason
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -378,11 +378,11 @@ export const GET_ORDER_EXPIRED_EVENTS = gql`
     diamondOrderExpiredEventss(limit: $limit) {
       items {
         id
-        orderId
-        expiredAt
-        blockNumber
-        blockTimestamp
-        transactionHash
+        order_id
+        expired_at
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -397,27 +397,27 @@ export const GET_CLOB_TRADE_EXECUTED_EVENTS = gql`
     diamondCLOBTradeExecutedEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        tradeId
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
-        marketId
+        market_id
         price
         amount
-        quoteAmount
-        takerFee
-        makerFee
+        quote_amount
+        taker_fee
+        maker_fee
         timestamp
-        takerIsBuy
-        blockNumber
-        blockTimestamp
-        transactionHash
+        taker_is_buy
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -432,47 +432,47 @@ export const GET_TRADES_BY_USER = gql`
     takerTrades: diamondCLOBTradeExecutedEventss(
       where: { taker: $user }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        tradeId
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
-        marketId
+        market_id
         price
         amount
-        quoteAmount
-        takerIsBuy
-        blockNumber
-        blockTimestamp
-        transactionHash
+        quote_amount
+        taker_is_buy
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     makerTrades: diamondCLOBTradeExecutedEventss(
       where: { maker: $user }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        tradeId
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
-        marketId
+        market_id
         price
         amount
-        quoteAmount
-        takerIsBuy
-        blockNumber
-        blockTimestamp
-        transactionHash
+        quote_amount
+        taker_is_buy
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -487,22 +487,22 @@ export const GET_UNIFIED_ORDER_CREATED_EVENTS = gql`
     diamondUnifiedOrderCreatedEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        unifiedOrderId
-        clobOrderId
+        unified_order_id
+        clob_order_id
         buyer
         seller
         token
-        tokenId
+        token_id
         quantity
         price
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -517,22 +517,22 @@ export const GET_UNIFIED_ORDER_BY_BUYER = gql`
     diamondUnifiedOrderCreatedEventss(
       where: { buyer: $buyer }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        unifiedOrderId
-        clobOrderId
+        unified_order_id
+        clob_order_id
         buyer
         seller
         token
-        tokenId
+        token_id
         quantity
         price
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -543,22 +543,22 @@ export const GET_UNIFIED_ORDER_BY_SELLER = gql`
     diamondUnifiedOrderCreatedEventss(
       where: { seller: $seller }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        unifiedOrderId
-        clobOrderId
+        unified_order_id
+        clob_order_id
         buyer
         seller
         token
-        tokenId
+        token_id
         quantity
         price
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -569,19 +569,19 @@ export const GET_LOGISTICS_ORDER_CREATED_EVENTS = gql`
     diamondLogisticsOrderCreatedEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        unifiedOrderId
-        ausysOrderId
-        journeyIds
+        unified_order_id
+        ausys_order_id
+        journey_ids
         bounty
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -596,17 +596,17 @@ export const GET_JOURNEY_STATUS_UPDATED_EVENTS = gql`
     diamondJourneyStatusUpdatedEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        unifiedOrderId
-        journeyId
+        unified_order_id
+        journey_id
         phase
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -619,19 +619,19 @@ export const GET_JOURNEY_STATUS_UPDATED_EVENTS = gql`
 export const GET_JOURNEY_STATUS_BY_JOURNEY = gql`
   query GetJourneyStatusByJourney($journeyId: String!, $limit: Int = 100) {
     diamondJourneyStatusUpdatedEventss(
-      where: { journeyId: $journeyId }
+      where: { journey_id: $journeyId }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "asc"
     ) {
       items {
         id
-        unifiedOrderId
-        journeyId
+        unified_order_id
+        journey_id
         phase
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -642,14 +642,14 @@ export const GET_ORDER_SETTLED_EVENTS = gql`
     diamondOrderSettledEventss(limit: $limit) {
       items {
         id
-        unifiedOrderId
+        unified_order_id
         seller
-        sellerAmount
+        seller_amount
         driver
-        driverAmount
-        blockNumber
-        blockTimestamp
-        transactionHash
+        driver_amount
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -664,13 +664,13 @@ export const GET_MARKET_CREATED_EVENTS = gql`
     diamondMarketCreatedEventss(limit: $limit) {
       items {
         id
-        marketId
-        baseToken
-        baseTokenId
-        quoteToken
-        blockNumber
-        blockTimestamp
-        transactionHash
+        market_id
+        base_token
+        base_token_id
+        quote_token
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -688,33 +688,33 @@ export const GET_ALL_NODE_EVENTS = gql`
     registered: diamondNodeRegisteredEventss(limit: $limit) {
       items {
         id
-        nodeHash
+        node_hash
         owner
-        nodeType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     deactivated: diamondNodeDeactivatedEventss(limit: $limit) {
       items {
         id
-        nodeHash
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_hash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     locations: diamondUpdateLocationEventss(limit: $limit) {
       items {
         id
-        addressName
+        address_name
         lat
         lng
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     statuses: diamondUpdateStatusEventss(limit: $limit) {
@@ -722,22 +722,22 @@ export const GET_ALL_NODE_EVENTS = gql`
         id
         status
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     assets: diamondSupportedAssetAddedEventss(limit: $limit) {
       items {
         id
-        nodeHash
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -751,71 +751,71 @@ export const GET_ALL_ORDER_EVENTS = gql`
     placed: diamondOrderPlacedWithTokensEventss(limit: $limit) {
       items {
         id
-        orderId
+        order_id
         maker
-        baseToken
-        baseTokenId
-        quoteToken
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        isBuy
-        orderType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        is_buy
+        order_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     routerPlaced: diamondRouterOrderPlacedEventss(limit: $limit) {
       items {
         id
-        orderId
+        order_id
         maker
-        baseToken
-        baseTokenId
-        quoteToken
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        isBuy
-        orderType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        is_buy
+        order_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     filled: diamondCLOBOrderFilledEventss(limit: $limit) {
       items {
         id
-        orderId
-        tradeId
-        fillAmount
-        fillPrice
-        remainingAmount
-        cumulativeFilled
-        blockNumber
-        blockTimestamp
-        transactionHash
+        order_id
+        trade_id
+        fill_amount
+        fill_price
+        remaining_amount
+        cumulative_filled
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     cancelled: diamondCLOBOrderCancelledEventss(limit: $limit) {
       items {
         id
-        orderId
+        order_id
         maker
-        remainingAmount
+        remaining_amount
         reason
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     expired: diamondOrderExpiredEventss(limit: $limit) {
       items {
         id
-        orderId
-        expiredAt
-        blockNumber
-        blockTimestamp
-        transactionHash
+        order_id
+        expired_at
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -829,54 +829,54 @@ export const GET_ALL_UNIFIED_ORDER_EVENTS = gql`
     created: diamondUnifiedOrderCreatedEventss(limit: $limit) {
       items {
         id
-        unifiedOrderId
-        clobOrderId
+        unified_order_id
+        clob_order_id
         buyer
         seller
         token
-        tokenId
+        token_id
         quantity
         price
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     logistics: diamondLogisticsOrderCreatedEventss(limit: $limit) {
       items {
         id
-        unifiedOrderId
-        ausysOrderId
-        journeyIds
+        unified_order_id
+        ausys_order_id
+        journey_ids
         bounty
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     journeyUpdates: diamondJourneyStatusUpdatedEventss(limit: $limit) {
       items {
         id
-        unifiedOrderId
-        journeyId
+        unified_order_id
+        journey_id
         phase
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     settled: diamondOrderSettledEventss(limit: $limit) {
       items {
         id
-        unifiedOrderId
+        unified_order_id
         seller
-        sellerAmount
+        seller_amount
         driver
-        driverAmount
-        blockNumber
-        blockTimestamp
-        transactionHash
+        driver_amount
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -977,79 +977,79 @@ export function convertUnifiedOrderEventsResponse(
 export const GET_NODE_BY_ADDRESS = gql`
   query GetNodeByAddress($nodeAddress: String!) {
     registered: diamondNodeRegisteredEventss(
-      where: { nodeHash: $nodeAddress }
+      where: { node_hash: $nodeAddress }
       limit: 1
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        nodeHash
+        node_hash
         owner
-        nodeType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     deactivated: diamondNodeDeactivatedEventss(
-      where: { nodeHash: $nodeAddress }
+      where: { node_hash: $nodeAddress }
       limit: 1
     ) {
       items {
         id
-        nodeHash
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_hash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     locations: diamondUpdateLocationEventss(
       where: { node: $nodeAddress }
       limit: 1
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        addressName
+        address_name
         lat
         lng
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     statuses: diamondUpdateStatusEventss(
       where: { node: $nodeAddress }
       limit: 1
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
         status
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     assets: diamondSupportedAssetAddedEventss(
-      where: { nodeHash: $nodeAddress }
+      where: { node_hash: $nodeAddress }
       limit: 100
     ) {
       items {
         id
-        nodeHash
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -1059,56 +1059,56 @@ export const GET_ALL_ACTIVE_NODES = gql`
   query GetAllActiveNodes($limit: Int = 500) {
     registered: diamondNodeRegisteredEventss(
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        nodeHash
+        node_hash
         owner
-        nodeType
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_type
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     deactivated: diamondNodeDeactivatedEventss(limit: $limit) {
       items {
         id
-        nodeHash
-        blockNumber
-        blockTimestamp
-        transactionHash
+        node_hash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     locations: diamondUpdateLocationEventss(
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        addressName
+        address_name
         lat
         lng
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
     statuses: diamondUpdateStatusEventss(
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
         status
         node
-        blockNumber
-        blockTimestamp
-        transactionHash
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
