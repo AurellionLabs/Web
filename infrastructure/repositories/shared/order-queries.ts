@@ -244,23 +244,25 @@ export const GET_ORDERS_BY_NODE = gql`
 
 export interface JourneyGraphResponse {
   id: string;
+  journey_id: string;
+  unified_order_id: string;
   sender: string;
   receiver: string;
   driver: string;
-  currentStatus: string;
+  current_status: string;
   bounty: string;
-  journeyStart: string;
-  journeyEnd: string;
+  journey_start: string;
+  journey_end: string;
   eta: string;
-  startLocationLat: string;
-  startLocationLng: string;
-  endLocationLat: string;
-  endLocationLng: string;
-  startName: string;
-  endName: string;
-  orderId: string;
-  createdAt: string;
-  updatedAt?: string;
+  start_location_lat: string;
+  start_location_lng: string;
+  end_location_lat: string;
+  end_location_lng: string;
+  start_name: string;
+  end_name: string;
+  order_id: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface OrderGraphResponse {
@@ -268,21 +270,21 @@ export interface OrderGraphResponse {
   buyer: string;
   seller: string;
   token: string;
-  tokenId: string;
-  tokenQuantity: string;
-  requestedTokenQuantity: string;
+  token_id: string;
+  token_quantity: string;
+  requested_token_quantity: string;
   price: string;
-  txFee: string;
-  currentStatus: string;
-  startLocationLat: string;
-  startLocationLng: string;
-  endLocationLat: string;
-  endLocationLng: string;
-  startName: string;
-  endName: string;
+  tx_fee: string;
+  current_status: string;
+  start_location_lat: string;
+  start_location_lng: string;
+  end_location_lat: string;
+  end_location_lng: string;
+  start_name: string;
+  end_name: string;
   nodes: string[];
-  createdAt: string;
-  updatedAt?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 // ============================================================================
@@ -347,20 +349,20 @@ function buildLocation(lat?: string, lng?: string): Location | undefined {
  */
 function buildParcelData(raw: OrderGraphResponse): ParcelData | undefined {
   const startLocation = buildLocation(
-    raw.startLocationLat,
-    raw.startLocationLng,
+    raw.start_location_lat,
+    raw.start_location_lng,
   );
-  const endLocation = buildLocation(raw.endLocationLat, raw.endLocationLng);
+  const endLocation = buildLocation(raw.end_location_lat, raw.end_location_lng);
 
-  if (!startLocation && !endLocation && !raw.startName && !raw.endName) {
+  if (!startLocation && !endLocation && !raw.start_name && !raw.end_name) {
     return undefined;
   }
 
   return {
     startLocation: startLocation ?? { lat: '', lng: '' },
     endLocation: endLocation ?? { lat: '', lng: '' },
-    startName: raw.startName ?? '',
-    endName: raw.endName ?? '',
+    startName: raw.start_name ?? '',
+    endName: raw.end_name ?? '',
   };
 }
 
@@ -371,28 +373,28 @@ export function convertGraphJourneyToDomain(
   graphJourney: JourneyGraphResponse,
 ): Journey {
   const startLocation = buildLocation(
-    graphJourney.startLocationLat,
-    graphJourney.startLocationLng,
+    graphJourney.start_location_lat,
+    graphJourney.start_location_lng,
   );
   const endLocation = buildLocation(
-    graphJourney.endLocationLat,
-    graphJourney.endLocationLng,
+    graphJourney.end_location_lat,
+    graphJourney.end_location_lng,
   );
 
   return {
     parcelData: {
       startLocation: startLocation ?? { lat: '', lng: '' },
       endLocation: endLocation ?? { lat: '', lng: '' },
-      startName: graphJourney.startName,
-      endName: graphJourney.endName,
+      startName: graphJourney.start_name,
+      endName: graphJourney.end_name,
     },
     journeyId: graphJourney.id,
-    currentStatus: convertNumericToJourneyStatus(graphJourney.currentStatus),
+    currentStatus: convertNumericToJourneyStatus(graphJourney.current_status),
     sender: graphJourney.sender,
     receiver: graphJourney.receiver,
     driver: graphJourney.driver,
-    journeyStart: BigInt(graphJourney.journeyStart || '0'),
-    journeyEnd: BigInt(graphJourney.journeyEnd || '0'),
+    journeyStart: BigInt(graphJourney.journey_start || '0'),
+    journeyEnd: BigInt(graphJourney.journey_end || '0'),
     bounty: BigInt(graphJourney.bounty || '0'),
     ETA: BigInt(graphJourney.eta || '0'),
   };
@@ -407,16 +409,16 @@ export function convertGraphOrderToDomain(
   return {
     id: graphOrder.id,
     token: graphOrder.token,
-    tokenId: graphOrder.tokenId,
-    tokenQuantity: graphOrder.tokenQuantity,
+    tokenId: graphOrder.token_id,
+    tokenQuantity: graphOrder.token_quantity,
     price: graphOrder.price,
-    txFee: graphOrder.txFee,
+    txFee: graphOrder.tx_fee,
     buyer: graphOrder.buyer,
     seller: graphOrder.seller,
     journeyIds: [],
     nodes: graphOrder.nodes || [],
     locationData: buildParcelData(graphOrder),
-    currentStatus: convertNumericToOrderStatus(graphOrder.currentStatus),
+    currentStatus: convertNumericToOrderStatus(graphOrder.current_status),
     contractualAgreement: '',
   };
 }

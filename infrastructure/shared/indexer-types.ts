@@ -65,9 +65,9 @@ export interface UpdateOwnerEvent extends BaseEvent {
 }
 
 export interface SupportedAssetAddedEvent extends BaseEvent {
-  nodeHash: string;
+  node_hash: string;
   token: string;
-  tokenId: string;
+  token_id: string;
   price: string;
   capacity: string;
 }

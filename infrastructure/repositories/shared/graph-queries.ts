@@ -842,3 +842,72 @@ export function extractPonderItems<T>(
 ): T[] {
   return response?.items || [];
 }
+
+// ============================================================================
+// DRIVER/JOURNEY QUERIES
+// ============================================================================
+
+export const GET_AVAILABLE_JOURNEYS = gql`
+  query GetAvailableJourneys($limit: Int = 200) {
+    journeyss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        unified_order_id
+        sender
+        receiver
+        driver
+        bounty
+        eta
+        current_status
+        start_location_lat
+        start_location_lng
+        end_location_lat
+        end_location_lng
+        start_name
+        end_name
+        order_id
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export const GET_JOURNEYS_BY_DRIVER = gql`
+  query GetJourneysByDriver($driverAddress: String!, $limit: Int = 100) {
+    journeyss(
+      where: { driver: $driverAddress }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        unified_order_id
+        sender
+        receiver
+        driver
+        bounty
+        eta
+        current_status
+        start_location_lat
+        start_location_lng
+        end_location_lat
+        end_location_lng
+        start_name
+        end_name
+        order_id
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;

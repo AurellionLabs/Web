@@ -75,9 +75,9 @@ export class DriverRepository implements IDriverRepository {
       | Ausys.JourneyStructOutput
       | (JourneyGraphResponse & { id: string }),
   ): Delivery {
-    // Ponder returns flat structure - check for flat field (startLocationLat) vs nested (parcelData)
+    // Ponder returns flat structure - check for flat field (start_location_lat) vs nested (parcelData)
     const isPonderGraph =
-      (journey as JourneyGraphResponse).startLocationLat !== undefined;
+      (journey as JourneyGraphResponse).start_location_lat !== undefined;
     const isContractStruct =
       (journey as Ausys.JourneyStructOutput).parcelData !== undefined;
 
@@ -88,15 +88,15 @@ export class DriverRepository implements IDriverRepository {
       const j = journey as JourneyGraphResponse;
       parcelData = {
         startLocation: {
-          lat: j.startLocationLat,
-          lng: j.startLocationLng,
+          lat: j.start_location_lat,
+          lng: j.start_location_lng,
         },
         endLocation: {
-          lat: j.endLocationLat,
-          lng: j.endLocationLng,
+          lat: j.end_location_lat,
+          lng: j.end_location_lng,
         },
-        startName: j.startName,
-        endName: j.endName,
+        startName: j.start_name,
+        endName: j.end_name,
       };
     } else if (isContractStruct) {
       // Contract struct has nested parcelData
@@ -139,16 +139,16 @@ export class DriverRepository implements IDriverRepository {
       ? (journey as JourneyGraphResponse).eta
       : (journey as Ausys.JourneyStructOutput).ETA;
     const currentStatus = isPonderGraph
-      ? (journey as JourneyGraphResponse).currentStatus
+      ? (journey as JourneyGraphResponse).current_status
       : (journey as Ausys.JourneyStructOutput).currentStatus;
 
     // Debug bounty conversion
     const bountyRaw = bounty as any;
-    const bountyFormatted = ethers.formatUnits(bountyRaw, 6);
+    const bountyFormatted = bountyRaw ? ethers.formatUnits(bountyRaw, 6) : '0';
     const bountyNumber = Number(bountyFormatted);
     console.log('[DriverRepository] Bounty conversion:', {
       jobId,
-      bountyRaw: bountyRaw.toString(),
+      bountyRaw: bountyRaw?.toString(),
       bountyFormatted,
       bountyNumber,
       bountyType: typeof bountyRaw,

@@ -238,8 +238,8 @@ export class DiamondNodeRepository implements NodeRepository {
         // Find matching raw event for this asset on this node
         const rawEvent = allAssets.find(
           (e) =>
-            e.nodeHash.toLowerCase() === nodeAddress.toLowerCase() &&
-            e.tokenId === nodeAsset.tokenId,
+            e.node_hash?.toLowerCase() === nodeAddress.toLowerCase() &&
+            e.token_id === nodeAsset.tokenId,
         );
 
         return {
