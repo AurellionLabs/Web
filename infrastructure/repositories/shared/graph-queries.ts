@@ -844,12 +844,16 @@ export function extractPonderItems<T>(
 }
 
 // ============================================================================
-// DRIVER/JOURNEY QUERIES
+// DRIVER/JOURNEY QUERIES (Raw Event Tables from AuSysFacet)
 // ============================================================================
 
-export const GET_AVAILABLE_JOURNEYS = gql`
-  query GetAvailableJourneys($limit: Int = 200) {
-    journeyss(
+/**
+ * Query all created journeys from JourneyCreated events.
+ * Now contains full journey data including locations, bounty, ETA.
+ */
+export const GET_ALL_JOURNEYS_CREATED = gql`
+  query GetAllJourneysCreated($limit: Int = 200) {
+    journeys: diamondJourneyCreatedEventss(
       limit: $limit
       orderBy: "block_timestamp"
       orderDirection: "desc"
@@ -857,20 +861,45 @@ export const GET_AVAILABLE_JOURNEYS = gql`
       items {
         id
         journey_id
-        unified_order_id
         sender
         receiver
         driver
         bounty
-        eta
-        current_status
-        start_location_lat
-        start_location_lng
-        end_location_lat
-        end_location_lng
+        e_t_a
+        order_id
+        start_lat
+        start_lng
+        end_lat
+        end_lng
         start_name
         end_name
-        order_id
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+    statusUpdates: diamondAuSysJourneyStatusUpdatedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        new_status
+        sender
+        receiver
+        driver
+        bounty
+        e_t_a
+        journey_start
+        journey_end
+        start_lat
+        start_lng
+        end_lat
+        end_lng
+        start_name
+        end_name
         block_number
         block_timestamp
         transaction_hash
@@ -879,9 +908,13 @@ export const GET_AVAILABLE_JOURNEYS = gql`
   }
 `;
 
+/**
+ * Query journeys assigned to a specific driver.
+ * Uses DriverAssigned events which have full journey context.
+ */
 export const GET_JOURNEYS_BY_DRIVER = gql`
   query GetJourneysByDriver($driverAddress: String!, $limit: Int = 100) {
-    journeyss(
+    assigned: diamondDriverAssignedEventss(
       where: { driver: $driverAddress }
       limit: $limit
       orderBy: "block_timestamp"
@@ -890,20 +923,45 @@ export const GET_JOURNEYS_BY_DRIVER = gql`
       items {
         id
         journey_id
-        unified_order_id
+        driver
+        sender
+        receiver
+        bounty
+        e_t_a
+        start_lat
+        start_lng
+        end_lat
+        end_lng
+        start_name
+        end_name
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+    statusUpdates: diamondAuSysJourneyStatusUpdatedEventss(
+      where: { driver: $driverAddress }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        new_status
         sender
         receiver
         driver
         bounty
-        eta
-        current_status
-        start_location_lat
-        start_location_lng
-        end_location_lat
-        end_location_lng
+        e_t_a
+        journey_start
+        journey_end
+        start_lat
+        start_lng
+        end_lat
+        end_lng
         start_name
         end_name
-        order_id
         block_number
         block_timestamp
         transaction_hash
@@ -911,3 +969,169 @@ export const GET_JOURNEYS_BY_DRIVER = gql`
     }
   }
 `;
+
+/**
+ * Query available journeys (status = Pending, no driver assigned).
+ * Filters JourneyCreated events where driver is zero address.
+ */
+export const GET_AVAILABLE_JOURNEYS = gql`
+  query GetAvailableJourneys($limit: Int = 200) {
+    journeys: diamondJourneyCreatedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        sender
+        receiver
+        driver
+        bounty
+        e_t_a
+        order_id
+        start_lat
+        start_lng
+        end_lat
+        end_lng
+        start_name
+        end_name
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+// Legacy alias
+export const GET_JOURNEY_RAW_EVENTS = GET_ALL_JOURNEYS_CREATED;
+export const GET_JOURNEYS_BY_DRIVER_RAW = GET_JOURNEYS_BY_DRIVER;
+
+// ============================================================================
+// JOURNEY RAW EVENT RESPONSE TYPES (AuSysFacet Events)
+// ============================================================================
+
+/**
+ * JourneyCreated event from AuSysFacet
+ * Table: diamond_journey_created_events
+ */
+export interface JourneyCreatedRawEvent {
+  id: string;
+  journey_id: string;
+  sender: string;
+  receiver: string;
+  driver: string;
+  bounty: string;
+  e_t_a: string;
+  order_id: string;
+  start_lat: string;
+  start_lng: string;
+  end_lat: string;
+  end_lng: string;
+  start_name: string;
+  end_name: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+/**
+ * DriverAssigned event from AuSysFacet
+ * Table: diamond_driver_assigned_events
+ */
+export interface DriverAssignedRawEvent {
+  id: string;
+  journey_id: string;
+  driver: string;
+  sender: string;
+  receiver: string;
+  bounty: string;
+  e_t_a: string;
+  start_lat: string;
+  start_lng: string;
+  end_lat: string;
+  end_lng: string;
+  start_name: string;
+  end_name: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+/**
+ * AuSysJourneyStatusUpdated event from AuSysFacet
+ * Table: diamond_au_sys_journey_status_updated_events
+ */
+export interface AuSysJourneyStatusUpdatedRawEvent {
+  id: string;
+  journey_id: string;
+  new_status: string;
+  sender: string;
+  receiver: string;
+  driver: string;
+  bounty: string;
+  e_t_a: string;
+  journey_start: string;
+  journey_end: string;
+  start_lat: string;
+  start_lng: string;
+  end_lat: string;
+  end_lng: string;
+  start_name: string;
+  end_name: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+// Response types for queries
+export interface AllJourneysCreatedResponse {
+  journeys: { items: JourneyCreatedRawEvent[] };
+  statusUpdates: { items: AuSysJourneyStatusUpdatedRawEvent[] };
+}
+
+export interface JourneysByDriverResponse {
+  assigned: { items: DriverAssignedRawEvent[] };
+  statusUpdates: { items: AuSysJourneyStatusUpdatedRawEvent[] };
+}
+
+export interface AvailableJourneysResponse {
+  journeys: { items: JourneyCreatedRawEvent[] };
+}
+
+// Legacy types (kept for Bridge events)
+export interface LogisticsOrderCreatedRawEvent {
+  id: string;
+  unified_order_id: string;
+  ausys_order_id: string;
+  journey_ids: string;
+  bounty: string;
+  node: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface OrderSettledRawEvent {
+  id: string;
+  unified_order_id: string;
+  seller: string;
+  seller_amount: string;
+  driver: string;
+  driver_amount: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+// Legacy response types (deprecated - use new types above)
+export interface JourneyRawEventsResponse {
+  journeys: { items: JourneyCreatedRawEvent[] };
+  statusUpdates: { items: AuSysJourneyStatusUpdatedRawEvent[] };
+}
+
+export interface JourneysByDriverRawResponse {
+  assigned: { items: DriverAssignedRawEvent[] };
+  statusUpdates: { items: AuSysJourneyStatusUpdatedRawEvent[] };
+}

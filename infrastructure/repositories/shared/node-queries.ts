@@ -1,95 +1,205 @@
 /**
- * Node-specific GraphQL queries for legacy compatibility
+ * Node-specific GraphQL queries using raw event tables
  *
- * These queries use aggregate tables that are still being migrated.
- * Eventually they will be replaced by raw event queries + aggregators.
+ * These queries use the pure dumb indexer pattern - query raw events
+ * and aggregate in the repository/service layer.
  */
 
 import { gql } from 'graphql-request';
 
 // ============================================================================
-// NODE QUERIES (Legacy - use aggregate tables)
+// NODE QUERIES (Raw Event Tables)
 // ============================================================================
 
+/**
+ * Get node registration events for a specific node address
+ */
 export const GET_NODE_BY_ADDRESS = gql`
   query GetNodeByAddress($nodeAddress: String!) {
-    nodes(id: $nodeAddress) {
-      id
-      owner
-      addressName
-      lat
-      lng
-      validNode
-      status
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const GET_NODES_BY_OWNER = gql`
-  query GetNodesByOwner($ownerAddress: String!) {
-    nodess(where: { owner: $ownerAddress }) {
+    registered: diamondNodeRegisteredEventss(
+      where: { node_hash: $nodeAddress }
+      limit: 1
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
       items {
         id
+        node_hash
         owner
-        addressName
+        node_type
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+    locations: diamondUpdateLocationEventss(
+      where: { node: $nodeAddress }
+      limit: 1
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        address_name
         lat
         lng
-        validNode
+        node
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+    statuses: diamondUpdateStatusEventss(
+      where: { node: $nodeAddress }
+      limit: 1
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
         status
-        createdAt
-        updatedAt
+        node
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
+/**
+ * Get node registration events by owner address
+ */
+export const GET_NODES_BY_OWNER = gql`
+  query GetNodesByOwner($ownerAddress: String!) {
+    registered: diamondNodeRegisteredEventss(
+      where: { owner: $ownerAddress }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        node_hash
+        owner
+        node_type
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get all supported asset added events
+ */
 export const GET_ALL_NODE_ASSETS = gql`
   query GetAllNodeAssets($limit: Int = 1000) {
-    nodeAssetss(limit: $limit) {
+    assets: diamondSupportedAssetAddedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
       items {
         id
-        node
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
+/**
+ * Get logistics orders by node address
+ */
 export const GET_ORDERS_BY_NODE = gql`
   query GetOrdersByNode($nodeAddress: String!) {
-    orderss(where: { nodes_contains: $nodeAddress }) {
+    logistics: diamondLogisticsOrderCreatedEventss(
+      where: { node: $nodeAddress }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
       items {
         id
-        buyer
-        seller
-        token
-        tokenId
-        tokenQuantity
-        requestedTokenQuantity
-        price
-        txFee
-        currentStatus
-        startLocationLat
-        startLocationLng
-        endLocationLat
-        endLocationLng
-        startName
-        endName
-        nodes
-        createdAt
-        updatedAt
+        unified_order_id
+        ausys_order_id
+        journey_ids
+        bounty
+        node
+        block_number
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
 // ============================================================================
-// RESPONSE TYPES
+// RAW EVENT RESPONSE TYPES (Pure Dumb Indexer Pattern)
+// ============================================================================
+
+export interface NodeRegisteredRawEvent {
+  id: string;
+  node_hash: string;
+  owner: string;
+  node_type: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface UpdateLocationRawEvent {
+  id: string;
+  address_name: string;
+  lat: string;
+  lng: string;
+  node: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface UpdateStatusRawEvent {
+  id: string;
+  status: string;
+  node: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface SupportedAssetRawEvent {
+  id: string;
+  node_hash: string;
+  token: string;
+  token_id: string;
+  price: string;
+  capacity: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface LogisticsOrderRawEvent {
+  id: string;
+  unified_order_id: string;
+  ausys_order_id: string;
+  journey_ids: string;
+  bounty: string;
+  node: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+// ============================================================================
+// LEGACY RESPONSE TYPES (For backward compatibility)
 // ============================================================================
 
 export interface NodeGraphResponse {

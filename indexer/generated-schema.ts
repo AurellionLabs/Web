@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-19T23:20:26.154Z
+// Generated at: 2026-01-20T13:05:57.130Z
 // 
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -1321,6 +1321,273 @@ export const diamondOwnershipTransferredEvents = onchainTable(
   })
 );
 
+export const diamondAuSysAdminRevokedEvents = onchainTable(
+  'diamond_au_sys_admin_revoked_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    admin: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    adminIdx: index().on(table.admin),
+  })
+);
+
+export const diamondAuSysAdminSetEvents = onchainTable(
+  'diamond_au_sys_admin_set_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    admin: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    adminIdx: index().on(table.admin),
+  })
+);
+
+export const diamondAuSysJourneyStatusUpdatedEvents = onchainTable(
+  'diamond_au_sys_journey_status_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    journey_id: t.hex().notNull(),
+    new_status: t.bigint().notNull(),
+    sender: t.hex().notNull(),
+    receiver: t.hex().notNull(),
+    driver: t.hex().notNull(),
+    bounty: t.bigint().notNull(),
+    e_t_a: t.bigint().notNull(),
+    journey_start: t.bigint().notNull(),
+    journey_end: t.bigint().notNull(),
+    start_lat: t.text().notNull(),
+    start_lng: t.text().notNull(),
+    end_lat: t.text().notNull(),
+    end_lng: t.text().notNull(),
+    start_name: t.text().notNull(),
+    end_name: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    journeyIdIdx: index().on(table.journey_id),
+    newStatusIdx: index().on(table.new_status),
+  })
+);
+
+export const diamondAuSysOrderCreatedEvents = onchainTable(
+  'diamond_au_sys_order_created_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    order_id: t.hex().notNull(),
+    buyer: t.hex().notNull(),
+    seller: t.hex().notNull(),
+    token: t.hex().notNull(),
+    token_id: t.bigint().notNull(),
+    token_quantity: t.bigint().notNull(),
+    price: t.bigint().notNull(),
+    tx_fee: t.bigint().notNull(),
+    current_status: t.bigint().notNull(),
+    nodes: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    orderIdIdx: index().on(table.order_id),
+    buyerIdx: index().on(table.buyer),
+    sellerIdx: index().on(table.seller),
+  })
+);
+
+export const diamondAuSysOrderSettledEvents = onchainTable(
+  'diamond_au_sys_order_settled_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    order_id: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    orderIdIdx: index().on(table.order_id),
+  })
+);
+
+export const diamondAuSysOrderStatusUpdatedEvents = onchainTable(
+  'diamond_au_sys_order_status_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    order_id: t.hex().notNull(),
+    new_status: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    orderIdIdx: index().on(table.order_id),
+  })
+);
+
+export const diamondDriverAssignedEvents = onchainTable(
+  'diamond_driver_assigned_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    journey_id: t.hex().notNull(),
+    driver: t.hex().notNull(),
+    sender: t.hex().notNull(),
+    receiver: t.hex().notNull(),
+    bounty: t.bigint().notNull(),
+    e_t_a: t.bigint().notNull(),
+    start_lat: t.text().notNull(),
+    start_lng: t.text().notNull(),
+    end_lat: t.text().notNull(),
+    end_lng: t.text().notNull(),
+    start_name: t.text().notNull(),
+    end_name: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    journeyIdIdx: index().on(table.journey_id),
+    driverIdx: index().on(table.driver),
+  })
+);
+
+export const diamondEmitSigEvents = onchainTable(
+  'diamond_emit_sig_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    user: t.hex().notNull(),
+    event_id: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    userIdx: index().on(table.user),
+    eventIdIdx: index().on(table.event_id),
+  })
+);
+
+export const diamondFundsEscrowedEvents = onchainTable(
+  'diamond_funds_escrowed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    from: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    fromIdx: index().on(table.from),
+  })
+);
+
+export const diamondFundsRefundedEvents = onchainTable(
+  'diamond_funds_refunded_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    to: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    toIdx: index().on(table.to),
+  })
+);
+
+export const diamondJourneyCanceledEvents = onchainTable(
+  'diamond_journey_canceled_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    journey_id: t.hex().notNull(),
+    sender: t.hex().notNull(),
+    receiver: t.hex().notNull(),
+    driver: t.hex().notNull(),
+    refunded_amount: t.bigint().notNull(),
+    bounty: t.bigint().notNull(),
+    start_lat: t.text().notNull(),
+    start_lng: t.text().notNull(),
+    end_lat: t.text().notNull(),
+    end_lng: t.text().notNull(),
+    start_name: t.text().notNull(),
+    end_name: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    journeyIdIdx: index().on(table.journey_id),
+    senderIdx: index().on(table.sender),
+  })
+);
+
+export const diamondJourneyCreatedEvents = onchainTable(
+  'diamond_journey_created_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    journey_id: t.hex().notNull(),
+    sender: t.hex().notNull(),
+    receiver: t.hex().notNull(),
+    driver: t.hex().notNull(),
+    bounty: t.bigint().notNull(),
+    e_t_a: t.bigint().notNull(),
+    order_id: t.hex().notNull(),
+    start_lat: t.text().notNull(),
+    start_lng: t.text().notNull(),
+    end_lat: t.text().notNull(),
+    end_lng: t.text().notNull(),
+    start_name: t.text().notNull(),
+    end_name: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    journeyIdIdx: index().on(table.journey_id),
+    senderIdx: index().on(table.sender),
+    receiverIdx: index().on(table.receiver),
+  })
+);
+
+export const diamondNodeFeeDistributedEvents = onchainTable(
+  'diamond_node_fee_distributed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    node: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    nodeIdx: index().on(table.node),
+  })
+);
+
+export const diamondSellerPaidEvents = onchainTable(
+  'diamond_seller_paid_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    seller: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    sellerIdx: index().on(table.seller),
+  })
+);
+
 // Export all tables
 export const tables = {
   diamondClobApprovalGrantedEvents,
@@ -1400,4 +1667,18 @@ export const tables = {
   diamondRateLimitsUpdatedEvents,
   diamondDiamondCutEvents,
   diamondOwnershipTransferredEvents,
+  diamondAuSysAdminRevokedEvents,
+  diamondAuSysAdminSetEvents,
+  diamondAuSysJourneyStatusUpdatedEvents,
+  diamondAuSysOrderCreatedEvents,
+  diamondAuSysOrderSettledEvents,
+  diamondAuSysOrderStatusUpdatedEvents,
+  diamondDriverAssignedEvents,
+  diamondEmitSigEvents,
+  diamondFundsEscrowedEvents,
+  diamondFundsRefundedEvents,
+  diamondJourneyCanceledEvents,
+  diamondJourneyCreatedEvents,
+  diamondNodeFeeDistributedEvents,
+  diamondSellerPaidEvents,
 };

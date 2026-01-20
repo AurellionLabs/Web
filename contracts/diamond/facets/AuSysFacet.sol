@@ -25,14 +25,10 @@ contract AuSysFacet is ReentrancyGuard {
     event EmitSig(address indexed user, bytes32 indexed id);
     event AuSysOrderSettled(bytes32 indexed orderId);
     event AuSysOrderStatusUpdated(bytes32 indexed orderId, uint8 newStatus);
-    event AuSysJourneyStatusUpdated(bytes32 indexed journeyId, uint8 newStatus);
-    event JourneyCanceled(bytes32 indexed journeyId, address indexed sender, uint256 refundedAmount);
     event FundsEscrowed(address indexed from, uint256 amount);
     event FundsRefunded(address indexed to, uint256 amount);
-    event DriverAssigned(address indexed driver, bytes32 indexed journeyId);
     event SellerPaid(address indexed seller, uint256 amount);
     event NodeFeeDistributed(address indexed node, uint256 amount);
-    event JourneyCreated(bytes32 indexed journeyId, address indexed sender, address indexed receiver);
     event AuSysOrderCreated(
         bytes32 indexed orderId,
         address indexed buyer,
@@ -44,6 +40,71 @@ contract AuSysFacet is ReentrancyGuard {
         uint256 txFee,
         uint8 currentStatus,
         address[] nodes
+    );
+
+    // Verbose journey events with full context for indexing
+    event JourneyCreated(
+        bytes32 indexed journeyId,
+        address indexed sender,
+        address indexed receiver,
+        address driver,
+        uint256 bounty,
+        uint256 ETA,
+        bytes32 orderId,
+        string startLat,
+        string startLng,
+        string endLat,
+        string endLng,
+        string startName,
+        string endName
+    );
+
+    event DriverAssigned(
+        bytes32 indexed journeyId,
+        address indexed driver,
+        address sender,
+        address receiver,
+        uint256 bounty,
+        uint256 ETA,
+        string startLat,
+        string startLng,
+        string endLat,
+        string endLng,
+        string startName,
+        string endName
+    );
+
+    event AuSysJourneyStatusUpdated(
+        bytes32 indexed journeyId,
+        uint8 indexed newStatus,
+        address sender,
+        address receiver,
+        address driver,
+        uint256 bounty,
+        uint256 ETA,
+        uint256 journeyStart,
+        uint256 journeyEnd,
+        string startLat,
+        string startLng,
+        string endLat,
+        string endLng,
+        string startName,
+        string endName
+    );
+
+    event JourneyCanceled(
+        bytes32 indexed journeyId,
+        address indexed sender,
+        address receiver,
+        address driver,
+        uint256 refundedAmount,
+        uint256 bounty,
+        string startLat,
+        string startLng,
+        string endLat,
+        string endLng,
+        string startName,
+        string endName
     );
 
     // ============================================================================
@@ -301,7 +362,21 @@ contract AuSysFacet is ReentrancyGuard {
         // Escrow bounty from receiver
         IERC20(s.payToken).safeTransferFrom(receiver, address(this), bounty);
         emit FundsEscrowed(receiver, bounty);
-        emit JourneyCreated(journeyId, sender, receiver);
+        emit JourneyCreated(
+            journeyId,
+            sender,
+            receiver,
+            address(0), // driver not assigned yet
+            bounty,
+            ETA,
+            bytes32(0), // no linked order for standalone journey
+            _data.startLocation.lat,
+            _data.startLocation.lng,
+            _data.endLocation.lat,
+            _data.endLocation.lng,
+            _data.startName,
+            _data.endName
+        );
     }
 
     /**
@@ -357,7 +432,21 @@ contract AuSysFacet is ReentrancyGuard {
         // Update order token quantity
         O.tokenQuantity += tokenQuantity;
 
-        emit JourneyCreated(journeyId, sender, receiver);
+        emit JourneyCreated(
+            journeyId,
+            sender,
+            receiver,
+            address(0), // driver not assigned yet
+            bounty,
+            ETA,
+            orderId,
+            _data.startLocation.lat,
+            _data.startLocation.lng,
+            _data.endLocation.lat,
+            _data.endLocation.lng,
+            _data.startName,
+            _data.endName
+        );
     }
 
     /**
@@ -395,7 +484,21 @@ contract AuSysFacet is ReentrancyGuard {
         s.driverToJourneyIds[driver].push(journeyId);
         s.ausysJourneys[journeyId].driver = driver;
 
-        emit DriverAssigned(driver, journeyId);
+        DiamondStorage.AuSysJourney storage J = s.ausysJourneys[journeyId];
+        emit DriverAssigned(
+            journeyId,
+            driver,
+            J.sender,
+            J.receiver,
+            J.bounty,
+            J.ETA,
+            J.parcelData.startLocation.lat,
+            J.parcelData.startLocation.lng,
+            J.parcelData.endLocation.lat,
+            J.parcelData.endLocation.lng,
+            J.parcelData.startName,
+            J.parcelData.endName
+        );
     }
 
     // ============================================================================
@@ -442,7 +545,23 @@ contract AuSysFacet is ReentrancyGuard {
         s.customerHandOff[J.sender][id] = false;
         J.currentStatus = 1; // InTransit
 
-        emit AuSysJourneyStatusUpdated(id, 1);
+        emit AuSysJourneyStatusUpdated(
+            id,
+            1, // InTransit
+            J.sender,
+            J.receiver,
+            J.driver,
+            J.bounty,
+            J.ETA,
+            J.journeyStart,
+            J.journeyEnd,
+            J.parcelData.startLocation.lat,
+            J.parcelData.startLocation.lng,
+            J.parcelData.endLocation.lat,
+            J.parcelData.endLocation.lng,
+            J.parcelData.startName,
+            J.parcelData.endName
+        );
 
         // Update linked order status if exists
         bytes32 orderId = s.journeyToAusysOrderId[id];
@@ -488,7 +607,23 @@ contract AuSysFacet is ReentrancyGuard {
 
         J.currentStatus = 2; // Delivered
         J.journeyEnd = block.timestamp;
-        emit AuSysJourneyStatusUpdated(id, 2);
+        emit AuSysJourneyStatusUpdated(
+            id,
+            2, // Delivered
+            J.sender,
+            J.receiver,
+            J.driver,
+            J.bounty,
+            J.ETA,
+            J.journeyStart,
+            J.journeyEnd,
+            J.parcelData.startLocation.lat,
+            J.parcelData.startLocation.lng,
+            J.parcelData.endLocation.lat,
+            J.parcelData.endLocation.lng,
+            J.parcelData.startName,
+            J.parcelData.endName
+        );
 
         // Pay driver bounty
         _generateReward(s, id);

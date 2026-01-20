@@ -21,8 +21,6 @@ contract AuSysFacetTest is DiamondTestBase {
     // Events to test
     event AuSysAdminSet(address indexed admin);
     event AuSysAdminRevoked(address indexed admin);
-    event DriverAssigned(address indexed driver, bytes32 indexed journeyId);
-    event JourneyCreated(bytes32 indexed journeyId, address indexed sender, address indexed receiver);
     event EmitSig(address indexed user, bytes32 indexed id);
     event AuSysOrderCreated(
         bytes32 indexed orderId,
@@ -35,6 +33,56 @@ contract AuSysFacetTest is DiamondTestBase {
         uint256 txFee,
         uint8 currentStatus,
         address[] nodes
+    );
+
+    // Verbose journey events
+    event JourneyCreated(
+        bytes32 indexed journeyId,
+        address indexed sender,
+        address indexed receiver,
+        address driver,
+        uint256 bounty,
+        uint256 ETA,
+        bytes32 orderId,
+        string startLat,
+        string startLng,
+        string endLat,
+        string endLng,
+        string startName,
+        string endName
+    );
+
+    event DriverAssigned(
+        bytes32 indexed journeyId,
+        address indexed driver,
+        address sender,
+        address receiver,
+        uint256 bounty,
+        uint256 ETA,
+        string startLat,
+        string startLng,
+        string endLat,
+        string endLng,
+        string startName,
+        string endName
+    );
+
+    event AuSysJourneyStatusUpdated(
+        bytes32 indexed journeyId,
+        uint8 indexed newStatus,
+        address sender,
+        address receiver,
+        address driver,
+        uint256 bounty,
+        uint256 ETA,
+        uint256 journeyStart,
+        uint256 journeyEnd,
+        string startLat,
+        string startLng,
+        string endLat,
+        string endLng,
+        string startName,
+        string endName
     );
 
     function setUp() public override {
@@ -248,10 +296,24 @@ contract AuSysFacetTest is DiamondTestBase {
 
     function test_assignDriverToJourney() public {
         bytes32 journeyId = _createTestJourney();
+        DiamondStorage.AuSysJourney memory journeyBefore = ausys.getJourney(journeyId);
 
         vm.prank(admin);
         vm.expectEmit(true, true, false, false);
-        emit DriverAssigned(driver1, journeyId);
+        emit DriverAssigned(
+            journeyId,
+            driver1,
+            journeyBefore.sender,
+            journeyBefore.receiver,
+            journeyBefore.bounty,
+            journeyBefore.ETA,
+            journeyBefore.parcelData.startLocation.lat,
+            journeyBefore.parcelData.startLocation.lng,
+            journeyBefore.parcelData.endLocation.lat,
+            journeyBefore.parcelData.endLocation.lng,
+            journeyBefore.parcelData.startName,
+            journeyBefore.parcelData.endName
+        );
         ausys.assignDriverToJourney(driver1, journeyId);
 
         DiamondStorage.AuSysJourney memory journey = ausys.getJourney(journeyId);
@@ -424,7 +486,7 @@ contract AuSysFacetTest is DiamondTestBase {
     }
 
     function _extractJourneyIdFromLogs(Vm.Log[] memory logs) internal pure returns (bytes32 journeyId) {
-        bytes32 eventSig = keccak256('JourneyCreated(bytes32,address,address)');
+        bytes32 eventSig = keccak256('JourneyCreated(bytes32,address,address,address,uint256,uint256,bytes32,string,string,string,string,string,string)');
         for (uint256 i = 0; i < logs.length; i++) {
             if (logs[i].topics.length > 0 && logs[i].topics[0] == eventSig) {
                 journeyId = logs[i].topics[1];
