@@ -231,13 +231,13 @@ export function aggregateNodesToDTO(
     e.node.toLowerCase(),
   );
   const deactivatedByNode = groupEventsBy(deactivated, (e) =>
-    e.nodeHash.toLowerCase(),
+    e.node_hash.toLowerCase(),
   );
 
   const nodes: AggregatedNode[] = [];
 
   for (const regEvent of registered) {
-    const nodeHash = regEvent.nodeHash.toLowerCase();
+    const nodeHash = regEvent.node_hash.toLowerCase();
 
     const locationEvents = locationByNode.get(nodeHash) || [];
     const latestLocation = getLatestEvent(locationEvents);
@@ -267,7 +267,7 @@ export function aggregateNodesToDTO(
     nodes.push({
       nodeHash,
       owner: regEvent.owner,
-      nodeType: regEvent.nodeType,
+      node_type: regEvent.node_type,
       addressName: latestLocation?.addressName || '',
       lat: latestLocation?.lat || '',
       lng: latestLocation?.lng || '',
@@ -312,16 +312,16 @@ export function aggregateOrders(sources: OrderEventSources): AggregatedOrder[] {
   ];
 
   // Group events by orderId
-  const filledByOrder = groupEventsBy(filled, (e) => e.orderId.toLowerCase());
+  const filledByOrder = groupEventsBy(filled, (e) => e.order_id.toLowerCase());
   const cancelledByOrder = groupEventsBy(cancelled, (e) =>
-    e.orderId.toLowerCase(),
+    e.order_id.toLowerCase(),
   );
-  const expiredByOrder = groupEventsBy(expired, (e) => e.orderId.toLowerCase());
+  const expiredByOrder = groupEventsBy(expired, (e) => e.order_id.toLowerCase());
 
   const orders: AggregatedOrder[] = [];
 
   for (const placedEvent of allPlaced) {
-    const orderId = placedEvent.orderId.toLowerCase();
+    const order_id = placedEvent.order_id.toLowerCase();
 
     // Get all fill events for this order
     const fillEvents = sortEventsByTimestamp(filledByOrder.get(orderId) || []);
@@ -359,15 +359,15 @@ export function aggregateOrders(sources: OrderEventSources): AggregatedOrder[] {
     orders.push({
       orderId,
       maker: placedEvent.maker,
-      baseToken: placedEvent.baseToken,
-      baseTokenId: placedEvent.baseTokenId,
-      quoteToken: placedEvent.quoteToken,
+      base_token: placedEvent.base_token,
+      base_token_id: placedEvent.base_token_id,
+      quote_token: placedEvent.quote_token,
       price: placedEvent.price,
       originalAmount: placedEvent.amount,
       remainingAmount,
       cumulativeFilled,
-      isBuy: placedEvent.isBuy,
-      orderType: placedEvent.orderType,
+      is_buy: placedEvent.is_buy,
+      order_type: placedEvent.order_type,
       status,
       createdAt: placedEvent.blockTimestamp,
       updatedAt: latestEvent?.blockTimestamp || placedEvent.blockTimestamp,
@@ -398,14 +398,14 @@ export function aggregatedOrderToDomain(agg: AggregatedOrder): Order {
   }
 
   return {
-    id: agg.orderId,
-    token: agg.baseToken,
-    tokenId: agg.baseTokenId,
+    id: agg.order_id,
+    token: agg.base_token,
+    token_id: agg.base_token_id,
     tokenQuantity: agg.originalAmount,
     price: agg.price,
     txFee: '0',
-    buyer: agg.isBuy ? agg.maker : '',
-    seller: agg.isBuy ? '' : agg.maker,
+    buyer: agg.is_buy ? agg.maker : '',
+    seller: agg.is_buy ? '' : agg.maker,
     journeyIds: [],
     nodes: [],
     locationData: undefined,
@@ -434,19 +434,19 @@ export function aggregateUnifiedOrders(
   const { created, logistics, journeyUpdates, settled } = sources;
 
   const logisticsByOrder = groupEventsBy(logistics, (e) =>
-    e.unifiedOrderId.toLowerCase(),
+    e.unified_order_id.toLowerCase(),
   );
   const journeysByOrder = groupEventsBy(journeyUpdates, (e) =>
-    e.unifiedOrderId.toLowerCase(),
+    e.unified_order_id.toLowerCase(),
   );
   const settledByOrder = groupEventsBy(settled, (e) =>
-    e.unifiedOrderId.toLowerCase(),
+    e.unified_order_id.toLowerCase(),
   );
 
   const orders: AggregatedUnifiedOrder[] = [];
 
   for (const createEvent of created) {
-    const unifiedOrderId = createEvent.unifiedOrderId.toLowerCase();
+    const unified_order_id = createEvent.unified_order_id.toLowerCase();
 
     // Get logistics info
     const logisticsEvents = logisticsByOrder.get(unifiedOrderId) || [];
@@ -456,8 +456,8 @@ export function aggregateUnifiedOrders(
     const journeyIds: string[] = [];
     for (const log of logisticsEvents) {
       // journeyIds is stored as a hex string, need to parse
-      if (log.journeyIds) {
-        journeyIds.push(log.journeyIds);
+      if (log.journey_ids) {
+        journey_ids.push(log.journey_ids);
       }
     }
 
@@ -479,7 +479,7 @@ export function aggregateUnifiedOrders(
 
     orders.push({
       unifiedOrderId,
-      clobOrderId: createEvent.clobOrderId,
+      clob_order_id: createEvent.clob_order_id,
       buyer: createEvent.buyer,
       seller: createEvent.seller,
       token: createEvent.token,
@@ -505,14 +505,14 @@ export function aggregateJourneys(
 ): AggregatedJourney[] {
   // Group journey updates by journeyId
   const updatesByJourney = groupEventsBy(journeyUpdates, (e) =>
-    e.journeyId.toLowerCase(),
+    e.journey_id.toLowerCase(),
   );
 
   const journeys: AggregatedJourney[] = [];
 
   // Each logistics event creates journeys
   for (const log of logistics) {
-    const journeyId = log.journeyIds.toLowerCase();
+    const journey_id = log.journey_ids.toLowerCase();
 
     // Get status updates for this journey
     const statusUpdates = updatesByJourney.get(journeyId) || [];
@@ -520,8 +520,8 @@ export function aggregateJourneys(
 
     journeys.push({
       journeyId,
-      unifiedOrderId: log.unifiedOrderId,
-      ausysOrderId: log.ausysOrderId,
+      unified_order_id: log.unified_order_id,
+      ausys_order_id: log.ausys_order_id,
       bounty: log.bounty,
       node: log.node,
       phase: latestUpdate?.phase || '0',
@@ -541,7 +541,7 @@ export function aggregatedJourneyToDomain(
   agg: AggregatedJourney,
 ): Partial<Journey> {
   return {
-    journeyId: agg.journeyId,
+    journey_id: agg.journey_id,
     currentStatus: phaseToJourneyStatus(agg.phase),
     bounty: BigInt(agg.bounty),
     journeyStart: BigInt(agg.createdAt),

@@ -236,7 +236,7 @@ export class OrderRepository implements IOrderRepository {
 
       const logisticsByOrder = new Map(
         logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.unifiedOrderId.toLowerCase(), l],
+          (l) => [l.unified_order_id.toLowerCase(), l],
         ) || [],
       );
 
@@ -279,7 +279,7 @@ export class OrderRepository implements IOrderRepository {
 
       const logisticsByJourney = new Map(
         logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.journeyIds.toLowerCase(), l],
+          (l) => [l.journey_ids.toLowerCase(), l],
         ) || [],
       );
 
@@ -325,7 +325,7 @@ export class OrderRepository implements IOrderRepository {
 
       const logisticsByJourney = new Map(
         logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.journeyIds.toLowerCase(), l],
+          (l) => [l.journey_ids.toLowerCase(), l],
         ) || [],
       );
 
@@ -366,7 +366,7 @@ export class OrderRepository implements IOrderRepository {
 
       const logisticsByJourney = new Map(
         logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.journeyIds.toLowerCase(), l],
+          (l) => [l.journey_ids.toLowerCase(), l],
         ) || [],
       );
 
@@ -490,7 +490,7 @@ export class OrderRepository implements IOrderRepository {
 
       const logisticsByOrder = new Map(
         logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.unifiedOrderId.toLowerCase(), l],
+          (l) => [l.unified_order_id.toLowerCase(), l],
         ) || [],
       );
 
@@ -533,7 +533,7 @@ export class OrderRepository implements IOrderRepository {
 
       const logisticsByOrder = new Map(
         logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.unifiedOrderId.toLowerCase(), l],
+          (l) => [l.unified_order_id.toLowerCase(), l],
         ) || [],
       );
 
