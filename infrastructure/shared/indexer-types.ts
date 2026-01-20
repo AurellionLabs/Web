@@ -32,23 +32,23 @@ export interface BaseEvent {
 // ============================================================================
 
 export interface NodeRegisteredEvent extends BaseEvent {
-  nodeHash: string;
+  node_hash: string;
   owner: string;
-  nodeType: string;
+  node_type: string;
 }
 
 export interface NodeDeactivatedEvent extends BaseEvent {
-  nodeHash: string;
+  node_hash: string;
 }
 
 export interface NodeUpdatedEvent extends BaseEvent {
-  nodeHash: string;
-  nodeType: string;
+  node_hash: string;
+  node_type: string;
   capacity: string;
 }
 
 export interface UpdateLocationEvent extends BaseEvent {
-  addressName: string;
+  address_name: string;
   lat: string;
   lng: string;
   node: string;
@@ -134,72 +134,72 @@ export interface ClobApprovalRevokedEvent extends BaseEvent {
 // ============================================================================
 
 export interface OrderPlacedWithTokensEvent extends BaseEvent {
-  orderId: string;
+  order_id: string;
   maker: string;
-  baseToken: string;
-  baseTokenId: string;
-  quoteToken: string;
+  base_token: string;
+  base_token_id: string;
+  quote_token: string;
   price: string;
   amount: string;
-  isBuy: boolean;
-  orderType: string;
+  is_buy: boolean;
+  order_type: string;
 }
 
 export interface OrderCreatedEvent extends BaseEvent {
-  orderId: string;
-  marketId: string;
+  order_id: string;
+  market_id: string;
   maker: string;
   price: string;
   amount: string;
-  isBuy: boolean;
-  orderType: string;
-  timeInForce: string;
+  is_buy: boolean;
+  order_type: string;
+  time_in_force: string;
   expiry: string;
   nonce: string;
 }
 
 export interface CLOBOrderFilledEvent extends BaseEvent {
-  orderId: string;
-  tradeId: string;
-  fillAmount: string;
-  fillPrice: string;
-  remainingAmount: string;
-  cumulativeFilled: string;
+  order_id: string;
+  trade_id: string;
+  fill_amount: string;
+  fill_price: string;
+  remaining_amount: string;
+  cumulative_filled: string;
 }
 
 export interface CLOBOrderCancelledEvent extends BaseEvent {
-  orderId: string;
+  order_id: string;
   maker: string;
-  remainingAmount: string;
+  remaining_amount: string;
   reason: string;
 }
 
 export interface CLOBTradeExecutedEvent extends BaseEvent {
-  tradeId: string;
-  takerOrderId: string;
-  makerOrderId: string;
+  trade_id: string;
+  taker_order_id: string;
+  maker_order_id: string;
   taker: string;
   maker: string;
-  marketId: string;
+  market_id: string;
   price: string;
   amount: string;
-  quoteAmount: string;
-  takerFee: string;
-  makerFee: string;
+  quote_amount: string;
+  taker_fee: string;
+  maker_fee: string;
   timestamp: string;
-  takerIsBuy: boolean;
+  taker_is_buy: boolean;
 }
 
 export interface OrderExpiredEvent extends BaseEvent {
-  orderId: string;
-  expiredAt: string;
+  order_id: string;
+  expired_at: string;
 }
 
 export interface MarketCreatedEvent extends BaseEvent {
-  marketId: string;
-  baseToken: string;
-  baseTokenId: string;
-  quoteToken: string;
+  market_id: string;
+  base_token: string;
+  base_token_id: string;
+  quote_token: string;
 }
 
 // ============================================================================
@@ -207,51 +207,51 @@ export interface MarketCreatedEvent extends BaseEvent {
 // ============================================================================
 
 export interface RouterOrderPlacedEvent extends BaseEvent {
-  orderId: string;
+  order_id: string;
   maker: string;
-  baseToken: string;
-  baseTokenId: string;
-  quoteToken: string;
+  base_token: string;
+  base_token_id: string;
+  quote_token: string;
   price: string;
   amount: string;
-  isBuy: boolean;
-  orderType: string;
+  is_buy: boolean;
+  order_type: string;
 }
 
 export interface RouterOrderCreatedEvent extends BaseEvent {
-  orderId: string;
-  marketId: string;
+  order_id: string;
+  market_id: string;
   maker: string;
   price: string;
   amount: string;
-  isBuy: boolean;
-  orderType: string;
-  timeInForce: string;
+  is_buy: boolean;
+  order_type: string;
+  time_in_force: string;
   expiry: string;
   nonce: string;
 }
 
 export interface RouterOrderCancelledEvent extends BaseEvent {
-  orderId: string;
+  order_id: string;
   maker: string;
-  remainingAmount: string;
+  remaining_amount: string;
   reason: string;
 }
 
 export interface OrderRoutedEvent extends BaseEvent {
-  orderId: string;
+  order_id: string;
   maker: string;
-  orderSource: string;
-  isBuy: boolean;
+  order_source: string;
+  is_buy: boolean;
 }
 
 export interface RouterTradeExecutedEvent extends BaseEvent {
-  tradeId: string;
-  takerOrderId: string;
-  makerOrderId: string;
+  trade_id: string;
+  taker_order_id: string;
+  maker_order_id: string;
   price: string;
   amount: string;
-  quoteAmount: string;
+  quote_amount: string;
 }
 
 // ============================================================================
@@ -259,28 +259,28 @@ export interface RouterTradeExecutedEvent extends BaseEvent {
 // ============================================================================
 
 export interface AusysOrderFilledEvent extends BaseEvent {
-  orderId: string;
-  tradeId: string;
-  fillAmount: string;
-  fillPrice: string;
-  remainingAmount: string;
-  cumulativeFilled: string;
+  order_id: string;
+  trade_id: string;
+  fill_amount: string;
+  fill_price: string;
+  remaining_amount: string;
+  cumulative_filled: string;
 }
 
 export interface MatchingOrderCancelledEvent extends BaseEvent {
-  orderId: string;
+  order_id: string;
   maker: string;
-  remainingAmount: string;
+  remaining_amount: string;
   reason: string;
 }
 
 export interface TradeExecutedEvent extends BaseEvent {
-  tradeId: string;
-  takerOrderId: string;
-  makerOrderId: string;
+  trade_id: string;
+  taker_order_id: string;
+  maker_order_id: string;
   price: string;
   amount: string;
-  quoteAmount: string;
+  quote_amount: string;
 }
 
 // ============================================================================
@@ -288,60 +288,60 @@ export interface TradeExecutedEvent extends BaseEvent {
 // ============================================================================
 
 export interface UnifiedOrderCreatedEvent extends BaseEvent {
-  unifiedOrderId: string;
-  clobOrderId: string;
+  unified_order_id: string;
+  clob_order_id: string;
   buyer: string;
   seller: string;
   token: string;
-  tokenId: string;
+  token_id: string;
   quantity: string;
   price: string;
 }
 
 export interface LogisticsOrderCreatedEvent extends BaseEvent {
-  unifiedOrderId: string;
-  ausysOrderId: string;
-  journeyIds: string;
+  unified_order_id: string;
+  ausys_order_id: string;
+  journey_ids: string;
   bounty: string;
   node: string;
 }
 
 export interface JourneyStatusUpdatedEvent extends BaseEvent {
-  unifiedOrderId: string;
-  journeyId: string;
+  unified_order_id: string;
+  journey_id: string;
   phase: string;
 }
 
 export interface TradeMatchedEvent extends BaseEvent {
-  unifiedOrderId: string;
-  clobTradeId: string;
-  clobOrderId: string;
+  unified_order_id: string;
+  clob_trade_id: string;
+  clob_order_id: string;
   maker: string;
   price: string;
   amount: string;
 }
 
 export interface OrderSettledEvent extends BaseEvent {
-  unifiedOrderId: string;
+  unified_order_id: string;
   seller: string;
-  sellerAmount: string;
+  seller_amount: string;
   driver: string;
-  driverAmount: string;
+  driver_amount: string;
 }
 
 export interface BountyPaidEvent extends BaseEvent {
-  unifiedOrderId: string;
+  unified_order_id: string;
   amount: string;
 }
 
 export interface BridgeOrderCancelledEvent extends BaseEvent {
-  unifiedOrderId: string;
-  previousStatus: string;
+  unified_order_id: string;
+  previous_status: string;
 }
 
 export interface BridgeFeeRecipientUpdatedEvent extends BaseEvent {
-  oldRecipient: string;
-  newRecipient: string;
+  old_recipient: string;
+  new_recipient: string;
 }
 
 // ============================================================================

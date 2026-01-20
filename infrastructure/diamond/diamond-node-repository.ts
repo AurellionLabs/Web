@@ -283,13 +283,13 @@ export class DiamondNodeRepository implements NodeRepository {
 
       // Convert raw events to TokenizedAsset objects
       return allAssets.map((event) => ({
-        id: event.tokenId,
+        id: event.token_id,
         amount: event.capacity,
         name: '', // Would need IPFS metadata
         class: '', // Would need IPFS metadata
         fileHash: '', // Would need IPFS metadata
         status: 'Active',
-        nodeAddress: event.nodeHash,
+        nodeAddress: event.node_hash,
         nodeLocation: { addressName: '', location: { lat: '0', lng: '0' } },
         price: event.price,
         capacity: event.capacity,

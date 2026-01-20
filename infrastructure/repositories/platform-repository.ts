@@ -46,14 +46,14 @@ export class PlatformRepository implements IPlatformRepository {
       if (items.length === 0) break;
 
       for (const event of items) {
-        const tokenIdKey = `${event.token}-${event.tokenId}`;
+        const tokenIdKey = `${event.token}-${event.token_id}`;
         if (this.processedTokenIds.has(tokenIdKey)) continue;
         this.processedTokenIds.add(tokenIdKey);
 
         let attributes: Asset['attributes'] = [];
 
         try {
-          const cid = await this.getAssetCID(event.token, event.tokenId);
+          const cid = await this.getAssetCID(event.token, event.token_id);
           if (cid) {
             const { data } = await this.pinata.gateways.public.get(cid);
             const json = typeof data === 'string' ? JSON.parse(data) : data;
@@ -75,14 +75,14 @@ export class PlatformRepository implements IPlatformRepository {
           }
         } catch (e) {
           console.warn(
-            `[PlatformRepository] Failed to fetch IPFS metadata for token ${event.tokenId}:`,
+            `[PlatformRepository] Failed to fetch IPFS metadata for token ${event.token_id}:`,
             e,
           );
         }
 
         out.push({
           assetClass: 'Unknown',
-          tokenId: String(event.tokenId),
+          tokenId: String(event.token_id),
           name: '',
           attributes,
         });

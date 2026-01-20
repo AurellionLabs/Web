@@ -154,16 +154,16 @@ export function aggregateNodes(sources: NodeEventSources): Node[] {
     e.node.toLowerCase(),
   );
   const deactivatedByNode = groupEventsBy(deactivated, (e) =>
-    e.nodeHash.toLowerCase(),
+    e.node_hash.toLowerCase(),
   );
   const assetsByNode = groupEventsBy(assetsAdded, (e) =>
-    e.nodeHash.toLowerCase(),
+    e.node_hash.toLowerCase(),
   );
 
   const nodes: Node[] = [];
 
   for (const regEvent of registered) {
-    const nodeHash = regEvent.nodeHash.toLowerCase();
+    const nodeHash = regEvent.node_hash.toLowerCase();
 
     // Get latest location update
     const locationEvents = locationByNode.get(nodeHash) || [];
@@ -181,7 +181,7 @@ export function aggregateNodes(sources: NodeEventSources): Node[] {
     const nodeAssetEvents = assetsByNode.get(nodeHash) || [];
     const assets: NodeAsset[] = nodeAssetEvents.map((ae) => ({
       token: ae.token,
-      tokenId: ae.tokenId,
+      tokenId: ae.token_id,
       price: BigInt(ae.price),
       capacity: Number(ae.capacity),
     }));
@@ -564,10 +564,10 @@ export function aggregateNodeAssets(
   const nodeHashLower = nodeHash.toLowerCase();
 
   return assetsAdded
-    .filter((e) => e.nodeHash.toLowerCase() === nodeHashLower)
+    .filter((e) => e.node_hash.toLowerCase() === nodeHashLower)
     .map((e) => ({
       token: e.token,
-      tokenId: e.tokenId,
+      tokenId: e.token_id,
       price: BigInt(e.price),
       capacity: Number(e.capacity),
     }));
