@@ -422,9 +422,9 @@ export class OrderRepository implements IOrderRepository {
       }
 
       const aggregatedJourney: AggregatedJourney = {
-        journeyId: logistics.journeyIds,
-        unifiedOrderId: logistics.unifiedOrderId,
-        ausysOrderId: logistics.ausysOrderId,
+        journeyId: logistics.journey_ids,
+        unifiedOrderId: logistics.unified_order_id,
+        ausysOrderId: logistics.ausys_order_id,
         bounty: logistics.bounty,
         node: logistics.node,
         phase: journeyStatus?.phase || '0',

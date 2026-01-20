@@ -188,7 +188,7 @@ export function aggregateNodes(sources: NodeEventSources): Node[] {
 
     // Build location
     const location: NodeLocation = {
-      addressName: latestLocation?.addressName || '',
+      addressName: latestLocation?.address_name || '',
       location: {
         lat: latestLocation?.lat || '',
         lng: latestLocation?.lng || '',
@@ -267,8 +267,8 @@ export function aggregateNodesToDTO(
     nodes.push({
       nodeHash,
       owner: regEvent.owner,
-      node_type: regEvent.node_type,
-      addressName: latestLocation?.addressName || '',
+      nodeType: regEvent.node_type,
+      addressName: latestLocation?.address_name || '',
       lat: latestLocation?.lat || '',
       lng: latestLocation?.lng || '',
       status,
@@ -316,12 +316,14 @@ export function aggregateOrders(sources: OrderEventSources): AggregatedOrder[] {
   const cancelledByOrder = groupEventsBy(cancelled, (e) =>
     e.order_id.toLowerCase(),
   );
-  const expiredByOrder = groupEventsBy(expired, (e) => e.order_id.toLowerCase());
+  const expiredByOrder = groupEventsBy(expired, (e) =>
+    e.order_id.toLowerCase(),
+  );
 
   const orders: AggregatedOrder[] = [];
 
   for (const placedEvent of allPlaced) {
-    const order_id = placedEvent.order_id.toLowerCase();
+    const orderId = placedEvent.order_id.toLowerCase();
 
     // Get all fill events for this order
     const fillEvents = sortEventsByTimestamp(filledByOrder.get(orderId) || []);
@@ -336,8 +338,8 @@ export function aggregateOrders(sources: OrderEventSources): AggregatedOrder[] {
     const isExpired = expireEvents.length > 0;
 
     // Calculate current state
-    const remainingAmount = latestFill?.remainingAmount || placedEvent.amount;
-    const cumulativeFilled = latestFill?.cumulativeFilled || '0';
+    const remainingAmount = latestFill?.remaining_amount || placedEvent.amount;
+    const cumulativeFilled = latestFill?.cumulative_filled || '0';
 
     const status = determineOrderStatus(
       placedEvent.amount,
@@ -359,15 +361,15 @@ export function aggregateOrders(sources: OrderEventSources): AggregatedOrder[] {
     orders.push({
       orderId,
       maker: placedEvent.maker,
-      base_token: placedEvent.base_token,
-      base_token_id: placedEvent.base_token_id,
-      quote_token: placedEvent.quote_token,
+      baseToken: placedEvent.base_token,
+      baseTokenId: placedEvent.base_token_id,
+      quoteToken: placedEvent.quote_token,
       price: placedEvent.price,
       originalAmount: placedEvent.amount,
       remainingAmount,
       cumulativeFilled,
-      is_buy: placedEvent.is_buy,
-      order_type: placedEvent.order_type,
+      isBuy: placedEvent.is_buy,
+      orderType: placedEvent.order_type,
       status,
       createdAt: placedEvent.blockTimestamp,
       updatedAt: latestEvent?.blockTimestamp || placedEvent.blockTimestamp,
@@ -398,14 +400,14 @@ export function aggregatedOrderToDomain(agg: AggregatedOrder): Order {
   }
 
   return {
-    id: agg.order_id,
-    token: agg.base_token,
-    token_id: agg.base_token_id,
+    id: agg.orderId,
+    token: agg.baseToken,
+    tokenId: agg.baseTokenId,
     tokenQuantity: agg.originalAmount,
     price: agg.price,
     txFee: '0',
-    buyer: agg.is_buy ? agg.maker : '',
-    seller: agg.is_buy ? '' : agg.maker,
+    buyer: agg.isBuy ? agg.maker : '',
+    seller: agg.isBuy ? '' : agg.maker,
     journeyIds: [],
     nodes: [],
     locationData: undefined,
@@ -446,7 +448,7 @@ export function aggregateUnifiedOrders(
   const orders: AggregatedUnifiedOrder[] = [];
 
   for (const createEvent of created) {
-    const unified_order_id = createEvent.unified_order_id.toLowerCase();
+    const unifiedOrderId = createEvent.unified_order_id.toLowerCase();
 
     // Get logistics info
     const logisticsEvents = logisticsByOrder.get(unifiedOrderId) || [];
@@ -457,7 +459,7 @@ export function aggregateUnifiedOrders(
     for (const log of logisticsEvents) {
       // journeyIds is stored as a hex string, need to parse
       if (log.journey_ids) {
-        journey_ids.push(log.journey_ids);
+        journeyIds.push(log.journey_ids);
       }
     }
 
@@ -479,11 +481,11 @@ export function aggregateUnifiedOrders(
 
     orders.push({
       unifiedOrderId,
-      clob_order_id: createEvent.clob_order_id,
+      clobOrderId: createEvent.clob_order_id,
       buyer: createEvent.buyer,
       seller: createEvent.seller,
       token: createEvent.token,
-      tokenId: createEvent.tokenId,
+      tokenId: createEvent.token_id,
       quantity: createEvent.quantity,
       price: createEvent.price,
       status,
@@ -512,7 +514,7 @@ export function aggregateJourneys(
 
   // Each logistics event creates journeys
   for (const log of logistics) {
-    const journey_id = log.journey_ids.toLowerCase();
+    const journeyId = log.journey_ids.toLowerCase();
 
     // Get status updates for this journey
     const statusUpdates = updatesByJourney.get(journeyId) || [];
@@ -520,8 +522,8 @@ export function aggregateJourneys(
 
     journeys.push({
       journeyId,
-      unified_order_id: log.unified_order_id,
-      ausys_order_id: log.ausys_order_id,
+      unifiedOrderId: log.unified_order_id,
+      ausysOrderId: log.ausys_order_id,
       bounty: log.bounty,
       node: log.node,
       phase: latestUpdate?.phase || '0',
@@ -541,7 +543,7 @@ export function aggregatedJourneyToDomain(
   agg: AggregatedJourney,
 ): Partial<Journey> {
   return {
-    journey_id: agg.journey_id,
+    journeyId: agg.journeyId,
     currentStatus: phaseToJourneyStatus(agg.phase),
     bounty: BigInt(agg.bounty),
     journeyStart: BigInt(agg.createdAt),
