@@ -12,6 +12,7 @@ import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_AURA_ASSET_ADDRESS,
 } from '../chain-constants';
+import { AuraAsset__factory } from '../typechain-types/factories/contracts/AuraAsset.sol/AuraAsset__factory';
 
 async function main() {
   console.log('==========================================');
@@ -23,10 +24,10 @@ async function main() {
   console.log(`Diamond address: ${NEXT_PUBLIC_DIAMOND_ADDRESS}`);
   console.log(`AuraAsset address: ${NEXT_PUBLIC_AURA_ASSET_ADDRESS}\n`);
 
-  // Get AuraAsset contract
-  const auraAsset = await ethers.getContractAt(
-    'AuraAsset',
+  // Get AuraAsset contract using TypeChain factory
+  const auraAsset = AuraAsset__factory.connect(
     NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+    deployer,
   );
 
   // Check current owner

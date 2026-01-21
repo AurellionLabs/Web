@@ -1,12 +1,12 @@
 /**
  * Raw Event Types for Ponder GraphQL
  *
- * These types match the camelCase output from Ponder's GraphQL API.
+ * These types match the snake_case output from Ponder's GraphQL API.
  * The indexer stores raw events only - aggregation happens in repositories.
  *
  * Naming convention:
  * - Table names: diamond_{event_name}_events (snake_case)
- * - GraphQL fields: camelCase (Ponder auto-converts)
+ * - GraphQL fields: snake_case (Ponder preserves from DB)
  * - TypeScript interfaces: {EventName}Event
  */
 
@@ -22,9 +22,9 @@ export interface PageInfo {
 /** Base fields present on all events */
 export interface BaseEvent {
   id: string;
-  blockNumber: string;
-  blockTimestamp: string;
-  transactionHash: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
 }
 
 // ============================================================================
@@ -73,7 +73,7 @@ export interface SupportedAssetAddedEvent extends BaseEvent {
 }
 
 export interface SupportedAssetsUpdatedEvent extends BaseEvent {
-  nodeHash: string;
+  node_hash: string;
   count: string;
 }
 
@@ -92,55 +92,55 @@ export interface SupportedClassRemovedEvent extends BaseEvent {
 }
 
 export interface NodeCapacityUpdatedEvent extends BaseEvent {
-  nodeHash: string;
+  node_hash: string;
   quantities: string;
 }
 
 export interface TokensDepositedToNodeEvent extends BaseEvent {
-  nodeHash: string;
-  tokenId: string;
+  node_hash: string;
+  token_id: string;
   amount: string;
   depositor: string;
 }
 
 export interface TokensMintedToNodeEvent extends BaseEvent {
-  nodeHash: string;
-  tokenId: string;
+  node_hash: string;
+  token_id: string;
   amount: string;
   minter: string;
 }
 
 export interface TokensWithdrawnFromNodeEvent extends BaseEvent {
-  nodeHash: string;
-  tokenId: string;
+  node_hash: string;
+  token_id: string;
   amount: string;
   recipient: string;
 }
 
 export interface TokensTransferredBetweenNodesEvent extends BaseEvent {
-  fromNode: string;
-  toNode: string;
-  tokenId: string;
+  from_node: string;
+  to_node: string;
+  token_id: string;
   amount: string;
 }
 
 export interface NodeSellOrderPlacedEvent extends BaseEvent {
-  nodeHash: string;
-  tokenId: string;
-  quoteToken: string;
+  node_hash: string;
+  token_id: string;
+  quote_token: string;
   price: string;
   amount: string;
-  orderId: string;
+  order_id: string;
 }
 
 export interface ClobApprovalGrantedEvent extends BaseEvent {
-  nodeHash: string;
-  clobAddress: string;
+  node_hash: string;
+  clob_address: string;
 }
 
 export interface ClobApprovalRevokedEvent extends BaseEvent {
-  nodeHash: string;
-  clobAddress: string;
+  node_hash: string;
+  clob_address: string;
 }
 
 // ============================================================================

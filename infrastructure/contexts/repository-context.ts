@@ -3,6 +3,7 @@ import { DiamondNodeRepository } from '../diamond/diamond-node-repository';
 import { OrderRepository } from '../repositories/orders-repository';
 import { IOrderRepository } from '@/domain/orders/order';
 import type { AuraAsset, Ausys } from '@/lib/contracts';
+import type { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';
 import { BrowserProvider, ethers } from 'ethers';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
@@ -248,7 +249,11 @@ export class RepositoryContext {
         'AusysContract not initialized. Call initialize() first.',
       );
     }
-    return listenForSignature(this.ausysContract, journeyId, timeoutMs);
+    return listenForSignature(
+      this.ausysContract as unknown as LocationContract,
+      journeyId,
+      timeoutMs,
+    );
   }
 
   /**

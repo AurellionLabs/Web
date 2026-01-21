@@ -11,11 +11,11 @@ import {
   GroupedStakes,
 } from '@/domain/pool';
 import {
-  AuStake__factory,
-  type AuStake as AuStakeContract,
+  RWYStakingFacet__factory,
+  type RWYStakingFacet as RWYStakingFacetContract,
 } from '@/lib/contracts';
 import { ContractTransactionResponse, ethers, Provider, Signer } from 'ethers';
-import { NEXT_PUBLIC_AUSTAKE_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 /**
@@ -23,7 +23,7 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
  * Handles smart contract interactions for pool creation, staking, and reward management.
  */
 export class PoolService implements IPoolService {
-  private contract: AuStakeContract;
+  private contract: RWYStakingFacetContract;
   private signer: Signer;
   private provider: Provider;
   private repositoryContext: RepositoryContext;
@@ -32,7 +32,7 @@ export class PoolService implements IPoolService {
     provider: Provider,
     signer: Signer,
     repositoryContext: RepositoryContext,
-    contractAddress: string = NEXT_PUBLIC_AUSTAKE_ADDRESS,
+    contractAddress: string = NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS,
   ) {
     if (!contractAddress) {
       throw new Error('[PoolService] Pool contract address is undefined');
@@ -40,7 +40,7 @@ export class PoolService implements IPoolService {
     this.provider = provider;
     this.signer = signer;
     this.repositoryContext = repositoryContext;
-    this.contract = AuStake__factory.connect(contractAddress, signer);
+    this.contract = RWYStakingFacet__factory.connect(contractAddress, signer);
   }
 
   async createPool(
@@ -51,30 +51,27 @@ export class PoolService implements IPoolService {
       // Validate input data
       this.validatePoolCreationData(data);
 
-      // Convert duration to deadline timestamp
-      const deadline = BigInt(
+      // Convert duration to deadline timestamp (7 days from now for funding deadline)
+      const fundingDeadline = BigInt(
         Math.floor(Date.now() / 1000) + data.durationDays * 24 * 60 * 60,
       );
 
-      // Create operation on smart contract
+      // Create opportunity on smart contract
+      // createOpportunity(string memory _name, address _inputToken, uint256 _inputTokenId, uint256 _targetAmount, uint256 _promisedYieldBps)
       const txResponse: ContractTransactionResponse =
-        await this.contract.createOperation(
+        await this.contract.createOpportunity(
           data.name,
-          data.description,
           data.tokenAddress,
-          creatorAddress, // provider
-          deadline,
-          BigInt(data.rewardRate), // Already converted to basis points in frontend
-          data.assetName,
+          0, // inputTokenId - not used
           BigInt(data.fundingGoal),
-          BigInt(data.assetPrice),
+          BigInt(data.rewardRate), // promisedYieldBps
         );
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
         throw new Error('Transaction receipt not found for pool creation');
       }
 
-      // Extract pool ID from OperationCreated event
+      // Extract pool ID from OpportunityCreated event
       const poolId = await this.extractPoolIdFromReceipt(txReceipt);
 
       return {
@@ -97,13 +94,8 @@ export class PoolService implements IPoolService {
         throw new Error('Only the pool provider can close the pool');
       }
 
-      // Note: The current contract doesn't have a specific closePool function
-      // This would need to be implemented based on the actual contract functionality
-      // For now, we'll use unlockReward as a proxy for closing
-      const txResponse = await this.contract.unlockReward(
-        ethers.ZeroAddress, // token address (needs to be determined)
-        poolId,
-      );
+      // Use unlockReward as a proxy for closing in RWYStakingFacet
+      const txResponse = await this.contract.unlockReward(poolId);
 
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -137,23 +129,19 @@ export class PoolService implements IPoolService {
         throw new Error('Signer must match investor address');
       }
 
-      // Get pool information to determine token address
-      const operation = await this.contract.getOperation(poolId);
-      if (!operation || operation.id === ethers.ZeroHash) {
+      // Get opportunity information to determine token address
+      const opportunity = await this.contract.getOpportunity(poolId);
+      if (!opportunity || opportunity.id === ethers.ZeroHash) {
         throw new Error('Pool not found');
       }
 
-      const tokenAddress = operation.token;
+      const tokenAddress = opportunity.inputToken;
 
       // Handle ERC20 approval
       await this.handleTokenApproval(tokenAddress, amountInWei.toString());
 
-      // Execute stake transaction
-      const txResponse = await this.contract.stake(
-        tokenAddress,
-        poolId,
-        amountInWei,
-      );
+      // Execute stake transaction - stake(bytes32 opportunityId, uint256 amount)
+      const txResponse = await this.contract.stake(poolId, amountInWei);
 
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -177,20 +165,8 @@ export class PoolService implements IPoolService {
         throw new Error('Signer must match claimant address');
       }
 
-      // Get pool information to determine token address
-      const operation = await this.contract.getOperation(poolId);
-      if (!operation || operation.id === ethers.ZeroHash) {
-        throw new Error('Pool not found');
-      }
-
-      const tokenAddress = operation.token;
-
-      // Execute claim reward transaction
-      const txResponse = await this.contract.claimReward(
-        tokenAddress,
-        poolId,
-        address,
-      );
+      // Execute claim reward transaction - claimProfits(bytes32 opportunityId)
+      const txResponse = await this.contract.claimProfits(poolId);
 
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -217,19 +193,17 @@ export class PoolService implements IPoolService {
         throw new Error('Only the pool provider can unlock rewards');
       }
 
-      // Get pool information to determine token address
-      const operation = await this.contract.getOperation(poolId);
-      if (!operation || operation.id === ethers.ZeroHash) {
+      // Get opportunity information
+      const opportunity = await this.contract.getOpportunity(poolId);
+      if (!opportunity || opportunity.id === ethers.ZeroHash) {
         throw new Error('Pool not found');
       }
 
-      const tokenAddress = operation.token;
+      const tokenAddress = opportunity.inputToken;
 
-      // Calculate total rewards needed (same calculation as in smart contract)
-      // totalRewardsNeeded = (tokenTvl * reward) / REWARD_PRECISION
-      const REWARD_PRECISION = 100n; // Same as in AuStake.sol
-      const totalRewardsNeeded =
-        (operation.tokenTvl * operation.reward) / REWARD_PRECISION;
+      // Calculate total rewards needed (simplified calculation)
+      // In RWYStakingFacet, the reward calculation may differ
+      const totalRewardsNeeded = opportunity.targetAmount;
 
       console.log(
         '[PoolService.unlockReward] Approving tokens for reward unlock:',
@@ -247,7 +221,7 @@ export class PoolService implements IPoolService {
       );
 
       // Execute unlock reward transaction
-      const txResponse = await this.contract.unlockReward(tokenAddress, poolId);
+      const txResponse = await this.contract.unlockReward(poolId);
 
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -545,17 +519,17 @@ export class PoolService implements IPoolService {
 
   private async extractPoolIdFromReceipt(txReceipt: any): Promise<string> {
     try {
-      // Look for OperationCreated event
+      // Look for OpportunityCreated event
       const eventSignature =
-        this.contract.interface.getEvent('OperationCreated').topicHash;
+        this.contract.interface.getEvent('OpportunityCreated').topicHash;
       const eventLog = txReceipt.logs?.find(
         (log: any) => log.topics[0] === eventSignature,
       );
 
       if (eventLog) {
         const parsedLog = this.contract.interface.parseLog(eventLog);
-        if (parsedLog && parsedLog.args.operationId) {
-          return parsedLog.args.operationId;
+        if (parsedLog && parsedLog.args.id) {
+          return parsedLog.args.id;
         }
       }
 

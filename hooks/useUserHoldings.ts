@@ -67,12 +67,12 @@ const GET_ALL_SUPPORTED_ASSETS = `
     diamondSupportedAssetAddedEventss(limit: $limit, after: $after) {
       items {
         id
-        nodeHash
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
-        blockTimestamp
+        block_timestamp
       }
       pageInfo {
         hasNextPage
@@ -139,12 +139,12 @@ export function useUserHoldings(): UseUserHoldingsReturn {
           diamondSupportedAssetAddedEventss: {
             items: Array<{
               id: string;
-              nodeHash: string;
+              node_hash: string;
               token: string;
-              tokenId: string;
+              token_id: string;
               price: string;
               capacity: string;
-              blockTimestamp: string;
+              block_timestamp: string;
             }>;
             pageInfo: { hasNextPage: boolean; endCursor: string | null };
           };
@@ -160,7 +160,7 @@ export function useUserHoldings(): UseUserHoldingsReturn {
         if (items.length === 0) break;
 
         for (const item of items) {
-          const key = `${item.token}-${item.tokenId}`;
+          const key = `${item.token}-${item.token_id}`;
           tokenIdSet.add(key);
         }
 

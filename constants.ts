@@ -12,7 +12,7 @@ export const STAKED_EVENTS_QUERY = gql`
     stakedEventss(
       where: { stakedOperationId: $operationId }
       limit: 100
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
@@ -22,8 +22,8 @@ export const STAKED_EVENTS_QUERY = gql`
         stakedOperationId
         token
         time
-        blockTimestamp
-        transactionHash
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -34,7 +34,7 @@ export const STAKED_EVENTS_BY_USER_QUERY = gql`
     stakedEventss(
       where: { user: $user }
       limit: 100
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
@@ -44,8 +44,8 @@ export const STAKED_EVENTS_BY_USER_QUERY = gql`
         stakedOperationId
         token
         time
-        blockTimestamp
-        transactionHash
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -56,7 +56,7 @@ export const OPERATION_CREATED_QUERY = gql`
     operationCreatedEventss(
       limit: $limit
       after: $after
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
@@ -64,8 +64,8 @@ export const OPERATION_CREATED_QUERY = gql`
         opCreatedOperationId
         name
         token
-        blockTimestamp
-        transactionHash
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -80,7 +80,7 @@ export const OPERATION_CREATED_BY_TOKEN_QUERY = gql`
     operationCreatedEventss(
       where: { token: $token }
       limit: $limit
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
@@ -88,8 +88,8 @@ export const OPERATION_CREATED_BY_TOKEN_QUERY = gql`
         opCreatedOperationId
         name
         token
-        blockTimestamp
-        transactionHash
+        block_timestamp
+        transaction_hash
       }
     }
   }

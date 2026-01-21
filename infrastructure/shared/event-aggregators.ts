@@ -43,8 +43,8 @@ import { Journey, JourneyStatus, ParcelData } from '@/domain/shared';
 /** Sort events by block timestamp ascending (oldest first) */
 function sortEventsByTimestamp<T extends BaseEvent>(events: T[]): T[] {
   return [...events].sort((a, b) => {
-    const timeA = BigInt(a.blockTimestamp);
-    const timeB = BigInt(b.blockTimestamp);
+    const timeA = BigInt(a.block_timestamp);
+    const timeB = BigInt(b.block_timestamp);
     if (timeA < timeB) return -1;
     if (timeA > timeB) return 1;
     return 0;
@@ -273,8 +273,8 @@ export function aggregateNodesToDTO(
       lng: latestLocation?.lng || '',
       status,
       isActive: !wasDeactivated,
-      createdAt: regEvent.blockTimestamp,
-      updatedAt: latestEvent?.blockTimestamp || regEvent.blockTimestamp,
+      createdAt: regEvent.block_timestamp,
+      updatedAt: latestEvent?.block_timestamp || regEvent.block_timestamp,
     });
   }
 
@@ -371,9 +371,9 @@ export function aggregateOrders(sources: OrderEventSources): AggregatedOrder[] {
       isBuy: placedEvent.is_buy,
       orderType: placedEvent.order_type,
       status,
-      createdAt: placedEvent.blockTimestamp,
-      updatedAt: latestEvent?.blockTimestamp || placedEvent.blockTimestamp,
-      transactionHash: placedEvent.transactionHash,
+      createdAt: placedEvent.block_timestamp,
+      updatedAt: latestEvent?.block_timestamp || placedEvent.block_timestamp,
+      transactionHash: placedEvent.transaction_hash,
     });
   }
 
@@ -490,8 +490,8 @@ export function aggregateUnifiedOrders(
       price: createEvent.price,
       status,
       journeyIds,
-      createdAt: createEvent.blockTimestamp,
-      updatedAt: latestEvent?.blockTimestamp || createEvent.blockTimestamp,
+      createdAt: createEvent.block_timestamp,
+      updatedAt: latestEvent?.block_timestamp || createEvent.block_timestamp,
     });
   }
 
@@ -527,8 +527,8 @@ export function aggregateJourneys(
       bounty: log.bounty,
       node: log.node,
       phase: latestUpdate?.phase || '0',
-      createdAt: log.blockTimestamp,
-      updatedAt: latestUpdate?.blockTimestamp || log.blockTimestamp,
+      createdAt: log.block_timestamp,
+      updatedAt: latestUpdate?.block_timestamp || log.block_timestamp,
     });
   }
 

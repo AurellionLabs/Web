@@ -807,18 +807,18 @@ export interface CLOBOrderGraphResponse {
 
 export interface CLOBTradeGraphResponse {
   id: string;
-  takerOrderId: string;
-  makerOrderId: string;
+  taker_order_id: string;
+  maker_order_id: string;
   taker: string;
   maker: string;
-  baseToken: string;
-  baseTokenId: string;
-  quoteToken: string;
+  base_token: string;
+  base_token_id: string;
+  quote_token: string;
   price: string;
   amount: string;
-  quoteAmount: string;
+  quote_amount: string;
   timestamp: string;
-  transactionHash: string;
+  transaction_hash: string;
 }
 
 export interface CLOBBestPricesResponse {

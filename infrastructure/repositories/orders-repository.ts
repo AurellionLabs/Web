@@ -428,8 +428,8 @@ export class OrderRepository implements IOrderRepository {
         bounty: logistics.bounty,
         node: logistics.node,
         phase: journeyStatus?.phase || '0',
-        createdAt: logistics.blockTimestamp,
-        updatedAt: journeyStatus?.blockTimestamp || logistics.blockTimestamp,
+        createdAt: logistics.block_timestamp,
+        updatedAt: journeyStatus?.block_timestamp || logistics.block_timestamp,
       };
 
       return aggregatedJourneyToDomain(aggregatedJourney, logistics);

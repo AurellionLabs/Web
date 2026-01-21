@@ -513,8 +513,8 @@ export class CLOBV2Repository implements ICLOBRepository {
       );
       uniqueTrades.sort(
         (a: any, b: any) =>
-          Number(b.blockTimestamp || b.timestamp) -
-          Number(a.blockTimestamp || a.timestamp),
+          Number(b.block_timestamp || b.timestamp) -
+          Number(a.block_timestamp || a.timestamp),
       );
 
       return uniqueTrades
@@ -699,7 +699,7 @@ export class CLOBV2Repository implements ICLOBRepository {
         priceMap.set(price, {
           quantity: remaining,
           count: 1,
-          timestamp: Number(order.blockTimestamp || 0),
+          timestamp: Number(order.block_timestamp || 0),
         });
       }
     }
@@ -758,8 +758,8 @@ export class CLOBV2Repository implements ICLOBRepository {
       status: CLOBOrderStatus.OPEN, // Would need status aggregation
       timeInForce: TimeInForce.GTC,
       expiry: 0,
-      createdAt: Number(order.blockTimestamp || 0) * 1000,
-      updatedAt: Number(order.blockTimestamp || 0) * 1000,
+      createdAt: Number(order.block_timestamp || 0) * 1000,
+      updatedAt: Number(order.block_timestamp || 0) * 1000,
       marketId: order.baseTokenId || '',
       nonce: '0',
     };
@@ -780,8 +780,8 @@ export class CLOBV2Repository implements ICLOBRepository {
       quoteAmount: trade.quoteAmount || '0',
       takerFee: '0',
       makerFee: '0',
-      timestamp: Number(trade.blockTimestamp || trade.timestamp || 0) * 1000,
-      transactionHash: trade.transactionHash || '',
+      timestamp: Number(trade.block_timestamp || trade.timestamp || 0) * 1000,
+      transactionHash: trade.transaction_hash || '',
       takerIsBuy: true,
       marketId: trade.baseTokenId || '',
     };

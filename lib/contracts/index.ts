@@ -16,6 +16,7 @@ import {
   CLOBABI,
   OrderBridgeABI,
   RWYVaultABI,
+  RWYStakingFacetABI,
   DiamondABI,
   DiamondCutFacetABI,
   DiamondLoupeFacetABI,
@@ -94,6 +95,12 @@ export const ContractFactories = {
     abi: RWYVaultABI,
   },
   
+  RWYStakingFacet: {
+    connect: (address: string, signerOrProvider: Signer | Provider) =>
+      createContract(address, RWYStakingFacetABI, signerOrProvider),
+    abi: RWYStakingFacetABI,
+  },
+  
   Diamond: {
     connect: (address: string, signerOrProvider: Signer | Provider) =>
       createContract(address, DiamondABI, signerOrProvider),
@@ -129,6 +136,7 @@ export const AuraGoatRed__factory = ContractFactories.AuraGoatRed;
 export const CLOB__factory = ContractFactories.CLOB;
 export const OrderBridge__factory = ContractFactories.OrderBridge;
 export const RWYVault__factory = ContractFactories.RWYVault;
+export const RWYStakingFacet__factory = ContractFactories.RWYStakingFacet;
 export const Diamond__factory = ContractFactories.Diamond;
 export const DiamondCutFacet__factory = ContractFactories.DiamondCutFacet;
 export const DiamondLoupeFacet__factory = ContractFactories.DiamondLoupeFacet;
@@ -147,6 +155,7 @@ export type AuraGoatRed = Contract;
 export type CLOB = Contract;
 export type OrderBridge = Contract;
 export type RWYVault = Contract;
+export type RWYStakingFacet = Contract;
 export type Diamond = Contract;
 export type DiamondCutFacet = Contract;
 export type DiamondLoupeFacet = Contract;

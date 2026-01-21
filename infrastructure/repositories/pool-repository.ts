@@ -16,17 +16,21 @@ import {
 import { BigNumberish, BytesLike, ethers, Provider, Signer } from 'ethers';
 import {
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
-  NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL,
+  NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 import { readContract } from 'viem/actions';
 import { gql, request } from 'graphql-request';
 import {
-  STAKED_EVENTS_QUERY,
-  STAKED_EVENTS_BY_USER_QUERY,
-  OPERATION_CREATED_QUERY,
-  OPERATION_CREATED_BY_TOKEN_QUERY,
-} from '@/constants';
+  GET_COMMODITY_STAKED_EVENTS,
+  GET_COMMODITY_STAKED_BY_STAKER,
+  GET_OPPORTUNITY_CREATED_EVENTS,
+  GET_PROFIT_DISTRIBUTED_EVENTS,
+  GET_PROFIT_BY_STAKER,
+  type CommodityStakedEventsResponse,
+  type OpportunityCreatedEventsResponse,
+  type ProfitDistributedEventsResponse,
+} from '@/infrastructure/shared/graph-queries';
 import { formatWeiToCurrency } from '@/lib/utils';
 import NodeCache from 'node-cache';
 
@@ -43,7 +47,7 @@ export class PoolRepository implements IPoolRepository {
   private userProvider: Provider;
   private contractAddress: string;
   private isInitialized = false;
-  private graphqlEndpoint = NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL;
+  private graphqlEndpoint = NEXT_PUBLIC_INDEXER_URL;
 
   // NodeCache for GraphQL responses (30 second TTL)
   private cache = new NodeCache({
@@ -273,16 +277,24 @@ export class PoolRepository implements IPoolRepository {
 
   async getPoolStakeHistory(poolId: string): Promise<StakeEvent[]> {
     try {
-      const response: { stakedEventss?: { items: any[] } } =
-        await this.graphqlRequest(STAKED_EVENTS_QUERY, { operationId: poolId });
+      const response = await this.graphqlRequest<CommodityStakedEventsResponse>(
+        GET_COMMODITY_STAKED_EVENTS,
+        { limit: 100 },
+      );
 
-      const items = response.stakedEventss?.items || [];
-      return items.map((event) => ({
+      const items = response.diamondCommodityStakedEventss?.items || [];
+
+      // Filter by opportunity_id (poolId)
+      const filteredItems = items.filter(
+        (event) => event.opportunity_id?.toLowerCase() === poolId.toLowerCase(),
+      );
+
+      return filteredItems.map((event) => ({
         poolId,
-        stakerAddress: event.user as Address,
+        stakerAddress: event.staker as Address,
         amount: event.amount,
-        timestamp: Number(event.time),
-        transactionHash: event.transactionHash,
+        timestamp: Number(event.block_timestamp),
+        transactionHash: event.transaction_hash,
       }));
     } catch (error) {
       console.error(
@@ -295,17 +307,16 @@ export class PoolRepository implements IPoolRepository {
 
   async findPoolsByInvestor(investorAddress: Address): Promise<Pool[]> {
     try {
-      // Use GraphQL to get staked events by user
-      const response: { stakedEventss?: { items: any[] } } =
-        await this.graphqlRequest(STAKED_EVENTS_BY_USER_QUERY, {
-          user: investorAddress,
-        });
+      const response = await this.graphqlRequest<CommodityStakedEventsResponse>(
+        GET_COMMODITY_STAKED_BY_STAKER,
+        { staker: investorAddress, limit: 100 },
+      );
 
-      const items = response.stakedEventss?.items || [];
+      const items = response.diamondCommodityStakedEventss?.items || [];
 
-      // Get unique pool IDs
+      // Get unique opportunity IDs (pool IDs)
       const poolIds = [
-        ...new Set(items.map((event) => event.stakedOperationId)),
+        ...new Set(items.map((event) => event.opportunity_id)),
       ].filter((id) => id);
 
       // Fetch all pools
@@ -327,21 +338,26 @@ export class PoolRepository implements IPoolRepository {
 
   async findPoolsByProvider(providerAddress: Address): Promise<Pool[]> {
     try {
-      // Use GraphQL to get operation created events
-      const response: { operationCreatedEventss?: { items: any[] } } =
-        await this.graphqlRequest(OPERATION_CREATED_QUERY);
+      const response =
+        await this.graphqlRequest<OpportunityCreatedEventsResponse>(
+          GET_OPPORTUNITY_CREATED_EVENTS,
+          { limit: 100 },
+        );
 
-      const items = response.operationCreatedEventss?.items || [];
+      const items = response.diamondOpportunityCreatedEventss?.items || [];
 
-      // Fetch all pools and filter by provider
+      // Filter by operator (provider)
+      const providerItems = items.filter(
+        (event) =>
+          event.operator?.toLowerCase() === providerAddress.toLowerCase(),
+      );
+
+      // Fetch all pools
       const pools = await Promise.all(
-        items.map((event) => this.getPoolById(event.opCreatedOperationId)),
+        providerItems.map((event) => this.getPoolById(event.event_id)),
       );
 
-      return pools.filter(
-        (pool: any) =>
-          pool !== null && pool.providerAddress === providerAddress,
-      );
+      return pools.filter((pool: any) => pool !== null);
     } catch (error) {
       console.error(
         `[PoolRepository.findPoolsByProvider] Error fetching pools for provider ${providerAddress}:`,
@@ -355,20 +371,22 @@ export class PoolRepository implements IPoolRepository {
 
   async getAllPools(): Promise<Pool[]> {
     try {
-      // Use GraphQL to get all operation created events
-      const response: { operationCreatedEventss?: { items: any[] } } =
-        await this.graphqlRequest(OPERATION_CREATED_QUERY);
+      const response =
+        await this.graphqlRequest<OpportunityCreatedEventsResponse>(
+          GET_OPPORTUNITY_CREATED_EVENTS,
+          { limit: 100 },
+        );
 
-      const items = response.operationCreatedEventss?.items || [];
+      const items = response.diamondOpportunityCreatedEventss?.items || [];
 
       if (items.length === 0) {
-        console.log('[PoolRepository] No operations found');
+        console.log('[PoolRepository] No opportunities found');
         return [];
       }
 
       // Fetch all pools
       const pools = await Promise.all(
-        items.map((event) => this.getPoolById(event.opCreatedOperationId)),
+        items.map((event) => this.getPoolById(event.event_id)),
       );
 
       return pools.filter((pool: any) => pool !== null);

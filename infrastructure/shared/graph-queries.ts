@@ -1179,3 +1179,207 @@ export interface GetAllActiveNodesResponse {
     items: ActiveNodeResponse[];
   };
 }
+
+// ============================================================================
+// STAKING/POOL QUERIES (Diamond-based)
+// ============================================================================
+
+export const GET_COMMODITY_STAKED_EVENTS = gql`
+  query GetCommodityStakedEvents($limit: Int = 100, $after: String) {
+    diamondCommodityStakedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        opportunity_id
+        staker
+        amount
+        total_staked
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_COMMODITY_STAKED_BY_STAKER = gql`
+  query GetCommodityStakedByStaker($staker: String!, $limit: Int = 100) {
+    diamondCommodityStakedEventss(
+      where: { staker: $staker }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        opportunity_id
+        staker
+        amount
+        total_staked
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export const GET_OPPORTUNITY_CREATED_EVENTS = gql`
+  query GetOpportunityCreatedEvents($limit: Int = 100, $after: String) {
+    diamondOpportunityCreatedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        event_id
+        operator
+        input_token
+        input_token_id
+        target_amount
+        promised_yield_bps
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_OPPORTUNITY_FUNDED_EVENTS = gql`
+  query GetOpportunityFundedEvents($opportunityId: String!, $limit: Int = 100) {
+    diamondOpportunityFundedEventss(
+      where: { event_id: $opportunityId }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        event_id
+        total_staked
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export const GET_PROFIT_DISTRIBUTED_EVENTS = gql`
+  query GetProfitDistributedEvents($limit: Int = 100, $after: String) {
+    diamondProfitDistributedEventss(
+      limit: $limit
+      after: $after
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        opportunity_id
+        staker
+        staked_amount
+        profit_share
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_PROFIT_BY_STAKER = gql`
+  query GetProfitByStaker($staker: String!, $limit: Int = 100) {
+    diamondProfitDistributedEventss(
+      where: { staker: $staker }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        opportunity_id
+        staker
+        staked_amount
+        profit_share
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export interface CommodityStakedEventResponse {
+  id: string;
+  opportunity_id: string;
+  staker: string;
+  amount: string;
+  total_staked: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface CommodityStakedEventsResponse {
+  diamondCommodityStakedEventss: {
+    items: CommodityStakedEventResponse[];
+    pageInfo?: { hasNextPage: boolean; endCursor?: string };
+  };
+}
+
+export interface OpportunityCreatedEventResponse {
+  id: string;
+  event_id: string;
+  operator: string;
+  input_token: string;
+  input_token_id: string;
+  target_amount: string;
+  promised_yield_bps: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface OpportunityCreatedEventsResponse {
+  diamondOpportunityCreatedEventss: {
+    items: OpportunityCreatedEventResponse[];
+    pageInfo?: { hasNextPage: boolean; endCursor?: string };
+  };
+}
+
+export interface ProfitDistributedEventResponse {
+  id: string;
+  opportunity_id: string;
+  staker: string;
+  staked_amount: string;
+  profit_share: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface ProfitDistributedEventsResponse {
+  diamondProfitDistributedEventss: {
+    items: ProfitDistributedEventResponse[];
+    pageInfo?: { hasNextPage: boolean; endCursor?: string };
+  };
+}

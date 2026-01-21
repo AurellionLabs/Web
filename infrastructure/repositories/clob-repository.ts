@@ -853,18 +853,18 @@ export class CLOBRepository {
   private mapTradeToDomain(trade: CLOBTradeGraphResponse): CLOBTrade {
     return {
       id: trade.id,
-      takerOrderId: trade.takerOrderId,
-      makerOrderId: trade.makerOrderId,
+      takerOrderId: trade.taker_order_id,
+      makerOrderId: trade.maker_order_id,
       taker: trade.taker,
       maker: trade.maker,
-      baseToken: trade.baseToken,
-      baseTokenId: trade.baseTokenId,
-      quoteToken: trade.quoteToken,
+      baseToken: trade.base_token,
+      baseTokenId: trade.base_token_id,
+      quoteToken: trade.quote_token,
       price: Number(trade.price) / 1e18,
       amount: Number(trade.amount),
-      quoteAmount: Number(trade.quoteAmount) / 1e18,
+      quoteAmount: Number(trade.quote_amount) / 1e18,
       timestamp: Number(trade.timestamp) * 1000,
-      transactionHash: trade.transactionHash,
+      transactionHash: trade.transaction_hash,
     };
   }
 }
