@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-19T23:20:26.275Z
+// Deployed: 2026-01-20T14:56:42.652Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -58,7 +58,7 @@ export const NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS =
 export const NEXT_PUBLIC_NODES_FACET_ADDRESS =
   '0xf26E7C1146c3CC3bD4cD53007D0b17727CDf7518';
 export const NEXT_PUBLIC_ASSETS_FACET_ADDRESS =
-  '0x838C4Ffa17d294d2dd5136B66Ad5F4E5370dFc25';
+  '0x1Bd89c5624886cB09D2bb6eC28958f18DEA2BCb3';
 export const NEXT_PUBLIC_ORDERS_FACET_ADDRESS =
   '0x22A9B8F70AdF0bE73ee4c7b237E617B053B65a6d';
 export const NEXT_PUBLIC_STAKING_FACET_ADDRESS =

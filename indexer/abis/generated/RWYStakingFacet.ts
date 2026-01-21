@@ -1,5 +1,5 @@
 // Auto-generated from RWYStakingFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-20T13:05:57.111Z
+// Generated at: 2026-01-20T14:56:42.598Z
 
 export const RWYStakingFacetABI = [
   {

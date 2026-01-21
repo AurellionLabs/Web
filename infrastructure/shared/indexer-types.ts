@@ -77,6 +77,20 @@ export interface SupportedAssetsUpdatedEvent extends BaseEvent {
   count: string;
 }
 
+// ============================================================================
+// Asset Class Events (from AssetsFacet)
+// ============================================================================
+
+export interface SupportedClassAddedEvent extends BaseEvent {
+  class_name_hash: string;
+  class_name: string;
+}
+
+export interface SupportedClassRemovedEvent extends BaseEvent {
+  class_name_hash: string;
+  class_name: string;
+}
+
 export interface NodeCapacityUpdatedEvent extends BaseEvent {
   nodeHash: string;
   quantities: string;
@@ -595,6 +609,14 @@ export interface UpdateStatusEventsResponse {
 
 export interface SupportedAssetAddedEventsResponse {
   diamondSupportedAssetAddedEventss: EventsGraphQLResponse<SupportedAssetAddedEvent>;
+}
+
+export interface SupportedClassAddedEventsResponse {
+  diamondSupportedClassAddedEventss: EventsGraphQLResponse<SupportedClassAddedEvent>;
+}
+
+export interface SupportedClassRemovedEventsResponse {
+  diamondSupportedClassRemovedEventss: EventsGraphQLResponse<SupportedClassRemovedEvent>;
 }
 
 // Order events

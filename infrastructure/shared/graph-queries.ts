@@ -184,6 +184,56 @@ export const GET_SUPPORTED_ASSET_ADDED_EVENTS = gql`
   }
 `;
 
+// ============================================================================
+// Asset Class Events (from AssetsFacet)
+// ============================================================================
+
+export const GET_SUPPORTED_CLASS_ADDED_EVENTS = gql`
+  query GetSupportedClassAddedEvents($limit: Int = 100) {
+    diamondSupportedClassAddedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        class_name_hash
+        class_name
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_SUPPORTED_CLASS_REMOVED_EVENTS = gql`
+  query GetSupportedClassRemovedEvents($limit: Int = 100) {
+    diamondSupportedClassRemovedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        class_name_hash
+        class_name
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
 export const GET_SUPPORTED_ASSETS_BY_NODE = gql`
   query GetSupportedAssetsByNode($nodeHash: String!, $limit: Int = 100) {
     diamondSupportedAssetAddedEventss(

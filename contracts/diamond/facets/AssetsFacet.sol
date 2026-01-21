@@ -52,6 +52,22 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         address indexed redeemer
     );
 
+    /// @notice Emitted when a supported asset class is added
+    /// @param classNameHash Indexed hash of the class name for efficient filtering
+    /// @param className The class name string
+    event SupportedClassAdded(
+        bytes32 indexed classNameHash,
+        string className
+    );
+
+    /// @notice Emitted when a supported asset class is removed
+    /// @param classNameHash Indexed hash of the class name for efficient filtering
+    /// @param className The class name string
+    event SupportedClassRemoved(
+        bytes32 indexed classNameHash,
+        string className
+    );
+
     // ============================================================================
     // ERRORS
     // ============================================================================
@@ -436,6 +452,8 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         s.nameToSupportedClass[className] = className;
         s.supportedClassNames.push(className);
         s.isClassActive[keccak256(abi.encode(className))] = true;
+
+        emit SupportedClassAdded(keccak256(abi.encode(className)), className);
     }
 
     /**
@@ -450,6 +468,8 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         delete s.nameToSupportedClass[className];
         delete s.nameToSupportedClassIndex[className];
         s.isClassActive[keccak256(abi.encode(className))] = false;
+
+        emit SupportedClassRemoved(keccak256(abi.encode(className)), className);
     }
 
     /**

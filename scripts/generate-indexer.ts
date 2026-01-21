@@ -43,6 +43,7 @@ const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
   DiamondCutFacet: { domain: 'diamond', priority: 9 },
   OwnershipFacet: { domain: 'diamond', priority: 10 },
   AuSysFacet: { domain: 'ausys', priority: 11 },
+  AssetsFacet: { domain: 'assets', priority: 12 },
 };
 
 // External contracts (not facets) that emit events we want to index
@@ -54,7 +55,7 @@ const EXTERNAL_CONTRACTS: Record<
   AuraAsset: {
     domain: 'aura-asset',
     artifactPath: 'AuraAsset.sol/AuraAsset.json',
-    priority: 12,
+    priority: 13,
   },
 };
 

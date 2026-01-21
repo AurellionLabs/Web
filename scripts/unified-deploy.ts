@@ -771,6 +771,42 @@ async function postDeploymentConfig(
       }
     }
   }
+
+  // Add default asset classes to Diamond's AssetsFacet
+  if (addresses.Diamond) {
+    console.log('   Adding default asset classes to Diamond...');
+    const assetsFacet = await ethers.getContractAt(
+      'AssetsFacet',
+      addresses.Diamond,
+    );
+
+    const defaultClasses = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
+    let addedCount = 0;
+
+    for (const className of defaultClasses) {
+      try {
+        const tx = await assetsFacet.addSupportedClass(className);
+        await tx.wait();
+        console.log(`   ✓ Added class: ${className}`);
+        addedCount++;
+      } catch (e: any) {
+        if (
+          e.message.includes('ClassAlreadyExists') ||
+          e.message.includes('already')
+        ) {
+          // Class already exists, skip silently
+        } else {
+          console.log(`   ⚠️  Could not add class ${className}: ${e.message}`);
+        }
+      }
+    }
+
+    if (addedCount > 0) {
+      console.log(`   ✓ Added ${addedCount} asset classes`);
+    } else {
+      console.log('   ✓ All default asset classes already exist');
+    }
+  }
 }
 
 async function deploySingleContract(

@@ -3,9 +3,17 @@ import { Asset } from '@/domain/shared';
 import type { AuraAsset } from '@/lib/contracts';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
-import { GET_SUPPORTED_ASSET_ADDED_EVENTS } from '../shared/graph-queries';
+import {
+  GET_SUPPORTED_ASSET_ADDED_EVENTS,
+  GET_SUPPORTED_CLASS_ADDED_EVENTS,
+  GET_SUPPORTED_CLASS_REMOVED_EVENTS,
+} from '../shared/graph-queries';
 import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
-import { SupportedAssetAddedEvent } from '../shared/indexer-types';
+import {
+  SupportedAssetAddedEvent,
+  SupportedClassAddedEvent,
+  SupportedClassRemovedEvent,
+} from '../shared/indexer-types';
 
 interface SupportedAssetEventsResponse {
   diamondSupportedAssetAddedEventss: {
@@ -51,20 +59,37 @@ export class PlatformRepository implements IPlatformRepository {
         this.processedTokenIds.add(tokenIdKey);
 
         let attributes: Asset['attributes'] = [];
+        let assetClass = 'Unknown';
+        let assetName = '';
 
         try {
           const cid = await this.getAssetCID(event.token, event.token_id);
           if (cid) {
             const { data } = await this.pinata.gateways.public.get(cid);
             const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+            // Extract asset class from IPFS metadata
+            // Support multiple field names: className, class, assetClass
+            assetClass =
+              (json.className as string) ??
+              (json.class as string) ??
+              (json.assetClass as string) ??
+              (json.asset?.assetClass as string) ??
+              'Unknown';
+
             const contractAsset = json.asset as {
               name?: string;
+              assetClass?: string;
               attributes?: Array<{
                 name?: string;
                 values?: string[];
                 description?: string;
               }>;
             };
+
+            // Extract asset name
+            assetName = contractAsset?.name ?? (json.name as string) ?? '';
+
             attributes = (contractAsset?.attributes || [])
               .map((attr) => ({
                 name: attr?.name ?? '',
@@ -81,9 +106,9 @@ export class PlatformRepository implements IPlatformRepository {
         }
 
         out.push({
-          assetClass: 'Unknown',
+          assetClass,
           tokenId: String(event.token_id),
-          name: '',
+          name: assetName,
           attributes,
         });
       }
@@ -116,16 +141,68 @@ export class PlatformRepository implements IPlatformRepository {
     }
   }
 
+  /**
+   * Fetch supported asset classes from indexed events
+   * Uses SupportedClassAdded/Removed events from AssetsFacet
+   */
   async getSupportedAssetClasses(): Promise<string[]> {
     console.log('[PlatformRepository] getSupportedAssetClasses: Starting...');
 
-    // In the pure dumb indexer, we derive asset classes from IPFS metadata
-    // The supportedClassess aggregate table no longer exists
-    return this.getSupportedAssetClassesFromIPFS();
+    try {
+      // Query SupportedClassAdded events from the indexer
+      const addedResponse = await graphqlRequest<{
+        diamondSupportedClassAddedEventss: {
+          items: SupportedClassAddedEvent[];
+        };
+      }>(this.graphEndpoint, GET_SUPPORTED_CLASS_ADDED_EVENTS, { limit: 100 });
+
+      // Query SupportedClassRemoved events from the indexer
+      const removedResponse = await graphqlRequest<{
+        diamondSupportedClassRemovedEventss: {
+          items: SupportedClassRemovedEvent[];
+        };
+      }>(this.graphEndpoint, GET_SUPPORTED_CLASS_REMOVED_EVENTS, {
+        limit: 100,
+      });
+
+      const addedEvents =
+        addedResponse?.diamondSupportedClassAddedEventss?.items || [];
+      const removedEvents =
+        removedResponse?.diamondSupportedClassRemovedEventss?.items || [];
+
+      // Build set of active classes: added - removed
+      const activeClasses = new Set<string>();
+
+      // Add all classes that were added
+      for (const event of addedEvents) {
+        if (event.class_name) {
+          activeClasses.add(event.class_name);
+        }
+      }
+
+      // Remove classes that were removed
+      for (const event of removedEvents) {
+        if (event.class_name) {
+          activeClasses.delete(event.class_name);
+        }
+      }
+
+      console.log(
+        `[PlatformRepository] Found ${activeClasses.size} active asset classes from indexer`,
+      );
+      return Array.from(activeClasses);
+    } catch (err) {
+      console.warn(
+        '[PlatformRepository] Failed to get asset classes from indexer, falling back to IPFS:',
+        err,
+      );
+      // Fallback to IPFS-based extraction if indexer fails
+      return this.getSupportedAssetClassesFromIPFS();
+    }
   }
 
   /**
-   * Fetch supported asset classes from IPFS metadata
+   * Fallback: Fetch supported asset classes from IPFS metadata
    * Queries all supported assets and extracts unique class names from their metadata
    */
   private async getSupportedAssetClassesFromIPFS(): Promise<string[]> {

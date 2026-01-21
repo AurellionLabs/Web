@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-20T13:05:57.130Z
+// Generated at: 2026-01-20T14:56:42.620Z
 // 
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -1588,6 +1588,184 @@ export const diamondSellerPaidEvents = onchainTable(
   })
 );
 
+export const diamondApprovalForAllEvents = onchainTable(
+  'diamond_approval_for_all_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    account: t.hex().notNull(),
+    operator: t.hex().notNull(),
+    approved: t.boolean().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    accountIdx: index().on(table.account),
+    operatorIdx: index().on(table.operator),
+  })
+);
+
+export const diamondAssetAttributeAddedEvents = onchainTable(
+  'diamond_asset_attribute_added_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    hash: t.hex().notNull(),
+    attribute_index: t.bigint().notNull(),
+    name: t.text().notNull(),
+    values: t.text().notNull(),
+    description: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    hashIdx: index().on(table.hash),
+    attributeIndexIdx: index().on(table.attribute_index),
+  })
+);
+
+export const diamondCustodyEstablishedEvents = onchainTable(
+  'diamond_custody_established_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    token_id: t.bigint().notNull(),
+    custodian: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    tokenIdIdx: index().on(table.token_id),
+    custodianIdx: index().on(table.custodian),
+  })
+);
+
+export const diamondCustodyReleasedEvents = onchainTable(
+  'diamond_custody_released_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    token_id: t.bigint().notNull(),
+    custodian: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    redeemer: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    tokenIdIdx: index().on(table.token_id),
+    custodianIdx: index().on(table.custodian),
+    redeemerIdx: index().on(table.redeemer),
+  })
+);
+
+export const diamondMintedAssetEvents = onchainTable(
+  'diamond_minted_asset_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    account: t.hex().notNull(),
+    hash: t.hex().notNull(),
+    token_id: t.bigint().notNull(),
+    name: t.text().notNull(),
+    asset_class: t.text().notNull(),
+    class_name: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    accountIdx: index().on(table.account),
+    hashIdx: index().on(table.hash),
+    tokenIdIdx: index().on(table.token_id),
+  })
+);
+
+export const diamondSupportedClassAddedEvents = onchainTable(
+  'diamond_supported_class_added_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    class_name_hash: t.hex().notNull(),
+    class_name: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    classNameHashIdx: index().on(table.class_name_hash),
+  })
+);
+
+export const diamondSupportedClassRemovedEvents = onchainTable(
+  'diamond_supported_class_removed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    class_name_hash: t.hex().notNull(),
+    class_name: t.text().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    classNameHashIdx: index().on(table.class_name_hash),
+  })
+);
+
+export const diamondTransferBatchEvents = onchainTable(
+  'diamond_transfer_batch_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    operator: t.hex().notNull(),
+    from: t.hex().notNull(),
+    to: t.hex().notNull(),
+    ids: t.bigint().notNull(),
+    values: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    operatorIdx: index().on(table.operator),
+    fromIdx: index().on(table.from),
+    toIdx: index().on(table.to),
+  })
+);
+
+export const diamondTransferSingleEvents = onchainTable(
+  'diamond_transfer_single_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    operator: t.hex().notNull(),
+    from: t.hex().notNull(),
+    to: t.hex().notNull(),
+    event_id: t.bigint().notNull(),
+    value: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    operatorIdx: index().on(table.operator),
+    fromIdx: index().on(table.from),
+    toIdx: index().on(table.to),
+  })
+);
+
+export const diamondURIEvents = onchainTable(
+  'diamond_u_r_i_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    value: t.text().notNull(),
+    event_id: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    eventIdIdx: index().on(table.event_id),
+  })
+);
+
 // Export all tables
 export const tables = {
   diamondClobApprovalGrantedEvents,
@@ -1681,4 +1859,14 @@ export const tables = {
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
   diamondSellerPaidEvents,
+  diamondApprovalForAllEvents,
+  diamondAssetAttributeAddedEvents,
+  diamondCustodyEstablishedEvents,
+  diamondCustodyReleasedEvents,
+  diamondMintedAssetEvents,
+  diamondSupportedClassAddedEvents,
+  diamondSupportedClassRemovedEvents,
+  diamondTransferBatchEvents,
+  diamondTransferSingleEvents,
+  diamondURIEvents,
 };
