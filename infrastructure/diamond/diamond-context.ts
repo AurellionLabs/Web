@@ -15,7 +15,8 @@ import {
 export { NEXT_PUBLIC_DIAMOND_ADDRESS };
 // Use auto-generated ABI from deploy script - automatically updated on deployment
 import { DIAMOND_ABI } from '@/infrastructure/contracts/diamond-abi.generated';
-import { AuraAssetABI } from '@/lib/contracts/abis';
+// Use AuraAsset ABI from indexer - it has the full ABI including nodeMint
+import { AuraAssetABI } from '@/indexer/abis/generated/AuraAsset';
 
 export class DiamondContext {
   private signer: Signer | null = null;
