@@ -1380,6 +1380,55 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
     // Events
     {
       type: 'event',
+      name: 'NodeRegistered',
+      inputs: [
+        { name: 'nodeHash', type: 'bytes32', indexed: true },
+        { name: 'owner', type: 'address', indexed: true },
+        { name: 'nodeType', type: 'string', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'NodeUpdated',
+      inputs: [
+        { name: 'nodeHash', type: 'bytes32', indexed: true },
+        { name: 'nodeType', type: 'string', indexed: false },
+        { name: 'capacity', type: 'uint256', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'NodeDeactivated',
+      inputs: [{ name: 'nodeHash', type: 'bytes32', indexed: true }],
+    },
+    {
+      type: 'event',
+      name: 'UpdateLocation',
+      inputs: [
+        { name: 'addressName', type: 'string', indexed: true },
+        { name: 'lat', type: 'string', indexed: false },
+        { name: 'lng', type: 'string', indexed: false },
+        { name: 'node', type: 'bytes32', indexed: true },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'UpdateOwner',
+      inputs: [
+        { name: 'owner', type: 'address', indexed: true },
+        { name: 'node', type: 'bytes32', indexed: true },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'UpdateStatus',
+      inputs: [
+        { name: 'status', type: 'bytes1', indexed: true },
+        { name: 'node', type: 'bytes32', indexed: true },
+      ],
+    },
+    {
+      type: 'event',
       name: 'NodeSellOrderPlaced',
       inputs: [
         { name: 'nodeHash', type: 'bytes32', indexed: true },
