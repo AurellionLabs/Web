@@ -27,7 +27,6 @@ import {
 import { Asset } from '@/domain/shared';
 import { BrowserProvider } from 'ethers';
 import { PinataSDK } from 'pinata';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 interface DiamondContextType {
   // Context state
@@ -150,15 +149,18 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         const browserProvider = new BrowserProvider(ethereumProvider);
         await context.initialize(browserProvider);
 
-        // Get Pinata instance from RepositoryContext for IPFS metadata fetching
+        // Create Pinata SDK directly for IPFS metadata fetching
         let pinata: PinataSDK | undefined;
-        try {
-          const platformRepo =
-            RepositoryContext.getInstance().getPlatformRepository();
-          pinata = (platformRepo as any).pinata;
-        } catch (e) {
+        const pinataJwt = process.env.NEXT_PUBLIC_PINATA_JWT;
+        if (pinataJwt) {
+          pinata = new PinataSDK({
+            pinataJwt,
+            pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
+          });
+          console.log('[DiamondProvider] Created Pinata SDK for IPFS metadata');
+        } else {
           console.warn(
-            '[DiamondProvider] Could not get Pinata from RepositoryContext',
+            '[DiamondProvider] PINATA_JWT not available, IPFS metadata will not be fetched',
           );
         }
 
