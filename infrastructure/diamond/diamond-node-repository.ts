@@ -117,24 +117,53 @@ export class DiamondNodeRepository implements NodeRepository {
     tokenId: string,
   ): Promise<{ name: string; class: string; fileHash: string }> {
     if (!this.pinata) {
+      console.warn(
+        '[DiamondNodeRepository] Pinata not available for metadata fetch',
+      );
       return { name: '', class: '', fileHash: '' };
     }
 
     try {
+      console.log(
+        '[DiamondNodeRepository] Fetching IPFS metadata for tokenId:',
+        tokenId,
+      );
       const list = await this.pinata.files.public
         .list()
         .keyvalues({ tokenId })
         .all();
 
+      console.log(
+        '[DiamondNodeRepository] Pinata list result:',
+        list?.length,
+        'files found',
+      );
+
       if (!list || list.length === 0) {
+        console.warn(
+          '[DiamondNodeRepository] No IPFS files found for tokenId:',
+          tokenId,
+        );
         return { name: '', class: '', fileHash: '' };
       }
 
       const item = list[0];
       const cid = item.cid;
 
+      console.log(
+        '[DiamondNodeRepository] Fetching IPFS content from CID:',
+        cid,
+      );
       const { data } = await this.pinata.gateways.public.get(cid);
       const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+      console.log('[DiamondNodeRepository] IPFS metadata:', {
+        className: json.className,
+        class: json.class,
+        assetClass: json.assetClass,
+        'asset.assetClass': json.asset?.assetClass,
+        name: json.name || json.asset?.name,
+      });
 
       // Extract class from multiple possible fields
       const assetClass =
@@ -150,7 +179,7 @@ export class DiamondNodeRepository implements NodeRepository {
         fileHash: cid,
       };
     } catch (error) {
-      console.warn(
+      console.error(
         `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
         error,
       );
