@@ -127,6 +127,7 @@ export function useUserHoldings(): UseUserHoldingsReturn {
 
     try {
       // Step 1: Get all known tokenIds from the indexer via raw events
+      // We only need unique tokenIds, not per-node entries
       const PAGE = 500;
       const tokenIdSet = new Set<string>();
       let after: string | undefined = undefined;
@@ -160,8 +161,9 @@ export function useUserHoldings(): UseUserHoldingsReturn {
         if (items.length === 0) break;
 
         for (const item of items) {
-          const key = `${item.token}-${item.token_id}`;
-          tokenIdSet.add(key);
+          // Only use token_id for deduplication since we query the same contract
+          // Multiple nodes can have the same asset, but user balance is per tokenId
+          tokenIdSet.add(item.token_id);
         }
 
         hasNextPage =
@@ -175,12 +177,12 @@ export function useUserHoldings(): UseUserHoldingsReturn {
         if (items.length < PAGE) break;
       }
 
-      const uniqueAssets = Array.from(tokenIdSet).map((key) => {
-        const [token, tokenId] = key.split('-');
-        return { token, tokenId };
-      });
+      const uniqueTokenIds = Array.from(tokenIdSet);
+      console.log(
+        `[useUserHoldings] Found ${uniqueTokenIds.length} unique tokenIds from indexer`,
+      );
 
-      if (uniqueAssets.length === 0) {
+      if (uniqueTokenIds.length === 0) {
         setState({ status: 'success', holdings: [] });
         return;
       }
@@ -196,8 +198,8 @@ export function useUserHoldings(): UseUserHoldingsReturn {
         provider,
       );
 
-      // Step 4: Query balances for all known tokenIds
-      const tokenIds = uniqueAssets.map((a) => BigInt(a.tokenId));
+      // Step 4: Query balances for all unique tokenIds
+      const tokenIds = uniqueTokenIds.map((id) => BigInt(id));
       const accounts = tokenIds.map(() => address);
 
       let balances: bigint[];
@@ -217,12 +219,11 @@ export function useUserHoldings(): UseUserHoldingsReturn {
 
       // Step 5: Filter to only holdings with balance > 0
       const userHoldings: UserHolding[] = [];
-      for (let i = 0; i < uniqueAssets.length; i++) {
+      for (let i = 0; i < uniqueTokenIds.length; i++) {
         const balance = balances[i];
         if (balance > 0n) {
-          const asset = uniqueAssets[i];
           userHoldings.push({
-            tokenId: asset.tokenId,
+            tokenId: uniqueTokenIds[i],
             balance: balance,
             name: '',
             assetClass: '',
