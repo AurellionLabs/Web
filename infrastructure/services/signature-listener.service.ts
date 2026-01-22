@@ -1,7 +1,5 @@
 // @ts-nocheck - File with outdated contract types
-import { Contract } from 'ethers';
-// Import specific contract type
-import { LocationContract } from '@/typechain-types/contracts/AuSys.sol/LocationContract';
+import type { Ausys as LocationContract } from '@/lib/contracts';
 
 // TODO: Refine ID comparison logic inside the handler based on testing/ethers version behavior.
 
