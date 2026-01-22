@@ -73,9 +73,14 @@ export class RepositoryContext {
       await this.diamondContext.initialize(provider);
       console.log('[RepositoryContext] Diamond context initialized');
 
-      // Create Diamond-based NodeRepository
-      this.nodeRepository = new DiamondNodeRepository(this.diamondContext);
-      console.log('[RepositoryContext] DiamondNodeRepository created');
+      // Create Diamond-based NodeRepository with Pinata for IPFS metadata
+      this.nodeRepository = new DiamondNodeRepository(
+        this.diamondContext,
+        pinata,
+      );
+      console.log(
+        '[RepositoryContext] DiamondNodeRepository created with Pinata',
+      );
 
       // Create OrderRepository with GraphQL integration
       this.orderRepository = new OrderRepository(
