@@ -26,6 +26,8 @@ import {
 } from '@/domain/node/node';
 import { Asset } from '@/domain/shared';
 import { BrowserProvider } from 'ethers';
+import { PinataSDK } from 'pinata';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 interface DiamondContextType {
   // Context state
@@ -148,8 +150,20 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         const browserProvider = new BrowserProvider(ethereumProvider);
         await context.initialize(browserProvider);
 
-        // Create services
-        const repository = new DiamondNodeRepository(context);
+        // Get Pinata instance from RepositoryContext for IPFS metadata fetching
+        let pinata: PinataSDK | undefined;
+        try {
+          const platformRepo =
+            RepositoryContext.getInstance().getPlatformRepository();
+          pinata = (platformRepo as any).pinata;
+        } catch (e) {
+          console.warn(
+            '[DiamondProvider] Could not get Pinata from RepositoryContext',
+          );
+        }
+
+        // Create services with Pinata for IPFS metadata
+        const repository = new DiamondNodeRepository(context, pinata);
         const service = new DiamondNodeService(context);
         const assetService = new DiamondNodeAssetService(context);
 
@@ -302,9 +316,8 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       });
 
       // First, approve Diamond to transfer user's tokens
-      const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
-        '@/chain-constants'
-      );
+      const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } =
+        await import('@/chain-constants');
       const { ethers } = await import('ethers');
 
       const signer = await diamondContext.getSigner();

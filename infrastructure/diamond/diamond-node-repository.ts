@@ -6,6 +6,7 @@
  */
 
 import { ethers } from 'ethers';
+import { PinataSDK } from 'pinata';
 import {
   Node,
   NodeRepository,
@@ -101,10 +102,60 @@ function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
 export class DiamondNodeRepository implements NodeRepository {
   private context: DiamondContext;
   private graphQLEndpoint: string;
+  private pinata: PinataSDK | null = null;
 
-  constructor(context: DiamondContext) {
+  constructor(context: DiamondContext, pinata?: PinataSDK) {
     this.context = context;
     this.graphQLEndpoint = NEXT_PUBLIC_INDEXER_URL;
+    this.pinata = pinata || null;
+  }
+
+  /**
+   * Fetch asset metadata from IPFS by tokenId
+   */
+  private async fetchAssetMetadata(
+    tokenId: string,
+  ): Promise<{ name: string; class: string; fileHash: string }> {
+    if (!this.pinata) {
+      return { name: '', class: '', fileHash: '' };
+    }
+
+    try {
+      const list = await this.pinata.files.public
+        .list()
+        .keyvalues({ tokenId })
+        .all();
+
+      if (!list || list.length === 0) {
+        return { name: '', class: '', fileHash: '' };
+      }
+
+      const item = list[0];
+      const cid = item.cid;
+
+      const { data } = await this.pinata.gateways.public.get(cid);
+      const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+      // Extract class from multiple possible fields
+      const assetClass =
+        (json.className as string) ||
+        (json.class as string) ||
+        (json.assetClass as string) ||
+        (json.asset?.assetClass as string) ||
+        '';
+
+      return {
+        name: (json.name as string) || (json.asset?.name as string) || '',
+        class: assetClass,
+        fileHash: cid,
+      };
+    } catch (error) {
+      console.warn(
+        `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
+        error,
+      );
+      return { name: '', class: '', fileHash: '' };
+    }
   }
 
   /**
@@ -233,31 +284,38 @@ export class DiamondNodeRepository implements NodeRepository {
 
       const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
 
-      // Step 3: Combine node inventory with raw event data
-      return node.assets.map((nodeAsset) => {
-        // Find matching raw event for this asset on this node
-        const rawEvent = allAssets.find(
-          (e) =>
-            e.node_hash?.toLowerCase() === nodeAddress.toLowerCase() &&
-            e.token_id === nodeAsset.tokenId,
-        );
+      // Step 3: Fetch IPFS metadata for each asset and combine with raw event data
+      const assetsWithMetadata = await Promise.all(
+        node.assets.map(async (nodeAsset) => {
+          // Find matching raw event for this asset on this node
+          const rawEvent = allAssets.find(
+            (e) =>
+              e.node_hash?.toLowerCase() === nodeAddress.toLowerCase() &&
+              e.token_id === nodeAsset.tokenId,
+          );
 
-        return {
-          id: nodeAsset.tokenId,
-          amount: nodeAsset.capacity.toString(),
-          name: '', // Metadata would need IPFS - not available in raw events
-          class: '', // Metadata would need IPFS - not available in raw events
-          fileHash: '', // Metadata would need IPFS - not available in raw events
-          status: 'Active',
-          nodeAddress: nodeAddress,
-          nodeLocation: node.location || {
-            addressName: '',
-            location: { lat: '0', lng: '0' },
-          },
-          price: nodeAsset.price.toString(),
-          capacity: nodeAsset.capacity.toString(),
-        };
-      });
+          // Fetch IPFS metadata
+          const metadata = await this.fetchAssetMetadata(nodeAsset.tokenId);
+
+          return {
+            id: nodeAsset.tokenId,
+            amount: nodeAsset.capacity.toString(),
+            name: metadata.name,
+            class: metadata.class || 'Unknown',
+            fileHash: metadata.fileHash,
+            status: 'Active',
+            nodeAddress: nodeAddress,
+            nodeLocation: node.location || {
+              addressName: '',
+              location: { lat: '0', lng: '0' },
+            },
+            price: nodeAsset.price.toString(),
+            capacity: nodeAsset.capacity.toString(),
+          };
+        }),
+      );
+
+      return assetsWithMetadata;
     } catch (error) {
       console.error(
         '[DiamondNodeRepository] Error getting node assets:',
@@ -281,19 +339,26 @@ export class DiamondNodeRepository implements NodeRepository {
 
       const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
 
-      // Convert raw events to TokenizedAsset objects
-      return allAssets.map((event) => ({
-        id: event.token_id,
-        amount: event.capacity,
-        name: '', // Would need IPFS metadata
-        class: '', // Would need IPFS metadata
-        fileHash: '', // Would need IPFS metadata
-        status: 'Active',
-        nodeAddress: event.node_hash,
-        nodeLocation: { addressName: '', location: { lat: '0', lng: '0' } },
-        price: event.price,
-        capacity: event.capacity,
-      }));
+      // Fetch IPFS metadata for each asset and convert to TokenizedAsset objects
+      const assetsWithMetadata = await Promise.all(
+        allAssets.map(async (event) => {
+          const metadata = await this.fetchAssetMetadata(event.token_id);
+          return {
+            id: event.token_id,
+            amount: event.capacity,
+            name: metadata.name,
+            class: metadata.class || 'Unknown',
+            fileHash: metadata.fileHash,
+            status: 'Active',
+            nodeAddress: event.node_hash,
+            nodeLocation: { addressName: '', location: { lat: '0', lng: '0' } },
+            price: event.price,
+            capacity: event.capacity,
+          };
+        }),
+      );
+
+      return assetsWithMetadata;
     } catch (error) {
       console.error('[DiamondNodeRepository] Error getting all assets:', error);
       return [];
