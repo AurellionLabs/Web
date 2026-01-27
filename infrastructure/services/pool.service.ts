@@ -56,15 +56,23 @@ export class PoolService implements IPoolService {
         Math.floor(Date.now() / 1000) + data.durationDays * 24 * 60 * 60,
       );
 
-      // Create opportunity on smart contract
-      // createOpportunity(string memory _name, address _inputToken, uint256 _inputTokenId, uint256 _targetAmount, uint256 _promisedYieldBps)
       const txResponse: ContractTransactionResponse =
         await this.contract.createOpportunity(
           data.name,
+          data.description,
           data.tokenAddress,
-          0, // inputTokenId - not used
+          0, // inputTokenId - not used for ERC20
           BigInt(data.fundingGoal),
+          ethers.ZeroAddress, // outputToken - not known at creation
+          0, // expectedOutputAmount - not known at creation
           BigInt(data.rewardRate), // promisedYieldBps
+          BigInt(data.operatorFeeBps || 500), // operatorFeeBps - default 5%
+          BigInt(data.minSalePrice), // minSalePrice - required
+          BigInt(data.durationDays), // fundingDays
+          BigInt(data.processingDays || data.durationDays), // processingDays - defaults to duration
+          data.tokenAddress, // collateralToken - defaults to input token
+          0, // collateralTokenId - ERC20 mode
+          BigInt(data.collateralAmount), // collateralAmount - required
         );
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {

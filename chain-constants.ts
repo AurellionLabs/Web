@@ -32,8 +32,7 @@ export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)
 export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = 18; // Change to 6 for USDC in production
-export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
-  'AURA'; // Change to 'USDC' for production
+export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL = 'AURA'; // Change to 'USDC' for production
 
 //
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
