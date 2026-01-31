@@ -8,7 +8,10 @@ import {
   BigNumberString,
 } from '../domain/rwy';
 import { RWYRepository } from '../infrastructure/repositories/rwy-repository';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '../chain-constants';
+import {
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_RPC_URL_84532,
+} from '../chain-constants';
 
 // RWY Staking is now part of the Diamond - use Diamond address
 const RWY_CONTRACT_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS;
@@ -270,6 +273,7 @@ export function useRWYExpectedProfit(
 /**
  * Simple hook to check if an address is an approved operator
  * More lightweight than useRWYOperatorStats - just checks approval status
+ * Uses JSON RPC provider directly (read-only, no wallet interaction needed)
  */
 export function useIsApprovedOperator(operatorAddress: Address | undefined) {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
@@ -287,9 +291,8 @@ export function useIsApprovedOperator(operatorAddress: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
+      // Use JSON RPC provider directly - this is a read-only call, no wallet needed
+      const provider = new ethers.JsonRpcProvider(NEXT_PUBLIC_RPC_URL_84532);
 
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const approved = await repository.isApprovedOperator(operatorAddress);
