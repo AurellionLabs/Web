@@ -49,7 +49,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { PoolCreationData, SupportingDocument } from '@/domain/pool';
 import { useRouter } from 'next/navigation';
-import { useRWYOperatorStats } from '@/hooks/useRWYOpportunity';
+import { useIsApprovedOperator } from '@/hooks/useRWYOpportunity';
 import { Address } from '@/domain/rwy';
 
 // Supported assets configuration
@@ -238,8 +238,8 @@ export default function CreatePoolPage() {
   const { toast } = useToast();
 
   // Check if user is an approved operator
-  const { stats: operatorStats, loading: operatorStatsLoading } =
-    useRWYOperatorStats(address as Address | undefined);
+  const { isApproved: isOperatorApproved, loading: operatorCheckLoading } =
+    useIsApprovedOperator(address as Address | undefined);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -321,7 +321,7 @@ export default function CreatePoolPage() {
   }
 
   // Show loading state while checking operator status
-  if (operatorStatsLoading && isConnected) {
+  if (operatorCheckLoading && isConnected) {
     return (
       <div className="min-h-screen p-6 lg:p-8">
         <div className="max-w-2xl mx-auto">
@@ -345,7 +345,7 @@ export default function CreatePoolPage() {
   }
 
   // Show error if user is not an approved operator
-  if (isConnected && !operatorStatsLoading && !operatorStats?.approved) {
+  if (isConnected && !operatorCheckLoading && !isOperatorApproved) {
     return (
       <div className="min-h-screen p-6 lg:p-8">
         <div className="max-w-2xl mx-auto">

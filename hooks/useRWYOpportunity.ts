@@ -266,3 +266,54 @@ export function useRWYExpectedProfit(
     error,
   };
 }
+
+/**
+ * Simple hook to check if an address is an approved operator
+ * More lightweight than useRWYOperatorStats - just checks approval status
+ */
+export function useIsApprovedOperator(operatorAddress: Address | undefined) {
+  const [isApproved, setIsApproved] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const checkApproval = useCallback(async () => {
+    if (!operatorAddress || !RWY_CONTRACT_ADDRESS) {
+      setLoading(false);
+      setIsApproved(null);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const provider = window.ethereum
+        ? new ethers.BrowserProvider(window.ethereum as any)
+        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
+
+      const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
+      const approved = await repository.isApprovedOperator(operatorAddress);
+
+      setIsApproved(approved);
+    } catch (err) {
+      console.error('Error checking operator approval:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to check operator status',
+      );
+      setIsApproved(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [operatorAddress]);
+
+  useEffect(() => {
+    checkApproval();
+  }, [checkApproval]);
+
+  return {
+    isApproved,
+    loading,
+    error,
+    refetch: checkApproval,
+  };
+}
