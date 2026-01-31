@@ -125,30 +125,43 @@ export class PoolService implements IPoolService {
     investorAddress: Address,
   ): Promise<string> {
     try {
-      // Convert decimal amount to wei and validate
       const amountInWei = ethers.parseEther(amount);
-      if (!amount || amountInWei <= 0) {
+      if (!amount || amountInWei <= 0n) {
         throw new Error('Invalid stake amount');
       }
 
-      // Validate that the caller is the investor
       const signerAddress = await this.signer.getAddress();
       if (signerAddress.toLowerCase() !== investorAddress.toLowerCase()) {
         throw new Error('Signer must match investor address');
       }
 
-      // Get opportunity information to determine token address
       const opportunity = await this.contract.getOpportunity(poolId);
       if (!opportunity || opportunity.id === ethers.ZeroHash) {
         throw new Error('Pool not found');
       }
 
+      const targetAmount = opportunity.targetAmount;
+      const stakedAmount = opportunity.stakedAmount;
+      const remainingCapacity = targetAmount - stakedAmount;
+
+      if (amountInWei > remainingCapacity) {
+        const remainingFormatted = ethers.formatEther(remainingCapacity);
+        const requestedFormatted = ethers.formatEther(amountInWei);
+        throw new Error(
+          `Stake amount exceeds remaining pool capacity. Requested: ${requestedFormatted}, Remaining: ${remainingFormatted}`,
+        );
+      }
+
       const tokenAddress = opportunity.inputToken;
+      const tokenId = opportunity.inputTokenId;
 
-      // Handle ERC20 approval
-      await this.handleTokenApproval(tokenAddress, amountInWei.toString());
+      await this.handleTokenApprovalAndBalance(
+        tokenAddress,
+        tokenId,
+        amountInWei.toString(),
+        signerAddress,
+      );
 
-      // Execute stake transaction - stake(bytes32 opportunityId, uint256 amount)
       const txResponse = await this.contract.stake(poolId, amountInWei);
 
       const txReceipt = await txResponse.wait();
@@ -158,10 +171,191 @@ export class PoolService implements IPoolService {
 
       return txReceipt.hash;
     } catch (error) {
-      console.error('[PoolService.stake] Error staking:', error);
+      const decodedError = this.decodeStakeError(error);
+      console.error('[PoolService.stake] Error staking:', decodedError.message);
+      throw decodedError;
+    }
+  }
+
+  async getPoolCapacity(poolId: string): Promise<{
+    targetAmount: string;
+    stakedAmount: string;
+    remainingCapacity: string;
+    fundingDeadline: number;
+    status: number;
+    isFunding: boolean;
+  }> {
+    try {
+      const opportunity = await this.contract.getOpportunity(poolId);
+      if (!opportunity || opportunity.id === ethers.ZeroHash) {
+        throw new Error('Pool not found');
+      }
+
+      const targetAmount = opportunity.targetAmount;
+      const stakedAmount = opportunity.stakedAmount;
+      const remainingCapacity = targetAmount - stakedAmount;
+
+      return {
+        targetAmount: targetAmount.toString(),
+        stakedAmount: stakedAmount.toString(),
+        remainingCapacity: remainingCapacity.toString(),
+        fundingDeadline: Number(opportunity.fundingDeadline),
+        status: Number(opportunity.status),
+        isFunding: Number(opportunity.status) === 1,
+      };
+    } catch (error) {
+      console.error('[PoolService.getPoolCapacity] Error:', error);
       throw new Error(
-        `Failed to stake: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to get pool capacity: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
+    }
+  }
+
+  async validateStakeAmount(
+    poolId: string,
+    amount: BigNumberString,
+  ): Promise<{
+    isValid: boolean;
+    error?: string;
+    remainingCapacity?: string;
+    userBalance?: string;
+  }> {
+    try {
+      const amountInWei = ethers.parseEther(amount);
+      if (!amount || amountInWei <= 0n) {
+        return {
+          isValid: false,
+          error: 'Invalid stake amount',
+        };
+      }
+
+      const capacity = await this.getPoolCapacity(poolId);
+
+      if (!capacity.isFunding) {
+        return {
+          isValid: false,
+          error:
+            'Pool is not accepting stakes. The pool may be funded, cancelled, or already completed.',
+          remainingCapacity: capacity.remainingCapacity,
+        };
+      }
+
+      if (BigInt(Date.now() / 1000) >= BigInt(capacity.fundingDeadline)) {
+        return {
+          isValid: false,
+          error: 'Pool funding deadline has passed',
+          remainingCapacity: capacity.remainingCapacity,
+        };
+      }
+
+      if (amountInWei > BigInt(capacity.remainingCapacity)) {
+        const remainingFormatted = ethers.formatEther(
+          capacity.remainingCapacity,
+        );
+        return {
+          isValid: false,
+          error: `Stake amount exceeds remaining pool capacity. Maximum stake: ${remainingFormatted}`,
+          remainingCapacity: capacity.remainingCapacity,
+        };
+      }
+
+      return {
+        isValid: true,
+        remainingCapacity: capacity.remainingCapacity,
+      };
+    } catch (error) {
+      console.error('[PoolService.validateStakeAmount] Error:', error);
+      return {
+        isValid: false,
+        error: `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  private decodeStakeError(error: unknown): Error {
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+
+      if (errorMessage.includes('execution reverted')) {
+        const match = errorMessage.match(/data="([^"]+)"/);
+        if (match) {
+          const errorData = match[1];
+          const decodedError = this.decodeCustomError(errorData);
+          if (decodedError) {
+            return new Error(decodedError);
+          }
+        }
+
+        if (errorMessage.includes('ExceedsTarget')) {
+          return new Error(
+            'Stake amount exceeds the pool funding goal. Please reduce your stake amount.',
+          );
+        }
+        if (errorMessage.includes('InvalidAmount')) {
+          return new Error('Stake amount cannot be zero');
+        }
+        if (errorMessage.includes('InvalidStatus')) {
+          return new Error(
+            'Pool is not accepting stakes. The pool may be funded, cancelled, or already completed.',
+          );
+        }
+        if (errorMessage.includes('FundingDeadlinePassed')) {
+          return new Error(
+            'Pool funding deadline has passed. You can no longer stake in this pool.',
+          );
+        }
+      }
+
+      if (
+        errorMessage.includes('ERC1155') ||
+        errorMessage.includes('insufficient balance') ||
+        errorMessage.includes('balance is')
+      ) {
+        return new Error(
+          'Insufficient token balance. Please ensure you have enough tokens and they are approved for transfer.',
+        );
+      }
+
+      return error;
+    }
+
+    return new Error('An unknown error occurred during staking');
+  }
+
+  private decodeCustomError(errorData: string): string | null {
+    try {
+      const errorSelectors: Record<string, string> = {
+        '0x173b6d49':
+          'ExceedsTarget - Stake amount exceeds remaining pool capacity',
+        '0x4ec3b05f': 'InvalidStatus - Pool is not in FUNDING status',
+        '0x36bdf1cd':
+          'FundingDeadlinePassed - Pool funding deadline has passed',
+        '0x6c231bdb': 'InvalidAmount - Stake amount cannot be zero',
+        '0x08c379a0': 'Error(string) - Check error message for details',
+      };
+
+      for (const [selector, description] of Object.entries(errorSelectors)) {
+        if (errorData.startsWith(selector)) {
+          return description;
+        }
+      }
+
+      if (errorData.startsWith('0x08c379a0')) {
+        const abiCoder = new ethers.AbiCoder();
+        try {
+          const decoded = abiCoder.decode(
+            ['string'],
+            '0x' + errorData.slice(10),
+          );
+          return `Contract error: ${decoded[0]}`;
+        } catch {
+          return 'Contract reverted with an error';
+        }
+      }
+
+      return null;
+    } catch {
+      return null;
     }
   }
 
@@ -434,6 +628,9 @@ export class PoolService implements IPoolService {
 
     // Calculate APY (simplified calculation)
 
+    // Format reward rate as percentage string
+    const rewardFormatted = `${pool.rewardRate.toFixed(2)}%`;
+
     return {
       progressPercentage: Math.min(100, fundingProgress),
       timeRemainingSeconds,
@@ -442,6 +639,7 @@ export class PoolService implements IPoolService {
       rewardRate: pool.rewardRate,
       tvl: pool.totalValueLocked,
       fundingGoal: pool.fundingGoal,
+      reward: rewardFormatted,
     };
   }
 
@@ -484,12 +682,68 @@ export class PoolService implements IPoolService {
     }
   }
 
+  private async handleTokenApprovalAndBalance(
+    tokenAddress: string,
+    tokenId: number,
+    amount: BigNumberString,
+    userAddress: string,
+  ): Promise<void> {
+    try {
+      const erc1155Abi = [
+        'function balanceOf(address account, uint256 id) view returns (uint256)',
+        'function isApprovedForAll(address account, address operator) view returns (bool)',
+        'function setApprovalForAll(address operator, bool approved)',
+      ];
+
+      const erc1155Contract = new ethers.Contract(
+        tokenAddress,
+        erc1155Abi,
+        this.signer,
+      );
+
+      const balance = await erc1155Contract.balanceOf(userAddress, tokenId);
+      if (BigInt(balance.toString()) < BigInt(amount)) {
+        const balanceFormatted = ethers.formatEther(balance.toString());
+        const amountFormatted = ethers.formatEther(amount);
+        throw new Error(
+          `Insufficient token balance. Your balance: ${balanceFormatted}, Requested: ${amountFormatted}`,
+        );
+      }
+
+      const isApproved = await erc1155Contract.isApprovedForAll(
+        userAddress,
+        await this.contract.getAddress(),
+      );
+
+      if (!isApproved) {
+        const approveTx = await erc1155Contract.setApprovalForAll(
+          await this.contract.getAddress(),
+          true,
+        );
+        await approveTx.wait();
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Insufficient token balance')
+      ) {
+        throw error;
+      }
+      console.error(
+        '[PoolService.handleTokenApprovalAndBalance] Error:',
+        error,
+      );
+      throw new Error(
+        `Failed to verify token approval and balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
   private async handleTokenApproval(
     tokenAddress: string,
     amount: BigNumberString,
   ): Promise<void> {
     try {
-      // Create ERC20 contract instance
       const erc20Abi = [
         'function allowance(address owner, address spender) view returns (uint256)',
         'function approve(address spender, uint256 amount) returns (bool)',
@@ -500,13 +754,11 @@ export class PoolService implements IPoolService {
         this.signer,
       );
 
-      // Check current allowance
       const currentAllowance = await tokenContract.allowance(
         await this.signer.getAddress(),
         await this.contract.getAddress(),
       );
 
-      // Approve if insufficient allowance
       if (BigInt(currentAllowance.toString()) < BigInt(amount)) {
         const approveTx = await tokenContract.approve(
           await this.contract.getAddress(),

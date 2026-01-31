@@ -1064,11 +1064,11 @@ export default function CreatePoolPage() {
                   glow
                   loading={form.formState.isSubmitting || loading}
                   disabled={
-                    form.formState.isSubmitting ||
-                    loading ||
-                    (collateralAmount &&
+                    Boolean(form.formState.isSubmitting) ||
+                    Boolean(loading) ||
+                    (Boolean(collateralAmount) &&
                       parseFloat(collateralAmount) > 0 &&
-                      !hasTokenApproval)
+                      !Boolean(hasTokenApproval))
                   }
                 >
                   {form.formState.isSubmitting || loading

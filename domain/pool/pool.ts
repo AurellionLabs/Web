@@ -271,4 +271,23 @@ export interface IPoolService {
    * @returns A Promise resolving to the transaction hash upon successful initiation.
    */
   unlockReward(poolId: string, providerAddress: Address): Promise<string>; // Return txHash
+
+  getPoolCapacity(poolId: string): Promise<{
+    targetAmount: string;
+    stakedAmount: string;
+    remainingCapacity: string;
+    fundingDeadline: number;
+    status: number;
+    isFunding: boolean;
+  }>;
+
+  validateStakeAmount(
+    poolId: string,
+    amount: BigNumberString,
+  ): Promise<{
+    isValid: boolean;
+    error?: string;
+    remainingCapacity?: string;
+    userBalance?: string;
+  }>;
 }

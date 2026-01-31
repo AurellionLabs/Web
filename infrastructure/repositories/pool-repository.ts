@@ -43,8 +43,9 @@ import { formatWeiToCurrency } from '@/lib/utils';
 import NodeCache from 'node-cache';
 
 // ABI for RWYStakingFacet's getOpportunity function on the Diamond
+// Must match RWYStorage.Opportunity struct exactly
 const RWY_STAKING_ABI = [
-  'function getOpportunity(bytes32 opportunityId) view returns (tuple(bytes32 id, address operator, string name, string description, address inputToken, uint256 inputTokenId, uint256 targetAmount, uint256 stakedAmount, address outputToken, uint256 outputTokenId, uint256 expectedOutputAmount, uint256 promisedYieldBps, uint256 operatorFeeBps, uint256 minSalePrice, uint256 fundingDeadline, uint256 processingDeadline, uint256 createdAt, uint256 fundedAt, uint256 completedAt, uint8 status, uint256 operatorCollateral))',
+  'function getOpportunity(bytes32 opportunityId) view returns (tuple(bytes32 id, address operator, string name, string description, address inputToken, uint256 inputTokenId, uint256 targetAmount, uint256 stakedAmount, address outputToken, uint256 outputTokenId, uint256 expectedOutputAmount, uint256 promisedYieldBps, uint256 operatorFeeBps, uint256 minSalePrice, uint256 fundingDeadline, uint256 processingDeadline, uint256 createdAt, uint256 fundedAt, uint256 completedAt, uint8 status, tuple(address token, uint256 tokenId, uint256 amount) collateral))',
 ];
 
 /**
@@ -706,7 +707,10 @@ export class PoolRepository implements IPoolRepository {
       }
 
       // Calculate APY (simplified calculation)
-      const apy = pool.rewardRate; // Assuming rewardRate is already in percentage
+      const apy = pool.rewardRate;
+
+      // Format reward rate as percentage string
+      const rewardFormatted = `${apy.toFixed(2)}%`;
 
       // Format values
 
@@ -718,6 +722,7 @@ export class PoolRepository implements IPoolRepository {
         rewardRate: pool.rewardRate,
         tvl: pool.totalValueLocked,
         fundingGoal: pool.fundingGoal,
+        reward: rewardFormatted,
       };
     } catch (error) {
       console.error(
@@ -772,14 +777,27 @@ export class PoolRepository implements IPoolRepository {
     const oppStatus = Number(opportunity.status);
 
     // Map RWY status to PoolStatus
-    // RWY Status: 0=PENDING, 1=FUNDING, 2=PROCESSING, 3=COMPLETED, 4=CANCELLED
+    // RWY Status: 0=PENDING, 1=FUNDING, 2=FUNDED, 3=IN_TRANSIT, 4=PROCESSING, 5=SELLING, 6=DISTRIBUTING, 7=COMPLETED, 8=CANCELLED
     let status: PoolStatus;
     switch (oppStatus) {
-      case 3: // COMPLETED
+      case 0: // PENDING
+        status = PoolStatus.PENDING;
+        break;
+      case 1: // FUNDING
+        status = PoolStatus.ACTIVE;
+        break;
+      case 2: // FUNDED
+      case 3: // IN_TRANSIT
+      case 4: // PROCESSING
+      case 5: // SELLING
+      case 6: // DISTRIBUTING
+        status = PoolStatus.ACTIVE;
+        break;
+      case 7: // COMPLETED
         status = PoolStatus.COMPLETE;
         break;
-      case 4: // CANCELLED
-        status = PoolStatus.COMPLETE; // Treat cancelled as complete for display
+      case 8: // CANCELLED
+        status = PoolStatus.COMPLETE;
         break;
       default:
         status = PoolStatus.ACTIVE;
@@ -791,18 +809,24 @@ export class PoolRepository implements IPoolRepository {
       Math.ceil((fundingDeadline - createdAt) / (24 * 60 * 60)),
     );
 
+    // Convert promisedYieldBps (basis points) to percentage for display
+    // e.g., 1500 bps = 15%
+    const rewardRatePercentage = (
+      Number(opportunity.promisedYieldBps) / 100
+    ).toFixed(2);
+
     return {
       id: opportunity.id,
       name: opportunity.name || 'Unnamed Opportunity',
       description: opportunity.description || '',
-      assetName: 'RWY Asset', // RWY opportunities don't have assetName, use generic
+      assetName: 'RWY Asset',
       tokenAddress: opportunity.inputToken as Address,
       providerAddress: opportunity.operator as Address,
       fundingGoal: opportunity.targetAmount.toString(),
       totalValueLocked: opportunity.stakedAmount.toString(),
       startDate: createdAt,
       durationDays,
-      rewardRate: Number(opportunity.promisedYieldBps) / 100, // Convert bps to percentage
+      rewardRate: parseFloat(rewardRatePercentage),
       assetPrice: opportunity.minSalePrice.toString(),
       status,
     };

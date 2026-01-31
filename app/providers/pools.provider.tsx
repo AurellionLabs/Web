@@ -57,6 +57,23 @@ type PoolContextType = {
   stake: (poolId: string, amount: BigNumberString) => Promise<string>;
   claimReward: (poolId: string) => Promise<string>;
   unlockReward: (poolId: string) => Promise<string>;
+  getPoolCapacity: (poolId: string) => Promise<{
+    targetAmount: string;
+    stakedAmount: string;
+    remainingCapacity: string;
+    fundingDeadline: number;
+    status: number;
+    isFunding: boolean;
+  }>;
+  validateStakeAmount: (
+    poolId: string,
+    amount: BigNumberString,
+  ) => Promise<{
+    isValid: boolean;
+    error?: string;
+    remainingCapacity?: string;
+    userBalance?: string;
+  }>;
 
   // Stake history
   loadStakeHistory: (poolId: string) => Promise<void>;
@@ -486,6 +503,54 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
     [address, poolService, loadAllPools, loadProviderPools],
   );
 
+  // Get pool capacity information
+  const getPoolCapacity = useCallback(
+    async (poolId: string) => {
+      if (!poolService) {
+        throw new Error('Pool service not available');
+      }
+
+      console.log(`[PoolsProvider] Getting capacity for pool: ${poolId}`);
+
+      try {
+        const capacity = await poolService.getPoolCapacity(poolId);
+        return capacity;
+      } catch (err) {
+        console.error('[PoolsProvider] Error in getPoolCapacity:', err);
+        throw err;
+      }
+    },
+    [poolService],
+  );
+
+  // Validate stake amount before submitting
+  const validateStakeAmount = useCallback(
+    async (poolId: string, amount: BigNumberString) => {
+      if (!poolService) {
+        throw new Error('Pool service not available');
+      }
+
+      console.log(
+        `[PoolsProvider] Validating stake amount for pool: ${poolId}, amount: ${amount}`,
+      );
+
+      try {
+        const validation = await poolService.validateStakeAmount(
+          poolId,
+          amount,
+        );
+        return validation;
+      } catch (err) {
+        console.error('[PoolsProvider] Error in validateStakeAmount:', err);
+        return {
+          isValid: false,
+          error: `Validation failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        };
+      }
+    },
+    [poolService],
+  );
+
   // Load stake history for a pool
   const loadStakeHistory = useCallback(
     async (poolId: string) => {
@@ -640,6 +705,8 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
     stake,
     claimReward,
     unlockReward,
+    getPoolCapacity,
+    validateStakeAmount,
 
     // Stake history
     loadStakeHistory,
