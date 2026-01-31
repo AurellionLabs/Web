@@ -273,7 +273,34 @@ export default function CreatePoolPage() {
     name: 'collateralAmount',
   });
 
-  // Calculate required collateral in wei (18 decimals)
+  // Watch funding goal and min sale price for required collateral calculation
+  const fundingGoal = useWatch({
+    control: form.control,
+    name: 'fundingGoal',
+  });
+
+  const minSalePrice = useWatch({
+    control: form.control,
+    name: 'minSalePrice',
+  });
+
+  // Calculate minimum required collateral in AURUM tokens
+  // Formula: (fundingGoal * minSalePrice * 2000) / 10000
+  // 2000 bps = 20% minimum collateral
+  const minimumRequiredCollateral = useMemo(() => {
+    const goal = parseFloat(fundingGoal || '0');
+    const salePrice = parseFloat(minSalePrice || '0');
+
+    if (!goal || !salePrice || goal <= 0 || salePrice <= 0) {
+      return null;
+    }
+
+    // Calculate: (fundingGoal * minSalePrice * 2000) / 10000
+    const required = (goal * salePrice * 2000) / 10000;
+    return required;
+  }, [fundingGoal, minSalePrice]);
+
+  // Calculate required collateral in wei (18 decimals) for token approval
   const requiredAmountWei = useMemo(() => {
     if (!collateralAmount || isNaN(parseFloat(collateralAmount))) return '0';
     try {
@@ -740,6 +767,32 @@ export default function CreatePoolPage() {
                           Your stake to back this opportunity
                         </FormDescription>
                         <FormMessage />
+                        {minimumRequiredCollateral !== null && (
+                          <div
+                            className={`mt-2 p-3 rounded-lg border ${
+                              parseFloat(field.value || '0') >=
+                              minimumRequiredCollateral
+                                ? 'bg-green-500/10 border-green-500/30'
+                                : 'bg-amber-500/10 border-amber-500/30'
+                            }`}
+                          >
+                            <p
+                              className={`text-sm font-medium ${
+                                parseFloat(field.value || '0') >=
+                                minimumRequiredCollateral
+                                  ? 'text-green-400'
+                                  : 'text-amber-400'
+                              }`}
+                            >
+                              Minimum Required:{' '}
+                              {minimumRequiredCollateral.toLocaleString()} AURUM
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              20% of ({fundingGoal || '0'} ×{' '}
+                              {minSalePrice || '0'})
+                            </p>
+                          </div>
+                        )}
                       </FormItem>
                     )}
                   />

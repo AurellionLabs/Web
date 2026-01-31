@@ -319,7 +319,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
       : '0.00',
     completionPercentage: poolDynamics?.progressPercentage || 0,
     fundingGoal: poolDynamics?.fundingGoal
-      ? formatTokenAmount(poolDynamics.fundingGoal, 18, 2)
+      ? formatTokenAmount(poolDynamics.fundingGoal, 0, 2)
       : '0.00',
     volume24h: getTotalDailyVolume(),
     volumeChange: dailyPercentageChange,

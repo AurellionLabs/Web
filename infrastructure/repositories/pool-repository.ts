@@ -645,10 +645,13 @@ export class PoolRepository implements IPoolRepository {
       // Calculate progress percentage with division by zero protection
       let fundingProgress = 0;
       if (BigInt(pool.fundingGoal) > 0) {
-        const progress =
-          (BigInt(pool.totalValueLocked) * BigInt(10000)) /
-          BigInt(pool.fundingGoal);
-        fundingProgress = Number(progress) / 100; // Convert back from basis points for better precision
+        // Convert TVL from wei tokens to USD using assetPrice
+        const assetPriceUsd = parseFloat(pool.assetPrice) || 0;
+        const tvlWei = BigInt(pool.totalValueLocked);
+        const tvlInUsd =
+          assetPriceUsd > 0 ? (Number(tvlWei) / 1e18) * assetPriceUsd : 0;
+        const progress = (tvlInUsd * 10000) / parseFloat(pool.fundingGoal);
+        fundingProgress = progress / 100;
         console.log('funding goal is not zero', pool.fundingGoal);
       } else {
         console.error('warning funding goal is zero');

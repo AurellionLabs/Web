@@ -70,7 +70,7 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const poolData = {
     name: pool?.name || '',
     assetPrice: pool
-      ? `1 ${pool.assetName} = $${parseFloat(pool.assetPrice).toLocaleString()}`
+      ? `1 ${pool.assetName} = $${formatTokenAmount(pool.assetPrice, 18, 2)}`
       : '1 Asset = $0',
     supplyAPY: pool ? `${pool.rewardRate?.toFixed(2) || '0.00'}%` : '0%',
   };
@@ -93,11 +93,13 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (assetAmount && pool) {
       try {
-        const assetPrice = parseFloat(pool.assetPrice);
-        const assetValue = parseFloat(assetAmount) * assetPrice;
+        // assetPrice is stored as wei (18 decimals), convert to USD for calculation
+        const assetPriceUsd = parseFloat(pool.assetPrice) / 1e18;
+        const assetValue = parseFloat(assetAmount) * assetPriceUsd;
         const feeAmount = assetValue * (PLATFORM_FEE_PERCENTAGE / 100);
         const total = assetValue + feeAmount;
 
+        // Store in USD (no decimals) - the stake function will handle wei conversion
         setTokenAmount(assetValue.toString());
         setPlatformFee(feeAmount.toString());
         setTotalAmount(total.toString());

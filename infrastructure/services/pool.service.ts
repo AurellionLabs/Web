@@ -62,17 +62,17 @@ export class PoolService implements IPoolService {
           data.description,
           data.tokenAddress,
           0, // inputTokenId - not used for ERC20
-          BigInt(data.fundingGoal),
+          BigInt(data.fundingGoal), // fundingGoal is USD amount (no decimals)
           ethers.ZeroAddress, // outputToken - not known at creation
           0, // expectedOutputAmount - not known at creation
           BigInt(data.rewardRate), // promisedYieldBps
           BigInt(data.operatorFeeBps || 500), // operatorFeeBps - default 5%
-          BigInt(data.minSalePrice), // minSalePrice - required
+          ethers.parseEther(data.minSalePrice), // Convert to wei (18 decimals)
           BigInt(data.durationDays), // fundingDays
           BigInt(data.processingDays || data.durationDays), // processingDays - defaults to duration
           data.tokenAddress, // collateralToken - defaults to input token
           0, // collateralTokenId - ERC20 mode
-          BigInt(data.collateralAmount), // collateralAmount - required
+          ethers.parseEther(data.collateralAmount), // Convert to wei (18 decimals)
         );
       const txReceipt = await txResponse.wait();
       if (!txReceipt) {
@@ -587,10 +587,13 @@ export class PoolService implements IPoolService {
     // Calculate progress percentage with division by zero protection
     let fundingProgress = 0;
     if (BigInt(pool.fundingGoal) > 0) {
-      const progress =
-        (BigInt(pool.totalValueLocked) * BigInt(10000)) /
-        BigInt(pool.fundingGoal);
-      fundingProgress = Number(progress) / 100; // Convert back from basis points for better precision
+      // Convert TVL from wei tokens to USD using assetPrice
+      const assetPriceUsd = parseFloat(pool.assetPrice) || 0;
+      const tvlWei = BigInt(pool.totalValueLocked);
+      const tvlInUsd =
+        assetPriceUsd > 0 ? (Number(tvlWei) / 1e18) * assetPriceUsd : 0;
+      const progress = (tvlInUsd * 10000) / parseFloat(pool.fundingGoal);
+      fundingProgress = progress / 100;
       console.log('funding goal is not zero', pool.fundingGoal);
     } else {
       console.error('funding goal is zero');
