@@ -15,7 +15,7 @@ import {
   type RWYStakingFacet as RWYStakingFacetContract,
 } from '@/lib/contracts';
 import { ContractTransactionResponse, ethers, Provider, Signer } from 'ethers';
-import { NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 /**
@@ -32,7 +32,7 @@ export class PoolService implements IPoolService {
     provider: Provider,
     signer: Signer,
     repositoryContext: RepositoryContext,
-    contractAddress: string = NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS,
+    contractAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
   ) {
     if (!contractAddress) {
       throw new Error('[PoolService] Pool contract address is undefined');
