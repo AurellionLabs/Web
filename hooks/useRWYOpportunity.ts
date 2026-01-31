@@ -8,9 +8,10 @@ import {
   BigNumberString,
 } from '../domain/rwy';
 import { RWYRepository } from '../infrastructure/repositories/rwy-repository';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '../chain-constants';
 
 // RWY Staking is now part of the Diamond - use Diamond address
-const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
+const RWY_CONTRACT_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS;
 
 /**
  * Hook to fetch a single RWY opportunity with dynamic data
