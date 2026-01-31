@@ -13,9 +13,17 @@ import {
   AuStake__factory,
   type AuStake as AuStakeContract,
 } from '@/lib/contracts';
-import { BigNumberish, BytesLike, ethers, Provider, Signer } from 'ethers';
+import {
+  BigNumberish,
+  BytesLike,
+  ethers,
+  Contract,
+  Provider,
+  Signer,
+} from 'ethers';
 import {
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
@@ -34,6 +42,11 @@ import {
 import { formatWeiToCurrency } from '@/lib/utils';
 import NodeCache from 'node-cache';
 
+// ABI for RWYStakingFacet's getOpportunity function on the Diamond
+const RWY_STAKING_ABI = [
+  'function getOpportunity(bytes32 opportunityId) view returns (tuple(bytes32 id, address operator, string name, string description, address inputToken, uint256 inputTokenId, uint256 targetAmount, uint256 stakedAmount, address outputToken, uint256 outputTokenId, uint256 expectedOutputAmount, uint256 promisedYieldBps, uint256 operatorFeeBps, uint256 minSalePrice, uint256 fundingDeadline, uint256 processingDeadline, uint256 createdAt, uint256 fundedAt, uint256 completedAt, uint8 status, uint256 operatorCollateral))',
+];
+
 /**
  * Blockchain-based implementation of IPoolRepository.
  * Handles all data persistence and retrieval operations for Pools via smart contract interaction.
@@ -42,10 +55,12 @@ import NodeCache from 'node-cache';
 export class PoolRepository implements IPoolRepository {
   private readContract: AuStakeContract;
   private writeContract: AuStakeContract;
+  private diamondContract: Contract; // For RWY opportunities on Diamond
   private signer: Signer;
   private readProvider: Provider;
   private userProvider: Provider;
   private contractAddress: string;
+  private diamondAddress: string;
   private isInitialized = false;
   private graphqlEndpoint = NEXT_PUBLIC_INDEXER_URL;
 
@@ -71,11 +86,19 @@ export class PoolRepository implements IPoolRepository {
     this.userProvider = userProvider;
     this.signer = signer;
     this.contractAddress = contractAddress;
+    this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
 
     // Initialize with user provider as fallback
     this.readProvider = userProvider;
     this.readContract = AuStake__factory.connect(contractAddress, userProvider);
     this.writeContract = AuStake__factory.connect(contractAddress, signer);
+
+    // Initialize Diamond contract for RWY opportunities
+    this.diamondContract = new Contract(
+      this.diamondAddress,
+      RWY_STAKING_ABI,
+      userProvider,
+    );
 
     // Asynchronously initialize read provider using dedicated RPC
     this.initializeReadProvider();
@@ -91,6 +114,14 @@ export class PoolRepository implements IPoolRepository {
         this.contractAddress,
         this.readProvider,
       );
+
+      // Update Diamond contract with dedicated RPC provider
+      this.diamondContract = new Contract(
+        this.diamondAddress,
+        RWY_STAKING_ABI,
+        this.readProvider,
+      );
+
       this.isInitialized = true;
 
       console.log(
@@ -249,7 +280,32 @@ export class PoolRepository implements IPoolRepository {
     try {
       await this.ensureInitialized();
 
-      // Retry logic for rate limiting
+      // First try to fetch from Diamond (RWY opportunities)
+      try {
+        const opportunity = await this.retryOnRateLimit(
+          () => this.diamondContract.getOpportunity(id),
+          `getOpportunity for pool ${id}`,
+        );
+
+        if (
+          opportunity &&
+          opportunity.id !== ethers.ZeroHash &&
+          opportunity.operator !== ethers.ZeroAddress
+        ) {
+          console.log(
+            `[PoolRepository.getPoolById] Found RWY opportunity on Diamond: ${id}`,
+          );
+          return this.mapDiamondOpportunityToPool(opportunity);
+        }
+      } catch (diamondError: any) {
+        // If Diamond call fails, fall back to legacy AuStake contract
+        console.log(
+          `[PoolRepository.getPoolById] Diamond lookup failed for ${id}, trying legacy AuStake:`,
+          diamondError?.message || diamondError,
+        );
+      }
+
+      // Fall back to legacy AuStake contract
       const operation = await this.retryOnRateLimit(
         () => this.readContract.getOperation(id),
         `getOperation for pool ${id}`,
@@ -702,6 +758,52 @@ export class PoolRepository implements IPoolRepository {
       durationDays: Math.ceil((deadline - actualStartDate) / (24 * 60 * 60)), // Calculate original duration
       rewardRate: Number(operation.reward) / 100, // Assuming reward is in basis points
       assetPrice: operation.assetPrice.toString(), // Asset price from contract
+      status,
+    };
+  }
+
+  /**
+   * Map Diamond RWY opportunity to Pool domain model
+   */
+  private mapDiamondOpportunityToPool(opportunity: any): Pool {
+    const currentTime = Math.floor(Date.now() / 1000);
+    const fundingDeadline = Number(opportunity.fundingDeadline);
+    const createdAt = Number(opportunity.createdAt);
+    const oppStatus = Number(opportunity.status);
+
+    // Map RWY status to PoolStatus
+    // RWY Status: 0=PENDING, 1=FUNDING, 2=PROCESSING, 3=COMPLETED, 4=CANCELLED
+    let status: PoolStatus;
+    switch (oppStatus) {
+      case 3: // COMPLETED
+        status = PoolStatus.COMPLETE;
+        break;
+      case 4: // CANCELLED
+        status = PoolStatus.COMPLETE; // Treat cancelled as complete for display
+        break;
+      default:
+        status = PoolStatus.ACTIVE;
+    }
+
+    // Calculate duration in days from funding deadline
+    const durationDays = Math.max(
+      1,
+      Math.ceil((fundingDeadline - createdAt) / (24 * 60 * 60)),
+    );
+
+    return {
+      id: opportunity.id,
+      name: opportunity.name || 'Unnamed Opportunity',
+      description: opportunity.description || '',
+      assetName: 'RWY Asset', // RWY opportunities don't have assetName, use generic
+      tokenAddress: opportunity.inputToken as Address,
+      providerAddress: opportunity.operator as Address,
+      fundingGoal: opportunity.targetAmount.toString(),
+      totalValueLocked: opportunity.stakedAmount.toString(),
+      startDate: createdAt,
+      durationDays,
+      rewardRate: Number(opportunity.promisedYieldBps) / 100, // Convert bps to percentage
+      assetPrice: opportunity.minSalePrice.toString(),
       status,
     };
   }

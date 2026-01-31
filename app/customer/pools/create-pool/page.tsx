@@ -4,9 +4,10 @@
 export const dynamic = 'force-dynamic';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import * as z from 'zod';
 import Link from 'next/link';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
   Upload,
@@ -18,6 +19,9 @@ import {
   Zap,
   Shield,
   Loader2,
+  AlertTriangle,
+  Check,
+  Coins,
 } from 'lucide-react';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -49,8 +53,12 @@ import { useWallet } from '@/hooks/useWallet';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { PoolCreationData, SupportingDocument } from '@/domain/pool';
 import { useRouter } from 'next/navigation';
-import { useIsApprovedOperator } from '@/hooks/useRWYOpportunity';
+import {
+  useIsApprovedOperator,
+  useTokenApproval,
+} from '@/hooks/useRWYOpportunity';
 import { Address } from '@/domain/rwy';
+import { ethers } from 'ethers';
 
 // Supported assets configuration
 const SUPPORTED_ASSETS = [
@@ -259,12 +267,94 @@ export default function CreatePoolPage() {
     },
   });
 
+  // Watch collateral amount for token approval check
+  const collateralAmount = useWatch({
+    control: form.control,
+    name: 'collateralAmount',
+  });
+
+  // Calculate required collateral in wei (18 decimals)
+  const requiredAmountWei = useMemo(() => {
+    if (!collateralAmount || isNaN(parseFloat(collateralAmount))) return '0';
+    try {
+      return ethers.parseUnits(collateralAmount, 18).toString();
+    } catch {
+      return '0';
+    }
+  }, [collateralAmount]);
+
+  // Check token approval status
+  const {
+    isApproved: hasTokenApproval,
+    loading: tokenApprovalLoading,
+    approving: isApproving,
+    balance: tokenBalance,
+    requestApproval,
+    refetch: refetchApproval,
+  } = useTokenApproval(
+    NEXT_PUBLIC_AURA_TOKEN_ADDRESS as Address,
+    address as Address | undefined,
+    requiredAmountWei,
+  );
+
+  // Format balance for display
+  const formattedBalance = useMemo(() => {
+    if (!tokenBalance) return '0';
+    try {
+      return parseFloat(ethers.formatUnits(tokenBalance, 18)).toLocaleString(
+        undefined,
+        {
+          maximumFractionDigits: 2,
+        },
+      );
+    } catch {
+      return '0';
+    }
+  }, [tokenBalance]);
+
+  // Check if user has sufficient balance
+  const hasSufficientBalance = useMemo(() => {
+    if (!tokenBalance || !requiredAmountWei) return true;
+    try {
+      return BigInt(tokenBalance) >= BigInt(requiredAmountWei);
+    } catch {
+      return true;
+    }
+  }, [tokenBalance, requiredAmountWei]);
+
+  // Handle token approval request
+  const handleApproveTokens = async () => {
+    try {
+      await requestApproval();
+      toast({
+        title: 'Approval Successful',
+        description: 'You can now create pools with your AURA tokens.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Approval Failed',
+        description: error.message || 'Failed to approve tokens.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       if (!address) {
         toast({
           title: 'Error',
           description: 'Please connect your wallet first.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Check token approval before submitting
+      if (!hasTokenApproval) {
+        toast({
+          title: 'Token Approval Required',
+          description: 'Please approve AURA tokens before creating a pool.',
           variant: 'destructive',
         });
         return;
@@ -905,6 +995,67 @@ export default function CreatePoolPage() {
                 />
               </div>
 
+              {/* Token Approval Section */}
+              {isConnected &&
+                collateralAmount &&
+                parseFloat(collateralAmount) > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-glass-border">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <Coins className="w-4 h-4 text-accent" />
+                      <span>Token Approval</span>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-surface-overlay border border-glass-border">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-foreground">
+                            AURA Token Allowance
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Balance: {formattedBalance} AURA
+                          </p>
+                          {!hasSufficientBalance && (
+                            <p className="text-xs text-amber-500 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Insufficient balance for collateral
+                            </p>
+                          )}
+                        </div>
+
+                        {tokenApprovalLoading ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Checking...
+                          </div>
+                        ) : hasTokenApproval ? (
+                          <div className="flex items-center gap-2 text-sm text-green-500">
+                            <Check className="w-4 h-4" />
+                            Approved
+                          </div>
+                        ) : (
+                          <GlowButton
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleApproveTokens}
+                            loading={isApproving}
+                            disabled={isApproving}
+                          >
+                            {isApproving ? 'Approving...' : 'Approve AURA'}
+                          </GlowButton>
+                        )}
+                      </div>
+
+                      {!hasTokenApproval && !tokenApprovalLoading && (
+                        <p className="text-xs text-muted-foreground mt-3">
+                          You need to approve the platform to use your AURA
+                          tokens as collateral before creating a pool.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               <div className="pt-4">
                 <GlowButton
                   type="submit"
@@ -912,10 +1063,21 @@ export default function CreatePoolPage() {
                   className="w-full"
                   glow
                   loading={form.formState.isSubmitting || loading}
+                  disabled={
+                    form.formState.isSubmitting ||
+                    loading ||
+                    (collateralAmount &&
+                      parseFloat(collateralAmount) > 0 &&
+                      !hasTokenApproval)
+                  }
                 >
                   {form.formState.isSubmitting || loading
                     ? 'Creating...'
-                    : 'Create Pool'}
+                    : !hasTokenApproval &&
+                        collateralAmount &&
+                        parseFloat(collateralAmount) > 0
+                      ? 'Approve Tokens First'
+                      : 'Create Pool'}
                 </GlowButton>
               </div>
             </form>

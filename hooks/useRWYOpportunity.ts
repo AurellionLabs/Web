@@ -320,3 +320,143 @@ export function useIsApprovedOperator(operatorAddress: Address | undefined) {
     refetch: checkApproval,
   };
 }
+
+// ERC20 ABI for token approval
+const ERC20_ABI = [
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function balanceOf(address account) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+];
+
+/**
+ * Hook to check and request ERC20 token approval for the Diamond contract
+ * Used before creating pools to ensure collateral can be transferred
+ */
+export function useTokenApproval(
+  tokenAddress: Address | undefined,
+  ownerAddress: Address | undefined,
+  requiredAmount?: BigNumberString,
+) {
+  const [allowance, setAllowance] = useState<bigint>(0n);
+  const [balance, setBalance] = useState<bigint>(0n);
+  const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+  const [approving, setApproving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const spenderAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
+
+  // Check current allowance and balance
+  const checkAllowance = useCallback(async () => {
+    if (!tokenAddress || !ownerAddress || !spenderAddress) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Use JSON RPC provider for read-only calls
+      const provider = new ethers.JsonRpcProvider(NEXT_PUBLIC_RPC_URL_84532);
+      const tokenContract = new ethers.Contract(
+        tokenAddress,
+        ERC20_ABI,
+        provider,
+      );
+
+      const [currentAllowance, currentBalance] = await Promise.all([
+        tokenContract.allowance(ownerAddress, spenderAddress),
+        tokenContract.balanceOf(ownerAddress),
+      ]);
+
+      setAllowance(currentAllowance);
+      setBalance(currentBalance);
+
+      // Check if approved for required amount (or unlimited if no amount specified)
+      const required = requiredAmount ? BigInt(requiredAmount) : 0n;
+      setIsApproved(
+        currentAllowance >= required || currentAllowance > 10n ** 50n,
+      );
+    } catch (err) {
+      console.error('Error checking token allowance:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to check allowance',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [tokenAddress, ownerAddress, spenderAddress, requiredAmount]);
+
+  // Request approval from user's wallet
+  const requestApproval = useCallback(
+    async (amount?: BigNumberString) => {
+      if (!tokenAddress || !ownerAddress || !spenderAddress) {
+        throw new Error('Token or owner address not set');
+      }
+
+      if (!window.ethereum) {
+        throw new Error('No wallet detected');
+      }
+
+      try {
+        setApproving(true);
+        setError(null);
+
+        const provider = new ethers.BrowserProvider(window.ethereum as any);
+        const signer = await provider.getSigner();
+        const tokenContract = new ethers.Contract(
+          tokenAddress,
+          ERC20_ABI,
+          signer,
+        );
+
+        // Approve unlimited amount by default, or specific amount if provided
+        const approvalAmount = amount ? BigInt(amount) : ethers.MaxUint256;
+
+        console.log(
+          `[useTokenApproval] Requesting approval for ${approvalAmount} tokens...`,
+        );
+        const tx = await tokenContract.approve(spenderAddress, approvalAmount);
+
+        console.log(
+          `[useTokenApproval] Approval transaction submitted: ${tx.hash}`,
+        );
+        await tx.wait();
+
+        console.log('[useTokenApproval] Approval confirmed');
+
+        // Refresh allowance after approval
+        await checkAllowance();
+
+        return tx.hash;
+      } catch (err: any) {
+        console.error('Error requesting token approval:', err);
+        const errorMessage =
+          err?.reason || err?.message || 'Failed to approve tokens';
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      } finally {
+        setApproving(false);
+      }
+    },
+    [tokenAddress, ownerAddress, spenderAddress, checkAllowance],
+  );
+
+  useEffect(() => {
+    checkAllowance();
+  }, [checkAllowance]);
+
+  return {
+    allowance,
+    balance,
+    isApproved,
+    loading,
+    approving,
+    error,
+    requestApproval,
+    refetch: checkAllowance,
+  };
+}
