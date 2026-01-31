@@ -16,6 +16,8 @@ import {
   FileCheck,
   Plus,
   Zap,
+  Shield,
+  Loader2,
 } from 'lucide-react';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -47,6 +49,8 @@ import { useWallet } from '@/hooks/useWallet';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { PoolCreationData, SupportingDocument } from '@/domain/pool';
 import { useRouter } from 'next/navigation';
+import { useRWYOperatorStats } from '@/hooks/useRWYOpportunity';
+import { Address } from '@/domain/rwy';
 
 // Supported assets configuration
 const SUPPORTED_ASSETS = [
@@ -228,10 +232,14 @@ const formSchema = z.object({
 });
 
 export default function CreatePoolPage() {
-  const { address } = useWallet();
+  const { address, isConnected } = useWallet();
   const { createPool, loading } = usePoolsProvider();
   const router = useRouter();
   const { toast } = useToast();
+
+  // Check if user is an approved operator
+  const { stats: operatorStats, loading: operatorStatsLoading } =
+    useRWYOperatorStats(address as Address | undefined);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -310,6 +318,65 @@ export default function CreatePoolPage() {
       });
       console.error('Error creating pool:', error);
     }
+  }
+
+  // Show loading state while checking operator status
+  if (operatorStatsLoading && isConnected) {
+    return (
+      <div className="min-h-screen p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <Link
+            href="/customer/pools"
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Pools
+          </Link>
+          <div className="text-center py-12">
+            <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
+            <h2 className="text-xl font-semibold">Checking Operator Status</h2>
+            <p className="text-muted-foreground mt-2">
+              Verifying your operator permissions...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if user is not an approved operator
+  if (isConnected && !operatorStatsLoading && !operatorStats?.approved) {
+    return (
+      <div className="min-h-screen p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <Link
+            href="/customer/pools"
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Pools
+          </Link>
+          <div className="text-center py-12">
+            <Shield className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold">Operator Access Required</h2>
+            <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+              Your wallet is not approved as an operator. Only approved
+              operators can create yield pools. Contact the platform
+              administrator to request operator access.
+            </p>
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground">Your Address:</p>
+              <p className="font-mono text-sm break-all">{address}</p>
+            </div>
+            <div className="mt-6">
+              <Link href="/customer/pools">
+                <GlowButton variant="outline">Browse Existing Pools</GlowButton>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
