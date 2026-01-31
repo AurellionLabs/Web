@@ -7,8 +7,8 @@
  * To regenerate:
  *   npx ts-node scripts/generate-diamond-abi.ts
  *
- * Generated: 2026-01-21T17:21:57.954Z
- * Facets: OrderRouterFacet, CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet
+ * Generated: 2026-01-31T17:42:12.296Z
+ * Facets: CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OrderRouterFacet, AssetsFacet, AuSysFacet, BridgeFacet, RWYStakingFacet, CLOBLogisticsFacet, OperatorFacet
  */
 
 import { ABIFragment } from '@/scripts/deploy.config';
@@ -16,121 +16,31 @@ import { ABIFragment } from '@/scripts/deploy.config';
 export const DIAMOND_ABI: ABIFragment[] = [
   {
     type: 'function',
-    name: 'placeOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeNodeSellOrder',
-    inputs: [
-      {
-        name: 'nodeOwner',
-        type: 'address',
-      },
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
     name: 'placeMarketOrder',
     inputs: [
       {
-        name: 'baseToken',
+        name: '_baseToken',
         type: 'address',
       },
       {
-        name: 'baseTokenId',
+        name: '_baseTokenId',
         type: 'uint256',
       },
       {
-        name: 'quoteToken',
+        name: '_quoteToken',
         type: 'address',
       },
       {
-        name: 'amount',
-        type: 'uint96',
+        name: '_amount',
+        type: 'uint256',
       },
       {
-        name: 'isBuy',
+        name: '_isBuy',
         type: 'bool',
       },
       {
-        name: 'maxSlippageBps',
-        type: 'uint16',
+        name: '_maxPrice',
+        type: 'uint256',
       },
     ],
     outputs: [
@@ -140,353 +50,6 @@ export const DIAMOND_ABI: ABIFragment[] = [
       },
     ],
     stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeBuyOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeSellOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'cancelOrder',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'cancelOrders',
-    inputs: [
-      {
-        name: 'orderIds',
-        type: 'bytes32[]',
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'getOrder',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        name: 'marketId',
-        type: 'bytes32',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'filledAmount',
-        type: 'uint64',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'status',
-        type: 'uint8',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-      {
-        name: 'createdAt',
-        type: 'uint40',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'getBestPrices',
-    inputs: [
-      {
-        name: 'marketId',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: 'bestBid',
-        type: 'uint96',
-      },
-      {
-        name: 'bestBidSize',
-        type: 'uint96',
-      },
-      {
-        name: 'bestAsk',
-        type: 'uint96',
-      },
-      {
-        name: 'bestAskSize',
-        type: 'uint96',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'event',
-    name: 'OrderRouted',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'orderSource',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'OrderCreated',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'marketId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-        indexed: false,
-      },
-      {
-        name: 'orderType',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-        indexed: false,
-      },
-      {
-        name: 'expiry',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'nonce',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'OrderFilled',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'tradeId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'fillAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'fillPrice',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'OrderCancelled',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'reason',
-        type: 'uint8',
-        indexed: false,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'TradeExecuted',
-    inputs: [
-      {
-        name: 'tradeId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'takerOrderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'makerOrderId',
-        type: 'bytes32',
-        indexed: true,
-      },
-      {
-        name: 'price',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'amount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'quoteAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-    ],
   },
   {
     type: 'function',
@@ -647,6 +210,92 @@ export const DIAMOND_ABI: ABIFragment[] = [
       },
     ],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'placeOrder',
+    inputs: [
+      {
+        name: '_marketId',
+        type: 'bytes32',
+      },
+      {
+        name: '_price',
+        type: 'uint256',
+      },
+      {
+        name: '_amount',
+        type: 'uint256',
+      },
+      {
+        name: '_isBuy',
+        type: 'bool',
+      },
+      {
+        name: '_orderType',
+        type: 'uint8',
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getOrder',
+    inputs: [
+      {
+        name: '_orderId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        name: 'filledAmount',
+        type: 'uint256',
+      },
+      {
+        name: 'isBuy',
+        type: 'bool',
+      },
+      {
+        name: 'orderType',
+        type: 'uint8',
+      },
+      {
+        name: 'status',
+        type: 'uint8',
+      },
+      {
+        name: 'createdAt',
+        type: 'uint256',
+      },
+      {
+        name: 'updatedAt',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -838,6 +487,73 @@ export const DIAMOND_ABI: ABIFragment[] = [
       {
         name: 'orderType',
         type: 'uint8',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OrderCancelled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'maker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'remainingAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'TradeExecuted',
+    inputs: [
+      {
+        name: 'tradeId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'taker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'maker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'marketId',
+        type: 'bytes32',
+        indexed: false,
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'quoteAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'timestamp',
+        type: 'uint256',
         indexed: false,
       },
     ],
@@ -1754,55 +1470,6 @@ export const DIAMOND_ABI: ABIFragment[] = [
     ],
     stateMutability: 'nonpayable',
   },
-] as const;
-
-// Export individual facet ABIs for selective imports
-export const ORDERROUTERFACET_ABI = [
-  {
-    type: 'function',
-    name: 'placeOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
   {
     type: 'function',
     name: 'placeNodeSellOrder',
@@ -1838,43 +1505,6 @@ export const ORDERROUTERFACET_ABI = [
       {
         name: 'expiry',
         type: 'uint40',
-      },
-    ],
-    outputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'placeMarketOrder',
-    inputs: [
-      {
-        name: 'baseToken',
-        type: 'address',
-      },
-      {
-        name: 'baseTokenId',
-        type: 'uint256',
-      },
-      {
-        name: 'quoteToken',
-        type: 'address',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'maxSlippageBps',
-        type: 'uint16',
       },
     ],
     outputs: [
@@ -1974,59 +1604,6 @@ export const ORDERROUTERFACET_ABI = [
     ],
     outputs: [],
     stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'getOrder',
-    inputs: [
-      {
-        name: 'orderId',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: 'maker',
-        type: 'address',
-      },
-      {
-        name: 'marketId',
-        type: 'bytes32',
-      },
-      {
-        name: 'price',
-        type: 'uint96',
-      },
-      {
-        name: 'amount',
-        type: 'uint96',
-      },
-      {
-        name: 'filledAmount',
-        type: 'uint64',
-      },
-      {
-        name: 'isBuy',
-        type: 'bool',
-      },
-      {
-        name: 'status',
-        type: 'uint8',
-      },
-      {
-        name: 'timeInForce',
-        type: 'uint8',
-      },
-      {
-        name: 'expiry',
-        type: 'uint40',
-      },
-      {
-        name: 'createdAt',
-        type: 'uint40',
-      },
-    ],
-    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -2171,8 +1748,470 @@ export const ORDERROUTERFACET_ABI = [
     ],
   },
   {
+    type: 'function',
+    name: 'setPayToken',
+    inputs: [
+      {
+        name: '_payToken',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getPayToken',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'setAuSysAdmin',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'revokeAuSysAdmin',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDriver',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDispatcher',
+    inputs: [
+      {
+        name: 'dispatcher',
+        type: 'address',
+      },
+      {
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'hasAuSysRole',
+    inputs: [
+      {
+        name: 'role',
+        type: 'bytes32',
+      },
+      {
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'createAuSysOrder',
+    inputs: [
+      {
+        name: 'sender',
+        type: 'address',
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+      },
+      {
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        name: 'tokenContract',
+        type: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'tokenQuantity',
+        type: 'uint256',
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        name: 'bounty',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getAuSysOrder',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'id',
+            type: 'bytes32',
+          },
+          {
+            name: 'sender',
+            type: 'address',
+          },
+          {
+            name: 'receiver',
+            type: 'address',
+          },
+          {
+            name: 'seller',
+            type: 'address',
+          },
+          {
+            name: 'tokenContract',
+            type: 'address',
+          },
+          {
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            name: 'tokenQuantity',
+            type: 'uint256',
+          },
+          {
+            name: 'bounty',
+            type: 'uint256',
+          },
+          {
+            name: 'totalPrice',
+            type: 'uint256',
+          },
+          {
+            name: 'status',
+            type: 'uint8',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'createJourney',
+    inputs: [
+      {
+        name: 'sender',
+        type: 'address',
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+      },
+      {
+        name: 'bounty',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'createOrderJourney',
+    inputs: [
+      {
+        name: 'sender',
+        type: 'address',
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+      },
+      {
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        name: 'tokenContract',
+        type: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'tokenQuantity',
+        type: 'uint256',
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        name: 'bounty',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getJourney',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'id',
+            type: 'bytes32',
+          },
+          {
+            name: 'sender',
+            type: 'address',
+          },
+          {
+            name: 'receiver',
+            type: 'address',
+          },
+          {
+            name: 'driver',
+            type: 'address',
+          },
+          {
+            name: 'bounty',
+            type: 'uint256',
+          },
+          {
+            name: 'status',
+            type: 'uint8',
+          },
+          {
+            name: 'createdAt',
+            type: 'uint256',
+          },
+          {
+            name: 'updatedAt',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'assignDriverToJourney',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'packageSign',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'handOn',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'handOff',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
     type: 'event',
-    name: 'OrderCancelled',
+    name: 'AuSysAdminSet',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'AuSysAdminRevoked',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'JourneyCreated',
+    inputs: [
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'sender',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverAssigned',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'AuSysOrderSettled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'AuSysOrderStatusUpdated',
     inputs: [
       {
         name: 'orderId',
@@ -2180,17 +2219,7 @@ export const ORDERROUTERFACET_ABI = [
         indexed: true,
       },
       {
-        name: 'maker',
-        type: 'address',
-        indexed: true,
-      },
-      {
-        name: 'remainingAmount',
-        type: 'uint256',
-        indexed: false,
-      },
-      {
-        name: 'reason',
+        name: 'newStatus',
         type: 'uint8',
         indexed: false,
       },
@@ -2198,25 +2227,1535 @@ export const ORDERROUTERFACET_ABI = [
   },
   {
     type: 'event',
-    name: 'TradeExecuted',
+    name: 'AuSysJourneyStatusUpdated',
     inputs: [
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'newStatus',
+        type: 'uint8',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'initializeRWYStaking',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'createOpportunity',
+    inputs: [
+      {
+        name: 'name',
+        type: 'string',
+      },
+      {
+        name: 'description',
+        type: 'string',
+      },
+      {
+        name: 'inputToken',
+        type: 'address',
+      },
+      {
+        name: 'inputTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'targetAmount',
+        type: 'uint256',
+      },
+      {
+        name: 'outputToken',
+        type: 'address',
+      },
+      {
+        name: 'expectedOutputAmount',
+        type: 'uint256',
+      },
+      {
+        name: 'promisedYieldBps',
+        type: 'uint256',
+      },
+      {
+        name: 'operatorFeeBps',
+        type: 'uint256',
+      },
+      {
+        name: 'minSalePrice',
+        type: 'uint256',
+      },
+      {
+        name: 'fundingDays',
+        type: 'uint256',
+      },
+      {
+        name: 'processingDays',
+        type: 'uint256',
+      },
+      {
+        name: 'collateralToken',
+        type: 'address',
+      },
+      {
+        name: 'collateralTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'collateralAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'startDelivery',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'confirmDelivery',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'deliveredAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'completeProcessing',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'outputTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'actualOutputAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelOpportunity',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'stake',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'unstake',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'claimProfits',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'emergencyClaim',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'recordSaleProceeds',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'proceeds',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setMinCollateralBps',
+    inputs: [
+      {
+        name: 'bps',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setMaxYieldBps',
+    inputs: [
+      {
+        name: 'bps',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setProtocolFeeBps',
+    inputs: [
+      {
+        name: 'bps',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDefaultProcessingDays',
+    inputs: [
+      {
+        name: 'days_',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'forceCancel',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getOpportunity',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getRWYStake',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'staker',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOpportunityStakers',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'address[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOpportunityCount',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAllOpportunities',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getSaleProceeds',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'proceeds',
+        type: 'uint256',
+      },
+      {
+        name: 'finalized',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getRWYConfig',
+    inputs: [],
+    outputs: [
+      {
+        name: 'minOperatorCollateralBps',
+        type: 'uint256',
+      },
+      {
+        name: 'maxYieldBps',
+        type: 'uint256',
+      },
+      {
+        name: 'protocolFeeBps',
+        type: 'uint256',
+      },
+      {
+        name: 'defaultProcessingDays',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'calculateExpectedProfit',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'stakeAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: 'expectedProfit',
+        type: 'uint256',
+      },
+      {
+        name: 'userShareBps',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'OpportunityCreated',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'inputToken',
+        type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'inputTokenId',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'targetAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'promisedYieldBps',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OpportunityFunded',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'totalStaked',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OpportunityCancelled',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'reason',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'CommodityStaked',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'staker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'totalStaked',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'CommodityUnstaked',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'staker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DeliveryStarted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DeliveryConfirmed',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'deliveredAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ProcessingStarted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ProcessingCompleted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'outputAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'outputTokenId',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'SaleProceedsRecorded',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'proceeds',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ProfitDistributed',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'staker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'stakedAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'profitShare',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OpportunityCompleted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'totalProceeds',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'registerDriver',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'deactivateDriver',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDriverAvailability',
+    inputs: [
+      {
+        name: 'isAvailable',
+        type: 'bool',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'updateDriverLocation',
+    inputs: [
+      {
+        name: 'location',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getDriverInfo',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'driver',
+            type: 'address',
+          },
+          {
+            name: 'isActive',
+            type: 'bool',
+          },
+          {
+            name: 'isAvailable',
+            type: 'bool',
+          },
+          {
+            name: 'currentLocation',
+            type: 'tuple',
+            components: [
+              {
+                name: 'lat',
+                type: 'string',
+              },
+              {
+                name: 'lng',
+                type: 'string',
+              },
+            ],
+          },
+          {
+            name: 'totalDeliveries',
+            type: 'uint256',
+          },
+          {
+            name: 'completedDeliveries',
+            type: 'uint256',
+          },
+          {
+            name: 'totalEarnings',
+            type: 'uint256',
+          },
+          {
+            name: 'rating',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAllDrivers',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'address[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAvailableDrivers',
+    inputs: [],
+    outputs: [
+      {
+        name: 'drivers',
+        type: 'address[]',
+      },
+      {
+        name: 'count',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'createLogisticsOrder',
+    inputs: [
+      {
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        name: 'sellerNode',
+        type: 'address',
+      },
+      {
+        name: 'token',
+        type: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'quantity',
+        type: 'uint256',
+      },
+      {
+        name: 'totalPrice',
+        type: 'uint256',
+      },
+      {
+        name: 'pickupLocation',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+      {
+        name: 'deliveryLocation',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'acceptDelivery',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'estimatedPickupTime',
+        type: 'uint256',
+      },
+      {
+        name: 'estimatedDeliveryTime',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'confirmPickup',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'signature',
+        type: 'bytes',
+      },
+      {
+        name: 'location',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'updateDeliveryLocation',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'location',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'settleLogisticsOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'disputeOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelLogisticsOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getLogisticsOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'orderId',
+            type: 'bytes32',
+          },
+          {
+            name: 'tradeId',
+            type: 'bytes32',
+          },
+          {
+            name: 'buyer',
+            type: 'address',
+          },
+          {
+            name: 'seller',
+            type: 'address',
+          },
+          {
+            name: 'sellerNode',
+            type: 'address',
+          },
+          {
+            name: 'token',
+            type: 'address',
+          },
+          {
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            name: 'quantity',
+            type: 'uint256',
+          },
+          {
+            name: 'totalPrice',
+            type: 'uint256',
+          },
+          {
+            name: 'escrowedAmount',
+            type: 'uint256',
+          },
+          {
+            name: 'driverBounty',
+            type: 'uint256',
+          },
+          {
+            name: 'pickupLocation',
+            type: 'tuple',
+            components: [
+              {
+                name: 'lat',
+                type: 'string',
+              },
+              {
+                name: 'lng',
+                type: 'string',
+              },
+            ],
+          },
+          {
+            name: 'deliveryLocation',
+            type: 'tuple',
+            components: [
+              {
+                name: 'lat',
+                type: 'string',
+              },
+              {
+                name: 'lng',
+                type: 'string',
+              },
+            ],
+          },
+          {
+            name: 'status',
+            type: 'uint8',
+          },
+          {
+            name: 'assignedDriver',
+            type: 'address',
+          },
+          {
+            name: 'createdAt',
+            type: 'uint256',
+          },
+          {
+            name: 'deliveredAt',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAllLogisticsOrders',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'DriverRegistered',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverDeactivated',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverAvailabilityUpdated',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'isAvailable',
+        type: 'bool',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverLocationUpdated',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'lat',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'lng',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderCreated',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
       {
         name: 'tradeId',
         type: 'bytes32',
         indexed: true,
       },
       {
-        name: 'takerOrderId',
+        name: 'buyer',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'seller',
+        type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'quantity',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'driverBounty',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DeliveryAccepted',
+    inputs: [
+      {
+        name: 'orderId',
         type: 'bytes32',
         indexed: true,
       },
       {
-        name: 'makerOrderId',
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'estimatedPickupTime',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'estimatedDeliveryTime',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'PickupConfirmed',
+    inputs: [
+      {
+        name: 'orderId',
         type: 'bytes32',
         indexed: true,
       },
       {
-        name: 'price',
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'lat',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'lng',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderSettled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'driverPayout',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderDisputed',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'reason',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderCancelled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'reason',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'approveOperator',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'revokeOperator',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'slashOperator',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setOperatorReputation',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+      {
+        name: 'newReputation',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'isApprovedOperator',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorStats',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: 'approved',
+        type: 'bool',
+      },
+      {
+        name: 'reputation',
+        type: 'uint256',
+      },
+      {
+        name: 'successfulOps',
+        type: 'uint256',
+      },
+      {
+        name: 'totalValueProcessed',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorReputation',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorSuccessfulOps',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorTotalValueProcessed',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'OperatorApproved',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OperatorRevoked',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OperatorSlashed',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'collateralToken',
+        type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'collateralTokenId',
         type: 'uint256',
         indexed: false,
       },
@@ -2225,8 +3764,24 @@ export const ORDERROUTERFACET_ABI = [
         type: 'uint256',
         indexed: false,
       },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OperatorReputationUpdated',
+    inputs: [
       {
-        name: 'quoteAmount',
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'oldReputation',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'newReputation',
         type: 'uint256',
         indexed: false,
       },
@@ -2234,6 +3789,7 @@ export const ORDERROUTERFACET_ABI = [
   },
 ] as const;
 
+// Export individual facet ABIs for selective imports
 export const CLOBFACET_ABI = [
   {
     type: 'function',
@@ -3719,6 +5275,2628 @@ export const ERC1155RECEIVERFACET_ABI = [
       },
     ],
     stateMutability: 'view',
+  },
+] as const;
+
+export const ORDERROUTERFACET_ABI = [
+  {
+    type: 'function',
+    name: 'placeOrder',
+    inputs: [
+      {
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        name: 'price',
+        type: 'uint96',
+      },
+      {
+        name: 'amount',
+        type: 'uint96',
+      },
+      {
+        name: 'isBuy',
+        type: 'bool',
+      },
+      {
+        name: 'timeInForce',
+        type: 'uint8',
+      },
+      {
+        name: 'expiry',
+        type: 'uint40',
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'placeNodeSellOrder',
+    inputs: [
+      {
+        name: 'nodeOwner',
+        type: 'address',
+      },
+      {
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        name: 'price',
+        type: 'uint96',
+      },
+      {
+        name: 'amount',
+        type: 'uint96',
+      },
+      {
+        name: 'timeInForce',
+        type: 'uint8',
+      },
+      {
+        name: 'expiry',
+        type: 'uint40',
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'placeMarketOrder',
+    inputs: [
+      {
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        name: 'amount',
+        type: 'uint96',
+      },
+      {
+        name: 'isBuy',
+        type: 'bool',
+      },
+      {
+        name: 'maxSlippageBps',
+        type: 'uint16',
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'placeBuyOrder',
+    inputs: [
+      {
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        name: 'price',
+        type: 'uint96',
+      },
+      {
+        name: 'amount',
+        type: 'uint96',
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'placeSellOrder',
+    inputs: [
+      {
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        name: 'price',
+        type: 'uint96',
+      },
+      {
+        name: 'amount',
+        type: 'uint96',
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelOrders',
+    inputs: [
+      {
+        name: 'orderIds',
+        type: 'bytes32[]',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'maker',
+        type: 'address',
+      },
+      {
+        name: 'marketId',
+        type: 'bytes32',
+      },
+      {
+        name: 'price',
+        type: 'uint96',
+      },
+      {
+        name: 'amount',
+        type: 'uint96',
+      },
+      {
+        name: 'filledAmount',
+        type: 'uint64',
+      },
+      {
+        name: 'isBuy',
+        type: 'bool',
+      },
+      {
+        name: 'status',
+        type: 'uint8',
+      },
+      {
+        name: 'timeInForce',
+        type: 'uint8',
+      },
+      {
+        name: 'expiry',
+        type: 'uint40',
+      },
+      {
+        name: 'createdAt',
+        type: 'uint40',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getBestPrices',
+    inputs: [
+      {
+        name: 'marketId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'bestBid',
+        type: 'uint96',
+      },
+      {
+        name: 'bestBidSize',
+        type: 'uint96',
+      },
+      {
+        name: 'bestAsk',
+        type: 'uint96',
+      },
+      {
+        name: 'bestAskSize',
+        type: 'uint96',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'OrderRouted',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'maker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'orderSource',
+        type: 'uint8',
+        indexed: false,
+      },
+      {
+        name: 'isBuy',
+        type: 'bool',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OrderCreated',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'marketId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'maker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'isBuy',
+        type: 'bool',
+        indexed: false,
+      },
+      {
+        name: 'orderType',
+        type: 'uint8',
+        indexed: false,
+      },
+      {
+        name: 'timeInForce',
+        type: 'uint8',
+        indexed: false,
+      },
+      {
+        name: 'expiry',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'nonce',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OrderFilled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'tradeId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'fillAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'fillPrice',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'remainingAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OrderCancelled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'maker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'remainingAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'reason',
+        type: 'uint8',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'TradeExecuted',
+    inputs: [
+      {
+        name: 'tradeId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'takerOrderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'makerOrderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'quoteAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+] as const;
+
+export const ASSETSFACET_ABI = [] as const;
+
+export const AUSYSFACET_ABI = [
+  {
+    type: 'function',
+    name: 'setPayToken',
+    inputs: [
+      {
+        name: '_payToken',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getPayToken',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'setAuSysAdmin',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'revokeAuSysAdmin',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDriver',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDispatcher',
+    inputs: [
+      {
+        name: 'dispatcher',
+        type: 'address',
+      },
+      {
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'hasAuSysRole',
+    inputs: [
+      {
+        name: 'role',
+        type: 'bytes32',
+      },
+      {
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'createAuSysOrder',
+    inputs: [
+      {
+        name: 'sender',
+        type: 'address',
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+      },
+      {
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        name: 'tokenContract',
+        type: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'tokenQuantity',
+        type: 'uint256',
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        name: 'bounty',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getAuSysOrder',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'id',
+            type: 'bytes32',
+          },
+          {
+            name: 'sender',
+            type: 'address',
+          },
+          {
+            name: 'receiver',
+            type: 'address',
+          },
+          {
+            name: 'seller',
+            type: 'address',
+          },
+          {
+            name: 'tokenContract',
+            type: 'address',
+          },
+          {
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            name: 'tokenQuantity',
+            type: 'uint256',
+          },
+          {
+            name: 'bounty',
+            type: 'uint256',
+          },
+          {
+            name: 'totalPrice',
+            type: 'uint256',
+          },
+          {
+            name: 'status',
+            type: 'uint8',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'createJourney',
+    inputs: [
+      {
+        name: 'sender',
+        type: 'address',
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+      },
+      {
+        name: 'bounty',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'createOrderJourney',
+    inputs: [
+      {
+        name: 'sender',
+        type: 'address',
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+      },
+      {
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        name: 'tokenContract',
+        type: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'tokenQuantity',
+        type: 'uint256',
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        name: 'bounty',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getJourney',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'id',
+            type: 'bytes32',
+          },
+          {
+            name: 'sender',
+            type: 'address',
+          },
+          {
+            name: 'receiver',
+            type: 'address',
+          },
+          {
+            name: 'driver',
+            type: 'address',
+          },
+          {
+            name: 'bounty',
+            type: 'uint256',
+          },
+          {
+            name: 'status',
+            type: 'uint8',
+          },
+          {
+            name: 'createdAt',
+            type: 'uint256',
+          },
+          {
+            name: 'updatedAt',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'assignDriverToJourney',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'packageSign',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'handOn',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'handOff',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    name: 'AuSysAdminSet',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'AuSysAdminRevoked',
+    inputs: [
+      {
+        name: 'admin',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'JourneyCreated',
+    inputs: [
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'sender',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'receiver',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverAssigned',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'AuSysOrderSettled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'AuSysOrderStatusUpdated',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'newStatus',
+        type: 'uint8',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'AuSysJourneyStatusUpdated',
+    inputs: [
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'newStatus',
+        type: 'uint8',
+        indexed: false,
+      },
+    ],
+  },
+] as const;
+
+export const BRIDGEFACET_ABI = [] as const;
+
+export const RWYSTAKINGFACET_ABI = [
+  {
+    type: 'function',
+    name: 'initializeRWYStaking',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'createOpportunity',
+    inputs: [
+      {
+        name: 'name',
+        type: 'string',
+      },
+      {
+        name: 'description',
+        type: 'string',
+      },
+      {
+        name: 'inputToken',
+        type: 'address',
+      },
+      {
+        name: 'inputTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'targetAmount',
+        type: 'uint256',
+      },
+      {
+        name: 'outputToken',
+        type: 'address',
+      },
+      {
+        name: 'expectedOutputAmount',
+        type: 'uint256',
+      },
+      {
+        name: 'promisedYieldBps',
+        type: 'uint256',
+      },
+      {
+        name: 'operatorFeeBps',
+        type: 'uint256',
+      },
+      {
+        name: 'minSalePrice',
+        type: 'uint256',
+      },
+      {
+        name: 'fundingDays',
+        type: 'uint256',
+      },
+      {
+        name: 'processingDays',
+        type: 'uint256',
+      },
+      {
+        name: 'collateralToken',
+        type: 'address',
+      },
+      {
+        name: 'collateralTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'collateralAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'startDelivery',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'confirmDelivery',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'deliveredAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'completeProcessing',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'outputTokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'actualOutputAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelOpportunity',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'stake',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'unstake',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'claimProfits',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'emergencyClaim',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'recordSaleProceeds',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'proceeds',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setMinCollateralBps',
+    inputs: [
+      {
+        name: 'bps',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setMaxYieldBps',
+    inputs: [
+      {
+        name: 'bps',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setProtocolFeeBps',
+    inputs: [
+      {
+        name: 'bps',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDefaultProcessingDays',
+    inputs: [
+      {
+        name: 'days_',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'forceCancel',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getOpportunity',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getRWYStake',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'staker',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOpportunityStakers',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'address[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOpportunityCount',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAllOpportunities',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getSaleProceeds',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'proceeds',
+        type: 'uint256',
+      },
+      {
+        name: 'finalized',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getRWYConfig',
+    inputs: [],
+    outputs: [
+      {
+        name: 'minOperatorCollateralBps',
+        type: 'uint256',
+      },
+      {
+        name: 'maxYieldBps',
+        type: 'uint256',
+      },
+      {
+        name: 'protocolFeeBps',
+        type: 'uint256',
+      },
+      {
+        name: 'defaultProcessingDays',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'calculateExpectedProfit',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'stakeAmount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: 'expectedProfit',
+        type: 'uint256',
+      },
+      {
+        name: 'userShareBps',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'OpportunityCreated',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'inputToken',
+        type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'inputTokenId',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'targetAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'promisedYieldBps',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OpportunityFunded',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'totalStaked',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OpportunityCancelled',
+    inputs: [
+      {
+        name: 'id',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'reason',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'CommodityStaked',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'staker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'totalStaked',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'CommodityUnstaked',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'staker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DeliveryStarted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'journeyId',
+        type: 'bytes32',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DeliveryConfirmed',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'deliveredAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ProcessingStarted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ProcessingCompleted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'outputAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'outputTokenId',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'SaleProceedsRecorded',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'proceeds',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ProfitDistributed',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'staker',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'stakedAmount',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'profitShare',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OpportunityCompleted',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'totalProceeds',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+] as const;
+
+export const CLOBLOGISTICSFACET_ABI = [
+  {
+    type: 'function',
+    name: 'registerDriver',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'deactivateDriver',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setDriverAvailability',
+    inputs: [
+      {
+        name: 'isAvailable',
+        type: 'bool',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'updateDriverLocation',
+    inputs: [
+      {
+        name: 'location',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getDriverInfo',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'driver',
+            type: 'address',
+          },
+          {
+            name: 'isActive',
+            type: 'bool',
+          },
+          {
+            name: 'isAvailable',
+            type: 'bool',
+          },
+          {
+            name: 'currentLocation',
+            type: 'tuple',
+            components: [
+              {
+                name: 'lat',
+                type: 'string',
+              },
+              {
+                name: 'lng',
+                type: 'string',
+              },
+            ],
+          },
+          {
+            name: 'totalDeliveries',
+            type: 'uint256',
+          },
+          {
+            name: 'completedDeliveries',
+            type: 'uint256',
+          },
+          {
+            name: 'totalEarnings',
+            type: 'uint256',
+          },
+          {
+            name: 'rating',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAllDrivers',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'address[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAvailableDrivers',
+    inputs: [],
+    outputs: [
+      {
+        name: 'drivers',
+        type: 'address[]',
+      },
+      {
+        name: 'count',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'createLogisticsOrder',
+    inputs: [
+      {
+        name: 'tradeId',
+        type: 'bytes32',
+      },
+      {
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        name: 'sellerNode',
+        type: 'address',
+      },
+      {
+        name: 'token',
+        type: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        name: 'quantity',
+        type: 'uint256',
+      },
+      {
+        name: 'totalPrice',
+        type: 'uint256',
+      },
+      {
+        name: 'pickupLocation',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+      {
+        name: 'deliveryLocation',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'acceptDelivery',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'estimatedPickupTime',
+        type: 'uint256',
+      },
+      {
+        name: 'estimatedDeliveryTime',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'confirmPickup',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'signature',
+        type: 'bytes',
+      },
+      {
+        name: 'location',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'updateDeliveryLocation',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'location',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'confirmDelivery',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'receiverSignature',
+        type: 'bytes',
+      },
+      {
+        name: 'location',
+        type: 'tuple',
+        components: [
+          {
+            name: 'lat',
+            type: 'string',
+          },
+          {
+            name: 'lng',
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'settleLogisticsOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'disputeOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelLogisticsOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getLogisticsOrder',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          {
+            name: 'orderId',
+            type: 'bytes32',
+          },
+          {
+            name: 'tradeId',
+            type: 'bytes32',
+          },
+          {
+            name: 'buyer',
+            type: 'address',
+          },
+          {
+            name: 'seller',
+            type: 'address',
+          },
+          {
+            name: 'sellerNode',
+            type: 'address',
+          },
+          {
+            name: 'token',
+            type: 'address',
+          },
+          {
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            name: 'quantity',
+            type: 'uint256',
+          },
+          {
+            name: 'totalPrice',
+            type: 'uint256',
+          },
+          {
+            name: 'escrowedAmount',
+            type: 'uint256',
+          },
+          {
+            name: 'driverBounty',
+            type: 'uint256',
+          },
+          {
+            name: 'pickupLocation',
+            type: 'tuple',
+            components: [
+              {
+                name: 'lat',
+                type: 'string',
+              },
+              {
+                name: 'lng',
+                type: 'string',
+              },
+            ],
+          },
+          {
+            name: 'deliveryLocation',
+            type: 'tuple',
+            components: [
+              {
+                name: 'lat',
+                type: 'string',
+              },
+              {
+                name: 'lng',
+                type: 'string',
+              },
+            ],
+          },
+          {
+            name: 'status',
+            type: 'uint8',
+          },
+          {
+            name: 'assignedDriver',
+            type: 'address',
+          },
+          {
+            name: 'createdAt',
+            type: 'uint256',
+          },
+          {
+            name: 'deliveredAt',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAllLogisticsOrders',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32[]',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getNodeInventory',
+    inputs: [
+      {
+        name: 'node',
+        type: 'address',
+      },
+      {
+        name: 'token',
+        type: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: 'available',
+        type: 'uint256',
+      },
+      {
+        name: 'reserved',
+        type: 'uint256',
+      },
+      {
+        name: 'price',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'DriverRegistered',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverDeactivated',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverAvailabilityUpdated',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'isAvailable',
+        type: 'bool',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DriverLocationUpdated',
+    inputs: [
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'lat',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'lng',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderCreated',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'tradeId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'buyer',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'seller',
+        type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'quantity',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'driverBounty',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DeliveryAccepted',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'estimatedPickupTime',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'estimatedDeliveryTime',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'PickupConfirmed',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'lat',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'lng',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DeliveryConfirmed',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'driver',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'lat',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'lng',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderSettled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'driverPayout',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderDisputed',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'reason',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LogisticsOrderCancelled',
+    inputs: [
+      {
+        name: 'orderId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'reason',
+        type: 'string',
+        indexed: false,
+      },
+    ],
+  },
+] as const;
+
+export const OPERATORFACET_ABI = [
+  {
+    type: 'function',
+    name: 'approveOperator',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'revokeOperator',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'slashOperator',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setOperatorReputation',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+      {
+        name: 'newReputation',
+        type: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'isApprovedOperator',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorStats',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: 'approved',
+        type: 'bool',
+      },
+      {
+        name: 'reputation',
+        type: 'uint256',
+      },
+      {
+        name: 'successfulOps',
+        type: 'uint256',
+      },
+      {
+        name: 'totalValueProcessed',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorReputation',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorSuccessfulOps',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOperatorTotalValueProcessed',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'OperatorApproved',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OperatorRevoked',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OperatorSlashed',
+    inputs: [
+      {
+        name: 'opportunityId',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'collateralToken',
+        type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'collateralTokenId',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OperatorReputationUpdated',
+    inputs: [
+      {
+        name: 'operator',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'oldReputation',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'newReputation',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
   },
 ] as const;
 

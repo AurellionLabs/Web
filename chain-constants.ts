@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-01-20T14:56:42.652Z
+// Deployed: 2026-01-31T17:42:12.293Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -119,4 +119,4 @@ export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
 // RWY_VAULT_DEPLOY_BLOCK removed - now part of Diamond
 
 export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
-  '0xf5fB721a347C3Ba4a87c41011D3293dC93370d74';
+  '0xDf1d40B83a9f204E69C59be85828e7384A432C98';

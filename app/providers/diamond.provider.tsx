@@ -318,8 +318,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       });
 
       // First, approve Diamond to transfer user's tokens
-      const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } =
-        await import('@/chain-constants');
+      const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+        '@/chain-constants'
+      );
       const { ethers } = await import('ethers');
 
       const signer = await diamondContext.getSigner();
