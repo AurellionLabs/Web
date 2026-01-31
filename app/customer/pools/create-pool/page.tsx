@@ -723,7 +723,7 @@ export default function CreatePoolPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-muted-foreground">
-                          Target Sale Price (AURUM)
+                          Target Sale Price
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -751,7 +751,7 @@ export default function CreatePoolPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-muted-foreground">
-                          Your Collateral (AURUM)
+                          Your Collateral (AURA)
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -785,7 +785,7 @@ export default function CreatePoolPage() {
                               }`}
                             >
                               Minimum Required:{' '}
-                              {minimumRequiredCollateral.toLocaleString()} AURUM
+                              {minimumRequiredCollateral.toLocaleString()} AURA
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
                               20% of ({fundingGoal || '0'} ×{' '}
