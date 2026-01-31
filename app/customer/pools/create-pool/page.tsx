@@ -111,6 +111,11 @@ const formSchema = z.object({
   assetName: z.string().min(1, {
     message: 'Please select an asset.',
   }),
+  fundingGoal: z
+    .string()
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      message: 'Please enter a valid number greater than 0.',
+    }),
   durationDays: z
     .string()
     .refine(
@@ -131,16 +136,62 @@ const formSchema = z.object({
       message: 'Reward rate must be between 1 and 100.',
     },
   ),
-  fundingGoal: z
-    .string()
-    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+  assetPrice: z.string().refine(
+    (val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num > 0;
+    },
+    {
       message: 'Please enter a valid number greater than 0.',
-    }),
-  assetPrice: z
-    .string()
-    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+    },
+  ),
+  minSalePrice: z.string().refine(
+    (val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num > 0;
+    },
+    {
       message: 'Please enter a valid number greater than 0.',
-    }),
+    },
+  ),
+  collateralAmount: z.string().refine(
+    (val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num > 0;
+    },
+    {
+      message: 'Please enter a valid number greater than 0.',
+    },
+  ),
+  operatorFeeBps: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const num = parseFloat(val);
+        return !isNaN(num) && num >= 0 && num <= 1000;
+      },
+      {
+        message: 'Operator fee must be between 0 and 1000 bps (0-10%).',
+      },
+    ),
+  processingDays: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        return (
+          !isNaN(parseInt(val)) &&
+          Number.isInteger(Number(val)) &&
+          parseInt(val) > 0
+        );
+      },
+      {
+        message: 'Please enter a valid whole number greater than 0.',
+      },
+    ),
   supportingDocuments: z
     .array(z.instanceof(File))
     .optional()
@@ -188,10 +239,14 @@ export default function CreatePoolPage() {
       name: '',
       description: '',
       assetName: '',
+      fundingGoal: '',
       durationDays: '',
       rewardRate: '',
-      fundingGoal: '',
       assetPrice: '',
+      minSalePrice: '',
+      collateralAmount: '',
+      operatorFeeBps: '500',
+      processingDays: '',
       supportingDocuments: [],
     },
   });
@@ -231,6 +286,14 @@ export default function CreatePoolPage() {
         durationDays: parseInt(values.durationDays),
         rewardRate: String(parseFloat(values.rewardRate) * 100),
         assetPrice: values.assetPrice,
+        minSalePrice: values.minSalePrice,
+        collateralAmount: values.collateralAmount,
+        operatorFeeBps: values.operatorFeeBps
+          ? parseInt(values.operatorFeeBps)
+          : undefined,
+        processingDays: values.processingDays
+          ? parseInt(values.processingDays)
+          : undefined,
         supportingDocuments:
           supportingDocuments.length > 0 ? supportingDocuments : undefined,
       };
@@ -420,7 +483,33 @@ export default function CreatePoolPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="assetPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Asset Price (USD)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0"
+                            placeholder="e.g., 100"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-muted-foreground/70">
+                          Display price in USD
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="fundingGoal"
@@ -446,27 +535,147 @@ export default function CreatePoolPage() {
 
                   <FormField
                     control={form.control}
-                    name="assetPrice"
+                    name="minSalePrice"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-muted-foreground">
-                          Asset Price
+                          Target Sale Price (AURUM)
                         </FormLabel>
                         <FormControl>
                           <Input
                             type="number"
                             step="any"
                             min="0"
-                            placeholder="e.g., 100"
+                            placeholder="e.g., 10"
                             className="bg-surface-overlay border-glass-border"
                             {...field}
                           />
                         </FormControl>
+                        <FormDescription className="text-muted-foreground/70">
+                          Expected sale price per unit
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="collateralAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Your Collateral (AURUM)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0"
+                            placeholder="e.g., 2000"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-muted-foreground/70">
+                          Your stake to back this opportunity
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Advanced Parameters Section */}
+              <div className="space-y-4 pt-4 border-t border-glass-border">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Zap className="w-4 h-4 text-accent" />
+                  <span>Advanced Parameters (Optional)</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="operatorFeeBps"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Operator Fee (bps)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="1000"
+                            placeholder="e.g., 500"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-muted-foreground/70">
+                          Fee for operator (1-10%)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="processingDays"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Processing Days
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="1"
+                            placeholder="e.g., 30"
+                            className="bg-surface-overlay border-glass-border"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-muted-foreground/70">
+                          Days to process after funding
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="collateralAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground">
+                        Collateral Amount
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="any"
+                          min="0"
+                          placeholder="e.g., 1000"
+                          className="bg-surface-overlay border-glass-border"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-muted-foreground/70">
+                        Operator collateral amount (in input token)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               {/* Documents Section */}

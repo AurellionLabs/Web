@@ -24,20 +24,22 @@ export type BigNumberString = string;
  * Represents the core Pool entity.
  */
 export interface Pool {
-  id: string; // Unique identifier from the smart contract (operation ID)
+  id: string;
   name: string;
   description: string;
-  assetName: string; // Name of the underlying asset (e.g., "Real Estate Fund X", "Goat")
-  tokenAddress: Address; // The address of the token used for staking/funding
-  providerAddress: Address; // The address that created and manages the pool
-  fundingGoal: BigNumberString; // The target amount for the pool in the specified token
-  totalValueLocked: BigNumberString; // The current amount funded/staked in the pool
-  startDate: number; // Unix timestamp (in seconds) when the pool operation began or will begin
-  durationDays: number; // The intended duration of the pool operation in days
-  rewardRate: number; // Reward rate as a number (e.g., 5.0 for 5%)
-  assetPrice: BigNumberString; // Price of the underlying asset (set during creation)
+  assetName: string;
+  tokenAddress: Address;
+  providerAddress: Address;
+  fundingGoal: BigNumberString;
+  totalValueLocked: BigNumberString;
+  startDate: number;
+  durationDays: number;
+  rewardRate: number;
+  assetPrice: BigNumberString;
+  minSalePrice?: BigNumberString;
+  collateralAmount?: BigNumberString;
   status: PoolStatus;
-  supportingDocuments?: SupportingDocument[]; // Supporting documents uploaded to IPFS
+  supportingDocuments?: SupportingDocument[];
 }
 
 /**
@@ -59,12 +61,15 @@ export interface PoolCreationData {
   description: string;
   assetName: string;
   tokenAddress: Address;
-  // providerAddress might be implicit (msg.sender in contract)
   fundingGoal: BigNumberString;
   durationDays: number;
-  rewardRate: BigNumberString; // Reward rate in basis points as string
-  assetPrice: BigNumberString; // Price of the underlying asset at creation
-  supportingDocuments?: SupportingDocument[]; // Optional supporting documents
+  rewardRate: BigNumberString;
+  assetPrice: BigNumberString;
+  minSalePrice: BigNumberString;
+  collateralAmount: BigNumberString;
+  operatorFeeBps?: number;
+  processingDays?: number;
+  supportingDocuments?: SupportingDocument[];
 }
 
 /**
