@@ -32,82 +32,117 @@ import {
 import { keccak256, encodePacked } from 'viem';
 
 // =============================================================================
-// GRAPHQL QUERIES (Event-Sourced)
+// GRAPHQL QUERIES (Event-Sourced from Ponder)
 // =============================================================================
+// Table names follow pattern: diamond{EventName}Eventss (note double 's' from Ponder pluralization)
+// Field names use snake_case as stored in Ponder
 
 const GET_ORDER_BOOK_EVENTS = `
-  query GetOrderBookEvents($marketId: String!, $limit: Int!) {
+  query GetOrderBookEvents($baseToken: String!, $baseTokenId: BigInt!, $limit: Int!) {
     # Get all placed orders for this market
-    placedOrders: orderPlacedEventss(
-      where: { baseTokenId: $marketId }
-      orderBy: "blockTimestamp"
+    placedOrders: diamondOrderPlacedWithTokensEventss(
+      where: { base_token: $baseToken, base_token_id: $baseTokenId }
+      orderBy: "block_timestamp"
       orderDirection: "desc"
       limit: 500
     ) {
       items {
         id
-        orderId
+        order_id
         maker
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        isBuy
-        orderType
-        blockTimestamp
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
+      }
+    }
+    
+    # Also get router-placed orders
+    routerPlacedOrders: diamondRouterOrderPlacedEventss(
+      where: { base_token: $baseToken, base_token_id: $baseTokenId }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: 500
+    ) {
+      items {
+        id
+        order_id
+        maker
+        base_token
+        base_token_id
+        quote_token
+        price
+        amount
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
       }
     }
     
     # Get cancelled order IDs
-    cancelledOrders: orderCancelledEventss(
-      where: { orderId_isNull: false }
-      limit: 1000
-    ) {
-      items {
-        orderId
-        blockTimestamp
-      }
-    }
-    
-    # Get filled amounts from trade events
-    filledOrders: tradeExecutedEventss(
-      where: { makerOrderId_isNull: false }
-      orderBy: "blockTimestamp"
+    cancelledOrders: diamondCLOBOrderCancelledEventss(
+      orderBy: "block_timestamp"
       orderDirection: "desc"
       limit: 1000
     ) {
       items {
-        makerOrderId
-        takerOrderId
-        amount
-        price
-        blockTimestamp
+        order_id
+        maker
+        remaining_amount
+        reason
+        block_timestamp
+      }
+    }
+    
+    # Get filled amounts from trade events
+    filledOrders: diamondCLOBOrderFilledEventss(
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: 1000
+    ) {
+      items {
+        order_id
+        trade_id
+        fill_amount
+        fill_price
+        remaining_amount
+        cumulative_filled
+        block_timestamp
       }
     }
   }
 `;
 
 const GET_TRADES_EVENTS = `
-  query GetTradesEvents($marketId: String!, $limit: Int!) {
-    trades: tradeExecutedEventss(
-      where: { baseTokenId: $marketId }
-      orderBy: "blockTimestamp"
+  query GetTradesEvents($limit: Int!) {
+    trades: diamondCLOBTradeExecutedEventss(
+      orderBy: "timestamp"
       orderDirection: "desc"
       limit: $limit
     ) {
       items {
         id
-        tradeId
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
-        baseToken
-        baseTokenId
+        market_id
         price
         amount
-        quoteAmount
+        quote_amount
+        taker_fee
+        maker_fee
         timestamp
-        blockTimestamp
-        transactionHash
+        taker_is_buy
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -115,48 +150,54 @@ const GET_TRADES_EVENTS = `
 
 const GET_USER_TRADES_EVENTS = `
   query GetUserTradesEvents($user: String!, $limit: Int!) {
-    takerTrades: tradeExecutedEventss(
+    takerTrades: diamondCLOBTradeExecutedEventss(
       where: { taker: $user }
-      orderBy: "blockTimestamp"
+      orderBy: "timestamp"
       orderDirection: "desc"
       limit: $limit
     ) {
       items {
         id
-        tradeId
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
-        baseToken
-        baseTokenId
+        market_id
         price
         amount
-        quoteAmount
+        quote_amount
+        taker_fee
+        maker_fee
         timestamp
-        transactionHash
+        taker_is_buy
+        block_timestamp
+        transaction_hash
       }
     }
-    makerTrades: tradeExecutedEventss(
+    makerTrades: diamondCLOBTradeExecutedEventss(
       where: { maker: $user }
-      orderBy: "blockTimestamp"
+      orderBy: "timestamp"
       orderDirection: "desc"
       limit: $limit
     ) {
       items {
         id
-        tradeId
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
-        baseToken
-        baseTokenId
+        market_id
         price
         amount
-        quoteAmount
+        quote_amount
+        taker_fee
+        maker_fee
         timestamp
-        transactionHash
+        taker_is_buy
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -164,33 +205,60 @@ const GET_USER_TRADES_EVENTS = `
 
 const GET_USER_ORDER_EVENTS = `
   query GetUserOrderEvents($maker: String!, $limit: Int!) {
-    placedOrders: orderPlacedEventss(
+    placedOrders: diamondOrderPlacedWithTokensEventss(
       where: { maker: $maker }
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
       limit: $limit
     ) {
       items {
         id
-        orderId
+        order_id
         maker
-        baseToken
-        baseTokenId
-        quoteToken
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        isBuy
-        orderType
-        blockTimestamp
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
       }
     }
-    cancellations: orderCancelledEventss(
+    routerPlacedOrders: diamondRouterOrderPlacedEventss(
       where: { maker: $maker }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
       limit: $limit
     ) {
       items {
-        orderId
-        blockTimestamp
+        id
+        order_id
+        maker
+        base_token
+        base_token_id
+        quote_token
+        price
+        amount
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
+      }
+    }
+    cancellations: diamondCLOBOrderCancelledEventss(
+      where: { maker: $maker }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      items {
+        order_id
+        maker
+        remaining_amount
+        reason
+        block_timestamp
       }
     }
   }
@@ -234,57 +302,61 @@ export class CLOBV2Repository implements ICLOBRepository {
     try {
       const response = await graphqlRequest<{
         placedOrders: { items: any[] };
+        routerPlacedOrders: { items: any[] };
         cancelledOrders: { items: any[] };
         filledOrders: { items: any[] };
       }>(this.graphQLEndpoint, GET_ORDER_BOOK_EVENTS, {
-        marketId,
+        baseToken: baseToken.toLowerCase(),
+        baseTokenId,
         limit: levels,
       });
 
-      const placedOrders = response.placedOrders?.items || [];
+      // Combine direct and router placed orders
+      const placedOrders = [
+        ...(response.placedOrders?.items || []),
+        ...(response.routerPlacedOrders?.items || []),
+      ];
       const cancelledOrders = response.cancelledOrders?.items || [];
       const filledOrders = response.filledOrders?.items || [];
 
-      // Build set of cancelled order IDs
+      // Build set of cancelled order IDs (using snake_case field)
       const cancelledOrderIds = new Set(
-        cancelledOrders.map((c: any) => c.orderId),
+        cancelledOrders.map((c: any) => c.order_id),
       );
 
-      // Build map of filled amounts for each order
-      const filledAmounts = new Map<string, bigint>();
-      const orderPrices = new Map<
-        string,
-        { price: string; isBuy: boolean; timestamp: string }
-      >();
-
+      // Build map of remaining amounts for each order from fill events
+      const remainingAmounts = new Map<string, bigint>();
       for (const fill of filledOrders) {
-        const orderId = fill.makerOrderId || fill.takerOrderId;
+        const orderId = fill.order_id;
         if (orderId) {
-          const currentFilled = filledAmounts.get(orderId) || 0n;
-          filledAmounts.set(orderId, currentFilled + BigInt(fill.amount || 0));
+          // Use the remaining_amount from the latest fill event
+          remainingAmounts.set(orderId, BigInt(fill.remaining_amount || 0));
         }
       }
 
       // Filter and transform orders
       const openOrders = placedOrders.filter((order: any) => {
+        const orderId = order.order_id;
         // Exclude cancelled orders
-        if (cancelledOrderIds.has(order.orderId)) return false;
+        if (cancelledOrderIds.has(orderId)) return false;
 
-        // Check if order is filled
-        const filled = filledAmounts.get(order.orderId) || 0n;
-        const originalAmount = BigInt(order.amount || 0);
+        // Check if order is filled (remaining = 0)
+        if (remainingAmounts.has(orderId)) {
+          const remaining = remainingAmounts.get(orderId)!;
+          return remaining > 0n;
+        }
 
-        // Order is still open if not fully filled
-        return filled < originalAmount;
+        // No fill events means order is still fully open
+        return true;
       });
 
-      // Aggregate by price level
+      // Aggregate by price level (using snake_case field is_buy)
       const bids = this.aggregatePriceLevels(
-        openOrders.filter((o: any) => o.isBuy),
+        openOrders.filter((o: any) => o.is_buy),
         true,
       );
       const asks = this.aggregatePriceLevels(
-        openOrders.filter((o: any) => !o.isBuy),
+        openOrders.filter((o: any) => !o.is_buy),
         false,
       );
 
@@ -368,41 +440,45 @@ export class CLOBV2Repository implements ICLOBRepository {
     baseTokenId: string,
     limit: number = 50,
   ): Promise<CLOBOrder[]> {
-    const marketId = this.getMarketId(
-      baseToken,
-      baseTokenId,
-      this.quoteTokenAddress,
-    );
-
     try {
       const response = await graphqlRequest<{
         placedOrders: { items: any[] };
+        routerPlacedOrders: { items: any[] };
         cancelledOrders: { items: any[] };
         filledOrders: { items: any[] };
-      }>(this.graphQLEndpoint, GET_ORDER_BOOK_EVENTS, { marketId, limit: 100 });
+      }>(this.graphQLEndpoint, GET_ORDER_BOOK_EVENTS, {
+        baseToken: baseToken.toLowerCase(),
+        baseTokenId,
+        limit: 100,
+      });
 
-      const placedOrders = response.placedOrders?.items || [];
+      // Combine direct and router placed orders
+      const placedOrders = [
+        ...(response.placedOrders?.items || []),
+        ...(response.routerPlacedOrders?.items || []),
+      ];
       const cancelledOrders = response.cancelledOrders?.items || [];
       const filledOrders = response.filledOrders?.items || [];
 
       const cancelledOrderIds = new Set(
-        cancelledOrders.map((c: any) => c.orderId),
+        cancelledOrders.map((c: any) => c.order_id),
       );
-      const filledAmounts = new Map<string, bigint>();
+      const remainingAmounts = new Map<string, bigint>();
 
       for (const fill of filledOrders) {
-        const orderId = fill.makerOrderId || fill.takerOrderId;
+        const orderId = fill.order_id;
         if (orderId) {
-          const currentFilled = filledAmounts.get(orderId) || 0n;
-          filledAmounts.set(orderId, currentFilled + BigInt(fill.amount || 0));
+          remainingAmounts.set(orderId, BigInt(fill.remaining_amount || 0));
         }
       }
 
       const openOrders = placedOrders.filter((order: any) => {
-        if (cancelledOrderIds.has(order.orderId)) return false;
-        const filled = filledAmounts.get(order.orderId) || 0n;
-        const originalAmount = BigInt(order.amount || 0);
-        return filled < originalAmount;
+        const orderId = order.order_id;
+        if (cancelledOrderIds.has(orderId)) return false;
+        if (remainingAmounts.has(orderId)) {
+          return remainingAmounts.get(orderId)! > 0n;
+        }
+        return true;
       });
 
       return openOrders
@@ -422,20 +498,25 @@ export class CLOBV2Repository implements ICLOBRepository {
     try {
       const response = await graphqlRequest<{
         placedOrders: { items: any[] };
+        routerPlacedOrders: { items: any[] };
         cancellations: { items: any[] };
       }>(this.graphQLEndpoint, GET_USER_ORDER_EVENTS, {
         maker: userAddress.toLowerCase(),
         limit,
       });
 
-      const placedOrders = response.placedOrders?.items || [];
+      // Combine direct and router placed orders
+      const placedOrders = [
+        ...(response.placedOrders?.items || []),
+        ...(response.routerPlacedOrders?.items || []),
+      ];
       const cancellations = response.cancellations?.items || [];
       const cancelledOrderIds = new Set(
-        cancellations.map((c: any) => c.orderId),
+        cancellations.map((c: any) => c.order_id),
       );
 
       let orders = placedOrders.filter(
-        (o: any) => !cancelledOrderIds.has(o.orderId),
+        (o: any) => !cancelledOrderIds.has(o.order_id),
       );
 
       // Filter by status if specified
@@ -469,19 +550,13 @@ export class CLOBV2Repository implements ICLOBRepository {
     baseTokenId: string,
     limit: number = 50,
   ): Promise<CLOBTrade[]> {
-    const marketId = this.getMarketId(
-      baseToken,
-      baseTokenId,
-      this.quoteTokenAddress,
-    );
-
     try {
       const response = await graphqlRequest<{
         trades: { items: any[] };
-      }>(this.graphQLEndpoint, GET_TRADES_EVENTS, { marketId, limit });
+      }>(this.graphQLEndpoint, GET_TRADES_EVENTS, { limit });
 
       return (response.trades?.items || []).map((t: any) =>
-        this.mapTradeToDomain(t),
+        this.mapTradeToDomain(t, baseToken, baseTokenId),
       );
     } catch (error) {
       console.error('[CLOBV2Repository] Failed to get trades:', error);
@@ -513,8 +588,8 @@ export class CLOBV2Repository implements ICLOBRepository {
       );
       uniqueTrades.sort(
         (a: any, b: any) =>
-          Number(b.block_timestamp || b.timestamp) -
-          Number(a.block_timestamp || a.timestamp),
+          Number(b.timestamp || b.block_timestamp) -
+          Number(a.timestamp || a.block_timestamp),
       );
 
       return uniqueTrades
@@ -689,6 +764,7 @@ export class CLOBV2Repository implements ICLOBRepository {
 
     for (const order of orders) {
       const price = order.price;
+      // Amount is the original order amount (use remaining if available from fill tracking)
       const remaining = BigInt(order.amount || 0);
 
       if (priceMap.has(price)) {
@@ -743,47 +819,55 @@ export class CLOBV2Repository implements ICLOBRepository {
   }
 
   private mapOrderToDomain(order: any): CLOBOrder {
+    // Handle both snake_case (from Ponder) and camelCase (legacy) field names
     return {
-      id: order.orderId || order.id,
+      id: order.order_id || order.orderId || order.id,
       maker: order.maker,
-      baseToken: order.baseToken || '',
-      baseTokenId: order.baseTokenId || '0',
-      quoteToken: order.quoteToken || '',
+      baseToken: order.base_token || order.baseToken || '',
+      baseTokenId: order.base_token_id || order.baseTokenId || '0',
+      quoteToken: order.quote_token || order.quoteToken || '',
       price: order.price || '0',
       amount: order.amount || '0',
       filledAmount: '0', // Would need fill aggregation
       remainingAmount: order.amount || '0',
-      isBuy: order.isBuy ?? true,
-      orderType: this.numberToOrderType(Number(order.orderType || 0)),
+      isBuy: order.is_buy ?? order.isBuy ?? true,
+      orderType: this.numberToOrderType(
+        Number(order.order_type || order.orderType || 0),
+      ),
       status: CLOBOrderStatus.OPEN, // Would need status aggregation
       timeInForce: TimeInForce.GTC,
       expiry: 0,
       createdAt: Number(order.block_timestamp || 0) * 1000,
       updatedAt: Number(order.block_timestamp || 0) * 1000,
-      marketId: order.baseTokenId || '',
+      marketId: order.base_token_id || order.baseTokenId || '',
       nonce: '0',
     };
   }
 
-  private mapTradeToDomain(trade: any): CLOBTrade {
+  private mapTradeToDomain(
+    trade: any,
+    baseToken: string = '',
+    baseTokenId: string = '0',
+  ): CLOBTrade {
+    // Handle snake_case field names from Ponder
     return {
-      id: trade.tradeId || trade.id,
-      takerOrderId: trade.takerOrderId,
-      makerOrderId: trade.makerOrderId,
+      id: trade.trade_id || trade.tradeId || trade.id,
+      takerOrderId: trade.taker_order_id || trade.takerOrderId,
+      makerOrderId: trade.maker_order_id || trade.makerOrderId,
       taker: trade.taker,
       maker: trade.maker,
-      baseToken: trade.baseToken || '',
-      baseTokenId: trade.baseTokenId || '0',
+      baseToken: baseToken,
+      baseTokenId: baseTokenId,
       quoteToken: '',
       price: trade.price || '0',
       amount: trade.amount || '0',
-      quoteAmount: trade.quoteAmount || '0',
-      takerFee: '0',
-      makerFee: '0',
-      timestamp: Number(trade.block_timestamp || trade.timestamp || 0) * 1000,
+      quoteAmount: trade.quote_amount || trade.quoteAmount || '0',
+      takerFee: trade.taker_fee || '0',
+      makerFee: trade.maker_fee || '0',
+      timestamp: Number(trade.timestamp || trade.block_timestamp || 0) * 1000,
       transactionHash: trade.transaction_hash || '',
-      takerIsBuy: true,
-      marketId: trade.baseTokenId || '',
+      takerIsBuy: trade.taker_is_buy ?? true,
+      marketId: trade.market_id || baseTokenId,
     };
   }
 

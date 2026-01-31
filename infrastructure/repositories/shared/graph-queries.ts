@@ -1,272 +1,50 @@
 import { gql } from 'graphql-request';
 
 // =============================================================================
-// CLOB V2 QUERIES - Event-sourced from raw events
-// =============================================================================
-
-/**
- * Query to get order book by aggregating from orderPlacedEvents
- * Excludes cancelled/filled orders based on orderCancelledEvents and tradeExecutedEvents
- */
-export const GET_ORDER_BOOK_EVENTS = gql`
-  query GetOrderBookEvents($marketId: String!, $limit: Int!) {
-    # Get all placed orders for this market
-    placedOrders: orderPlacedEventss(
-      where: { baseTokenId: $marketId }
-      orderBy: "blockTimestamp"
-      orderDirection: "desc"
-      limit: 500
-    ) {
-      items {
-        id
-        orderId
-        maker
-        price
-        amount
-        isBuy
-        orderType
-        blockTimestamp
-      }
-    }
-
-    # Get cancelled order IDs
-    cancelledOrders: orderCancelledEventss(
-      where: { orderId_isNull: false }
-      limit: 1000
-    ) {
-      items {
-        orderId
-        blockTimestamp
-      }
-    }
-
-    # Get filled amounts from trade events
-    filledOrders: tradeExecutedEventss(
-      where: { makerOrderId_isNull: false }
-      orderBy: "blockTimestamp"
-      orderDirection: "desc"
-      limit: 1000
-    ) {
-      items {
-        makerOrderId
-        amount
-        price
-        blockTimestamp
-      }
-    }
-  }
-`;
-
-/**
- * Query to get a single order by aggregating its history from events
- */
-export const GET_ORDER_BY_ID_EVENTS = gql`
-  query GetOrderByIdEvents($orderId: String!) {
-    # Get the original order placement
-    orderPlacement: orderPlacedEvents(where: { orderId: $orderId }) {
-      id
-      orderId
-      maker
-      baseToken
-      baseTokenId
-      quoteToken
-      price
-      amount
-      isBuy
-      orderType
-      blockTimestamp
-      transactionHash
-    }
-
-    # Get cancellation if any
-    cancellation: orderCancelledEvents(where: { orderId: $orderId }) {
-      id
-      orderId
-      remainingAmount
-      blockTimestamp
-    }
-
-    # Get all fills for this order
-    fills: orderMatchedEventss(
-      where: { makerOrderId: $orderId }
-      orderBy: "blockTimestamp"
-      orderDirection: "asc"
-    ) {
-      items {
-        id
-        takerOrderId
-        fillAmount
-        fillPrice
-        blockTimestamp
-      }
-    }
-  }
-`;
-
-/**
- * Query to get user orders by aggregating from events
- */
-export const GET_USER_ORDER_EVENTS = gql`
-  query GetUserOrderEvents($maker: String!, $limit: Int!) {
-    # Get all orders placed by this user
-    placedOrders: orderPlacedEventss(
-      where: { maker: $maker }
-      orderBy: "blockTimestamp"
-      orderDirection: "desc"
-      limit: $limit
-    ) {
-      items {
-        id
-        orderId
-        maker
-        baseToken
-        baseTokenId
-        quoteToken
-        price
-        amount
-        isBuy
-        orderType
-        blockTimestamp
-      }
-    }
-
-    # Get cancellations
-    cancellations: orderCancelledEventss(
-      where: { maker: $maker }
-      limit: $limit
-    ) {
-      items {
-        orderId
-        blockTimestamp
-      }
-    }
-  }
-`;
-
-/**
- * Query to get trades from tradeExecutedEvents
- */
-export const GET_TRADES_EVENTS = gql`
-  query GetTradesEvents($marketId: String!, $limit: Int!) {
-    trades: tradeExecutedEventss(
-      where: { baseTokenId: $marketId }
-      orderBy: "blockTimestamp"
-      orderDirection: "desc"
-      limit: $limit
-    ) {
-      items {
-        id
-        tradeId
-        takerOrderId
-        makerOrderId
-        taker
-        maker
-        baseToken
-        baseTokenId
-        price
-        amount
-        quoteAmount
-        timestamp
-        blockTimestamp
-        transactionHash
-      }
-    }
-  }
-`;
-
-/**
- * Query to get user trades
- */
-export const GET_USER_TRADES_EVENTS = gql`
-  query GetUserTradesEvents($user: String!, $limit: Int!) {
-    takerTrades: tradeExecutedEventss(
-      where: { taker: $user }
-      orderBy: "blockTimestamp"
-      orderDirection: "desc"
-      limit: $limit
-    ) {
-      items {
-        id
-        tradeId
-        takerOrderId
-        makerOrderId
-        taker
-        maker
-        baseToken
-        baseTokenId
-        price
-        amount
-        quoteAmount
-        timestamp
-        transactionHash
-      }
-    }
-    makerTrades: tradeExecutedEventss(
-      where: { maker: $user }
-      orderBy: "blockTimestamp"
-      orderDirection: "desc"
-      limit: $limit
-    ) {
-      items {
-        id
-        tradeId
-        takerOrderId
-        makerOrderId
-        taker
-        maker
-        baseToken
-        baseTokenId
-        price
-        amount
-        quoteAmount
-        timestamp
-        transactionHash
-      }
-    }
-  }
-`;
-
-// =============================================================================
 // AURUM/AURA ASSET QUERIES
 // =============================================================================
+// Table names follow pattern: diamond{EventName}Eventss (note double 's' from Ponder pluralization)
+// Field names use snake_case as stored in Ponder
 
 /**
  * Query to get all tokenIds owned by a specific node address
  * Uses TransferSingle events to track current ownership
  */
 export const GET_NODE_TOKENIDS = gql`
-  query GetNodeTokenIds($nodeAddress: Bytes!) {
+  query GetNodeTokenIds($nodeAddress: String!) {
     # Get all transfers TO the node address
-    transfersIn: transferEventss(
+    transfersIn: diamondTransferSingleEventss(
       where: { to: $nodeAddress }
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        tokenId
-        value
+        operator
         from
         to
-        blockTimestamp
-        transactionHash
+        event_id
+        value
+        block_timestamp
+        transaction_hash
       }
     }
 
     # Get all transfers FROM the node address
-    transfersOut: transferEventss(
+    transfersOut: diamondTransferSingleEventss(
       where: { from: $nodeAddress }
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        tokenId
-        value
+        operator
         from
         to
-        blockTimestamp
-        transactionHash
+        event_id
+        value
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -277,67 +55,73 @@ export const GET_NODE_TOKENIDS = gql`
  * assets that were originally minted to this node
  */
 export const GET_NODE_MINTED_ASSETS = gql`
-  query GetNodeMintedAssets($nodeAddress: Bytes!) {
-    mintedAssetEventss(
+  query GetNodeMintedAssets($nodeAddress: String!) {
+    diamondMintedAssetEventss(
       where: { account: $nodeAddress }
-      orderBy: "blockTimestamp"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        tokenId
+        account
         hash
-        assetName
-        assetClass
-        className
-        blockTimestamp
-        transactionHash
+        token_id
+        name
+        asset_class
+        class_name
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
 /**
- * Query Ponder indexer for node assets (pricing and capacity)
+ * Query Ponder indexer for node supported assets (pricing and capacity)
+ * Uses SupportedAssetAdded events from the indexer
  */
 export const GET_NODE_ASSETS_AURUM = gql`
   query GetNodeAssetsAurum($nodeAddress: String!) {
-    nodeAssetss(where: { node: $nodeAddress }) {
+    diamondSupportedAssetAddedEventss(
+      where: { node_hash: $nodeAddress }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
       items {
         id
-        node
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
-        createdAt
-        updatedAt
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
 /**
- * Query Ponder indexer for ALL node assets (pricing and capacity)
- * Note: Ponder uses cursor-based pagination with before/after, not skip
+ * Query Ponder indexer for ALL node supported assets (pricing and capacity)
+ * Uses SupportedAssetAdded events from the indexer
  */
 export const GET_ALL_NODE_ASSETS_AURUM = gql`
   query GetAllNodeAssetsAurum($limit: Int!, $after: String) {
-    nodeAssetss(
+    diamondSupportedAssetAddedEventss(
       limit: $limit
       after: $after
-      orderBy: "createdAt"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
     ) {
       items {
         id
-        node
+        node_hash
         token
-        tokenId
+        token_id
         price
         capacity
-        createdAt
-        updatedAt
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -348,75 +132,88 @@ export const GET_ALL_NODE_ASSETS_AURUM = gql`
 `;
 
 /**
- * Query AuraAsset subgraph for user balances and asset metadata
- * Updated for Ponder API - uses plural table names and limit instead of first/skip
+ * Query for user token transfers to calculate balances
+ * Uses TransferSingle events - must aggregate in client to get balances
+ * Note: For actual balances, prefer on-chain balanceOf calls
  */
 export const GET_USER_BALANCES_AURA = gql`
   query GetUserBalancesAura($userAddress: String!) {
-    userBalancess(where: { user: $userAddress }, limit: 100) {
+    # Get all transfers TO the user
+    transfersIn: diamondTransferSingleEventss(
+      where: { to: $userAddress }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: 1000
+    ) {
       items {
         id
-        user
-        tokenId
-        balance
-        asset
-        firstReceived
-        lastUpdated
+        operator
+        from
+        to
+        event_id
+        value
+        block_timestamp
+        transaction_hash
+      }
+    }
+    # Get all transfers FROM the user
+    transfersOut: diamondTransferSingleEventss(
+      where: { from: $userAddress }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: 1000
+    ) {
+      items {
+        id
+        operator
+        from
+        to
+        event_id
+        value
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
 /**
- * Query AuraAsset subgraph for asset metadata by hashes
+ * Query for asset metadata by hashes using MintedAsset events
  */
 export const GET_ASSETS_BY_HASHES = gql`
   query GetAssetsByHashes($hashes: [String!]!) {
-    assetss(where: { hash_in: $hashes }, limit: 100) {
+    diamondMintedAssetEventss(where: { hash_in: $hashes }, limit: 100) {
       items {
         id
-        hash
-        tokenId
-        name
-        assetClass
-        className
         account
-        amount
-        attributes {
-          items {
-            name
-            values
-            description
-          }
-        }
+        hash
+        token_id
+        name
+        asset_class
+        class_name
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
 /**
- * Query AuraAsset subgraph for asset metadata by tokenIds
- * Note: Ponder requires BigInt type for tokenId_in filter, not String
+ * Query for asset metadata by tokenIds using MintedAsset events
  */
 export const GET_ASSETS_BY_TOKEN_IDS = gql`
   query GetAssetsByTokenIds($tokenIds: [BigInt!]!) {
-    assetss(where: { tokenId_in: $tokenIds }, limit: 100) {
+    diamondMintedAssetEventss(where: { token_id_in: $tokenIds }, limit: 100) {
       items {
         id
-        hash
-        tokenId
-        name
-        assetClass
-        className
         account
-        amount
-        attributes {
-          items {
-            name
-            values
-            description
-          }
-        }
+        hash
+        token_id
+        name
+        asset_class
+        class_name
+        block_timestamp
+        transaction_hash
       }
     }
   }
@@ -430,110 +227,101 @@ export interface NodeTokenBalance {
   hash?: string;
 }
 
+// Updated interfaces for snake_case field names from Ponder
 export interface GraphTransferEvent {
   id: string;
-  tokenId: string;
-  value: string;
+  operator: string;
   from: string;
   to: string;
-  blockTimestamp: string;
+  event_id: string; // token ID
+  value: string;
+  block_timestamp: string;
+  transaction_hash: string;
 }
 
 export interface GraphMintedAsset {
   id: string;
-  tokenId: string;
+  account: string;
   hash: string;
-  assetName: string;
-  assetClass: string;
-  className: string;
-  blockTimestamp: string;
+  token_id: string;
+  name: string;
+  asset_class: string;
+  class_name: string;
+  block_timestamp: string;
+  transaction_hash: string;
 }
 
-// Response interfaces for new queries
+// Response interfaces for node asset events
 export interface NodeAssetAurum {
   id: string;
-  node: string;
+  node_hash: string;
   token: string;
-  tokenId: string;
+  token_id: string;
   price: string;
   capacity: string;
-  createdAt: string;
-  updatedAt: string;
+  block_timestamp: string;
+  transaction_hash: string;
 }
 
+// User balance is computed from transfer events
 export interface UserBalanceAura {
-  id: string;
-  user: string;
   tokenId: string;
   balance: string;
-  asset: string; // hash reference
-  firstReceived: string;
-  lastUpdated: string;
 }
 
+// Updated AssetAura interface for snake_case from Ponder
 export interface AssetAura {
   id: string;
-  hash: string;
-  tokenId: string;
-  name: string;
-  assetClass: string;
-  className: string;
   account: string;
-  amount: string;
-  attributes: {
-    items: Array<{
-      name: string;
-      values: string;
-      description: string;
-    }>;
-  };
+  hash: string;
+  token_id: string;
+  name: string;
+  asset_class: string;
+  class_name: string;
+  block_timestamp: string;
+  transaction_hash: string;
 }
 
-// Ponder returns { nodeAssetss: { items: [...] } } for list queries
+// Response types for event-based queries
 export interface NodeAssetsAurumResponse {
-  nodeAssets: NodeAssetAurum[]; // Legacy format for compatibility
+  diamondSupportedAssetAddedEventss: { items: NodeAssetAurum[] };
 }
 
 // Helper to extract items from Ponder's paginated response
 export function extractPonderNodeAssets(response: {
-  nodeAssetss?: { items: NodeAssetAurum[] };
+  diamondSupportedAssetAddedEventss?: { items: NodeAssetAurum[] };
 }): NodeAssetAurum[] {
-  return response?.nodeAssetss?.items || [];
+  return response?.diamondSupportedAssetAddedEventss?.items || [];
 }
 
 export interface UserBalancesAuraResponse {
-  userBalancess: { items: UserBalanceAura[] };
+  transfersIn: { items: GraphTransferEvent[] };
+  transfersOut: { items: GraphTransferEvent[] };
 }
 
 export interface AssetsAuraResponse {
-  assetss: { items: AssetAura[] };
+  diamondMintedAssetEventss: { items: AssetAura[] };
 }
 
-// Paginated list of all assets from AuraAsset subgraph
+// Paginated list of all minted assets
 export const GET_ALL_ASSETS = gql`
   query GetAllAssets($limit: Int!, $after: String) {
-    assetss(
+    diamondMintedAssetEventss(
       limit: $limit
       after: $after
-      orderBy: "tokenId"
+      orderBy: "token_id"
       orderDirection: "asc"
     ) {
       items {
         id
-        hash
-        tokenId
-        name
-        assetClass
-        className
         account
-        amount
-        attributes {
-          items {
-            name
-            values
-            description
-          }
-        }
+        hash
+        token_id
+        name
+        asset_class
+        class_name
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -544,93 +332,111 @@ export const GET_ALL_ASSETS = gql`
 `;
 
 // =============================================================================
-// SUPPORTED CLASSES QUERIES (LEGACY - Deprecated in Pure Dumb Indexer)
+// SUPPORTED CLASSES QUERIES (Event-Based)
 // =============================================================================
 
 /**
- * Query for all supported asset classes
- * NOTE: In the pure dumb indexer, this table doesn't exist.
- * Asset classes are derived from IPFS metadata instead.
- * This query is kept for backward compatibility but will fail.
+ * Query for supported asset class events
+ * Gets all SupportedClassAdded and SupportedClassRemoved events
+ * Client must aggregate to determine currently active classes
  */
 export const GET_SUPPORTED_CLASSES = gql`
   query GetSupportedClasses {
-    # In pure dumb indexer, we would need to add a SupportedAssetClassAddedEvent
-    # and aggregate from raw events. For now, this query will fail.
-    # Use getSupportedAssetClassesFromIPFS() instead.
-    supportedClassess(where: { isActive: true }, limit: 100) {
+    added: diamondSupportedClassAddedEventss(
+      orderBy: "block_timestamp"
+      orderDirection: "asc"
+      limit: 1000
+    ) {
       items {
         id
-        name
-        index
-        isActive
-        createdAt
-        updatedAt
+        class_name_hash
+        class_name
+        block_timestamp
+        transaction_hash
+      }
+    }
+    removed: diamondSupportedClassRemovedEventss(
+      orderBy: "block_timestamp"
+      orderDirection: "asc"
+      limit: 1000
+    ) {
+      items {
+        id
+        class_name_hash
+        class_name
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
 /**
- * Response interface for supported classes query
+ * Response interface for supported class events query
  */
-export interface SupportedClassResponse {
+export interface SupportedClassEventResponse {
   id: string;
-  name: string;
-  index: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  class_name_hash: string;
+  class_name: string;
+  block_timestamp: string;
+  transaction_hash: string;
 }
 
 export interface SupportedClassesResponse {
-  supportedClassess: { items: SupportedClassResponse[] };
+  added: { items: SupportedClassEventResponse[] };
+  removed: { items: SupportedClassEventResponse[] };
 }
 
 /**
- * Helper to extract supported classes from Ponder response
+ * Helper to extract currently active supported classes from Ponder response
+ * Aggregates add/remove events to determine current state
  */
 export function extractPonderSupportedClasses(
   response: SupportedClassesResponse | null | undefined,
 ): string[] {
-  if (!response?.supportedClassess?.items) return [];
-  return response.supportedClassess.items
-    .filter((item) => item.isActive && item.name)
-    .map((item) => item.name);
+  if (!response?.added?.items) return [];
+
+  const added = response.added.items || [];
+  const removed = response.removed?.items || [];
+
+  // Build set of removed class hashes
+  const removedHashes = new Set(removed.map((r) => r.class_name_hash));
+
+  // Return classes that haven't been removed
+  return added
+    .filter(
+      (item) => !removedHashes.has(item.class_name_hash) && item.class_name,
+    )
+    .map((item) => item.class_name);
 }
 
 // =============================================================================
-// ASSETS BY CLASS QUERY
+// ASSETS BY CLASS QUERY (Event-Based)
 // =============================================================================
 
 /**
- * Query for assets filtered by asset class
+ * Query for minted assets filtered by asset class
+ * Uses MintedAsset events from the indexer
  */
 export const GET_ASSETS_BY_CLASS = gql`
   query GetAssetsByClass($assetClass: String!, $limit: Int!, $after: String) {
-    assetss(
-      where: { assetClass: $assetClass }
+    diamondMintedAssetEventss(
+      where: { asset_class: $assetClass }
       limit: $limit
       after: $after
-      orderBy: "tokenId"
+      orderBy: "token_id"
       orderDirection: "asc"
     ) {
       items {
         id
-        hash
-        tokenId
-        name
-        assetClass
-        className
         account
-        amount
-        attributes {
-          items {
-            name
-            values
-            description
-          }
-        }
+        hash
+        token_id
+        name
+        asset_class
+        class_name
+        block_timestamp
+        transaction_hash
       }
       pageInfo {
         hasNextPage
@@ -641,93 +447,226 @@ export const GET_ASSETS_BY_CLASS = gql`
 `;
 
 // =============================================================================
-// CLOB LEGACY QUERIES (for backward compatibility during migration)
+// CLOB EVENT-BASED QUERIES
 // =============================================================================
+// The indexer stores raw events. To get order/trade state, we fetch events
+// and aggregate them in the repository layer using event-aggregators.ts
 
 /**
- * Legacy query for open orders - kept for compatibility
+ * Query for order placement events - used to build order book
+ * Fetches OrderPlacedWithTokens events from both direct and router sources
  */
-export const GET_CLOB_OPEN_ORDERS = gql`
-  query GetOpenOrders(
+export const GET_ORDER_PLACED_EVENTS = gql`
+  query GetOrderPlacedEvents(
     $baseToken: String!
-    $baseTokenId: String!
+    $baseTokenId: BigInt!
     $limit: Int!
   ) {
-    clobOrderss(
-      where: {
-        baseToken: $baseToken
-        baseTokenId: $baseTokenId
-        status_in: [0, 1]
-      }
-      orderBy: "price"
+    diamondOrderPlacedWithTokensEventss(
+      where: { base_token: $baseToken, base_token_id: $baseTokenId }
+      orderBy: "block_timestamp"
       orderDirection: "desc"
       limit: $limit
     ) {
       items {
         id
+        order_id
         maker
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        filledAmount
-        remainingAmount
-        status
-        isBuy
-        createdAt
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
+      }
+    }
+    diamondRouterOrderPlacedEventss(
+      where: { base_token: $baseToken, base_token_id: $baseTokenId }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      items {
+        id
+        order_id
+        maker
+        base_token
+        base_token_id
+        quote_token
+        price
+        amount
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
-export const GET_CLOB_TRADES = gql`
-  query GetTrades($baseToken: String!, $baseTokenId: String!, $limit: Int!) {
-    clobTradess(
-      where: { baseToken: $baseToken, baseTokenId: $baseTokenId }
+/**
+ * Query for order fill events - used to calculate remaining amounts
+ */
+export const GET_ORDER_FILLED_EVENTS = gql`
+  query GetOrderFilledEvents($orderIds: [String!]!, $limit: Int!) {
+    diamondCLOBOrderFilledEventss(
+      where: { order_id_in: $orderIds }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      items {
+        id
+        order_id
+        trade_id
+        fill_amount
+        fill_price
+        remaining_amount
+        cumulative_filled
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Query for order cancelled events
+ */
+export const GET_ORDER_CANCELLED_EVENTS = gql`
+  query GetOrderCancelledEvents($orderIds: [String!]!, $limit: Int!) {
+    diamondCLOBOrderCancelledEventss(
+      where: { order_id_in: $orderIds }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      items {
+        id
+        order_id
+        maker
+        remaining_amount
+        reason
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Query for order expired events
+ */
+export const GET_ORDER_EXPIRED_EVENTS = gql`
+  query GetOrderExpiredEvents($orderIds: [String!]!, $limit: Int!) {
+    diamondOrderExpiredEventss(
+      where: { order_id_in: $orderIds }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      items {
+        id
+        order_id
+        expired_at
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Query for trade executed events
+ */
+export const GET_TRADE_EVENTS = gql`
+  query GetTradeEvents($limit: Int!) {
+    diamondCLOBTradeExecutedEventss(
       orderBy: "timestamp"
       orderDirection: "desc"
       limit: $limit
     ) {
       items {
         id
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
+        market_id
         price
         amount
-        quoteAmount
+        quote_amount
+        taker_fee
+        maker_fee
         timestamp
-        transactionHash
+        taker_is_buy
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
-export const GET_CLOB_USER_ORDERS = gql`
-  query GetUserOrders($maker: String!, $limit: Int!) {
-    clobOrderss(
+/**
+ * Query for user's order placement events
+ */
+export const GET_USER_ORDER_EVENTS = gql`
+  query GetUserOrderEvents($maker: String!, $limit: Int!) {
+    diamondOrderPlacedWithTokensEventss(
       where: { maker: $maker }
-      orderBy: "createdAt"
+      orderBy: "block_timestamp"
       orderDirection: "desc"
       limit: $limit
     ) {
       items {
         id
+        order_id
         maker
+        base_token
+        base_token_id
+        quote_token
         price
         amount
-        filledAmount
-        remainingAmount
-        status
-        isBuy
-        createdAt
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
+      }
+    }
+    diamondRouterOrderPlacedEventss(
+      where: { maker: $maker }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      items {
+        id
+        order_id
+        maker
+        base_token
+        base_token_id
+        quote_token
+        price
+        amount
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
-export const GET_CLOB_USER_TRADES = gql`
-  query GetUserTrades($user: String!, $limit: Int!) {
-    clobTradess(
+/**
+ * Query for user's trade events (as taker)
+ */
+export const GET_USER_TRADE_EVENTS = gql`
+  query GetUserTradeEvents($user: String!, $limit: Int!) {
+    diamondCLOBTradeExecutedEventss(
       where: { taker: $user }
       orderBy: "timestamp"
       orderDirection: "desc"
@@ -735,60 +674,200 @@ export const GET_CLOB_USER_TRADES = gql`
     ) {
       items {
         id
-        takerOrderId
-        makerOrderId
+        trade_id
+        taker_order_id
+        maker_order_id
         taker
         maker
+        market_id
         price
         amount
-        quoteAmount
+        quote_amount
+        taker_fee
+        maker_fee
         timestamp
-        transactionHash
+        taker_is_buy
+        block_timestamp
+        transaction_hash
       }
     }
   }
 `;
 
+// =============================================================================
+// LEGACY QUERY ALIASES (for backward compatibility)
+// These redirect to the new event-based queries
+// =============================================================================
+
+export const GET_CLOB_OPEN_ORDERS = GET_ORDER_PLACED_EVENTS;
+export const GET_CLOB_TRADES = GET_TRADE_EVENTS;
+export const GET_CLOB_USER_ORDERS = GET_USER_ORDER_EVENTS;
+export const GET_CLOB_USER_TRADES = GET_USER_TRADE_EVENTS;
+
+// Best prices query - fetches order events and filters by is_buy
 export const GET_CLOB_BEST_PRICES = gql`
-  query GetBestPrices($baseToken: String!, $baseTokenId: String!) {
-    bestBids: clobOrderss(
-      where: {
-        baseToken: $baseToken
-        baseTokenId: $baseTokenId
-        isBuy: true
-        status_in: [0, 1]
-      }
+  query GetBestPrices($baseToken: String!, $baseTokenId: BigInt!) {
+    diamondOrderPlacedWithTokensEventss(
+      where: { base_token: $baseToken, base_token_id: $baseTokenId }
       orderBy: "price"
       orderDirection: "desc"
-      limit: 1
+      limit: 100
     ) {
       items {
+        id
+        order_id
         price
         amount
-        remainingAmount
-      }
-    }
-    bestAsks: clobOrderss(
-      where: {
-        baseToken: $baseToken
-        baseTokenId: $baseTokenId
-        isBuy: false
-        status_in: [0, 1]
-      }
-      orderBy: "price"
-      orderDirection: "asc"
-      limit: 1
-    ) {
-      items {
-        price
-        amount
-        remainingAmount
+        is_buy
+        block_timestamp
       }
     }
   }
 `;
 
-// Legacy response interfaces
+// =============================================================================
+// Response Type Interfaces
+// =============================================================================
+
+/** Order placement event from GraphQL */
+export interface OrderPlacedEventGraphResponse {
+  id: string;
+  order_id: string;
+  maker: string;
+  base_token: string;
+  base_token_id: string;
+  quote_token: string;
+  price: string;
+  amount: string;
+  is_buy: boolean;
+  order_type: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+/** Order filled event from GraphQL */
+export interface OrderFilledEventGraphResponse {
+  id: string;
+  order_id: string;
+  trade_id: string;
+  fill_amount: string;
+  fill_price: string;
+  remaining_amount: string;
+  cumulative_filled: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+/** Order cancelled event from GraphQL */
+export interface OrderCancelledEventGraphResponse {
+  id: string;
+  order_id: string;
+  maker: string;
+  remaining_amount: string;
+  reason: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+/** Order expired event from GraphQL */
+export interface OrderExpiredEventGraphResponse {
+  id: string;
+  order_id: string;
+  expired_at: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+/** Trade executed event from GraphQL */
+export interface TradeExecutedEventGraphResponse {
+  id: string;
+  trade_id: string;
+  taker_order_id: string;
+  maker_order_id: string;
+  taker: string;
+  maker: string;
+  market_id: string;
+  price: string;
+  amount: string;
+  quote_amount: string;
+  taker_fee: string;
+  maker_fee: string;
+  timestamp: string;
+  taker_is_buy: boolean;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+/** Response for order placed events query */
+export interface OrderPlacedEventsResponse {
+  diamondOrderPlacedWithTokensEventss: {
+    items: OrderPlacedEventGraphResponse[];
+  };
+  diamondRouterOrderPlacedEventss: {
+    items: OrderPlacedEventGraphResponse[];
+  };
+}
+
+/** Response for order filled events query */
+export interface OrderFilledEventsResponse {
+  diamondCLOBOrderFilledEventss: {
+    items: OrderFilledEventGraphResponse[];
+  };
+}
+
+/** Response for order cancelled events query */
+export interface OrderCancelledEventsResponse {
+  diamondCLOBOrderCancelledEventss: {
+    items: OrderCancelledEventGraphResponse[];
+  };
+}
+
+/** Response for order expired events query */
+export interface OrderExpiredEventsResponse {
+  diamondOrderExpiredEventss: {
+    items: OrderExpiredEventGraphResponse[];
+  };
+}
+
+/** Response for trade events query */
+export interface TradeEventsResponse {
+  diamondCLOBTradeExecutedEventss: {
+    items: TradeExecutedEventGraphResponse[];
+  };
+}
+
+/** Response for user order events query */
+export interface UserOrderEventsResponse {
+  diamondOrderPlacedWithTokensEventss: {
+    items: OrderPlacedEventGraphResponse[];
+  };
+  diamondRouterOrderPlacedEventss: {
+    items: OrderPlacedEventGraphResponse[];
+  };
+}
+
+/** Response for user trade events query */
+export interface UserTradeEventsResponse {
+  diamondCLOBTradeExecutedEventss: {
+    items: TradeExecutedEventGraphResponse[];
+  };
+}
+
+/** Response for best prices query */
+export interface BestPricesEventsResponse {
+  diamondOrderPlacedWithTokensEventss: {
+    items: Array<{
+      id: string;
+      order_id: string;
+      price: string;
+      amount: string;
+      is_buy: boolean;
+      block_timestamp: string;
+    }>;
+  };
+}
+
+// Legacy interfaces - kept for backward compatibility
 export interface CLOBOrderGraphResponse {
   id: string;
   maker: string;

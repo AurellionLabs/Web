@@ -859,6 +859,283 @@ export default createConfig({
 }
 
 // ============================================================================
+// QUERY TYPE GENERATION
+// ============================================================================
+
+const INFRASTRUCTURE_DIR = path.join(__dirname, '../infrastructure/shared');
+const GENERATED_QUERIES_FILE = path.join(
+  INFRASTRUCTURE_DIR,
+  'generated-graphql-types.ts',
+);
+
+/**
+ * Generate TypeScript types and query helpers from schema
+ * This ensures type safety between GraphQL queries and Ponder schema
+ */
+function generateQueryTypes(facets: Map<string, FacetInfo>): void {
+  const seenSignatures = new Set<string>();
+  const eventTables: Array<{
+    eventName: string;
+    tableName: string;
+    graphqlTableName: string;
+    columns: Array<{ name: string; tsType: string; isIndexed: boolean }>;
+  }> = [];
+
+  // Collect all event tables
+  for (const facet of facets.values()) {
+    for (const event of facet.events) {
+      if (seenSignatures.has(event.signatureHash)) continue;
+      seenSignatures.add(event.signatureHash);
+
+      const prefix = EXTERNAL_CONTRACTS[event.facet]
+        ? event.facet.toLowerCase()
+        : 'diamond';
+      const tableName = `${prefix}_${camelToSnake(event.name)}_events`;
+      // Ponder GraphQL uses camelCase table name + 's' for pluralization
+      const graphqlTableName = snakeToCamel(tableName) + 's';
+
+      const columns: Array<{
+        name: string;
+        tsType: string;
+        isIndexed: boolean;
+      }> = [{ name: 'id', tsType: 'string', isIndexed: false }];
+
+      const reservedColumns = new Set([
+        'id',
+        'block_number',
+        'block_timestamp',
+        'transaction_hash',
+      ]);
+
+      for (const input of event.inputs) {
+        let colName = camelToSnake(input.name);
+        if (reservedColumns.has(colName)) {
+          colName = `event_${colName}`;
+        }
+
+        columns.push({
+          name: colName,
+          tsType: solidityTypeToGraphQLTsType(input.type),
+          isIndexed: input.indexed || false,
+        });
+      }
+
+      // Add metadata columns
+      columns.push(
+        { name: 'block_number', tsType: 'string', isIndexed: false },
+        { name: 'block_timestamp', tsType: 'string', isIndexed: false },
+        { name: 'transaction_hash', tsType: 'string', isIndexed: false },
+      );
+
+      eventTables.push({
+        eventName: event.name,
+        tableName,
+        graphqlTableName,
+        columns,
+      });
+    }
+  }
+
+  // Generate TypeScript file
+  let content = `// Auto-generated GraphQL types - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+//
+// This file provides type-safe GraphQL query helpers for Ponder tables.
+// All table names and field names are derived from the schema generator.
+// Regenerate with: npm run generate:indexer
+
+// ============================================================================
+// TABLE NAME CONSTANTS
+// ============================================================================
+// Use these constants in GraphQL queries to ensure correct table names
+
+`;
+
+  // Generate table name constants
+  for (const table of eventTables) {
+    const constName = `TABLE_${table.tableName.toUpperCase()}`;
+    content += `export const ${constName} = '${table.graphqlTableName}' as const;\n`;
+  }
+
+  content += `
+// All valid table names for validation
+export const VALID_TABLE_NAMES = [
+${eventTables.map((t) => `  '${t.graphqlTableName}',`).join('\n')}
+] as const;
+
+export type ValidTableName = typeof VALID_TABLE_NAMES[number];
+
+// ============================================================================
+// EVENT RESPONSE TYPES
+// ============================================================================
+// These types match the exact field names returned by Ponder GraphQL
+
+`;
+
+  // Generate response types for each event table
+  for (const table of eventTables) {
+    const typeName = `${snakeToCamel(table.tableName).replace(/Events$/, '')}Event`;
+    content += `export interface ${typeName} {\n`;
+    for (const col of table.columns) {
+      content += `  ${col.name}: ${col.tsType};\n`;
+    }
+    content += `}\n\n`;
+  }
+
+  content += `// ============================================================================
+// GRAPHQL RESPONSE WRAPPERS
+// ============================================================================
+
+export interface PonderPageInfo {
+  hasNextPage: boolean;
+  endCursor: string | null;
+}
+
+export interface PonderItemsResponse<T> {
+  items: T[];
+  pageInfo?: PonderPageInfo;
+}
+
+`;
+
+  // Generate response wrapper types
+  for (const table of eventTables) {
+    const typeName = `${snakeToCamel(table.tableName).replace(/Events$/, '')}Event`;
+    const responseName = `${snakeToCamel(table.tableName).replace(/Events$/, '')}EventsResponse`;
+    content += `export interface ${responseName} {\n`;
+    content += `  ${table.graphqlTableName}: PonderItemsResponse<${typeName}>;\n`;
+    content += `}\n\n`;
+  }
+
+  content += `// ============================================================================
+// QUERY FIELD CONSTANTS
+// ============================================================================
+// Use these to build type-safe queries with correct field names
+
+`;
+
+  // Generate field constants for each table
+  for (const table of eventTables) {
+    const constName = `FIELDS_${table.tableName.toUpperCase()}`;
+    content += `export const ${constName} = [\n`;
+    for (const col of table.columns) {
+      content += `  '${col.name}',\n`;
+    }
+    content += `] as const;\n\n`;
+  }
+
+  content += `// ============================================================================
+// QUERY BUILDER HELPERS
+// ============================================================================
+
+/**
+ * Validates that a GraphQL query string uses valid table names
+ * Throws an error if an invalid table name is found
+ */
+export function validateQueryTableNames(query: string): void {
+  // Extract table names from query (pattern: tableName( or tableName {)
+  const tableNamePattern = /([a-zA-Z]+[a-zA-Z0-9]*(?:Eventss|ss))\\s*[({]/g;
+  let match;
+  
+  while ((match = tableNamePattern.exec(query)) !== null) {
+    const tableName = match[1];
+    if (!VALID_TABLE_NAMES.includes(tableName as ValidTableName)) {
+      throw new Error(
+        \`Invalid GraphQL table name: "\${tableName}". \\n\` +
+        \`Valid table names are: \${VALID_TABLE_NAMES.slice(0, 5).join(', ')}...\`
+      );
+    }
+  }
+}
+
+/**
+ * Type guard to check if a table name is valid
+ */
+export function isValidTableName(name: string): name is ValidTableName {
+  return VALID_TABLE_NAMES.includes(name as ValidTableName);
+}
+
+/**
+ * Get the correct GraphQL table name for an event
+ */
+export function getTableName(eventName: string): ValidTableName | undefined {
+  const mapping: Record<string, ValidTableName> = {
+${eventTables.map((t) => `    '${t.eventName}': '${t.graphqlTableName}',`).join('\n')}
+  };
+  return mapping[eventName];
+}
+
+// ============================================================================
+// COLUMN NAME MAPPING
+// ============================================================================
+// Maps camelCase field names to snake_case column names
+
+export const COLUMN_NAME_MAP: Record<string, string> = {
+  // Common mappings
+  orderId: 'order_id',
+  baseToken: 'base_token',
+  baseTokenId: 'base_token_id',
+  quoteToken: 'quote_token',
+  isBuy: 'is_buy',
+  orderType: 'order_type',
+  blockNumber: 'block_number',
+  blockTimestamp: 'block_timestamp',
+  transactionHash: 'transaction_hash',
+  tradeId: 'trade_id',
+  takerOrderId: 'taker_order_id',
+  makerOrderId: 'maker_order_id',
+  fillAmount: 'fill_amount',
+  fillPrice: 'fill_price',
+  remainingAmount: 'remaining_amount',
+  cumulativeFilled: 'cumulative_filled',
+  quoteAmount: 'quote_amount',
+  takerFee: 'taker_fee',
+  makerFee: 'maker_fee',
+  takerIsBuy: 'taker_is_buy',
+  marketId: 'market_id',
+  nodeHash: 'node_hash',
+  tokenId: 'token_id',
+  assetClass: 'asset_class',
+  className: 'class_name',
+  classNameHash: 'class_name_hash',
+  unifiedOrderId: 'unified_order_id',
+  clobOrderId: 'clob_order_id',
+  journeyId: 'journey_id',
+  ausysOrderId: 'ausys_order_id',
+  eventId: 'event_id',
+};
+
+/**
+ * Convert camelCase field name to snake_case column name
+ */
+export function toColumnName(fieldName: string): string {
+  return COLUMN_NAME_MAP[fieldName] || fieldName.replace(/[A-Z]/g, (letter) => \`_\${letter.toLowerCase()}\`);
+}
+`;
+
+  ensureDir(INFRASTRUCTURE_DIR);
+  fs.writeFileSync(GENERATED_QUERIES_FILE, content);
+  console.log(
+    `✓ Generated query types with ${eventTables.length} event tables`,
+  );
+}
+
+/**
+ * Convert Solidity type to TypeScript type for GraphQL responses
+ * Note: BigInt comes back as string in GraphQL
+ */
+function solidityTypeToGraphQLTsType(type: string): string {
+  if (type.startsWith('uint') || type.startsWith('int')) return 'string'; // BigInt serialized as string
+  if (type === 'address') return 'string';
+  if (type === 'bool') return 'boolean';
+  if (type.startsWith('bytes')) return 'string';
+  if (type === 'string') return 'string';
+  if (type.endsWith('[]'))
+    return `${solidityTypeToGraphQLTsType(type.slice(0, -2))}[]`;
+  return 'string';
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
@@ -891,6 +1168,10 @@ async function main(): Promise<void> {
   console.log('\n⚙️  Generating Ponder config...\n');
   generatePonderConfig(facets);
 
+  // Step 6: Generate query types (NEW)
+  console.log('\n🔍 Generating GraphQL query types...\n');
+  generateQueryTypes(facets);
+
   // Summary
   console.log('\n━'.repeat(60));
   console.log('✅ Generation complete!\n');
@@ -905,11 +1186,17 @@ async function main(): Promise<void> {
   console.log(
     `   Domains: ${new Set(Array.from(facets.values()).map((f) => f.domain)).size}`,
   );
+  console.log('\nGenerated files:');
+  console.log('  - indexer/abis/generated/*.ts (per-facet ABIs)');
+  console.log('  - indexer/generated-schema.ts (Ponder schema)');
+  console.log('  - indexer/src/handlers/*.generated.ts (event handlers)');
+  console.log(
+    '  - infrastructure/shared/generated-graphql-types.ts (query types)',
+  );
   console.log('\nNext steps:');
-  console.log('  1. Review generated files in indexer/');
-  console.log('  2. Implement handler logic in src/handlers/*.generated.ts');
-  console.log('  3. Run tests: cd indexer && npm test');
-  console.log('  4. Start indexer: cd indexer && npm run dev');
+  console.log('  1. Review generated files');
+  console.log('  2. Run tests: npm test');
+  console.log('  3. Start indexer: cd indexer && npm run dev');
 }
 
 main().catch(console.error);

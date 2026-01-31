@@ -31,6 +31,7 @@
     "test:unit": "npx vitest run --exclude 'test/deployment/**'",
     "test:coverage": "npx vitest run --coverage",
     "test": "npx vitest run",
+    "validate:queries": "npx vitest run test/infrastructure/graphql-query-validation.test.ts",
     "deploy:diamond": "npx hardhat run scripts/deploy-diamond.ts --network baseSepolia",
     "upgrade:diamond": "npx hardhat run scripts/upgrade-diamond.ts --network baseSepolia",
     "test:diamond": "forge test --match-contract DiamondTest -vv",

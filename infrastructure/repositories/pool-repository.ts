@@ -709,14 +709,14 @@ export class PoolRepository implements IPoolRepository {
   // Additional methods required by IPoolRepository interface
   async getAllPoolIds(): Promise<string[]> {
     try {
-      // Use GraphQL to get all operation created events
-      const response: { operationCreatedEventss?: { items: any[] } } =
-        await this.graphqlRequest(OPERATION_CREATED_QUERY);
+      // Use GraphQL to get all opportunity created events
+      const response: OpportunityCreatedEventsResponse =
+        await this.graphqlRequest(GET_OPPORTUNITY_CREATED_EVENTS);
 
-      const items = response.operationCreatedEventss?.items || [];
+      const items = response.diamondOpportunityCreatedEventss?.items || [];
 
       return items
-        .map((event) => event.opCreatedOperationId)
+        .map((event) => event.event_id)
         .filter((id) => id) as string[];
     } catch (error) {
       console.error(

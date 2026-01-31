@@ -1,5 +1,5 @@
 // Auto-generated from DiamondCutFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-20T14:56:42.605Z
+// Generated at: 2026-01-22T15:06:34.363Z
 
 export const DiamondCutFacetABI = [
   {

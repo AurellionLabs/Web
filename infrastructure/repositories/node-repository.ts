@@ -302,7 +302,7 @@ export class BlockchainNodeRepository implements NodeRepository {
     try {
       // Step 1: Get node pricing/capacity from Ponder indexer
       const aurumResponse = await graphqlRequest<{
-        nodeAssetss: { items: NodeAssetAurum[] };
+        diamondSupportedAssetAddedEventss: { items: NodeAssetAurum[] };
       }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_NODE_ASSETS_AURUM, {
         nodeAddress: nodeAddress.toLowerCase(),
       });
@@ -312,9 +312,10 @@ export class BlockchainNodeRepository implements NodeRepository {
         return [];
       }
 
-      // Step 2: Get user balances from AuraAsset subgraph
+      // Step 2: Get user balances from transfer events
       let auraBalanceResponse: UserBalancesAuraResponse = {
-        userBalancess: { items: [] },
+        transfersIn: { items: [] },
+        transfersOut: { items: [] },
       };
       try {
         auraBalanceResponse = await graphqlRequest(
@@ -329,16 +330,14 @@ export class BlockchainNodeRepository implements NodeRepository {
 
       // Step 3: In the pure dumb indexer, asset metadata is fetched from IPFS directly
       // The assetss table no longer exists, so we work with available data
-      const tokenIds = nodeAssetsData.map((asset) => asset.tokenId);
+      const tokenIds = nodeAssetsData.map((asset) => asset.token_id);
       console.log(
         '[NodeRepository] Asset metadata will be fetched from IPFS in pure dumb pattern',
       );
 
-      // Step 4: Create maps for lookups
-      const balanceMap = new Map<string, UserBalanceAura>();
-      auraBalanceResponse.userBalancess?.items?.forEach((balance) => {
-        balanceMap.set(balance.tokenId, balance);
-      });
+      // Step 4: Calculate balances from transfer events
+      const balanceMap =
+        this.calculateBalancesFromTransfers(auraBalanceResponse);
 
       // Step 5: Get node location data
       const node = await this.getNode(nodeAddress);
@@ -346,16 +345,15 @@ export class BlockchainNodeRepository implements NodeRepository {
       // Step 6: Combine all data (without metadata from assetss table)
       return nodeAssetsData.map((nodeAsset) => {
         // Find balance for this token
-        const balance = balanceMap.get(nodeAsset.tokenId);
+        const balance = balanceMap.get(nodeAsset.token_id) || '0';
 
         return {
-          id: nodeAsset.tokenId,
-          amount: balance?.balance || '0',
+          id: nodeAsset.token_id,
+          amount: balance,
           name: 'Unknown', // Would need IPFS metadata
           class: 'Unknown', // Would need IPFS metadata
           fileHash: '', // Would need IPFS metadata
-          status:
-            Number(balance?.balance || '0') > 0 ? 'Available' : 'Unavailable',
+          status: Number(balance) > 0 ? 'Available' : 'Unavailable',
           nodeAddress,
           nodeLocation: node?.location || {
             addressName: '',
@@ -369,6 +367,37 @@ export class BlockchainNodeRepository implements NodeRepository {
       console.error('Error fetching node assets from Graph:', error);
       return [];
     }
+  }
+
+  /**
+   * Calculate token balances from transfer in/out events
+   * Returns a map of tokenId -> balance
+   */
+  private calculateBalancesFromTransfers(
+    response: UserBalancesAuraResponse,
+  ): Map<string, string> {
+    const balanceMap = new Map<string, bigint>();
+
+    // Add transfers in
+    for (const transfer of response.transfersIn?.items || []) {
+      const tokenId = transfer.event_id; // event_id is the token ID
+      const current = balanceMap.get(tokenId) || BigInt(0);
+      balanceMap.set(tokenId, current + BigInt(transfer.value));
+    }
+
+    // Subtract transfers out
+    for (const transfer of response.transfersOut?.items || []) {
+      const tokenId = transfer.event_id;
+      const current = balanceMap.get(tokenId) || BigInt(0);
+      balanceMap.set(tokenId, current - BigInt(transfer.value));
+    }
+
+    // Convert to string map
+    const result = new Map<string, string>();
+    for (const [tokenId, balance] of balanceMap) {
+      result.set(tokenId, balance.toString());
+    }
+    return result;
   }
 
   async getAllNodeAssets(): Promise<TokenizedAsset[]> {
@@ -386,7 +415,7 @@ export class BlockchainNodeRepository implements NodeRepository {
 
       while (hasNextPage && iterations < MAX_ITERATIONS) {
         type PageResponse = {
-          nodeAssetss: {
+          diamondSupportedAssetAddedEventss: {
             items: NodeAssetAurum[];
             pageInfo: { hasNextPage: boolean; endCursor: string | null };
           };
@@ -401,8 +430,12 @@ export class BlockchainNodeRepository implements NodeRepository {
         );
         const pageItems = extractPonderNodeAssets(pageResp);
         allNodeAssets = allNodeAssets.concat(pageItems);
-        hasNextPage = pageResp.nodeAssetss?.pageInfo?.hasNextPage || false;
-        after = pageResp.nodeAssetss?.pageInfo?.endCursor || undefined;
+        hasNextPage =
+          pageResp.diamondSupportedAssetAddedEventss?.pageInfo?.hasNextPage ||
+          false;
+        after =
+          pageResp.diamondSupportedAssetAddedEventss?.pageInfo?.endCursor ||
+          undefined;
         iterations++;
 
         if (pageItems.length < PAGE_SIZE) break;
@@ -419,8 +452,9 @@ export class BlockchainNodeRepository implements NodeRepository {
       const metadataMap = new Map<string, AssetAura>(); // Empty in pure dumb pattern
 
       // Fetch per-node ERC1155 balances and node locations
+      // Note: node_hash is the node address in the event data
       const nodeSet = new Set<string>();
-      allNodeAssets.forEach((a) => nodeSet.add(a.node));
+      allNodeAssets.forEach((a) => nodeSet.add(a.node_hash));
 
       const nodeLocationMap = new Map<string, Node['location']>();
       const nodeBalanceMap = new Map<string, Map<string, string>>(); // node -> (tokenId -> balance)
@@ -435,11 +469,9 @@ export class BlockchainNodeRepository implements NodeRepository {
             GET_USER_BALANCES_AURA,
             { userAddress: nodeAddr.toLowerCase() },
           );
-          const map = new Map<string, string>();
-          (balancesResp.userBalancess?.items || []).forEach((b) => {
-            map.set(b.tokenId, b.balance);
-          });
-          nodeBalanceMap.set(nodeAddr, map);
+          // Calculate balances from transfer events
+          const balances = this.calculateBalancesFromTransfers(balancesResp);
+          nodeBalanceMap.set(nodeAddr, balances);
         } catch (e) {
           console.warn(
             '[NodeRepository] Failed to fetch balances for node',
@@ -451,21 +483,21 @@ export class BlockchainNodeRepository implements NodeRepository {
 
       // Build TokenizedAsset list
       const results: TokenizedAsset[] = allNodeAssets.map((na) => {
-        const meta = metadataMap.get(na.tokenId);
-        const nodeLocation = nodeLocationMap.get(na.node) || {
+        const meta = metadataMap.get(na.token_id);
+        const nodeLocation = nodeLocationMap.get(na.node_hash) || {
           addressName: '',
           location: { lat: '0', lng: '0' },
         };
-        const balancesForNode = nodeBalanceMap.get(na.node);
-        const balanceForToken = balancesForNode?.get(na.tokenId) || '0';
+        const balancesForNode = nodeBalanceMap.get(na.node_hash);
+        const balanceForToken = balancesForNode?.get(na.token_id) || '0';
         return {
-          id: na.tokenId,
+          id: na.token_id,
           amount: balanceForToken,
           name: meta?.name || 'Unknown',
-          class: meta?.assetClass || 'Unknown',
+          class: meta?.asset_class || 'Unknown',
           fileHash: meta?.hash || '',
           status: Number(balanceForToken) > 0 ? 'Available' : 'Unavailable',
-          nodeAddress: na.node,
+          nodeAddress: na.node_hash,
           nodeLocation,
           price: na.price,
           capacity: na.capacity,
@@ -565,10 +597,10 @@ export class BlockchainNodeRepository implements NodeRepository {
         GET_USER_BALANCES_AURA,
         { userAddress: ownerAddress.toLowerCase() },
       );
-      const found = (balancesResp.userBalancess?.items || []).find(
-        (b) => String(b.tokenId) === String(assetId),
-      );
-      return Number(found?.balance || '0');
+      // Calculate balances from transfer events
+      const balances = this.calculateBalancesFromTransfers(balancesResp);
+      const balance = balances.get(String(assetId)) || '0';
+      return Number(balance);
     } catch (error) {
       handleContractError(error, `get asset balance for ${ownerAddress}`);
       return 0;

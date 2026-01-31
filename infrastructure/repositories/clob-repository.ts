@@ -1,14 +1,37 @@
 import { graphqlRequest } from './shared/graph';
 import {
-  GET_CLOB_OPEN_ORDERS,
-  GET_CLOB_TRADES,
-  GET_CLOB_USER_ORDERS,
-  GET_CLOB_USER_TRADES,
+  GET_ORDER_PLACED_EVENTS,
+  GET_ORDER_FILLED_EVENTS,
+  GET_ORDER_CANCELLED_EVENTS,
+  GET_ORDER_EXPIRED_EVENTS,
+  GET_TRADE_EVENTS,
+  GET_USER_ORDER_EVENTS,
+  GET_USER_TRADE_EVENTS,
   GET_CLOB_BEST_PRICES,
-  type CLOBOrderGraphResponse,
-  type CLOBTradeGraphResponse,
-  type CLOBBestPricesResponse,
+  type OrderPlacedEventsResponse,
+  type OrderFilledEventsResponse,
+  type OrderCancelledEventsResponse,
+  type OrderExpiredEventsResponse,
+  type TradeEventsResponse,
+  type UserOrderEventsResponse,
+  type UserTradeEventsResponse,
+  type BestPricesEventsResponse,
+  type OrderPlacedEventGraphResponse,
+  type TradeExecutedEventGraphResponse,
 } from './shared/graph-queries';
+import {
+  aggregateOrders,
+  filterOrdersByStatus,
+  type OrderEventSources,
+} from '@/infrastructure/shared/event-aggregators';
+import type {
+  OrderPlacedWithTokensEvent,
+  RouterOrderPlacedEvent,
+  CLOBOrderFilledEvent,
+  CLOBOrderCancelledEvent,
+  OrderExpiredEvent,
+  AggregatedOrder,
+} from '@/infrastructure/shared/indexer-types';
 import {
   NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
@@ -164,6 +187,7 @@ export class CLOBRepository {
 
   /**
    * Get open orders for a market
+   * Fetches raw events and aggregates them to compute current order state
    */
   async getOpenOrders(
     baseToken: string,
@@ -171,15 +195,89 @@ export class CLOBRepository {
     limit = 50,
   ): Promise<CLOBOrder[]> {
     try {
-      const response = await graphqlRequest<{
-        clobOrderss: { items: CLOBOrderGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_CLOB_OPEN_ORDERS, {
-        baseToken: baseToken.toLowerCase(),
-        baseTokenId,
-        limit,
-      });
+      // Step 1: Fetch order placement events
+      const placedResponse = await graphqlRequest<OrderPlacedEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ORDER_PLACED_EVENTS,
+        {
+          baseToken: baseToken.toLowerCase(),
+          baseTokenId,
+          limit: limit * 2, // Fetch more since some may be filled/cancelled
+        },
+      );
 
-      return (response.clobOrderss?.items || []).map(this.mapOrderToDomain);
+      const directPlaced =
+        placedResponse.diamondOrderPlacedWithTokensEventss?.items || [];
+      const routerPlaced =
+        placedResponse.diamondRouterOrderPlacedEventss?.items || [];
+
+      // Convert to event types
+      const placedEvents: OrderPlacedWithTokensEvent[] = directPlaced.map(
+        this.mapGraphToPlacedEvent,
+      );
+      const routerEvents: RouterOrderPlacedEvent[] = routerPlaced.map(
+        this.mapGraphToRouterPlacedEvent,
+      );
+
+      // If no orders, return empty
+      if (placedEvents.length === 0 && routerEvents.length === 0) {
+        return [];
+      }
+
+      // Step 2: Get order IDs to fetch fill/cancel events
+      const orderIds = [
+        ...placedEvents.map((e) => e.order_id),
+        ...routerEvents.map((e) => e.order_id),
+      ];
+
+      // Step 3: Fetch fill, cancel, and expire events in parallel
+      const [filledResponse, cancelledResponse, expiredResponse] =
+        await Promise.all([
+          graphqlRequest<OrderFilledEventsResponse>(
+            this.graphQLEndpoint,
+            GET_ORDER_FILLED_EVENTS,
+            { orderIds, limit: limit * 5 },
+          ).catch(() => ({ diamondCLOBOrderFilledEventss: { items: [] } })),
+          graphqlRequest<OrderCancelledEventsResponse>(
+            this.graphQLEndpoint,
+            GET_ORDER_CANCELLED_EVENTS,
+            { orderIds, limit: limit * 2 },
+          ).catch(() => ({ diamondCLOBOrderCancelledEventss: { items: [] } })),
+          graphqlRequest<OrderExpiredEventsResponse>(
+            this.graphQLEndpoint,
+            GET_ORDER_EXPIRED_EVENTS,
+            { orderIds, limit: limit * 2 },
+          ).catch(() => ({ diamondOrderExpiredEventss: { items: [] } })),
+        ]);
+
+      const filledEvents: CLOBOrderFilledEvent[] = (
+        filledResponse.diamondCLOBOrderFilledEventss?.items || []
+      ).map(this.mapGraphToFilledEvent);
+      const cancelledEvents: CLOBOrderCancelledEvent[] = (
+        cancelledResponse.diamondCLOBOrderCancelledEventss?.items || []
+      ).map(this.mapGraphToCancelledEvent);
+      const expiredEvents: OrderExpiredEvent[] = (
+        expiredResponse.diamondOrderExpiredEventss?.items || []
+      ).map(this.mapGraphToExpiredEvent);
+
+      // Step 4: Aggregate events into order state
+      const eventSources: OrderEventSources = {
+        placed: placedEvents,
+        routerPlaced: routerEvents,
+        filled: filledEvents,
+        cancelled: cancelledEvents,
+        expired: expiredEvents,
+      };
+
+      const aggregatedOrders = aggregateOrders(eventSources);
+
+      // Step 5: Filter to open/partial orders only and convert to domain
+      const openOrders = filterOrdersByStatus(aggregatedOrders, [
+        'open',
+        'partial',
+      ]);
+
+      return openOrders.slice(0, limit).map(this.mapAggregatedToDomain);
     } catch (error) {
       console.error('[CLOBRepository] Failed to get open orders:', error);
       return [];
@@ -188,6 +286,7 @@ export class CLOBRepository {
 
   /**
    * Get recent trades for a market
+   * Note: Currently fetches all trades - filtering by market would require market_id mapping
    */
   async getTrades(
     baseToken: string,
@@ -195,15 +294,18 @@ export class CLOBRepository {
     limit: number = 50,
   ): Promise<CLOBTrade[]> {
     try {
-      const response = await graphqlRequest<{
-        clobTradess: { items: CLOBTradeGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_CLOB_TRADES, {
-        baseToken: baseToken.toLowerCase(),
-        baseTokenId,
-        limit,
-      });
+      const response = await graphqlRequest<TradeEventsResponse>(
+        this.graphQLEndpoint,
+        GET_TRADE_EVENTS,
+        { limit },
+      );
 
-      return (response.clobTradess?.items || []).map(this.mapTradeToDomain);
+      const trades = response.diamondCLOBTradeExecutedEventss?.items || [];
+
+      // Map to domain and include baseToken info
+      return trades.map((trade) =>
+        this.mapTradeEventToDomain(trade, baseToken, baseTokenId),
+      );
     } catch (error) {
       console.error('[CLOBRepository] Failed to get trades:', error);
       return [];
@@ -212,17 +314,85 @@ export class CLOBRepository {
 
   /**
    * Get user's order history
+   * Fetches raw events and aggregates them to compute current order state
    */
   async getUserOrders(maker: string, limit: number = 50): Promise<CLOBOrder[]> {
     try {
-      const response = await graphqlRequest<{
-        clobOrderss: { items: CLOBOrderGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_CLOB_USER_ORDERS, {
-        maker: maker.toLowerCase(),
-        limit,
-      });
+      // Step 1: Fetch user's order placement events
+      const placedResponse = await graphqlRequest<UserOrderEventsResponse>(
+        this.graphQLEndpoint,
+        GET_USER_ORDER_EVENTS,
+        {
+          maker: maker.toLowerCase(),
+          limit: limit * 2,
+        },
+      );
 
-      return (response.clobOrderss?.items || []).map(this.mapOrderToDomain);
+      const directPlaced =
+        placedResponse.diamondOrderPlacedWithTokensEventss?.items || [];
+      const routerPlaced =
+        placedResponse.diamondRouterOrderPlacedEventss?.items || [];
+
+      // Convert to event types
+      const placedEvents: OrderPlacedWithTokensEvent[] = directPlaced.map(
+        this.mapGraphToPlacedEvent,
+      );
+      const routerEvents: RouterOrderPlacedEvent[] = routerPlaced.map(
+        this.mapGraphToRouterPlacedEvent,
+      );
+
+      if (placedEvents.length === 0 && routerEvents.length === 0) {
+        return [];
+      }
+
+      // Step 2: Get order IDs to fetch fill/cancel events
+      const orderIds = [
+        ...placedEvents.map((e) => e.order_id),
+        ...routerEvents.map((e) => e.order_id),
+      ];
+
+      // Step 3: Fetch fill, cancel, and expire events
+      const [filledResponse, cancelledResponse, expiredResponse] =
+        await Promise.all([
+          graphqlRequest<OrderFilledEventsResponse>(
+            this.graphQLEndpoint,
+            GET_ORDER_FILLED_EVENTS,
+            { orderIds, limit: limit * 5 },
+          ).catch(() => ({ diamondCLOBOrderFilledEventss: { items: [] } })),
+          graphqlRequest<OrderCancelledEventsResponse>(
+            this.graphQLEndpoint,
+            GET_ORDER_CANCELLED_EVENTS,
+            { orderIds, limit: limit * 2 },
+          ).catch(() => ({ diamondCLOBOrderCancelledEventss: { items: [] } })),
+          graphqlRequest<OrderExpiredEventsResponse>(
+            this.graphQLEndpoint,
+            GET_ORDER_EXPIRED_EVENTS,
+            { orderIds, limit: limit * 2 },
+          ).catch(() => ({ diamondOrderExpiredEventss: { items: [] } })),
+        ]);
+
+      const filledEvents: CLOBOrderFilledEvent[] = (
+        filledResponse.diamondCLOBOrderFilledEventss?.items || []
+      ).map(this.mapGraphToFilledEvent);
+      const cancelledEvents: CLOBOrderCancelledEvent[] = (
+        cancelledResponse.diamondCLOBOrderCancelledEventss?.items || []
+      ).map(this.mapGraphToCancelledEvent);
+      const expiredEvents: OrderExpiredEvent[] = (
+        expiredResponse.diamondOrderExpiredEventss?.items || []
+      ).map(this.mapGraphToExpiredEvent);
+
+      // Step 4: Aggregate events into order state
+      const eventSources: OrderEventSources = {
+        placed: placedEvents,
+        routerPlaced: routerEvents,
+        filled: filledEvents,
+        cancelled: cancelledEvents,
+        expired: expiredEvents,
+      };
+
+      const aggregatedOrders = aggregateOrders(eventSources);
+
+      return aggregatedOrders.slice(0, limit).map(this.mapAggregatedToDomain);
     } catch (error) {
       console.error('[CLOBRepository] Failed to get user orders:', error);
       return [];
@@ -234,14 +404,18 @@ export class CLOBRepository {
    */
   async getUserTrades(user: string, limit: number = 50): Promise<CLOBTrade[]> {
     try {
-      const response = await graphqlRequest<{
-        clobTradess: { items: CLOBTradeGraphResponse[] };
-      }>(this.graphQLEndpoint, GET_CLOB_USER_TRADES, {
-        user: user.toLowerCase(),
-        limit,
-      });
+      const response = await graphqlRequest<UserTradeEventsResponse>(
+        this.graphQLEndpoint,
+        GET_USER_TRADE_EVENTS,
+        {
+          user: user.toLowerCase(),
+          limit,
+        },
+      );
 
-      return (response.clobTradess?.items || []).map(this.mapTradeToDomain);
+      const trades = response.diamondCLOBTradeExecutedEventss?.items || [];
+
+      return trades.map((trade) => this.mapTradeEventToDomain(trade, '', ''));
     } catch (error) {
       console.error('[CLOBRepository] Failed to get user trades:', error);
       return [];
@@ -250,37 +424,41 @@ export class CLOBRepository {
 
   /**
    * Get best bid and ask for a market
+   * Fetches order events and computes best prices from open orders
    */
   async getBestPrices(
     baseToken: string,
     baseTokenId: string,
   ): Promise<{ bestBid: OrderBookSide | null; bestAsk: OrderBookSide | null }> {
     try {
-      const response = await graphqlRequest<CLOBBestPricesResponse>(
-        this.graphQLEndpoint,
-        GET_CLOB_BEST_PRICES,
-        {
-          baseToken: baseToken.toLowerCase(),
-          baseTokenId,
-        },
-      );
+      // Get open orders and find best bid/ask
+      const openOrders = await this.getOpenOrders(baseToken, baseTokenId, 100);
 
-      const bestBidRaw = response.bestBids?.items?.[0];
-      const bestAskRaw = response.bestAsks?.items?.[0];
+      // Find best bid (highest buy price)
+      const bids = openOrders
+        .filter((o) => o.isBuy)
+        .sort((a, b) => b.price - a.price);
+      const bestBidOrder = bids[0];
+
+      // Find best ask (lowest sell price)
+      const asks = openOrders
+        .filter((o) => !o.isBuy)
+        .sort((a, b) => a.price - b.price);
+      const bestAskOrder = asks[0];
 
       return {
-        bestBid: bestBidRaw
+        bestBid: bestBidOrder
           ? {
-              price: Number(bestBidRaw.price) / 1e18,
-              quantity: Number(bestBidRaw.amount),
-              total: Number(bestBidRaw.remainingAmount),
+              price: bestBidOrder.price,
+              quantity: bestBidOrder.remainingAmount,
+              total: bestBidOrder.remainingAmount,
             }
           : null,
-        bestAsk: bestAskRaw
+        bestAsk: bestAskOrder
           ? {
-              price: Number(bestAskRaw.price) / 1e18,
-              quantity: Number(bestAskRaw.amount),
-              total: Number(bestAskRaw.remainingAmount),
+              price: bestAskOrder.price,
+              quantity: bestAskOrder.remainingAmount,
+              total: bestAskOrder.remainingAmount,
             }
           : null,
       };
@@ -815,51 +993,169 @@ export class CLOBRepository {
   }
 
   // ============================================================================
-  // Mapping Methods
+  // Mapping Methods - GraphQL Response to Event Types
   // ============================================================================
 
   /**
-   * Map GraphQL order response to domain model
+   * Map GraphQL order placed response to OrderPlacedWithTokensEvent
    */
-  private mapOrderToDomain(order: CLOBOrderGraphResponse): CLOBOrder {
-    const statusNum = Number(order.status);
-    let status: OrderStatus;
-    if (statusNum === 0) status = 'open';
-    else if (statusNum === 1) status = 'partial';
-    else if (statusNum === 2) status = 'filled';
-    else if (statusNum === 3) status = 'cancelled';
-    else status = 'open';
-
+  private mapGraphToPlacedEvent(
+    event: OrderPlacedEventGraphResponse,
+  ): OrderPlacedWithTokensEvent {
     return {
-      id: order.id,
-      maker: order.maker,
-      baseToken: order.baseToken,
-      baseTokenId: order.baseTokenId,
-      quoteToken: order.quoteToken,
-      price: Number(order.price) / 1e18, // Convert from wei
-      amount: Number(order.amount),
-      filledAmount: Number(order.filledAmount),
-      remainingAmount: Number(order.remainingAmount),
-      isBuy: order.isBuy,
-      orderType: order.orderType === '0' ? 'limit' : 'market',
-      status,
-      createdAt: Number(order.createdAt) * 1000,
+      id: event.id,
+      order_id: event.order_id,
+      maker: event.maker,
+      base_token: event.base_token,
+      base_token_id: event.base_token_id,
+      quote_token: event.quote_token,
+      price: event.price,
+      amount: event.amount,
+      is_buy: event.is_buy,
+      order_type: event.order_type,
+      block_number: '0', // Not used in aggregation
+      block_timestamp: event.block_timestamp,
+      transaction_hash: event.transaction_hash,
     };
   }
 
   /**
-   * Map GraphQL trade response to domain model
+   * Map GraphQL router order placed response to RouterOrderPlacedEvent
    */
-  private mapTradeToDomain(trade: CLOBTradeGraphResponse): CLOBTrade {
+  private mapGraphToRouterPlacedEvent(
+    event: OrderPlacedEventGraphResponse,
+  ): RouterOrderPlacedEvent {
     return {
-      id: trade.id,
+      id: event.id,
+      order_id: event.order_id,
+      maker: event.maker,
+      base_token: event.base_token,
+      base_token_id: event.base_token_id,
+      quote_token: event.quote_token,
+      price: event.price,
+      amount: event.amount,
+      is_buy: event.is_buy,
+      order_type: event.order_type,
+      block_number: '0',
+      block_timestamp: event.block_timestamp,
+      transaction_hash: event.transaction_hash,
+    };
+  }
+
+  /**
+   * Map GraphQL filled event response to CLOBOrderFilledEvent
+   */
+  private mapGraphToFilledEvent(event: {
+    id: string;
+    order_id: string;
+    trade_id: string;
+    fill_amount: string;
+    fill_price: string;
+    remaining_amount: string;
+    cumulative_filled: string;
+    block_timestamp: string;
+    transaction_hash: string;
+  }): CLOBOrderFilledEvent {
+    return {
+      id: event.id,
+      order_id: event.order_id,
+      trade_id: event.trade_id,
+      fill_amount: event.fill_amount,
+      fill_price: event.fill_price,
+      remaining_amount: event.remaining_amount,
+      cumulative_filled: event.cumulative_filled,
+      block_number: '0',
+      block_timestamp: event.block_timestamp,
+      transaction_hash: event.transaction_hash,
+    };
+  }
+
+  /**
+   * Map GraphQL cancelled event response to CLOBOrderCancelledEvent
+   */
+  private mapGraphToCancelledEvent(event: {
+    id: string;
+    order_id: string;
+    maker: string;
+    remaining_amount: string;
+    reason: string;
+    block_timestamp: string;
+    transaction_hash: string;
+  }): CLOBOrderCancelledEvent {
+    return {
+      id: event.id,
+      order_id: event.order_id,
+      maker: event.maker,
+      remaining_amount: event.remaining_amount,
+      reason: event.reason,
+      block_number: '0',
+      block_timestamp: event.block_timestamp,
+      transaction_hash: event.transaction_hash,
+    };
+  }
+
+  /**
+   * Map GraphQL expired event response to OrderExpiredEvent
+   */
+  private mapGraphToExpiredEvent(event: {
+    id: string;
+    order_id: string;
+    expired_at: string;
+    block_timestamp: string;
+    transaction_hash: string;
+  }): OrderExpiredEvent {
+    return {
+      id: event.id,
+      order_id: event.order_id,
+      expired_at: event.expired_at,
+      block_number: '0',
+      block_timestamp: event.block_timestamp,
+      transaction_hash: event.transaction_hash,
+    };
+  }
+
+  // ============================================================================
+  // Mapping Methods - Aggregated/Event to Domain
+  // ============================================================================
+
+  /**
+   * Map AggregatedOrder to CLOBOrder domain model
+   */
+  private mapAggregatedToDomain(agg: AggregatedOrder): CLOBOrder {
+    return {
+      id: agg.orderId,
+      maker: agg.maker,
+      baseToken: agg.baseToken,
+      baseTokenId: agg.baseTokenId,
+      quoteToken: agg.quoteToken,
+      price: Number(agg.price) / 1e18, // Convert from wei
+      amount: Number(agg.originalAmount),
+      filledAmount: Number(agg.cumulativeFilled),
+      remainingAmount: Number(agg.remainingAmount),
+      isBuy: agg.isBuy,
+      orderType: agg.orderType === '0' ? 'limit' : 'market',
+      status: agg.status === 'expired' ? 'cancelled' : agg.status,
+      createdAt: Number(agg.createdAt) * 1000,
+    };
+  }
+
+  /**
+   * Map trade executed event to CLOBTrade domain model
+   */
+  private mapTradeEventToDomain(
+    trade: TradeExecutedEventGraphResponse,
+    baseToken: string,
+    baseTokenId: string,
+  ): CLOBTrade {
+    return {
+      id: trade.trade_id,
       takerOrderId: trade.taker_order_id,
       makerOrderId: trade.maker_order_id,
       taker: trade.taker,
       maker: trade.maker,
-      baseToken: trade.base_token,
-      baseTokenId: trade.base_token_id,
-      quoteToken: trade.quote_token,
+      baseToken: baseToken,
+      baseTokenId: baseTokenId,
+      quoteToken: '', // Not available in trade event
       price: Number(trade.price) / 1e18,
       amount: Number(trade.amount),
       quoteAmount: Number(trade.quote_amount) / 1e18,
