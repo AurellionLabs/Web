@@ -321,7 +321,14 @@ contract RWYStakingFacet {
         if (amount == 0) revert InvalidAmount();
         if (opp.stakedAmount + amount > opp.targetAmount) revert ExceedsTarget();
 
-        IERC1155(opp.inputToken).safeTransferFrom(msg.sender, address(this), opp.inputTokenId, amount, "");
+        // Transfer tokens from staker - supports both ERC20 (tokenId == 0) and ERC1155 (tokenId > 0)
+        if (opp.inputTokenId == 0) {
+            // ERC20 staking (e.g., AURA token)
+            IERC20(opp.inputToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else {
+            // ERC1155 staking (e.g., RWA tokens)
+            IERC1155(opp.inputToken).safeTransferFrom(msg.sender, address(this), opp.inputTokenId, amount, "");
+        }
 
         if (!rs.isStaker[opportunityId][msg.sender]) {
             rs.opportunityStakers[opportunityId].push(msg.sender);
@@ -359,7 +366,14 @@ contract RWYStakingFacet {
         userStake.amount -= amount;
         opp.stakedAmount -= amount;
 
-        IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
+        // Transfer tokens back to staker - supports both ERC20 (tokenId == 0) and ERC1155 (tokenId > 0)
+        if (opp.inputTokenId == 0) {
+            // ERC20 unstaking (e.g., AURA token)
+            IERC20(opp.inputToken).safeTransfer(msg.sender, amount);
+        } else {
+            // ERC1155 unstaking (e.g., RWA tokens)
+            IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
+        }
 
         emit CommodityUnstaked(opportunityId, msg.sender, amount);
     }

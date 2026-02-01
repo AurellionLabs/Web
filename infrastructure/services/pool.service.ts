@@ -153,14 +153,25 @@ export class PoolService implements IPoolService {
       }
 
       const tokenAddress = opportunity.inputToken;
-      const tokenId = opportunity.inputTokenId;
+      const tokenId = Number(opportunity.inputTokenId);
 
-      await this.handleTokenApprovalAndBalance(
-        tokenAddress,
-        tokenId,
-        amountInWei.toString(),
-        signerAddress,
-      );
+      // Handle approval based on token type: ERC20 (tokenId == 0) or ERC1155 (tokenId > 0)
+      if (tokenId === 0) {
+        // ERC20 token - use standard approval
+        await this.handleERC20ApprovalAndBalance(
+          tokenAddress,
+          amountInWei.toString(),
+          signerAddress,
+        );
+      } else {
+        // ERC1155 token - use setApprovalForAll
+        await this.handleTokenApprovalAndBalance(
+          tokenAddress,
+          tokenId,
+          amountInWei.toString(),
+          signerAddress,
+        );
+      }
 
       const txResponse = await this.contract.stake(poolId, amountInWei);
 
@@ -685,6 +696,77 @@ export class PoolService implements IPoolService {
     }
   }
 
+  /**
+   * Handle ERC20 token approval and balance check for staking
+   */
+  private async handleERC20ApprovalAndBalance(
+    tokenAddress: string,
+    amount: BigNumberString,
+    userAddress: string,
+  ): Promise<void> {
+    try {
+      const erc20Abi = [
+        'function balanceOf(address account) view returns (uint256)',
+        'function allowance(address owner, address spender) view returns (uint256)',
+        'function approve(address spender, uint256 amount) returns (bool)',
+      ];
+
+      const erc20Contract = new ethers.Contract(
+        tokenAddress,
+        erc20Abi,
+        this.signer,
+      );
+
+      // Check balance
+      const balance = await erc20Contract.balanceOf(userAddress);
+      if (BigInt(balance.toString()) < BigInt(amount)) {
+        const balanceFormatted = ethers.formatEther(balance.toString());
+        const amountFormatted = ethers.formatEther(amount);
+        throw new Error(
+          `Insufficient token balance. Your balance: ${balanceFormatted}, Requested: ${amountFormatted}`,
+        );
+      }
+
+      // Check allowance and approve if needed
+      const contractAddress = await this.contract.getAddress();
+      const currentAllowance = await erc20Contract.allowance(
+        userAddress,
+        contractAddress,
+      );
+
+      if (BigInt(currentAllowance.toString()) < BigInt(amount)) {
+        console.log(
+          '[PoolService.handleERC20ApprovalAndBalance] Approving tokens...',
+        );
+        const approveTx = await erc20Contract.approve(
+          contractAddress,
+          ethers.MaxUint256, // Approve unlimited for convenience
+        );
+        await approveTx.wait();
+        console.log(
+          '[PoolService.handleERC20ApprovalAndBalance] Tokens approved',
+        );
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Insufficient token balance')
+      ) {
+        throw error;
+      }
+      console.error(
+        '[PoolService.handleERC20ApprovalAndBalance] Error:',
+        error,
+      );
+      throw new Error(
+        `Failed to verify ERC20 token approval and balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
+   * Handle ERC1155 token approval and balance check for staking
+   */
   private async handleTokenApprovalAndBalance(
     tokenAddress: string,
     tokenId: number,
@@ -737,7 +819,7 @@ export class PoolService implements IPoolService {
         error,
       );
       throw new Error(
-        `Failed to verify token approval and balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to verify ERC1155 token approval and balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
