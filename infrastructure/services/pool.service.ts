@@ -62,7 +62,7 @@ export class PoolService implements IPoolService {
           data.description,
           data.tokenAddress,
           0, // inputTokenId - not used for ERC20
-          BigInt(data.fundingGoal), // fundingGoal is USD amount (no decimals)
+          ethers.parseEther(data.fundingGoal), // Convert funding goal to wei (18 decimals)
           ethers.ZeroAddress, // outputToken - not known at creation
           0, // expectedOutputAmount - not known at creation
           BigInt(data.rewardRate), // promisedYieldBps

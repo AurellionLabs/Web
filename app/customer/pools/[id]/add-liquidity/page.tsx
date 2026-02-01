@@ -67,11 +67,19 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     loadPool();
   }, [params.id, getPoolById]);
 
+  // Calculate asset price for display
+  const assetPriceDisplay = (() => {
+    if (!pool) return '1 Asset = $0';
+    const priceRaw = parseFloat(pool.assetPrice);
+    // If price is in wei (very large number), convert to human readable
+    const priceUsd = priceRaw > 1e10 ? priceRaw / 1e18 : priceRaw;
+    const formattedPrice = priceUsd > 0 ? priceUsd.toFixed(2) : '0.00';
+    return `1 ${pool.assetName} = $${formattedPrice}`;
+  })();
+
   const poolData = {
     name: pool?.name || '',
-    assetPrice: pool
-      ? `1 ${pool.assetName} = $${formatTokenAmount(pool.assetPrice, 18, 2)}`
-      : '1 Asset = $0',
+    assetPrice: assetPriceDisplay,
     supplyAPY: pool ? `${pool.rewardRate?.toFixed(2) || '0.00'}%` : '0%',
   };
 
@@ -88,6 +96,19 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
       }
     }
   };
+
+  // Calculate remaining pool capacity
+  const remainingCapacity = (() => {
+    if (!pool) return null;
+    const target = BigInt(pool.fundingGoal);
+    const staked = BigInt(pool.totalValueLocked);
+    const remaining = target - staked;
+    return remaining > 0n ? remaining : 0n;
+  })();
+
+  const remainingCapacityFormatted = remainingCapacity
+    ? parseFloat((Number(remainingCapacity) / 1e18).toFixed(6))
+    : 0;
 
   // Calculate amounts when asset amount changes
   useEffect(() => {
@@ -115,15 +136,28 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
           return;
         }
 
-        const assetValue = inputAmount * assetPriceUsd;
-        const feeAmount = assetValue * (PLATFORM_FEE_PERCENTAGE / 100);
-        const total = assetValue + feeAmount;
+        // For RWY pools, the user stakes tokens directly (not USD value)
+        // The amount is in token units, which will be converted to wei
+        const stakeAmount = inputAmount; // Direct token amount
+        const feeAmount = stakeAmount * (PLATFORM_FEE_PERCENTAGE / 100);
+        const total = stakeAmount + feeAmount;
 
         // Ensure we don't produce scientific notation - use toFixed for small numbers
-        // Store in USD (no decimals) - the stake function will handle wei conversion
-        setTokenAmount(assetValue < 0.01 ? '0' : assetValue.toFixed(6));
-        setPlatformFee(feeAmount < 0.01 ? '0' : feeAmount.toFixed(6));
-        setTotalAmount(total < 0.01 ? '0' : total.toFixed(6));
+        setTokenAmount(stakeAmount < 0.000001 ? '0' : stakeAmount.toFixed(6));
+        setPlatformFee(feeAmount < 0.000001 ? '0' : feeAmount.toFixed(6));
+        setTotalAmount(total < 0.000001 ? '0' : total.toFixed(6));
+
+        // Check if amount exceeds remaining capacity
+        if (
+          remainingCapacityFormatted > 0 &&
+          total > remainingCapacityFormatted
+        ) {
+          setError(
+            `Stake amount (${total.toFixed(2)}) exceeds remaining pool capacity (${remainingCapacityFormatted.toFixed(2)}). Please reduce your amount.`,
+          );
+        } else {
+          setError('');
+        }
       } catch (error) {
         console.error('Error calculating amounts:', error);
         setTokenAmount('');
@@ -134,8 +168,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
       setTokenAmount('');
       setPlatformFee('');
       setTotalAmount('');
+      setError('');
     }
-  }, [assetAmount, pool]);
+  }, [assetAmount, pool, remainingCapacityFormatted]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -257,13 +292,23 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <span className="text-muted-foreground text-sm">
                   Asset Price
                 </span>
                 <div className="text-lg font-semibold text-foreground">
                   {poolData.assetPrice}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <span className="text-muted-foreground text-sm">
+                  Remaining Capacity
+                </span>
+                <div className="text-lg font-semibold text-foreground">
+                  {remainingCapacityFormatted > 0
+                    ? `${remainingCapacityFormatted.toLocaleString()} AURA`
+                    : 'Pool is full'}
                 </div>
               </div>
               <div className="space-y-2 md:text-right">
