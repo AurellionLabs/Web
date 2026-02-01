@@ -25,18 +25,60 @@ export function formatTokenAmount(
   try {
     // Raw values (decimals = 0) don't need conversion
     if (decimals === 0) {
-      const num =
-        typeof value === 'bigint' ? Number(value) : parseFloat(String(value));
+      let num: number;
+      if (typeof value === 'bigint') {
+        num = Number(value);
+      } else {
+        const strValue = String(value);
+        // Handle scientific notation
+        if (strValue.includes('e') || strValue.includes('E')) {
+          num = parseFloat(strValue);
+        } else {
+          num = parseFloat(strValue);
+        }
+      }
+
+      // Handle very small or invalid numbers
+      if (isNaN(num) || !isFinite(num)) {
+        return '0.00';
+      }
+
+      // If number is extremely small (< 0.01), just show 0.00
+      if (Math.abs(num) < 0.01 && num !== 0) {
+        return '0.00';
+      }
+
       return num.toFixed(displayDecimals);
     }
 
     // Use ethers for proper BigInt handling to convert wei/token units to human-readable
-    const valueString =
+    let valueString =
       typeof value === 'bigint' ? value.toString() : String(value);
+
+    // Handle scientific notation - convert to fixed notation first
+    if (valueString.includes('e') || valueString.includes('E')) {
+      const num = parseFloat(valueString);
+      if (isNaN(num) || !isFinite(num) || num <= 0) {
+        return '0.00';
+      }
+      // For very small numbers, just return 0
+      if (num < 1) {
+        return '0.00';
+      }
+      // Convert to integer string (no decimals) for formatUnits
+      valueString = Math.floor(num).toString();
+    }
+
     const formatted = formatUnits(valueString, decimals);
 
     // Parse to number and format with desired decimals
     const num = parseFloat(formatted);
+
+    // Handle very small numbers
+    if (isNaN(num) || !isFinite(num)) {
+      return '0.00';
+    }
+
     return num.toFixed(displayDecimals);
   } catch (error) {
     console.error('Error formatting token amount:', error, {
@@ -67,13 +109,28 @@ export function parseTokenAmount(
   try {
     if (!value) return 0n;
 
-    const valueString = typeof value === 'number' ? value.toString() : value;
+    let valueString = typeof value === 'number' ? value.toString() : value;
+
+    // Handle scientific notation (e.g., "1.515e-16") - parseUnits can't handle this
+    if (valueString.includes('e') || valueString.includes('E')) {
+      const num = parseFloat(valueString);
+      if (isNaN(num) || num <= 0 || !isFinite(num)) return 0n;
+      // Convert to fixed notation with enough precision
+      valueString = num.toFixed(Math.max(decimals, 18));
+    }
 
     // Raw values (decimals = 0) don't need conversion
     if (decimals === 0) {
       const num = parseFloat(valueString);
       if (isNaN(num)) return 0n;
       return BigInt(Math.floor(num));
+    }
+
+    // Trim trailing zeros and ensure valid format for parseUnits
+    // parseUnits doesn't like too many decimal places
+    const parts = valueString.split('.');
+    if (parts.length === 2 && parts[1].length > decimals) {
+      valueString = parts[0] + '.' + parts[1].slice(0, decimals);
     }
 
     // Use ethers for proper BigInt handling with decimals

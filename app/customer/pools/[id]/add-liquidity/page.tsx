@@ -94,15 +94,36 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     if (assetAmount && pool) {
       try {
         // assetPrice is stored as wei (18 decimals), convert to USD for calculation
-        const assetPriceUsd = parseFloat(pool.assetPrice) / 1e18;
-        const assetValue = parseFloat(assetAmount) * assetPriceUsd;
+        const assetPriceRaw = parseFloat(pool.assetPrice);
+        // Handle case where assetPrice is already in human-readable format (not wei)
+        // If assetPrice is very large (> 1e10), it's likely in wei, otherwise it's in USD
+        const assetPriceUsd =
+          assetPriceRaw > 1e10 ? assetPriceRaw / 1e18 : assetPriceRaw;
+
+        const inputAmount = parseFloat(assetAmount);
+
+        // Validate inputs
+        if (
+          isNaN(inputAmount) ||
+          isNaN(assetPriceUsd) ||
+          !isFinite(inputAmount) ||
+          !isFinite(assetPriceUsd)
+        ) {
+          setTokenAmount('');
+          setPlatformFee('');
+          setTotalAmount('');
+          return;
+        }
+
+        const assetValue = inputAmount * assetPriceUsd;
         const feeAmount = assetValue * (PLATFORM_FEE_PERCENTAGE / 100);
         const total = assetValue + feeAmount;
 
+        // Ensure we don't produce scientific notation - use toFixed for small numbers
         // Store in USD (no decimals) - the stake function will handle wei conversion
-        setTokenAmount(assetValue.toString());
-        setPlatformFee(feeAmount.toString());
-        setTotalAmount(total.toString());
+        setTokenAmount(assetValue < 0.01 ? '0' : assetValue.toFixed(6));
+        setPlatformFee(feeAmount < 0.01 ? '0' : feeAmount.toFixed(6));
+        setTotalAmount(total < 0.01 ? '0' : total.toFixed(6));
       } catch (error) {
         console.error('Error calculating amounts:', error);
         setTokenAmount('');
