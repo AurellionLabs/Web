@@ -7,7 +7,7 @@
  * To regenerate:
  *   npx ts-node scripts/generate-diamond-abi.ts
  *
- * Generated: 2026-01-31T17:42:12.296Z
+ * Generated: 2026-02-01T10:36:13.735Z
  * Facets: CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OrderRouterFacet, AssetsFacet, AuSysFacet, BridgeFacet, RWYStakingFacet, CLOBLogisticsFacet, OperatorFacet
  */
 
