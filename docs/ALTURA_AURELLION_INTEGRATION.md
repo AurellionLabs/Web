@@ -1,402 +1,472 @@
 # Altura Integration Guide
 
-## What Altura Needs to Do
+## How Aurellion Actually Works
 
-This document tells you exactly:
-
-1. What wallets to create
-2. How money flows through the system
-3. What you sign and when
+This document maps Altura's gold trading flow to Aurellion's **existing** smart contract system.
 
 ---
 
-## 1. Wallets Altura Must Set Up
+## 1. Aurellion's Core Concepts
 
-| Wallet              | Purpose                                                       | Funding Required                                                           |
-| ------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **Operator Wallet** | Signs all attestations, creates pools, triggers distributions | Gas fees (~0.1 ETH on Base) + Collateral (20% of pool size in AURA tokens) |
-| **Treasury Wallet** | Receives operator fees from completed trades                  | None (receives funds)                                                      |
+Aurellion has **two parallel systems** that work together:
 
-### Operator Wallet Setup
+### System 1: RWY (Real World Yield) - Capital Pooling
 
-```
-1. Create new EOA wallet (MetaMask, Ledger, etc.)
-2. Fund with:
-   - 0.1 ETH (Base Sepolia for testing / Base Mainnet for production)
-   - AURA tokens for collateral (minimum 20% of your largest pool)
-3. Send wallet address to Aurellion team for operator approval
-```
+- **Purpose**: Pool investor capital, track opportunity lifecycle, distribute profits
+- **Contract**: `RWYStakingFacet` on Diamond (`0xc52Fc...29f58`)
+- **Key entity**: `Opportunity` (funding pool with status tracking)
 
-**After approval, your wallet can:**
+### System 2: AuSys - Physical Logistics & Custody
 
-- Create yield pools
-- Submit attestations at each stage
-- Trigger profit distributions
+- **Purpose**: Track physical asset movement, custody handoffs, driver signatures
+- **Contract**: `AuSysFacet` on Diamond
+- **Key entities**: `Order` (commercial agreement) + `Journey` (physical transport leg)
+
+**The connection**: `RWYStakingFacet.startDelivery(opportunityId, journeyId)` links a funded opportunity to an AuSys journey for physical tracking.
 
 ---
 
-## 2. Flow of Funds
+## 2. Wallets Altura Needs
 
-### Money In (Investor Capital)
+| Wallet                     | Role in Aurellion | What It Does                                                      |
+| -------------------------- | ----------------- | ----------------------------------------------------------------- |
+| **Operator Wallet**        | Approved Operator | Creates opportunities, submits attestations, triggers settlements |
+| **Driver Wallet**          | Registered Driver | Signs for physical custody handoffs (`packageSign`)               |
+| **Node Wallet** (optional) | Node Operator     | Represents physical locations (warehouse, vault)                  |
 
-```
-Investors
-    │
-    │ stake(poolId, amount)
-    │ [AURA tokens]
-    ▼
-┌─────────────────────────────────┐
-│  AURELLION SMART CONTRACT       │
-│  (Diamond: 0xc52Fc...29f58)     │
-│                                 │
-│  Funds locked in escrow         │
-│  Segregated per pool            │
-│  Cannot be withdrawn by anyone  │
-│  until pool is funded           │
-└─────────────────────────────────┘
-```
+### Why Multiple Wallets?
 
-### Money Out (After Altura Confirms Capital Receipt)
+The signature system requires **different parties** to sign at each handoff:
 
 ```
-┌─────────────────────────────────┐
-│  AURELLION SMART CONTRACT       │
-└─────────────────────────────────┘
-    │
-    │ Altura calls: confirmCapitalReceipt(poolId)
-    │
-    ▼
-┌─────────────────────────────────┐
-│  ALTURA TREASURY WALLET         │
-│  (Your wallet receives capital) │
-│                                 │
-│  You now have the funds to      │
-│  execute the gold trade         │
-└─────────────────────────────────┘
-    │
-    │ Off-chain: Buy physical gold
-    │
-    ▼
-┌─────────────────────────────────┐
-│  GOLD TRADE EXECUTION           │
-│  (Your existing process)        │
-└─────────────────────────────────┘
+Sender signs → Driver signs → handOn() succeeds (pickup complete)
+Driver signs → Receiver signs → handOff() succeeds (delivery complete)
 ```
 
-### Money Back (Settlement)
+If Altura controls all parties (as the only cooperative on-chain entity), you need separate wallets to represent each role.
+
+---
+
+## 3. Complete Flow: Gold Trade on Aurellion
+
+### Phase 1: Capital Pooling (RWY)
 
 ```
-Gold Buyer pays you (off-chain)
-    │
-    │ You receive settlement
-    │
-    ▼
-┌─────────────────────────────────┐
-│  ALTURA TREASURY WALLET         │
-│  (You hold the proceeds)        │
-└─────────────────────────────────┘
-    │
-    │ Altura calls: recordSaleProceeds(poolId, totalAmount)
-    │ [You send AURA tokens back to contract]
-    │
-    ▼
-┌─────────────────────────────────┐
-│  AURELLION SMART CONTRACT       │
-│  Automatic split:               │
-│  ├─ 0.5% → Altura (your fee)    │
-│  ├─ 1.0% → Protocol Treasury    │
-│  └─ Rest → Investors can claim  │
-└─────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 1: Create Opportunity                                     │
+│  Function: createOpportunity(...)                               │
+│  Signer: Altura Operator Wallet                                 │
+│  Status: FUNDING                                                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 2: Investors Stake                                        │
+│  Function: stake(opportunityId, amount)                         │
+│  Signer: Each investor                                          │
+│  Status: FUNDING → FUNDED (when target reached)                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 2: Physical Logistics (AuSys)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 3: Create Order (Commercial Agreement)                    │
+│  Function: createAuSysOrder(order)                              │
+│  Signer: Buyer (Altura representing gold buyer)                 │
+│                                                                 │
+│  Order contains:                                                │
+│  - buyer: Gold buyer address                                    │
+│  - seller: Altura (holding tokenised gold)                      │
+│  - token: Gold token contract (ERC1155)                         │
+│  - tokenId: Specific gold token ID                              │
+│  - tokenQuantity: Amount of gold                                │
+│  - price: Settlement amount in AURA                             │
+│  - nodes[]: Array of node addresses involved                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 4: Create Journey (Physical Transport Leg)                │
+│  Function: createOrderJourney(orderId, sender, receiver, ...)   │
+│  Signer: Admin or Node Operator                                 │
+│                                                                 │
+│  Journey contains:                                              │
+│  - sender: Current custodian (e.g., Altura vault)               │
+│  - receiver: Next custodian (e.g., gold buyer)                  │
+│  - parcelData: Start/end locations                              │
+│  - bounty: Driver payment                                       │
+│  - ETA: Expected delivery time                                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 5: Link Opportunity to Journey                            │
+│  Function: startDelivery(opportunityId, journeyId)              │
+│  Signer: Altura Operator Wallet                                 │
+│  Status: FUNDED → IN_TRANSIT                                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 6: Assign Driver                                          │
+│  Function: assignDriverToJourney(driver, journeyId)             │
+│  Signer: Driver, Dispatcher, or Sender                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 3: Custody Handoffs (Signatures)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 7: Pickup Signatures                                      │
+│                                                                 │
+│  7a. Sender signs:                                              │
+│      Function: packageSign(journeyId)                           │
+│      Signer: Sender wallet (Altura vault)                       │
+│      Effect: customerHandOff[sender][journeyId] = true          │
+│                                                                 │
+│  7b. Driver signs:                                              │
+│      Function: packageSign(journeyId)                           │
+│      Signer: Driver wallet                                      │
+│      Effect: driverPickupSigned[driver][journeyId] = true       │
+│                                                                 │
+│  7c. Execute pickup:                                            │
+│      Function: handOn(journeyId)                                │
+│      Signer: Any participant                                    │
+│      Requires: Both signatures above                            │
+│      Effect: Journey status → InTransit                         │
+│              Tokens transferred to escrow                       │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 8: Delivery Signatures                                    │
+│                                                                 │
+│  8a. Driver signs:                                              │
+│      Function: packageSign(journeyId)                           │
+│      Signer: Driver wallet                                      │
+│      Effect: driverDeliverySigned[driver][journeyId] = true     │
+│                                                                 │
+│  8b. Receiver signs:                                            │
+│      Function: packageSign(journeyId)                           │
+│      Signer: Receiver wallet (gold buyer)                       │
+│      Effect: customerHandOff[receiver][journeyId] = true        │
+│                                                                 │
+│  8c. Execute delivery:                                          │
+│      Function: handOff(journeyId)                               │
+│      Signer: Any participant                                    │
+│      Requires: Both signatures above                            │
+│      Effect: Journey status → Delivered                         │
+│              Driver paid bounty                                 │
+│              If receiver == order.buyer: Order settled          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 4: Settlement (RWY)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 9: Confirm Delivery to RWY                                │
+│  Function: confirmDelivery(opportunityId, deliveredAmount)      │
+│  Signer: Altura Operator Wallet                                 │
+│  Status: IN_TRANSIT → PROCESSING                                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 10: Complete Processing (Mint Output Tokens)              │
+│  Function: completeProcessing(opportunityId, outputTokenId,     │
+│                               actualOutputAmount)               │
+│  Signer: Altura Operator Wallet                                 │
+│  Status: PROCESSING → SELLING                                   │
+│  Effect: Output tokens transferred to contract                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 11: Record Sale Proceeds                                  │
+│  Function: recordSaleProceeds(opportunityId, proceeds)          │
+│  Signer: Contract owner or internal call                        │
+│  Status: SELLING → DISTRIBUTING                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 12: Investors Claim Profits                               │
+│  Function: claimProfits(opportunityId)                          │
+│  Signer: Each investor                                          │
+│  Effect: Pro-rata share of proceeds transferred                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Attestations (What You Sign & When)
+## 4. Signature Matrix: Who Signs What
 
-You sign **5 transactions** per trade cycle. Each one moves the pool to the next stage.
-
-### Timeline View
-
-```
-Day 0-3: Pool Funding (investors deposit)
-         ↓
-Day 3:   YOU SIGN → confirmCapitalReceipt()
-         ↓
-Day 3-5: You buy gold (off-chain)
-         ↓
-Day 5:   YOU SIGN → confirmPurchase(custodyProofHash)
-         ↓
-Day 5:   YOU SIGN → mintAssetTokens() [if tokenising]
-         ↓
-Day 5-7: Gold delivered to buyer (off-chain)
-         ↓
-Day 7:   YOU SIGN → confirmDelivery(buyerAddress)
-         ↓
-Day 7:   Buyer pays you (off-chain)
-         ↓
-Day 7:   YOU SIGN → recordSaleProceeds(amount)
-         ↓
-         Investors can now claim profits
-```
-
-### Attestation Details
-
-#### ATTESTATION 1: Capital Receipt
-
-**When**: Pool reaches funding target
-**What you're confirming**: "I have received the capital and am ready to execute the trade"
-
-```
-Function: confirmCapitalReceipt(bytes32 poolId)
-Gas: ~50,000
-```
-
-**What happens after you sign:**
-
-- Pool status changes to `IN_TRANSIT`
-- Capital is released to your wallet
-- Investors cannot withdraw
+| Step | Function                 | Altura Operator   | Altura Driver | Altura Vault (Sender) | Gold Buyer (Receiver) |
+| ---- | ------------------------ | ----------------- | ------------- | --------------------- | --------------------- |
+| 1    | `createOpportunity`      | ✅                |               |                       |                       |
+| 3    | `createAuSysOrder`       | ✅ (as buyer rep) |               |                       |                       |
+| 4    | `createOrderJourney`     | ✅                |               |                       |                       |
+| 5    | `startDelivery`          | ✅                |               |                       |                       |
+| 6    | `assignDriverToJourney`  |                   | ✅            |                       |                       |
+| 7a   | `packageSign` (pickup)   |                   |               | ✅                    |                       |
+| 7b   | `packageSign` (pickup)   |                   | ✅            |                       |                       |
+| 7c   | `handOn`                 | any               | any           | any                   |                       |
+| 8a   | `packageSign` (delivery) |                   | ✅            |                       |                       |
+| 8b   | `packageSign` (delivery) |                   |               |                       | ✅                    |
+| 8c   | `handOff`                | any               | any           |                       | any                   |
+| 9    | `confirmDelivery`        | ✅                |               |                       |                       |
+| 10   | `completeProcessing`     | ✅                |               |                       |                       |
+| 11   | `recordSaleProceeds`     | ✅ (owner)        |               |                       |                       |
 
 ---
 
-#### ATTESTATION 2: Purchase Confirmation
+## 5. Money & Token Flow
 
-**When**: Gold purchased and in custody
-**What you're confirming**: "Gold has been purchased and is in insured custody"
+### Investor Capital Flow
 
 ```
-Function: confirmPurchase(bytes32 poolId, bytes32 custodyProofHash)
-Gas: ~60,000
-
-custodyProofHash = keccak256(custody certificate PDF)
+Investors ──stake()──► Opportunity Escrow (Diamond)
+                              │
+                              │ (Altura withdraws after FUNDED)
+                              ▼
+                        Altura Treasury
+                              │
+                              │ (Off-chain: Buy gold)
+                              ▼
+                        Physical Gold
+                              │
+                              │ (Tokenise)
+                              ▼
+                        Gold Tokens (ERC1155)
 ```
 
-**How to create custodyProofHash:**
+### Order Settlement Flow
+
+```
+Gold Buyer ──createAuSysOrder()──► Order Created
+     │                                   │
+     │ price + txFee escrowed            │
+     ▼                                   │
+Diamond Escrow                           │
+     │                                   │
+     │ (After handOff to buyer)          │
+     ▼                                   ▼
+┌────────────────────────────────────────────┐
+│  _settleOrder() triggered automatically    │
+│  - Gold tokens → Buyer                     │
+│  - Payment → Seller (Altura)               │
+│  - Tx fees → Nodes (proportional)          │
+└────────────────────────────────────────────┘
+```
+
+### Profit Distribution Flow
+
+```
+recordSaleProceeds(opportunityId, proceeds)
+                    │
+                    ▼
+           ┌───────────────────┐
+           │  Total Proceeds   │
+           └───────────────────┘
+                    │
+        ┌───────────┼───────────┐
+        ▼           ▼           ▼
+   Protocol Fee  Operator Fee  Investor Pool
+   (1% default)  (set by op)   (remainder)
+        │           │           │
+        ▼           ▼           ▼
+   Fee Recipient  Operator    claimProfits()
+                  Wallet      per staker
+```
+
+---
+
+## 6. What's Already Built vs What Needs Work
+
+### ✅ Fully Implemented
+
+| Component            | Contract Function         | UI                                   |
+| -------------------- | ------------------------- | ------------------------------------ |
+| Opportunity Creation | `createOpportunity()`     | `/customer/pools/create-pool`        |
+| Investor Staking     | `stake()`                 | `/customer/pools/[id]/add-liquidity` |
+| Unstaking            | `unstake()`               | ✅                                   |
+| Operator Approval    | `approveOperator()`       | Admin script                         |
+| Order Creation       | `createAuSysOrder()`      | `/customer/trading/[id]/order`       |
+| Journey Creation     | `createOrderJourney()`    | Node dashboard                       |
+| Driver Assignment    | `assignDriverToJourney()` | `/driver/dashboard`                  |
+| Package Signing      | `packageSign()`           | `/driver/dashboard`                  |
+| Pickup Handoff       | `handOn()`                | `/driver/dashboard`                  |
+| Delivery Handoff     | `handOff()`               | `/driver/dashboard`                  |
+| Profit Claims        | `claimProfits()`          | `/customer/rwy/my-stakes`            |
+
+### 🔶 Partially Implemented
+
+| Component              | Issue                              | Fix Needed                |
+| ---------------------- | ---------------------------------- | ------------------------- |
+| `startDelivery()`      | Contract exists, no UI             | Add to operator dashboard |
+| `confirmDelivery()`    | Contract exists, no UI             | Add to operator dashboard |
+| `completeProcessing()` | Contract exists, no UI             | Add to operator dashboard |
+| `recordSaleProceeds()` | Owner-only, needs CLOB integration | Connect to CLOB sales     |
+
+### ❌ Not Implemented
+
+| Component                       | Description                               |
+| ------------------------------- | ----------------------------------------- |
+| **Custody Proof Storage**       | Store IPFS hash of custody certificates   |
+| **Multi-journey Opportunities** | Link multiple journeys to one opportunity |
+| **Automatic CLOB Listing**      | Auto-list processed goods on CLOB         |
+| **Slashing Mechanism**          | Slash operator collateral on failure      |
+
+---
+
+## 7. Altura-Specific Implementation
+
+### Wallet Setup
+
+```
+1. Operator Wallet (EOA)
+   - Fund with: 0.1 ETH (gas) + AURA (collateral)
+   - Approve as operator via: approveOperator(address)
+   - Creates opportunities, submits attestations
+
+2. Driver Wallet (EOA)
+   - Fund with: 0.1 ETH (gas)
+   - Register as driver via: setDriver(address, true)
+   - Signs for custody handoffs
+
+3. Vault Wallet (EOA or Multisig)
+   - Represents Altura's gold custody
+   - Acts as "sender" in journeys
+   - Signs packageSign() at pickup
+```
+
+### Transaction Sequence for $100k Gold Trade
 
 ```javascript
-// In browser console or Node.js
-const ethers = require('ethers');
-const fs = require('fs');
-const certificate = fs.readFileSync('custody-certificate.pdf');
-const hash = ethers.keccak256(certificate);
-// Use this hash in the transaction
-```
-
-**What happens after you sign:**
-
-- Pool status changes to `PROCESSING`
-- Custody proof permanently recorded on-chain
-
----
-
-#### ATTESTATION 3: Tokenisation (Optional)
-
-**When**: Gold tokens minted
-**What you're confirming**: "Tokenised gold has been minted 1:1 against physical"
-
-```
-Function: mintAssetTokens(bytes32 poolId, uint256 amount, string metadataURI)
-Gas: ~150,000
-
-amount = gold ounces × 10^18
-metadataURI = "ipfs://Qm.../metadata.json"
-```
-
-**What happens after you sign:**
-
-- ERC1155 tokens minted to contract escrow
-- Pool status changes to `SELLING`
-
----
-
-#### ATTESTATION 4: Delivery Confirmed
-
-**When**: Gold (or gold tokens) delivered to buyer
-**What you're confirming**: "Buyer has received the gold/tokens"
-
-```
-Function: confirmDelivery(bytes32 poolId, address buyerAddress)
-Gas: ~70,000
-
-buyerAddress = buyer's wallet (or your wallet if buyer is off-chain)
-```
-
-**What happens after you sign:**
-
-- Tokens transferred to buyer (if tokenised)
-- Pool status changes to `AWAITING_SETTLEMENT`
-
----
-
-#### ATTESTATION 5: Settlement Received
-
-**When**: Buyer has paid you
-**What you're confirming**: "I have received payment and am returning proceeds to the pool"
-
-```
-Function: recordSaleProceeds(bytes32 poolId, uint256 proceedsAmount)
-Gas: ~200,000
-
-proceedsAmount = total received in AURA tokens (wei)
-```
-
-**IMPORTANT**: Before calling this, you must:
-
-1. Convert fiat proceeds to AURA tokens
-2. Approve the Diamond contract to spend your AURA
-3. Have AURA balance ≥ proceedsAmount in your wallet
-
-**What happens after you sign:**
-
-- AURA transferred from your wallet to contract
-- Automatic fee split executed
-- Pool status changes to `DISTRIBUTING`
-- Investors can now call `claimProfits()`
-
----
-
-## 4. Example: $100,000 Gold Trade
-
-### Pool Creation (You do this)
-
-```javascript
-// Using ethers.js
-const poolTx = await diamond.createOpportunity(
-  'Gold Arbitrage Week 12', // name
-  'Dubai to Singapore physical gold', // description
-  AURA_TOKEN_ADDRESS, // inputToken (what investors stake)
-  0, // inputTokenId (0 = ERC20)
-  ethers.parseEther('100000'), // targetAmount ($100k)
-  ethers.ZeroAddress, // outputToken (set later)
-  0, // expectedOutputAmount
+// Day 0: Create opportunity
+const oppId = await diamond.createOpportunity(
+  'Gold Arbitrage Week 12',
+  'Dubai to Singapore physical gold',
+  AURA_TOKEN, // inputToken
+  0, // inputTokenId (ERC20 mode)
+  parseEther('100000'), // targetAmount
+  GOLD_TOKEN, // outputToken (ERC1155)
+  0, // expectedOutputAmount (set later)
   150, // promisedYieldBps (1.5%)
   50, // operatorFeeBps (0.5%)
-  ethers.parseEther('2800'), // minSalePrice
+  parseEther('2800'), // minSalePrice
   3, // fundingDays
   7, // processingDays
-  AURA_TOKEN_ADDRESS, // collateralToken
+  AURA_TOKEN, // collateralToken
   0, // collateralTokenId
-  ethers.parseEther('20000'), // collateralAmount (20%)
+  parseEther('20000'), // collateralAmount (20%)
 );
-```
 
-### Trade Execution Flow
+// Day 0-3: Investors stake
+await diamond.stake(oppId, parseEther('50000')); // Investor A
+await diamond.stake(oppId, parseEther('50000')); // Investor B
+// Status auto-transitions to FUNDED
 
-| Day | Action                           | Who       | On-Chain?                    |
-| --- | -------------------------------- | --------- | ---------------------------- |
-| 0   | Create pool                      | Altura    | ✅ `createOpportunity()`     |
-| 0-3 | Investors stake                  | Investors | ✅ `stake()`                 |
-| 3   | Pool funded ($100k reached)      | Automatic | ✅ Status → FUNDED           |
-| 3   | Confirm capital receipt          | Altura    | ✅ `confirmCapitalReceipt()` |
-| 3   | Receive $100k in AURA            | Altura    | ✅ Automatic transfer        |
-| 3-4 | Buy physical gold                | Altura    | ❌ Off-chain                 |
-| 4   | Gold in custody                  | Custodian | ❌ Off-chain                 |
-| 4   | Confirm purchase + custody hash  | Altura    | ✅ `confirmPurchase()`       |
-| 5   | Deliver to buyer                 | Altura    | ❌ Off-chain                 |
-| 5   | Confirm delivery                 | Altura    | ✅ `confirmDelivery()`       |
-| 6   | Buyer pays $101,500              | Buyer     | ❌ Off-chain                 |
-| 6   | Convert to AURA, record proceeds | Altura    | ✅ `recordSaleProceeds()`    |
-| 7+  | Investors claim profits          | Investors | ✅ `claimProfits()`          |
+// Day 3: Create order for gold delivery
+const orderId = await diamond.createAuSysOrder({
+  buyer: GOLD_BUYER_ADDRESS,
+  seller: ALTURA_VAULT_ADDRESS,
+  token: GOLD_TOKEN,
+  tokenId: 1,
+  tokenQuantity: parseUnits('35', 18), // 35 oz gold
+  price: parseEther('101500'),
+  txFee: 0, // Auto-calculated
+  nodes: [NODE_1, NODE_2],
+  // ... other fields
+});
 
-### Final Distribution
+// Day 3: Create journey
+const journeyId = await diamond.createOrderJourney(
+  orderId,
+  ALTURA_VAULT_ADDRESS, // sender (vault)
+  GOLD_BUYER_ADDRESS, // receiver (buyer)
+  parcelData, // locations
+  parseEther('100'), // bounty
+  futureTimestamp, // ETA
+  parseUnits('35', 18), // tokenQuantity
+  1, // assetId
+);
 
-```
-Proceeds Received: $101,500 (in AURA)
+// Day 3: Link opportunity to journey
+await diamond.startDelivery(oppId, journeyId);
+// Status: FUNDED → IN_TRANSIT
 
-Distribution:
-├─ Protocol Fee (1%):    $1,015.00  → Aurellion Treasury
-├─ Operator Fee (0.5%):  $507.50    → Altura Wallet
-└─ Investor Pool:        $99,977.50 → Available for claims
+// Day 3: Assign driver
+await diamond.assignDriverToJourney(DRIVER_ADDRESS, journeyId);
 
-Investor Returns:
-├─ Original Stake:       $100,000.00
-├─ Gross Yield:          $1,500.00 (1.5%)
-├─ Fees Deducted:        -$1,522.50
-└─ Net to Investors:     $99,977.50 (-0.02%)
-```
+// Day 4: Pickup signatures (SENDER + DRIVER)
+await diamond.connect(vaultWallet).packageSign(journeyId);
+await diamond.connect(driverWallet).packageSign(journeyId);
+await diamond.handOn(journeyId);
+// Journey: Pending → InTransit
+// Tokens moved to escrow
 
-_Note: In this example, fees exceed yield. Adjust `promisedYieldBps` based on actual expected returns._
+// Day 5: Delivery signatures (DRIVER + RECEIVER)
+await diamond.connect(driverWallet).packageSign(journeyId);
+await diamond.connect(buyerWallet).packageSign(journeyId);
+await diamond.handOff(journeyId);
+// Journey: InTransit → Delivered
+// Order settled: tokens → buyer, payment → seller
 
----
+// Day 5: Confirm delivery to RWY
+await diamond.confirmDelivery(oppId, parseEther('100000'));
+// Status: IN_TRANSIT → PROCESSING
 
-## 5. Contract Addresses (Base Sepolia Testnet)
+// Day 6: Complete processing (mint output or mark done)
+await diamond.completeProcessing(oppId, 1, parseUnits('35', 18));
+// Status: PROCESSING → SELLING
 
-| Contract       | Address                                      | Purpose                  |
-| -------------- | -------------------------------------------- | ------------------------ |
-| Diamond (Main) | `0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58` | All interactions go here |
-| AURA Token     | `0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6` | Staking/collateral token |
-| AuraAsset      | `0xb3090aBF81918FF50e921b166126aD6AB9a03944` | Gold token (ERC1155)     |
+// Day 7: Record sale proceeds
+await diamond.recordSaleProceeds(oppId, parseEther('101500'));
+// Status: SELLING → DISTRIBUTING
 
-**You only interact with the Diamond address.** All functions are called on this single contract.
-
----
-
-## 6. Quick Reference: Function Signatures
-
-```solidity
-// Pool Creation
-function createOpportunity(
-    string name,
-    string description,
-    address inputToken,
-    uint256 inputTokenId,
-    uint256 targetAmount,
-    address outputToken,
-    uint256 expectedOutputAmount,
-    uint256 promisedYieldBps,
-    uint256 operatorFeeBps,
-    uint256 minSalePrice,
-    uint256 fundingDays,
-    uint256 processingDays,
-    address collateralToken,
-    uint256 collateralTokenId,
-    uint256 collateralAmount
-) external returns (bytes32 opportunityId);
-
-// Attestations (Operator Only)
-function confirmCapitalReceipt(bytes32 opportunityId) external;
-function confirmPurchase(bytes32 opportunityId, bytes32 custodyProofHash) external;
-function mintAssetTokens(bytes32 opportunityId, uint256 amount, string metadataURI) external;
-function confirmDelivery(bytes32 opportunityId, address buyerAddress) external;
-function recordSaleProceeds(bytes32 opportunityId, uint256 proceedsAmount) external;
-
-// Investor Functions
-function stake(bytes32 opportunityId, uint256 amount) external;
-function unstake(bytes32 opportunityId, uint256 amount) external;
-function claimProfits(bytes32 opportunityId) external;
+// Day 7+: Investors claim
+await diamond.connect(investorA).claimProfits(oppId);
+await diamond.connect(investorB).claimProfits(oppId);
 ```
 
 ---
 
-## 7. What's Not Built Yet
+## 8. Contract Addresses (Base Sepolia)
 
-These attestation functions are **not yet deployed**. Current status:
-
-| Function                  | Status             |
-| ------------------------- | ------------------ |
-| `createOpportunity()`     | ✅ Live            |
-| `stake()` / `unstake()`   | ✅ Live            |
-| `recordSaleProceeds()`    | ✅ Live            |
-| `claimProfits()`          | ✅ Live            |
-| `confirmCapitalReceipt()` | ❌ Not implemented |
-| `confirmPurchase()`       | ❌ Not implemented |
-| `mintAssetTokens()`       | ❌ Not implemented |
-| `confirmDelivery()`       | ❌ Not implemented |
-
-**Timeline to complete:** 1-2 weeks for attestation layer.
+| Contract                    | Address                                      |
+| --------------------------- | -------------------------------------------- |
+| Diamond (all calls go here) | `0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58` |
+| AURA Token (ERC20)          | `0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6` |
+| AuraAsset (ERC1155)         | `0xb3090aBF81918FF50e921b166126aD6AB9a03944` |
 
 ---
 
-## 8. Next Steps for Altura
+## 9. Summary: What Altura Needs to Do
 
-1. **Create Operator Wallet** - New EOA, fund with gas + AURA for collateral
-2. **Send Wallet Address** - We'll approve it as an operator
-3. **Test on Sepolia** - Create a test pool, go through the flow
-4. **Provide Feedback** - What's missing? What's unclear?
-5. **Go Live** - Deploy to Base Mainnet when ready
+1. **Set up 3 wallets**: Operator, Driver, Vault
+2. **Get wallets approved**: Operator approval + Driver role
+3. **Use existing UI**:
+   - Create pools at `/customer/pools/create-pool`
+   - Driver actions at `/driver/dashboard`
+4. **Use scripts for operator actions**:
+   - `startDelivery()`, `confirmDelivery()`, `completeProcessing()`, `recordSaleProceeds()`
+5. **Sign at each custody handoff**:
+   - Vault signs pickup, Driver signs pickup → `handOn()`
+   - Driver signs delivery, Buyer signs delivery → `handOff()`
 
 ---
 
-## Questions?
+## 10. What We Need to Build for Full Altura Support
 
-Contact the Aurellion team with your operator wallet address to get started.
+| Priority  | Item                                                                            | Effort   |
+| --------- | ------------------------------------------------------------------------------- | -------- |
+| 🔴 High   | Operator dashboard for `startDelivery`, `confirmDelivery`, `completeProcessing` | 3-5 days |
+| 🔴 High   | IPFS custody proof storage                                                      | 2-3 days |
+| 🟡 Medium | CLOB integration for auto-selling                                               | 1 week   |
+| 🟡 Medium | Multi-journey opportunity support                                               | 3-5 days |
+| 🟢 Low    | Slashing mechanism                                                              | 1 week   |
