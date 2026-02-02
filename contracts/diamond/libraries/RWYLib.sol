@@ -33,6 +33,7 @@ library RWYLib {
 
     /**
      * @notice Transfer collateral from operator to Diamond
+     * @dev Skips transfer if amount is 0 (for insured/trusted pools)
      */
     function transferCollateralIn(
         address token,
@@ -40,6 +41,9 @@ library RWYLib {
         uint256 amount,
         address from
     ) internal {
+        // Skip transfer if no collateral required
+        if (amount == 0) return;
+        
         if (tokenId == 0) {
             // ERC20 collateral
             IERC20(token).safeTransferFrom(from, address(this), amount);
@@ -151,6 +155,7 @@ library RWYLib {
 
     /**
      * @notice Validate opportunity creation parameters
+     * @dev Supports 0 collateral for insured opportunities or trusted operators
      */
     function validateCreateParams(
         uint256 targetAmount,
@@ -166,11 +171,17 @@ library RWYLib {
         require(targetAmount > 0, "Invalid amount");
         require(promisedYieldBps <= maxYieldBps, "Invalid yield");
         require(fundingDays > 0 && processingDays > 0, "Invalid timeline");
-        require(collateralToken != address(0), "Invalid collateral token");
         
-        // Calculate required collateral based on expected value
-        uint256 requiredCollateral = (targetAmount * minSalePrice * minOperatorCollateralBps) / 10000;
-        require(collateralAmount >= requiredCollateral, "Insufficient collateral");
+        // If collateral is provided, validate it meets minimum requirements
+        // If collateral is 0, allow it (for insured pools or trusted operators)
+        if (collateralAmount > 0) {
+            require(collateralToken != address(0), "Invalid collateral token");
+            
+            // Calculate required collateral based on expected value
+            uint256 requiredCollateral = (targetAmount * minSalePrice * minOperatorCollateralBps) / 10000;
+            require(collateralAmount >= requiredCollateral, "Insufficient collateral");
+        }
+        // Note: 0 collateral is allowed - UI should display this clearly to investors
     }
 
     /**

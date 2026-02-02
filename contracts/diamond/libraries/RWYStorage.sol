@@ -47,6 +47,26 @@ library RWYStorage {
     }
 
     /**
+     * @notice Insurance information for an opportunity
+     */
+    struct InsuranceInfo {
+        bool isInsured;           // Whether the opportunity has insurance
+        bytes32 insuranceDocHash; // IPFS hash of insurance document
+        uint256 coverageAmount;   // Coverage amount in wei
+        uint256 expiryDate;       // Insurance expiry timestamp
+    }
+
+    /**
+     * @notice Custody proof for tracking physical asset custody
+     */
+    struct CustodyProof {
+        bytes32 proofHash;        // IPFS hash of custody certificate
+        uint256 timestamp;        // When proof was submitted
+        address submitter;        // Who submitted the proof
+        string proofType;         // Type of proof (e.g., "CUSTODY_CERTIFICATE", "DELIVERY_RECEIPT")
+    }
+
+    /**
      * @notice An RWY opportunity created by an operator
      */
     struct Opportunity {
@@ -84,6 +104,9 @@ library RWYStorage {
 
         // Operator collateral (token-based, not ETH)
         CollateralInfo collateral;
+
+        // Insurance information
+        InsuranceInfo insurance;
     }
 
     /**
@@ -115,6 +138,10 @@ library RWYStorage {
         // ======= SALE PROCEEDS =======
         mapping(bytes32 => uint256) saleProceeds;
         mapping(bytes32 => bool) proceedsFinalized;
+
+        // ======= CUSTODY PROOFS =======
+        // opportunityId => array of custody proofs
+        mapping(bytes32 => CustodyProof[]) custodyProofs;
 
         // ======= CONFIGURATION =======
         uint256 minOperatorCollateralBps;  // 2000 = 20% minimum collateral

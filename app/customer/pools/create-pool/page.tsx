@@ -169,12 +169,15 @@ const formSchema = z.object({
   collateralAmount: z.string().refine(
     (val) => {
       const num = parseFloat(val);
-      return !isNaN(num) && num > 0;
+      return !isNaN(num) && num >= 0; // Allow 0 collateral
     },
     {
-      message: 'Please enter a valid number greater than 0.',
+      message: 'Please enter a valid number (0 or greater).',
     },
   ),
+  // Insurance fields
+  isInsured: z.boolean().optional(),
+  insuranceDocument: z.instanceof(File).optional().nullable(),
   operatorFeeBps: z
     .string()
     .optional()
@@ -260,11 +263,19 @@ export default function CreatePoolPage() {
       rewardRate: '',
       assetPrice: '',
       minSalePrice: '',
-      collateralAmount: '',
+      collateralAmount: '0',
       operatorFeeBps: '500',
       processingDays: '',
       supportingDocuments: [],
+      isInsured: false,
+      insuranceDocument: null,
     },
+  });
+
+  // Watch insurance status
+  const isInsured = useWatch({
+    control: form.control,
+    name: 'isInsured',
   });
 
   // Watch collateral amount for token approval check
@@ -412,7 +423,7 @@ export default function CreatePoolPage() {
         rewardRate: String(parseFloat(values.rewardRate) * 100),
         assetPrice: values.assetPrice,
         minSalePrice: values.minSalePrice,
-        collateralAmount: values.collateralAmount,
+        collateralAmount: values.collateralAmount || '0',
         operatorFeeBps: values.operatorFeeBps
           ? parseInt(values.operatorFeeBps)
           : undefined,
@@ -421,6 +432,9 @@ export default function CreatePoolPage() {
           : undefined,
         supportingDocuments:
           supportingDocuments.length > 0 ? supportingDocuments : undefined,
+        // Insurance data
+        isInsured: values.isInsured || false,
+        // Note: insuranceDocHash will be set after IPFS upload in the service
       };
 
       const result = await createPool(poolCreationData);
@@ -771,7 +785,7 @@ export default function CreatePoolPage() {
                           <div
                             className={`mt-2 p-3 rounded-lg border ${
                               parseFloat(field.value || '0') >=
-                              minimumRequiredCollateral
+                                minimumRequiredCollateral || isInsured
                                 ? 'bg-green-500/10 border-green-500/30'
                                 : 'bg-amber-500/10 border-amber-500/30'
                             }`}
@@ -779,18 +793,36 @@ export default function CreatePoolPage() {
                             <p
                               className={`text-sm font-medium ${
                                 parseFloat(field.value || '0') >=
-                                minimumRequiredCollateral
+                                  minimumRequiredCollateral || isInsured
                                   ? 'text-green-400'
                                   : 'text-amber-400'
                               }`}
                             >
-                              Minimum Required:{' '}
-                              {minimumRequiredCollateral.toLocaleString()} AURA
+                              {isInsured ? (
+                                <>
+                                  <Shield className="w-3 h-3 inline mr-1" />
+                                  Insured - Collateral optional
+                                </>
+                              ) : (
+                                <>
+                                  Minimum Required:{' '}
+                                  {minimumRequiredCollateral.toLocaleString()}{' '}
+                                  AURA
+                                </>
+                              )}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              20% of ({fundingGoal || '0'} ×{' '}
-                              {minSalePrice || '0'})
-                            </p>
+                            {!isInsured && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                20% of ({fundingGoal || '0'} ×{' '}
+                                {minSalePrice || '0'})
+                              </p>
+                            )}
+                            {isInsured &&
+                              parseFloat(field.value || '0') === 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Insurance covers investor protection
+                                </p>
+                              )}
                           </div>
                         )}
                       </FormItem>
@@ -886,6 +918,163 @@ export default function CreatePoolPage() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Insurance Section */}
+              <div className="space-y-4 pt-4 border-t border-glass-border">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Shield className="w-4 h-4 text-green-500" />
+                  <span>Insurance (Optional)</span>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isInsured"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-glass-border p-4 bg-surface-overlay">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-foreground">
+                          Pool Insurance
+                        </FormLabel>
+                        <FormDescription className="text-muted-foreground/70">
+                          Mark this pool as insured to attract more investors
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={field.value}
+                          onClick={() => field.onChange(!field.value)}
+                          className={cn(
+                            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
+                            field.value ? 'bg-green-500' : 'bg-neutral-600',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                              field.value ? 'translate-x-5' : 'translate-x-0',
+                            )}
+                          />
+                        </button>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {isInsured && (
+                  <FormField
+                    control={form.control}
+                    name="insuranceDocument"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground">
+                          Insurance Document
+                        </FormLabel>
+                        <FormControl>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-center w-full">
+                              <label
+                                htmlFor="insurance-upload"
+                                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl transition-colors border-green-500/30 cursor-pointer bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/50"
+                              >
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                  <Shield className="w-8 h-8 mb-4 text-green-500" />
+                                  {field.value ? (
+                                    <>
+                                      <p className="mb-2 text-sm text-green-400">
+                                        <span className="font-semibold">
+                                          {field.value.name}
+                                        </span>
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {(
+                                          field.value.size /
+                                          (1024 * 1024)
+                                        ).toFixed(2)}{' '}
+                                        MB - Click to replace
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="mb-2 text-sm text-muted-foreground">
+                                        <span className="font-semibold text-green-400">
+                                          Click to upload
+                                        </span>{' '}
+                                        insurance certificate
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        PDF or image (MAX. 4MB)
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                                <Input
+                                  id="insurance-upload"
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      field.onChange(file);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            {field.value && (
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                                <div className="flex items-center gap-3">
+                                  <Shield className="w-5 h-5 text-green-500" />
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">
+                                      {field.value.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Insurance document uploaded
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange(null)}
+                                  className="p-1.5 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormDescription className="text-muted-foreground/70">
+                          Upload your insurance certificate or policy document
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {isInsured && (
+                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <div className="flex items-start gap-3">
+                      <Shield className="w-5 h-5 text-green-500 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-green-400">
+                          Insured Pool Benefits
+                        </p>
+                        <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                          <li>• Higher visibility in pool listings</li>
+                          <li>• Increased investor confidence</li>
+                          <li>• Can operate with lower or zero collateral</li>
+                          <li>• Insurance badge displayed on pool</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Documents Section */}

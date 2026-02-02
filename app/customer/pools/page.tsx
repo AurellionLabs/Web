@@ -8,6 +8,9 @@ import {
   Droplets,
   Zap,
   RefreshCw,
+  Shield,
+  Coins,
+  Filter,
 } from 'lucide-react';
 import { PoolTable } from '@/app/components/ui/pool-table';
 import { GlassCard } from '@/app/components/ui/glass-card';
@@ -19,6 +22,7 @@ import { useMainProvider } from '@/app/providers/main.provider';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { cn } from '@/lib/utils';
 import { formatTokenAmount } from '@/lib/formatters';
+import { Pool } from '@/domain/pool';
 
 /**
  * StatCard - Protocol stat card component
@@ -89,10 +93,13 @@ const StatCard: React.FC<StatCardProps> = ({
 /**
  * PoolsPage - Yield pools page with protocol aesthetic
  */
+type FilterType = 'all' | 'insured' | 'collateralized' | 'no-collateral';
+
 export default function PoolsPage() {
   const { setCurrentUserRole, connected } = useMainProvider();
   const { pools, loading, error, loadAllPools } = usePoolsProvider();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
   useEffect(() => {
     setCurrentUserRole('customer');
@@ -109,6 +116,45 @@ export default function PoolsPage() {
     await loadAllPools();
     setIsRefreshing(false);
   };
+
+  // Filter pools based on active filter
+  const filteredPools = useMemo(() => {
+    if (!pools) return [];
+
+    switch (activeFilter) {
+      case 'insured':
+        return pools.filter((pool: Pool) => pool.insurance?.isInsured === true);
+      case 'collateralized':
+        return pools.filter(
+          (pool: Pool) =>
+            pool.collateralAmount && parseFloat(pool.collateralAmount) > 0,
+        );
+      case 'no-collateral':
+        return pools.filter(
+          (pool: Pool) =>
+            !pool.collateralAmount || parseFloat(pool.collateralAmount) === 0,
+        );
+      default:
+        return pools;
+    }
+  }, [pools, activeFilter]);
+
+  // Count pools by type
+  const poolCounts = useMemo(() => {
+    if (!pools) return { insured: 0, collateralized: 0, noCollateral: 0 };
+
+    return {
+      insured: pools.filter((p: Pool) => p.insurance?.isInsured === true)
+        .length,
+      collateralized: pools.filter(
+        (p: Pool) => p.collateralAmount && parseFloat(p.collateralAmount) > 0,
+      ).length,
+      noCollateral: pools.filter(
+        (p: Pool) =>
+          !p.collateralAmount || parseFloat(p.collateralAmount) === 0,
+      ).length,
+    };
+  }, [pools]);
 
   // Calculate aggregate stats from actual pool data
   const { totalTvl, totalVolume, avgApy } = useMemo(() => {
@@ -219,12 +265,80 @@ export default function PoolsPage() {
           />
         </div>
 
+        {/* Pool Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 text-sm text-neutral-400 mr-2">
+            <Filter className="w-4 h-4" />
+            <span>Filter:</span>
+          </div>
+          <button
+            onClick={() => setActiveFilter('all')}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              activeFilter === 'all'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
+            )}
+          >
+            All Pools ({pools?.length || 0})
+          </button>
+          <button
+            onClick={() => setActiveFilter('insured')}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5',
+              activeFilter === 'insured'
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
+            )}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            Insured ({poolCounts.insured})
+          </button>
+          <button
+            onClick={() => setActiveFilter('collateralized')}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5',
+              activeFilter === 'collateralized'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
+            )}
+          >
+            <Coins className="w-3.5 h-3.5" />
+            Collateralized ({poolCounts.collateralized})
+          </button>
+          <button
+            onClick={() => setActiveFilter('no-collateral')}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              activeFilter === 'no-collateral'
+                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
+            )}
+          >
+            No Collateral ({poolCounts.noCollateral})
+          </button>
+        </div>
+
         {/* Pools section */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-white">
-              Top Pools by TVL
+              {activeFilter === 'all'
+                ? 'All Pools'
+                : activeFilter === 'insured'
+                  ? 'Insured Pools'
+                  : activeFilter === 'collateralized'
+                    ? 'Collateralized Pools'
+                    : 'Pools Without Collateral'}
             </h2>
+            {activeFilter !== 'all' && (
+              <button
+                onClick={() => setActiveFilter('all')}
+                className="text-sm text-neutral-400 hover:text-white transition-colors"
+              >
+                Clear filter
+              </button>
+            )}
           </div>
 
           {loading && (
@@ -248,18 +362,22 @@ export default function PoolsPage() {
             </GlassCard>
           )}
 
-          {pools && pools.length > 0 ? (
-            <PoolTable pools={pools} />
+          {filteredPools && filteredPools.length > 0 ? (
+            <PoolTable pools={filteredPools} />
           ) : (
             !loading &&
             !error && (
               <GlassCard className="text-center py-12">
                 <Droplets className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-white mb-2">
-                  No Pools Available
+                  {activeFilter === 'all'
+                    ? 'No Pools Available'
+                    : `No ${activeFilter === 'insured' ? 'Insured' : activeFilter === 'collateralized' ? 'Collateralized' : 'Uncollateralized'} Pools`}
                 </h3>
                 <p className="text-neutral-400 mb-6">
-                  Be the first to create a liquidity pool
+                  {activeFilter === 'all'
+                    ? 'Be the first to create a liquidity pool'
+                    : 'Try a different filter or create a new pool'}
                 </p>
                 <Link href="/customer/pools/create-pool">
                   <GlowButton

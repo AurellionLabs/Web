@@ -561,6 +561,102 @@ contract RWYStakingFacet {
     }
 
     // ============================================================================
+    // INSURANCE FUNCTIONS
+    // ============================================================================
+
+    event InsuranceUpdated(
+        bytes32 indexed opportunityId,
+        bool isInsured,
+        bytes32 insuranceDocHash,
+        uint256 coverageAmount,
+        uint256 expiryDate
+    );
+
+    /**
+     * @notice Set insurance information for an opportunity
+     * @dev Can only be called by the operator before the opportunity is funded
+     */
+    function setInsurance(
+        bytes32 opportunityId,
+        bytes32 insuranceDocHash,
+        uint256 coverageAmount,
+        uint256 expiryDate
+    ) external onlyOperator(opportunityId) opportunityExists(opportunityId) {
+        RWYStorage.Opportunity storage opp = RWYStorage.getOpportunity(opportunityId);
+        
+        // Can only set insurance during FUNDING status
+        if (opp.status != RWYStorage.OpportunityStatus.FUNDING) revert InvalidStatus();
+        
+        opp.insurance.isInsured = true;
+        opp.insurance.insuranceDocHash = insuranceDocHash;
+        opp.insurance.coverageAmount = coverageAmount;
+        opp.insurance.expiryDate = expiryDate;
+        
+        emit InsuranceUpdated(opportunityId, true, insuranceDocHash, coverageAmount, expiryDate);
+    }
+
+    /**
+     * @notice Get insurance information for an opportunity
+     */
+    function getInsurance(bytes32 opportunityId) external view returns (RWYStorage.InsuranceInfo memory) {
+        return RWYStorage.rwyStorage().opportunities[opportunityId].insurance;
+    }
+
+    // ============================================================================
+    // CUSTODY PROOF FUNCTIONS
+    // ============================================================================
+
+    event CustodyProofSubmitted(
+        bytes32 indexed opportunityId,
+        bytes32 proofHash,
+        string proofType,
+        address submitter,
+        uint256 timestamp
+    );
+
+    /**
+     * @notice Submit a custody proof for an opportunity
+     * @dev Can be called by operator at any stage after funding
+     */
+    function submitCustodyProof(
+        bytes32 opportunityId,
+        bytes32 proofHash,
+        string memory proofType
+    ) external onlyOperator(opportunityId) opportunityExists(opportunityId) {
+        RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
+        RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
+        
+        // Must be at least funded to submit proofs
+        if (opp.status == RWYStorage.OpportunityStatus.FUNDING || 
+            opp.status == RWYStorage.OpportunityStatus.PENDING) {
+            revert InvalidStatus();
+        }
+        
+        rs.custodyProofs[opportunityId].push(RWYStorage.CustodyProof({
+            proofHash: proofHash,
+            timestamp: block.timestamp,
+            submitter: msg.sender,
+            proofType: proofType
+        }));
+        
+        emit CustodyProofSubmitted(opportunityId, proofHash, proofType, msg.sender, block.timestamp);
+    }
+
+    /**
+     * @notice Get all custody proofs for an opportunity
+     */
+    function getCustodyProofs(bytes32 opportunityId) external view returns (RWYStorage.CustodyProof[] memory) {
+        return RWYStorage.rwyStorage().custodyProofs[opportunityId];
+    }
+
+    /**
+     * @notice Get the number of custody proofs for an opportunity
+     */
+    function getCustodyProofCount(bytes32 opportunityId) external view returns (uint256) {
+        return RWYStorage.rwyStorage().custodyProofs[opportunityId].length;
+    }
+
+    // ============================================================================
     // VIEW FUNCTIONS
     // ============================================================================
 

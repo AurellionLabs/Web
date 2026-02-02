@@ -38,8 +38,11 @@ export interface Pool {
   assetPrice: BigNumberString;
   minSalePrice?: BigNumberString;
   collateralAmount?: BigNumberString;
+  collateralToken?: Address;
   status: PoolStatus;
   supportingDocuments?: SupportingDocument[];
+  insurance?: InsuranceInfo;
+  custodyProofs?: CustodyProof[];
 }
 
 /**
@@ -51,6 +54,26 @@ export interface SupportingDocument {
   size: number; // File size in bytes
   ipfsHash?: string; // IPFS hash after upload (optional during creation)
   file?: File; // The actual file object (for upload, not persisted)
+}
+
+/**
+ * Represents insurance information for a pool.
+ */
+export interface InsuranceInfo {
+  isInsured: boolean;
+  insuranceDocHash?: string; // IPFS hash of insurance document
+  coverageAmount?: BigNumberString; // Coverage amount in wei
+  expiryDate?: number; // Unix timestamp
+}
+
+/**
+ * Represents a custody proof for tracking physical asset custody.
+ */
+export interface CustodyProof {
+  proofHash: string; // IPFS hash of custody certificate
+  timestamp: number; // When proof was submitted
+  submitter: Address; // Who submitted the proof
+  proofType: string; // Type of proof (e.g., "CUSTODY_CERTIFICATE", "DELIVERY_RECEIPT")
 }
 
 /**
@@ -70,6 +93,11 @@ export interface PoolCreationData {
   operatorFeeBps?: number;
   processingDays?: number;
   supportingDocuments?: SupportingDocument[];
+  // Insurance information (optional)
+  isInsured?: boolean;
+  insuranceDocHash?: string;
+  insuranceCoverageAmount?: BigNumberString;
+  insuranceExpiryDate?: number;
 }
 
 /**

@@ -21,7 +21,7 @@ export function PoolTable({ pools }: PoolTableProps) {
               <th className="py-3 px-4 text-left font-medium">Pool</th>
               <th className="py-3 px-4 text-right font-medium">TVL</th>
               <th className="py-3 px-4 text-right font-medium">APR</th>
-              <th className="py-3 px-4 text-right font-medium">Volume 24H</th>
+              <th className="py-3 px-4 text-right font-medium">Collateral</th>
             </tr>
           </thead>
           <tbody>
