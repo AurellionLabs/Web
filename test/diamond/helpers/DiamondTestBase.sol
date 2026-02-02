@@ -14,6 +14,7 @@ import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
 import { BridgeFacet } from 'contracts/diamond/facets/BridgeFacet.sol';
 import { CLOBLogisticsFacet } from 'contracts/diamond/facets/CLOBLogisticsFacet.sol';
 import { RWYStakingFacet } from 'contracts/diamond/facets/RWYStakingFacet.sol';
+import { OperatorFacet } from 'contracts/diamond/facets/OperatorFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 
 import { ERC20Mock } from './ERC20Mock.sol';
@@ -37,6 +38,7 @@ abstract contract DiamondTestBase is Test {
     BridgeFacet public bridgeFacet;
     CLOBLogisticsFacet public clobLogisticsFacet;
     RWYStakingFacet public rwyStakingFacet;
+    OperatorFacet public operatorFacet;
 
     // Mock tokens
     ERC20Mock public payToken;
@@ -99,6 +101,7 @@ abstract contract DiamondTestBase is Test {
         bridgeFacet = new BridgeFacet();
         clobLogisticsFacet = new CLOBLogisticsFacet();
         rwyStakingFacet = new RWYStakingFacet();
+        operatorFacet = new OperatorFacet();
 
         // Deploy Diamond
         diamond = new Diamond(owner, address(diamondCutFacet));
@@ -128,6 +131,9 @@ abstract contract DiamondTestBase is Test {
         
         // Add RWYStakingFacet
         _addFacet(address(rwyStakingFacet), _getRWYStakingSelectors());
+        
+        // Add OperatorFacet
+        _addFacet(address(operatorFacet), _getOperatorSelectors());
     }
 
     function _addFacet(address facetAddress, bytes4[] memory selectors) internal {
@@ -327,12 +333,37 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getRWYStakingSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](5);
+        bytes4[] memory selectors = new bytes4[](18);
+        // Admin functions
         selectors[0] = RWYStakingFacet.setRWYCLOBAddress.selector;
         selectors[1] = RWYStakingFacet.setRWYQuoteToken.selector;
         selectors[2] = RWYStakingFacet.setRWYFeeRecipient.selector;
         selectors[3] = RWYStakingFacet.pauseRWY.selector;
         selectors[4] = RWYStakingFacet.unpauseRWY.selector;
+        selectors[5] = RWYStakingFacet.initializeRWYStaking.selector;
+        // Operator functions
+        selectors[6] = RWYStakingFacet.createOpportunity.selector;
+        selectors[7] = RWYStakingFacet.setInsurance.selector;
+        selectors[8] = RWYStakingFacet.submitCustodyProof.selector;
+        selectors[9] = RWYStakingFacet.submitTokenizationProof.selector;
+        // Staker functions
+        selectors[10] = RWYStakingFacet.stake.selector;
+        selectors[11] = RWYStakingFacet.unstake.selector;
+        // View functions
+        selectors[12] = RWYStakingFacet.getOpportunity.selector;
+        selectors[13] = RWYStakingFacet.getInsurance.selector;
+        selectors[14] = RWYStakingFacet.getCustodyProofs.selector;
+        selectors[15] = RWYStakingFacet.getCustodyProofCount.selector;
+        selectors[16] = RWYStakingFacet.getTokenizationProof.selector;
+        selectors[17] = RWYStakingFacet.getRWYStake.selector;
+        return selectors;
+    }
+
+    function _getOperatorSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](3);
+        selectors[0] = OperatorFacet.approveOperator.selector;
+        selectors[1] = OperatorFacet.revokeOperator.selector;
+        selectors[2] = OperatorFacet.isApprovedOperator.selector;
         return selectors;
     }
 }

@@ -48,22 +48,34 @@ library RWYStorage {
 
     /**
      * @notice Insurance information for an opportunity
+     * @dev documentUri should be an IPFS URI (ipfs://Qm...) or HTTPS URL to the hosted PDF
      */
     struct InsuranceInfo {
         bool isInsured;           // Whether the opportunity has insurance
-        bytes32 insuranceDocHash; // IPFS hash of insurance document
+        string documentUri;       // URI to insurance document (ipfs://... or https://...)
         uint256 coverageAmount;   // Coverage amount in wei
         uint256 expiryDate;       // Insurance expiry timestamp
     }
 
     /**
      * @notice Custody proof for tracking physical asset custody
+     * @dev documentUri should be an IPFS URI (ipfs://Qm...) or HTTPS URL to the hosted PDF
      */
     struct CustodyProof {
-        bytes32 proofHash;        // IPFS hash of custody certificate
+        string documentUri;       // URI to custody proof document (ipfs://... or https://...)
         uint256 timestamp;        // When proof was submitted
         address submitter;        // Who submitted the proof
         string proofType;         // Type of proof (e.g., "CUSTODY_CERTIFICATE", "DELIVERY_RECEIPT")
+    }
+
+    /**
+     * @notice Tokenization proof for asset tokenization documentation
+     * @dev documentUri should be an IPFS URI (ipfs://Qm...) or HTTPS URL to the hosted PDF
+     */
+    struct TokenizationProof {
+        string documentUri;       // URI to tokenization document (ipfs://... or https://...)
+        uint256 timestamp;        // When proof was submitted
+        address submitter;        // Who submitted the proof
     }
 
     /**
@@ -142,6 +154,10 @@ library RWYStorage {
         // ======= CUSTODY PROOFS =======
         // opportunityId => array of custody proofs
         mapping(bytes32 => CustodyProof[]) custodyProofs;
+
+        // ======= TOKENIZATION PROOFS =======
+        // opportunityId => tokenization proof (one per opportunity)
+        mapping(bytes32 => TokenizationProof) tokenizationProofs;
 
         // ======= CONFIGURATION =======
         uint256 minOperatorCollateralBps;  // 2000 = 20% minimum collateral

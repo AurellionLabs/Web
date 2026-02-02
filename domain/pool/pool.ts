@@ -43,6 +43,7 @@ export interface Pool {
   supportingDocuments?: SupportingDocument[];
   insurance?: InsuranceInfo;
   custodyProofs?: CustodyProof[];
+  tokenizationProof?: TokenizationProof;
 }
 
 /**
@@ -58,22 +59,34 @@ export interface SupportingDocument {
 
 /**
  * Represents insurance information for a pool.
+ * Document URI can be IPFS (ipfs://Qm...) or HTTPS URL to hosted PDF.
  */
 export interface InsuranceInfo {
   isInsured: boolean;
-  insuranceDocHash?: string; // IPFS hash of insurance document
+  documentUri?: string; // URI to insurance document (ipfs://... or https://...)
   coverageAmount?: BigNumberString; // Coverage amount in wei
   expiryDate?: number; // Unix timestamp
 }
 
 /**
  * Represents a custody proof for tracking physical asset custody.
+ * Document URI can be IPFS (ipfs://Qm...) or HTTPS URL to hosted PDF.
  */
 export interface CustodyProof {
-  proofHash: string; // IPFS hash of custody certificate
+  documentUri: string; // URI to custody proof document (ipfs://... or https://...)
   timestamp: number; // When proof was submitted
   submitter: Address; // Who submitted the proof
   proofType: string; // Type of proof (e.g., "CUSTODY_CERTIFICATE", "DELIVERY_RECEIPT")
+}
+
+/**
+ * Represents a tokenization proof for asset tokenization documentation.
+ * Document URI can be IPFS (ipfs://Qm...) or HTTPS URL to hosted PDF.
+ */
+export interface TokenizationProof {
+  documentUri: string; // URI to tokenization document (ipfs://... or https://...)
+  timestamp: number; // When proof was submitted
+  submitter: Address; // Who submitted the proof
 }
 
 /**
@@ -95,9 +108,11 @@ export interface PoolCreationData {
   supportingDocuments?: SupportingDocument[];
   // Insurance information (optional)
   isInsured?: boolean;
-  insuranceDocHash?: string;
+  insuranceDocUri?: string; // URI to insurance document (ipfs://... or https://...)
   insuranceCoverageAmount?: BigNumberString;
   insuranceExpiryDate?: number;
+  // Tokenization proof (optional)
+  tokenizationDocUri?: string; // URI to tokenization document (ipfs://... or https://...)
 }
 
 /**

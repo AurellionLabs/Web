@@ -567,18 +567,22 @@ contract RWYStakingFacet {
     event InsuranceUpdated(
         bytes32 indexed opportunityId,
         bool isInsured,
-        bytes32 insuranceDocHash,
+        string documentUri,
         uint256 coverageAmount,
         uint256 expiryDate
     );
 
     /**
      * @notice Set insurance information for an opportunity
-     * @dev Can only be called by the operator before the opportunity is funded
+     * @dev Can only be called by the operator during FUNDING status
+     * @param opportunityId The opportunity to update
+     * @param documentUri URI to insurance document (ipfs://... or https://...)
+     * @param coverageAmount Coverage amount in wei
+     * @param expiryDate Insurance expiry timestamp
      */
     function setInsurance(
         bytes32 opportunityId,
-        bytes32 insuranceDocHash,
+        string memory documentUri,
         uint256 coverageAmount,
         uint256 expiryDate
     ) external onlyOperator(opportunityId) opportunityExists(opportunityId) {
@@ -588,11 +592,11 @@ contract RWYStakingFacet {
         if (opp.status != RWYStorage.OpportunityStatus.FUNDING) revert InvalidStatus();
         
         opp.insurance.isInsured = true;
-        opp.insurance.insuranceDocHash = insuranceDocHash;
+        opp.insurance.documentUri = documentUri;
         opp.insurance.coverageAmount = coverageAmount;
         opp.insurance.expiryDate = expiryDate;
         
-        emit InsuranceUpdated(opportunityId, true, insuranceDocHash, coverageAmount, expiryDate);
+        emit InsuranceUpdated(opportunityId, true, documentUri, coverageAmount, expiryDate);
     }
 
     /**
@@ -608,7 +612,7 @@ contract RWYStakingFacet {
 
     event CustodyProofSubmitted(
         bytes32 indexed opportunityId,
-        bytes32 proofHash,
+        string documentUri,
         string proofType,
         address submitter,
         uint256 timestamp
@@ -617,10 +621,13 @@ contract RWYStakingFacet {
     /**
      * @notice Submit a custody proof for an opportunity
      * @dev Can be called by operator at any stage after funding
+     * @param opportunityId The opportunity to submit proof for
+     * @param documentUri URI to custody proof document (ipfs://... or https://...)
+     * @param proofType Type of proof (e.g., "CUSTODY_CERTIFICATE", "DELIVERY_RECEIPT", "WAREHOUSE_RECEIPT")
      */
     function submitCustodyProof(
         bytes32 opportunityId,
-        bytes32 proofHash,
+        string memory documentUri,
         string memory proofType
     ) external onlyOperator(opportunityId) opportunityExists(opportunityId) {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
@@ -633,13 +640,13 @@ contract RWYStakingFacet {
         }
         
         rs.custodyProofs[opportunityId].push(RWYStorage.CustodyProof({
-            proofHash: proofHash,
+            documentUri: documentUri,
             timestamp: block.timestamp,
             submitter: msg.sender,
             proofType: proofType
         }));
         
-        emit CustodyProofSubmitted(opportunityId, proofHash, proofType, msg.sender, block.timestamp);
+        emit CustodyProofSubmitted(opportunityId, documentUri, proofType, msg.sender, block.timestamp);
     }
 
     /**
@@ -654,6 +661,45 @@ contract RWYStakingFacet {
      */
     function getCustodyProofCount(bytes32 opportunityId) external view returns (uint256) {
         return RWYStorage.rwyStorage().custodyProofs[opportunityId].length;
+    }
+
+    // ============================================================================
+    // TOKENIZATION PROOF FUNCTIONS
+    // ============================================================================
+
+    event TokenizationProofSubmitted(
+        bytes32 indexed opportunityId,
+        string documentUri,
+        address submitter,
+        uint256 timestamp
+    );
+
+    /**
+     * @notice Submit tokenization proof for an opportunity
+     * @dev This is the document proving the asset has been tokenized (e.g., legal agreement, audit report)
+     * @param opportunityId The opportunity to submit proof for
+     * @param documentUri URI to tokenization document (ipfs://... or https://...)
+     */
+    function submitTokenizationProof(
+        bytes32 opportunityId,
+        string memory documentUri
+    ) external onlyOperator(opportunityId) opportunityExists(opportunityId) {
+        RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
+        
+        rs.tokenizationProofs[opportunityId] = RWYStorage.TokenizationProof({
+            documentUri: documentUri,
+            timestamp: block.timestamp,
+            submitter: msg.sender
+        });
+        
+        emit TokenizationProofSubmitted(opportunityId, documentUri, msg.sender, block.timestamp);
+    }
+
+    /**
+     * @notice Get tokenization proof for an opportunity
+     */
+    function getTokenizationProof(bytes32 opportunityId) external view returns (RWYStorage.TokenizationProof memory) {
+        return RWYStorage.rwyStorage().tokenizationProofs[opportunityId];
     }
 
     // ============================================================================
