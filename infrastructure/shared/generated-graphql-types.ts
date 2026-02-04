@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-02-04T20:00:39.376Z
+// Generated at: 2026-02-04T21:39:23.352Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -199,6 +199,12 @@ export const TABLE_DIAMOND_JOURNEY_CREATED_EVENTS =
   'diamondJourneyCreatedEventss' as const;
 export const TABLE_DIAMOND_NODE_FEE_DISTRIBUTED_EVENTS =
   'diamondNodeFeeDistributedEventss' as const;
+export const TABLE_DIAMOND_P2_P_OFFER_ACCEPTED_EVENTS =
+  'diamondP2POfferAcceptedEventss' as const;
+export const TABLE_DIAMOND_P2_P_OFFER_CANCELED_EVENTS =
+  'diamondP2POfferCanceledEventss' as const;
+export const TABLE_DIAMOND_P2_P_OFFER_CREATED_EVENTS =
+  'diamondP2POfferCreatedEventss' as const;
 export const TABLE_DIAMOND_SELLER_PAID_EVENTS =
   'diamondSellerPaidEventss' as const;
 export const TABLE_DIAMOND_APPROVAL_FOR_ALL_EVENTS =
@@ -318,6 +324,9 @@ export const VALID_TABLE_NAMES = [
   'diamondJourneyCanceledEventss',
   'diamondJourneyCreatedEventss',
   'diamondNodeFeeDistributedEventss',
+  'diamondP2POfferAcceptedEventss',
+  'diamondP2POfferCanceledEventss',
+  'diamondP2POfferCreatedEventss',
   'diamondSellerPaidEventss',
   'diamondApprovalForAllEventss',
   'diamondAssetAttributeAddedEventss',
@@ -1384,6 +1393,41 @@ export interface diamondNodeFeeDistributedEvent {
   transaction_hash: string;
 }
 
+export interface diamondP2POfferAcceptedEvent {
+  id: string;
+  order_id: string;
+  acceptor: string;
+  is_seller_initiated: boolean;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondP2POfferCanceledEvent {
+  id: string;
+  order_id: string;
+  creator: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondP2POfferCreatedEvent {
+  id: string;
+  order_id: string;
+  creator: string;
+  is_seller_initiated: boolean;
+  token: string;
+  token_id: string;
+  token_quantity: string;
+  price: string;
+  target_counterparty: string;
+  expires_at: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
 export interface diamondSellerPaidEvent {
   id: string;
   seller: string;
@@ -1892,6 +1936,18 @@ export interface diamondJourneyCreatedEventsResponse {
 
 export interface diamondNodeFeeDistributedEventsResponse {
   diamondNodeFeeDistributedEventss: PonderItemsResponse<diamondNodeFeeDistributedEvent>;
+}
+
+export interface diamondP2POfferAcceptedEventsResponse {
+  diamondP2POfferAcceptedEventss: PonderItemsResponse<diamondP2POfferAcceptedEvent>;
+}
+
+export interface diamondP2POfferCanceledEventsResponse {
+  diamondP2POfferCanceledEventss: PonderItemsResponse<diamondP2POfferCanceledEvent>;
+}
+
+export interface diamondP2POfferCreatedEventsResponse {
+  diamondP2POfferCreatedEventss: PonderItemsResponse<diamondP2POfferCreatedEvent>;
 }
 
 export interface diamondSellerPaidEventsResponse {
@@ -2989,6 +3045,41 @@ export const FIELDS_DIAMOND_NODE_FEE_DISTRIBUTED_EVENTS = [
   'transaction_hash',
 ] as const;
 
+export const FIELDS_DIAMOND_P2_P_OFFER_ACCEPTED_EVENTS = [
+  'id',
+  'order_id',
+  'acceptor',
+  'is_seller_initiated',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_P2_P_OFFER_CANCELED_EVENTS = [
+  'id',
+  'order_id',
+  'creator',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_P2_P_OFFER_CREATED_EVENTS = [
+  'id',
+  'order_id',
+  'creator',
+  'is_seller_initiated',
+  'token',
+  'token_id',
+  'token_quantity',
+  'price',
+  'target_counterparty',
+  'expires_at',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
 export const FIELDS_DIAMOND_SELLER_PAID_EVENTS = [
   'id',
   'seller',
@@ -3237,6 +3328,9 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     JourneyCanceled: 'diamondJourneyCanceledEventss',
     JourneyCreated: 'diamondJourneyCreatedEventss',
     NodeFeeDistributed: 'diamondNodeFeeDistributedEventss',
+    P2POfferAccepted: 'diamondP2POfferAcceptedEventss',
+    P2POfferCanceled: 'diamondP2POfferCanceledEventss',
+    P2POfferCreated: 'diamondP2POfferCreatedEventss',
     SellerPaid: 'diamondSellerPaidEventss',
     ApprovalForAll: 'diamondApprovalForAllEventss',
     AssetAttributeAdded: 'diamondAssetAttributeAddedEventss',

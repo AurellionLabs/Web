@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-02-04T20:00:39.369Z
+// Generated at: 2026-02-04T21:39:23.343Z
 // 
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -2985,6 +2985,111 @@ export const DiamondABI = [
       }
     ],
     "name": "NodeFeeDistributed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "acceptor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isSellerInitiated",
+        "type": "bool"
+      }
+    ],
+    "name": "P2POfferAccepted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      }
+    ],
+    "name": "P2POfferCanceled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isSellerInitiated",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tokenQuantity",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "targetCounterparty",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "expiresAt",
+        "type": "uint256"
+      }
+    ],
+    "name": "P2POfferCreated",
     "type": "event"
   },
   {
@@ -7479,6 +7584,19 @@ export const DiamondABI = [
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "acceptP2POffer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "driver",
         "type": "address"
@@ -7490,6 +7608,19 @@ export const DiamondABI = [
       }
     ],
     "name": "assignDriverToJourney",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "cancelP2POffer",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -7608,6 +7739,21 @@ export const DiamondABI = [
             "internalType": "bytes32",
             "name": "contractualAgreement",
             "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "isSellerInitiated",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "targetCounterparty",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiresAt",
+            "type": "uint256"
           }
         ],
         "internalType": "struct DiamondStorage.AuSysOrder",
@@ -7921,6 +8067,21 @@ export const DiamondABI = [
             "internalType": "bytes32",
             "name": "contractualAgreement",
             "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "isSellerInitiated",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "targetCounterparty",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiresAt",
+            "type": "uint256"
           }
         ],
         "internalType": "struct DiamondStorage.AuSysOrder",
@@ -8050,12 +8211,44 @@ export const DiamondABI = [
   },
   {
     "inputs": [],
+    "name": "getOpenP2POffers",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getPayToken",
     "outputs": [
       {
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getUserP2POffers",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
       }
     ],
     "stateMutability": "view",
@@ -9385,6 +9578,21 @@ export const EventSignatureRegistry = {
     "name": "NodeFeeDistributed",
     "facet": "AuSysFacet",
     "signature": "NodeFeeDistributed(address,uint256)"
+  },
+  "0x53038a93": {
+    "name": "P2POfferAccepted",
+    "facet": "AuSysFacet",
+    "signature": "P2POfferAccepted(bytes32,address,bool)"
+  },
+  "0x7abcf385": {
+    "name": "P2POfferCanceled",
+    "facet": "AuSysFacet",
+    "signature": "P2POfferCanceled(bytes32,address)"
+  },
+  "0x4c52c233": {
+    "name": "P2POfferCreated",
+    "facet": "AuSysFacet",
+    "signature": "P2POfferCreated(bytes32,address,bool,address,uint256,uint256,uint256,address,uint256)"
   },
   "0xcb4a9094": {
     "name": "SellerPaid",

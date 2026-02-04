@@ -107,6 +107,21 @@ contract AuSysFacet is ReentrancyGuard {
         string endName
     );
 
+    // P2P Events
+    event P2POfferCreated(
+        bytes32 indexed orderId,
+        address indexed creator,
+        bool isSellerInitiated,
+        address token,
+        uint256 tokenId,
+        uint256 tokenQuantity,
+        uint256 price,
+        address targetCounterparty,
+        uint256 expiresAt
+    );
+    event P2POfferAccepted(bytes32 indexed orderId, address indexed acceptor, bool isSellerInitiated);
+    event P2POfferCanceled(bytes32 indexed orderId, address indexed creator);
+
     // ============================================================================
     // ERRORS (from AuSys.sol)
     // ============================================================================
@@ -128,6 +143,13 @@ contract AuSysFacet is ReentrancyGuard {
     error DriverMaxAssignment();
     error InvalidCaller();
     error PayTokenNotSet();
+    // P2P errors
+    error OfferNotFound();
+    error OfferNotOpen();
+    error OfferExpired();
+    error NotTargetCounterparty();
+    error CannotAcceptOwnOffer();
+    error OnlyCreatorCanCancel();
 
     // ============================================================================
     // CONSTANTS (RBAC roles from AuSys.sol)
@@ -253,19 +275,33 @@ contract AuSysFacet is ReentrancyGuard {
 
     /**
      * @notice Create an order (from AuSys.orderCreation)
+     * @dev Supports P2P: if isSellerInitiated=true, seller escrows tokens; else buyer escrows payment
+     *      For P2P offers, set buyer/seller to msg.sender and counterparty to address(0) or target
      */
     function createAuSysOrder(
         DiamondStorage.AuSysOrder memory order
     ) external nonReentrant returns (bytes32) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
-        if (order.buyer == address(0) || order.seller == address(0) || order.token == address(0)) {
+        if (order.token == address(0)) {
             revert InvalidAddress();
         }
         if (order.price == 0) revert InvalidAmount();
-        if (order.buyer == order.seller) revert InvalidAddress();
         if (order.tokenQuantity == 0) revert InvalidAmount();
         if (s.payToken == address(0)) revert PayTokenNotSet();
+
+        // P2P mode: one side can be address(0) initially (will be filled on accept)
+        bool isP2POffer = order.isSellerInitiated 
+            ? (order.buyer == address(0) || order.buyer == order.targetCounterparty)
+            : (order.seller == address(0) || order.seller == order.targetCounterparty);
+
+        // For non-P2P (direct orders), both parties must be set and different
+        if (!isP2POffer) {
+            if (order.buyer == address(0) || order.seller == address(0)) {
+                revert InvalidAddress();
+            }
+            if (order.buyer == order.seller) revert InvalidAddress();
+        }
 
         bytes32 id = _getHashedOrderId(s);
         
@@ -283,8 +319,12 @@ contract AuSysFacet is ReentrancyGuard {
         newOrder.buyer = order.buyer;
         newOrder.seller = order.seller;
         newOrder.locationData = order.locationData;
-        newOrder.currentStatus = 0; // Created
+        newOrder.currentStatus = 0; // Created/PendingAcceptance
         newOrder.contractualAgreement = order.contractualAgreement;
+        // P2P fields
+        newOrder.isSellerInitiated = order.isSellerInitiated;
+        newOrder.targetCounterparty = order.targetCounterparty;
+        newOrder.expiresAt = order.expiresAt;
         
         // Copy nodes array
         for (uint256 i = 0; i < order.nodes.length; i++) {
@@ -293,9 +333,33 @@ contract AuSysFacet is ReentrancyGuard {
 
         s.ausysOrderIds.push(id);
 
-        // Escrow payment from buyer
-        IERC20(s.payToken).safeTransferFrom(order.buyer, address(this), order.price + txFee);
-        emit FundsEscrowed(order.buyer, order.price + txFee);
+        // Escrow based on who initiated
+        if (order.isSellerInitiated) {
+            // Seller-initiated P2P: escrow tokens from seller
+            if (order.seller == address(0)) revert InvalidAddress();
+            IERC1155(order.token).safeTransferFrom(
+                order.seller,
+                address(this),
+                order.tokenId,
+                order.tokenQuantity,
+                ''
+            );
+            // Track as open P2P offer
+            if (isP2POffer) {
+                s.openP2POfferIds.push(id);
+                s.userP2POffers[order.seller].push(id);
+            }
+        } else {
+            // Buyer-initiated: escrow payment from buyer (original behavior)
+            if (order.buyer == address(0)) revert InvalidAddress();
+            IERC20(s.payToken).safeTransferFrom(order.buyer, address(this), order.price + txFee);
+            emit FundsEscrowed(order.buyer, order.price + txFee);
+            // Track as open P2P offer
+            if (isP2POffer) {
+                s.openP2POfferIds.push(id);
+                s.userP2POffers[order.buyer].push(id);
+            }
+        }
 
         emit AuSysOrderCreated(
             id,
@@ -310,6 +374,22 @@ contract AuSysFacet is ReentrancyGuard {
             order.nodes
         );
 
+        // Emit P2P-specific event if this is a P2P offer
+        if (isP2POffer) {
+            address creator = order.isSellerInitiated ? order.seller : order.buyer;
+            emit P2POfferCreated(
+                id,
+                creator,
+                order.isSellerInitiated,
+                order.token,
+                order.tokenId,
+                order.tokenQuantity,
+                order.price,
+                order.targetCounterparty,
+                order.expiresAt
+            );
+        }
+
         return id;
     }
 
@@ -319,6 +399,149 @@ contract AuSysFacet is ReentrancyGuard {
     function getAuSysOrder(bytes32 id) external view returns (DiamondStorage.AuSysOrder memory) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.ausysOrders[id];
+    }
+
+    // ============================================================================
+    // P2P OFFER MANAGEMENT
+    // ============================================================================
+
+    /**
+     * @notice Accept a P2P offer
+     * @dev Counterparty escrows their side and order moves to Processing
+     * @param orderId The order/offer to accept
+     */
+    function acceptP2POffer(bytes32 orderId) external nonReentrant {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
+
+        // Validate offer exists
+        if (order.id == bytes32(0)) revert OfferNotFound();
+        
+        // Validate offer is still open (status 0)
+        if (order.currentStatus != 0) revert OfferNotOpen();
+        
+        // Validate not expired
+        if (order.expiresAt != 0 && block.timestamp > order.expiresAt) {
+            order.currentStatus = 4; // Mark as expired
+            revert OfferExpired();
+        }
+        
+        // Validate caller is allowed counterparty
+        if (order.targetCounterparty != address(0) && msg.sender != order.targetCounterparty) {
+            revert NotTargetCounterparty();
+        }
+        
+        // Cannot accept own offer
+        address creator = order.isSellerInitiated ? order.seller : order.buyer;
+        if (msg.sender == creator) revert CannotAcceptOwnOffer();
+
+        if (order.isSellerInitiated) {
+            // Seller created offer - buyer (msg.sender) accepts
+            // Set buyer and escrow payment
+            order.buyer = msg.sender;
+            uint256 totalPayment = order.price + order.txFee;
+            IERC20(s.payToken).safeTransferFrom(msg.sender, address(this), totalPayment);
+            emit FundsEscrowed(msg.sender, totalPayment);
+        } else {
+            // Buyer created offer - seller (msg.sender) accepts
+            // Set seller and escrow tokens
+            order.seller = msg.sender;
+            IERC1155(order.token).safeTransferFrom(
+                msg.sender,
+                address(this),
+                order.tokenId,
+                order.tokenQuantity,
+                ''
+            );
+        }
+
+        // Update status to Processing
+        order.currentStatus = 1;
+        
+        // Remove from open offers list
+        _removeFromOpenOffers(s, orderId);
+
+        emit P2POfferAccepted(orderId, msg.sender, order.isSellerInitiated);
+        emit AuSysOrderStatusUpdated(orderId, 1);
+    }
+
+    /**
+     * @notice Cancel a P2P offer (only creator, only if not yet accepted)
+     * @param orderId The order/offer to cancel
+     */
+    function cancelP2POffer(bytes32 orderId) external nonReentrant {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
+
+        // Validate offer exists
+        if (order.id == bytes32(0)) revert OfferNotFound();
+        
+        // Validate offer is still open (status 0)
+        if (order.currentStatus != 0) revert OfferNotOpen();
+        
+        // Only creator can cancel
+        address creator = order.isSellerInitiated ? order.seller : order.buyer;
+        if (msg.sender != creator) revert OnlyCreatorCanCancel();
+
+        // Refund escrowed assets
+        if (order.isSellerInitiated) {
+            // Refund tokens to seller
+            IERC1155(order.token).safeTransferFrom(
+                address(this),
+                order.seller,
+                order.tokenId,
+                order.tokenQuantity,
+                ''
+            );
+        } else {
+            // Refund payment to buyer
+            uint256 totalRefund = order.price + order.txFee;
+            IERC20(s.payToken).safeTransfer(order.buyer, totalRefund);
+            emit FundsRefunded(order.buyer, totalRefund);
+        }
+
+        // Update status to Canceled
+        order.currentStatus = 3;
+        
+        // Remove from open offers list
+        _removeFromOpenOffers(s, orderId);
+
+        emit P2POfferCanceled(orderId, creator);
+        emit AuSysOrderStatusUpdated(orderId, 3);
+    }
+
+    /**
+     * @notice Get all open P2P offers
+     * @return Array of order IDs that are open P2P offers
+     */
+    function getOpenP2POffers() external view returns (bytes32[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.openP2POfferIds;
+    }
+
+    /**
+     * @notice Get P2P offers created by a specific user
+     * @param user The user address
+     * @return Array of order IDs created by the user
+     */
+    function getUserP2POffers(address user) external view returns (bytes32[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.userP2POffers[user];
+    }
+
+    /**
+     * @dev Remove an order from the open P2P offers list
+     */
+    function _removeFromOpenOffers(DiamondStorage.AppStorage storage s, bytes32 orderId) internal {
+        uint256 length = s.openP2POfferIds.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (s.openP2POfferIds[i] == orderId) {
+                // Swap with last element and pop
+                s.openP2POfferIds[i] = s.openP2POfferIds[length - 1];
+                s.openP2POfferIds.pop();
+                break;
+            }
+        }
     }
 
     // ============================================================================
@@ -573,7 +796,8 @@ contract AuSysFacet is ReentrancyGuard {
             }
 
             // Transfer tokens from seller to escrow if this is first journey
-            if (J.sender == O.seller) {
+            // Skip if seller-initiated P2P (tokens already escrowed at offer creation)
+            if (J.sender == O.seller && !O.isSellerInitiated) {
                 IERC1155(O.token).safeTransferFrom(
                     O.seller,
                     address(this),

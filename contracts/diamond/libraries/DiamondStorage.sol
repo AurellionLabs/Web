@@ -140,6 +140,9 @@ library DiamondStorage {
         mapping(bytes32 => bool) journeyRewardPaid;
         // RBAC for AuSys
         mapping(bytes32 => mapping(address => bool)) ausysRoles;
+        // P2P offer tracking
+        bytes32[] openP2POfferIds;                    // Track open (unaccepted) P2P offers
+        mapping(address => bytes32[]) userP2POffers;  // Track P2P offers by creator
 
         // ======= CLOB LOGISTICS (from IAuraCLOB) =======
         // Driver management
@@ -411,7 +414,7 @@ library DiamondStorage {
     }
 
     /// @notice AuSys Order (from AuSys.sol)
-    /// @dev Status: 0=Created, 1=Processing, 2=Settled, 3=Canceled
+    /// @dev Status: 0=Created/PendingAcceptance, 1=Processing, 2=Settled, 3=Canceled, 4=Expired
     struct AuSysOrder {
         bytes32 id;
         address token;
@@ -426,6 +429,10 @@ library DiamondStorage {
         ParcelData locationData;
         uint8 currentStatus;
         bytes32 contractualAgreement;
+        // P2P extensions
+        bool isSellerInitiated;      // true = seller created offer, false = buyer created
+        address targetCounterparty;  // address(0) = open to all, else specific address only
+        uint256 expiresAt;           // 0 = no expiry, else unix timestamp
     }
 
     /// @notice AuSys Journey (from AuSys.sol)

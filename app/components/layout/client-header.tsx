@@ -63,6 +63,12 @@ const CustomerNav: React.FC<{ pathname: string }> = ({ pathname }) => (
     >
       Trading
     </NavLink>
+    <NavLink
+      href="/customer/p2p"
+      isActive={pathname.startsWith('/customer/p2p')}
+    >
+      P2P
+    </NavLink>
     <NavLink href="/customer/faucet" isActive={pathname === '/customer/faucet'}>
       Faucet
     </NavLink>
@@ -242,6 +248,17 @@ export function ClientHeader() {
                     )}
                   >
                     Trading
+                  </Link>
+                  <Link
+                    href="/customer/p2p"
+                    className={cn(
+                      'px-4 py-2 rounded-lg transition-colors',
+                      pathname.startsWith('/customer/p2p')
+                        ? 'bg-amber-500/10 text-amber-400'
+                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
+                    )}
+                  >
+                    P2P
                   </Link>
                   <Link
                     href="/customer/faucet"

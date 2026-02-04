@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-02-04T20:00:39.371Z
+// Generated at: 2026-02-04T21:39:23.345Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -1668,6 +1668,62 @@ export const diamondNodeFeeDistributedEvents = onchainTable(
   }),
 );
 
+export const diamondP2POfferAcceptedEvents = onchainTable(
+  'diamond_p2_p_offer_accepted_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    order_id: t.hex().notNull(),
+    acceptor: t.hex().notNull(),
+    is_seller_initiated: t.boolean().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    orderIdIdx: index().on(table.order_id),
+    acceptorIdx: index().on(table.acceptor),
+  }),
+);
+
+export const diamondP2POfferCanceledEvents = onchainTable(
+  'diamond_p2_p_offer_canceled_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    order_id: t.hex().notNull(),
+    creator: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    orderIdIdx: index().on(table.order_id),
+    creatorIdx: index().on(table.creator),
+  }),
+);
+
+export const diamondP2POfferCreatedEvents = onchainTable(
+  'diamond_p2_p_offer_created_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    order_id: t.hex().notNull(),
+    creator: t.hex().notNull(),
+    is_seller_initiated: t.boolean().notNull(),
+    token: t.hex().notNull(),
+    token_id: t.bigint().notNull(),
+    token_quantity: t.bigint().notNull(),
+    price: t.bigint().notNull(),
+    target_counterparty: t.hex().notNull(),
+    expires_at: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    orderIdIdx: index().on(table.order_id),
+    creatorIdx: index().on(table.creator),
+  }),
+);
+
 export const diamondSellerPaidEvents = onchainTable(
   'diamond_seller_paid_events',
   (t) => ({
@@ -1958,6 +2014,9 @@ export const tables = {
   diamondJourneyCanceledEvents,
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
+  diamondP2POfferAcceptedEvents,
+  diamondP2POfferCanceledEvents,
+  diamondP2POfferCreatedEvents,
   diamondSellerPaidEvents,
   diamondApprovalForAllEvents,
   diamondAssetAttributeAddedEvents,

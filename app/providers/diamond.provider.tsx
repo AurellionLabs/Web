@@ -18,6 +18,16 @@ import {
   DiamondNodeAssetService,
 } from '@/infrastructure/diamond';
 import {
+  DiamondP2PService,
+  DiamondP2PRepository,
+} from '@/infrastructure/diamond/diamond-p2p-service';
+import {
+  P2POffer,
+  IP2PService,
+  IP2PRepository,
+  CreateP2POfferInput,
+} from '@/domain/p2p';
+import {
   Node,
   NodeRepository,
   TokenizedAsset,
@@ -113,6 +123,10 @@ interface DiamondContextType {
     documentType: string,
   ) => Promise<boolean>; // Returns isFrozen
   removeSupportingDocument: (nodeHash: string, url: string) => Promise<void>;
+
+  // P2P Trading
+  p2pService: IP2PService | null;
+  p2pRepository: IP2PRepository | null;
 }
 
 const DiamondProviderContext = createContext<DiamondContextType | undefined>(
@@ -134,6 +148,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   );
   const [nodeAssetService, setNodeAssetService] =
     useState<DiamondNodeAssetService | null>(null);
+  const [p2pService, setP2PService] = useState<DiamondP2PService | null>(null);
+  const [p2pRepository, setP2PRepository] =
+    useState<DiamondP2PRepository | null>(null);
 
   const { connectedWallet, address, isConnected } = useWallet();
   const { connected: mainConnected } = useMainProvider();
@@ -202,11 +219,15 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         const repository = new DiamondNodeRepository(context, pinata);
         const service = new DiamondNodeService(context);
         const assetService = new DiamondNodeAssetService(context);
+        const p2pSvc = new DiamondP2PService(context);
+        const p2pRepo = new DiamondP2PRepository(context);
 
         setDiamondContext(context);
         setNodeRepository(repository);
         setNodeService(service);
         setNodeAssetService(assetService);
+        setP2PService(p2pSvc);
+        setP2PRepository(p2pRepo);
         setInitialized(true);
 
         console.log('[DiamondProvider] Initialized successfully');
@@ -666,6 +687,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     getSupportingDocuments,
     addSupportingDocument,
     removeSupportingDocument,
+    // P2P Trading
+    p2pService,
+    p2pRepository,
   };
 
   return (

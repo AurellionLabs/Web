@@ -1149,6 +1149,7 @@ const FRONTEND_FACETS = [
   'OrderRouterFacet',
   'CLOBFacet',
   'NodesFacet',
+  'AuSysFacet',
   'DiamondLoupeFacet',
   'OwnershipFacet',
   'ERC1155ReceiverFacet',
