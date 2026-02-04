@@ -46,6 +46,7 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { useNodes } from '@/app/providers/nodes.provider';
+import { useDiamond } from '@/app/providers/diamond.provider';
 import type {
   TokenizedAsset,
   TokenizedAssetAttribute,
@@ -168,11 +169,13 @@ export default function NodeDashboardPage() {
   const { refreshNodes } = useNodes();
   const router = useRouter();
   const { toast } = useToast();
+  const { isReadOnly: diamondIsReadOnly } = useDiamond();
 
   const searchParams = new URLSearchParams(window.location.search);
   const nodeIdFromUrl = searchParams.get('nodeId');
   const viewMode = searchParams.get('view');
-  const isReadOnly = viewMode === 'public';
+  // Read-only if URL says public OR if Diamond context is in read-only mode (no wallet)
+  const isReadOnly = viewMode === 'public' || diamondIsReadOnly;
 
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
