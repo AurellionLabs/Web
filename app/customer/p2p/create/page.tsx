@@ -26,11 +26,15 @@ import {
   AlertCircle,
   Clock,
   User,
+  Truck,
+  Globe,
+  Wallet,
 } from 'lucide-react';
 import { parseUnits, isAddress } from 'ethers';
 import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
+import { RouteCalculationService } from '@/infrastructure/services/route-calculation-service';
 
-type Step = 'type' | 'asset' | 'details' | 'target' | 'review';
+type Step = 'type' | 'asset' | 'details' | 'logistics' | 'target' | 'review';
 
 interface FormData {
   offerType: 'buy' | 'sell' | null;
@@ -39,8 +43,15 @@ interface FormData {
   quantity: string;
   price: string;
   expiryHours: string;
+  logisticsType: 'network' | 'custom';
+  logisticsPartner: string; // Node address for network, wallet address for custom
   targetType: 'public' | 'targeted';
   targetAddress: string;
+}
+
+interface NetworkNode {
+  address: string;
+  addressName: string;
 }
 
 /**
@@ -69,6 +80,8 @@ export default function CreateP2POfferPage() {
     quantity: '',
     price: '',
     expiryHours: '24',
+    logisticsType: 'network',
+    logisticsPartner: '',
     targetType: 'public',
     targetAddress: '',
   });
@@ -79,6 +92,10 @@ export default function CreateP2POfferPage() {
   const [classAssets, setClassAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [loadingAssets, setLoadingAssets] = useState(false);
+
+  // Network nodes state
+  const [networkNodes, setNetworkNodes] = useState<NetworkNode[]>([]);
+  const [loadingNodes, setLoadingNodes] = useState(false);
 
   // Load assets when asset class changes
   useEffect(() => {
@@ -115,6 +132,31 @@ export default function CreateP2POfferPage() {
     setCurrentUserRole('customer');
   }, [setCurrentUserRole]);
 
+  // Load network nodes when logistics step is reached
+  useEffect(() => {
+    const loadNetworkNodes = async () => {
+      if (formData.logisticsType !== 'network' || networkNodes.length > 0)
+        return;
+
+      setLoadingNodes(true);
+      try {
+        const routeService = new RouteCalculationService();
+        const nodes = await routeService.fetchAllNodes();
+        setNetworkNodes(
+          nodes.map((n) => ({
+            address: n.address,
+            addressName: n.addressName || 'Unknown Location',
+          })),
+        );
+      } catch (err) {
+        console.error('Error loading network nodes:', err);
+      } finally {
+        setLoadingNodes(false);
+      }
+    };
+    loadNetworkNodes();
+  }, [formData.logisticsType, networkNodes.length]);
+
   // Update form data
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -122,7 +164,14 @@ export default function CreateP2POfferPage() {
   };
 
   // Step navigation
-  const steps: Step[] = ['type', 'asset', 'details', 'target', 'review'];
+  const steps: Step[] = [
+    'type',
+    'asset',
+    'details',
+    'logistics',
+    'target',
+    'review',
+  ];
   const currentStepIndex = steps.indexOf(currentStep);
 
   const canProceed = (): boolean => {
@@ -138,6 +187,10 @@ export default function CreateP2POfferPage() {
           formData.price !== '' &&
           parseFloat(formData.price) > 0
         );
+      case 'logistics':
+        return formData.logisticsType === 'network'
+          ? formData.logisticsPartner !== ''
+          : isAddress(formData.logisticsPartner);
       case 'target':
         return (
           formData.targetType === 'public' ||
@@ -445,6 +498,145 @@ export default function CreateP2POfferPage() {
           </div>
         );
 
+      case 'logistics':
+        return (
+          <div className="space-y-6 max-w-xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                Logistics Partner
+              </h2>
+              <p className="text-muted-foreground">
+                Choose who will handle the delivery of this trade
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Network Option */}
+              <button
+                onClick={() =>
+                  updateFormData({
+                    logisticsType: 'network',
+                    logisticsPartner: '',
+                  })
+                }
+                className={cn(
+                  'w-full p-6 rounded-xl border-2 transition-all text-left',
+                  formData.logisticsType === 'network'
+                    ? 'border-amber-500 bg-amber-500/10'
+                    : 'border-glass-border bg-glass-bg hover:border-amber-500/50',
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <Globe className="w-6 h-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      Our Network
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Select from verified nodes in the Aurellion network
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Custom Wallet Option */}
+              <button
+                onClick={() =>
+                  updateFormData({
+                    logisticsType: 'custom',
+                    logisticsPartner: '',
+                  })
+                }
+                className={cn(
+                  'w-full p-6 rounded-xl border-2 transition-all text-left',
+                  formData.logisticsType === 'custom'
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-glass-border bg-glass-bg hover:border-purple-500/50',
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    <Wallet className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      Custom Wallet
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Specify a wallet address for a third-party logistics
+                      partner
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Network Node Selection */}
+              {formData.logisticsType === 'network' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Select Node
+                  </label>
+                  {loadingNodes ? (
+                    <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Loading network nodes...
+                    </div>
+                  ) : networkNodes.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
+                      <p>No active nodes found in the network</p>
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.logisticsPartner}
+                      onChange={(e) =>
+                        updateFormData({ logisticsPartner: e.target.value })
+                      }
+                      className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
+                    >
+                      <option value="">Select a logistics node</option>
+                      {networkNodes.map((node) => (
+                        <option key={node.address} value={node.address}>
+                          {node.addressName} ({node.address.slice(0, 6)}...
+                          {node.address.slice(-4)})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {/* Custom Wallet Input */}
+              {formData.logisticsType === 'custom' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Logistics Partner Wallet
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="0x..."
+                    value={formData.logisticsPartner}
+                    onChange={(e) =>
+                      updateFormData({ logisticsPartner: e.target.value })
+                    }
+                    className="bg-neutral-800/50"
+                  />
+                  {formData.logisticsPartner &&
+                    !isAddress(formData.logisticsPartner) && (
+                      <p className="text-xs text-red-400 mt-1">
+                        Please enter a valid Ethereum address
+                      </p>
+                    )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter the wallet address of your logistics partner
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       case 'target':
         return (
           <div className="space-y-6 max-w-xl mx-auto">
@@ -610,6 +802,29 @@ export default function CreateP2POfferPage() {
                       ? 'No expiry'
                       : `${formData.expiryHours} hours`}
                   </span>
+                </div>
+
+                {/* Logistics Partner */}
+                <div className="flex items-center justify-between py-3 border-b border-glass-border">
+                  <span className="text-muted-foreground">Logistics</span>
+                  <div className="text-right">
+                    <span className="text-foreground font-medium flex items-center gap-2 justify-end">
+                      <Truck className="w-4 h-4" />
+                      {formData.logisticsType === 'network' ? (
+                        <>
+                          {networkNodes.find(
+                            (n) => n.address === formData.logisticsPartner,
+                          )?.addressName || 'Network Node'}
+                        </>
+                      ) : (
+                        'Custom Partner'
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.logisticsPartner.slice(0, 6)}...
+                      {formData.logisticsPartner.slice(-4)}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Target */}
