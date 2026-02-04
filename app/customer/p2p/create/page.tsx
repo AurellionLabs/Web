@@ -7,6 +7,7 @@ import { useDiamond } from '@/app/providers/diamond.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
+import type { Asset } from '@/domain/shared';
 import {
   GlassCard,
   GlassCardHeader,
@@ -56,7 +57,7 @@ export default function CreateP2POfferPage() {
   const { setCurrentUserRole, connected } = useMainProvider();
   const { address } = useWallet();
   const { p2pService, initialized: diamondInitialized } = useDiamond();
-  const { assetClasses } = usePlatform();
+  const { supportedAssetClasses, getClassTokenizableAssets } = usePlatform();
   const router = useRouter();
 
   // State
@@ -73,6 +74,41 @@ export default function CreateP2POfferPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Asset selection state
+  const [classAssets, setClassAssets] = useState<Asset[]>([]);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+
+  // Load assets when asset class changes
+  useEffect(() => {
+    const loadAssetsForClass = async () => {
+      setSelectedAsset(null);
+      setClassAssets([]);
+      if (!formData.assetClass) return;
+      setLoadingAssets(true);
+      try {
+        const assets = await getClassTokenizableAssets(formData.assetClass);
+        setClassAssets(assets);
+      } finally {
+        setLoadingAssets(false);
+      }
+    };
+    loadAssetsForClass();
+  }, [formData.assetClass, getClassTokenizableAssets]);
+
+  // Update selected asset when tokenId changes
+  useEffect(() => {
+    if (formData.tokenId) {
+      const asset = classAssets.find((a: any) => {
+        const idStr = String(a?.tokenId ?? a?.tokenID ?? '');
+        return idStr === formData.tokenId;
+      });
+      setSelectedAsset(asset || null);
+    } else {
+      setSelectedAsset(null);
+    }
+  }, [formData.tokenId, classAssets]);
 
   // Set user role on mount
   useEffect(() => {
@@ -268,11 +304,12 @@ export default function CreateP2POfferPage() {
                 Select Asset
               </h2>
               <p className="text-muted-foreground">
-                Choose the asset class and enter the token ID
+                Choose the asset class and then select the specific asset
               </p>
             </div>
 
             <div className="space-y-4">
+              {/* Asset Class Selection */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
                   Asset Class
@@ -280,37 +317,61 @@ export default function CreateP2POfferPage() {
                 <select
                   value={formData.assetClass}
                   onChange={(e) =>
-                    updateFormData({ assetClass: e.target.value })
+                    updateFormData({ assetClass: e.target.value, tokenId: '' })
                   }
                   className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
                 >
                   <option value="">Select an asset class</option>
-                  {assetClasses.map((ac) => (
-                    <option key={ac.name} value={ac.name}>
-                      {ac.name}
+                  {supportedAssetClasses.map((assetClass) => (
+                    <option key={assetClass} value={assetClass}>
+                      {assetClass}
                     </option>
                   ))}
-                  <option value="GOAT">GOAT</option>
-                  <option value="GOLD">GOLD</option>
-                  <option value="OTHER">Other</option>
                 </select>
               </div>
 
+              {/* Asset Selection within class */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Token ID
+                  Asset
                 </label>
-                <Input
-                  type="text"
-                  placeholder="Enter the token ID"
-                  value={formData.tokenId}
-                  onChange={(e) => updateFormData({ tokenId: e.target.value })}
-                  className="bg-neutral-800/50"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  The specific token ID you want to{' '}
-                  {formData.offerType === 'buy' ? 'buy' : 'sell'}
-                </p>
+                {loadingAssets ? (
+                  <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Loading assets...
+                  </div>
+                ) : !formData.assetClass ? (
+                  <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
+                    <p>Select an asset class first</p>
+                  </div>
+                ) : classAssets.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
+                    <p>No assets found for this class</p>
+                  </div>
+                ) : (
+                  <select
+                    value={formData.tokenId}
+                    onChange={(e) =>
+                      updateFormData({ tokenId: e.target.value })
+                    }
+                    className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
+                  >
+                    <option value="">Select an asset</option>
+                    {classAssets.map((asset: any) => (
+                      <option
+                        key={String(asset?.tokenId ?? asset?.tokenID)}
+                        value={String(asset?.tokenId ?? asset?.tokenID)}
+                      >
+                        {asset.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {selectedAsset && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Token ID: {formData.tokenId}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -506,9 +567,14 @@ export default function CreateP2POfferPage() {
                 {/* Asset */}
                 <div className="flex items-center justify-between py-3 border-b border-glass-border">
                   <span className="text-muted-foreground">Asset</span>
-                  <span className="text-foreground font-medium">
-                    {formData.assetClass} #{formData.tokenId}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-foreground font-medium block">
+                      {selectedAsset?.name || formData.assetClass}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Token ID: {formData.tokenId}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Quantity */}
