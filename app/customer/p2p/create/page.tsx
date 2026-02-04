@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import { parseUnits, isAddress } from 'ethers';
 import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
-import { RouteCalculationService } from '@/infrastructure/services/route-calculation-service';
 
 type Step = 'type' | 'asset' | 'details' | 'logistics' | 'target' | 'review';
 
@@ -47,11 +46,6 @@ interface FormData {
   logisticsPartner: string; // Node address for network, wallet address for custom
   targetType: 'public' | 'targeted';
   targetAddress: string;
-}
-
-interface NetworkNode {
-  address: string;
-  addressName: string;
 }
 
 /**
@@ -93,10 +87,6 @@ export default function CreateP2POfferPage() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [loadingAssets, setLoadingAssets] = useState(false);
 
-  // Network nodes state
-  const [networkNodes, setNetworkNodes] = useState<NetworkNode[]>([]);
-  const [loadingNodes, setLoadingNodes] = useState(false);
-
   // Load assets when asset class changes
   useEffect(() => {
     const loadAssetsForClass = async () => {
@@ -132,31 +122,6 @@ export default function CreateP2POfferPage() {
     setCurrentUserRole('customer');
   }, [setCurrentUserRole]);
 
-  // Load network nodes when logistics step is reached
-  useEffect(() => {
-    const loadNetworkNodes = async () => {
-      if (formData.logisticsType !== 'network' || networkNodes.length > 0)
-        return;
-
-      setLoadingNodes(true);
-      try {
-        const routeService = new RouteCalculationService();
-        const nodes = await routeService.fetchAllNodes();
-        setNetworkNodes(
-          nodes.map((n) => ({
-            address: n.address,
-            addressName: n.addressName || 'Unknown Location',
-          })),
-        );
-      } catch (err) {
-        console.error('Error loading network nodes:', err);
-      } finally {
-        setLoadingNodes(false);
-      }
-    };
-    loadNetworkNodes();
-  }, [formData.logisticsType, networkNodes.length]);
-
   // Update form data
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -188,8 +153,10 @@ export default function CreateP2POfferPage() {
           parseFloat(formData.price) > 0
         );
       case 'logistics':
+        // Network = open to any driver, no address needed
+        // Custom = specific driver wallet required
         return formData.logisticsType === 'network'
-          ? formData.logisticsPartner !== ''
+          ? true
           : isAddress(formData.logisticsPartner);
       case 'target':
         return (
@@ -503,15 +470,15 @@ export default function CreateP2POfferPage() {
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-foreground mb-2">
-                Logistics Partner
+                Choose a Driver
               </h2>
               <p className="text-muted-foreground">
-                Choose who will handle the delivery of this trade
+                Select who will deliver the physical asset
               </p>
             </div>
 
             <div className="space-y-4">
-              {/* Network Option */}
+              {/* Network Drivers Option */}
               <button
                 onClick={() =>
                   updateFormData({
@@ -532,16 +499,17 @@ export default function CreateP2POfferPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">
-                      Our Network
+                      Aurellion Network
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Select from verified nodes in the Aurellion network
+                      Let any verified driver from our network accept the
+                      delivery
                     </p>
                   </div>
                 </div>
               </button>
 
-              {/* Custom Wallet Option */}
+              {/* Specific Driver Option */}
               <button
                 onClick={() =>
                   updateFormData({
@@ -562,56 +530,39 @@ export default function CreateP2POfferPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">
-                      Custom Wallet
+                      Specific Driver
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Specify a wallet address for a third-party logistics
-                      partner
+                      Assign a specific wallet address as the driver
                     </p>
                   </div>
                 </div>
               </button>
 
-              {/* Network Node Selection */}
+              {/* Network - No selection needed, any driver can accept */}
               {formData.logisticsType === 'network' && (
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Select Node
-                  </label>
-                  {loadingNodes ? (
-                    <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Loading network nodes...
+                <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Truck className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="text-amber-400 font-medium mb-1">
+                        Open to all network drivers
+                      </p>
+                      <p className="text-muted-foreground">
+                        Any verified driver in the Aurellion network can accept
+                        this delivery job. The first driver to accept will be
+                        assigned.
+                      </p>
                     </div>
-                  ) : networkNodes.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
-                      <p>No active nodes found in the network</p>
-                    </div>
-                  ) : (
-                    <select
-                      value={formData.logisticsPartner}
-                      onChange={(e) =>
-                        updateFormData({ logisticsPartner: e.target.value })
-                      }
-                      className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
-                    >
-                      <option value="">Select a logistics node</option>
-                      {networkNodes.map((node) => (
-                        <option key={node.address} value={node.address}>
-                          {node.addressName} ({node.address.slice(0, 6)}...
-                          {node.address.slice(-4)})
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  </div>
                 </div>
               )}
 
-              {/* Custom Wallet Input */}
+              {/* Specific Driver Wallet Input */}
               {formData.logisticsType === 'custom' && (
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Logistics Partner Wallet
+                    Driver Wallet Address
                   </label>
                   <Input
                     type="text"
@@ -629,7 +580,7 @@ export default function CreateP2POfferPage() {
                       </p>
                     )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Enter the wallet address of your logistics partner
+                    Only this wallet will be able to accept the delivery job
                   </p>
                 </div>
               )}
@@ -804,26 +755,23 @@ export default function CreateP2POfferPage() {
                   </span>
                 </div>
 
-                {/* Logistics Partner */}
+                {/* Driver */}
                 <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Logistics</span>
+                  <span className="text-muted-foreground">Driver</span>
                   <div className="text-right">
                     <span className="text-foreground font-medium flex items-center gap-2 justify-end">
                       <Truck className="w-4 h-4" />
-                      {formData.logisticsType === 'network' ? (
-                        <>
-                          {networkNodes.find(
-                            (n) => n.address === formData.logisticsPartner,
-                          )?.addressName || 'Network Node'}
-                        </>
-                      ) : (
-                        'Custom Partner'
+                      {formData.logisticsType === 'network'
+                        ? 'Any Network Driver'
+                        : 'Specific Driver'}
+                    </span>
+                    {formData.logisticsType === 'custom' &&
+                      formData.logisticsPartner && (
+                        <span className="text-xs text-muted-foreground">
+                          {formData.logisticsPartner.slice(0, 6)}...
+                          {formData.logisticsPartner.slice(-4)}
+                        </span>
                       )}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formData.logisticsPartner.slice(0, 6)}...
-                      {formData.logisticsPartner.slice(-4)}
-                    </span>
                   </div>
                 </div>
 
