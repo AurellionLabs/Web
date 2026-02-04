@@ -1,22 +1,21 @@
 # Build stage for Ponder indexer
-FROM node:22-alpine AS builder
+FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
 # Copy only what's needed for build
-COPY pnpm-lock.yaml ./
+COPY bun.lock ./
 COPY package*.json ./
 COPY indexer/package*.json ./indexer/
 
 # Install dependencies
-RUN npm install -g pnpm && \
-    pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Copy indexer source
 COPY indexer/ ./indexer/
 
 # Install indexer dependencies
-RUN cd indexer && pnpm install --no-frozen-lockfile
+RUN cd indexer && bun install
 
 # Copy build dependencies
 COPY scripts/ ./scripts/
@@ -28,17 +27,13 @@ COPY remappings.txt ./
 COPY contracts/ ./contracts/
 
 # Compile contracts and generate indexer
-RUN rm -rf ~/.cache/hardhat && \
-    npx hardhat compile && \
-    cd indexer && pnpm run generate:indexer
+RUN bunx --bun hardhat compile && \
+    cd indexer && bun run generate:indexer
 
 # Production stage
-FROM node:22-alpine AS runner
+FROM oven/bun:1-alpine AS runner
 
 WORKDIR /app
-
-# Install pnpm
-RUN npm install -g pnpm
 
 # Create non-root user with specific UID to avoid chown
 RUN addgroup --system --gid 1001 nodejs && \
@@ -53,4 +48,4 @@ USER ponder
 
 EXPOSE 42069
 
-CMD ["sh", "-c", "pnpm --filter aurellion-indexer run start"]
+CMD ["bun", "run", "--cwd", "indexer", "start"]
