@@ -9,6 +9,14 @@
  * - Full ABI definitions (for frontend contract interactions)
  */
 
+// Re-export ABI types from shared types (used by both scripts and frontend)
+export type {
+  ABIComponent,
+  ABIFunction,
+  ABIEvent,
+  ABIFragment,
+} from '../types/abi';
+
 export interface ContractConfig {
   name: string;
   contractName: string;
@@ -28,31 +36,6 @@ export interface ContractConfig {
     startBlockKey: string;
   };
 }
-
-// ABI component type (recursive for nested tuples)
-export interface ABIComponent {
-  name: string;
-  type: string;
-  indexed?: boolean;
-  components?: ABIComponent[];
-}
-
-// ABI fragment type for function definitions
-export interface ABIFunction {
-  type: 'function';
-  name: string;
-  inputs: ABIComponent[];
-  outputs: ABIComponent[];
-  stateMutability: 'pure' | 'view' | 'nonpayable' | 'payable';
-}
-
-export interface ABIEvent {
-  type: 'event';
-  name: string;
-  inputs: Array<{ name: string; type: string; indexed?: boolean }>;
-}
-
-export type ABIFragment = ABIFunction | ABIEvent;
 
 export interface DeploymentMode {
   name: string;
@@ -1377,6 +1360,80 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       ],
       stateMutability: 'view',
     },
+    // Supporting Document Functions
+    {
+      type: 'function',
+      name: 'addSupportingDocument',
+      inputs: [
+        { name: '_nodeHash', type: 'bytes32' },
+        { name: '_documentType', type: 'string' },
+        { name: '_documentUrl', type: 'string' },
+        { name: '_description', type: 'string' },
+      ],
+      outputs: [{ name: 'documentId', type: 'uint256' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'removeSupportingDocument',
+      inputs: [
+        { name: '_nodeHash', type: 'bytes32' },
+        { name: '_documentId', type: 'uint256' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'getSupportingDocuments',
+      inputs: [{ name: '_nodeHash', type: 'bytes32' }],
+      outputs: [
+        {
+          name: '',
+          type: 'tuple[]',
+          components: [
+            { name: 'id', type: 'uint256' },
+            { name: 'documentType', type: 'string' },
+            { name: 'documentUrl', type: 'string' },
+            { name: 'description', type: 'string' },
+            { name: 'addedAt', type: 'uint256' },
+            { name: 'isFrozen', type: 'bool' },
+            { name: 'isRemoved', type: 'bool' },
+            { name: 'removedAt', type: 'uint256' },
+          ],
+        },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getActiveSupportingDocuments',
+      inputs: [{ name: '_nodeHash', type: 'bytes32' }],
+      outputs: [
+        {
+          name: '',
+          type: 'tuple[]',
+          components: [
+            { name: 'id', type: 'uint256' },
+            { name: 'documentType', type: 'string' },
+            { name: 'documentUrl', type: 'string' },
+            { name: 'description', type: 'string' },
+            { name: 'addedAt', type: 'uint256' },
+            { name: 'isFrozen', type: 'bool' },
+            { name: 'isRemoved', type: 'bool' },
+            { name: 'removedAt', type: 'uint256' },
+          ],
+        },
+      ],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getSupportingDocumentCount',
+      inputs: [{ name: '_nodeHash', type: 'bytes32' }],
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+    },
     // Events
     {
       type: 'event',
@@ -1437,6 +1494,25 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
         { name: 'price', type: 'uint256', indexed: false },
         { name: 'amount', type: 'uint256', indexed: false },
         { name: 'orderId', type: 'bytes32', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'SupportingDocumentAdded',
+      inputs: [
+        { name: 'nodeHash', type: 'bytes32', indexed: true },
+        { name: 'documentId', type: 'uint256', indexed: true },
+        { name: 'documentType', type: 'string', indexed: false },
+        { name: 'documentUrl', type: 'string', indexed: false },
+        { name: 'isFrozen', type: 'bool', indexed: false },
+      ],
+    },
+    {
+      type: 'event',
+      name: 'SupportingDocumentRemoved',
+      inputs: [
+        { name: 'nodeHash', type: 'bytes32', indexed: true },
+        { name: 'documentId', type: 'uint256', indexed: true },
       ],
     },
   ],

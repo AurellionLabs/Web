@@ -11,7 +11,7 @@
  * Facets: CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OrderRouterFacet, AssetsFacet, AuSysFacet, BridgeFacet, RWYStakingFacet, CLOBLogisticsFacet, OperatorFacet
  */
 
-import { ABIFragment } from '@/scripts/deploy.config';
+import { ABIFragment } from '@/types/abi';
 
 export const DIAMOND_ABI: ABIFragment[] = [
   {
