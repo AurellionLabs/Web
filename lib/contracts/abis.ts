@@ -35,7 +35,8 @@ export const AuraGoatRedABI: AbiItem[] = extractedAbis.AuraGoatRed;
 export const CLOBABI: AbiItem[] = extractedAbis.CLOB;
 export const OrderBridgeABI: AbiItem[] = extractedAbis.OrderBridge;
 export const RWYVaultABI: AbiItem[] = extractedAbis.RWYVault;
-export const RWYStakingFacetABI: AbiItem[] = extractedAbis.RWYStakingFacet;
+export const RWYStakingFacetABI: AbiItem[] =
+  (extractedAbis as any).RWYStakingFacet || [];
 
 // Diamond ABIs
 export const DiamondABI: AbiItem[] = extractedAbis.Diamond;

@@ -7898,6 +7898,267 @@ export const OPERATORFACET_ABI = [
       },
     ],
   },
+  // Supporting Document Functions and Events
+  {
+    type: 'event',
+    name: 'SupportingDocumentAdded',
+    inputs: [
+      {
+        name: 'nodeHash',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'url',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'title',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'description',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'documentType',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'isFrozen',
+        type: 'bool',
+        indexed: false,
+      },
+      {
+        name: 'timestamp',
+        type: 'uint256',
+        indexed: true,
+      },
+      {
+        name: 'addedBy',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'SupportingDocumentRemoved',
+    inputs: [
+      {
+        name: 'nodeHash',
+        type: 'bytes32',
+        indexed: true,
+      },
+      {
+        name: 'url',
+        type: 'string',
+        indexed: false,
+      },
+      {
+        name: 'timestamp',
+        type: 'uint256',
+        indexed: true,
+      },
+      {
+        name: 'removedBy',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'addSupportingDocument',
+    inputs: [
+      {
+        name: '_nodeHash',
+        type: 'bytes32',
+      },
+      {
+        name: '_url',
+        type: 'string',
+      },
+      {
+        name: '_title',
+        type: 'string',
+      },
+      {
+        name: '_description',
+        type: 'string',
+      },
+      {
+        name: '_documentType',
+        type: 'string',
+      },
+    ],
+    outputs: [
+      {
+        name: 'isFrozen',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'removeSupportingDocument',
+    inputs: [
+      {
+        name: '_nodeHash',
+        type: 'bytes32',
+      },
+      {
+        name: '_url',
+        type: 'string',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getSupportingDocuments',
+    inputs: [
+      {
+        name: '_nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'documents',
+        type: 'tuple[]',
+        components: [
+          {
+            name: 'url',
+            type: 'string',
+          },
+          {
+            name: 'title',
+            type: 'string',
+          },
+          {
+            name: 'description',
+            type: 'string',
+          },
+          {
+            name: 'documentType',
+            type: 'string',
+          },
+          {
+            name: 'isFrozen',
+            type: 'bool',
+          },
+          {
+            name: 'isRemoved',
+            type: 'bool',
+          },
+          {
+            name: 'addedAt',
+            type: 'uint256',
+          },
+          {
+            name: 'removedAt',
+            type: 'uint256',
+          },
+          {
+            name: 'addedBy',
+            type: 'address',
+          },
+          {
+            name: 'removedBy',
+            type: 'address',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getActiveSupportingDocuments',
+    inputs: [
+      {
+        name: '_nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'documents',
+        type: 'tuple[]',
+        components: [
+          {
+            name: 'url',
+            type: 'string',
+          },
+          {
+            name: 'title',
+            type: 'string',
+          },
+          {
+            name: 'description',
+            type: 'string',
+          },
+          {
+            name: 'documentType',
+            type: 'string',
+          },
+          {
+            name: 'isFrozen',
+            type: 'bool',
+          },
+          {
+            name: 'isRemoved',
+            type: 'bool',
+          },
+          {
+            name: 'addedAt',
+            type: 'uint256',
+          },
+          {
+            name: 'removedAt',
+            type: 'uint256',
+          },
+          {
+            name: 'addedBy',
+            type: 'address',
+          },
+          {
+            name: 'removedBy',
+            type: 'address',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getSupportingDocumentCount',
+    inputs: [
+      {
+        name: '_nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    outputs: [
+      {
+        name: 'total',
+        type: 'uint256',
+      },
+      {
+        name: 'active',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
 ] as const;
 
 // Helper to get ABI as ethers-compatible format
