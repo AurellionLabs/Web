@@ -30,17 +30,19 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Setup pnpm
-        run: corepack enable pnpm
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Compile contracts
-        run: npx hardhat clean && npx hardhat compile
+        run: bunx --bun hardhat clean && bunx --bun hardhat compile
 
       - name: Generate new schema
-        run: pnpm run generate:indexer
+        run: bun run generate:indexer
 
       - name: Deploy to server and reset database
         uses: appleboy/ssh-action@v1.0.3
@@ -70,7 +72,7 @@ jobs:
             git pull origin ${{ github.ref_name }}
 
              echo "Regenerating schema..."
-             pnpm run generate:indexer
+             bun run generate:indexer
 
             echo "Restarting indexer service..."
             cd /srv/Web/indexer
