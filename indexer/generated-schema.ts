@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-01-22T15:06:34.394Z
+// Generated at: 2026-02-04T20:00:39.371Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -189,6 +189,48 @@ export const diamondSupportedAssetsUpdatedEvents = onchainTable(
   }),
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
+  }),
+);
+
+export const diamondSupportingDocumentAddedEvents = onchainTable(
+  'diamond_supporting_document_added_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    node_hash: t.hex().notNull(),
+    url: t.text().notNull(),
+    title: t.text().notNull(),
+    description: t.text().notNull(),
+    document_type: t.text().notNull(),
+    is_frozen: t.boolean().notNull(),
+    timestamp: t.bigint().notNull(),
+    added_by: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    nodeHashIdx: index().on(table.node_hash),
+    timestampIdx: index().on(table.timestamp),
+    addedByIdx: index().on(table.added_by),
+  }),
+);
+
+export const diamondSupportingDocumentRemovedEvents = onchainTable(
+  'diamond_supporting_document_removed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    node_hash: t.hex().notNull(),
+    url: t.text().notNull(),
+    timestamp: t.bigint().notNull(),
+    removed_by: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    nodeHashIdx: index().on(table.node_hash),
+    timestampIdx: index().on(table.timestamp),
+    removedByIdx: index().on(table.removed_by),
   }),
 );
 
@@ -840,6 +882,24 @@ export const diamondConfigUpdatedEvents = onchainTable(
   }),
 );
 
+export const diamondCustodyProofSubmittedEvents = onchainTable(
+  'diamond_custody_proof_submitted_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    opportunity_id: t.hex().notNull(),
+    document_uri: t.text().notNull(),
+    proof_type: t.text().notNull(),
+    submitter: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdIdx: index().on(table.opportunity_id),
+  }),
+);
+
 export const diamondDeliveryConfirmedEvents = onchainTable(
   'diamond_delivery_confirmed_events',
   (t) => ({
@@ -861,6 +921,24 @@ export const diamondDeliveryStartedEvents = onchainTable(
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
     journey_id: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdIdx: index().on(table.opportunity_id),
+  }),
+);
+
+export const diamondInsuranceUpdatedEvents = onchainTable(
+  'diamond_insurance_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    opportunity_id: t.hex().notNull(),
+    is_insured: t.boolean().notNull(),
+    document_uri: t.text().notNull(),
+    coverage_amount: t.bigint().notNull(),
+    expiry_date: t.bigint().notNull(),
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
@@ -989,6 +1067,23 @@ export const diamondSaleProceedsRecordedEvents = onchainTable(
     id: t.text().primaryKey(),
     opportunity_id: t.hex().notNull(),
     proceeds: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    opportunityIdIdx: index().on(table.opportunity_id),
+  }),
+);
+
+export const diamondTokenizationProofSubmittedEvents = onchainTable(
+  'diamond_tokenization_proof_submitted_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    opportunity_id: t.hex().notNull(),
+    document_uri: t.text().notNull(),
+    submitter: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
@@ -1780,6 +1875,8 @@ export const tables = {
   diamondNodeUpdatedEvents,
   diamondSupportedAssetAddedEvents,
   diamondSupportedAssetsUpdatedEvents,
+  diamondSupportingDocumentAddedEvents,
+  diamondSupportingDocumentRemovedEvents,
   diamondTokensDepositedToNodeEvents,
   diamondTokensMintedToNodeEvents,
   diamondTokensTransferredBetweenNodesEvents,
@@ -1814,8 +1911,10 @@ export const tables = {
   diamondCommodityStakedEvents,
   diamondCommodityUnstakedEvents,
   diamondConfigUpdatedEvents,
+  diamondCustodyProofSubmittedEvents,
   diamondDeliveryConfirmedEvents,
   diamondDeliveryStartedEvents,
+  diamondInsuranceUpdatedEvents,
   diamondOpportunityCancelledEvents,
   diamondOpportunityCompletedEvents,
   diamondOpportunityCreatedEvents,
@@ -1824,6 +1923,7 @@ export const tables = {
   diamondProcessingStartedEvents,
   diamondProfitDistributedEvents,
   diamondSaleProceedsRecordedEvents,
+  diamondTokenizationProofSubmittedEvents,
   diamondOperatorApprovedEvents,
   diamondOperatorReputationUpdatedEvents,
   diamondOperatorRevokedEvents,

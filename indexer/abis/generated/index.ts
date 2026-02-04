@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-01-22T15:06:34.374Z
+// Generated at: 2026-02-04T20:00:39.369Z
 // 
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -275,6 +275,92 @@ export const DiamondABI = [
       }
     ],
     "name": "SupportedAssetsUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "documentType",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isFrozen",
+        "type": "bool"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "addedBy",
+        "type": "address"
+      }
+    ],
+    "name": "SupportingDocumentAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "removedBy",
+        "type": "address"
+      }
+    ],
+    "name": "SupportingDocumentRemoved",
     "type": "event"
   },
   {
@@ -1528,6 +1614,43 @@ export const DiamondABI = [
       },
       {
         "indexed": false,
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "proofType",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "submitter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "CustodyProofSubmitted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
         "internalType": "uint256",
         "name": "deliveredAmount",
         "type": "uint256"
@@ -1553,6 +1676,43 @@ export const DiamondABI = [
       }
     ],
     "name": "DeliveryStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isInsured",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "coverageAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "expiryDate",
+        "type": "uint256"
+      }
+    ],
+    "name": "InsuranceUpdated",
     "type": "event"
   },
   {
@@ -1741,6 +1901,37 @@ export const DiamondABI = [
       }
     ],
     "name": "SaleProceedsRecorded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "submitter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "TokenizationProofSubmitted",
     "type": "event"
   },
   {
@@ -3230,6 +3421,45 @@ export const DiamondABI = [
         "internalType": "bytes32",
         "name": "_nodeHash",
         "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "_url",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_title",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_documentType",
+        "type": "string"
+      }
+    ],
+    "name": "addSupportingDocument",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "isFrozen",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       }
     ],
     "name": "approveAusysForTokens",
@@ -3335,6 +3565,77 @@ export const DiamondABI = [
     "name": "depositTokensToNode",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getActiveSupportingDocuments",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "documentType",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFrozen",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isRemoved",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "addedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "removedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "addedBy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "removedBy",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct DiamondStorage.SupportingDocument[]",
+        "name": "documents",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -3704,6 +4005,101 @@ export const DiamondABI = [
     "inputs": [
       {
         "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getSupportingDocumentCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "total",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "active",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getSupportingDocuments",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "documentType",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFrozen",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isRemoved",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "addedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "removedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "addedBy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "removedBy",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct DiamondStorage.SupportingDocument[]",
+        "name": "documents",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
         "name": "_node",
         "type": "bytes32"
       }
@@ -3939,6 +4335,24 @@ export const DiamondABI = [
         "type": "bytes32"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "_url",
+        "type": "string"
+      }
+    ],
+    "name": "removeSupportingDocument",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -5610,6 +6024,107 @@ export const DiamondABI = [
         "type": "bytes32"
       }
     ],
+    "name": "getCustodyProofCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getCustodyProofs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "documentUri",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "submitter",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "proofType",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct RWYStorage.CustodyProof[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getInsurance",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "isInsured",
+            "type": "bool"
+          },
+          {
+            "internalType": "string",
+            "name": "documentUri",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "coverageAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryDate",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct RWYStorage.InsuranceInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
     "name": "getOpportunity",
     "outputs": [
       {
@@ -5734,6 +6249,33 @@ export const DiamondABI = [
             ],
             "internalType": "struct RWYStorage.CollateralInfo",
             "name": "collateral",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isInsured",
+                "type": "bool"
+              },
+              {
+                "internalType": "string",
+                "name": "documentUri",
+                "type": "string"
+              },
+              {
+                "internalType": "uint256",
+                "name": "coverageAmount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "expiryDate",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct RWYStorage.InsuranceInfo",
+            "name": "insurance",
             "type": "tuple"
           }
         ],
@@ -5910,6 +6452,42 @@ export const DiamondABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getTokenizationProof",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "documentUri",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "submitter",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct RWYStorage.TokenizationProof",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "initializeRWYStaking",
     "outputs": [],
@@ -5963,6 +6541,34 @@ export const DiamondABI = [
       }
     ],
     "name": "setDefaultProcessingDays",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "coverageAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiryDate",
+        "type": "uint256"
+      }
+    ],
+    "name": "setInsurance",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -6077,6 +6683,47 @@ export const DiamondABI = [
       }
     ],
     "name": "startDelivery",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "proofType",
+        "type": "string"
+      }
+    ],
+    "name": "submitCustodyProof",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      }
+    ],
+    "name": "submitTokenizationProof",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -8324,6 +8971,16 @@ export const EventSignatureRegistry = {
     "facet": "NodesFacet",
     "signature": "SupportedAssetsUpdated(bytes32,uint256)"
   },
+  "0xb9819508": {
+    "name": "SupportingDocumentAdded",
+    "facet": "NodesFacet",
+    "signature": "SupportingDocumentAdded(bytes32,string,string,string,string,bool,uint256,address)"
+  },
+  "0x69399cc3": {
+    "name": "SupportingDocumentRemoved",
+    "facet": "NodesFacet",
+    "signature": "SupportingDocumentRemoved(bytes32,string,uint256,address)"
+  },
   "0x9d994707": {
     "name": "TokensDepositedToNode",
     "facet": "NodesFacet",
@@ -8494,6 +9151,11 @@ export const EventSignatureRegistry = {
     "facet": "RWYStakingFacet",
     "signature": "ConfigUpdated(string,uint256,uint256)"
   },
+  "0x51d9b1fc": {
+    "name": "CustodyProofSubmitted",
+    "facet": "RWYStakingFacet",
+    "signature": "CustodyProofSubmitted(bytes32,string,string,address,uint256)"
+  },
   "0x1c0fcf44": {
     "name": "DeliveryConfirmed",
     "facet": "RWYStakingFacet",
@@ -8503,6 +9165,11 @@ export const EventSignatureRegistry = {
     "name": "DeliveryStarted",
     "facet": "RWYStakingFacet",
     "signature": "DeliveryStarted(bytes32,bytes32)"
+  },
+  "0xaf953efb": {
+    "name": "InsuranceUpdated",
+    "facet": "RWYStakingFacet",
+    "signature": "InsuranceUpdated(bytes32,bool,string,uint256,uint256)"
   },
   "0xd3955fc1": {
     "name": "OpportunityCancelled",
@@ -8543,6 +9210,11 @@ export const EventSignatureRegistry = {
     "name": "SaleProceedsRecorded",
     "facet": "RWYStakingFacet",
     "signature": "SaleProceedsRecorded(bytes32,uint256)"
+  },
+  "0x979c2cf4": {
+    "name": "TokenizationProofSubmitted",
+    "facet": "RWYStakingFacet",
+    "signature": "TokenizationProofSubmitted(bytes32,string,address,uint256)"
   },
   "0xf338da91": {
     "name": "OperatorApproved",

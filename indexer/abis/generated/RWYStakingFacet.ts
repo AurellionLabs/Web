@@ -1,5 +1,5 @@
 // Auto-generated from RWYStakingFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-22T15:06:34.355Z
+// Generated at: 2026-02-04T20:00:39.368Z
 
 export const RWYStakingFacetABI = [
   {
@@ -210,6 +210,43 @@ export const RWYStakingFacetABI = [
       },
       {
         "indexed": false,
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "proofType",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "submitter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "CustodyProofSubmitted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
         "internalType": "uint256",
         "name": "deliveredAmount",
         "type": "uint256"
@@ -235,6 +272,43 @@ export const RWYStakingFacetABI = [
       }
     ],
     "name": "DeliveryStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isInsured",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "coverageAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "expiryDate",
+        "type": "uint256"
+      }
+    ],
+    "name": "InsuranceUpdated",
     "type": "event"
   },
   {
@@ -423,6 +497,37 @@ export const RWYStakingFacetABI = [
       }
     ],
     "name": "SaleProceedsRecorded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "submitter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "TokenizationProofSubmitted",
     "type": "event"
   },
   {
@@ -667,6 +772,107 @@ export const RWYStakingFacetABI = [
         "type": "bytes32"
       }
     ],
+    "name": "getCustodyProofCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getCustodyProofs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "documentUri",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "submitter",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "proofType",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct RWYStorage.CustodyProof[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getInsurance",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "isInsured",
+            "type": "bool"
+          },
+          {
+            "internalType": "string",
+            "name": "documentUri",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "coverageAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryDate",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct RWYStorage.InsuranceInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
     "name": "getOpportunity",
     "outputs": [
       {
@@ -791,6 +997,33 @@ export const RWYStakingFacetABI = [
             ],
             "internalType": "struct RWYStorage.CollateralInfo",
             "name": "collateral",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isInsured",
+                "type": "bool"
+              },
+              {
+                "internalType": "string",
+                "name": "documentUri",
+                "type": "string"
+              },
+              {
+                "internalType": "uint256",
+                "name": "coverageAmount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "expiryDate",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct RWYStorage.InsuranceInfo",
+            "name": "insurance",
             "type": "tuple"
           }
         ],
@@ -967,6 +1200,42 @@ export const RWYStakingFacetABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getTokenizationProof",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "documentUri",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "submitter",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct RWYStorage.TokenizationProof",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "initializeRWYStaking",
     "outputs": [],
@@ -1020,6 +1289,34 @@ export const RWYStakingFacetABI = [
       }
     ],
     "name": "setDefaultProcessingDays",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "coverageAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiryDate",
+        "type": "uint256"
+      }
+    ],
+    "name": "setInsurance",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1139,6 +1436,47 @@ export const RWYStakingFacetABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "proofType",
+        "type": "string"
+      }
+    ],
+    "name": "submitCustodyProof",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "opportunityId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "documentUri",
+        "type": "string"
+      }
+    ],
+    "name": "submitTokenizationProof",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "unpauseRWY",
     "outputs": [],
@@ -1187,6 +1525,11 @@ export const RWYStakingFacetEvents = [
     "signatureHash": "0xd7474166"
   },
   {
+    "name": "CustodyProofSubmitted",
+    "signature": "CustodyProofSubmitted(bytes32,string,string,address,uint256)",
+    "signatureHash": "0x51d9b1fc"
+  },
+  {
     "name": "DeliveryConfirmed",
     "signature": "DeliveryConfirmed(bytes32,uint256)",
     "signatureHash": "0x1c0fcf44"
@@ -1195,6 +1538,11 @@ export const RWYStakingFacetEvents = [
     "name": "DeliveryStarted",
     "signature": "DeliveryStarted(bytes32,bytes32)",
     "signatureHash": "0xec8d4528"
+  },
+  {
+    "name": "InsuranceUpdated",
+    "signature": "InsuranceUpdated(bytes32,bool,string,uint256,uint256)",
+    "signatureHash": "0xaf953efb"
   },
   {
     "name": "OpportunityCancelled",
@@ -1235,5 +1583,10 @@ export const RWYStakingFacetEvents = [
     "name": "SaleProceedsRecorded",
     "signature": "SaleProceedsRecorded(bytes32,uint256)",
     "signatureHash": "0x4f6725f3"
+  },
+  {
+    "name": "TokenizationProofSubmitted",
+    "signature": "TokenizationProofSubmitted(bytes32,string,address,uint256)",
+    "signatureHash": "0x979c2cf4"
   }
 ] as const;

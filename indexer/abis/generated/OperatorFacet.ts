@@ -1,5 +1,5 @@
 // Auto-generated from OperatorFacet.sol - DO NOT EDIT
-// Generated at: 2026-01-22T15:06:34.358Z
+// Generated at: 2026-02-04T20:00:39.368Z
 
 export const OperatorFacetABI = [
   {

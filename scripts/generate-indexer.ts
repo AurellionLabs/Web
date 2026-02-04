@@ -1194,14 +1194,8 @@ function generateFrontendDiamondABI(): void {
  * Facets: ${FRONTEND_FACETS.join(', ')}
  */
 
-import { ABIFragment } from '@/types/abi';
-
-export const DIAMOND_ABI: ABIFragment[] = ${JSON.stringify(combinedABI, null, 2)} as const;
-
-// Helper to get ABI as ethers-compatible format
-export function getEthersABI(): any[] {
-  return DIAMOND_ABI as any[];
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const DIAMOND_ABI: any[] = ${JSON.stringify(combinedABI, null, 2)};
 `;
 
   ensureDir(path.dirname(FRONTEND_DIAMOND_ABI_PATH));

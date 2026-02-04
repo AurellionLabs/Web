@@ -8,13 +8,12 @@
  *   npx hardhat compile
  *   bun scripts/generate-indexer.ts
  *
- * Generated: 2026-02-04T19:46:03.546Z
+ * Generated: 2026-02-04T20:00:39.378Z
  * Facets: OrderRouterFacet, CLOBFacet, NodesFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet
  */
 
-import { ABIFragment } from '@/types/abi';
-
-export const DIAMOND_ABI: ABIFragment[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const DIAMOND_ABI: any[] = [
   {
     anonymous: false,
     inputs: [
@@ -3524,9 +3523,4 @@ export const DIAMOND_ABI: ABIFragment[] = [
     stateMutability: 'pure',
     type: 'function',
   },
-] as const;
-
-// Helper to get ABI as ethers-compatible format
-export function getEthersABI(): any[] {
-  return DIAMOND_ABI as any[];
-}
+];

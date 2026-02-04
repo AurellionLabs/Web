@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-01-22T15:06:34.399Z
+// Generated at: 2026-02-04T20:00:39.372Z
 // 
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -8,7 +8,7 @@
 import { ponder } from "@/generated";
 
 // Import event tables from generated schema
-import { diamondClobApprovalGrantedEvents, diamondClobApprovalRevokedEvents, diamondNodeAdminRevokedEvents, diamondNodeAdminSetEvents, diamondNodeCapacityUpdatedEvents, diamondNodeDeactivatedEvents, diamondNodeRegisteredEvents, diamondNodeSellOrderPlacedEvents, diamondNodeUpdatedEvents, diamondSupportedAssetAddedEvents, diamondSupportedAssetsUpdatedEvents, diamondTokensDepositedToNodeEvents, diamondTokensMintedToNodeEvents, diamondTokensTransferredBetweenNodesEvents, diamondTokensWithdrawnFromNodeEvents, diamondUpdateLocationEvents, diamondUpdateOwnerEvents, diamondUpdateStatusEvents } from "@/generated-schema";
+import { diamondClobApprovalGrantedEvents, diamondClobApprovalRevokedEvents, diamondNodeAdminRevokedEvents, diamondNodeAdminSetEvents, diamondNodeCapacityUpdatedEvents, diamondNodeDeactivatedEvents, diamondNodeRegisteredEvents, diamondNodeSellOrderPlacedEvents, diamondNodeUpdatedEvents, diamondSupportedAssetAddedEvents, diamondSupportedAssetsUpdatedEvents, diamondSupportingDocumentAddedEvents, diamondSupportingDocumentRemovedEvents, diamondTokensDepositedToNodeEvents, diamondTokensMintedToNodeEvents, diamondTokensTransferredBetweenNodesEvents, diamondTokensWithdrawnFromNodeEvents, diamondUpdateLocationEvents, diamondUpdateOwnerEvents, diamondUpdateStatusEvents } from "@/generated-schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -237,6 +237,54 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
     id: id,
     node_hash: nodeHash,
     count: count,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle SupportingDocumentAdded event from NodesFacet
+ * Signature: SupportingDocumentAdded(bytes32,string,string,string,string,bool,uint256,address)
+ * Hash: 0xb9819508
+ */
+ponder.on('Diamond:SupportingDocumentAdded', async ({ event, context }) => {
+  const { nodeHash, url, title, description, documentType, isFrozen, timestamp, addedBy } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondSupportingDocumentAddedEvents).values({
+    id: id,
+    node_hash: nodeHash,
+    url: url,
+    title: title,
+    description: description,
+    document_type: documentType,
+    is_frozen: isFrozen,
+    timestamp: timestamp,
+    added_by: addedBy,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle SupportingDocumentRemoved event from NodesFacet
+ * Signature: SupportingDocumentRemoved(bytes32,string,uint256,address)
+ * Hash: 0x69399cc3
+ */
+ponder.on('Diamond:SupportingDocumentRemoved', async ({ event, context }) => {
+  const { nodeHash, url, timestamp, removedBy } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondSupportingDocumentRemovedEvents).values({
+    id: id,
+    node_hash: nodeHash,
+    url: url,
+    timestamp: timestamp,
+    removed_by: removedBy,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

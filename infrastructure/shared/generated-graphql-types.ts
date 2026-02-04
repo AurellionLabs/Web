@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-01-22T15:06:34.431Z
+// Generated at: 2026-02-04T20:00:39.376Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -34,6 +34,10 @@ export const TABLE_DIAMOND_SUPPORTED_ASSET_ADDED_EVENTS =
   'diamondSupportedAssetAddedEventss' as const;
 export const TABLE_DIAMOND_SUPPORTED_ASSETS_UPDATED_EVENTS =
   'diamondSupportedAssetsUpdatedEventss' as const;
+export const TABLE_DIAMOND_SUPPORTING_DOCUMENT_ADDED_EVENTS =
+  'diamondSupportingDocumentAddedEventss' as const;
+export const TABLE_DIAMOND_SUPPORTING_DOCUMENT_REMOVED_EVENTS =
+  'diamondSupportingDocumentRemovedEventss' as const;
 export const TABLE_DIAMOND_TOKENS_DEPOSITED_TO_NODE_EVENTS =
   'diamondTokensDepositedToNodeEventss' as const;
 export const TABLE_DIAMOND_TOKENS_MINTED_TO_NODE_EVENTS =
@@ -102,10 +106,14 @@ export const TABLE_DIAMOND_COMMODITY_UNSTAKED_EVENTS =
   'diamondCommodityUnstakedEventss' as const;
 export const TABLE_DIAMOND_CONFIG_UPDATED_EVENTS =
   'diamondConfigUpdatedEventss' as const;
+export const TABLE_DIAMOND_CUSTODY_PROOF_SUBMITTED_EVENTS =
+  'diamondCustodyProofSubmittedEventss' as const;
 export const TABLE_DIAMOND_DELIVERY_CONFIRMED_EVENTS =
   'diamondDeliveryConfirmedEventss' as const;
 export const TABLE_DIAMOND_DELIVERY_STARTED_EVENTS =
   'diamondDeliveryStartedEventss' as const;
+export const TABLE_DIAMOND_INSURANCE_UPDATED_EVENTS =
+  'diamondInsuranceUpdatedEventss' as const;
 export const TABLE_DIAMOND_OPPORTUNITY_CANCELLED_EVENTS =
   'diamondOpportunityCancelledEventss' as const;
 export const TABLE_DIAMOND_OPPORTUNITY_COMPLETED_EVENTS =
@@ -122,6 +130,8 @@ export const TABLE_DIAMOND_PROFIT_DISTRIBUTED_EVENTS =
   'diamondProfitDistributedEventss' as const;
 export const TABLE_DIAMOND_SALE_PROCEEDS_RECORDED_EVENTS =
   'diamondSaleProceedsRecordedEventss' as const;
+export const TABLE_DIAMOND_TOKENIZATION_PROOF_SUBMITTED_EVENTS =
+  'diamondTokenizationProofSubmittedEventss' as const;
 export const TABLE_DIAMOND_OPERATOR_APPROVED_EVENTS =
   'diamondOperatorApprovedEventss' as const;
 export const TABLE_DIAMOND_OPERATOR_REPUTATION_UPDATED_EVENTS =
@@ -225,6 +235,8 @@ export const VALID_TABLE_NAMES = [
   'diamondNodeUpdatedEventss',
   'diamondSupportedAssetAddedEventss',
   'diamondSupportedAssetsUpdatedEventss',
+  'diamondSupportingDocumentAddedEventss',
+  'diamondSupportingDocumentRemovedEventss',
   'diamondTokensDepositedToNodeEventss',
   'diamondTokensMintedToNodeEventss',
   'diamondTokensTransferredBetweenNodesEventss',
@@ -259,8 +271,10 @@ export const VALID_TABLE_NAMES = [
   'diamondCommodityStakedEventss',
   'diamondCommodityUnstakedEventss',
   'diamondConfigUpdatedEventss',
+  'diamondCustodyProofSubmittedEventss',
   'diamondDeliveryConfirmedEventss',
   'diamondDeliveryStartedEventss',
+  'diamondInsuranceUpdatedEventss',
   'diamondOpportunityCancelledEventss',
   'diamondOpportunityCompletedEventss',
   'diamondOpportunityCreatedEventss',
@@ -269,6 +283,7 @@ export const VALID_TABLE_NAMES = [
   'diamondProcessingStartedEventss',
   'diamondProfitDistributedEventss',
   'diamondSaleProceedsRecordedEventss',
+  'diamondTokenizationProofSubmittedEventss',
   'diamondOperatorApprovedEventss',
   'diamondOperatorReputationUpdatedEventss',
   'diamondOperatorRevokedEventss',
@@ -431,6 +446,32 @@ export interface diamondSupportedAssetsUpdatedEvent {
   id: string;
   node_hash: string;
   count: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondSupportingDocumentAddedEvent {
+  id: string;
+  node_hash: string;
+  url: string;
+  title: string;
+  description: string;
+  document_type: string;
+  is_frozen: boolean;
+  timestamp: string;
+  added_by: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondSupportingDocumentRemovedEvent {
+  id: string;
+  node_hash: string;
+  url: string;
+  timestamp: string;
+  removed_by: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -841,6 +882,18 @@ export interface diamondConfigUpdatedEvent {
   transaction_hash: string;
 }
 
+export interface diamondCustodyProofSubmittedEvent {
+  id: string;
+  opportunity_id: string;
+  document_uri: string;
+  proof_type: string;
+  submitter: string;
+  timestamp: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
 export interface diamondDeliveryConfirmedEvent {
   id: string;
   opportunity_id: string;
@@ -854,6 +907,18 @@ export interface diamondDeliveryStartedEvent {
   id: string;
   opportunity_id: string;
   journey_id: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondInsuranceUpdatedEvent {
+  id: string;
+  opportunity_id: string;
+  is_insured: boolean;
+  document_uri: string;
+  coverage_amount: string;
+  expiry_date: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -932,6 +997,17 @@ export interface diamondSaleProceedsRecordedEvent {
   id: string;
   opportunity_id: string;
   proceeds: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondTokenizationProofSubmittedEvent {
+  id: string;
+  opportunity_id: string;
+  document_uri: string;
+  submitter: string;
+  timestamp: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1486,6 +1562,14 @@ export interface diamondSupportedAssetsUpdatedEventsResponse {
   diamondSupportedAssetsUpdatedEventss: PonderItemsResponse<diamondSupportedAssetsUpdatedEvent>;
 }
 
+export interface diamondSupportingDocumentAddedEventsResponse {
+  diamondSupportingDocumentAddedEventss: PonderItemsResponse<diamondSupportingDocumentAddedEvent>;
+}
+
+export interface diamondSupportingDocumentRemovedEventsResponse {
+  diamondSupportingDocumentRemovedEventss: PonderItemsResponse<diamondSupportingDocumentRemovedEvent>;
+}
+
 export interface diamondTokensDepositedToNodeEventsResponse {
   diamondTokensDepositedToNodeEventss: PonderItemsResponse<diamondTokensDepositedToNodeEvent>;
 }
@@ -1622,12 +1706,20 @@ export interface diamondConfigUpdatedEventsResponse {
   diamondConfigUpdatedEventss: PonderItemsResponse<diamondConfigUpdatedEvent>;
 }
 
+export interface diamondCustodyProofSubmittedEventsResponse {
+  diamondCustodyProofSubmittedEventss: PonderItemsResponse<diamondCustodyProofSubmittedEvent>;
+}
+
 export interface diamondDeliveryConfirmedEventsResponse {
   diamondDeliveryConfirmedEventss: PonderItemsResponse<diamondDeliveryConfirmedEvent>;
 }
 
 export interface diamondDeliveryStartedEventsResponse {
   diamondDeliveryStartedEventss: PonderItemsResponse<diamondDeliveryStartedEvent>;
+}
+
+export interface diamondInsuranceUpdatedEventsResponse {
+  diamondInsuranceUpdatedEventss: PonderItemsResponse<diamondInsuranceUpdatedEvent>;
 }
 
 export interface diamondOpportunityCancelledEventsResponse {
@@ -1660,6 +1752,10 @@ export interface diamondProfitDistributedEventsResponse {
 
 export interface diamondSaleProceedsRecordedEventsResponse {
   diamondSaleProceedsRecordedEventss: PonderItemsResponse<diamondSaleProceedsRecordedEvent>;
+}
+
+export interface diamondTokenizationProofSubmittedEventsResponse {
+  diamondTokenizationProofSubmittedEventss: PonderItemsResponse<diamondTokenizationProofSubmittedEvent>;
 }
 
 export interface diamondOperatorApprovedEventsResponse {
@@ -1955,6 +2051,32 @@ export const FIELDS_DIAMOND_SUPPORTED_ASSETS_UPDATED_EVENTS = [
   'id',
   'node_hash',
   'count',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_SUPPORTING_DOCUMENT_ADDED_EVENTS = [
+  'id',
+  'node_hash',
+  'url',
+  'title',
+  'description',
+  'document_type',
+  'is_frozen',
+  'timestamp',
+  'added_by',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_SUPPORTING_DOCUMENT_REMOVED_EVENTS = [
+  'id',
+  'node_hash',
+  'url',
+  'timestamp',
+  'removed_by',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2365,6 +2487,18 @@ export const FIELDS_DIAMOND_CONFIG_UPDATED_EVENTS = [
   'transaction_hash',
 ] as const;
 
+export const FIELDS_DIAMOND_CUSTODY_PROOF_SUBMITTED_EVENTS = [
+  'id',
+  'opportunity_id',
+  'document_uri',
+  'proof_type',
+  'submitter',
+  'timestamp',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
 export const FIELDS_DIAMOND_DELIVERY_CONFIRMED_EVENTS = [
   'id',
   'opportunity_id',
@@ -2378,6 +2512,18 @@ export const FIELDS_DIAMOND_DELIVERY_STARTED_EVENTS = [
   'id',
   'opportunity_id',
   'journey_id',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_INSURANCE_UPDATED_EVENTS = [
+  'id',
+  'opportunity_id',
+  'is_insured',
+  'document_uri',
+  'coverage_amount',
+  'expiry_date',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2456,6 +2602,17 @@ export const FIELDS_DIAMOND_SALE_PROCEEDS_RECORDED_EVENTS = [
   'id',
   'opportunity_id',
   'proceeds',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_TOKENIZATION_PROOF_SUBMITTED_EVENTS = [
+  'id',
+  'opportunity_id',
+  'document_uri',
+  'submitter',
+  'timestamp',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2996,6 +3153,8 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     NodeUpdated: 'diamondNodeUpdatedEventss',
     SupportedAssetAdded: 'diamondSupportedAssetAddedEventss',
     SupportedAssetsUpdated: 'diamondSupportedAssetsUpdatedEventss',
+    SupportingDocumentAdded: 'diamondSupportingDocumentAddedEventss',
+    SupportingDocumentRemoved: 'diamondSupportingDocumentRemovedEventss',
     TokensDepositedToNode: 'diamondTokensDepositedToNodeEventss',
     TokensMintedToNode: 'diamondTokensMintedToNodeEventss',
     TokensTransferredBetweenNodes:
@@ -3031,8 +3190,10 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     CommodityStaked: 'diamondCommodityStakedEventss',
     CommodityUnstaked: 'diamondCommodityUnstakedEventss',
     ConfigUpdated: 'diamondConfigUpdatedEventss',
+    CustodyProofSubmitted: 'diamondCustodyProofSubmittedEventss',
     DeliveryConfirmed: 'diamondDeliveryConfirmedEventss',
     DeliveryStarted: 'diamondDeliveryStartedEventss',
+    InsuranceUpdated: 'diamondInsuranceUpdatedEventss',
     OpportunityCancelled: 'diamondOpportunityCancelledEventss',
     OpportunityCompleted: 'diamondOpportunityCompletedEventss',
     OpportunityCreated: 'diamondOpportunityCreatedEventss',
@@ -3041,6 +3202,7 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     ProcessingStarted: 'diamondProcessingStartedEventss',
     ProfitDistributed: 'diamondProfitDistributedEventss',
     SaleProceedsRecorded: 'diamondSaleProceedsRecordedEventss',
+    TokenizationProofSubmitted: 'diamondTokenizationProofSubmittedEventss',
     OperatorApproved: 'diamondOperatorApprovedEventss',
     OperatorReputationUpdated: 'diamondOperatorReputationUpdatedEventss',
     OperatorRevoked: 'diamondOperatorRevokedEventss',
