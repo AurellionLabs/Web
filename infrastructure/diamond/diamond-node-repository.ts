@@ -14,6 +14,7 @@ import {
   AggregateAssetAmount,
   NodeAsset,
   TokenizedAssetAttribute,
+  SupportingDocument,
 } from '@/domain/node';
 import { Order } from '@/domain/orders';
 import { DiamondContext } from './diamond-context';
@@ -496,5 +497,55 @@ export class DiamondNodeRepository implements NodeRepository {
     // This method would need IPFS integration to fetch metadata
     // For now, return empty array to avoid GraphQL errors
     return [];
+  }
+
+  /**
+   * Get supporting documents for a node
+   * Fetches all documents (both active and removed) from the Diamond contract
+   */
+  async getSupportingDocuments(
+    nodeHash: string,
+  ): Promise<SupportingDocument[]> {
+    try {
+      const diamond = this.context.getDiamond();
+
+      // Normalize nodeHash to bytes32 format
+      const normalizedHash =
+        nodeHash.startsWith('0x') && nodeHash.length === 66
+          ? nodeHash
+          : ethers.zeroPadValue(nodeHash, 32);
+
+      // Call the contract to get all supporting documents
+      const contractDocs = await diamond.getSupportingDocuments(normalizedHash);
+
+      // Convert contract structs to domain objects
+      const documents: SupportingDocument[] = contractDocs.map((doc: any) => ({
+        url: doc.url,
+        title: doc.title,
+        description: doc.description,
+        documentType: doc.documentType,
+        isFrozen: doc.isFrozen,
+        isRemoved: doc.isRemoved,
+        addedAt: Number(doc.addedAt),
+        removedAt: doc.isRemoved ? Number(doc.removedAt) : undefined,
+        addedBy: doc.addedBy,
+        removedBy: doc.isRemoved ? doc.removedBy : undefined,
+      }));
+
+      console.log(
+        '[DiamondNodeRepository] Fetched',
+        documents.length,
+        'supporting documents for node:',
+        nodeHash,
+      );
+
+      return documents;
+    } catch (error) {
+      console.error(
+        '[DiamondNodeRepository] Error getting supporting documents:',
+        error,
+      );
+      return [];
+    }
   }
 }

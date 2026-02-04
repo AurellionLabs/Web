@@ -635,4 +635,18 @@ export class BlockchainNodeRepository implements NodeRepository {
       return [];
     }
   }
+
+  /**
+   * Get supporting documents for a node
+   * Note: This legacy repository does not support supporting documents.
+   * Use DiamondNodeRepository for full supporting document functionality.
+   */
+  async getSupportingDocuments(
+    _nodeHash: string,
+  ): Promise<import('@/domain/node').SupportingDocument[]> {
+    console.warn(
+      '[BlockchainNodeRepository] getSupportingDocuments not supported in legacy repository. Use DiamondNodeRepository.',
+    );
+    return [];
+  }
 }

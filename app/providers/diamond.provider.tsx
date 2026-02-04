@@ -23,6 +23,7 @@ import {
   TokenizedAsset,
   TokenizedAssetAttribute,
   NodeAsset,
+  SupportingDocument,
 } from '@/domain/node/node';
 import { Asset } from '@/domain/shared';
 import { BrowserProvider } from 'ethers';
@@ -100,6 +101,17 @@ interface DiamondContextType {
 
   // Order management
   cancelCLOBOrder: (orderId: string) => Promise<void>;
+
+  // Supporting documents
+  getSupportingDocuments: (nodeHash: string) => Promise<SupportingDocument[]>;
+  addSupportingDocument: (
+    nodeHash: string,
+    url: string,
+    title: string,
+    description: string,
+    documentType: string,
+  ) => Promise<boolean>; // Returns isFrozen
+  removeSupportingDocument: (nodeHash: string, url: string) => Promise<void>;
 }
 
 const DiamondProviderContext = createContext<DiamondContextType | undefined>(
@@ -551,6 +563,51 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
+  // Get supporting documents for a node
+  const getSupportingDocuments = useCallback(
+    async (nodeHash: string): Promise<SupportingDocument[]> => {
+      if (!nodeRepository) {
+        return [];
+      }
+      return nodeRepository.getSupportingDocuments(nodeHash);
+    },
+    [nodeRepository],
+  );
+
+  // Add a supporting document to a node
+  const addSupportingDocument = useCallback(
+    async (
+      nodeHash: string,
+      url: string,
+      title: string,
+      description: string,
+      documentType: string,
+    ): Promise<boolean> => {
+      if (!nodeService) {
+        throw new Error('Diamond not initialized');
+      }
+      return nodeService.addSupportingDocument(
+        nodeHash,
+        url,
+        title,
+        description,
+        documentType,
+      );
+    },
+    [nodeService],
+  );
+
+  // Remove a supporting document from a node
+  const removeSupportingDocument = useCallback(
+    async (nodeHash: string, url: string): Promise<void> => {
+      if (!nodeService) {
+        throw new Error('Diamond not initialized');
+      }
+      await nodeService.removeSupportingDocument(nodeHash, url);
+    },
+    [nodeService],
+  );
+
   const value: DiamondContextType = {
     initialized,
     loading,
@@ -576,6 +633,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     placeSellOrderFromNode,
     cancelCLOBOrder,
     placeNodeMarketSellOrder,
+    getSupportingDocuments,
+    addSupportingDocument,
+    removeSupportingDocument,
   };
 
   return (

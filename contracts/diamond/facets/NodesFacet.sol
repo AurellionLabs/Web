@@ -107,6 +107,24 @@ contract NodesFacet is Initializable {
         address indexed depositor
     );
 
+    // Supporting document events
+    event SupportingDocumentAdded(
+        bytes32 indexed nodeHash,
+        string url,
+        string title,
+        string description,
+        string documentType,
+        bool isFrozen,
+        uint256 indexed timestamp,
+        address indexed addedBy
+    );
+    event SupportingDocumentRemoved(
+        bytes32 indexed nodeHash,
+        string url,
+        uint256 indexed timestamp,
+        address indexed removedBy
+    );
+
     function initialize() public initializer {}
 
     // ======= ADMIN FUNCTIONS =======
@@ -1079,5 +1097,233 @@ contract NodesFacet is Initializable {
 
         emit TokensMintedToNode(_nodeHash, tokenId, _amount, msg.sender);
         return tokenId;
+    }
+
+    // ============================================================================
+    // SUPPORTING DOCUMENTS
+    // ============================================================================
+
+    /**
+     * @notice Check if a URL points to immutable storage (IPFS/Arweave)
+     * @dev Internal helper to auto-detect frozen content
+     * @param url The URL to check
+     * @return True if URL points to immutable storage
+     */
+    function _isUrlFrozen(string memory url) internal pure returns (bool) {
+        bytes memory urlBytes = bytes(url);
+        uint256 len = urlBytes.length;
+        
+        // Check for ipfs:// (7 chars)
+        if (len >= 7) {
+            if (urlBytes[0] == 'i' && urlBytes[1] == 'p' && urlBytes[2] == 'f' && 
+                urlBytes[3] == 's' && urlBytes[4] == ':' && urlBytes[5] == '/' && urlBytes[6] == '/') {
+                return true;
+            }
+        }
+        
+        // Check for ar:// (5 chars)
+        if (len >= 5) {
+            if (urlBytes[0] == 'a' && urlBytes[1] == 'r' && urlBytes[2] == ':' && 
+                urlBytes[3] == '/' && urlBytes[4] == '/') {
+                return true;
+            }
+        }
+        
+        // Check for arweave.net (11 chars minimum: arweave.net)
+        if (len >= 11) {
+            // Search for "arweave.net" in the URL
+            for (uint256 i = 0; i <= len - 11; i++) {
+                if (urlBytes[i] == 'a' && urlBytes[i+1] == 'r' && urlBytes[i+2] == 'w' &&
+                    urlBytes[i+3] == 'e' && urlBytes[i+4] == 'a' && urlBytes[i+5] == 'v' &&
+                    urlBytes[i+6] == 'e' && urlBytes[i+7] == '.' && urlBytes[i+8] == 'n' &&
+                    urlBytes[i+9] == 'e' && urlBytes[i+10] == 't') {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * @notice Add a supporting document to a node
+     * @dev Auto-detects if URL points to immutable storage
+     * @param _nodeHash The node hash to add document to
+     * @param _url The URL of the document
+     * @param _title The title of the document
+     * @param _description A description of the document
+     * @param _documentType The type of document (e.g., "certification", "audit", "license")
+     * @return isFrozen Whether the document was detected as immutable
+     */
+    function addSupportingDocument(
+        bytes32 _nodeHash,
+        string memory _url,
+        string memory _title,
+        string memory _description,
+        string memory _documentType
+    ) external returns (bool isFrozen) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        require(bytes(_url).length > 0, 'URL required');
+        require(bytes(_title).length > 0, 'Title required');
+
+        // Auto-detect if URL is frozen (IPFS/Arweave)
+        isFrozen = _isUrlFrozen(_url);
+
+        // Get next document ID
+        uint256 docId = s.totalNodeSupportingDocuments[_nodeHash];
+        s.totalNodeSupportingDocuments[_nodeHash]++;
+
+        // Store the document
+        s.nodeSupportingDocuments[_nodeHash][docId] = DiamondStorage.SupportingDocument({
+            url: _url,
+            title: _title,
+            description: _description,
+            documentType: _documentType,
+            isFrozen: isFrozen,
+            isRemoved: false,
+            addedAt: block.timestamp,
+            removedAt: 0,
+            addedBy: msg.sender,
+            removedBy: address(0)
+        });
+
+        // Track document ID
+        s.nodeSupportingDocumentIds[_nodeHash].push(docId);
+
+        emit SupportingDocumentAdded(
+            _nodeHash,
+            _url,
+            _title,
+            _description,
+            _documentType,
+            isFrozen,
+            block.timestamp,
+            msg.sender
+        );
+
+        return isFrozen;
+    }
+
+    /**
+     * @notice Remove a supporting document from a node (soft delete)
+     * @dev Marks the document as removed but keeps history
+     * @param _nodeHash The node hash
+     * @param _url The URL of the document to remove
+     */
+    function removeSupportingDocument(
+        bytes32 _nodeHash,
+        string memory _url
+    ) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+
+        // Find the document by URL
+        uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        bool found = false;
+        
+        for (uint256 i = 0; i < docIds.length; i++) {
+            DiamondStorage.SupportingDocument storage doc = s.nodeSupportingDocuments[_nodeHash][docIds[i]];
+            if (!doc.isRemoved && keccak256(bytes(doc.url)) == keccak256(bytes(_url))) {
+                doc.isRemoved = true;
+                doc.removedAt = block.timestamp;
+                doc.removedBy = msg.sender;
+                found = true;
+                
+                emit SupportingDocumentRemoved(
+                    _nodeHash,
+                    _url,
+                    block.timestamp,
+                    msg.sender
+                );
+                break;
+            }
+        }
+
+        require(found, 'Document not found');
+    }
+
+    /**
+     * @notice Get all supporting documents for a node (including removed)
+     * @param _nodeHash The node hash
+     * @return documents Array of all supporting documents
+     */
+    function getSupportingDocuments(bytes32 _nodeHash) 
+        external 
+        view 
+        returns (DiamondStorage.SupportingDocument[] memory documents) 
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        uint256 count = docIds.length;
+        
+        documents = new DiamondStorage.SupportingDocument[](count);
+        
+        for (uint256 i = 0; i < count; i++) {
+            documents[i] = s.nodeSupportingDocuments[_nodeHash][docIds[i]];
+        }
+        
+        return documents;
+    }
+
+    /**
+     * @notice Get only active (non-removed) supporting documents for a node
+     * @param _nodeHash The node hash
+     * @return documents Array of active supporting documents
+     */
+    function getActiveSupportingDocuments(bytes32 _nodeHash) 
+        external 
+        view 
+        returns (DiamondStorage.SupportingDocument[] memory documents) 
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        
+        // First pass: count active documents
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < docIds.length; i++) {
+            if (!s.nodeSupportingDocuments[_nodeHash][docIds[i]].isRemoved) {
+                activeCount++;
+            }
+        }
+        
+        // Second pass: populate array
+        documents = new DiamondStorage.SupportingDocument[](activeCount);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < docIds.length; i++) {
+            DiamondStorage.SupportingDocument storage doc = s.nodeSupportingDocuments[_nodeHash][docIds[i]];
+            if (!doc.isRemoved) {
+                documents[idx] = doc;
+                idx++;
+            }
+        }
+        
+        return documents;
+    }
+
+    /**
+     * @notice Get the count of supporting documents for a node
+     * @param _nodeHash The node hash
+     * @return total Total documents (including removed)
+     * @return active Active documents only
+     */
+    function getSupportingDocumentCount(bytes32 _nodeHash) 
+        external 
+        view 
+        returns (uint256 total, uint256 active) 
+    {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        
+        total = docIds.length;
+        active = 0;
+        
+        for (uint256 i = 0; i < docIds.length; i++) {
+            if (!s.nodeSupportingDocuments[_nodeHash][docIds[i]].isRemoved) {
+                active++;
+            }
+        }
+        
+        return (total, active);
     }
 }

@@ -22,6 +22,14 @@ export interface INodeService {
     lat: string,
     lng: string,
   ): Promise<void>;
+  addSupportingDocument(
+    nodeHash: string,
+    url: string,
+    title: string,
+    description: string,
+    documentType: string,
+  ): Promise<boolean>; // Returns isFrozen
+  removeSupportingDocument(nodeHash: string, url: string): Promise<void>;
 }
 
 /**
@@ -171,6 +179,106 @@ export class DiamondNodeService implements INodeService {
     } catch (error) {
       console.error(
         '[DiamondNodeService] Error updating node location:',
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Add a supporting document to a node
+   * @param nodeHash The node hash
+   * @param url The URL of the document
+   * @param title The title of the document
+   * @param description A description of the document
+   * @param documentType The type of document (e.g., "certification", "audit", "license")
+   * @returns Whether the document was detected as immutable (frozen)
+   */
+  async addSupportingDocument(
+    nodeHash: string,
+    url: string,
+    title: string,
+    description: string,
+    documentType: string,
+  ): Promise<boolean> {
+    const diamond = this.context.getDiamond();
+
+    console.log('[DiamondNodeService] Adding supporting document:', {
+      nodeHash,
+      title,
+      documentType,
+    });
+
+    try {
+      const tx = await diamond.addSupportingDocument(
+        nodeHash,
+        url,
+        title,
+        description,
+        documentType,
+      );
+
+      console.log('[DiamondNodeService] Transaction sent:', tx.hash);
+      const receipt = await tx.wait();
+      console.log(
+        '[DiamondNodeService] Document added, block:',
+        receipt.blockNumber,
+      );
+
+      // Extract isFrozen from SupportingDocumentAdded event
+      const docAddedEvent = receipt.logs.find((log: any) => {
+        try {
+          const parsed = diamond.interface.parseLog({
+            topics: log.topics,
+            data: log.data,
+          });
+          return parsed?.name === 'SupportingDocumentAdded';
+        } catch {
+          return false;
+        }
+      });
+
+      if (docAddedEvent) {
+        const parsed = diamond.interface.parseLog({
+          topics: docAddedEvent.topics,
+          data: docAddedEvent.data,
+        });
+        const isFrozen = parsed?.args?.isFrozen ?? false;
+        console.log('[DiamondNodeService] Document isFrozen:', isFrozen);
+        return isFrozen;
+      }
+
+      // If we couldn't parse the event, return false
+      return false;
+    } catch (error) {
+      console.error(
+        '[DiamondNodeService] Error adding supporting document:',
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a supporting document from a node (soft delete)
+   * @param nodeHash The node hash
+   * @param url The URL of the document to remove
+   */
+  async removeSupportingDocument(nodeHash: string, url: string): Promise<void> {
+    const diamond = this.context.getDiamond();
+
+    console.log('[DiamondNodeService] Removing supporting document:', {
+      nodeHash,
+      url,
+    });
+
+    try {
+      const tx = await diamond.removeSupportingDocument(nodeHash, url);
+      await tx.wait();
+      console.log('[DiamondNodeService] Document removed');
+    } catch (error) {
+      console.error(
+        '[DiamondNodeService] Error removing supporting document:',
         error,
       );
       throw error;

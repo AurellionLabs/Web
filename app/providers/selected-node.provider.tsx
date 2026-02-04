@@ -12,6 +12,7 @@ import {
   Node,
   TokenizedAsset,
   TokenizedAssetAttribute,
+  SupportingDocument,
 } from '@/domain/node/node';
 import { Asset } from '@/domain/shared';
 import { useWallet } from '@/hooks/useWallet';
@@ -29,11 +30,13 @@ type SelectedNodeContextType = {
   // Node-specific data
   orders: OrderWithAsset[];
   assets: TokenizedAsset[];
+  supportingDocuments: SupportingDocument[];
 
   // Loading states
   loading: boolean;
   ordersLoading: boolean;
   assetsLoading: boolean;
+  documentsLoading: boolean;
   error: Error | null;
 
   // Selection operations
@@ -44,6 +47,7 @@ type SelectedNodeContextType = {
   refreshNodeData: () => Promise<void>;
   refreshOrders: () => Promise<void>;
   refreshAssets: () => Promise<void>;
+  refreshDocuments: () => Promise<void>;
 
   // Node operations (for selected node)
   updateNodeStatus: (status: 'Active' | 'Inactive') => Promise<void>;
@@ -62,6 +66,16 @@ type SelectedNodeContextType = {
     newPrice: bigint,
   ) => Promise<void>;
   getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
+
+  // Supporting document operations
+  addSupportingDocument: (
+    url: string,
+    title: string,
+    description: string,
+    documentType: string,
+  ) => Promise<boolean>; // Returns isFrozen
+  removeSupportingDocument: (url: string) => Promise<void>;
+
   // Custody actions for node (sender)
   packageSign: (journeyId: string) => Promise<void>;
   startJourney: (journeyId: string) => Promise<void>;
@@ -81,11 +95,15 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   // Node-specific data
   const [orders, setOrders] = useState<OrderWithAsset[]>([]);
   const [assets, setAssets] = useState<TokenizedAsset[]>([]);
+  const [supportingDocuments, setSupportingDocuments] = useState<
+    SupportingDocument[]
+  >([]);
 
   // Loading states
   const [loading, setLoading] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [assetsLoading, setAssetsLoading] = useState(false);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const { address } = useWallet();
@@ -105,6 +123,9 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     mintAsset: diamondMintAsset,
     updateAssetCapacity: diamondUpdateAssetCapacity,
     updateAssetPrice: diamondUpdateAssetPrice,
+    getSupportingDocuments: getDiamondSupportingDocuments,
+    addSupportingDocument: diamondAddSupportingDocument,
+    removeSupportingDocument: diamondRemoveSupportingDocument,
   } = useDiamond();
 
   // Load orders for selected node (from GraphQL indexer via Diamond repository)
@@ -168,6 +189,25 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     [nodeRepository, getDiamondNodeAssets],
   );
 
+  // Load supporting documents for selected node
+  const loadDocuments = useCallback(
+    async (nodeAddress: string) => {
+      if (!nodeRepository) return;
+
+      setDocumentsLoading(true);
+      try {
+        const docs = await getDiamondSupportingDocuments(nodeAddress);
+        setSupportingDocuments(docs);
+      } catch (err) {
+        console.error('Error loading supporting documents:', err);
+        setSupportingDocuments([]);
+      } finally {
+        setDocumentsLoading(false);
+      }
+    },
+    [nodeRepository, getDiamondSupportingDocuments],
+  );
+
   // Select node and load all its data
   const selectNode = useCallback(
     async (nodeAddress: string) => {
@@ -194,7 +234,11 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setNodeData(node);
 
         // Load node-specific data in parallel
-        await Promise.all([loadOrders(nodeAddress), loadAssets(nodeAddress)]);
+        await Promise.all([
+          loadOrders(nodeAddress),
+          loadAssets(nodeAddress),
+          loadDocuments(nodeAddress),
+        ]);
       } catch (err) {
         console.error('Error selecting node:', err);
         setError(err as Error);
@@ -206,7 +250,14 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [selectedNodeAddress, getNode, loadOrders, loadAssets, diamondInitialized],
+    [
+      selectedNodeAddress,
+      getNode,
+      loadOrders,
+      loadAssets,
+      loadDocuments,
+      diamondInitialized,
+    ],
   );
 
   // Clear selection
@@ -215,6 +266,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     setNodeData(null);
     setOrders([]);
     setAssets([]);
+    setSupportingDocuments([]);
     setError(null);
   }, []);
 
@@ -241,6 +293,12 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     if (!selectedNodeAddress) return;
     await loadAssets(selectedNodeAddress);
   }, [selectedNodeAddress, loadAssets]);
+
+  // Refresh supporting documents
+  const refreshDocuments = useCallback(async () => {
+    if (!selectedNodeAddress) return;
+    await loadDocuments(selectedNodeAddress);
+  }, [selectedNodeAddress, loadDocuments]);
 
   // Update node status via Diamond
   const updateNodeStatus = useCallback(
@@ -420,6 +478,69 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     [nodeRepository, getDiamondAssetAttributes],
   );
 
+  // Add supporting document to selected node
+  const addSupportingDocument = useCallback(
+    async (
+      url: string,
+      title: string,
+      description: string,
+      documentType: string,
+    ): Promise<boolean> => {
+      if (!diamondInitialized || !selectedNodeAddress) {
+        throw new Error('Diamond not initialized or no node selected');
+      }
+
+      try {
+        const isFrozen = await diamondAddSupportingDocument(
+          selectedNodeAddress,
+          url,
+          title,
+          description,
+          documentType,
+        );
+
+        // Refresh documents
+        await refreshDocuments();
+
+        return isFrozen;
+      } catch (err) {
+        console.error('Error adding supporting document:', err);
+        throw err;
+      }
+    },
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      diamondAddSupportingDocument,
+      refreshDocuments,
+    ],
+  );
+
+  // Remove supporting document from selected node
+  const removeSupportingDocument = useCallback(
+    async (url: string): Promise<void> => {
+      if (!diamondInitialized || !selectedNodeAddress) {
+        throw new Error('Diamond not initialized or no node selected');
+      }
+
+      try {
+        await diamondRemoveSupportingDocument(selectedNodeAddress, url);
+
+        // Refresh documents
+        await refreshDocuments();
+      } catch (err) {
+        console.error('Error removing supporting document:', err);
+        throw err;
+      }
+    },
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      diamondRemoveSupportingDocument,
+      refreshDocuments,
+    ],
+  );
+
   const value: SelectedNodeContextType = {
     // Current selection
     selectedNodeAddress,
@@ -428,11 +549,13 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     // Node-specific data
     orders,
     assets,
+    supportingDocuments,
 
     // Loading states
     loading,
     ordersLoading,
     assetsLoading,
+    documentsLoading,
     error,
 
     // Selection operations
@@ -443,6 +566,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     refreshNodeData,
     refreshOrders,
     refreshAssets,
+    refreshDocuments,
 
     // Node operations
     updateNodeStatus,
@@ -453,6 +577,12 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     updateAssetCapacity,
     updateAssetPrice,
     getAssetAttributes,
+
+    // Supporting document operations
+    addSupportingDocument,
+    removeSupportingDocument,
+
+    // Custody actions
     packageSign,
     startJourney,
   };

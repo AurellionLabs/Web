@@ -71,6 +71,23 @@ export interface TokenizedAssetAttribute {
 }
 
 /**
+ * Supporting document attached to a node
+ * Used for certifications, audits, licenses, etc.
+ */
+export interface SupportingDocument {
+  url: string;
+  title: string;
+  description: string;
+  documentType: string;
+  isFrozen: boolean; // Auto-detected: true if IPFS/Arweave URL
+  isRemoved: boolean;
+  addedAt: number; // Unix timestamp
+  removedAt?: number; // Unix timestamp, undefined if not removed
+  addedBy: string; // Address that added the document
+  removedBy?: string; // Address that removed, undefined if not removed
+}
+
+/**
  * Node repository interface - UPDATED for new structure
  */
 export interface NodeRepository {
@@ -89,6 +106,7 @@ export interface NodeRepository {
     attributes: string[],
   ): Promise<number>;
   getAssetAttributes(fileHash: string): Promise<TokenizedAssetAttribute[]>;
+  getSupportingDocuments(nodeHash: string): Promise<SupportingDocument[]>;
 }
 
 /**
@@ -120,6 +138,31 @@ export interface INodeAssetService {
     nodeAddress: string,
     assets: NodeAsset[],
   ): Promise<void>;
+}
+
+/**
+ * Node service interface for document management
+ */
+export interface INodeService {
+  registerNode(nodeData: Node): Promise<string>;
+  updateNodeStatus(
+    nodeHash: string,
+    status: 'Active' | 'Inactive',
+  ): Promise<void>;
+  updateNodeLocation(
+    nodeHash: string,
+    addressName: string,
+    lat: string,
+    lng: string,
+  ): Promise<void>;
+  addSupportingDocument(
+    nodeHash: string,
+    url: string,
+    title: string,
+    description: string,
+    documentType: string,
+  ): Promise<boolean>; // Returns isFrozen
+  removeSupportingDocument(nodeHash: string, url: string): Promise<void>;
 }
 
 /**

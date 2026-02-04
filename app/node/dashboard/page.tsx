@@ -13,6 +13,13 @@ import {
   DollarSign,
   Activity,
   MapPin,
+  FileText,
+  Link2,
+  Lock,
+  Trash2,
+  ChevronDown,
+  ExternalLink,
+  Eye,
 } from 'lucide-react';
 import {
   GlassCard,
@@ -39,7 +46,11 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { useNodes } from '@/app/providers/nodes.provider';
-import type { TokenizedAsset, TokenizedAssetAttribute } from '@/domain/node';
+import type {
+  TokenizedAsset,
+  TokenizedAssetAttribute,
+  SupportingDocument,
+} from '@/domain/node';
 import { useToast } from '@/hooks/use-toast';
 import { MapView } from '@/app/components/ui/map-view';
 import AssetSelectionForm from './asset-selection-form';
@@ -138,13 +149,18 @@ export default function NodeDashboardPage() {
     nodeData: currentNodeData,
     orders,
     assets: nodeAssets,
+    supportingDocuments,
     loading: nodeLoading,
+    documentsLoading,
     selectNode,
     mintAsset,
     updateNodeStatus,
     updateAssetCapacity,
     getAssetAttributes,
     refreshAssets,
+    refreshDocuments,
+    addSupportingDocument,
+    removeSupportingDocument,
     packageSign,
     startJourney,
   } = useSelectedNode();
@@ -155,6 +171,8 @@ export default function NodeDashboardPage() {
 
   const searchParams = new URLSearchParams(window.location.search);
   const nodeIdFromUrl = searchParams.get('nodeId');
+  const viewMode = searchParams.get('view');
+  const isReadOnly = viewMode === 'public';
 
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
@@ -178,6 +196,17 @@ export default function NodeDashboardPage() {
     useState<EditingCapacity | null>(null);
   const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
+
+  // Document management state
+  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
+  const [isAddingDocument, setIsAddingDocument] = useState(false);
+  const [showDocumentHistory, setShowDocumentHistory] = useState(false);
+  const [documentForm, setDocumentForm] = useState({
+    url: '',
+    title: '',
+    description: '',
+    documentType: 'certification',
+  });
 
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
@@ -547,6 +576,74 @@ export default function NodeDashboardPage() {
     }
   };
 
+  // Document handlers
+  const handleAddDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!documentForm.url || !documentForm.title) {
+      toast({
+        title: 'Error',
+        description: 'URL and title are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsAddingDocument(true);
+    try {
+      const isFrozen = await addSupportingDocument(
+        documentForm.url,
+        documentForm.title,
+        documentForm.description,
+        documentForm.documentType,
+      );
+
+      toast({
+        title: 'Document Added',
+        description: isFrozen
+          ? 'Document added and detected as immutable (IPFS/Arweave)'
+          : 'Document added successfully',
+      });
+
+      setIsAddDocumentOpen(false);
+      setDocumentForm({
+        url: '',
+        title: '',
+        description: '',
+        documentType: 'certification',
+      });
+    } catch (error) {
+      console.error('Error adding document:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add document',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingDocument(false);
+    }
+  };
+
+  const handleRemoveDocument = async (url: string) => {
+    try {
+      await removeSupportingDocument(url);
+      toast({
+        title: 'Document Removed',
+        description: 'Document has been removed from your node',
+      });
+    } catch (error) {
+      console.error('Error removing document:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove document',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Filter documents into active and removed
+  const activeDocuments = supportingDocuments.filter((doc) => !doc.isRemoved);
+  const removedDocuments = supportingDocuments.filter((doc) => doc.isRemoved);
+
   if (nodeLoading || (!currentNodeData && nodeIdFromUrl)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -591,83 +688,95 @@ export default function NodeDashboardPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Node Dashboard
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-foreground">
+                Node Dashboard
+              </h1>
+              {isReadOnly && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium">
+                  <Eye className="w-3 h-3" />
+                  View Only
+                </span>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage your node and its assets
+              {isReadOnly
+                ? 'Viewing node details in read-only mode'
+                : 'Manage your node and its assets'}
             </p>
           </div>
-          <Dialog
-            open={isAddAssetOpen}
-            onOpenChange={(open) => {
-              setIsAddAssetOpen(open);
-              if (!open) {
-                form.reset();
-                setAssetAttributes({});
-                setCapacityError(null);
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <GlowButton
-                variant="primary"
-                leftIcon={<Plus className="w-4 h-4" />}
-                loading={isTokenizing}
-              >
-                Add Asset
-              </GlowButton>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Tokenize New Asset</DialogTitle>
-                <DialogDescription>
-                  Add a new asset to be tokenized in the network.
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6"
+          {!isReadOnly && (
+            <Dialog
+              open={isAddAssetOpen}
+              onOpenChange={(open) => {
+                setIsAddAssetOpen(open);
+                if (!open) {
+                  form.reset();
+                  setAssetAttributes({});
+                  setCapacityError(null);
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <GlowButton
+                  variant="primary"
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  loading={isTokenizing}
                 >
-                  <AssetSelectionForm
-                    selectedAssetClass={form.watch('assetClass')}
-                    selectedAssetId={form.watch('assetId')}
-                    quantity={form.watch('quantity')}
-                    supportedAssetClasses={supportedAssetClasses}
-                    onAssetClassChange={(value) => {
-                      form.setValue('assetClass', value);
-                    }}
-                    onAssetIdChange={(value) => {
-                      form.setValue('assetId', value);
-                    }}
-                    onQuantityChange={(value) =>
-                      form.setValue('quantity', value)
-                    }
-                    assetAttributes={assetAttributes}
-                    onAssetAttributeChange={handleAssetAttributeChange}
-                    onSelectedAssetChange={(asset) =>
-                      setSelectedAssetName(asset?.name || '')
-                    }
-                  />
-                  {capacityError && (
-                    <p className="text-sm font-medium text-trading-sell">
-                      {capacityError}
-                    </p>
-                  )}
-                  <GlowButton
-                    type="submit"
-                    variant="primary"
-                    className="w-full"
-                    glow
-                    loading={isTokenizing}
+                  Add Asset
+                </GlowButton>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Tokenize New Asset</DialogTitle>
+                  <DialogDescription>
+                    Add a new asset to be tokenized in the network.
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
                   >
-                    Tokenize Asset
-                  </GlowButton>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                    <AssetSelectionForm
+                      selectedAssetClass={form.watch('assetClass')}
+                      selectedAssetId={form.watch('assetId')}
+                      quantity={form.watch('quantity')}
+                      supportedAssetClasses={supportedAssetClasses}
+                      onAssetClassChange={(value) => {
+                        form.setValue('assetClass', value);
+                      }}
+                      onAssetIdChange={(value) => {
+                        form.setValue('assetId', value);
+                      }}
+                      onQuantityChange={(value) =>
+                        form.setValue('quantity', value)
+                      }
+                      assetAttributes={assetAttributes}
+                      onAssetAttributeChange={handleAssetAttributeChange}
+                      onSelectedAssetChange={(asset) =>
+                        setSelectedAssetName(asset?.name || '')
+                      }
+                    />
+                    {capacityError && (
+                      <p className="text-sm font-medium text-trading-sell">
+                        {capacityError}
+                      </p>
+                    )}
+                    <GlowButton
+                      type="submit"
+                      variant="primary"
+                      className="w-full"
+                      glow
+                      loading={isTokenizing}
+                    >
+                      Tokenize Asset
+                    </GlowButton>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Stats Overview */}
@@ -976,6 +1085,267 @@ export default function NodeDashboardPage() {
               currentNodeData?.location?.addressName || 'Unknown Location'
             }
           />
+        </GlassCard>
+
+        {/* Supporting Documents */}
+        <GlassCard>
+          <GlassCardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-accent" />
+                <GlassCardTitle>Supporting Documents</GlassCardTitle>
+              </div>
+              <GlassCardDescription>
+                Certifications, audits, and other supporting documentation
+              </GlassCardDescription>
+            </div>
+            {!isReadOnly && (
+              <Dialog
+                open={isAddDocumentOpen}
+                onOpenChange={setIsAddDocumentOpen}
+              >
+                <DialogTrigger asChild>
+                  <GlowButton
+                    variant="outline"
+                    leftIcon={<Plus className="w-4 h-4" />}
+                    loading={isAddingDocument}
+                  >
+                    Add Document
+                  </GlowButton>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Add Supporting Document</DialogTitle>
+                    <DialogDescription>
+                      Add a certification, audit report, or other supporting
+                      document. IPFS and Arweave URLs are automatically marked
+                      as immutable.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddDocument} className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Document URL *
+                      </label>
+                      <Input
+                        placeholder="https://... or ipfs://..."
+                        value={documentForm.url}
+                        onChange={(e) =>
+                          setDocumentForm({
+                            ...documentForm,
+                            url: e.target.value,
+                          })
+                        }
+                        className="bg-neutral-900/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Title *
+                      </label>
+                      <Input
+                        placeholder="e.g., Annual Security Audit 2024"
+                        value={documentForm.title}
+                        onChange={(e) =>
+                          setDocumentForm({
+                            ...documentForm,
+                            title: e.target.value,
+                          })
+                        }
+                        className="bg-neutral-900/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Description
+                      </label>
+                      <Input
+                        placeholder="Brief description of the document"
+                        value={documentForm.description}
+                        onChange={(e) =>
+                          setDocumentForm({
+                            ...documentForm,
+                            description: e.target.value,
+                          })
+                        }
+                        className="bg-neutral-900/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Document Type
+                      </label>
+                      <select
+                        value={documentForm.documentType}
+                        onChange={(e) =>
+                          setDocumentForm({
+                            ...documentForm,
+                            documentType: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 rounded-lg bg-neutral-900/50 border border-neutral-700/50 text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                      >
+                        <option value="certification">Certification</option>
+                        <option value="audit">Audit Report</option>
+                        <option value="license">License</option>
+                        <option value="legal">Legal Document</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <GlowButton
+                      type="submit"
+                      variant="primary"
+                      className="w-full"
+                      glow
+                      loading={isAddingDocument}
+                    >
+                      Add Document
+                    </GlowButton>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </GlassCardHeader>
+
+          {/* Active Documents */}
+          <div className="space-y-3">
+            {documentsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 text-accent animate-spin" />
+              </div>
+            ) : activeDocuments.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">No documents attached</p>
+                {!isReadOnly && (
+                  <p className="text-sm text-muted-foreground/50 mt-1">
+                    Add certifications, audits, or other supporting documents
+                  </p>
+                )}
+              </div>
+            ) : (
+              activeDocuments.map((doc, index) => (
+                <div
+                  key={`${doc.url}-${index}`}
+                  className="p-4 rounded-lg bg-neutral-900/30 border border-neutral-800/50 hover:border-neutral-700/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-medium text-foreground">
+                          {doc.title}
+                        </h4>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 text-xs capitalize">
+                          {doc.documentType}
+                        </span>
+                        {doc.isFrozen && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 text-amber-400 text-xs"
+                            title="Content is immutable (IPFS/Arweave)"
+                          >
+                            <Lock className="w-3 h-3" />
+                            Frozen
+                          </span>
+                        )}
+                      </div>
+                      {doc.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {doc.description}
+                        </p>
+                      )}
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent/80 mt-2 transition-colors"
+                      >
+                        <Link2 className="w-3 h-3" />
+                        <span className="truncate max-w-[300px]">
+                          {doc.url}
+                        </span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                      <p className="text-xs text-muted-foreground/50 mt-2">
+                        Added{' '}
+                        {new Date(doc.addedAt * 1000).toLocaleDateString()} by{' '}
+                        {doc.addedBy.slice(0, 6)}...{doc.addedBy.slice(-4)}
+                      </p>
+                    </div>
+                    {!isReadOnly && (
+                      <button
+                        onClick={() => handleRemoveDocument(doc.url)}
+                        className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Remove document"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Document History (Removed Documents) */}
+          {removedDocuments.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-neutral-800/50">
+              <button
+                onClick={() => setShowDocumentHistory(!showDocumentHistory)}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown
+                  className={cn(
+                    'w-4 h-4 transition-transform',
+                    showDocumentHistory && 'rotate-180',
+                  )}
+                />
+                View {removedDocuments.length} removed document
+                {removedDocuments.length !== 1 ? 's' : ''}
+              </button>
+
+              {showDocumentHistory && (
+                <div className="mt-4 space-y-3">
+                  {removedDocuments.map((doc, index) => (
+                    <div
+                      key={`removed-${doc.url}-${index}`}
+                      className="p-4 rounded-lg bg-neutral-900/20 border border-neutral-800/30 opacity-60"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-medium text-foreground line-through">
+                              {doc.title}
+                            </h4>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-800/50 text-neutral-400 text-xs capitalize">
+                              {doc.documentType}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 text-xs">
+                              Removed
+                            </span>
+                          </div>
+                          {doc.description && (
+                            <p className="text-sm text-muted-foreground/50 mt-1">
+                              {doc.description}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground/50 mt-2">
+                            Removed{' '}
+                            {doc.removedAt
+                              ? new Date(
+                                  doc.removedAt * 1000,
+                                ).toLocaleDateString()
+                              : 'N/A'}{' '}
+                            by {doc.removedBy?.slice(0, 6)}...
+                            {doc.removedBy?.slice(-4)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </GlassCard>
       </div>
     </div>

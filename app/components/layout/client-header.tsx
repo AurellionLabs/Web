@@ -73,9 +73,14 @@ const CustomerNav: React.FC<{ pathname: string }> = ({ pathname }) => (
  * Node navigation links
  */
 const NodeNav: React.FC<{ pathname: string }> = ({ pathname }) => (
-  <NavLink href="/node/overview" isActive={pathname === '/node/overview'}>
-    Overview
-  </NavLink>
+  <>
+    <NavLink href="/node/overview" isActive={pathname === '/node/overview'}>
+      Overview
+    </NavLink>
+    <NavLink href="/node/explorer" isActive={pathname === '/node/explorer'}>
+      Explorer
+    </NavLink>
+  </>
 );
 
 /**
@@ -252,17 +257,30 @@ export function ClientHeader() {
                 </>
               )}
               {currentUserRole === 'node' && (
-                <Link
-                  href="/node/overview"
-                  className={cn(
-                    'px-4 py-2 rounded-lg transition-colors',
-                    pathname === '/node/overview'
-                      ? 'bg-amber-500/10 text-amber-400'
-                      : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                  )}
-                >
-                  Overview
-                </Link>
+                <>
+                  <Link
+                    href="/node/overview"
+                    className={cn(
+                      'px-4 py-2 rounded-lg transition-colors',
+                      pathname === '/node/overview'
+                        ? 'bg-amber-500/10 text-amber-400'
+                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
+                    )}
+                  >
+                    Overview
+                  </Link>
+                  <Link
+                    href="/node/explorer"
+                    className={cn(
+                      'px-4 py-2 rounded-lg transition-colors',
+                      pathname === '/node/explorer'
+                        ? 'bg-amber-500/10 text-amber-400'
+                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
+                    )}
+                  >
+                    Explorer
+                  </Link>
+                </>
               )}
               {currentUserRole === 'driver' && (
                 <Link

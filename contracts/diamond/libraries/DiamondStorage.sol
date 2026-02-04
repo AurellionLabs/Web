@@ -221,6 +221,14 @@ library DiamondStorage {
         bool paused;
         uint256 pauseStartTime;
 
+        // ======= NODE SUPPORTING DOCUMENTS =======
+        // nodeHash => document index => SupportingDocument
+        mapping(bytes32 => mapping(uint256 => SupportingDocument)) nodeSupportingDocuments;
+        // nodeHash => array of document indices
+        mapping(bytes32 => uint256[]) nodeSupportingDocumentIds;
+        // nodeHash => total documents count
+        mapping(bytes32 => uint256) totalNodeSupportingDocuments;
+
         // ======= RESERVED =======
         uint256[50] __reserved1;
         mapping(bytes32 => uint256) __reserved2;
@@ -343,6 +351,19 @@ library DiamondStorage {
         uint256 capacity;
         uint256 createdAt;
         bool active;
+    }
+
+    struct SupportingDocument {
+        string url;
+        string title;
+        string description;
+        string documentType;
+        bool isFrozen;
+        bool isRemoved;
+        uint256 addedAt;
+        uint256 removedAt;
+        address addedBy;
+        address removedBy;
     }
 
     struct Asset {

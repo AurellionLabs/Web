@@ -1,4 +1,4 @@
-import { HardhatUserConfig, task } from 'hardhat/config';
+import { HardhatUserConfig, task } from 'hardhat/config.js';
 import '@nomicfoundation/hardhat-toolbox';
 import '@nomicfoundation/hardhat-verify';
 import 'dotenv/config';
