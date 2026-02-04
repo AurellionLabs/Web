@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-02-04T21:39:23.352Z
+// Generated at: 2026-02-04T23:17:32.252Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.

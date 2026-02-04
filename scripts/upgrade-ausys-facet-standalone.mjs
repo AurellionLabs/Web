@@ -54,7 +54,9 @@ function loadAuSysFacetBytecode() {
   );
 
   if (!fs.existsSync(artifactPath)) {
-    throw new Error(`Artifact not found at ${artifactPath}. Run 'npx hardhat compile' first.`);
+    throw new Error(
+      `Artifact not found at ${artifactPath}. Run 'npx hardhat compile' first.`,
+    );
   }
 
   const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
@@ -66,13 +68,18 @@ async function main() {
   console.log('━'.repeat(60));
 
   // Validate environment
-  const privateKey = process.env.SEP_PRIVATE_KEY || process.env.WALLET_PRIVATE_KEY;
+  const privateKey =
+    process.env.SEP_PRIVATE_KEY || process.env.WALLET_PRIVATE_KEY;
   if (!privateKey) {
-    throw new Error('SEP_PRIVATE_KEY or WALLET_PRIVATE_KEY not set in environment');
+    throw new Error(
+      'SEP_PRIVATE_KEY or WALLET_PRIVATE_KEY not set in environment',
+    );
   }
 
   // Connect to network
-  console.log(`\n📡 Connecting to ${RPC_URL.includes('sepolia') ? 'Base Sepolia' : 'network'}...`);
+  console.log(
+    `\n📡 Connecting to ${RPC_URL.includes('sepolia') ? 'Base Sepolia' : 'network'}...`,
+  );
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const wallet = new ethers.Wallet(privateKey, provider);
   console.log(`   Deployer: ${wallet.address}`);
@@ -86,8 +93,16 @@ async function main() {
   }
 
   // Connect to Diamond
-  const diamondLoupe = new ethers.Contract(DIAMOND_ADDRESS, DIAMOND_LOUPE_ABI, provider);
-  const diamondCut = new ethers.Contract(DIAMOND_ADDRESS, DIAMOND_CUT_ABI, wallet);
+  const diamondLoupe = new ethers.Contract(
+    DIAMOND_ADDRESS,
+    DIAMOND_LOUPE_ABI,
+    provider,
+  );
+  const diamondCut = new ethers.Contract(
+    DIAMOND_ADDRESS,
+    DIAMOND_CUT_ABI,
+    wallet,
+  );
 
   // Check which selectors need to be added
   console.log('\n🔍 Checking existing selectors...');
