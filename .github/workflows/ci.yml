@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, dev]
 
 jobs:
   lint-and-test:
@@ -13,6 +13,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -35,13 +40,19 @@ jobs:
         run: pnpm run typecheck
 
       - name: Compile contracts
-        run: pnpm exec hardhat compile
+        run: bunx --bun hardhat compile
+
+      - name: Generate ABIs
+        run: bun scripts/gen-all.ts
+
+      - name: Validate ABIs are up to date
+        run: bun scripts/validate-abis.ts
 
       - name: Run Vitest tests
-        run: pnpm run test:vitest
+        run: bunx vitest run
 
       - name: Run Hardhat tests
-        run: pnpm run test:hardhat
+        run: bunx --bun hardhat test
 
   indexer-tests:
     runs-on: ubuntu-latest
@@ -49,6 +60,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
