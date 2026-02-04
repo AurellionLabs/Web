@@ -203,10 +203,11 @@ export class DiamondNodeService implements INodeService {
   ): Promise<boolean> {
     const diamond = this.context.getDiamond();
 
-    console.log('[DiamondNodeService] Adding supporting document:', {
+    console.log('[DiamondNodeService] Adding supporting document to node:', {
       nodeHash,
       title,
       documentType,
+      url,
     });
 
     try {
