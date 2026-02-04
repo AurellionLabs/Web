@@ -10,6 +10,7 @@ export interface ABIComponent {
   name: string;
   type: string;
   indexed?: boolean;
+  internalType?: string;
   components?: ABIComponent[];
 }
 
@@ -25,7 +26,13 @@ export interface ABIFunction {
 export interface ABIEvent {
   type: 'event';
   name: string;
-  inputs: Array<{ name: string; type: string; indexed?: boolean }>;
+  inputs: Array<{
+    name: string;
+    type: string;
+    indexed?: boolean;
+    internalType?: string;
+    components?: ABIComponent[];
+  }>;
 }
 
 export type ABIFragment = ABIFunction | ABIEvent;
