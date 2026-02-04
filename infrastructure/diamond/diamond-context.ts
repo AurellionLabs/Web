@@ -24,6 +24,7 @@ export class DiamondContext {
   private diamond: Contract | null = null;
   private auraAsset: Contract | null = null;
   private initialized = false;
+  private readOnly = false;
 
   /**
    * Initialize the context with a wallet provider
@@ -47,10 +48,47 @@ export class DiamondContext {
     );
 
     this.initialized = true;
+    this.readOnly = false;
     console.log(
       '[DiamondContext] Initialized with Diamond:',
       NEXT_PUBLIC_DIAMOND_ADDRESS,
     );
+  }
+
+  /**
+   * Initialize the context in read-only mode using a public RPC provider
+   * This allows reading data without a connected wallet
+   */
+  async initializeReadOnly(rpcUrl: string): Promise<void> {
+    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+
+    // Connect to Diamond proxy in read-only mode (no signer)
+    this.diamond = new ethers.Contract(
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      DIAMOND_ABI,
+      this.provider,
+    );
+
+    // Connect to AuraAsset for ERC1155 read operations
+    this.auraAsset = new ethers.Contract(
+      NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+      AuraAssetABI,
+      this.provider,
+    );
+
+    this.initialized = true;
+    this.readOnly = true;
+    console.log(
+      '[DiamondContext] Initialized in READ-ONLY mode with Diamond:',
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+    );
+  }
+
+  /**
+   * Check if context is in read-only mode
+   */
+  isReadOnly(): boolean {
+    return this.readOnly;
   }
 
   /**

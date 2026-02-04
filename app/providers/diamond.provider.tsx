@@ -137,16 +137,26 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   const { connectedWallet, address, isConnected } = useWallet();
   const { connected: mainConnected } = useMainProvider();
 
-  // Initialize Diamond context when wallet connects
+  // Track if we're in read-only mode
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // Helper to create Pinata SDK
+  const createPinataSDK = (): PinataSDK | undefined => {
+    const pinataJwt = process.env.NEXT_PUBLIC_PINATA_JWT;
+    if (pinataJwt) {
+      return new PinataSDK({
+        pinataJwt,
+        pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
+      });
+    }
+    return undefined;
+  };
+
+  // Initialize Diamond context - supports both connected wallet and read-only mode
   useEffect(() => {
     async function initializeDiamond() {
-      if (!isConnected || !connectedWallet || !address) {
-        // Cleanup on disconnect
-        setDiamondContext(null);
-        setNodeRepository(null);
-        setNodeService(null);
-        setNodeAssetService(null);
-        setInitialized(false);
+      // If already initialized, skip
+      if (initialized && diamondContext?.isInitialized()) {
         return;
       }
 
@@ -156,19 +166,26 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       try {
         const context = getDiamondContext();
 
-        // Initialize with browser provider from connected wallet
-        const ethereumProvider = await connectedWallet.getEthereumProvider();
-        const browserProvider = new BrowserProvider(ethereumProvider);
-        await context.initialize(browserProvider);
+        if (isConnected && connectedWallet && address) {
+          // Full initialization with wallet signer
+          const ethereumProvider = await connectedWallet.getEthereumProvider();
+          const browserProvider = new BrowserProvider(ethereumProvider);
+          await context.initialize(browserProvider);
+          setIsReadOnly(false);
+          console.log('[DiamondProvider] Initialized with wallet');
+        } else {
+          // Read-only initialization using public RPC
+          // Use Base Sepolia RPC for now (can be made configurable)
+          const rpcUrl =
+            'https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
+          await context.initializeReadOnly(rpcUrl);
+          setIsReadOnly(true);
+          console.log('[DiamondProvider] Initialized in read-only mode');
+        }
 
-        // Create Pinata SDK directly for IPFS metadata fetching
-        let pinata: PinataSDK | undefined;
-        const pinataJwt = process.env.NEXT_PUBLIC_PINATA_JWT;
-        if (pinataJwt) {
-          pinata = new PinataSDK({
-            pinataJwt,
-            pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
-          });
+        // Create Pinata SDK for IPFS metadata fetching
+        const pinata = createPinataSDK();
+        if (pinata) {
           console.log('[DiamondProvider] Created Pinata SDK for IPFS metadata');
         } else {
           console.warn(
@@ -201,7 +218,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     }
 
     initializeDiamond();
-  }, [isConnected, connectedWallet, address]);
+  }, [isConnected, connectedWallet, address, initialized, diamondContext]);
 
   // Node operations
   const registerNode = useCallback(
