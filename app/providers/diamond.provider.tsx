@@ -156,8 +156,12 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   // Initialize Diamond context - supports both connected wallet and read-only mode
   useEffect(() => {
     async function initializeDiamond() {
-      // If already initialized, skip
-      if (initialized && diamondContext?.isInitialized()) {
+      // Check if we need to re-initialize due to wallet connection change
+      const needsWalletUpgrade =
+        initialized && isReadOnly && isConnected && connectedWallet && address;
+      const needsInitialInit = !initialized || !diamondContext?.isInitialized();
+
+      if (!needsInitialInit && !needsWalletUpgrade) {
         return;
       }
 
@@ -219,7 +223,14 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     }
 
     initializeDiamond();
-  }, [isConnected, connectedWallet, address, initialized, diamondContext]);
+  }, [
+    isConnected,
+    connectedWallet,
+    address,
+    initialized,
+    diamondContext,
+    isReadOnly,
+  ]);
 
   // Node operations
   const registerNode = useCallback(
