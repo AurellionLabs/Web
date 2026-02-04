@@ -48,6 +48,7 @@ import {
 } from '@/app/components/ui/glass-card';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { useWallet } from '@/hooks/useWallet';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
