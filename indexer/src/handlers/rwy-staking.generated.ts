@@ -1,14 +1,32 @@
 // Auto-generated handler for rwy-staking domain - Raw event storage only
 // Generated at: 2026-02-04T23:17:32.249Z
-// 
+//
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
 // Events from: RWYStakingFacet
 
-import { ponder } from "@/generated";
+import { ponder } from '@/generated';
 
 // Import event tables from generated schema
-import { diamondCollateralReturnedEvents, diamondCommodityStakedEvents, diamondCommodityUnstakedEvents, diamondConfigUpdatedEvents, diamondCustodyProofSubmittedEvents, diamondDeliveryConfirmedEvents, diamondDeliveryStartedEvents, diamondInsuranceUpdatedEvents, diamondOpportunityCancelledEvents, diamondOpportunityCompletedEvents, diamondOpportunityCreatedEvents, diamondOpportunityFundedEvents, diamondProcessingCompletedEvents, diamondProcessingStartedEvents, diamondProfitDistributedEvents, diamondSaleProceedsRecordedEvents, diamondTokenizationProofSubmittedEvents } from "@/generated-schema";
+import {
+  diamondCollateralReturnedEvents,
+  diamondCommodityStakedEvents,
+  diamondCommodityUnstakedEvents,
+  diamondConfigUpdatedEvents,
+  diamondCustodyProofSubmittedEvents,
+  diamondDeliveryConfirmedEvents,
+  diamondDeliveryStartedEvents,
+  diamondInsuranceUpdatedEvents,
+  diamondOpportunityCancelledEvents,
+  diamondOpportunityCompletedEvents,
+  diamondOpportunityCreatedEvents,
+  diamondOpportunityFundedEvents,
+  diamondProcessingCompletedEvents,
+  diamondProcessingStartedEvents,
+  diamondProfitDistributedEvents,
+  diamondSaleProceedsRecordedEvents,
+  diamondTokenizationProofSubmittedEvents,
+} from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -108,7 +126,8 @@ ponder.on('Diamond:ConfigUpdated', async ({ event, context }) => {
  * Hash: 0x51d9b1fc
  */
 ponder.on('Diamond:CustodyProofSubmitted', async ({ event, context }) => {
-  const { opportunityId, documentUri, proofType, submitter, timestamp } = event.args;
+  const { opportunityId, documentUri, proofType, submitter, timestamp } =
+    event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -171,7 +190,8 @@ ponder.on('Diamond:DeliveryStarted', async ({ event, context }) => {
  * Hash: 0xaf953efb
  */
 ponder.on('Diamond:InsuranceUpdated', async ({ event, context }) => {
-  const { opportunityId, isInsured, documentUri, coverageAmount, expiryDate } = event.args;
+  const { opportunityId, isInsured, documentUri, coverageAmount, expiryDate } =
+    event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -234,7 +254,14 @@ ponder.on('Diamond:OpportunityCompleted', async ({ event, context }) => {
  * Hash: 0x1e5c8915
  */
 ponder.on('Diamond:OpportunityCreated', async ({ event, context }) => {
-  const { id: arg_id, operator, inputToken, inputTokenId, targetAmount, promisedYieldBps } = event.args;
+  const {
+    id: arg_id,
+    operator,
+    inputToken,
+    inputTokenId,
+    targetAmount,
+    promisedYieldBps,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -375,4 +402,3 @@ ponder.on('Diamond:TokenizationProofSubmitted', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-

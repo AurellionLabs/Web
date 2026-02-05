@@ -1,14 +1,25 @@
 // Auto-generated handler for assets domain - Raw event storage only
 // Generated at: 2026-02-04T23:17:32.251Z
-// 
+//
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
 // Events from: AssetsFacet
 
-import { ponder } from "@/generated";
+import { ponder } from '@/generated';
 
 // Import event tables from generated schema
-import { diamondApprovalForAllEvents, diamondAssetAttributeAddedEvents, diamondCustodyEstablishedEvents, diamondCustodyReleasedEvents, diamondMintedAssetEvents, diamondSupportedClassAddedEvents, diamondSupportedClassRemovedEvents, diamondTransferBatchEvents, diamondTransferSingleEvents, diamondURIEvents } from "@/generated-schema";
+import {
+  diamondApprovalForAllEvents,
+  diamondAssetAttributeAddedEvents,
+  diamondCustodyEstablishedEvents,
+  diamondCustodyReleasedEvents,
+  diamondMintedAssetEvents,
+  diamondSupportedClassAddedEvents,
+  diamondSupportedClassRemovedEvents,
+  diamondTransferBatchEvents,
+  diamondTransferSingleEvents,
+  diamondURIEvents,
+} from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -233,4 +244,3 @@ ponder.on('Diamond:URI', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-

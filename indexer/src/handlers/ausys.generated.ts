@@ -1,14 +1,32 @@
 // Auto-generated handler for ausys domain - Raw event storage only
 // Generated at: 2026-02-04T23:17:32.250Z
-// 
+//
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
 // Events from: AuSysFacet
 
-import { ponder } from "@/generated";
+import { ponder } from '@/generated';
 
 // Import event tables from generated schema
-import { diamondAuSysAdminRevokedEvents, diamondAuSysAdminSetEvents, diamondAuSysJourneyStatusUpdatedEvents, diamondAuSysOrderCreatedEvents, diamondAuSysOrderSettledEvents, diamondAuSysOrderStatusUpdatedEvents, diamondDriverAssignedEvents, diamondEmitSigEvents, diamondFundsEscrowedEvents, diamondFundsRefundedEvents, diamondJourneyCanceledEvents, diamondJourneyCreatedEvents, diamondNodeFeeDistributedEvents, diamondP2POfferAcceptedEvents, diamondP2POfferCanceledEvents, diamondP2POfferCreatedEvents, diamondSellerPaidEvents } from "@/generated-schema";
+import {
+  diamondAuSysAdminRevokedEvents,
+  diamondAuSysAdminSetEvents,
+  diamondAuSysJourneyStatusUpdatedEvents,
+  diamondAuSysOrderCreatedEvents,
+  diamondAuSysOrderSettledEvents,
+  diamondAuSysOrderStatusUpdatedEvents,
+  diamondDriverAssignedEvents,
+  diamondEmitSigEvents,
+  diamondFundsEscrowedEvents,
+  diamondFundsRefundedEvents,
+  diamondJourneyCanceledEvents,
+  diamondJourneyCreatedEvents,
+  diamondNodeFeeDistributedEvents,
+  diamondP2POfferAcceptedEvents,
+  diamondP2POfferCanceledEvents,
+  diamondP2POfferCreatedEvents,
+  diamondSellerPaidEvents,
+} from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -61,7 +79,23 @@ ponder.on('Diamond:AuSysAdminSet', async ({ event, context }) => {
  * Hash: 0x3ad95bcd
  */
 ponder.on('Diamond:AuSysJourneyStatusUpdated', async ({ event, context }) => {
-  const { journeyId, newStatus, sender, receiver, driver, bounty, ETA, journeyStart, journeyEnd, startLat, startLng, endLat, endLng, startName, endName } = event.args;
+  const {
+    journeyId,
+    newStatus,
+    sender,
+    receiver,
+    driver,
+    bounty,
+    ETA,
+    journeyStart,
+    journeyEnd,
+    startLat,
+    startLng,
+    endLat,
+    endLng,
+    startName,
+    endName,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -94,7 +128,18 @@ ponder.on('Diamond:AuSysJourneyStatusUpdated', async ({ event, context }) => {
  * Hash: 0xda4150a1
  */
 ponder.on('Diamond:AuSysOrderCreated', async ({ event, context }) => {
-  const { orderId, buyer, seller, token, tokenId, tokenQuantity, price, txFee, currentStatus, nodes } = event.args;
+  const {
+    orderId,
+    buyer,
+    seller,
+    token,
+    tokenId,
+    tokenQuantity,
+    price,
+    txFee,
+    currentStatus,
+    nodes,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -161,7 +206,20 @@ ponder.on('Diamond:AuSysOrderStatusUpdated', async ({ event, context }) => {
  * Hash: 0x038b3745
  */
 ponder.on('Diamond:DriverAssigned', async ({ event, context }) => {
-  const { journeyId, driver, sender, receiver, bounty, ETA, startLat, startLng, endLat, endLng, startName, endName } = event.args;
+  const {
+    journeyId,
+    driver,
+    sender,
+    receiver,
+    bounty,
+    ETA,
+    startLat,
+    startLng,
+    endLat,
+    endLng,
+    startName,
+    endName,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -251,7 +309,20 @@ ponder.on('Diamond:FundsRefunded', async ({ event, context }) => {
  * Hash: 0x08a09942
  */
 ponder.on('Diamond:JourneyCanceled', async ({ event, context }) => {
-  const { journeyId, sender, receiver, driver, refundedAmount, bounty, startLat, startLng, endLat, endLng, startName, endName } = event.args;
+  const {
+    journeyId,
+    sender,
+    receiver,
+    driver,
+    refundedAmount,
+    bounty,
+    startLat,
+    startLng,
+    endLat,
+    endLng,
+    startName,
+    endName,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -281,7 +352,21 @@ ponder.on('Diamond:JourneyCanceled', async ({ event, context }) => {
  * Hash: 0x5508139b
  */
 ponder.on('Diamond:JourneyCreated', async ({ event, context }) => {
-  const { journeyId, sender, receiver, driver, bounty, ETA, orderId, startLat, startLng, endLat, endLng, startName, endName } = event.args;
+  const {
+    journeyId,
+    sender,
+    receiver,
+    driver,
+    bounty,
+    ETA,
+    orderId,
+    startLat,
+    startLng,
+    endLat,
+    endLng,
+    startName,
+    endName,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -373,7 +458,17 @@ ponder.on('Diamond:P2POfferCanceled', async ({ event, context }) => {
  * Hash: 0x4c52c233
  */
 ponder.on('Diamond:P2POfferCreated', async ({ event, context }) => {
-  const { orderId, creator, isSellerInitiated, token, tokenId, tokenQuantity, price, targetCounterparty, expiresAt } = event.args;
+  const {
+    orderId,
+    creator,
+    isSellerInitiated,
+    token,
+    tokenId,
+    tokenQuantity,
+    price,
+    targetCounterparty,
+    expiresAt,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -413,4 +508,3 @@ ponder.on('Diamond:SellerPaid', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-

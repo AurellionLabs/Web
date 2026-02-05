@@ -1,14 +1,35 @@
 // Auto-generated handler for nodes domain - Raw event storage only
 // Generated at: 2026-02-04T23:17:32.248Z
-// 
+//
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
 // Events from: NodesFacet
 
-import { ponder } from "@/generated";
+import { ponder } from '@/generated';
 
 // Import event tables from generated schema
-import { diamondClobApprovalGrantedEvents, diamondClobApprovalRevokedEvents, diamondNodeAdminRevokedEvents, diamondNodeAdminSetEvents, diamondNodeCapacityUpdatedEvents, diamondNodeDeactivatedEvents, diamondNodeRegisteredEvents, diamondNodeSellOrderPlacedEvents, diamondNodeUpdatedEvents, diamondSupportedAssetAddedEvents, diamondSupportedAssetsUpdatedEvents, diamondSupportingDocumentAddedEvents, diamondSupportingDocumentRemovedEvents, diamondTokensDepositedToNodeEvents, diamondTokensMintedToNodeEvents, diamondTokensTransferredBetweenNodesEvents, diamondTokensWithdrawnFromNodeEvents, diamondUpdateLocationEvents, diamondUpdateOwnerEvents, diamondUpdateStatusEvents } from "@/generated-schema";
+import {
+  diamondClobApprovalGrantedEvents,
+  diamondClobApprovalRevokedEvents,
+  diamondNodeAdminRevokedEvents,
+  diamondNodeAdminSetEvents,
+  diamondNodeCapacityUpdatedEvents,
+  diamondNodeDeactivatedEvents,
+  diamondNodeRegisteredEvents,
+  diamondNodeSellOrderPlacedEvents,
+  diamondNodeUpdatedEvents,
+  diamondSupportedAssetAddedEvents,
+  diamondSupportedAssetsUpdatedEvents,
+  diamondSupportingDocumentAddedEvents,
+  diamondSupportingDocumentRemovedEvents,
+  diamondTokensDepositedToNodeEvents,
+  diamondTokensMintedToNodeEvents,
+  diamondTokensTransferredBetweenNodesEvents,
+  diamondTokensWithdrawnFromNodeEvents,
+  diamondUpdateLocationEvents,
+  diamondUpdateOwnerEvents,
+  diamondUpdateStatusEvents,
+} from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -249,7 +270,16 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
  * Hash: 0xb9819508
  */
 ponder.on('Diamond:SupportingDocumentAdded', async ({ event, context }) => {
-  const { nodeHash, url, title, description, documentType, isFrozen, timestamp, addedBy } = event.args;
+  const {
+    nodeHash,
+    url,
+    title,
+    description,
+    documentType,
+    isFrozen,
+    timestamp,
+    addedBy,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -340,22 +370,25 @@ ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
  * Signature: TokensTransferredBetweenNodes(bytes32,bytes32,uint256,uint256)
  * Hash: 0x5cee2a26
  */
-ponder.on('Diamond:TokensTransferredBetweenNodes', async ({ event, context }) => {
-  const { fromNode, toNode, tokenId, amount } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on(
+  'Diamond:TokensTransferredBetweenNodes',
+  async ({ event, context }) => {
+    const { fromNode, toNode, tokenId, amount } = event.args;
+    const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
-  await context.db.insert(diamondTokensTransferredBetweenNodesEvents).values({
-    id: id,
-    from_node: fromNode,
-    to_node: toNode,
-    token_id: tokenId,
-    amount: amount,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
+    // Pure Dumb Indexer: Insert raw event only, no aggregates
+    await context.db.insert(diamondTokensTransferredBetweenNodesEvents).values({
+      id: id,
+      from_node: fromNode,
+      to_node: toNode,
+      token_id: tokenId,
+      amount: amount,
+      block_number: event.block.number,
+      block_timestamp: BigInt(event.block.timestamp),
+      transaction_hash: event.transaction.hash,
+    });
+  },
+);
 
 /**
  * Handle TokensWithdrawnFromNode event from NodesFacet
@@ -440,4 +473,3 @@ ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-

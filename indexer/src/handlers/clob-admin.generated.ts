@@ -1,14 +1,29 @@
 // Auto-generated handler for clob-admin domain - Raw event storage only
 // Generated at: 2026-02-04T23:17:32.250Z
-// 
+//
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
 // Events from: CLOBAdminFacet
 
-import { ponder } from "@/generated";
+import { ponder } from '@/generated';
 
 // Import event tables from generated schema
-import { diamondCircuitBreakerConfiguredEvents, diamondCircuitBreakerResetEvents, diamondCircuitBreakerTrippedEvents, diamondEmergencyActionCancelledEvents, diamondEmergencyActionExecutedEvents, diamondEmergencyActionInitiatedEvents, diamondEmergencyWithdrawalEvents, diamondFeeRecipientUpdatedEvents, diamondFeesUpdatedEvents, diamondGlobalPauseEvents, diamondMEVProtectionUpdatedEvents, diamondMarketPausedEvents, diamondMarketUnpausedEvents, diamondRateLimitsUpdatedEvents } from "@/generated-schema";
+import {
+  diamondCircuitBreakerConfiguredEvents,
+  diamondCircuitBreakerResetEvents,
+  diamondCircuitBreakerTrippedEvents,
+  diamondEmergencyActionCancelledEvents,
+  diamondEmergencyActionExecutedEvents,
+  diamondEmergencyActionInitiatedEvents,
+  diamondEmergencyWithdrawalEvents,
+  diamondFeeRecipientUpdatedEvents,
+  diamondFeesUpdatedEvents,
+  diamondGlobalPauseEvents,
+  diamondMEVProtectionUpdatedEvents,
+  diamondMarketPausedEvents,
+  diamondMarketUnpausedEvents,
+  diamondRateLimitsUpdatedEvents,
+} from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -23,7 +38,8 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Hash: 0x58807e46
  */
 ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
-  const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } = event.args;
+  const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } =
+    event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -65,7 +81,13 @@ ponder.on('Diamond:CircuitBreakerReset', async ({ event, context }) => {
  * Hash: 0x5953204a
  */
 ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
-  const { marketId, triggerPrice, previousPrice, changePercent, cooldownUntil } = event.args;
+  const {
+    marketId,
+    triggerPrice,
+    previousPrice,
+    changePercent,
+    cooldownUntil,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -131,7 +153,8 @@ ponder.on('Diamond:EmergencyActionExecuted', async ({ event, context }) => {
  * Hash: 0xca04aa1e
  */
 ponder.on('Diamond:EmergencyActionInitiated', async ({ event, context }) => {
-  const { actionId, initiator, token, recipient, amount, executeAfter } = event.args;
+  const { actionId, initiator, token, recipient, amount, executeAfter } =
+    event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -308,4 +331,3 @@ ponder.on('Diamond:RateLimitsUpdated', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-

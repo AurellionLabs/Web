@@ -1,14 +1,20 @@
 // Auto-generated handler for operators domain - Raw event storage only
 // Generated at: 2026-02-04T23:17:32.250Z
-// 
+//
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
 // Events from: OperatorFacet
 
-import { ponder } from "@/generated";
+import { ponder } from '@/generated';
 
 // Import event tables from generated schema
-import { diamondOperatorApprovedEvents, diamondOperatorReputationUpdatedEvents, diamondOperatorRevokedEvents, diamondOperatorSlashedEvents, diamondOperatorStatsUpdatedEvents } from "@/generated-schema";
+import {
+  diamondOperatorApprovedEvents,
+  diamondOperatorReputationUpdatedEvents,
+  diamondOperatorRevokedEvents,
+  diamondOperatorSlashedEvents,
+  diamondOperatorStatsUpdatedEvents,
+} from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -82,7 +88,13 @@ ponder.on('Diamond:OperatorRevoked', async ({ event, context }) => {
  * Hash: 0x90e68b2e
  */
 ponder.on('Diamond:OperatorSlashed', async ({ event, context }) => {
-  const { opportunityId, operator, collateralToken, collateralTokenId, amount } = event.args;
+  const {
+    opportunityId,
+    operator,
+    collateralToken,
+    collateralTokenId,
+    amount,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -119,4 +131,3 @@ ponder.on('Diamond:OperatorStatsUpdated', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-

@@ -1,14 +1,23 @@
 // Auto-generated handler for bridge domain - Raw event storage only
 // Generated at: 2026-02-04T23:17:32.249Z
-// 
+//
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
 // Events from: BridgeFacet
 
-import { ponder } from "@/generated";
+import { ponder } from '@/generated';
 
 // Import event tables from generated schema
-import { diamondBountyPaidEvents, diamondBridgeFeeRecipientUpdatedEvents, diamondBridgeOrderCancelledEvents, diamondJourneyStatusUpdatedEvents, diamondLogisticsOrderCreatedEvents, diamondOrderSettledEvents, diamondTradeMatchedEvents, diamondUnifiedOrderCreatedEvents } from "@/generated-schema";
+import {
+  diamondBountyPaidEvents,
+  diamondBridgeFeeRecipientUpdatedEvents,
+  diamondBridgeOrderCancelledEvents,
+  diamondJourneyStatusUpdatedEvents,
+  diamondLogisticsOrderCreatedEvents,
+  diamondOrderSettledEvents,
+  diamondTradeMatchedEvents,
+  diamondUnifiedOrderCreatedEvents,
+} from '@/generated-schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -127,7 +136,8 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
  * Hash: 0xe72627b4
  */
 ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
-  const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } = event.args;
+  const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } =
+    event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -150,7 +160,8 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
  * Hash: 0x51d0a1e6
  */
 ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
-  const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } = event.args;
+  const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } =
+    event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -174,7 +185,16 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
  * Hash: 0xc8b6af07
  */
 ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
-  const { unifiedOrderId, clobOrderId, buyer, seller, token, tokenId, quantity, price } = event.args;
+  const {
+    unifiedOrderId,
+    clobOrderId,
+    buyer,
+    seller,
+    token,
+    tokenId,
+    quantity,
+    price,
+  } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Pure Dumb Indexer: Insert raw event only, no aggregates
@@ -193,4 +213,3 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-

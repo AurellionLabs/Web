@@ -26,7 +26,7 @@ indexer/.ponder/
 indexer/ponder-env.d.ts
 indexer/logs/
 indexer/ponder.config.generated.ts
-indexer/abis/generated/
+# NOTE: indexer/abis/generated/ files ARE committed for Docker builds
 # NOTE: handlers/*.generated.ts files ARE committed, do not ignore them!
 
 # Temp scripts
