@@ -66,11 +66,12 @@ services:
       - 'traefik.http.routers.indexer.tls.certresolver=letsencrypt'
       - 'traefik.http.services.indexer.loadbalancer.server.port=42069'
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:42069/health || exit 1']
+      # Ponder exposes GraphQL at root - check if it responds
+      test: ['CMD-SHELL', 'curl -sf http://localhost:42069/ > /dev/null || exit 1']
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 180s
+      start_period: 120s
 
   # Optional: Traefik reverse proxy
   traefik:
