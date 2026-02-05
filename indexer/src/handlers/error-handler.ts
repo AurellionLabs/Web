@@ -5,7 +5,7 @@
  * This helps identify when handlers are missing or broken.
  */
 
-import { ponder } from '@/generated';
+import { ponder } from 'ponder:registry';
 import { trackEventHandled, logMissingHandler } from './validation';
 
 /**

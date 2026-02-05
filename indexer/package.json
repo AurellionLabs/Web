@@ -14,7 +14,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@ponder/core": "^0.7.17",
+    "ponder": "^0.16.0",
     "hono": "^4.0.0",
     "vite": "^5.0.0"
   },

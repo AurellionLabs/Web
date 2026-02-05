@@ -5,7 +5,7 @@
 // All aggregation happens in frontend repository layer
 // Events from: CLOBFacetV2, OrderMatchingFacet, OrderRouterFacet
 
-import { ponder } from '@/generated';
+import { ponder } from 'ponder:registry';
 
 // Import event tables from generated schema
 import {
@@ -24,7 +24,7 @@ import {
   diamondRouterOrderCreatedEvents,
   diamondRouterOrderPlacedEvents,
   diamondRouterTradeExecutedEvents,
-} from '@/generated-schema';
+} from 'ponder:schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

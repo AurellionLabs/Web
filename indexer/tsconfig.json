@@ -11,10 +11,9 @@
     "sourceMap": true,
     "outDir": "dist",
     "paths": {
-      "@/*": ["./*"],
-      "@/generated": ["./generated/index.ts"]
+      "@/*": ["./*"]
     }
   },
-  "include": ["src/**/*.ts", "ponder.config.ts", "ponder.schema.ts"],
+  "include": ["src/**/*.ts", "ponder.config.ts", "ponder.schema.ts", "ponder-env.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

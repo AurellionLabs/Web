@@ -1,8 +1,7 @@
 // Auto-generated Ponder config - DO NOT EDIT
 // Generated at: 2026-02-04T23:17:32.252Z
 
-import { createConfig } from '@ponder/core';
-import { http } from 'viem';
+import { createConfig } from 'ponder';
 
 // Import generated ABIs
 import { DiamondABI } from './abis/generated';
@@ -17,15 +16,15 @@ import {
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export default createConfig({
-  networks: {
+  chains: {
     baseSepolia: {
-      chainId: BASE_SEPOLIA_CHAIN_ID,
-      transport: http(NEXT_PUBLIC_RPC_URL_84532),
+      id: BASE_SEPOLIA_CHAIN_ID,
+      rpc: NEXT_PUBLIC_RPC_URL_84532,
     },
   },
   contracts: {
     Diamond: {
-      network: 'baseSepolia',
+      chain: 'baseSepolia',
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,

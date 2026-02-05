@@ -1,9 +1,6 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      'ponder:registry': '@/generated',
-    },
-  },
+  // Ponder 0.16+ handles ponder:registry and ponder:schema virtual modules internally
+  // No custom aliases needed
 });

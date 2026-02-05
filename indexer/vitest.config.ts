@@ -15,8 +15,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@/': './src/',
-      '@/generated': './generated/index.ts',
+      '@/': './',
     },
   },
 });

@@ -474,7 +474,7 @@ function generateSchema(facets: Map<string, FacetInfo>): void {
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
 
-import { onchainTable, index } from '@ponder/core';
+import { onchainTable, index } from 'ponder';
 
 `;
 
@@ -554,7 +554,7 @@ function generateHandlerStub(domain: string, events: EventInfo[]): string {
 // All aggregation happens in frontend repository layer
 // Events from: ${Array.from(eventsByFacet.keys()).join(', ')}
 
-import { ponder } from "@/generated";
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
 `;
@@ -577,7 +577,7 @@ import { ponder } from "@/generated";
   const uniqueTableImports = Array.from(new Set(tableImports));
 
   // Single import from generated schema
-  content += `import { ${uniqueTableImports.join(', ')} } from "@/generated-schema";\n`;
+  content += `import { ${uniqueTableImports.join(', ')} } from "ponder:schema";\n`;
 
   content += `\n// Utility functions
 const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\`;
@@ -791,7 +791,7 @@ function generatePonderConfig(facets: Map<string, FacetInfo>): void {
         return null;
       }
       return `    ${facet.name}: {
-      network: 'baseSepolia',
+      chain: 'baseSepolia',
       abi: ${facet.name}ABI,
       address: ${mapping.addressConst} as \`0x\${string}\`,
       startBlock: ${mapping.blockConst},
@@ -818,8 +818,7 @@ function generatePonderConfig(facets: Map<string, FacetInfo>): void {
   const configContent = `// Auto-generated Ponder config - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
 
-import { createConfig } from '@ponder/core';
-import { http } from 'viem';
+import { createConfig } from 'ponder';
 
 // Import generated ABIs
 import { DiamondABI } from './abis/generated';
@@ -834,15 +833,15 @@ import {
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export default createConfig({
-  networks: {
+  chains: {
     baseSepolia: {
-      chainId: BASE_SEPOLIA_CHAIN_ID,
-      transport: http(NEXT_PUBLIC_RPC_URL_84532),
+      id: BASE_SEPOLIA_CHAIN_ID,
+      rpc: NEXT_PUBLIC_RPC_URL_84532,
     },
   },
   contracts: {
     Diamond: {
-      network: 'baseSepolia',
+      chain: 'baseSepolia',
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,

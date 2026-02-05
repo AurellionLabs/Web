@@ -5,7 +5,7 @@
 // All aggregation happens in frontend repository layer
 // Events from: BridgeFacet
 
-import { ponder } from '@/generated';
+import { ponder } from 'ponder:registry';
 
 // Import event tables from generated schema
 import {
@@ -17,7 +17,7 @@ import {
   diamondOrderSettledEvents,
   diamondTradeMatchedEvents,
   diamondUnifiedOrderCreatedEvents,
-} from '@/generated-schema';
+} from 'ponder:schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

@@ -5,7 +5,7 @@
 // All aggregation happens in frontend repository layer
 // Events from: AuSysFacet
 
-import { ponder } from '@/generated';
+import { ponder } from 'ponder:registry';
 
 // Import event tables from generated schema
 import {
@@ -26,7 +26,7 @@ import {
   diamondP2POfferCanceledEvents,
   diamondP2POfferCreatedEvents,
   diamondSellerPaidEvents,
-} from '@/generated-schema';
+} from 'ponder:schema';
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;

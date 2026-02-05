@@ -4,7 +4,7 @@
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
 
-import { onchainTable, index } from '@ponder/core';
+import { onchainTable, index } from 'ponder';
 
 export const diamondClobApprovalGrantedEvents = onchainTable(
   'diamond_clob_approval_granted_events',
