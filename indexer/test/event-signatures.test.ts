@@ -277,11 +277,11 @@ describe('BridgeFacet Event Signatures', () => {
   });
 });
 
-describe('StakingFacet Event Signatures', () => {
+describe('RWYStakingFacet Event Signatures', () => {
   let events: Map<string, { signature: string; selector: string }>;
 
   beforeAll(() => {
-    const artifact = loadArtifact('StakingFacet');
+    const artifact = loadArtifact('RWYStakingFacet');
     events = getEventsFromAbi(artifact.abi);
   });
 
@@ -347,7 +347,7 @@ describe('Duplicate Event Detection', () => {
       'NodesFacet',
       'OrderMatchingFacet',
       'BridgeFacet',
-      'StakingFacet',
+      'RWYStakingFacet',
     ];
 
     for (const facetName of facets) {
@@ -382,7 +382,7 @@ describe('Generated ABI Verification', () => {
       'NodesFacet.ts',
       'OrderMatchingFacet.ts',
       'BridgeFacet.ts',
-      'StakingFacet.ts',
+      'RWYStakingFacet.ts',
       'index.ts',
     ];
 
