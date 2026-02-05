@@ -26,9 +26,8 @@ COPY tsconfig.json ./
 COPY remappings.txt ./
 COPY contracts/ ./contracts/
 
-# Compile contracts and generate indexer
-RUN bunx --bun hardhat compile && \
-    cd indexer && bun run generate:indexer
+# Compile contracts (needed for artifacts)
+RUN bunx --bun hardhat compile
 
 # Production stage
 FROM oven/bun:1-alpine AS runner
