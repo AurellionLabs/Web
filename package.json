@@ -171,6 +171,8 @@
     "cypress": "^14.3.2",
     "dotenv": "^16.4.7",
     "ethers": "^6.13.5",
+    "eslint": "^8.57.0",
+    "@next/eslint-plugin-next": "^14.2.16",
     "hardhat": "^2.22.17",
     "hardhat-gas-reporter": "^1.0.10",
     "husky": "^9.1.7",
