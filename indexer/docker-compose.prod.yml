@@ -32,6 +32,7 @@ services:
     environment:
       # Database
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ponder_indexer}
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA:-public}
 
       # RPC URLs - Using NEXT_PUBLIC naming convention
       NEXT_PUBLIC_RPC_URL_84532: ${NEXT_PUBLIC_RPC_URL_84532:?Base Sepolia RPC URL is required}
@@ -66,12 +67,11 @@ services:
       - 'traefik.http.routers.indexer.tls.certresolver=letsencrypt'
       - 'traefik.http.services.indexer.loadbalancer.server.port=42069'
     healthcheck:
-      # Ponder exposes GraphQL at root - check if it responds
-      test: ['CMD-SHELL', 'curl -sf http://localhost:42069/ > /dev/null || exit 1']
+      test: ["CMD-SHELL", "healthcheck.sh"]
       interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 120s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
 
   # Optional: Traefik reverse proxy
   traefik:
