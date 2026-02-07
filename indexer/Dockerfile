@@ -38,7 +38,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 # Copy healthcheck script
-COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY indexer/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # Create non-root user with specific UID to avoid chown
