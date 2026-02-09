@@ -19,9 +19,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 // Constants
 const DIAMOND_ADDRESS = '0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58';
 const RPC_URL =
-  process.env.BASE_TEST_RPC_URL ||
-  process.env.NEXT_PUBLIC_RPC_URL_84532 ||
-  '';
+  process.env.BASE_TEST_RPC_URL || process.env.NEXT_PUBLIC_RPC_URL_84532 || '';
 
 // Diamond interfaces
 const DIAMOND_LOUPE_ABI = [

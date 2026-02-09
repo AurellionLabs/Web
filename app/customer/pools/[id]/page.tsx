@@ -314,13 +314,9 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     name: pool?.name || '',
     description: pool?.description || '',
     supportingDocuments: pool?.supportingDocuments || [],
-    tvl: poolDynamics?.tvl
-      ? formatTokenAmount(poolDynamics.tvl, 18, 2)
-      : '0.00',
+    tvl: poolDynamics?.tvl || '0',
     completionPercentage: poolDynamics?.progressPercentage || 0,
-    fundingGoal: poolDynamics?.fundingGoal
-      ? formatTokenAmount(poolDynamics.fundingGoal, 0, 2)
-      : '0.00',
+    fundingGoal: poolDynamics?.fundingGoal || '0',
     volume24h: getTotalDailyVolume(),
     volumeChange: dailyPercentageChange,
     token0Balance: pool?.assetName || '',
@@ -396,14 +392,14 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 title="Total Value Locked"
-                value={`$${poolData.tvl}`}
+                value={`$${formatTokenAmount(poolData.tvl, 18)}`}
                 change={poolData.volumeChange}
                 icon={Droplets}
                 iconColor="bg-accent"
               />
               <StatCard
                 title="Volume (24h)"
-                value={`$${poolData.volume24h}`}
+                value={`$${formatTokenAmount(poolData.volume24h, 18)}`}
                 change={poolData.volumeChange}
                 icon={TrendingUp}
                 iconColor="bg-green-500"
@@ -482,7 +478,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                       />
                     </div>
                     <div className="text-sm text-muted-foreground text-center">
-                      ${poolData.tvl} of ${poolData.fundingGoal} raised
+                      ${formatTokenAmount(poolData.tvl, 18)} of $
+                      {formatTokenAmount(poolData.fundingGoal, 18)} raised
                     </div>
                   </>
                 ) : (
@@ -492,7 +489,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                         Total Locked
                       </span>
                       <span className="text-accent font-semibold">
-                        ${poolData.tvl}
+                        ${formatTokenAmount(poolData.tvl, 18)}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground text-center py-2">
@@ -563,7 +560,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                       Funding Goal
                     </span>
                     <span className="font-medium text-foreground">
-                      ${poolData.fundingGoal}
+                      ${formatTokenAmount(poolData.fundingGoal, 18)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-glass-border">
@@ -571,7 +568,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                       Current TVL
                     </span>
                     <span className="font-medium text-foreground">
-                      ${poolData.tvl}
+                      ${formatTokenAmount(poolData.tvl, 18)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-glass-border">
