@@ -357,10 +357,21 @@ export default function NodeDashboardPage() {
       await Promise.all(
         assets.map(async (asset) => {
           try {
-            const attributes = await getAssetAttributes(
-              asset.fileHash || asset.id,
-            );
-            attributesMap[asset.id] = attributes;
+            // Fetch full asset metadata from IPFS via platform provider
+            const ipfsAsset = await getAssetByTokenId(asset.id);
+            if (
+              ipfsAsset &&
+              ipfsAsset.attributes &&
+              ipfsAsset.attributes.length > 0
+            ) {
+              attributesMap[asset.id] = ipfsAsset.attributes.map((attr) => ({
+                name: attr.name,
+                value: attr.values.join(', '),
+                description: attr.description,
+              }));
+            } else {
+              attributesMap[asset.id] = [];
+            }
           } catch (error) {
             console.error(
               `Error loading attributes for asset ${asset.id}:`,

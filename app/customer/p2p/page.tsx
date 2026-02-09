@@ -108,12 +108,27 @@ export default function P2PPage() {
     );
     if (unresolvedIds.length === 0) return;
 
+    console.log('[P2P] Resolving metadata for tokenIds:', unresolvedIds);
+
     let cancelled = false;
     const resolveMetadata = async () => {
       const results = await Promise.allSettled(
         unresolvedIds.map((id) => getAssetByTokenId(id)),
       );
       if (cancelled) return;
+
+      console.log(
+        '[P2P] Metadata resolution results:',
+        results.map((r, i) => ({
+          tokenId: unresolvedIds[i],
+          status: r.status,
+          value:
+            r.status === 'fulfilled'
+              ? (r.value?.name ?? null)
+              : String((r as PromiseRejectedResult).reason),
+        })),
+      );
+
       setAssetMetadataMap((prev) => {
         const next = new Map(prev);
         results.forEach((result, idx) => {
