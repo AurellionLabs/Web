@@ -633,7 +633,7 @@ Handler can process unlimited events. DoS possible via event spam.
 
 ```typescript
 export const NEXT_PUBLIC_RPC_URL_84532 =
-  'https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
+  process.env.NEXT_PUBLIC_RPC_URL_84532 || '';
 ```
 
 API key exposed in source code.

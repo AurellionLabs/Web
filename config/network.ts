@@ -29,10 +29,7 @@ export const NETWORK_CONFIGS: { [chainId: number]: NetworkConfig } = {
   42161: {
     chainId: 42161,
     name: 'Arbitrum One',
-    rpcUrl: getRpcUrl(
-      42161,
-      'https://arbitrum-mainnet.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
-    ),
+    rpcUrl: getRpcUrl(42161, 'https://arb1.arbitrum.io/rpc'),
     currency: {
       name: 'Ethereum',
       symbol: 'ETH',

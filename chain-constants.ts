@@ -77,15 +77,15 @@ export const NEXT_PUBLIC_ORDER_ROUTER_FACET_ADDRESS =
 export const DIAMOND_DEPLOY_BLOCK = 36030424;
 
 // =============================================================================
-// RPC URLS
+// RPC URLS - Read from environment variables, never hardcode API keys
 // =============================================================================
 
 export const NEXT_PUBLIC_RPC_URL_84532 =
-  'https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
+  process.env.NEXT_PUBLIC_RPC_URL_84532 || '';
 export const NEXT_PUBLIC_RPC_URL_42161 =
-  'https://arbitrum-mainnet.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
+  process.env.NEXT_PUBLIC_RPC_URL_42161 || '';
 export const NEXT_PUBLIC_RPC_URL_8453 =
-  'https://base-mainnet.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
+  process.env.NEXT_PUBLIC_RPC_URL_8453 || '';
 
 // =============================================================================
 // SUBGRAPH / INDEXER URLS

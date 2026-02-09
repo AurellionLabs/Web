@@ -196,10 +196,8 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           setIsReadOnly(false);
           console.log('[DiamondProvider] Initialized with wallet');
         } else {
-          // Read-only initialization using public RPC
-          // Use Base Sepolia RPC for now (can be made configurable)
-          const rpcUrl =
-            'https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
+          // Read-only initialization using public RPC from env
+          const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_84532 || '';
           await context.initializeReadOnly(rpcUrl);
           setIsReadOnly(true);
           console.log('[DiamondProvider] Initialized in read-only mode');

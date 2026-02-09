@@ -20,7 +20,8 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 const DIAMOND_ADDRESS = '0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58';
 const RPC_URL =
   process.env.BASE_TEST_RPC_URL ||
-  'https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892';
+  process.env.NEXT_PUBLIC_RPC_URL_84532 ||
+  '';
 
 // Diamond interfaces
 const DIAMOND_LOUPE_ABI = [

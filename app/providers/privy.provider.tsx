@@ -65,11 +65,11 @@ interface PrivyProviderWrapperProps {
 export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
   const arbitrumOverride = addRpcUrlOverrideToChain(
     arbitrum,
-    'https://arbitrum-mainnet.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
+    process.env.NEXT_PUBLIC_RPC_URL_42161 || 'https://arb1.arbitrum.io/rpc',
   );
   const baseSepoliaOverride = addRpcUrlOverrideToChain(
     baseSepolia,
-    'https://base-sepolia.infura.io/v3/5ce3f0a2d7814e3c9da96f8e8ebf4d0c',
+    process.env.NEXT_PUBLIC_RPC_URL_84532 || 'https://sepolia.base.org',
   );
 
   return (
