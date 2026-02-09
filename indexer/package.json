@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "ponder dev",
-    "start": "ponder start",
-    "serve": "ponder serve",
+    "start": "DATABASE_SCHEMA=${DATABASE_SCHEMA:-public} ponder start",
+    "serve": "DATABASE_SCHEMA=${DATABASE_SCHEMA:-public} ponder serve",
     "codegen": "ponder codegen",
     "generate:indexer": "npx ts-node --esm ../scripts/generate-indexer.ts",
     "test": "vitest run",

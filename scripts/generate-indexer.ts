@@ -14,11 +14,15 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { keccak256, toBytes } from 'viem';
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ARTIFACTS_DIR = path.join(
   __dirname,
@@ -58,6 +62,10 @@ const EXTERNAL_CONTRACTS: Record<
     priority: 13,
   },
 };
+
+// Ponder currently enforces a maximum of 100 schema tables.
+// Exclude low-value admin domains to keep the generated schema within limit.
+const EXCLUDED_INDEXER_DOMAINS = new Set(['clob-admin']);
 
 // ============================================================================
 // TYPES
@@ -104,6 +112,10 @@ interface FacetInfo {
   events: EventInfo[];
   functions: AbiItem[];
   abi: AbiItem[];
+}
+
+function shouldIndexEvent(event: EventInfo): boolean {
+  return !EXCLUDED_INDEXER_DOMAINS.has(event.domain);
 }
 
 // ============================================================================
@@ -458,6 +470,7 @@ function generateSchema(facets: Map<string, FacetInfo>): void {
   // Pure Dumb Indexer: Only raw event tables, no aggregate tables
   for (const facet of facets.values()) {
     for (const event of facet.events) {
+      if (!shouldIndexEvent(event)) continue;
       if (seenSignatures.has(event.signatureHash)) continue;
       seenSignatures.add(event.signatureHash);
       eventTables.push(generateEventTable(event, facet.name));
@@ -697,6 +710,7 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
     const facet = facets.get(facetName)!;
 
     for (const event of facet.events) {
+      if (!shouldIndexEvent(event)) continue;
       // Check if we've seen this event name before
       const existing = processedEventNames.get(event.name);
 
@@ -883,6 +897,7 @@ function generateQueryTypes(facets: Map<string, FacetInfo>): void {
   // Collect all event tables
   for (const facet of facets.values()) {
     for (const event of facet.events) {
+      if (!shouldIndexEvent(event)) continue;
       if (seenSignatures.has(event.signatureHash)) continue;
       seenSignatures.add(event.signatureHash);
 

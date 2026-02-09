@@ -1,364 +1,364 @@
 // Auto-generated from OperatorFacet.sol - DO NOT EDIT
-// Generated at: 2026-02-04T23:17:32.243Z
+// Generated at: 2026-02-09T01:17:08.028Z
 
 export const OperatorFacetABI = [
   {
-    "inputs": [],
-    "name": "InsufficientCollateral",
-    "type": "error"
+    inputs: [],
+    name: 'InsufficientCollateral',
+    type: 'error',
   },
   {
-    "inputs": [],
-    "name": "InvalidAddress",
-    "type": "error"
+    inputs: [],
+    name: 'InvalidAddress',
+    type: 'error',
   },
   {
-    "inputs": [],
-    "name": "InvalidSlashAmount",
-    "type": "error"
+    inputs: [],
+    name: 'InvalidSlashAmount',
+    type: 'error',
   },
   {
-    "inputs": [],
-    "name": "NotContractOwner",
-    "type": "error"
+    inputs: [],
+    name: 'NotContractOwner',
+    type: 'error',
   },
   {
-    "inputs": [],
-    "name": "OperatorAlreadyApproved",
-    "type": "error"
+    inputs: [],
+    name: 'OperatorAlreadyApproved',
+    type: 'error',
   },
   {
-    "inputs": [],
-    "name": "OperatorNotApproved",
-    "type": "error"
+    inputs: [],
+    name: 'OperatorNotApproved',
+    type: 'error',
   },
   {
-    "inputs": [],
-    "name": "OpportunityNotFound",
-    "type": "error"
+    inputs: [],
+    name: 'OpportunityNotFound',
+    type: 'error',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
     ],
-    "name": "SafeERC20FailedOperation",
-    "type": "error"
+    name: 'SafeERC20FailedOperation',
+    type: 'error',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        indexed: true,
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "OperatorApproved",
-    "type": "event"
+    name: 'OperatorApproved',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
+        indexed: true,
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "oldReputation",
-        "type": "uint256"
+        indexed: false,
+        internalType: 'uint256',
+        name: 'oldReputation',
+        type: 'uint256',
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newReputation",
-        "type": "uint256"
-      }
+        indexed: false,
+        internalType: 'uint256',
+        name: 'newReputation',
+        type: 'uint256',
+      },
     ],
-    "name": "OperatorReputationUpdated",
-    "type": "event"
+    name: 'OperatorReputationUpdated',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        indexed: true,
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "OperatorRevoked",
-    "type": "event"
+    name: 'OperatorRevoked',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "opportunityId",
-        "type": "bytes32"
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'opportunityId',
+        type: 'bytes32',
       },
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
+        indexed: true,
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
       },
       {
-        "indexed": false,
-        "internalType": "address",
-        "name": "collateralToken",
-        "type": "address"
+        indexed: false,
+        internalType: 'address',
+        name: 'collateralToken',
+        type: 'address',
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "collateralTokenId",
-        "type": "uint256"
+        indexed: false,
+        internalType: 'uint256',
+        name: 'collateralTokenId',
+        type: 'uint256',
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
-    "name": "OperatorSlashed",
-    "type": "event"
+    name: 'OperatorSlashed',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
+        indexed: true,
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "successfulOps",
-        "type": "uint256"
+        indexed: false,
+        internalType: 'uint256',
+        name: 'successfulOps',
+        type: 'uint256',
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalValueProcessed",
-        "type": "uint256"
-      }
+        indexed: false,
+        internalType: 'uint256',
+        name: 'totalValueProcessed',
+        type: 'uint256',
+      },
     ],
-    "name": "OperatorStatsUpdated",
-    "type": "event"
+    name: 'OperatorStatsUpdated',
+    type: 'event',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "approveOperator",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'approveOperator',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "getOperatorReputation",
-    "outputs": [
+    name: 'getOperatorReputation',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "getOperatorStats",
-    "outputs": [
+    name: 'getOperatorStats',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "approved",
-        "type": "bool"
+        internalType: 'bool',
+        name: 'approved',
+        type: 'bool',
       },
       {
-        "internalType": "uint256",
-        "name": "reputation",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'reputation',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "successfulOps",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'successfulOps',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "totalValueProcessed",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: 'totalValueProcessed',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "getOperatorSuccessfulOps",
-    "outputs": [
+    name: 'getOperatorSuccessfulOps',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "getOperatorTotalValueProcessed",
-    "outputs": [
+    name: 'getOperatorTotalValueProcessed',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "isApprovedOperator",
-    "outputs": [
+    name: 'isApprovedOperator',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
     ],
-    "name": "revokeOperator",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'revokeOperator',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
       },
       {
-        "internalType": "uint256",
-        "name": "newReputation",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: 'newReputation',
+        type: 'uint256',
+      },
     ],
-    "name": "setOperatorReputation",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'setOperatorReputation',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "bytes32",
-        "name": "opportunityId",
-        "type": "bytes32"
+        internalType: 'bytes32',
+        name: 'opportunityId',
+        type: 'bytes32',
       },
       {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
     ],
-    "name": "slashOperator",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
+    name: 'slashOperator',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
 ] as const;
 
 export const OperatorFacetEvents = [
   {
-    "name": "OperatorApproved",
-    "signature": "OperatorApproved(address)",
-    "signatureHash": "0xf338da91"
+    name: 'OperatorApproved',
+    signature: 'OperatorApproved(address)',
+    signatureHash: '0xf338da91',
   },
   {
-    "name": "OperatorReputationUpdated",
-    "signature": "OperatorReputationUpdated(address,uint256,uint256)",
-    "signatureHash": "0x8320ad02"
+    name: 'OperatorReputationUpdated',
+    signature: 'OperatorReputationUpdated(address,uint256,uint256)',
+    signatureHash: '0x8320ad02',
   },
   {
-    "name": "OperatorRevoked",
-    "signature": "OperatorRevoked(address)",
-    "signatureHash": "0xa5f3b762"
+    name: 'OperatorRevoked',
+    signature: 'OperatorRevoked(address)',
+    signatureHash: '0xa5f3b762',
   },
   {
-    "name": "OperatorSlashed",
-    "signature": "OperatorSlashed(bytes32,address,address,uint256,uint256)",
-    "signatureHash": "0x90e68b2e"
+    name: 'OperatorSlashed',
+    signature: 'OperatorSlashed(bytes32,address,address,uint256,uint256)',
+    signatureHash: '0x90e68b2e',
   },
   {
-    "name": "OperatorStatsUpdated",
-    "signature": "OperatorStatsUpdated(address,uint256,uint256)",
-    "signatureHash": "0xd6d54f61"
-  }
+    name: 'OperatorStatsUpdated',
+    signature: 'OperatorStatsUpdated(address,uint256,uint256)',
+    signatureHash: '0xd6d54f61',
+  },
 ] as const;

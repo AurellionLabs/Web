@@ -8,6 +8,7 @@ module.exports = {
       env: {
         DATABASE_URL:
           'postgresql://postgres:aurellion_secure_2026@localhost:5432/ponder_indexer',
+        DATABASE_SCHEMA: 'public',
         NEXT_PUBLIC_DIAMOND_ADDRESS:
           '0x2516CAdb7b3d4E94094bC4580C271B8559902e3f',
         DIAMOND_DEPLOY_BLOCK: '35859031',

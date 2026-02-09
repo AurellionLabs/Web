@@ -8,5 +8,6 @@ export default {
     connectionString:
       process.env.DATABASE_URL ||
       'postgresql://postgres:aurellion_secure_2026@localhost:5432/ponder_indexer',
+    schema: process.env.DATABASE_SCHEMA || 'public',
   },
 };
