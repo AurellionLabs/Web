@@ -29,6 +29,9 @@ export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
 // For mainnet: Would use USDC (0x036CbD53842c5426634e7929541eC2318f3dCF7e on Base Sepolia)
 export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
 
+export const NEXT_PUBLIC_AUSYS_FACET_ADDRESS =
+  '0xBd2faC61f1B1f71438d412493A8D1A3769c613E5';
+
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)
 export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = 18; // Change to 6 for USDC in production

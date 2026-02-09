@@ -618,7 +618,7 @@ async function deployMode(
 
   // Handle Diamond facet installation if Diamond was deployed
   if (deployedContracts.Diamond && modeName.includes('diamond')) {
-    await installFacetsToDiamond(addresses, deployedContracts);
+    await installFacetsToDiamond(addresses, deployedContracts, mode.contracts);
   }
 
   // Post-deployment configuration
@@ -644,6 +644,7 @@ async function deployMode(
 async function installFacetsToDiamond(
   addresses: Record<string, string>,
   deployedContracts: Record<string, { address: string; blockNumber: number }>,
+  modeContracts: string[],
 ) {
   console.log('\n⚙️  Installing facets to Diamond...\n');
 
@@ -652,16 +653,18 @@ async function installFacetsToDiamond(
     addresses.Diamond,
   );
 
-  const facetsToInstall = [
-    'DiamondLoupeFacet',
-    'OwnershipFacet',
-    'NodesFacet',
-    'AssetsFacet',
-    'OrdersFacet',
-    'StakingFacet',
-    'BridgeFacet',
-    'CLOBFacet',
-  ];
+  // Derive facets to install from the deployment mode's contract list.
+  // This is the single source of truth - adding a facet to a deployment mode
+  // automatically includes it in the Diamond cut. No hardcoded lists to maintain.
+  // DiamondCutFacet is excluded because it's already added in the Diamond constructor.
+  const CONSTRUCTOR_FACETS = ['DiamondCutFacet'];
+  const facetsToInstall = modeContracts.filter(
+    (name) =>
+      CONTRACTS[name]?.category === 'facet' &&
+      !CONSTRUCTOR_FACETS.includes(name),
+  );
+
+  console.log(`   Facets to install: ${facetsToInstall.join(', ')}\n`);
 
   for (const facetName of facetsToInstall) {
     if (!addresses[facetName] || !FACET_SELECTORS[facetName]) continue;

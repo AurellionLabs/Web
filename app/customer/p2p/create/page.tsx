@@ -39,6 +39,7 @@ interface FormData {
   offerType: 'buy' | 'sell' | null;
   assetClass: string;
   tokenId: string;
+  selectedAttributes: Record<string, string>;
   quantity: string;
   price: string;
   expiryHours: string;
@@ -47,6 +48,16 @@ interface FormData {
   targetType: 'public' | 'targeted';
   targetAddress: string;
 }
+
+/** Format snake_case attribute names to Title Case */
+const formatAttributeName = (name: string): string => {
+  if (!name) return '';
+  return name
+    .split('_')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 
 /**
  * P2P Offer Creation Wizard
@@ -71,6 +82,7 @@ export default function CreateP2POfferPage() {
     offerType: null,
     assetClass: '',
     tokenId: '',
+    selectedAttributes: {},
     quantity: '',
     price: '',
     expiryHours: '24',
@@ -143,8 +155,21 @@ export default function CreateP2POfferPage() {
     switch (currentStep) {
       case 'type':
         return formData.offerType !== null;
-      case 'asset':
-        return formData.assetClass !== '' && formData.tokenId !== '';
+      case 'asset': {
+        if (formData.assetClass === '' || formData.tokenId === '') return false;
+        // Require all attributes with options to have a selected value
+        if (selectedAsset?.attributes) {
+          const selectableAttrs = selectedAsset.attributes.filter(
+            (a) => Array.isArray(a.values) && a.values.length > 0,
+          );
+          if (selectableAttrs.length > 0) {
+            return selectableAttrs.every(
+              (a) => !!formData.selectedAttributes[a.name],
+            );
+          }
+        }
+        return true;
+      }
       case 'details':
         return (
           formData.quantity !== '' &&
@@ -212,7 +237,9 @@ export default function CreateP2POfferPage() {
         expiresAt,
       });
 
-      router.push('/customer/p2p');
+      // Brief delay to allow RPC state propagation before navigating
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      router.push('/customer/p2p?created=true');
     } catch (err) {
       console.error('Error creating offer:', err);
       setError(err instanceof Error ? err.message : 'Failed to create offer');
@@ -337,7 +364,11 @@ export default function CreateP2POfferPage() {
                 <select
                   value={formData.assetClass}
                   onChange={(e) =>
-                    updateFormData({ assetClass: e.target.value, tokenId: '' })
+                    updateFormData({
+                      assetClass: e.target.value,
+                      tokenId: '',
+                      selectedAttributes: {},
+                    })
                   }
                   className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
                 >
@@ -372,7 +403,10 @@ export default function CreateP2POfferPage() {
                   <select
                     value={formData.tokenId}
                     onChange={(e) =>
-                      updateFormData({ tokenId: e.target.value })
+                      updateFormData({
+                        tokenId: e.target.value,
+                        selectedAttributes: {},
+                      })
                     }
                     className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
                   >
@@ -393,6 +427,66 @@ export default function CreateP2POfferPage() {
                   </p>
                 )}
               </div>
+
+              {/* Attribute Selection */}
+              {selectedAsset &&
+                selectedAsset.attributes &&
+                selectedAsset.attributes.length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-glass-border">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-1">
+                        Specify Details
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Select the specific attributes for this asset
+                      </p>
+                    </div>
+                    {selectedAsset.attributes.map((attribute) => {
+                      const hasOptions =
+                        Array.isArray(attribute.values) &&
+                        attribute.values.length > 0;
+                      if (!hasOptions) return null;
+                      return (
+                        <div key={attribute.name}>
+                          <label className="block text-sm font-medium text-foreground mb-2">
+                            {formatAttributeName(attribute.name)}
+                          </label>
+                          <select
+                            value={
+                              formData.selectedAttributes[attribute.name] || ''
+                            }
+                            onChange={(e) =>
+                              updateFormData({
+                                selectedAttributes: {
+                                  ...formData.selectedAttributes,
+                                  [attribute.name]: e.target.value,
+                                },
+                              })
+                            }
+                            className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
+                          >
+                            <option value="">
+                              Select{' '}
+                              {formatAttributeName(
+                                attribute.name,
+                              ).toLowerCase()}
+                            </option>
+                            {attribute.values.map((val) => (
+                              <option key={val} value={val}>
+                                {val}
+                              </option>
+                            ))}
+                          </select>
+                          {attribute.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {attribute.description}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
             </div>
           </div>
         );
@@ -708,16 +802,38 @@ export default function CreateP2POfferPage() {
                 </div>
 
                 {/* Asset */}
-                <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Asset</span>
-                  <div className="text-right">
-                    <span className="text-foreground font-medium block">
-                      {selectedAsset?.name || formData.assetClass}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Token ID: {formData.tokenId}
-                    </span>
+                <div className="py-3 border-b border-glass-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Asset</span>
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-foreground font-medium">
+                        {selectedAsset?.name || formData.assetClass}
+                      </span>
+                      {formData.assetClass && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
+                          {formData.assetClass}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  {/* Selected Attributes */}
+                  {Object.keys(formData.selectedAttributes).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2 justify-end">
+                      {Object.entries(formData.selectedAttributes).map(
+                        ([name, value]) => (
+                          <span
+                            key={name}
+                            className="px-2 py-1 rounded-md text-xs bg-neutral-700/60 text-neutral-200"
+                          >
+                            {formatAttributeName(name)}: {value}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1 text-right">
+                    Token ID: {formData.tokenId}
+                  </p>
                 </div>
 
                 {/* Quantity */}

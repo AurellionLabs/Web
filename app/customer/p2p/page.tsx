@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useDiamond } from '@/app/providers/diamond.provider';
+import { usePlatform } from '@/app/providers/platform.provider';
 import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/app/components/ui/status-badge';
+import type { Asset } from '@/domain/shared';
 import {
   GlassCard,
   GlassCardHeader,
@@ -47,10 +49,16 @@ export default function P2PPage() {
     p2pService,
     initialized: diamondInitialized,
   } = useDiamond();
+  const { getAssetByTokenId } = usePlatform();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // State
   const [activeTab, setActiveTab] = useState<'all' | 'my'>('all');
+  const [assetMetadataMap, setAssetMetadataMap] = useState<Map<string, Asset>>(
+    new Map(),
+  );
   const [filterType, setFilterType] = useState<'all' | 'buy' | 'sell'>('all');
   const [offers, setOffers] = useState<P2POffer[]>([]);
   const [myOffers, setMyOffers] = useState<P2POffer[]>([]);
@@ -87,6 +95,65 @@ export default function P2PPage() {
   useEffect(() => {
     loadOffers();
   }, [loadOffers]);
+
+  // Resolve asset metadata for all unique tokenIds from loaded offers
+  useEffect(() => {
+    const allOffers = [...offers, ...myOffers];
+    const uniqueTokenIds = [
+      ...new Set(allOffers.map((o) => o.tokenId).filter(Boolean)),
+    ];
+    // Only resolve tokenIds we don't already have
+    const unresolvedIds = uniqueTokenIds.filter(
+      (id) => !assetMetadataMap.has(id),
+    );
+    if (unresolvedIds.length === 0) return;
+
+    let cancelled = false;
+    const resolveMetadata = async () => {
+      const results = await Promise.allSettled(
+        unresolvedIds.map((id) => getAssetByTokenId(id)),
+      );
+      if (cancelled) return;
+      setAssetMetadataMap((prev) => {
+        const next = new Map(prev);
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled' && result.value) {
+            next.set(unresolvedIds[idx], result.value);
+          }
+        });
+        return next;
+      });
+    };
+    resolveMetadata();
+    return () => {
+      cancelled = true;
+    };
+  }, [offers, myOffers, getAssetByTokenId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-retry after returning from offer creation
+  // RPC nodes may have slight read-after-write delay
+  useEffect(() => {
+    if (searchParams.get('created') === 'true') {
+      // Clear the query param from URL without navigation
+      router.replace('/customer/p2p', { scroll: false });
+
+      // Retry loading a few times to catch the new offer
+      const retryDelays = [2000, 4000, 8000];
+      retryDelays.forEach((delay) => {
+        const timer = setTimeout(() => {
+          loadOffers();
+        }, delay);
+        // Store last timer for cleanup
+        retryTimerRef.current = timer;
+      });
+
+      return () => {
+        if (retryTimerRef.current) {
+          clearTimeout(retryTimerRef.current);
+        }
+      };
+    }
+  }, [searchParams, loadOffers, router]);
 
   // Refresh offers
   const handleRefresh = useCallback(async () => {
@@ -174,6 +241,7 @@ export default function P2PPage() {
   const renderOfferCard = (offer: P2POffer) => {
     const isMine = isMyOffer(offer);
     const isProcessing = processingOfferId === offer.id;
+    const assetMeta = assetMetadataMap.get(offer.tokenId);
 
     return (
       <GlassCard key={offer.id} className="relative overflow-hidden">
@@ -196,14 +264,49 @@ export default function P2PPage() {
             ) : (
               <ShoppingCart className="w-4 h-4 text-blue-400" />
             )}
-            Token #{offer.tokenId}
+            {assetMeta ? (
+              <>
+                {assetMeta.name}
+                {assetMeta.assetClass && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
+                    {assetMeta.assetClass}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="inline-block h-5 w-24 bg-neutral-700/50 rounded animate-pulse" />
+            )}
           </GlassCardTitle>
           <GlassCardDescription className="text-xs">
-            {truncateAddress(offer.token)}
+            {assetMeta
+              ? `Token ID: ${offer.tokenId.slice(0, 10)}...${offer.tokenId.slice(-6)}`
+              : truncateAddress(offer.token)}
           </GlassCardDescription>
         </GlassCardHeader>
 
         <div className="px-6 pb-6 space-y-4">
+          {/* Asset Attributes */}
+          {assetMeta?.attributes && assetMeta.attributes.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {assetMeta.attributes.map((attr) => (
+                <span
+                  key={attr.name}
+                  className="px-2 py-0.5 rounded-md text-xs bg-neutral-700/60 text-neutral-200"
+                >
+                  {attr.name
+                    .split('_')
+                    .filter(Boolean)
+                    .map(
+                      (w) =>
+                        w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+                    )
+                    .join(' ')}
+                  : {attr.values.length > 0 ? attr.values.join(', ') : 'N/A'}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Quantity and Price */}
           <div className="grid grid-cols-2 gap-4">
             <div>

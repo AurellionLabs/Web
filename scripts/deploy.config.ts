@@ -486,6 +486,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'OperatorFacet',
       'BridgeFacet',
       'CLOBFacet',
+      'AuSysFacet',
       'Diamond',
     ],
   },
@@ -508,6 +509,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'BridgeFacet',
       'CLOBFacet',
       'OrderRouterFacet',
+      'AuSysFacet',
       'Diamond',
     ],
   },
@@ -556,6 +558,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'OperatorFacet',
       'BridgeFacet',
       'CLOBFacet',
+      'AuSysFacet',
       'Diamond',
       // Standalone
       'OrderBridge',
