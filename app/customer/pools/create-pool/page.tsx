@@ -143,10 +143,10 @@ const formSchema = z.object({
   rewardRate: z.string().refine(
     (val) => {
       const num = parseFloat(val);
-      return !isNaN(num) && num >= 1 && num <= 100;
+      return !isNaN(num) && num >= 1 && num <= 50;
     },
     {
-      message: 'Reward rate must be between 1 and 100.',
+      message: 'Reward rate must be between 1 and 50%.',
     },
   ),
   assetPrice: z.string().refine(
@@ -814,8 +814,13 @@ export default function CreatePoolPage() {
                             </p>
                             {!isInsured && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                20% of ({fundingGoal || '0'} ×{' '}
-                                {minSalePrice || '0'})
+                                20% of ({fundingGoal || '0'} × $
+                                {minSalePrice || '0'} = $
+                                {(
+                                  parseFloat(fundingGoal || '0') *
+                                  parseFloat(minSalePrice || '0')
+                                ).toLocaleString()}
+                                )
                               </p>
                             )}
                             {isInsured &&
@@ -893,32 +898,6 @@ export default function CreatePoolPage() {
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="collateralAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-muted-foreground">
-                        Collateral Amount
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="any"
-                          min="0"
-                          placeholder="e.g., 1000"
-                          className="bg-surface-overlay border-glass-border"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-muted-foreground/70">
-                        Operator collateral amount (in input token)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               {/* Insurance Section */}

@@ -67,7 +67,7 @@ export class PoolService implements IPoolService {
           0, // expectedOutputAmount - not known at creation
           BigInt(data.rewardRate), // promisedYieldBps
           BigInt(data.operatorFeeBps || 500), // operatorFeeBps - default 5%
-          ethers.parseEther(data.minSalePrice), // Convert to wei (18 decimals)
+          BigInt(data.minSalePrice), // minSalePrice in USD (no 18 decimals)
           BigInt(data.durationDays), // fundingDays
           BigInt(data.processingDays || data.durationDays), // processingDays - defaults to duration
           data.tokenAddress, // collateralToken - defaults to input token

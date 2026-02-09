@@ -37,6 +37,7 @@ const CONTRACTS_TO_EXTRACT: Record<string, string> = {
   DiamondLoupeFacet:
     'diamond/facets/DiamondLoupeFacet.sol/DiamondLoupeFacet.json',
   OwnershipFacet: 'diamond/facets/OwnershipFacet.sol/OwnershipFacet.json',
+  RWYStakingFacet: 'diamond/facets/RWYStakingFacet.sol/RWYStakingFacet.json',
 };
 
 async function extractAbis(): Promise<void> {
