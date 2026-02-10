@@ -130,12 +130,35 @@ export class PlatformRepository implements IPlatformRepository {
     tokenId: string,
   ): Promise<string | null> {
     try {
-      const list = await this.pinata.files.public
+      // Try with both token + tokenId first (most specific)
+      let list = await this.pinata.files.public
         .list()
         .keyvalues({ token: token, tokenId: tokenId })
         .all();
-      if (!list || list.length === 0) return null;
-      return list[0].cid;
+      if (list && list.length > 0) return list[0].cid;
+
+      // Fallback: query by tokenId only (upload scripts may not set 'token' keyvalue)
+      list = await this.pinata.files.public
+        .list()
+        .keyvalues({ tokenId: tokenId })
+        .all();
+      if (list && list.length > 0) return list[0].cid;
+
+      // Fallback: try decimal conversion in case formats differ
+      try {
+        const tokenIdDecimal = BigInt(tokenId).toString(10);
+        if (tokenIdDecimal !== tokenId) {
+          list = await this.pinata.files.public
+            .list()
+            .keyvalues({ tokenId: tokenIdDecimal })
+            .all();
+          if (list && list.length > 0) return list[0].cid;
+        }
+      } catch {
+        // tokenId wasn't convertible to BigInt, skip
+      }
+
+      return null;
     } catch {
       return null;
     }
@@ -385,18 +408,43 @@ export class PlatformRepository implements IPlatformRepository {
     }
   }
   /**
-   * Lookup an asset JSON via Pinata keyvalues using the stored tokenId (decimal string)
+   * Lookup an asset JSON via Pinata keyvalues using the stored tokenId.
+   * Tries multiple formats (raw string, decimal, hex) to handle inconsistent keyvalue storage.
    */
   async getAssetByTokenId(
     tokenId: string | number | bigint,
   ): Promise<Asset | null> {
     try {
-      const tokenIdDecimal = BigInt(tokenId).toString(10);
-      const list = await this.pinata.files.public
-        .list()
-        .keyvalues({ tokenId: tokenIdDecimal })
-        .all();
-      if (!list || list.length === 0) return null;
+      const tokenIdStr = String(tokenId);
+
+      // Build list of candidate formats to try
+      const candidates: string[] = [tokenIdStr];
+      try {
+        const asBigInt = BigInt(tokenId);
+        const decimal = asBigInt.toString(10);
+        const hex = '0x' + asBigInt.toString(16);
+        if (!candidates.includes(decimal)) candidates.push(decimal);
+        if (!candidates.includes(hex)) candidates.push(hex);
+      } catch {
+        // Not a valid BigInt, skip alternative formats
+      }
+
+      let list: any[] | null = null;
+      for (const candidate of candidates) {
+        list = await this.pinata.files.public
+          .list()
+          .keyvalues({ tokenId: candidate })
+          .all();
+        if (list && list.length > 0) break;
+      }
+
+      if (!list || list.length === 0) {
+        console.warn(
+          '[PlatformRepository] getAssetByTokenId: no Pinata files found for any format:',
+          candidates,
+        );
+        return null;
+      }
       const cid = list[0].cid;
       const { data } = await this.pinata.gateways.public.get(`${cid}`);
       const json = typeof data === 'string' ? JSON.parse(data) : data;

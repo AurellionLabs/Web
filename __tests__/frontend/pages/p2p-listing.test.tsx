@@ -68,6 +68,7 @@ vi.mock('@/app/providers/diamond.provider', () => ({
 vi.mock('@/app/providers/platform.provider', () => ({
   usePlatform: () => ({
     getAssetByTokenId: mockGetAssetByTokenId,
+    supportedAssets: [],
   }),
 }));
 

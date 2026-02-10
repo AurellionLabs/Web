@@ -49,7 +49,7 @@ export default function P2PPage() {
     p2pService,
     initialized: diamondInitialized,
   } = useDiamond();
-  const { getAssetByTokenId } = usePlatform();
+  const { getAssetByTokenId, supportedAssets } = usePlatform();
   const router = useRouter();
   const searchParams = useSearchParams();
   const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -96,7 +96,8 @@ export default function P2PPage() {
     loadOffers();
   }, [loadOffers]);
 
-  // Resolve asset metadata for all unique tokenIds from loaded offers
+  // Resolve asset metadata for all unique tokenIds from loaded offers.
+  // First check already-loaded supportedAssets (instant, no network), then fall back to Pinata.
   useEffect(() => {
     const allOffers = [...offers, ...myOffers];
     const uniqueTokenIds = [
@@ -110,17 +111,72 @@ export default function P2PPage() {
 
     console.log('[P2P] Resolving metadata for tokenIds:', unresolvedIds);
 
+    // Step 1: Try to resolve from already-loaded supportedAssets (instant, no Pinata call)
+    const locallyResolved = new Map<string, Asset>();
+    const stillUnresolved: string[] = [];
+
+    for (const id of unresolvedIds) {
+      // Compare as BigInt to handle format differences (hex vs decimal)
+      let idBigInt: bigint | null = null;
+      try {
+        idBigInt = BigInt(id);
+      } catch {
+        // Not a valid BigInt
+      }
+
+      const match = supportedAssets.find((a) => {
+        if (a.tokenId === id) return true;
+        if (idBigInt !== null) {
+          try {
+            return BigInt(a.tokenId) === idBigInt;
+          } catch {
+            return false;
+          }
+        }
+        return false;
+      });
+
+      if (match && match.name) {
+        locallyResolved.set(id, match);
+      } else {
+        stillUnresolved.push(id);
+      }
+    }
+
+    // Apply locally resolved immediately
+    if (locallyResolved.size > 0) {
+      console.log(
+        '[P2P] Resolved',
+        locallyResolved.size,
+        'assets from local supportedAssets cache',
+      );
+      setAssetMetadataMap((prev) => {
+        const next = new Map(prev);
+        locallyResolved.forEach((asset, id) => next.set(id, asset));
+        return next;
+      });
+    }
+
+    // Step 2: For remaining unresolved, query Pinata
+    if (stillUnresolved.length === 0) return;
+    console.log(
+      '[P2P] Querying Pinata for',
+      stillUnresolved.length,
+      'remaining tokenIds:',
+      stillUnresolved,
+    );
+
     let cancelled = false;
     const resolveMetadata = async () => {
       const results = await Promise.allSettled(
-        unresolvedIds.map((id) => getAssetByTokenId(id)),
+        stillUnresolved.map((id) => getAssetByTokenId(id)),
       );
       if (cancelled) return;
 
       console.log(
-        '[P2P] Metadata resolution results:',
+        '[P2P] Pinata resolution results:',
         results.map((r, i) => ({
-          tokenId: unresolvedIds[i],
+          tokenId: stillUnresolved[i],
           status: r.status,
           value:
             r.status === 'fulfilled'
@@ -133,7 +189,7 @@ export default function P2PPage() {
         const next = new Map(prev);
         results.forEach((result, idx) => {
           if (result.status === 'fulfilled' && result.value) {
-            next.set(unresolvedIds[idx], result.value);
+            next.set(stillUnresolved[idx], result.value);
           }
         });
         return next;
@@ -143,7 +199,7 @@ export default function P2PPage() {
     return () => {
       cancelled = true;
     };
-  }, [offers, myOffers, getAssetByTokenId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [offers, myOffers, getAssetByTokenId, supportedAssets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-retry after returning from offer creation
   // RPC nodes may have slight read-after-write delay
