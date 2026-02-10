@@ -31,6 +31,9 @@ import {
   AggregatedJourney,
   AggregatedUnifiedOrder,
   BaseEvent,
+  P2POfferCreatedEvent,
+  P2POfferAcceptedEvent,
+  P2PMarketStats,
 } from './indexer-types';
 import { Node, NodeLocation, NodeAsset } from '@/domain/node';
 import { Order, OrderStatus } from '@/domain/orders/order';
@@ -635,4 +638,77 @@ export function findOrderById(
 ): AggregatedOrder | undefined {
   const orderIdLower = orderId.toLowerCase();
   return orders.find((o) => o.orderId.toLowerCase() === orderIdLower);
+}
+
+// ============================================================================
+// P2P Aggregation
+// ============================================================================
+
+// Re-export P2P types for consumers
+export type { P2POfferCreatedEvent, P2POfferAcceptedEvent, P2PMarketStats };
+
+/**
+ * Aggregate P2P market statistics from raw indexer events.
+ *
+ * Computes:
+ * - totalVolume: sum of (price * quantity) for accepted offers
+ * - tradeCount: number of unique accepted offers
+ * - openOfferCount: created offers minus accepted ones
+ * - volumeByTokenId: per-token volume breakdown
+ *
+ * @param createdEvents - Raw P2POfferCreated events
+ * @param acceptedEvents - Raw P2POfferAccepted events
+ * @returns Aggregated market statistics
+ */
+export function aggregateP2PMarketStats(
+  createdEvents: P2POfferCreatedEvent[],
+  acceptedEvents: P2POfferAcceptedEvent[],
+): P2PMarketStats {
+  // Index created events by order_id for O(1) lookup
+  const createdByOrderId = new Map<string, P2POfferCreatedEvent>();
+  for (const evt of createdEvents) {
+    createdByOrderId.set(evt.order_id, evt);
+  }
+
+  // Deduplicate accepted events by order_id
+  const acceptedOrderIds = new Set<string>();
+  for (const evt of acceptedEvents) {
+    acceptedOrderIds.add(evt.order_id);
+  }
+
+  // Calculate volume from accepted offers only
+  let totalVolume = 0n;
+  let tradeCount = 0;
+  const volumeByTokenId: Record<string, bigint> = {};
+
+  for (const orderId of acceptedOrderIds) {
+    const created = createdByOrderId.get(orderId);
+    if (!created) continue; // Orphan accepted event, skip
+
+    const price = BigInt(created.price);
+    const quantity = BigInt(created.token_quantity);
+    const volume = price * quantity;
+
+    totalVolume += volume;
+    tradeCount++;
+
+    const tokenId = created.token_id;
+    volumeByTokenId[tokenId] = (volumeByTokenId[tokenId] || 0n) + volume;
+  }
+
+  // Open offers = created - accepted
+  const openOfferCount = createdEvents.length - acceptedOrderIds.size;
+
+  // Convert bigint values to strings for JSON serialization
+  const volumeByTokenIdStr: Record<string, string> = {};
+  for (const [tokenId, vol] of Object.entries(volumeByTokenId)) {
+    volumeByTokenIdStr[tokenId] = vol.toString();
+  }
+
+  return {
+    totalVolume: totalVolume.toString(),
+    tradeCount,
+    openOfferCount: Math.max(0, openOfferCount),
+    volumeByTokenId: volumeByTokenIdStr,
+  };
 }

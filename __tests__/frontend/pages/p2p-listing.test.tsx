@@ -1,21 +1,16 @@
 /**
- * P2P Listing Page Tests
+ * P2P Markets Page Tests (updated)
  *
- * Tests the P2P offer listing page, focusing on:
- * - Metadata resolution (the main bug: offers showed token address instead of name)
- * - Offer card rendering with asset name, class badge, and attributes
- * - Shimmer loading states before metadata resolves
- * - Filter behavior (buy/sell/all)
- * - Empty state ("No Open Offers")
+ * Tests the market selection grid page. The old flat-listing page has
+ * been moved to /customer/p2p/market/[className]/page.tsx.
+ * This file now tests the market grid entry point.
  */
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { P2POffer, P2POfferStatus } from '@/domain/p2p';
-import { Asset } from '@/domain/shared';
 
 // ===========================================================================
-// MODULE MOCKS - must be before imports of the component
+// MODULE MOCKS
 // ===========================================================================
 
 const mockPush = vi.fn();
@@ -27,103 +22,74 @@ vi.mock('next/navigation', () => ({
     push: mockPush,
     replace: mockReplace,
     back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
   }),
   useSearchParams: () => mockSearchParams,
-  usePathname: () => '/customer/p2p',
 }));
 
-// Mock providers
 const mockSetCurrentUserRole = vi.fn();
-const mockGetOpenOffers = vi.fn();
-const mockGetUserOffers = vi.fn();
-const mockGetAssetByTokenId = vi.fn();
-const mockAcceptOffer = vi.fn();
-const mockCancelOffer = vi.fn();
-
 vi.mock('@/app/providers/main.provider', () => ({
   useMainProvider: () => ({
     setCurrentUserRole: mockSetCurrentUserRole,
     connected: true,
-    currentUserRole: 'customer',
-  }),
-}));
-
-vi.mock('@/app/providers/diamond.provider', () => ({
-  useDiamond: () => ({
-    p2pRepository: {
-      getOpenOffers: mockGetOpenOffers,
-      getUserOffers: mockGetUserOffers,
-    },
-    p2pService: {
-      acceptOffer: mockAcceptOffer,
-      cancelOffer: mockCancelOffer,
-    },
-    initialized: true,
   }),
 }));
 
 vi.mock('@/app/providers/platform.provider', () => ({
   usePlatform: () => ({
-    getAssetByTokenId: mockGetAssetByTokenId,
+    assetClasses: [
+      {
+        name: 'GOAT',
+        assetTypeCount: 3,
+        assetCount: 50,
+        totalVolume: '0',
+        p2pVolume: '10000000000000000000', // 10 USD
+        p2pTradeCount: 5,
+        p2pOpenOfferCount: 3,
+        isActive: true,
+      },
+      {
+        name: 'SHEEP',
+        assetTypeCount: 1,
+        assetCount: 20,
+        totalVolume: '0',
+        p2pVolume: '0',
+        p2pTradeCount: 0,
+        p2pOpenOfferCount: 0,
+        isActive: true,
+      },
+    ],
+    supportedAssetClasses: ['GOAT', 'SHEEP'],
     supportedAssets: [],
+    isLoading: false,
   }),
 }));
 
 vi.mock('@/hooks/useWallet', () => ({
   useWallet: () => ({
     address: '0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF',
-    connectedWallet: { address: '0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF' },
-    isConnecting: false,
   }),
 }));
 
-// Mock lucide-react icons to simple spans
-vi.mock('lucide-react', () => ({
-  RefreshCw: (props: any) => <span data-testid="icon-refresh" {...props} />,
-  Plus: (props: any) => <span data-testid="icon-plus" {...props} />,
-  ShoppingCart: (props: any) => <span data-testid="icon-cart" {...props} />,
-  Tag: (props: any) => <span data-testid="icon-tag" {...props} />,
-  Clock: (props: any) => <span data-testid="icon-clock" {...props} />,
-  User: (props: any) => <span data-testid="icon-user" {...props} />,
-  X: (props: any) => <span data-testid="icon-x" {...props} />,
-  ArrowRight: (props: any) => <span data-testid="icon-arrow" {...props} />,
-  Filter: (props: any) => <span data-testid="icon-filter" {...props} />,
-}));
-
-// Mock UI components to simple divs for testability
-vi.mock('@/app/components/ui/glass-card', () => ({
-  GlassCard: ({ children, ...props }: any) => (
-    <div data-testid="glass-card" {...props}>
-      {children}
-    </div>
-  ),
-  GlassCardHeader: ({ children, ...props }: any) => (
-    <div {...props}>{children}</div>
-  ),
-  GlassCardTitle: ({ children, ...props }: any) => (
-    <h3 data-testid="card-title" {...props}>
-      {children}
-    </h3>
-  ),
-  GlassCardDescription: ({ children, ...props }: any) => (
-    <p data-testid="card-desc" {...props}>
-      {children}
-    </p>
-  ),
-}));
+// Mock lucide-react icons
+vi.mock('lucide-react', () => {
+  const icon = (name: string) => (props: any) => (
+    <span data-testid={`icon-${name}`} {...props} />
+  );
+  return {
+    Plus: icon('plus'),
+    TrendingUp: icon('trending-up'),
+    Package: icon('package'),
+    BarChart3: icon('bar-chart'),
+    Handshake: icon('handshake'),
+    Activity: icon('activity'),
+  };
+});
 
 vi.mock('@/app/components/ui/glow-button', () => ({
-  GlowButton: ({ children, ...props }: any) => (
-    <button {...props}>{children}</button>
-  ),
-}));
-
-vi.mock('@/app/components/ui/status-badge', () => ({
-  StatusBadge: ({ status }: any) => (
-    <span data-testid="status-badge">{status}</span>
+  GlowButton: ({ children, onClick, disabled, ...props }: any) => (
+    <button onClick={onClick} disabled={disabled} {...props}>
+      {children}
+    </button>
   ),
 }));
 
@@ -131,215 +97,86 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }));
 
-// Import component AFTER mocks
 import P2PPage from '@/app/customer/p2p/page';
-
-// ===========================================================================
-// TEST DATA
-// ===========================================================================
-
-const TOKEN = '0xb3090aBF81918FF50e921b166126aD6AB9a03944';
-const TOKEN_ID_1 =
-  '81712389712389712389712389712389712389712389712389712389712389';
-const TOKEN_ID_2 = '99999888877776666555544443333222211110000';
-
-function makeOffer(overrides: Partial<P2POffer> = {}): P2POffer {
-  return {
-    id: '0x' + Math.random().toString(16).slice(2),
-    creator: '0xABCD1234567890ABCD1234567890ABCD12345678',
-    targetCounterparty: null,
-    token: TOKEN,
-    tokenId: TOKEN_ID_1,
-    quantity: BigInt(100000),
-    price: BigInt('10000000000000000000'),
-    txFee: BigInt(0),
-    isSellerInitiated: true,
-    status: 'Open' as P2POfferStatus,
-    buyer: '0x0000000000000000000000000000000000000000',
-    seller: '0xABCD1234567890ABCD1234567890ABCD12345678',
-    createdAt: Math.floor(Date.now() / 1000) - 3600,
-    expiresAt: Math.floor(Date.now() / 1000) + 86400,
-    locationData: '',
-    nodes: [],
-    ...overrides,
-  };
-}
-
-const GOAT_ASSET: Asset = {
-  assetClass: 'GOAT',
-  tokenId: TOKEN_ID_1,
-  name: 'AUGOAT',
-  attributes: [
-    { name: 'weight', values: ['S', 'M', 'L'], description: 'Weight class' },
-    { name: 'sex', values: ['M', 'F'], description: 'Animal sex' },
-  ],
-};
 
 // ===========================================================================
 // TESTS
 // ===========================================================================
 
-describe('P2P Listing Page', () => {
+describe('P2P Markets Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetOpenOffers.mockResolvedValue([]);
-    mockGetUserOffers.mockResolvedValue([]);
-    mockGetAssetByTokenId.mockResolvedValue(null);
   });
 
-  describe('empty state', () => {
-    it('should show "No Open Offers" when no offers exist', async () => {
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/no open offers/i)).toBeInTheDocument();
-      });
-    });
+  it('should render the P2P Trading heading', () => {
+    render(<P2PPage />);
+    expect(screen.getByText(/P2P Trading/i)).toBeInTheDocument();
   });
 
-  describe('offer rendering', () => {
-    it('should render offer cards with SELL badge', async () => {
-      const offer = makeOffer({ isSellerInitiated: true });
-      mockGetOpenOffers.mockResolvedValue([offer]);
-
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText('SELL')).toBeInTheDocument();
-      });
-    });
-
-    it('should render offer cards with BUY badge', async () => {
-      const offer = makeOffer({ isSellerInitiated: false });
-      mockGetOpenOffers.mockResolvedValue([offer]);
-
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText('BUY')).toBeInTheDocument();
-      });
-    });
-
-    it('should show shimmer while metadata is loading', async () => {
-      const offer = makeOffer();
-      mockGetOpenOffers.mockResolvedValue([offer]);
-      // getAssetByTokenId never resolves (simulates loading)
-      mockGetAssetByTokenId.mockReturnValue(new Promise(() => {}));
-
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        // Shimmer placeholder should be visible
-        const shimmer = document.querySelector('.animate-pulse');
-        expect(shimmer).toBeInTheDocument();
-      });
-    });
-
-    it('should display asset name and class after metadata resolves', async () => {
-      const offer = makeOffer({ tokenId: TOKEN_ID_1 });
-      mockGetOpenOffers.mockResolvedValue([offer]);
-      mockGetAssetByTokenId.mockResolvedValue(GOAT_ASSET);
-
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText('AUGOAT')).toBeInTheDocument();
-        expect(screen.getByText('GOAT')).toBeInTheDocument();
-      });
-    });
-
-    it('should display asset attributes as pills', async () => {
-      const offer = makeOffer({ tokenId: TOKEN_ID_1 });
-      mockGetOpenOffers.mockResolvedValue([offer]);
-      mockGetAssetByTokenId.mockResolvedValue(GOAT_ASSET);
-
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        // Attributes should render with formatted names
-        expect(screen.getByText(/Weight/)).toBeInTheDocument();
-        expect(screen.getByText(/Sex/)).toBeInTheDocument();
-      });
-    });
-
-    it('should show truncated token ID after metadata resolves', async () => {
-      const offer = makeOffer({ tokenId: TOKEN_ID_1 });
-      mockGetOpenOffers.mockResolvedValue([offer]);
-      mockGetAssetByTokenId.mockResolvedValue(GOAT_ASSET);
-
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        // Should show "Token ID: XXXX...YYYY" format
-        const desc = screen.getByText(/Token ID:/);
-        expect(desc).toBeInTheDocument();
-      });
-    });
+  it('should set user role to customer', () => {
+    render(<P2PPage />);
+    expect(mockSetCurrentUserRole).toHaveBeenCalledWith('customer');
   });
 
-  describe('metadata resolution', () => {
-    it('should call getAssetByTokenId for each unique tokenId', async () => {
-      const offer1 = makeOffer({ tokenId: TOKEN_ID_1 });
-      const offer2 = makeOffer({ tokenId: TOKEN_ID_2 });
-      mockGetOpenOffers.mockResolvedValue([offer1, offer2]);
-      mockGetAssetByTokenId.mockResolvedValue(null);
-
-      render(<P2PPage />);
-
-      await waitFor(() => {
-        expect(mockGetAssetByTokenId).toHaveBeenCalledWith(TOKEN_ID_1);
-        expect(mockGetAssetByTokenId).toHaveBeenCalledWith(TOKEN_ID_2);
-      });
-    });
-
-    it('should NOT re-resolve already resolved tokenIds', async () => {
-      const offer = makeOffer({ tokenId: TOKEN_ID_1 });
-      mockGetOpenOffers.mockResolvedValue([offer]);
-      mockGetAssetByTokenId.mockResolvedValue(GOAT_ASSET);
-
-      const { rerender } = render(<P2PPage />);
-
-      await waitFor(() => {
-        expect(mockGetAssetByTokenId).toHaveBeenCalledTimes(1);
-      });
-
-      // Rerender shouldn't trigger another resolve
-      rerender(<P2PPage />);
-
-      // Should still only have been called once total
-      // (The de-duplication happens because unresolvedIds filters out already-cached)
-      await waitFor(() => {
-        expect(mockGetAssetByTokenId).toHaveBeenCalledTimes(1);
-      });
-    });
-
-    it('should gracefully handle metadata resolution failure', async () => {
-      const offer = makeOffer({ tokenId: TOKEN_ID_1 });
-      mockGetOpenOffers.mockResolvedValue([offer]);
-      mockGetAssetByTokenId.mockRejectedValue(new Error('Pinata down'));
-
-      render(<P2PPage />);
-
-      // Should NOT crash; should still show the card with fallback
-      await waitFor(() => {
-        expect(screen.getByTestId('glass-card')).toBeInTheDocument();
-      });
-    });
+  it('should show market cards for each asset class', () => {
+    render(<P2PPage />);
+    expect(screen.getByText('GOAT')).toBeInTheDocument();
+    expect(screen.getByText('SHEEP')).toBeInTheDocument();
   });
 
-  describe('loading and connection states', () => {
-    it('should call p2pRepository.getOpenOffers on mount', async () => {
-      render(<P2PPage />);
+  it('should display open offer count per market', () => {
+    render(<P2PPage />);
+    // GOAT has 3 open offers
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
 
-      await waitFor(() => {
-        expect(mockGetOpenOffers).toHaveBeenCalled();
-      });
-    });
+  it('should display trade count per market', () => {
+    render(<P2PPage />);
+    // GOAT has 5 trades
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
 
-    it('should set user role to customer', async () => {
-      render(<P2PPage />);
+  it('should display P2P volume', () => {
+    render(<P2PPage />);
+    // GOAT has 10 USD volume
+    expect(screen.getByText(/\$10/)).toBeInTheDocument();
+  });
 
-      expect(mockSetCurrentUserRole).toHaveBeenCalledWith('customer');
-    });
+  it('should link market cards to the market offers page', () => {
+    render(<P2PPage />);
+    const goatLink = screen.getByText('GOAT').closest('a');
+    expect(goatLink).toHaveAttribute('href', '/customer/p2p/market/GOAT');
+  });
+
+  it('should have a Create Offer button', () => {
+    render(<P2PPage />);
+    expect(screen.getByText(/Create Offer/i)).toBeInTheDocument();
+  });
+
+  it('should navigate to create page on Create Offer click', () => {
+    render(<P2PPage />);
+    const btn = screen.getByText(/Create Offer/i);
+    btn.click();
+    expect(mockPush).toHaveBeenCalledWith('/customer/p2p/create');
+  });
+
+  it('should show SHEEP market with zero stats', () => {
+    render(<P2PPage />);
+    // Both 0 values for SHEEP (open offers and trades)
+    const sheepLink = screen.getByText('SHEEP').closest('a');
+    expect(sheepLink).toBeInTheDocument();
+  });
+
+  it('should show View Offers hover text for each card', () => {
+    render(<P2PPage />);
+    const viewTexts = screen.getAllByText(/View Offers/i);
+    expect(viewTexts.length).toBe(2); // One per market card
+  });
+
+  it('should display $0 for markets with no volume', () => {
+    render(<P2PPage />);
+    // SHEEP has $0 volume
+    const volumeTexts = screen.getAllByText('$0');
+    expect(volumeTexts.length).toBeGreaterThanOrEqual(1);
   });
 });

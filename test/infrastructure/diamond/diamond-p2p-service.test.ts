@@ -10,6 +10,8 @@ import { DiamondP2PService } from '@/infrastructure/diamond/diamond-p2p-service'
 vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_INDEXER_URL: 'https://mock-indexer.test/graphql',
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0x1235E39477752713902bCE541Fc02ADeb6FF465b',
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: '0xQuoteToken0000000000000000000000000000',
+  NEXT_PUBLIC_DIAMOND_ADDRESS: '0xDiamondAddr0000000000000000000000000000',
 }));
 
 const SELLER = '0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF';
@@ -41,12 +43,28 @@ function createMockContext(overrides: Record<string, any> = {}) {
     }),
   };
 
+  // Default: a buy offer (acceptor is seller → no ERC20 approval needed)
+  const defaultOrder = {
+    id: OFFER_ID,
+    isSellerInitiated: false,
+    price: BigInt('1000000000000000000'),
+    tokenQuantity: BigInt(1),
+    txFee: BigInt(0),
+  };
+
   const diamond = {
     createAuSysOrder: vi.fn().mockResolvedValue(mockTx),
     acceptP2POffer: vi.fn().mockResolvedValue(mockTx),
     cancelP2POffer: vi.fn().mockResolvedValue(mockTx),
+    getAuSysOrder: vi.fn().mockResolvedValue(defaultOrder),
     interface: mockInterface,
     ...overrides.diamond,
+  };
+
+  // Default mock quote token (no allowance needed for buy offer defaults)
+  const mockQuoteToken = overrides.quoteToken ?? {
+    allowance: vi.fn().mockResolvedValue(BigInt('999999999999999999999999')),
+    approve: vi.fn(),
   };
 
   return {
@@ -54,8 +72,10 @@ function createMockContext(overrides: Record<string, any> = {}) {
     getSignerAddress: vi.fn().mockResolvedValue(SELLER),
     getSigner: vi.fn(),
     getProvider: vi.fn(),
+    getQuoteTokenContract: vi.fn().mockReturnValue(mockQuoteToken),
     _diamond: diamond,
     _mockTx: mockTx,
+    _mockQuoteToken: mockQuoteToken,
   } as any;
 }
 
@@ -196,6 +216,80 @@ describe('DiamondP2PService', () => {
       await expect(service.acceptOffer(OFFER_ID)).rejects.toThrow(
         'ERC1155InsufficientBalance',
       );
+    });
+
+    it('should fetch the offer and check ERC20 allowance before accepting a sell offer (buyer pays)', async () => {
+      // When accepting a sell offer, acceptor is the buyer who must pay ERC20
+      const mockApproveTx = {
+        hash: '0xapprove',
+        wait: vi.fn().mockResolvedValue({}),
+      };
+      const mockQuoteToken = {
+        allowance: vi.fn().mockResolvedValue(0n), // Insufficient
+        approve: vi.fn().mockResolvedValue(mockApproveTx),
+      };
+
+      const context = createMockContext({
+        diamond: {
+          getAuSysOrder: vi.fn().mockResolvedValue({
+            id: OFFER_ID,
+            isSellerInitiated: true, // Sell offer → acceptor is buyer
+            price: BigInt('5000000000000000000'),
+            tokenQuantity: BigInt(10),
+            txFee: BigInt('100000000000000000'),
+          }),
+        },
+        quoteToken: mockQuoteToken,
+      });
+
+      const service = new DiamondP2PService(context);
+      await service.acceptOffer(OFFER_ID);
+
+      // Should have fetched the offer first
+      expect(context._diamond.getAuSysOrder).toHaveBeenCalledWith(OFFER_ID);
+      // Should have checked allowance
+      expect(mockQuoteToken.allowance).toHaveBeenCalled();
+      // Should have approved since allowance was 0
+      expect(mockQuoteToken.approve).toHaveBeenCalled();
+    });
+
+    it('should skip ERC20 approval when accepting a buy offer (acceptor is seller)', async () => {
+      // Default mock context has isSellerInitiated: false (buy offer)
+      const context = createMockContext();
+      const service = new DiamondP2PService(context);
+
+      await service.acceptOffer(OFFER_ID);
+
+      // Should NOT check allowance for seller accepting a buy offer
+      expect(context._mockQuoteToken.allowance).not.toHaveBeenCalled();
+    });
+
+    it('should skip ERC20 approval when allowance is already sufficient', async () => {
+      const mockQuoteToken = {
+        allowance: vi.fn().mockResolvedValue(BigInt('999999999999999999999')),
+        approve: vi.fn(),
+      };
+
+      const context = createMockContext({
+        diamond: {
+          getAuSysOrder: vi.fn().mockResolvedValue({
+            id: OFFER_ID,
+            isSellerInitiated: true,
+            price: BigInt('5000000000000000000'),
+            tokenQuantity: BigInt(10),
+            txFee: BigInt('100000000000000000'),
+          }),
+        },
+        quoteToken: mockQuoteToken,
+      });
+
+      const service = new DiamondP2PService(context);
+      await service.acceptOffer(OFFER_ID);
+
+      // Should check allowance
+      expect(mockQuoteToken.allowance).toHaveBeenCalled();
+      // Should NOT approve (already sufficient)
+      expect(mockQuoteToken.approve).not.toHaveBeenCalled();
     });
   });
 

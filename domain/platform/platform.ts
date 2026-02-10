@@ -34,6 +34,12 @@ export interface AssetClass {
   totalVolume: string;
   /** Whether this class is active */
   isActive: boolean;
+  /** P2P trading volume in wei (from accepted P2P offers) */
+  p2pVolume?: string;
+  /** Number of completed P2P trades */
+  p2pTradeCount?: number;
+  /** Number of currently open P2P offers */
+  p2pOpenOfferCount?: number;
 }
 
 /**

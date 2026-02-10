@@ -14,6 +14,15 @@ import {
   IP2PRepository,
   mapContractStatusToP2PStatus,
 } from '@/domain/p2p';
+import {
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+} from '@/chain-constants';
+
+const ERC20_ABI = [
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
+];
 
 /**
  * Diamond-based implementation of P2P Service (write operations)
@@ -116,6 +125,11 @@ export class DiamondP2PService implements IP2PService {
 
   /**
    * Accept a P2P offer
+   *
+   * When accepting a sell offer, the acceptor is the buyer and must pay ERC20.
+   * This method automatically checks the buyer's ERC20 allowance for the
+   * Diamond contract and requests approval if insufficient.
+   *
    * @param offerId The offer to accept
    */
   async acceptOffer(offerId: string): Promise<void> {
@@ -124,6 +138,19 @@ export class DiamondP2PService implements IP2PService {
     console.log('[DiamondP2PService] Accepting P2P offer:', offerId);
 
     try {
+      // Fetch the offer to determine if we need ERC20 approval
+      const order = await diamond.getAuSysOrder(offerId);
+
+      // If this is a sell offer, the acceptor is the buyer → needs ERC20 approval
+      if (order.isSellerInitiated) {
+        const totalCost =
+          BigInt(order.price.toString()) *
+            BigInt(order.tokenQuantity.toString()) +
+          BigInt(order.txFee.toString());
+
+        await this.ensureQuoteTokenApproval(totalCost);
+      }
+
       const tx = await diamond.acceptP2POffer(offerId);
       console.log('[DiamondP2PService] Transaction sent:', tx.hash);
 
@@ -132,6 +159,52 @@ export class DiamondP2PService implements IP2PService {
     } catch (error) {
       console.error('[DiamondP2PService] Error accepting offer:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Ensure the quote token (ERC20) has sufficient allowance for the Diamond contract.
+   * If not, request an unlimited approval to avoid repeated approvals.
+   */
+  private async ensureQuoteTokenApproval(amount: bigint): Promise<void> {
+    const signer = this.context.getSigner();
+    const signerAddress = await this.context.getSignerAddress();
+
+    // Use context helper if available (for testability), else create contract
+    const quoteToken =
+      'getQuoteTokenContract' in this.context
+        ? (this.context as any).getQuoteTokenContract()
+        : new ethers.Contract(
+            NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+            ERC20_ABI,
+            signer,
+          );
+
+    console.log('[DiamondP2PService] Checking quote token allowance...', {
+      signerAddress,
+      diamondAddress: NEXT_PUBLIC_DIAMOND_ADDRESS,
+      requiredAmount: amount.toString(),
+    });
+
+    const currentAllowance = await quoteToken.allowance(
+      signerAddress,
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+    );
+
+    if (BigInt(currentAllowance.toString()) < amount) {
+      console.log(
+        '[DiamondP2PService] Insufficient allowance, approving unlimited amount...',
+      );
+      const tx = await quoteToken.approve(
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
+        ethers.MaxUint256,
+      );
+      await tx.wait();
+      console.log('[DiamondP2PService] Quote token approved.');
+    } else {
+      console.log(
+        '[DiamondP2PService] Sufficient allowance, no approval needed.',
+      );
     }
   }
 

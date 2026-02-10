@@ -722,3 +722,45 @@ export interface AggregatedUnifiedOrder {
   createdAt: string;
   updatedAt: string;
 }
+
+// ============================================================================
+// P2P Event Types
+// ============================================================================
+
+/** Raw P2POfferCreated event from indexer */
+export interface P2POfferCreatedEvent extends BaseEvent {
+  order_id: string;
+  creator: string;
+  is_seller_initiated: boolean;
+  token: string;
+  token_id: string;
+  token_quantity: string;
+  price: string;
+  target_counterparty: string;
+  expires_at: string;
+}
+
+/** Raw P2POfferAccepted event from indexer */
+export interface P2POfferAcceptedEvent extends BaseEvent {
+  order_id: string;
+  acceptor: string;
+  is_seller_initiated: boolean;
+}
+
+/** Raw P2POfferCanceled event from indexer */
+export interface P2POfferCanceledEvent extends BaseEvent {
+  order_id: string;
+  creator: string;
+}
+
+/** Aggregated P2P market statistics */
+export interface P2PMarketStats {
+  /** Total volume of all accepted P2P trades in wei */
+  totalVolume: string;
+  /** Number of completed (accepted) trades */
+  tradeCount: number;
+  /** Number of currently open (unaccepted, uncancelled) offers */
+  openOfferCount: number;
+  /** Volume breakdown by tokenId */
+  volumeByTokenId: Record<string, string>;
+}
