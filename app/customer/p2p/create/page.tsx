@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useDiamond } from '@/app/providers/diamond.provider';
@@ -29,9 +29,11 @@ import {
   Truck,
   Globe,
   Wallet,
+  Package,
 } from 'lucide-react';
 import { parseUnits, isAddress } from 'ethers';
 import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
+import { useUserAssets } from '@/hooks/useUserAssets';
 
 type Step = 'type' | 'asset' | 'details' | 'logistics' | 'target' | 'review';
 
@@ -99,8 +101,32 @@ export default function CreateP2POfferPage() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [loadingAssets, setLoadingAssets] = useState(false);
 
-  // Load assets when asset class changes
+  // Fetch ALL user-owned assets (single hook call to avoid re-render loops)
+  const { sellableAssets: allSellableAssets, isLoading: isLoadingSellable } =
+    useUserAssets();
+
+  // Filter sellable assets by selected class
+  const sellableAssets = useMemo(() => {
+    if (!formData.assetClass) return [];
+    return allSellableAssets.filter(
+      (a) => a.class.toLowerCase() === formData.assetClass.toLowerCase(),
+    );
+  }, [allSellableAssets, formData.assetClass]);
+
+  // Derive unique asset classes the user actually owns (for sell class dropdown)
+  const ownedAssetClasses = useMemo(() => {
+    const classes = new Set<string>();
+    allSellableAssets.forEach((a) => {
+      if (a.class && a.class !== 'Unknown') classes.add(a.class);
+    });
+    return Array.from(classes);
+  }, [allSellableAssets]);
+
+  const isSellFlow = formData.offerType === 'sell';
+
+  // Load assets when asset class changes (buy flow only)
   useEffect(() => {
+    if (isSellFlow) return; // Sell flow uses useUserAssets instead
     const loadAssetsForClass = async () => {
       setSelectedAsset(null);
       setClassAssets([]);
@@ -114,10 +140,11 @@ export default function CreateP2POfferPage() {
       }
     };
     loadAssetsForClass();
-  }, [formData.assetClass, getClassTokenizableAssets]);
+  }, [formData.assetClass, getClassTokenizableAssets, isSellFlow]);
 
-  // Update selected asset when tokenId changes
+  // Update selected asset when tokenId changes (buy flow)
   useEffect(() => {
+    if (isSellFlow) return;
     if (formData.tokenId) {
       const asset = classAssets.find((a: any) => {
         const idStr = String(a?.tokenId ?? a?.tokenID ?? '');
@@ -127,7 +154,32 @@ export default function CreateP2POfferPage() {
     } else {
       setSelectedAsset(null);
     }
-  }, [formData.tokenId, classAssets]);
+  }, [formData.tokenId, classAssets, isSellFlow]);
+
+  // Update selected asset when tokenId changes (sell flow - from sellableAssets)
+  useEffect(() => {
+    if (!isSellFlow) return;
+    if (formData.tokenId) {
+      const match = sellableAssets.find((a) => a.tokenId === formData.tokenId);
+      if (match) {
+        // Map SellableAsset to Asset shape for the review step
+        setSelectedAsset({
+          name: match.name,
+          assetClass: match.class,
+          tokenId: match.tokenId,
+          attributes: (match.attributes || []).map((attr) => ({
+            name: attr.name,
+            values: [attr.value],
+            description: '',
+          })),
+        });
+      } else {
+        setSelectedAsset(null);
+      }
+    } else {
+      setSelectedAsset(null);
+    }
+  }, [formData.tokenId, sellableAssets, isSellFlow]);
 
   // Set user role on mount
   useEffect(() => {
@@ -157,7 +209,9 @@ export default function CreateP2POfferPage() {
         return formData.offerType !== null;
       case 'asset': {
         if (formData.assetClass === '' || formData.tokenId === '') return false;
-        // Require all attributes with options to have a selected value
+        // For sell flow, attributes are already set on the owned token - no selection needed
+        if (isSellFlow) return true;
+        // For buy flow, require all attributes with options to have a selected value
         if (selectedAsset?.attributes) {
           const selectableAttrs = selectedAsset.attributes.filter(
             (a) => Array.isArray(a.values) && a.values.length > 0,
@@ -300,7 +354,14 @@ export default function CreateP2POfferPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
               {/* Buy Option */}
               <button
-                onClick={() => updateFormData({ offerType: 'buy' })}
+                onClick={() =>
+                  updateFormData({
+                    offerType: 'buy',
+                    assetClass: '',
+                    tokenId: '',
+                    selectedAttributes: {},
+                  })
+                }
                 className={cn(
                   'p-8 rounded-xl border-2 transition-all text-left',
                   formData.offerType === 'buy'
@@ -321,7 +382,14 @@ export default function CreateP2POfferPage() {
 
               {/* Sell Option */}
               <button
-                onClick={() => updateFormData({ offerType: 'sell' })}
+                onClick={() =>
+                  updateFormData({
+                    offerType: 'sell',
+                    assetClass: '',
+                    tokenId: '',
+                    selectedAttributes: {},
+                  })
+                }
                 className={cn(
                   'p-8 rounded-xl border-2 transition-all text-left',
                   formData.offerType === 'sell'
@@ -351,7 +419,9 @@ export default function CreateP2POfferPage() {
                 Select Asset
               </h2>
               <p className="text-muted-foreground">
-                Choose the asset class and then select the specific asset
+                {isSellFlow
+                  ? 'Choose from the assets you own'
+                  : 'Choose the asset class and then select the specific asset'}
               </p>
             </div>
 
@@ -373,63 +443,154 @@ export default function CreateP2POfferPage() {
                   className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
                 >
                   <option value="">Select an asset class</option>
-                  {supportedAssetClasses.map((assetClass) => (
-                    <option key={assetClass} value={assetClass}>
-                      {assetClass}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Asset Selection within class */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Asset
-                </label>
-                {loadingAssets ? (
-                  <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Loading assets...
-                  </div>
-                ) : !formData.assetClass ? (
-                  <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
-                    <p>Select an asset class first</p>
-                  </div>
-                ) : classAssets.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
-                    <p>No assets found for this class</p>
-                  </div>
-                ) : (
-                  <select
-                    value={formData.tokenId}
-                    onChange={(e) =>
-                      updateFormData({
-                        tokenId: e.target.value,
-                        selectedAttributes: {},
-                      })
-                    }
-                    className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
-                  >
-                    <option value="">Select an asset</option>
-                    {classAssets.map((asset: any) => (
-                      <option
-                        key={String(asset?.tokenId ?? asset?.tokenID)}
-                        value={String(asset?.tokenId ?? asset?.tokenID)}
-                      >
-                        {asset.name}
+                  {(isSellFlow ? ownedAssetClasses : supportedAssetClasses).map(
+                    (assetClass) => (
+                      <option key={assetClass} value={assetClass}>
+                        {assetClass}
                       </option>
-                    ))}
-                  </select>
-                )}
-                {selectedAsset && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Token ID: {formData.tokenId}
-                  </p>
-                )}
+                    ),
+                  )}
+                </select>
+                {isSellFlow &&
+                  ownedAssetClasses.length === 0 &&
+                  !isLoadingSellable && (
+                    <p className="text-xs text-amber-400 mt-1">
+                      You don&apos;t own any tokenized assets yet
+                    </p>
+                  )}
               </div>
 
-              {/* Attribute Selection */}
-              {selectedAsset &&
+              {/* Asset Selection - SELL FLOW: show owned assets with balances */}
+              {isSellFlow ? (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Your Assets
+                  </label>
+                  {isLoadingSellable ? (
+                    <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Loading your assets...
+                    </div>
+                  ) : !formData.assetClass ? (
+                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
+                      <p>Select an asset class first</p>
+                    </div>
+                  ) : sellableAssets.length === 0 ? (
+                    <div className="p-6 text-center border border-glass-border rounded-lg bg-neutral-800/30">
+                      <Package className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">
+                        No {formData.assetClass} assets in your wallet
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        Tokenize assets from your node to sell them here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {sellableAssets.map((asset) => (
+                        <button
+                          key={asset.tokenId}
+                          onClick={() =>
+                            updateFormData({
+                              tokenId: asset.tokenId,
+                              selectedAttributes: {},
+                            })
+                          }
+                          className={cn(
+                            'w-full p-4 rounded-xl border-2 transition-all text-left',
+                            formData.tokenId === asset.tokenId
+                              ? 'border-emerald-500 bg-emerald-500/10'
+                              : 'border-glass-border bg-glass-bg hover:border-emerald-500/50',
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {asset.name}
+                              </p>
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
+                                {asset.class}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-semibold text-foreground">
+                                {asset.balance}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                available
+                              </p>
+                            </div>
+                          </div>
+                          {/* Show attributes if any */}
+                          {asset.attributes && asset.attributes.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {asset.attributes.map((attr) => (
+                                <span
+                                  key={attr.name}
+                                  className="px-2 py-0.5 rounded-md text-xs bg-neutral-700/60 text-neutral-200"
+                                >
+                                  {formatAttributeName(attr.name)}: {attr.value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Asset Selection - BUY FLOW: show all tokenizable assets */
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Asset
+                  </label>
+                  {loadingAssets ? (
+                    <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Loading assets...
+                    </div>
+                  ) : !formData.assetClass ? (
+                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
+                      <p>Select an asset class first</p>
+                    </div>
+                  ) : classAssets.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
+                      <p>No assets found for this class</p>
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.tokenId}
+                      onChange={(e) =>
+                        updateFormData({
+                          tokenId: e.target.value,
+                          selectedAttributes: {},
+                        })
+                      }
+                      className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
+                    >
+                      <option value="">Select an asset</option>
+                      {classAssets.map((asset: any) => (
+                        <option
+                          key={String(asset?.tokenId ?? asset?.tokenID)}
+                          value={String(asset?.tokenId ?? asset?.tokenID)}
+                        >
+                          {asset.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {selectedAsset && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Token ID: {formData.tokenId}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Attribute Selection (buy flow only - sell flow shows attributes inline) */}
+              {!isSellFlow &&
+                selectedAsset &&
                 selectedAsset.attributes &&
                 selectedAsset.attributes.length > 0 && (
                   <div className="space-y-4 pt-4 border-t border-glass-border">
@@ -514,8 +675,25 @@ export default function CreateP2POfferPage() {
                   value={formData.quantity}
                   onChange={(e) => updateFormData({ quantity: e.target.value })}
                   min="1"
+                  max={
+                    isSellFlow
+                      ? sellableAssets.find(
+                          (a) => a.tokenId === formData.tokenId,
+                        )?.balance
+                      : undefined
+                  }
                   className="bg-neutral-800/50"
                 />
+                {isSellFlow && formData.tokenId && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Available balance:{' '}
+                    <span className="text-foreground font-medium">
+                      {sellableAssets.find(
+                        (a) => a.tokenId === formData.tokenId,
+                      )?.balance ?? '0'}
+                    </span>
+                  </p>
+                )}
               </div>
 
               <div>

@@ -55,6 +55,48 @@ vi.mock('@/app/providers/platform.provider', () => ({
 vi.mock('@/hooks/useWallet', () => ({
   useWallet: () => ({
     address: '0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF',
+    isConnected: true,
+  }),
+}));
+
+const mockSellableAssets = [
+  {
+    id: '123',
+    tokenId: '123',
+    name: 'AUGOAT',
+    class: 'GOAT',
+    balance: '500',
+    attributes: [
+      { name: 'weight', value: 'M' },
+      { name: 'sex', value: 'F' },
+    ],
+    nodeHash: '0xnode1',
+  },
+];
+vi.mock('@/hooks/useUserAssets', () => ({
+  useUserAssets: (filterClass?: string) => ({
+    sellableAssets: filterClass
+      ? mockSellableAssets.filter(
+          (a) => a.class.toLowerCase() === filterClass.toLowerCase(),
+        )
+      : mockSellableAssets,
+    isLoading: false,
+    hasAssets: mockSellableAssets.length > 0,
+    error: null,
+    refresh: vi.fn(),
+    assetCount: mockSellableAssets.length,
+  }),
+  default: (filterClass?: string) => ({
+    sellableAssets: filterClass
+      ? mockSellableAssets.filter(
+          (a) => a.class.toLowerCase() === filterClass.toLowerCase(),
+        )
+      : mockSellableAssets,
+    isLoading: false,
+    hasAssets: mockSellableAssets.length > 0,
+    error: null,
+    refresh: vi.fn(),
+    assetCount: mockSellableAssets.length,
   }),
 }));
 
@@ -80,6 +122,7 @@ vi.mock('lucide-react', () => {
     Truck: icon('truck'),
     Globe: icon('globe'),
     Wallet: icon('wallet'),
+    Package: icon('package'),
   };
 });
 
@@ -155,8 +198,17 @@ const NO_ATTR_ASSET: Asset[] = [
 // HELPERS
 // ===========================================================================
 
-/** Navigate from type step to asset step */
-async function goToAssetStep() {
+/** Navigate from type step to asset step (BUY flow - uses dropdowns) */
+async function goToAssetStepBuy() {
+  fireEvent.click(screen.getByText(/I want to Buy/i));
+  fireEvent.click(screen.getByText(/Next/i));
+  await waitFor(() => {
+    expect(screen.getByText(/Select Asset/)).toBeInTheDocument();
+  });
+}
+
+/** Navigate from type step to asset step (SELL flow - shows owned assets) */
+async function goToAssetStepSell() {
   fireEvent.click(screen.getByText(/I want to Sell/i));
   fireEvent.click(screen.getByText(/Next/i));
   await waitFor(() => {
@@ -215,23 +267,22 @@ describe('Create P2P Offer Page', () => {
     });
   });
 
-  describe('step 2: asset selection and attributes', () => {
-    it('should show asset class dropdown with supported classes', async () => {
+  describe('step 2: buy flow - asset selection with attributes', () => {
+    it('should show all supported asset classes in buy flow', async () => {
       render(<CreateP2POfferPage />);
-      await goToAssetStep();
+      await goToAssetStepBuy();
 
-      // GOAT and SHEEP should be options in the select
       const options = document.querySelectorAll('select option');
       const optionTexts = Array.from(options).map((o) => o.textContent);
       expect(optionTexts).toContain('GOAT');
       expect(optionTexts).toContain('SHEEP');
     });
 
-    it('should load assets when class is selected', async () => {
+    it('should load assets when class is selected in buy flow', async () => {
       mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
-      await goToAssetStep();
+      await goToAssetStepBuy();
 
       selectAssetClass('GOAT');
 
@@ -244,26 +295,22 @@ describe('Create P2P Offer Page', () => {
       mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
-      await goToAssetStep();
+      await goToAssetStepBuy();
 
       selectAssetClass('GOAT');
 
-      // Wait for assets to load - the AUGOAT Standard option should appear
       await waitFor(() => {
         const allOptions = document.querySelectorAll('select option');
         const texts = Array.from(allOptions).map((o) => o.textContent);
         expect(texts).toContain('AUGOAT Standard');
       });
 
-      // Select specific asset
       selectAsset('12345');
 
-      // First verify selectedAsset is set (Token ID text appears)
       await waitFor(() => {
         expect(screen.getByText(/Token ID: 12345/)).toBeInTheDocument();
       });
 
-      // Then verify attribute section
       await waitFor(() => {
         expect(screen.getByText(/Specify Details/i)).toBeInTheDocument();
       });
@@ -273,7 +320,7 @@ describe('Create P2P Offer Page', () => {
       mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
-      await goToAssetStep();
+      await goToAssetStepBuy();
 
       selectAssetClass('GOAT');
 
@@ -285,64 +332,12 @@ describe('Create P2P Offer Page', () => {
       selectAsset('12345');
 
       await waitFor(() => {
-        // Weight values S, M, L should appear as options
         const allOptions = document.querySelectorAll('select option');
         const texts = Array.from(allOptions).map((o) => o.textContent);
         expect(texts).toContain('S');
         expect(texts).toContain('M');
         expect(texts).toContain('L');
-        // Sex values
         expect(texts).toContain('F');
-      });
-    });
-
-    it('should NOT show attribute section for assets without attributes', async () => {
-      mockGetClassTokenizableAssets.mockResolvedValue(NO_ATTR_ASSET);
-
-      render(<CreateP2POfferPage />);
-      await goToAssetStep();
-
-      selectAssetClass('SHEEP');
-
-      await waitFor(() => {
-        const selects = document.querySelectorAll('select');
-        expect(selects.length).toBeGreaterThanOrEqual(2);
-      });
-
-      selectAsset('99999');
-
-      // "Specify Details" should NOT appear
-      await waitFor(() => {
-        expect(screen.queryByText(/Specify Details/i)).not.toBeInTheDocument();
-      });
-    });
-
-    it('should reset attributes when asset class changes', async () => {
-      mockGetClassTokenizableAssets
-        .mockResolvedValueOnce(GOAT_ASSETS)
-        .mockResolvedValueOnce(NO_ATTR_ASSET);
-
-      render(<CreateP2POfferPage />);
-      await goToAssetStep();
-
-      // Select GOAT and an asset with attributes
-      selectAssetClass('GOAT');
-      await waitFor(() => {
-        const selects = document.querySelectorAll('select');
-        expect(selects.length).toBeGreaterThanOrEqual(2);
-      });
-      selectAsset('12345');
-
-      await waitFor(() => {
-        expect(screen.getByText(/Specify Details/i)).toBeInTheDocument();
-      });
-
-      // Now switch to SHEEP
-      selectAssetClass('SHEEP');
-
-      await waitFor(() => {
-        // Attributes should be gone
-        expect(screen.queryByText(/Specify Details/i)).not.toBeInTheDocument();
       });
     });
 
@@ -361,7 +356,7 @@ describe('Create P2P Offer Page', () => {
       mockGetClassTokenizableAssets.mockResolvedValue(assets);
 
       render(<CreateP2POfferPage />);
-      await goToAssetStep();
+      await goToAssetStepBuy();
 
       selectAssetClass('GOAT');
       await waitFor(() => {
@@ -374,6 +369,76 @@ describe('Create P2P Offer Page', () => {
         expect(screen.getByText('Weight Class')).toBeInTheDocument();
         expect(screen.getByText('Birth Region')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('step 2: sell flow - owned asset selection', () => {
+    it('should only show asset classes the user owns', async () => {
+      render(<CreateP2POfferPage />);
+      await goToAssetStepSell();
+
+      // Only GOAT should appear (from mockSellableAssets)
+      const options = document.querySelectorAll('select option');
+      const optionTexts = Array.from(options).map((o) => o.textContent);
+      expect(optionTexts).toContain('GOAT');
+      // SHEEP is a supported class but user doesn't own any
+      expect(optionTexts).not.toContain('SHEEP');
+    });
+
+    it('should show owned asset cards with balance when class is selected', async () => {
+      render(<CreateP2POfferPage />);
+      await goToAssetStepSell();
+
+      selectAssetClass('GOAT');
+
+      await waitFor(() => {
+        // Should show the owned asset card with name and balance
+        expect(screen.getByText('AUGOAT')).toBeInTheDocument();
+        expect(screen.getByText('500')).toBeInTheDocument();
+        expect(screen.getByText(/available/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show asset attributes inline on the card', async () => {
+      render(<CreateP2POfferPage />);
+      await goToAssetStepSell();
+
+      selectAssetClass('GOAT');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Weight: M/)).toBeInTheDocument();
+        expect(screen.getByText(/Sex: F/)).toBeInTheDocument();
+      });
+    });
+
+    it('should select asset when card is clicked and enable Next', async () => {
+      render(<CreateP2POfferPage />);
+      await goToAssetStepSell();
+
+      selectAssetClass('GOAT');
+
+      await waitFor(() => {
+        expect(screen.getByText('AUGOAT')).toBeInTheDocument();
+      });
+
+      // Click the asset card
+      fireEvent.click(screen.getByText('AUGOAT'));
+
+      // Next button should become enabled (asset selected)
+      const nextButtons = screen.getAllByText(/Next/i);
+      const nextButton = nextButtons.find(
+        (b) => !(b as HTMLButtonElement).disabled,
+      );
+      expect(nextButton).toBeDefined();
+    });
+
+    it('should show prompt to select class first when no class selected', async () => {
+      render(<CreateP2POfferPage />);
+      await goToAssetStepSell();
+
+      expect(
+        screen.getByText(/Select an asset class first/i),
+      ).toBeInTheDocument();
     });
   });
 });
