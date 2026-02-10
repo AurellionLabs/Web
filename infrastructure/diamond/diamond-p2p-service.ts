@@ -10,6 +10,7 @@ import {
   P2POffer,
   P2POfferStatus,
   CreateP2POfferInput,
+  P2PDeliveryDetails,
   IP2PService,
   IP2PRepository,
   mapContractStatusToP2PStatus,
@@ -216,6 +217,71 @@ export class DiamondP2PService implements IP2PService {
     } catch (error) {
       console.error('[DiamondP2PService] Error accepting offer:', error);
       // Re-throw with decoded message for the UI
+      const decoded = decodeP2PError(error);
+      const wrapped = new Error(decoded);
+      (wrapped as any).originalError = error;
+      throw wrapped;
+    }
+  }
+
+  /**
+   * Accept a P2P offer and immediately create a delivery journey.
+   *
+   * Sequence:
+   * 1. Fetch offer details to determine ERC20 approval amount
+   * 2. Ensure ERC20 approval covers price + txFee + bounty
+   * 3. Call acceptP2POffer → wait for confirmation
+   * 4. Call createOrderJourney → wait for confirmation
+   *
+   * If step 3 fails, step 4 is never attempted.
+   *
+   * @param offerId The offer to accept
+   * @param delivery Delivery details for journey creation
+   */
+  async acceptOfferWithDelivery(
+    offerId: string,
+    delivery: P2PDeliveryDetails,
+  ): Promise<void> {
+    const diamond = this.context.getDiamond();
+
+    console.log('[DiamondP2PService] acceptOfferWithDelivery:', offerId);
+
+    try {
+      // 1. Fetch offer to determine approval amount
+      const order = await diamond.getAuSysOrder(offerId);
+
+      // 2. Ensure ERC20 approval covers price + txFee + bounty
+      if (order.isSellerInitiated) {
+        const totalCost =
+          BigInt(order.price.toString()) +
+          BigInt(order.txFee.toString()) +
+          delivery.bountyWei;
+        await this.ensureQuoteTokenApproval(totalCost);
+      }
+
+      // 3. Accept the offer
+      const acceptTx = await diamond.acceptP2POffer(offerId);
+      await acceptTx.wait();
+      console.log('[DiamondP2PService] Offer accepted, creating journey...');
+
+      // 4. Create the delivery journey
+      const journeyTx = await diamond.createOrderJourney(
+        offerId,
+        delivery.senderNodeAddress,
+        delivery.receiverAddress,
+        delivery.parcelData,
+        delivery.bountyWei,
+        delivery.etaTimestamp,
+        delivery.tokenQuantity,
+        delivery.assetId,
+      );
+      await journeyTx.wait();
+      console.log('[DiamondP2PService] Journey created successfully');
+    } catch (error) {
+      console.error(
+        '[DiamondP2PService] acceptOfferWithDelivery error:',
+        error,
+      );
       const decoded = decodeP2PError(error);
       const wrapped = new Error(decoded);
       (wrapped as any).originalError = error;

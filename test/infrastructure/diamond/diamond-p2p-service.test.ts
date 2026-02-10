@@ -465,3 +465,216 @@ describe('decodeP2PError', () => {
     expect(decodeP2PError(null)).toBe('null');
   });
 });
+
+// ============================================================================
+// acceptOfferWithDelivery (combined accept + journey creation)
+// ============================================================================
+
+describe('acceptOfferWithDelivery', () => {
+  const DELIVERY_DETAILS = {
+    senderNodeAddress: '0xNodeSender000000000000000000000000000000',
+    receiverAddress: '0xBuyerAddr0000000000000000000000000000000',
+    parcelData: {
+      startLocation: { lat: '-26.2', lng: '28.0' },
+      endLocation: { lat: '-33.9', lng: '18.4' },
+      startName: 'Seller Farm',
+      endName: 'Buyer Location',
+    },
+    bountyWei: BigInt('500000000000000000'), // 0.5 USDT
+    etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 86400), // 24h from now
+    tokenQuantity: BigInt(1000),
+    assetId: BigInt(100),
+  };
+
+  function createAcceptWithDeliveryContext() {
+    const acceptTx = {
+      hash: '0xaccepthash',
+      wait: vi.fn().mockResolvedValue({
+        hash: '0xaccepthash',
+        blockNumber: 100,
+        logs: [],
+      }),
+    };
+
+    const journeyTx = {
+      hash: '0xjourneyhash',
+      wait: vi.fn().mockResolvedValue({
+        hash: '0xjourneyhash',
+        blockNumber: 101,
+        status: 1,
+        logs: [
+          {
+            topics: ['0xJourneyCreated'],
+            data: '0x',
+          },
+        ],
+      }),
+    };
+
+    const mockInterface = {
+      parseLog: vi.fn().mockReturnValue({
+        name: 'JourneyCreated',
+        args: { journeyId: '0xjourney123' },
+      }),
+    };
+
+    const sellOrder = {
+      id: OFFER_ID,
+      isSellerInitiated: true,
+      price: BigInt('1000000000000000000'), // 1 USDT
+      tokenQuantity: BigInt(1000),
+      txFee: BigInt('20000000000000000'), // 0.02 USDT
+    };
+
+    const mockQuoteToken = {
+      allowance: vi.fn().mockResolvedValue(BigInt('999999999999999999999999')),
+      approve: vi.fn().mockResolvedValue({
+        wait: vi.fn().mockResolvedValue({}),
+      }),
+    };
+
+    const diamond = {
+      createAuSysOrder: vi.fn(),
+      acceptP2POffer: vi.fn().mockResolvedValue(acceptTx),
+      cancelP2POffer: vi.fn(),
+      getAuSysOrder: vi.fn().mockResolvedValue(sellOrder),
+      createOrderJourney: vi.fn().mockResolvedValue(journeyTx),
+      interface: mockInterface,
+    };
+
+    return {
+      getDiamond: vi.fn().mockReturnValue(diamond),
+      getSignerAddress: vi.fn().mockResolvedValue(SELLER),
+      getSigner: vi.fn(),
+      getProvider: vi.fn(),
+      getQuoteTokenContract: vi.fn().mockReturnValue(mockQuoteToken),
+      _diamond: diamond,
+      _acceptTx: acceptTx,
+      _journeyTx: journeyTx,
+      _mockQuoteToken: mockQuoteToken,
+    } as any;
+  }
+
+  it('should call acceptP2POffer then createOrderJourney in sequence', async () => {
+    const context = createAcceptWithDeliveryContext();
+    const service = new DiamondP2PService(context);
+
+    await service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS);
+
+    // Accept must be called first
+    expect(context._diamond.acceptP2POffer).toHaveBeenCalledWith(OFFER_ID);
+    expect(context._diamond.acceptP2POffer).toHaveBeenCalledTimes(1);
+
+    // Then createOrderJourney
+    expect(context._diamond.createOrderJourney).toHaveBeenCalledTimes(1);
+    expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
+      OFFER_ID,
+      DELIVERY_DETAILS.senderNodeAddress,
+      DELIVERY_DETAILS.receiverAddress,
+      DELIVERY_DETAILS.parcelData,
+      DELIVERY_DETAILS.bountyWei,
+      DELIVERY_DETAILS.etaTimestamp,
+      DELIVERY_DETAILS.tokenQuantity,
+      DELIVERY_DETAILS.assetId,
+    );
+  });
+
+  it('should ensure ERC20 approval covers price + txFee + bounty', async () => {
+    // Set allowance to 0 so approval is needed
+    const context = createAcceptWithDeliveryContext();
+    context._mockQuoteToken.allowance.mockResolvedValue(BigInt(0));
+    context._mockQuoteToken.approve.mockResolvedValue({
+      wait: vi.fn().mockResolvedValue({}),
+    });
+
+    const service = new DiamondP2PService(context);
+
+    await service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS);
+
+    // Should have called approve (since allowance was 0)
+    expect(context._mockQuoteToken.approve).toHaveBeenCalled();
+  });
+
+  it('should not call createOrderJourney if acceptP2POffer fails', async () => {
+    const context = createAcceptWithDeliveryContext();
+    context._diamond.acceptP2POffer.mockRejectedValue(
+      new Error('OfferNotOpen'),
+    );
+
+    const service = new DiamondP2PService(context);
+
+    await expect(
+      service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS),
+    ).rejects.toThrow();
+
+    expect(context._diamond.createOrderJourney).not.toHaveBeenCalled();
+  });
+
+  it('should wait for accept transaction before creating journey', async () => {
+    const context = createAcceptWithDeliveryContext();
+    const callOrder: string[] = [];
+
+    context._diamond.acceptP2POffer.mockImplementation(() => {
+      callOrder.push('accept');
+      return Promise.resolve({
+        hash: '0xaccepthash',
+        wait: () => {
+          callOrder.push('accept-confirmed');
+          return Promise.resolve({ hash: '0xaccepthash', logs: [] });
+        },
+      });
+    });
+
+    context._diamond.createOrderJourney.mockImplementation(() => {
+      callOrder.push('journey');
+      return Promise.resolve({
+        hash: '0xjourneyhash',
+        wait: () => {
+          callOrder.push('journey-confirmed');
+          return Promise.resolve({
+            hash: '0xjourneyhash',
+            status: 1,
+            logs: [],
+          });
+        },
+      });
+    });
+
+    const service = new DiamondP2PService(context);
+    await service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS);
+
+    expect(callOrder).toEqual([
+      'accept',
+      'accept-confirmed',
+      'journey',
+      'journey-confirmed',
+    ]);
+  });
+
+  it('should propagate decoded error from accept phase', async () => {
+    const context = createAcceptWithDeliveryContext();
+    context._diamond.acceptP2POffer.mockRejectedValue({
+      data: '0x2b8b1d43', // OfferNotOpen
+      message: 'execution reverted',
+    });
+
+    const service = new DiamondP2PService(context);
+
+    await expect(
+      service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS),
+    ).rejects.toThrow(/no longer open/);
+  });
+
+  it('should propagate error from journey creation phase', async () => {
+    const context = createAcceptWithDeliveryContext();
+    context._diamond.createOrderJourney.mockRejectedValue(
+      new Error('InvalidETA'),
+    );
+
+    const service = new DiamondP2PService(context);
+
+    await expect(
+      service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS),
+    ).rejects.toThrow('InvalidETA');
+  });
+});

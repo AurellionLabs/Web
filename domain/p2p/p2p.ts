@@ -160,6 +160,28 @@ export interface IP2PRepository {
 /**
  * P2P Service interface - write operations
  */
+/**
+ * Delivery details required to create a journey after accepting a P2P offer.
+ */
+export interface P2PDeliveryDetails {
+  /** Node address of the sender (typically the seller's custody node) */
+  senderNodeAddress: string;
+  /** Address of the receiver (the buyer) */
+  receiverAddress: string;
+  /** Start and end locations for the delivery journey */
+  parcelData: ParcelData;
+  /** Bounty for the delivery driver (in wei of quote token) */
+  bountyWei: bigint;
+  /** Estimated arrival timestamp (Unix seconds, must be in the future) */
+  etaTimestamp: bigint;
+  /** Quantity of tokens being delivered */
+  tokenQuantity: bigint;
+  /** Asset ID (token ID as bigint) */
+  assetId: bigint;
+  /** User-entered delivery address string (for display purposes) */
+  deliveryAddress?: string;
+}
+
 export interface IP2PService {
   /**
    * Create a new P2P offer
@@ -172,6 +194,19 @@ export interface IP2PService {
    * @param offerId The offer to accept
    */
   acceptOffer(offerId: string): Promise<void>;
+
+  /**
+   * Accept a P2P offer and immediately schedule delivery.
+   * Fires acceptP2POffer then createOrderJourney in sequence.
+   * ERC20 approval covers price + txFee + bounty.
+   *
+   * @param offerId The offer to accept
+   * @param delivery Delivery details for journey creation
+   */
+  acceptOfferWithDelivery(
+    offerId: string,
+    delivery: P2PDeliveryDetails,
+  ): Promise<void>;
 
   /**
    * Cancel a P2P offer (only creator can cancel)

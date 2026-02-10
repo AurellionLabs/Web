@@ -28,8 +28,12 @@ import {
   ArrowLeft,
   Filter,
 } from 'lucide-react';
-import { P2POffer, P2POfferStatus } from '@/domain/p2p';
+import { P2POffer, P2POfferStatus, P2PDeliveryDetails } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
+import {
+  DeliveryDetailsDialog,
+  DeliveryFormData,
+} from '@/app/components/p2p/delivery-details-dialog';
 
 /**
  * P2P Market Offers Page
@@ -74,6 +78,9 @@ export default function P2PMarketOffersPage() {
     null,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Delivery dialog state
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<P2POffer | null>(null);
 
   // Set user role on mount
   useEffect(() => {
@@ -252,29 +259,64 @@ export default function P2PMarketOffersPage() {
     setIsRefreshing(false);
   }, [loadOffers]);
 
-  // Accept an offer
+  // Open delivery dialog before accepting
   const handleAcceptOffer = useCallback(
-    async (offerId: string) => {
-      if (!p2pService) return;
-      setProcessingOfferId(offerId);
+    (offerId: string) => {
+      const offer = offers.find((o) => o.id === offerId);
+      if (!offer) return;
+      setSelectedOffer(offer);
+      setDeliveryDialogOpen(true);
+    },
+    [offers],
+  );
+
+  // Confirm accept + schedule delivery
+  const handleConfirmAcceptWithDelivery = useCallback(
+    async (deliveryData: DeliveryFormData) => {
+      if (!p2pService || !selectedOffer || !address) return;
+      setProcessingOfferId(selectedOffer.id);
       setErrorMessage(null);
       try {
-        await p2pService.acceptOffer(offerId);
+        const delivery: P2PDeliveryDetails = {
+          senderNodeAddress: deliveryData.senderNodeAddress,
+          receiverAddress: address,
+          parcelData: {
+            startLocation: selectedOffer.locationData?.startLocation || {
+              lat: '',
+              lng: '',
+            },
+            endLocation: { lat: '', lng: '' },
+            startName:
+              selectedOffer.locationData?.startName || 'Seller Location',
+            endName: deliveryData.deliveryAddress,
+          },
+          bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
+          etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
+          tokenQuantity: BigInt(selectedOffer.quantity.toString()),
+          assetId: BigInt(selectedOffer.tokenId),
+          deliveryAddress: deliveryData.deliveryAddress,
+        };
+
+        await p2pService.acceptOfferWithDelivery(selectedOffer.id, delivery);
+
+        setDeliveryDialogOpen(false);
+        setSelectedOffer(null);
         await loadOffers();
       } catch (error: unknown) {
-        console.error('Error accepting offer:', error);
+        console.error('Error accepting offer with delivery:', error);
         const msg =
           error instanceof Error
             ? error.message
             : 'Failed to accept offer. Please try again.';
         setErrorMessage(msg);
-        // Refresh the list to remove stale offers
         await loadOffers();
+        // Re-throw so the dialog can show the error too
+        throw error;
       } finally {
         setProcessingOfferId(null);
       }
     },
-    [p2pService, loadOffers],
+    [p2pService, selectedOffer, address, loadOffers],
   );
 
   // Cancel an offer
@@ -669,6 +711,23 @@ export default function P2PMarketOffersPage() {
           renderEmptyState()
         )}
       </div>
+
+      {/* Delivery Details Dialog */}
+      {selectedOffer && (
+        <DeliveryDetailsDialog
+          offer={selectedOffer}
+          open={deliveryDialogOpen}
+          onOpenChange={(open) => {
+            setDeliveryDialogOpen(open);
+            if (!open) {
+              setSelectedOffer(null);
+              setProcessingOfferId(null);
+            }
+          }}
+          onConfirm={handleConfirmAcceptWithDelivery}
+          assetName={assetMetadataMap.get(selectedOffer.tokenId)?.name}
+        />
+      )}
     </div>
   );
 }
