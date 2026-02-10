@@ -198,7 +198,10 @@ describe('DiamondP2PService', () => {
 
     it('should request ERC1155 approval for sell offers when not approved', async () => {
       const mockERC1155 = {
-        isApprovedForAll: vi.fn().mockResolvedValue(false),
+        isApprovedForAll: vi
+          .fn()
+          .mockResolvedValueOnce(false) // first check: not approved
+          .mockResolvedValueOnce(true), // verification after approval
         setApprovalForAll: vi.fn().mockResolvedValue({
           wait: vi.fn().mockResolvedValue({}),
         }),

@@ -152,7 +152,18 @@ export class DiamondP2PService implements IP2PService {
     try {
       // For sell offers, ensure the Diamond has ERC1155 approval to escrow tokens
       if (input.isSellOffer) {
+        console.log(
+          '[DiamondP2PService] Sell offer — ensuring ERC1155 approval for',
+          input.token,
+        );
         await this.ensureERC1155Approval(input.token);
+        console.log(
+          '[DiamondP2PService] ERC1155 approval complete, proceeding to create order...',
+        );
+      } else {
+        console.log(
+          '[DiamondP2PService] Buy offer — skipping ERC1155 approval',
+        );
       }
 
       const tx = await diamond.createAuSysOrder(order);
@@ -366,24 +377,51 @@ export class DiamondP2PService implements IP2PService {
       diamondAddress: NEXT_PUBLIC_DIAMOND_ADDRESS,
     });
 
-    const isApproved = await erc1155.isApprovedForAll(
-      signerAddress,
-      NEXT_PUBLIC_DIAMOND_ADDRESS,
-    );
-
-    if (!isApproved) {
-      console.log(
-        '[DiamondP2PService] ERC1155 not approved, requesting setApprovalForAll...',
-      );
-      const tx = await erc1155.setApprovalForAll(
+    try {
+      const isApproved = await erc1155.isApprovedForAll(
+        signerAddress,
         NEXT_PUBLIC_DIAMOND_ADDRESS,
-        true,
       );
-      await tx.wait();
-      console.log('[DiamondP2PService] ERC1155 approval granted.');
-    } else {
+
       console.log(
-        '[DiamondP2PService] ERC1155 already approved, no action needed.',
+        '[DiamondP2PService] ERC1155 isApprovedForAll result:',
+        isApproved,
+      );
+
+      if (!isApproved) {
+        console.log(
+          '[DiamondP2PService] ERC1155 not approved, requesting setApprovalForAll...',
+        );
+        const tx = await erc1155.setApprovalForAll(
+          NEXT_PUBLIC_DIAMOND_ADDRESS,
+          true,
+        );
+        const receipt = await tx.wait();
+        console.log(
+          '[DiamondP2PService] ERC1155 approval granted, tx:',
+          receipt?.hash,
+        );
+
+        // Verify the approval actually took effect
+        const verified = await erc1155.isApprovedForAll(
+          signerAddress,
+          NEXT_PUBLIC_DIAMOND_ADDRESS,
+        );
+        console.log('[DiamondP2PService] ERC1155 approval verified:', verified);
+        if (!verified) {
+          throw new Error(
+            'ERC1155 approval failed — setApprovalForAll did not take effect',
+          );
+        }
+      } else {
+        console.log(
+          '[DiamondP2PService] ERC1155 already approved, no action needed.',
+        );
+      }
+    } catch (error) {
+      console.error('[DiamondP2PService] ERC1155 approval error:', error);
+      throw new Error(
+        `Failed to approve ERC1155 token for Diamond: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
