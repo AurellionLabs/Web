@@ -13,7 +13,7 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 // ServiceContext not used; we call contract directly via RepositoryContext
 import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
-import { OrderStatus } from '@/domain/orders/order';
+import { Order, OrderStatus } from '@/domain/orders/order';
 import { usePlatform } from './platform.provider';
 import { OrderWithAsset } from '@/app/types/shared';
 
@@ -24,6 +24,15 @@ type CustomerContextType = {
   refreshOrders: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   confirmReceipt: (orderId: string) => Promise<void>;
+  /** Sign for delivery on a P2P order (calls packageSign) */
+  signP2PDelivery: (orderId: string, journeyId: string) => Promise<void>;
+  /** Complete the handoff on a P2P order (calls handOff, triggers settlement) */
+  completeP2PHandoff: (orderId: string, journeyId: string) => Promise<void>;
+  /** Fetch live buyer/driver signature states from the contract */
+  getP2PSignatureState: (
+    orderId: string,
+    journeyId: string,
+  ) => Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }>;
 };
 
 // Create context
@@ -49,15 +58,39 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       setError(null);
-      // Fetch buyer orders directly from the repository
-      const buyerOrders = await orderRepository.getBuyerOrders(
-        address as string,
+
+      const userAddr = address as string;
+
+      // Fetch CLOB buyer orders and P2P orders in parallel
+      const [buyerOrders, p2pOrders] = await Promise.all([
+        orderRepository.getBuyerOrders(userAddr),
+        orderRepository.getP2POrdersForUser(userAddr).catch((err) => {
+          console.warn('[CustomerProvider] Failed to load P2P orders:', err);
+          return [] as Order[];
+        }),
+      ]);
+
+      console.log(
+        'buyerOrders',
+        buyerOrders.length,
+        'p2pOrders',
+        p2pOrders.length,
       );
-      console.log('buyerOrders', buyerOrders);
+
+      // Merge and deduplicate by order ID (P2P orders use different IDs)
+      const seenIds = new Set<string>();
+      const allOrders: Order[] = [];
+      for (const order of [...buyerOrders, ...p2pOrders]) {
+        const oid = order.id.toLowerCase();
+        if (!seenIds.has(oid)) {
+          seenIds.add(oid);
+          allOrders.push(order);
+        }
+      }
 
       // Fetch asset details for each order
       const ordersWithAssets: OrderWithAsset[] = await Promise.all(
-        buyerOrders.map(async (order) => {
+        allOrders.map(async (order) => {
           try {
             const asset = await getAssetByTokenId(order.tokenId);
             return {
@@ -207,6 +240,111 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     [orders, repoContext],
   );
 
+  /**
+   * Sign for delivery on a P2P order.
+   * Calls packageSign on the journey, then attempts handOff if both sides signed.
+   */
+  const signP2PDelivery = useCallback(
+    async (orderId: string, journeyId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const ausys = repoContext.getAusysContract();
+
+        console.log('[CustomerProvider] signP2PDelivery', {
+          orderId,
+          journeyId,
+        });
+
+        const signTx = await ausys.packageSign(journeyId as any);
+        await signTx.wait();
+        console.log('[CustomerProvider] packageSign tx confirmed');
+
+        // Refresh orders to pick up updated state
+        await loadCustomerOrders();
+      } catch (err) {
+        console.error('[CustomerProvider] signP2PDelivery error:', err);
+        setError('Failed to sign for delivery');
+        handleContractError(err, 'sign P2P delivery');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [repoContext, loadCustomerOrders],
+  );
+
+  /**
+   * Complete the handoff on a P2P order (triggers settlement).
+   * Both buyer and driver must have signed before calling this.
+   */
+  const completeP2PHandoff = useCallback(
+    async (orderId: string, journeyId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const ausys = repoContext.getAusysContract();
+
+        console.log('[CustomerProvider] completeP2PHandoff', {
+          orderId,
+          journeyId,
+        });
+
+        const handOffTx = await ausys.handOff(journeyId as any);
+        await handOffTx.wait();
+        console.log('[CustomerProvider] handOff tx confirmed');
+
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId ? { ...o, currentStatus: OrderStatus.SETTLED } : o,
+          ),
+        );
+
+        // Also refresh from indexer
+        await loadCustomerOrders();
+      } catch (err) {
+        console.error('[CustomerProvider] completeP2PHandoff error:', err);
+        setError('Failed to complete handoff');
+        handleContractError(err, 'complete P2P handoff');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [repoContext, loadCustomerOrders],
+  );
+
+  /**
+   * Fetch live buyer/driver signature states from the contract.
+   * Used by P2POrderFlow to determine which buttons to show.
+   */
+  const getP2PSignatureState = useCallback(
+    async (
+      orderId: string,
+      journeyId: string,
+    ): Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }> => {
+      try {
+        const ausys = repoContext.getAusysContract();
+        const journey = await ausys.idToJourney(journeyId as any);
+
+        const [buyerSigned, driverDeliverySigned] = await Promise.all([
+          ausys.customerHandOff(journey.receiver, journeyId as any),
+          ausys.driverDeliverySigned(journey.driver, journeyId as any),
+        ]);
+
+        return {
+          buyerSigned: Boolean(buyerSigned),
+          driverDeliverySigned: Boolean(driverDeliverySigned),
+        };
+      } catch (err) {
+        console.warn('[CustomerProvider] getP2PSignatureState error:', err);
+        return { buyerSigned: false, driverDeliverySigned: false };
+      }
+    },
+    [repoContext],
+  );
+
   const refreshOrders = useCallback(async () => {
     await loadCustomerOrders();
   }, [loadCustomerOrders]);
@@ -222,6 +360,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     refreshOrders,
     cancelOrder,
     confirmReceipt,
+    signP2PDelivery,
+    completeP2PHandoff,
+    getP2PSignatureState,
   };
 
   return (

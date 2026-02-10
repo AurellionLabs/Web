@@ -22,10 +22,25 @@ import {
   GET_JOURNEY_STATUS_BY_JOURNEY,
   GET_ALL_UNIFIED_ORDER_EVENTS,
   GET_JOURNEY_STATUS_UPDATED_EVENTS,
+  GET_P2P_OFFERS_BY_CREATOR,
+  GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+  GET_AUSYS_ORDER_STATUS_UPDATES,
+  GET_JOURNEYS_BY_ORDER,
+  GET_JOURNEY_STATUS_UPDATES_ALL,
+} from '../shared/graph-queries';
+import type {
+  P2POffersByCreatorResponse,
+  P2POffersAcceptedByUserResponse,
+  P2POfferDetailsResponse,
+  AuSysOrderStatusUpdatesResponse,
+  JourneysByOrderResponse,
+  JourneyStatusUpdatesAllResponse,
 } from '../shared/graph-queries';
 import {
   aggregateUnifiedOrders,
   aggregateJourneys,
+  aggregateP2POrdersForUser,
 } from '../shared/event-aggregators';
 import {
   AggregatedUnifiedOrder,
@@ -660,5 +675,72 @@ export class OrderRepository implements IOrderRepository {
   async getCustomerOrders(address: string): Promise<Order[]> {
     console.warn('getCustomerOrders is deprecated, use getBuyerOrders instead');
     return this.getBuyerOrders(address);
+  }
+
+  /**
+   * Get all P2P orders involving a user (created or accepted).
+   * Queries the indexer for P2P events and aggregates them into Order objects.
+   */
+  async getP2POrdersForUser(address: string): Promise<Order[]> {
+    try {
+      const userAddress = address.toLowerCase();
+
+      // Fetch all relevant P2P events + journey data in parallel
+      const [
+        createdResp,
+        acceptedResp,
+        allCreatedResp,
+        statusResp,
+        journeysResp,
+        journeyStatusResp,
+      ] = await Promise.all([
+        graphqlRequest<P2POffersByCreatorResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_BY_CREATOR,
+          { creator: userAddress, limit: 100 },
+        ),
+        graphqlRequest<P2POffersAcceptedByUserResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_ACCEPTED_BY_USER,
+          { acceptor: userAddress, limit: 100 },
+        ),
+        graphqlRequest<P2POfferDetailsResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AuSysOrderStatusUpdatesResponse>(
+          this.graphQLEndpoint,
+          GET_AUSYS_ORDER_STATUS_UPDATES,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneysByOrderResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEYS_BY_ORDER,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneyStatusUpdatesAllResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATES_ALL,
+          { limit: 500 },
+        ),
+      ]);
+
+      return aggregateP2POrdersForUser(
+        createdResp.diamondP2POfferCreatedEventss?.items || [],
+        acceptedResp.diamondP2POfferAcceptedEventss?.items || [],
+        allCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
+        userAddress,
+        journeysResp.diamondJourneyCreatedEventss?.items || [],
+        journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
+      );
+    } catch (error) {
+      console.error(
+        '[OrderRepository] Error fetching P2P orders for user:',
+        error,
+      );
+      return [];
+    }
   }
 }

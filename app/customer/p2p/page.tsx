@@ -1,21 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMainProvider } from '@/app/providers/main.provider';
+import { useDiamond } from '@/app/providers/diamond.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { cn } from '@/lib/utils';
 import { GlowButton } from '@/app/components/ui/glow-button';
-import {
-  Plus,
-  TrendingUp,
-  Package,
-  BarChart3,
-  Handshake,
-  Activity,
-} from 'lucide-react';
-import { formatUnits } from 'ethers';
+import { Plus, Package, BarChart3, Handshake } from 'lucide-react';
+import type { P2POffer } from '@/domain/p2p';
 
 // =============================================================================
 // ICON MAPPING
@@ -41,19 +35,6 @@ function getClassIcon(className: string): React.ReactNode {
   return CLASS_ICONS[key] || <Package className="w-6 h-6" />;
 }
 
-/** Format wei volume to a readable USD string */
-function formatVolume(weiVolume: string): string {
-  if (!weiVolume || weiVolume === '0') return '$0';
-  try {
-    const num = parseFloat(formatUnits(weiVolume, 18));
-    if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}M`;
-    if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
-    return `$${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  } catch {
-    return '$0';
-  }
-}
-
 /**
  * P2P Trading Markets Page
  *
@@ -62,13 +43,73 @@ function formatVolume(weiVolume: string): string {
  */
 export default function P2PPage() {
   const { setCurrentUserRole, connected } = useMainProvider();
-  const { assetClasses, isLoading } = usePlatform();
+  const { assetClasses, supportedAssets, isLoading } = usePlatform();
+  const { p2pRepository, initialized: diamondInitialized } = useDiamond();
   const router = useRouter();
+
+  const [openOffers, setOpenOffers] = useState<P2POffer[]>([]);
+  const [offersLoading, setOffersLoading] = useState(true);
 
   // Set user role on mount
   useEffect(() => {
     setCurrentUserRole('customer');
   }, [setCurrentUserRole]);
+
+  // Fetch open offers to compute per-class counts
+  const loadOffers = useCallback(async () => {
+    if (!p2pRepository || !diamondInitialized) return;
+    setOffersLoading(true);
+    try {
+      const offers = await p2pRepository.getOpenOffers();
+      setOpenOffers(offers);
+    } catch (error) {
+      console.error('[P2P Markets] Error loading offers:', error);
+    } finally {
+      setOffersLoading(false);
+    }
+  }, [p2pRepository, diamondInitialized]);
+
+  useEffect(() => {
+    loadOffers();
+  }, [loadOffers]);
+
+  // Build tokenId → assetClass lookup from supportedAssets
+  const tokenIdToClass = useMemo(() => {
+    const map = new Map<string, string>();
+    supportedAssets.forEach((a) => {
+      if (a.tokenId && a.assetClass) {
+        map.set(a.tokenId, a.assetClass);
+        try {
+          const normalized = BigInt(a.tokenId).toString(10);
+          if (normalized !== a.tokenId) map.set(normalized, a.assetClass);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+    return map;
+  }, [supportedAssets]);
+
+  // Compute per-class open offer counts
+  const classOfferCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const offer of openOffers) {
+      let offerClass = tokenIdToClass.get(offer.tokenId);
+      if (!offerClass) {
+        try {
+          const normalized = BigInt(offer.tokenId).toString(10);
+          offerClass = tokenIdToClass.get(normalized);
+        } catch {
+          /* ignore */
+        }
+      }
+      if (offerClass) {
+        const key = offerClass.toLowerCase();
+        counts[key] = (counts[key] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [openOffers, tokenIdToClass]);
 
   return (
     <div className="min-h-screen p-4 sm:p-6">
@@ -179,29 +220,31 @@ export default function P2PPage() {
                         Open Offers
                       </span>
                       <span className="font-mono text-foreground">
-                        {ac.p2pOpenOfferCount ?? 0}
+                        {offersLoading
+                          ? '...'
+                          : (classOfferCounts[ac.name.toLowerCase()] ?? 0)}
                       </span>
                     </div>
 
-                    {/* Trades */}
+                    {/* Asset Types */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-2">
-                        <Activity className="w-4 h-4" />
-                        Trades
+                        <BarChart3 className="w-4 h-4" />
+                        Asset Types
                       </span>
                       <span className="font-mono text-foreground">
-                        {ac.p2pTradeCount ?? 0}
+                        {ac.assetTypeCount}
                       </span>
                     </div>
 
-                    {/* Volume */}
+                    {/* Total Assets */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4" />
-                        P2P Volume
+                        <Package className="w-4 h-4" />
+                        Total Assets
                       </span>
                       <span className="font-mono text-foreground">
-                        {formatVolume(ac.p2pVolume || '0')}
+                        {ac.assetCount}
                       </span>
                     </div>
                   </div>

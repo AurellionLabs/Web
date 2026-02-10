@@ -4,6 +4,8 @@
  * Tests the market selection grid that users see before viewing P2P offers.
  * Like the CLOB trading page, users pick a market (asset class) first,
  * then see offers filtered to that market.
+ *
+ * Open offer counts are fetched live from the Diamond P2P repository.
  */
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -31,27 +33,23 @@ vi.mock('@/app/providers/main.provider', () => ({
   }),
 }));
 
-// P2P repository mock
+// P2P repository mock – stable reference to avoid infinite re-render loops
 const mockGetOpenOffers = vi.fn();
+const mockP2PRepository = { getOpenOffers: mockGetOpenOffers };
 vi.mock('@/app/providers/diamond.provider', () => ({
   useDiamond: () => ({
-    p2pRepository: {
-      getOpenOffers: mockGetOpenOffers,
-    },
+    p2pRepository: mockP2PRepository,
     initialized: true,
   }),
 }));
 
-// Platform mock with asset classes and P2P volume
+// Platform mock with asset classes
 const mockAssetClasses = [
   {
     name: 'GOAT',
     assetTypeCount: 3,
     assetCount: 50,
     totalVolume: '0',
-    p2pVolume: '65000000000000000000', // 65 USD
-    p2pTradeCount: 12,
-    p2pOpenOfferCount: 5,
     isActive: true,
   },
   {
@@ -59,9 +57,6 @@ const mockAssetClasses = [
     assetTypeCount: 2,
     assetCount: 30,
     totalVolume: '0',
-    p2pVolume: '0',
-    p2pTradeCount: 0,
-    p2pOpenOfferCount: 0,
     isActive: true,
   },
 ];
@@ -70,7 +65,11 @@ vi.mock('@/app/providers/platform.provider', () => ({
   usePlatform: () => ({
     assetClasses: mockAssetClasses,
     supportedAssetClasses: ['GOAT', 'SHEEP'],
-    supportedAssets: [],
+    supportedAssets: [
+      { tokenId: '100', assetClass: 'GOAT', name: 'Boer' },
+      { tokenId: '200', assetClass: 'GOAT', name: 'Kalahari' },
+      { tokenId: '300', assetClass: 'SHEEP', name: 'Merino' },
+    ],
     isLoading: false,
   }),
 }));
@@ -134,6 +133,31 @@ vi.mock('@/lib/utils', () => ({
 import P2PMarketsPage from '@/app/customer/p2p/page';
 
 // ===========================================================================
+// HELPERS
+// ===========================================================================
+
+/** Create a minimal P2POffer mock */
+function makeOffer(tokenId: string, id = 'offer-1') {
+  return {
+    id,
+    creator: '0xAAA',
+    targetCounterparty: null,
+    token: '0xTOKEN',
+    tokenId,
+    quantity: BigInt(10),
+    price: BigInt(100),
+    txFee: BigInt(2),
+    isSellerInitiated: true,
+    status: 0,
+    buyer: '',
+    seller: '0xAAA',
+    expiresAt: BigInt(9999999999),
+    createdAt: BigInt(100),
+    metadata: {},
+  };
+}
+
+// ===========================================================================
 // TESTS
 // ===========================================================================
 
@@ -158,27 +182,30 @@ describe('P2P Markets Page', () => {
     });
   });
 
-  it('should display P2P volume for each market', async () => {
+  it('should display open offer count from live repository data', async () => {
+    // 4 GOAT offers (tokenId 100 x3 + 200 x1), 1 SHEEP offer (tokenId 300 x1)
+    mockGetOpenOffers.mockResolvedValue([
+      makeOffer('100', 'a'),
+      makeOffer('100', 'b'),
+      makeOffer('100', 'c'),
+      makeOffer('200', 'd'),
+      makeOffer('300', 'e'),
+    ]);
     render(<P2PMarketsPage />);
     await waitFor(() => {
-      // GOAT has 65 USD volume (65e18 wei / 1e18 = 65)
-      expect(screen.getByText(/65/)).toBeInTheDocument();
+      // GOAT: tokenId 100 (x3) + 200 (x1) = 4
+      expect(screen.getByText('4')).toBeInTheDocument();
+      // SHEEP: tokenId 300 (x1) = 1 — but assetTypeCount for SHEEP is also 2,
+      // so we check for 4 which is unique to GOAT's offer count
     });
   });
 
-  it('should display open offer count per market', async () => {
+  it('should display asset type count per market', async () => {
     render(<P2PMarketsPage />);
     await waitFor(() => {
-      // GOAT has 5 open offers
-      expect(screen.getByText('5')).toBeInTheDocument();
-    });
-  });
-
-  it('should display trade count per market', async () => {
-    render(<P2PMarketsPage />);
-    await waitFor(() => {
-      // GOAT has 12 trades
-      expect(screen.getByText('12')).toBeInTheDocument();
+      // GOAT has 3 asset types, SHEEP has 2
+      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
     });
   });
 
@@ -192,7 +219,6 @@ describe('P2P Markets Page', () => {
   it('should link each market card to the filtered offers page', async () => {
     render(<P2PMarketsPage />);
     await waitFor(() => {
-      // Each market card should be a link to /customer/p2p/market/[className]
       const goatLink = screen.getByText('GOAT').closest('a');
       expect(goatLink).toHaveAttribute('href', '/customer/p2p/market/GOAT');
     });

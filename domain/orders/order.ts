@@ -38,6 +38,10 @@ export type Order = {
   locationData?: ParcelData; // Optional for quick trading interface (CLOB-style orders)
   currentStatus: OrderStatus; // Uses OrderStatus enum (numeric values)
   contractualAgreement: string;
+  /** Whether this order originated from a P2P offer (vs CLOB) */
+  isP2P?: boolean;
+  /** Current journey status: 0=Pending, 1=InTransit, 2=Delivered. null if no journey yet */
+  journeyStatus?: number | null;
 };
 /**
  * Interface defining the data access methods for orders and journeys.
@@ -99,6 +103,13 @@ export interface IOrderRepository {
    * @returns A promise resolving to the order structure output.
    */
   getOrderById(orderId: BytesLike): Promise<Order>;
+
+  /**
+   * Retrieves all P2P orders involving a specific user (created or accepted).
+   * @param address The wallet address of the user.
+   * @returns A promise resolving to an array of P2P order structures.
+   */
+  getP2POrdersForUser(address: string): Promise<Order[]>;
 }
 
 /**

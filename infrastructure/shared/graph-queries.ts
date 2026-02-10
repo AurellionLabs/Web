@@ -1383,3 +1383,262 @@ export interface ProfitDistributedEventsResponse {
     pageInfo?: { hasNextPage: boolean; endCursor?: string };
   };
 }
+
+// =============================================================================
+// P2P ORDER QUERIES
+// =============================================================================
+
+/**
+ * Get P2P offers created by a specific user.
+ * Returns full offer details from P2POfferCreated events.
+ */
+export const GET_P2P_OFFERS_BY_CREATOR = gql`
+  query GetP2POffersByCreator($creator: String!, $limit: Int = 100) {
+    diamondP2POfferCreatedEventss(
+      where: { creator: $creator }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        order_id
+        creator
+        is_seller_initiated
+        token
+        token_id
+        token_quantity
+        price
+        target_counterparty
+        expires_at
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get P2P offers accepted by a specific user.
+ * Returns the accepted event linking acceptor to order_id.
+ */
+export const GET_P2P_OFFERS_ACCEPTED_BY_USER = gql`
+  query GetP2POffersAcceptedByUser($acceptor: String!, $limit: Int = 100) {
+    diamondP2POfferAcceptedEventss(
+      where: { acceptor: $acceptor }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        order_id
+        acceptor
+        is_seller_initiated
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get all P2P offer created events (for enriching accepted events with details).
+ */
+export const GET_P2P_OFFER_DETAILS_BY_ORDER_IDS = gql`
+  query GetP2POfferDetailsByOrderIds($limit: Int = 500) {
+    diamondP2POfferCreatedEventss(limit: $limit) {
+      items {
+        id
+        order_id
+        creator
+        is_seller_initiated
+        token
+        token_id
+        token_quantity
+        price
+        target_counterparty
+        expires_at
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get AuSys order status updates (to determine current status of P2P orders).
+ */
+export const GET_AUSYS_ORDER_STATUS_UPDATES = gql`
+  query GetAuSysOrderStatusUpdates($limit: Int = 500) {
+    diamondAuSysOrderStatusUpdatedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        order_id
+        new_status
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+// =============================================================================
+// P2P RAW EVENT RESPONSE TYPES
+// =============================================================================
+
+export interface P2POfferCreatedRawEvent {
+  id: string;
+  order_id: string;
+  creator: string;
+  is_seller_initiated: boolean;
+  token: string;
+  token_id: string;
+  token_quantity: string;
+  price: string;
+  target_counterparty: string;
+  expires_at: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface P2POfferAcceptedRawEvent {
+  id: string;
+  order_id: string;
+  acceptor: string;
+  is_seller_initiated: boolean;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface AuSysOrderStatusUpdatedRawEvent {
+  id: string;
+  order_id: string;
+  new_status: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface P2POffersByCreatorResponse {
+  diamondP2POfferCreatedEventss: { items: P2POfferCreatedRawEvent[] };
+}
+
+export interface P2POffersAcceptedByUserResponse {
+  diamondP2POfferAcceptedEventss: { items: P2POfferAcceptedRawEvent[] };
+}
+
+export interface P2POfferDetailsResponse {
+  diamondP2POfferCreatedEventss: { items: P2POfferCreatedRawEvent[] };
+}
+
+export interface AuSysOrderStatusUpdatesResponse {
+  diamondAuSysOrderStatusUpdatedEventss: {
+    items: AuSysOrderStatusUpdatedRawEvent[];
+  };
+}
+
+// =============================================================================
+// P2P JOURNEY QUERIES (for enriching P2P orders with journey data)
+// =============================================================================
+
+/**
+ * Get journeys linked to AuSys orders.
+ * The `order_id` field links journeys to their parent order.
+ */
+export const GET_JOURNEYS_BY_ORDER = gql`
+  query GetJourneysByOrder($limit: Int = 500) {
+    diamondJourneyCreatedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        sender
+        receiver
+        driver
+        bounty
+        e_t_a
+        order_id
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get journey status updates to determine current journey phase.
+ */
+export const GET_JOURNEY_STATUS_UPDATES_ALL = gql`
+  query GetJourneyStatusUpdatesAll($limit: Int = 500) {
+    diamondAuSysJourneyStatusUpdatedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        new_status
+        sender
+        receiver
+        driver
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+// P2P Journey Raw Event Types
+
+export interface JourneyCreatedForOrderRawEvent {
+  id: string;
+  journey_id: string;
+  sender: string;
+  receiver: string;
+  driver: string;
+  bounty: string;
+  e_t_a: string;
+  order_id: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface JourneyStatusUpdateRawEvent {
+  id: string;
+  journey_id: string;
+  new_status: string;
+  sender: string;
+  receiver: string;
+  driver: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface JourneysByOrderResponse {
+  diamondJourneyCreatedEventss: { items: JourneyCreatedForOrderRawEvent[] };
+}
+
+export interface JourneyStatusUpdatesAllResponse {
+  diamondAuSysJourneyStatusUpdatedEventss: {
+    items: JourneyStatusUpdateRawEvent[];
+  };
+}

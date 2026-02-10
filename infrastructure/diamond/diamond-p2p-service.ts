@@ -24,6 +24,64 @@ const ERC20_ABI = [
   'function allowance(address owner, address spender) external view returns (uint256)',
 ];
 
+// ============================================================================
+// P2P Custom Error Decoding
+// ============================================================================
+
+/** Map of AuSysFacet P2P error selectors to user-friendly messages */
+const P2P_ERROR_MAP: Record<string, string> = {
+  '0x6df5846d': 'Offer not found. It may have been removed.',
+  '0x2b8b1d43':
+    'This offer is no longer open. It may have already been accepted, cancelled, or expired.',
+  '0x9cb13087': 'This offer has expired.',
+  '0xcb6036a0': 'This offer is targeted to a different counterparty.',
+  '0x520e449f': 'You cannot accept your own offer.',
+  '0x6035cb58': 'Only the offer creator can cancel this offer.',
+  '0xe6c4247b': 'Invalid address in the offer.',
+  '0x2c5211c6': 'Invalid amount – price or quantity cannot be zero.',
+  '0xb7f05f41': 'Payment token has not been configured on the contract.',
+};
+
+/**
+ * Decode a contract revert into a user-friendly message.
+ * Falls back to the raw error message if the selector is unknown.
+ */
+export function decodeP2PError(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const err = error as Record<string, unknown>;
+
+    // ethers v6 CALL_EXCEPTION: data contains the error selector
+    if (typeof err.data === 'string' && err.data.length >= 10) {
+      const selector = err.data.slice(0, 10).toLowerCase();
+      if (P2P_ERROR_MAP[selector]) return P2P_ERROR_MAP[selector];
+    }
+
+    // Some providers nest the data inside err.error
+    if (err.error && typeof err.error === 'object') {
+      const inner = err.error as Record<string, unknown>;
+      if (typeof inner.data === 'string' && inner.data.length >= 10) {
+        const selector = inner.data.slice(0, 10).toLowerCase();
+        if (P2P_ERROR_MAP[selector]) return P2P_ERROR_MAP[selector];
+      }
+    }
+
+    // ethers v6 already decoded the reason
+    if (typeof err.reason === 'string') return err.reason;
+
+    // Fall back to message
+    if (typeof err.message === 'string') {
+      // Try to extract the selector from the message body
+      const match = err.message.match(/data="(0x[a-fA-F0-9]{8,})"/);
+      if (match) {
+        const selector = match[1].slice(0, 10).toLowerCase();
+        if (P2P_ERROR_MAP[selector]) return P2P_ERROR_MAP[selector];
+      }
+      return err.message;
+    }
+  }
+  return String(error);
+}
+
 /**
  * Diamond-based implementation of P2P Service (write operations)
  */
@@ -143,10 +201,9 @@ export class DiamondP2PService implements IP2PService {
 
       // If this is a sell offer, the acceptor is the buyer → needs ERC20 approval
       if (order.isSellerInitiated) {
+        // Contract charges price + txFee (price is already the total, not per-unit)
         const totalCost =
-          BigInt(order.price.toString()) *
-            BigInt(order.tokenQuantity.toString()) +
-          BigInt(order.txFee.toString());
+          BigInt(order.price.toString()) + BigInt(order.txFee.toString());
 
         await this.ensureQuoteTokenApproval(totalCost);
       }
@@ -158,7 +215,11 @@ export class DiamondP2PService implements IP2PService {
       console.log('[DiamondP2PService] Offer accepted:', receipt.hash);
     } catch (error) {
       console.error('[DiamondP2PService] Error accepting offer:', error);
-      throw error;
+      // Re-throw with decoded message for the UI
+      const decoded = decodeP2PError(error);
+      const wrapped = new Error(decoded);
+      (wrapped as any).originalError = error;
+      throw wrapped;
     }
   }
 
@@ -225,7 +286,10 @@ export class DiamondP2PService implements IP2PService {
       console.log('[DiamondP2PService] Offer canceled:', receipt.hash);
     } catch (error) {
       console.error('[DiamondP2PService] Error canceling offer:', error);
-      throw error;
+      const decoded = decodeP2PError(error);
+      const wrapped = new Error(decoded);
+      (wrapped as any).originalError = error;
+      throw wrapped;
     }
   }
 }

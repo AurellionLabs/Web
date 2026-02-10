@@ -5,7 +5,10 @@
  * These are the actual transaction-sending methods that interact with AuSysFacet.
  */
 import { ethers } from 'ethers';
-import { DiamondP2PService } from '@/infrastructure/diamond/diamond-p2p-service';
+import {
+  DiamondP2PService,
+  decodeP2PError,
+} from '@/infrastructure/diamond/diamond-p2p-service';
 
 vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_INDEXER_URL: 'https://mock-indexer.test/graphql',
@@ -203,7 +206,7 @@ describe('DiamondP2PService', () => {
       expect(context._mockTx.wait).toHaveBeenCalled();
     });
 
-    it('should propagate contract errors', async () => {
+    it('should propagate contract errors with decoded message', async () => {
       const context = createMockContext({
         diamond: {
           acceptP2POffer: vi
@@ -216,6 +219,72 @@ describe('DiamondP2PService', () => {
       await expect(service.acceptOffer(OFFER_ID)).rejects.toThrow(
         'ERC1155InsufficientBalance',
       );
+    });
+
+    it('should decode OfferNotOpen custom error to user-friendly message', async () => {
+      // 0x2b8b1d43 is the selector for OfferNotOpen()
+      const contractError = {
+        code: 'CALL_EXCEPTION',
+        data: '0x2b8b1d43',
+        message: 'execution reverted (unknown custom error)',
+      };
+      const context = createMockContext({
+        diamond: {
+          acceptP2POffer: vi.fn().mockRejectedValue(contractError),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(service.acceptOffer(OFFER_ID)).rejects.toThrow(
+        /no longer open/,
+      );
+    });
+
+    it('should calculate totalCost as price + txFee (not price * qty)', async () => {
+      // Verify the approval amount is price + txFee (contract's formula)
+      const mockApproveTx = {
+        hash: '0xapprove',
+        wait: vi.fn().mockResolvedValue({}),
+      };
+      const mockQuoteToken = {
+        allowance: vi.fn().mockResolvedValue(0n),
+        approve: vi.fn().mockResolvedValue(mockApproveTx),
+      };
+
+      const price = BigInt('5000000000000000000'); // 5 tokens
+      const txFee = BigInt('100000000000000000'); // 0.1 tokens
+      const tokenQuantity = BigInt(10);
+
+      const context = createMockContext({
+        diamond: {
+          getAuSysOrder: vi.fn().mockResolvedValue({
+            id: OFFER_ID,
+            isSellerInitiated: true,
+            price,
+            tokenQuantity,
+            txFee,
+          }),
+        },
+        quoteToken: mockQuoteToken,
+      });
+
+      const service = new DiamondP2PService(context);
+      await service.acceptOffer(OFFER_ID);
+
+      // Allowance check should use price + txFee = 5.1 tokens
+      // NOT price * tokenQuantity + txFee = 50.1 tokens
+      const expectedTotal = price + txFee; // 5100000000000000000n
+      expect(mockQuoteToken.allowance).toHaveBeenCalled();
+
+      // Since allowance was 0, approve was called. The ensureQuoteTokenApproval
+      // checks `currentAllowance < amount`, where amount = price + txFee
+      // We verify by checking that with an allowance just above price + txFee,
+      // approve is NOT called (proving the formula is price + txFee)
+      mockQuoteToken.allowance.mockResolvedValue(expectedTotal);
+      mockQuoteToken.approve.mockClear();
+
+      await service.acceptOffer(OFFER_ID);
+      expect(mockQuoteToken.approve).not.toHaveBeenCalled();
     });
 
     it('should fetch the offer and check ERC20 allowance before accepting a sell offer (buyer pays)', async () => {
@@ -303,7 +372,7 @@ describe('DiamondP2PService', () => {
       expect(context._diamond.cancelP2POffer).toHaveBeenCalledWith(OFFER_ID);
     });
 
-    it('should propagate contract errors', async () => {
+    it('should propagate contract errors with decoded message', async () => {
       const context = createMockContext({
         diamond: {
           cancelP2POffer: vi
@@ -317,5 +386,82 @@ describe('DiamondP2PService', () => {
         'Only creator can cancel',
       );
     });
+
+    it('should decode OnlyCreatorCanCancel custom error', async () => {
+      // 0x6035cb58 is the selector for OnlyCreatorCanCancel()
+      const contractError = {
+        code: 'CALL_EXCEPTION',
+        data: '0x6035cb58',
+        message: 'execution reverted (unknown custom error)',
+      };
+      const context = createMockContext({
+        diamond: {
+          cancelP2POffer: vi.fn().mockRejectedValue(contractError),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(service.cancelOffer(OFFER_ID)).rejects.toThrow(
+        /only the offer creator/i,
+      );
+    });
+  });
+});
+
+// =============================================================================
+// decodeP2PError unit tests
+// =============================================================================
+
+describe('decodeP2PError', () => {
+  it('should decode OfferNotOpen selector (0x2b8b1d43)', () => {
+    const error = { data: '0x2b8b1d43', message: 'revert' };
+    expect(decodeP2PError(error)).toContain('no longer open');
+  });
+
+  it('should decode OfferNotFound selector (0x6df5846d)', () => {
+    const error = { data: '0x6df5846d', message: 'revert' };
+    expect(decodeP2PError(error)).toContain('not found');
+  });
+
+  it('should decode OfferExpired selector (0x9cb13087)', () => {
+    const error = { data: '0x9cb13087', message: 'revert' };
+    expect(decodeP2PError(error)).toContain('expired');
+  });
+
+  it('should decode CannotAcceptOwnOffer selector (0x520e449f)', () => {
+    const error = { data: '0x520e449f', message: 'revert' };
+    expect(decodeP2PError(error)).toContain('cannot accept your own');
+  });
+
+  it('should fall back to reason string if present', () => {
+    const error = { reason: 'ERC20: insufficient allowance' };
+    expect(decodeP2PError(error)).toBe('ERC20: insufficient allowance');
+  });
+
+  it('should fall back to error message for unknown errors', () => {
+    const error = new Error('something unexpected');
+    expect(decodeP2PError(error)).toBe('something unexpected');
+  });
+
+  it('should extract selector from data inside error.error (nested provider error)', () => {
+    const error = {
+      error: { data: '0x2b8b1d43' },
+      message: 'call revert exception',
+    };
+    expect(decodeP2PError(error)).toContain('no longer open');
+  });
+
+  it('should extract selector from message body as fallback', () => {
+    const error = {
+      message:
+        'execution reverted (unknown custom error) (action="estimateGas", data="0x2b8b1d43")',
+    };
+    expect(decodeP2PError(error)).toContain('no longer open');
+  });
+
+  it('should handle non-object errors', () => {
+    expect(decodeP2PError('plain string error')).toBe('plain string error');
+    expect(decodeP2PError(42)).toBe('42');
+    expect(decodeP2PError(null)).toBe('null');
   });
 });

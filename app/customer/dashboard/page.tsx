@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
 import {
@@ -43,6 +43,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import { OrderStatus } from '@/domain/orders/order';
+import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract } from 'ethers';
@@ -170,6 +171,9 @@ export default function CustomerDashboard() {
     refreshOrders,
     cancelOrder,
     confirmReceipt,
+    signP2PDelivery,
+    completeP2PHandoff,
+    getP2PSignatureState,
   } = useCustomer();
   const { toast } = useToast();
 
@@ -210,6 +214,11 @@ export default function CustomerDashboard() {
   const [signatureCleanups, setSignatureCleanups] = useState<
     Record<string, () => void>
   >({});
+  // Track which P2P orders are expanded to show the flow detail
+  const [expandedP2POrders, setExpandedP2POrders] = useState<
+    Record<string, boolean>
+  >({});
+  const [p2pActionLoading, setP2PActionLoading] = useState(false);
 
   useEffect(() => {
     setCurrentUserRole('customer');
@@ -306,6 +315,55 @@ export default function CustomerDashboard() {
         description: 'Failed to cancel order. Please try again.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const toggleP2PExpand = (orderId: string) => {
+    setExpandedP2POrders((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  };
+
+  const handleSignP2PDelivery = async (orderId: string, journeyId: string) => {
+    try {
+      setP2PActionLoading(true);
+      await signP2PDelivery(orderId, journeyId);
+      toast({
+        title: 'Delivery Signed',
+        description: 'Your delivery signature has been recorded on-chain.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to sign for delivery. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setP2PActionLoading(false);
+    }
+  };
+
+  const handleCompleteP2PHandoff = async (
+    orderId: string,
+    journeyId: string,
+  ) => {
+    try {
+      setP2PActionLoading(true);
+      await completeP2PHandoff(orderId, journeyId);
+      toast({
+        title: 'Handoff Complete',
+        description:
+          'The order has been settled. Tokens and payment distributed.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to complete handoff. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setP2PActionLoading(false);
     }
   };
 
@@ -652,63 +710,116 @@ export default function CustomerDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-glass-border">
-                {currentOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-glass-hover transition-colors"
-                  >
-                    <td className="px-4 py-4 text-sm font-mono text-foreground">
-                      {order.id.slice(0, 8)}...
-                    </td>
-                    <td className="px-4 py-4 text-sm text-foreground capitalize">
-                      {order.asset?.name || 'Unknown'}
-                    </td>
-                    <td className="px-4 py-4 text-sm font-mono text-foreground">
-                      {order.tokenQuantity}
-                    </td>
-                    <td className="px-4 py-4 text-sm font-mono text-foreground">
-                      ${formatTokenAmount(order.price, 6, 2)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge
-                        status={
-                          order.currentStatus === OrderStatus.SETTLED
-                            ? 'connected'
-                            : order.currentStatus === OrderStatus.CANCELLED
-                              ? 'disconnected'
-                              : order.currentStatus === OrderStatus.PROCESSING
-                                ? 'warning'
-                                : 'pending'
+                {currentOrders.map((order) => {
+                  const isP2P = Boolean(order.isP2P);
+                  const isExpanded = expandedP2POrders[order.id];
+
+                  return (
+                    <React.Fragment key={order.id}>
+                      <tr
+                        className={cn(
+                          'hover:bg-glass-hover transition-colors',
+                          isP2P && 'cursor-pointer',
+                          isExpanded && 'bg-glass-hover',
+                        )}
+                        onClick={
+                          isP2P ? () => toggleP2PExpand(order.id) : undefined
                         }
-                        label={getStatusLabel(order.currentStatus)}
-                        size="sm"
-                      />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        {order.currentStatus === OrderStatus.CREATED && (
-                          <OrderActionDialog
-                            order={order}
-                            onConfirm={handleCancelOrder}
-                            variant="cancel"
-                          />
-                        )}
-                        {order.currentStatus === OrderStatus.PROCESSING && (
-                          <OrderActionDialog
-                            order={order}
-                            onConfirm={handleConfirmReceipt}
-                            variant="confirm"
-                            isLoading={loading}
-                            isWaitingForSignature={
-                              waitingForSignature[order.id]
+                      >
+                        <td className="px-4 py-4 text-sm font-mono text-foreground">
+                          <div className="flex items-center gap-2">
+                            {order.id.slice(0, 8)}...
+                            {isP2P && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">
+                                P2P
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-foreground capitalize">
+                          {order.asset?.name || 'Unknown'}
+                        </td>
+                        <td className="px-4 py-4 text-sm font-mono text-foreground">
+                          {order.tokenQuantity}
+                        </td>
+                        <td className="px-4 py-4 text-sm font-mono text-foreground">
+                          ${formatTokenAmount(order.price, 6, 2)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <StatusBadge
+                            status={
+                              order.currentStatus === OrderStatus.SETTLED
+                                ? 'connected'
+                                : order.currentStatus === OrderStatus.CANCELLED
+                                  ? 'disconnected'
+                                  : order.currentStatus ===
+                                      OrderStatus.PROCESSING
+                                    ? 'warning'
+                                    : 'pending'
                             }
-                            waitingForRole="driver"
+                            label={getStatusLabel(order.currentStatus)}
+                            size="sm"
                           />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            {order.currentStatus === OrderStatus.CREATED && (
+                              <OrderActionDialog
+                                order={order}
+                                onConfirm={handleCancelOrder}
+                                variant="cancel"
+                              />
+                            )}
+                            {order.currentStatus === OrderStatus.PROCESSING &&
+                              !isP2P && (
+                                <OrderActionDialog
+                                  order={order}
+                                  onConfirm={handleConfirmReceipt}
+                                  variant="confirm"
+                                  isLoading={loading}
+                                  isWaitingForSignature={
+                                    waitingForSignature[order.id]
+                                  }
+                                  waitingForRole="driver"
+                                />
+                              )}
+                            {isP2P &&
+                              order.currentStatus !== OrderStatus.SETTLED &&
+                              order.currentStatus !== OrderStatus.CANCELLED && (
+                                <button
+                                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleP2PExpand(order.id);
+                                  }}
+                                >
+                                  {isExpanded ? 'Hide Flow' : 'View Flow'}
+                                </button>
+                              )}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expandable P2P Order Flow row */}
+                      {isP2P && isExpanded && (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-4 py-2 bg-surface-overlay/50"
+                          >
+                            <P2POrderFlow
+                              order={order}
+                              onSignDelivery={handleSignP2PDelivery}
+                              onCompleteHandoff={handleCompleteP2PHandoff}
+                              fetchSignatureState={getP2PSignatureState}
+                              isActionLoading={p2pActionLoading}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
 

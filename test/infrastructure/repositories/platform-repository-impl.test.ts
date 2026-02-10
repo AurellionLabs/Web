@@ -69,17 +69,16 @@ describe('PlatformRepository', () => {
   });
 
   describe('getAssetByTokenId', () => {
-    it('should convert hex tokenId to decimal for Pinata query', async () => {
+    it('should try multiple tokenId formats (raw, decimal, hex) for Pinata query', async () => {
       const hexTokenId =
         '0xb4ea2cef8a0db05f1d5db458b7e725abe12c5dea46810992eae76b8687876a40';
-      const expectedDecimal = BigInt(hexTokenId).toString(10);
 
       const pinata = createMockPinata({
         files: [{ cid: 'QmAssetCID' }],
         gatewayData: {
           QmAssetCID: {
             className: 'GOAT',
-            tokenId: expectedDecimal,
+            tokenId: hexTokenId,
             asset: {
               name: 'AUGOAT',
               attributes: [
@@ -97,9 +96,9 @@ describe('PlatformRepository', () => {
       const repo = new PlatformRepository(mockContract, pinata);
       const asset = await repo.getAssetByTokenId(hexTokenId);
 
-      // Verify Pinata was called with decimal string
+      // Should try raw string first, which matches immediately
       expect(pinata._listBuilder.keyvalues).toHaveBeenCalledWith({
-        tokenId: expectedDecimal,
+        tokenId: hexTokenId,
       });
 
       expect(asset).not.toBeNull();

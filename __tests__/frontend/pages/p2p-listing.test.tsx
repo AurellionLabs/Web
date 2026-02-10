@@ -1,9 +1,8 @@
 /**
  * P2P Markets Page Tests (updated)
  *
- * Tests the market selection grid page. The old flat-listing page has
- * been moved to /customer/p2p/market/[className]/page.tsx.
- * This file now tests the market grid entry point.
+ * Tests the market selection grid page. The page fetches open offers
+ * from the Diamond P2P repository and computes per-class counts locally.
  */
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -34,6 +33,16 @@ vi.mock('@/app/providers/main.provider', () => ({
   }),
 }));
 
+// P2P repository mock – stable reference to avoid infinite re-render loops
+const mockGetOpenOffers = vi.fn();
+const mockP2PRepository = { getOpenOffers: mockGetOpenOffers };
+vi.mock('@/app/providers/diamond.provider', () => ({
+  useDiamond: () => ({
+    p2pRepository: mockP2PRepository,
+    initialized: true,
+  }),
+}));
+
 vi.mock('@/app/providers/platform.provider', () => ({
   usePlatform: () => ({
     assetClasses: [
@@ -42,9 +51,6 @@ vi.mock('@/app/providers/platform.provider', () => ({
         assetTypeCount: 3,
         assetCount: 50,
         totalVolume: '0',
-        p2pVolume: '10000000000000000000', // 10 USD
-        p2pTradeCount: 5,
-        p2pOpenOfferCount: 3,
         isActive: true,
       },
       {
@@ -52,14 +58,15 @@ vi.mock('@/app/providers/platform.provider', () => ({
         assetTypeCount: 1,
         assetCount: 20,
         totalVolume: '0',
-        p2pVolume: '0',
-        p2pTradeCount: 0,
-        p2pOpenOfferCount: 0,
         isActive: true,
       },
     ],
     supportedAssetClasses: ['GOAT', 'SHEEP'],
-    supportedAssets: [],
+    supportedAssets: [
+      { tokenId: '1', assetClass: 'GOAT', name: 'Boer' },
+      { tokenId: '2', assetClass: 'GOAT', name: 'Kalahari' },
+      { tokenId: '3', assetClass: 'SHEEP', name: 'Merino' },
+    ],
     isLoading: false,
   }),
 }));
@@ -77,11 +84,9 @@ vi.mock('lucide-react', () => {
   );
   return {
     Plus: icon('plus'),
-    TrendingUp: icon('trending-up'),
     Package: icon('package'),
     BarChart3: icon('bar-chart'),
     Handshake: icon('handshake'),
-    Activity: icon('activity'),
   };
 });
 
@@ -100,83 +105,120 @@ vi.mock('@/lib/utils', () => ({
 import P2PPage from '@/app/customer/p2p/page';
 
 // ===========================================================================
+// HELPERS
+// ===========================================================================
+
+/** Create a minimal P2POffer mock */
+function makeOffer(tokenId: string, id = 'offer-1') {
+  return {
+    id,
+    creator: '0xAAA',
+    targetCounterparty: null,
+    token: '0xTOKEN',
+    tokenId,
+    quantity: BigInt(10),
+    price: BigInt(100),
+    txFee: BigInt(2),
+    isSellerInitiated: true,
+    status: 0,
+    buyer: '',
+    seller: '0xAAA',
+    expiresAt: BigInt(9999999999),
+    createdAt: BigInt(100),
+    metadata: {},
+  };
+}
+
+// ===========================================================================
 // TESTS
 // ===========================================================================
 
 describe('P2P Markets Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetOpenOffers.mockResolvedValue([]);
   });
 
-  it('should render the P2P Trading heading', () => {
+  it('should render the P2P Trading heading', async () => {
     render(<P2PPage />);
     expect(screen.getByText(/P2P Trading/i)).toBeInTheDocument();
   });
 
-  it('should set user role to customer', () => {
+  it('should set user role to customer', async () => {
     render(<P2PPage />);
     expect(mockSetCurrentUserRole).toHaveBeenCalledWith('customer');
   });
 
-  it('should show market cards for each asset class', () => {
+  it('should show market cards for each asset class', async () => {
     render(<P2PPage />);
-    expect(screen.getByText('GOAT')).toBeInTheDocument();
-    expect(screen.getByText('SHEEP')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('GOAT')).toBeInTheDocument();
+      expect(screen.getByText('SHEEP')).toBeInTheDocument();
+    });
   });
 
-  it('should display open offer count per market', () => {
+  it('should display real open offer count from repository', async () => {
+    // 2 GOAT offers (tokenId 1 and 2), 1 SHEEP offer (tokenId 3)
+    mockGetOpenOffers.mockResolvedValue([
+      makeOffer('1', 'a'),
+      makeOffer('2', 'b'),
+      makeOffer('3', 'c'),
+    ]);
     render(<P2PPage />);
-    // GOAT has 3 open offers
-    expect(screen.getByText('3')).toBeInTheDocument();
+    // GOAT should show 2 open offers, SHEEP should show 1
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
   });
 
-  it('should display trade count per market', () => {
+  it('should show 0 open offers when repository returns empty', async () => {
+    mockGetOpenOffers.mockResolvedValue([]);
     render(<P2PPage />);
-    // GOAT has 5 trades
-    expect(screen.getByText('5')).toBeInTheDocument();
+    await waitFor(() => {
+      // Both classes should show 0
+      const zeros = screen.getAllByText('0');
+      expect(zeros.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
-  it('should display P2P volume', () => {
+  it('should display asset type count per market', async () => {
     render(<P2PPage />);
-    // GOAT has 10 USD volume
-    expect(screen.getByText(/\$10/)).toBeInTheDocument();
+    await waitFor(() => {
+      // GOAT has 3 asset types
+      expect(screen.getByText('3')).toBeInTheDocument();
+    });
   });
 
-  it('should link market cards to the market offers page', () => {
+  it('should link market cards to the market offers page', async () => {
     render(<P2PPage />);
     const goatLink = screen.getByText('GOAT').closest('a');
     expect(goatLink).toHaveAttribute('href', '/customer/p2p/market/GOAT');
   });
 
-  it('should have a Create Offer button', () => {
+  it('should have a Create Offer button', async () => {
     render(<P2PPage />);
     expect(screen.getByText(/Create Offer/i)).toBeInTheDocument();
   });
 
-  it('should navigate to create page on Create Offer click', () => {
+  it('should navigate to create page on Create Offer click', async () => {
     render(<P2PPage />);
     const btn = screen.getByText(/Create Offer/i);
     btn.click();
     expect(mockPush).toHaveBeenCalledWith('/customer/p2p/create');
   });
 
-  it('should show SHEEP market with zero stats', () => {
-    render(<P2PPage />);
-    // Both 0 values for SHEEP (open offers and trades)
-    const sheepLink = screen.getByText('SHEEP').closest('a');
-    expect(sheepLink).toBeInTheDocument();
-  });
-
-  it('should show View Offers hover text for each card', () => {
+  it('should show View Offers hover text for each card', async () => {
     render(<P2PPage />);
     const viewTexts = screen.getAllByText(/View Offers/i);
-    expect(viewTexts.length).toBe(2); // One per market card
+    expect(viewTexts.length).toBe(2);
   });
 
-  it('should display $0 for markets with no volume', () => {
+  it('should show loading dots while offers are being fetched', async () => {
+    // Never resolve
+    mockGetOpenOffers.mockReturnValue(new Promise(() => {}));
     render(<P2PPage />);
-    // SHEEP has $0 volume
-    const volumeTexts = screen.getAllByText('$0');
-    expect(volumeTexts.length).toBeGreaterThanOrEqual(1);
+    // Should show '...' for open offers
+    const dots = screen.getAllByText('...');
+    expect(dots.length).toBeGreaterThanOrEqual(2);
   });
 });

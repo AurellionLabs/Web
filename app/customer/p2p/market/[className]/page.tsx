@@ -73,6 +73,7 @@ export default function P2PMarketOffersPage() {
   const [processingOfferId, setProcessingOfferId] = useState<string | null>(
     null,
   );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Set user role on mount
   useEffect(() => {
@@ -256,11 +257,19 @@ export default function P2PMarketOffersPage() {
     async (offerId: string) => {
       if (!p2pService) return;
       setProcessingOfferId(offerId);
+      setErrorMessage(null);
       try {
         await p2pService.acceptOffer(offerId);
         await loadOffers();
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error accepting offer:', error);
+        const msg =
+          error instanceof Error
+            ? error.message
+            : 'Failed to accept offer. Please try again.';
+        setErrorMessage(msg);
+        // Refresh the list to remove stale offers
+        await loadOffers();
       } finally {
         setProcessingOfferId(null);
       }
@@ -273,11 +282,18 @@ export default function P2PMarketOffersPage() {
     async (offerId: string) => {
       if (!p2pService) return;
       setProcessingOfferId(offerId);
+      setErrorMessage(null);
       try {
         await p2pService.cancelOffer(offerId);
         await loadOffers();
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error canceling offer:', error);
+        const msg =
+          error instanceof Error
+            ? error.message
+            : 'Failed to cancel offer. Please try again.';
+        setErrorMessage(msg);
+        await loadOffers();
       } finally {
         setProcessingOfferId(null);
       }
@@ -618,6 +634,21 @@ export default function P2PMarketOffersPage() {
             </div>
           )}
         </div>
+
+        {/* Error Banner */}
+        {errorMessage && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <X className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
+            <span className="flex-1">{errorMessage}</span>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="shrink-0 text-red-400 hover:text-red-300 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         {isLoading ? (

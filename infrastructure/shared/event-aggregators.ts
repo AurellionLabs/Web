@@ -35,6 +35,13 @@ import {
   P2POfferAcceptedEvent,
   P2PMarketStats,
 } from './indexer-types';
+import type {
+  P2POfferCreatedRawEvent,
+  P2POfferAcceptedRawEvent,
+  AuSysOrderStatusUpdatedRawEvent,
+  JourneyCreatedForOrderRawEvent,
+  JourneyStatusUpdateRawEvent,
+} from './graph-queries';
 import { Node, NodeLocation, NodeAsset } from '@/domain/node';
 import { Order, OrderStatus } from '@/domain/orders/order';
 import { Journey, JourneyStatus, ParcelData } from '@/domain/shared';
@@ -711,4 +718,153 @@ export function aggregateP2PMarketStats(
     openOfferCount: Math.max(0, openOfferCount),
     volumeByTokenId: volumeByTokenIdStr,
   };
+}
+
+// ============================================================================
+// P2P Order Aggregation for Dashboard
+// ============================================================================
+
+/**
+ * Map a contract numeric status to an OrderStatus enum value.
+ */
+function contractStatusToOrderStatus(status: number): OrderStatus {
+  switch (status) {
+    case 0:
+      return OrderStatus.CREATED;
+    case 1:
+      return OrderStatus.PROCESSING;
+    case 2:
+      return OrderStatus.SETTLED;
+    case 3:
+      return OrderStatus.CANCELLED;
+    default:
+      return OrderStatus.CREATED;
+  }
+}
+
+/**
+ * Aggregate P2P events into Order domain objects for the customer dashboard.
+ *
+ * @param createdByUser - P2P offers created by the user
+ * @param acceptedByUser - P2P offers accepted by the user
+ * @param allCreatedEvents - All P2P created events (to look up details of accepted offers)
+ * @param statusUpdates - AuSys order status update events (to get current status)
+ * @param userAddress - The current user's address (lowercased)
+ * @param journeyEvents - Journey creation events (to link journeys to orders)
+ * @param journeyStatusUpdates - Journey status update events (to get current journey phase)
+ * @returns Order[] compatible with the dashboard's OrderWithAsset pattern
+ */
+export function aggregateP2POrdersForUser(
+  createdByUser: P2POfferCreatedRawEvent[],
+  acceptedByUser: P2POfferAcceptedRawEvent[],
+  allCreatedEvents: P2POfferCreatedRawEvent[],
+  statusUpdates: AuSysOrderStatusUpdatedRawEvent[],
+  userAddress: string,
+  journeyEvents: JourneyCreatedForOrderRawEvent[] = [],
+  journeyStatusUpdates: JourneyStatusUpdateRawEvent[] = [],
+): Order[] {
+  const addr = userAddress.toLowerCase();
+
+  // Build lookup: order_id → latest status
+  const statusMap = new Map<string, number>();
+  for (const su of statusUpdates) {
+    const oid = su.order_id.toLowerCase();
+    const status = Number(su.new_status);
+    // Latest event wins (statusUpdates are ordered desc, first seen is newest)
+    if (!statusMap.has(oid)) {
+      statusMap.set(oid, status);
+    }
+  }
+
+  // Build lookup: order_id → created event details
+  const createdMap = new Map<string, P2POfferCreatedRawEvent>();
+  for (const ce of allCreatedEvents) {
+    createdMap.set(ce.order_id.toLowerCase(), ce);
+  }
+
+  // Build lookup: order_id → journey IDs
+  const orderJourneyMap = new Map<string, string[]>();
+  for (const je of journeyEvents) {
+    const oid = je.order_id.toLowerCase();
+    const existing = orderJourneyMap.get(oid) ?? [];
+    existing.push(je.journey_id);
+    orderJourneyMap.set(oid, existing);
+  }
+
+  // Build lookup: journey_id → latest status
+  const journeyStatusMap = new Map<string, number>();
+  for (const jsu of journeyStatusUpdates) {
+    const jid = jsu.journey_id.toLowerCase();
+    const status = Number(jsu.new_status);
+    if (!journeyStatusMap.has(jid)) {
+      journeyStatusMap.set(jid, status);
+    }
+  }
+
+  const orders: Order[] = [];
+  const seenOrderIds = new Set<string>();
+
+  function buildOrder(
+    orderId: string,
+    created: P2POfferCreatedRawEvent,
+    isBuyer: boolean,
+    defaultStatus: number,
+  ): Order {
+    const oid = orderId.toLowerCase();
+    const contractStatus = statusMap.get(oid) ?? defaultStatus;
+    const journeyIds = orderJourneyMap.get(oid) ?? [];
+
+    // Get the latest journey status for this order (use the most recent journey)
+    let journeyStatus: number | null = null;
+    for (const jid of journeyIds) {
+      const jStatus = journeyStatusMap.get(jid.toLowerCase());
+      if (jStatus !== undefined) {
+        journeyStatus = jStatus;
+        break; // First journey (most recent) wins
+      }
+    }
+
+    return {
+      id: created.order_id,
+      token: created.token,
+      tokenId: created.token_id,
+      tokenQuantity: created.token_quantity,
+      price: created.price,
+      txFee: '0',
+      buyer: isBuyer ? addr : created.creator,
+      seller: isBuyer ? created.creator : addr,
+      journeyIds,
+      nodes: [],
+      currentStatus: contractStatusToOrderStatus(contractStatus),
+      contractualAgreement: '',
+      isP2P: true,
+      journeyStatus,
+    };
+  }
+
+  // 1) Orders the user created
+  for (const ce of createdByUser) {
+    const oid = ce.order_id.toLowerCase();
+    if (seenOrderIds.has(oid)) continue;
+    seenOrderIds.add(oid);
+
+    const isBuyer = !ce.is_seller_initiated;
+    orders.push(buildOrder(ce.order_id, ce, isBuyer, 0));
+  }
+
+  // 2) Orders the user accepted (they are the counterparty)
+  for (const ae of acceptedByUser) {
+    const oid = ae.order_id.toLowerCase();
+    if (seenOrderIds.has(oid)) continue;
+    seenOrderIds.add(oid);
+
+    const created = createdMap.get(oid);
+    if (!created) continue; // Can't build order without creation details
+
+    // If user accepted a seller-initiated offer, user is buyer; otherwise user is seller
+    const isBuyer = created.is_seller_initiated;
+    orders.push(buildOrder(ae.order_id, created, isBuyer, 1));
+  }
+
+  return orders;
 }
