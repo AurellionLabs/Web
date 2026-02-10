@@ -502,8 +502,22 @@ export class DiamondP2PRepository implements IP2PRepository {
         seller: order.seller,
         createdAt: 0, // Not stored in contract, would need indexer
         expiresAt: Number(order.expiresAt),
-        locationData: order.locationData,
-        nodes: order.nodes || [],
+        // Deep-copy locationData and nodes — ethers.js freezes contract return values
+        locationData: order.locationData
+          ? {
+              startLocation: {
+                lat: order.locationData.startLocation?.lat || '',
+                lng: order.locationData.startLocation?.lng || '',
+              },
+              endLocation: {
+                lat: order.locationData.endLocation?.lat || '',
+                lng: order.locationData.endLocation?.lng || '',
+              },
+              startName: order.locationData.startName || '',
+              endName: order.locationData.endName || '',
+            }
+          : undefined,
+        nodes: [...(order.nodes || [])],
       };
 
       return offer;

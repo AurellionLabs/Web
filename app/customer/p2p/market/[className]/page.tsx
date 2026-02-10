@@ -281,9 +281,9 @@ export default function P2PMarketOffersPage() {
           senderNodeAddress: deliveryData.senderNodeAddress,
           receiverAddress: address,
           parcelData: {
-            startLocation: selectedOffer.locationData?.startLocation || {
-              lat: '',
-              lng: '',
+            startLocation: {
+              lat: selectedOffer.locationData?.startLocation?.lat || '',
+              lng: selectedOffer.locationData?.startLocation?.lng || '',
             },
             endLocation: { lat: '', lng: '' },
             startName:
@@ -364,6 +364,14 @@ export default function P2PMarketOffersPage() {
   const isMyOffer = (offer: P2POffer) => {
     if (!address) return false;
     return offer.creator.toLowerCase() === address.toLowerCase();
+  };
+
+  // Check if the offer is targeted to a different user (can't accept it)
+  const isTargetedToOther = (offer: P2POffer) => {
+    if (!offer.targetCounterparty || !address) return false;
+    const zeroAddr = '0x0000000000000000000000000000000000000000';
+    if (offer.targetCounterparty.toLowerCase() === zeroAddr) return false;
+    return offer.targetCounterparty.toLowerCase() !== address.toLowerCase();
   };
 
   // Format price for display
@@ -513,6 +521,10 @@ export default function P2PMarketOffersPage() {
                 )}
                 Cancel Offer
               </GlowButton>
+            ) : isTargetedToOther(offer) ? (
+              <div className="text-xs text-center text-neutral-500 py-2">
+                Targeted to another buyer
+              </div>
             ) : (
               <GlowButton
                 variant="primary"

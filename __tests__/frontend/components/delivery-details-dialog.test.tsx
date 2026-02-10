@@ -18,6 +18,12 @@ import { P2POffer, P2POfferStatus } from '@/domain/p2p';
 // MOCKS
 // =============================================================================
 
+// Mock Google Maps (not loaded in tests, so fallback input is rendered)
+vi.mock('@react-google-maps/api', () => ({
+  useLoadScript: () => ({ isLoaded: false }),
+  Autocomplete: ({ children }: any) => <div>{children}</div>,
+}));
+
 vi.mock('@/app/components/ui/glow-button', () => ({
   GlowButton: ({ children, onClick, disabled, loading, ...props }: any) => (
     <button

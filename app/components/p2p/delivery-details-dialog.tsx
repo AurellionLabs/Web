@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Truck, Loader2, Package } from 'lucide-react';
+import { MapPin, Truck, Package } from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { cn } from '@/lib/utils';
 import { P2POffer } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+// Keep libraries as a stable constant to prevent LoadScript reloads
+const GOOGLE_LIBRARIES: 'places'[] = ['places'];
 
 // =============================================================================
 // Types
@@ -16,6 +20,8 @@ export interface DeliveryFormData {
   deliveryAddress: string;
   /** Derived sender node address from the offer */
   senderNodeAddress: string;
+  /** Delivery coordinates (lat/lng) from Google Places */
+  deliveryCoords?: { lat: number; lng: number };
 }
 
 export interface DeliveryDetailsDialogProps {
@@ -43,8 +49,20 @@ export function DeliveryDetailsDialog({
   assetName,
 }: DeliveryDetailsDialogProps) {
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryCoords, setDeliveryCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Google Places autocomplete
+  const { isLoaded: mapsLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: GOOGLE_LIBRARIES,
+  });
+  const [autocomplete, setAutocomplete] =
+    useState<google.maps.places.Autocomplete | null>(null);
 
   const senderNode =
     offer.nodes && offer.nodes.length > 0 ? offer.nodes[0] : '';
@@ -56,6 +74,19 @@ export function DeliveryDetailsDialog({
     });
   };
 
+  const handlePlaceSelect = () => {
+    if (autocomplete) {
+      const place = autocomplete.getPlace();
+      if (place.geometry && place.geometry.location) {
+        setDeliveryAddress(place.formatted_address || '');
+        setDeliveryCoords({
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        });
+      }
+    }
+  };
+
   const handleConfirm = async () => {
     setError(null);
     setIsSubmitting(true);
@@ -63,8 +94,8 @@ export function DeliveryDetailsDialog({
       await onConfirm({
         deliveryAddress,
         senderNodeAddress: senderNode,
+        deliveryCoords: deliveryCoords || undefined,
       });
-      // Success — dialog will be closed by parent
     } catch (err) {
       setError(
         err instanceof Error
@@ -82,23 +113,23 @@ export function DeliveryDetailsDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={() => !isSubmitting && onOpenChange(false)}
       />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-lg mx-4 rounded-xl border border-amber-500/20 bg-gray-900 shadow-2xl shadow-amber-500/5">
+      <div className="relative w-full max-w-lg mx-4 rounded-xl border border-amber-500/20 bg-black shadow-2xl shadow-amber-500/5">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-800">
+        <div className="px-6 pt-6 pb-4 border-b border-neutral-800">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-500/10">
               <Truck className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className="text-lg font-semibold text-white">
                 Confirm &amp; Schedule Delivery
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-neutral-400">
                 Enter your delivery address to complete the purchase
               </p>
             </div>
@@ -108,60 +139,82 @@ export function DeliveryDetailsDialog({
         {/* Body */}
         <div className="px-6 py-5 space-y-5">
           {/* Order summary */}
-          <div className="rounded-lg bg-gray-800/50 border border-gray-700 p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+          <div className="rounded-lg bg-neutral-900 border border-neutral-800 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-neutral-300">
               <Package className="w-4 h-4 text-amber-400" />
               Order Summary
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <span className="text-gray-400">Asset</span>
-                <p className="font-medium text-foreground">
+                <span className="text-neutral-500">Asset</span>
+                <p className="font-medium text-white">
                   {assetName || `Token #${offer.tokenId}`}
                 </p>
               </div>
               <div>
-                <span className="text-gray-400">Quantity</span>
-                <p className="font-medium text-foreground">
+                <span className="text-neutral-500">Quantity</span>
+                <p className="font-medium text-white">
                   {offer.quantity.toString()}
                 </p>
               </div>
               <div>
-                <span className="text-gray-400">Price</span>
+                <span className="text-neutral-500">Price</span>
                 <p className="font-medium text-amber-400">
                   ${formatPrice(offer.price)}
                 </p>
               </div>
               <div>
-                <span className="text-gray-400">Fee</span>
-                <p className="font-medium text-gray-300">
+                <span className="text-neutral-500">Fee</span>
+                <p className="font-medium text-neutral-300">
                   ${formatPrice(offer.txFee)}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Delivery address */}
+          {/* Delivery address - Google Places Autocomplete */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+            <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-amber-400" />
               Delivery Address
             </label>
-            <input
-              type="text"
-              value={deliveryAddress}
-              onChange={(e) => setDeliveryAddress(e.target.value)}
-              placeholder="Enter delivery address"
-              className={cn(
-                'w-full px-4 py-3 rounded-lg text-sm',
-                'bg-gray-800 border border-gray-700',
-                'text-foreground placeholder:text-gray-500',
-                'focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20',
-                'transition-colors',
-              )}
-              disabled={isSubmitting}
-            />
-            <p className="text-xs text-gray-500">
+            {mapsLoaded ? (
+              <Autocomplete
+                onLoad={(autocompleteInstance) => {
+                  setAutocomplete(autocompleteInstance);
+                }}
+                onPlaceChanged={handlePlaceSelect}
+              >
+                <input
+                  type="text"
+                  placeholder="Search for a delivery address..."
+                  className={cn(
+                    'w-full px-4 py-3 rounded-lg text-sm',
+                    'bg-neutral-900 border border-neutral-800',
+                    'text-white placeholder:text-neutral-500',
+                    'focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20',
+                    'transition-colors',
+                  )}
+                  disabled={isSubmitting}
+                />
+              </Autocomplete>
+            ) : (
+              <input
+                type="text"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                placeholder="Enter delivery address"
+                className={cn(
+                  'w-full px-4 py-3 rounded-lg text-sm',
+                  'bg-neutral-900 border border-neutral-800',
+                  'text-white placeholder:text-neutral-500',
+                  'focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20',
+                  'transition-colors',
+                )}
+                disabled={isSubmitting}
+              />
+            )}
+            <p className="text-xs text-neutral-500">
               This is where your goods will be delivered
             </p>
           </div>
@@ -181,8 +234,8 @@ export function DeliveryDetailsDialog({
             disabled={isSubmitting}
             className={cn(
               'flex-1 px-4 py-3 rounded-lg text-sm font-medium',
-              'bg-gray-800 text-gray-300 border border-gray-700',
-              'hover:bg-gray-700 transition-colors',
+              'bg-neutral-900 text-neutral-300 border border-neutral-800',
+              'hover:bg-neutral-800 transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
             aria-label="Cancel"
