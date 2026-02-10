@@ -25,6 +25,11 @@ const ERC20_ABI = [
   'function allowance(address owner, address spender) external view returns (uint256)',
 ];
 
+const ERC1155_ABI = [
+  'function isApprovedForAll(address account, address operator) external view returns (bool)',
+  'function setApprovalForAll(address operator, bool approved) external',
+];
+
 // ============================================================================
 // P2P Custom Error Decoding
 // ============================================================================
@@ -41,6 +46,8 @@ const P2P_ERROR_MAP: Record<string, string> = {
   '0xe6c4247b': 'Invalid address in the offer.',
   '0x2c5211c6': 'Invalid amount – price or quantity cannot be zero.',
   '0xb7f05f41': 'Payment token has not been configured on the contract.',
+  '0xe237d922':
+    'The Diamond contract needs approval to transfer your tokens. This should be requested automatically.',
 };
 
 /**
@@ -143,6 +150,11 @@ export class DiamondP2PService implements IP2PService {
     };
 
     try {
+      // For sell offers, ensure the Diamond has ERC1155 approval to escrow tokens
+      if (input.isSellOffer) {
+        await this.ensureERC1155Approval(input.token);
+      }
+
       const tx = await diamond.createAuSysOrder(order);
       console.log('[DiamondP2PService] Transaction sent:', tx.hash);
 
@@ -331,6 +343,47 @@ export class DiamondP2PService implements IP2PService {
     } else {
       console.log(
         '[DiamondP2PService] Sufficient allowance, no approval needed.',
+      );
+    }
+  }
+
+  /**
+   * Ensure the ERC1155 token contract has granted approval to the Diamond.
+   * Needed for sell offers where the contract escrows the seller's tokens.
+   */
+  private async ensureERC1155Approval(tokenAddress: string): Promise<void> {
+    const signer = this.context.getSigner();
+    const signerAddress = await this.context.getSignerAddress();
+
+    const erc1155 =
+      'getERC1155Contract' in this.context
+        ? (this.context as any).getERC1155Contract(tokenAddress)
+        : new ethers.Contract(tokenAddress, ERC1155_ABI, signer);
+
+    console.log('[DiamondP2PService] Checking ERC1155 approval...', {
+      tokenAddress,
+      signerAddress,
+      diamondAddress: NEXT_PUBLIC_DIAMOND_ADDRESS,
+    });
+
+    const isApproved = await erc1155.isApprovedForAll(
+      signerAddress,
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+    );
+
+    if (!isApproved) {
+      console.log(
+        '[DiamondP2PService] ERC1155 not approved, requesting setApprovalForAll...',
+      );
+      const tx = await erc1155.setApprovalForAll(
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
+        true,
+      );
+      await tx.wait();
+      console.log('[DiamondP2PService] ERC1155 approval granted.');
+    } else {
+      console.log(
+        '[DiamondP2PService] ERC1155 already approved, no action needed.',
       );
     }
   }

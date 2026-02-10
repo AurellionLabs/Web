@@ -70,15 +70,25 @@ function createMockContext(overrides: Record<string, any> = {}) {
     approve: vi.fn(),
   };
 
+  // Default mock ERC1155 (already approved)
+  const mockERC1155 = overrides.erc1155 ?? {
+    isApprovedForAll: vi.fn().mockResolvedValue(true),
+    setApprovalForAll: vi.fn().mockResolvedValue({
+      wait: vi.fn().mockResolvedValue({}),
+    }),
+  };
+
   return {
     getDiamond: vi.fn().mockReturnValue(diamond),
     getSignerAddress: vi.fn().mockResolvedValue(SELLER),
     getSigner: vi.fn(),
     getProvider: vi.fn(),
     getQuoteTokenContract: vi.fn().mockReturnValue(mockQuoteToken),
+    getERC1155Contract: vi.fn().mockReturnValue(mockERC1155),
     _diamond: diamond,
     _mockTx: mockTx,
     _mockQuoteToken: mockQuoteToken,
+    _mockERC1155: mockERC1155,
   } as any;
 }
 
@@ -184,6 +194,64 @@ describe('DiamondP2PService', () => {
           isSellOffer: true,
         }),
       ).rejects.toThrow('Diamond: Function does not exist');
+    });
+
+    it('should request ERC1155 approval for sell offers when not approved', async () => {
+      const mockERC1155 = {
+        isApprovedForAll: vi.fn().mockResolvedValue(false),
+        setApprovalForAll: vi.fn().mockResolvedValue({
+          wait: vi.fn().mockResolvedValue({}),
+        }),
+      };
+      const context = createMockContext({ erc1155: mockERC1155 });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+      });
+
+      expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
+      expect(mockERC1155.setApprovalForAll).toHaveBeenCalled();
+      expect(context._diamond.createAuSysOrder).toHaveBeenCalled();
+    });
+
+    it('should skip ERC1155 approval for sell offers when already approved', async () => {
+      const mockERC1155 = {
+        isApprovedForAll: vi.fn().mockResolvedValue(true),
+        setApprovalForAll: vi.fn(),
+      };
+      const context = createMockContext({ erc1155: mockERC1155 });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+      });
+
+      expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
+      expect(mockERC1155.setApprovalForAll).not.toHaveBeenCalled();
+    });
+
+    it('should not check ERC1155 approval for buy offers', async () => {
+      const context = createMockContext();
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: false,
+      });
+
+      expect(context._mockERC1155.isApprovedForAll).not.toHaveBeenCalled();
     });
   });
 
