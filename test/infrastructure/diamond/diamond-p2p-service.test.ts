@@ -49,6 +49,7 @@ function createMockContext(overrides: Record<string, any> = {}) {
   // Default: a buy offer (acceptor is seller → no ERC20 approval needed)
   const defaultOrder = {
     id: OFFER_ID,
+    token: TOKEN,
     isSellerInitiated: false,
     price: BigInt('1000000000000000000'),
     tokenQuantity: BigInt(1),

@@ -150,8 +150,8 @@ export class DiamondP2PService implements IP2PService {
     };
 
     try {
-      // For sell offers, ensure the Diamond has ERC1155 approval to escrow tokens
       if (input.isSellOffer) {
+        // Sell offer: seller escrows ERC1155 tokens → needs ERC1155 approval
         console.log(
           '[DiamondP2PService] Sell offer — ensuring ERC1155 approval for',
           input.token,
@@ -161,9 +161,15 @@ export class DiamondP2PService implements IP2PService {
           '[DiamondP2PService] ERC1155 approval complete, proceeding to create order...',
         );
       } else {
+        // Buy offer: buyer escrows ERC20 (price + txFee) → needs ERC20 approval
+        // Contract calculates txFee = (price * 2) / 100
+        const txFee = (input.price * BigInt(2)) / BigInt(100);
+        const totalCost = input.price + txFee;
         console.log(
-          '[DiamondP2PService] Buy offer — skipping ERC1155 approval',
+          '[DiamondP2PService] Buy offer — ensuring ERC20 approval for',
+          totalCost.toString(),
         );
+        await this.ensureQuoteTokenApproval(totalCost);
       }
 
       const tx = await diamond.createAuSysOrder(order);
@@ -220,16 +226,25 @@ export class DiamondP2PService implements IP2PService {
     console.log('[DiamondP2PService] Accepting P2P offer:', offerId);
 
     try {
-      // Fetch the offer to determine if we need ERC20 approval
+      // Fetch the offer to determine approval needs
       const order = await diamond.getAuSysOrder(offerId);
 
-      // If this is a sell offer, the acceptor is the buyer → needs ERC20 approval
       if (order.isSellerInitiated) {
-        // Contract charges price + txFee (price is already the total, not per-unit)
+        // Sell offer: acceptor is BUYER → needs ERC20 approval for price + txFee
         const totalCost =
           BigInt(order.price.toString()) + BigInt(order.txFee.toString());
-
+        console.log(
+          '[DiamondP2PService] Accepting sell offer — ensuring ERC20 approval for',
+          totalCost.toString(),
+        );
         await this.ensureQuoteTokenApproval(totalCost);
+      } else {
+        // Buy offer: acceptor is SELLER → needs ERC1155 approval to escrow tokens
+        console.log(
+          '[DiamondP2PService] Accepting buy offer — ensuring ERC1155 approval for',
+          order.token,
+        );
+        await this.ensureERC1155Approval(order.token);
       }
 
       const tx = await diamond.acceptP2POffer(offerId);
@@ -270,16 +285,28 @@ export class DiamondP2PService implements IP2PService {
     console.log('[DiamondP2PService] acceptOfferWithDelivery:', offerId);
 
     try {
-      // 1. Fetch offer to determine approval amount
+      // 1. Fetch offer to determine approval needs
       const order = await diamond.getAuSysOrder(offerId);
 
-      // 2. Ensure ERC20 approval covers price + txFee + bounty
+      // 2. Handle approvals based on offer type
       if (order.isSellerInitiated) {
+        // Sell offer: acceptor is BUYER → ERC20 approval for price + txFee + bounty
         const totalCost =
           BigInt(order.price.toString()) +
           BigInt(order.txFee.toString()) +
           delivery.bountyWei;
+        console.log(
+          '[DiamondP2PService] Accepting sell offer with delivery — ERC20 approval for',
+          totalCost.toString(),
+        );
         await this.ensureQuoteTokenApproval(totalCost);
+      } else {
+        // Buy offer: acceptor is SELLER → ERC1155 approval to escrow tokens
+        console.log(
+          '[DiamondP2PService] Accepting buy offer with delivery — ERC1155 approval for',
+          order.token,
+        );
+        await this.ensureERC1155Approval(order.token);
       }
 
       // 3. Accept the offer
