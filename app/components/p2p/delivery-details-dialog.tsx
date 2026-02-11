@@ -64,8 +64,11 @@ export function DeliveryDetailsDialog({
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
 
+  // Use the first node as sender, or fall back to the seller address
   const senderNode =
-    offer.nodes && offer.nodes.length > 0 ? offer.nodes[0] : '';
+    offer.nodes && offer.nodes.length > 0
+      ? offer.nodes[0]
+      : offer.seller || offer.creator;
 
   const formatPrice = (price: bigint) => {
     return parseFloat(formatUnits(price, 18)).toLocaleString(undefined, {
