@@ -83,7 +83,7 @@ describe('P2POrderFlow', () => {
     const order = makeOrder({ journeyIds: [], journeyStatus: null });
     render(<P2POrderFlow order={order} />);
 
-    expect(screen.getByText(/waiting for a delivery journey/i)).toBeDefined();
+    expect(screen.getByText(/no delivery journey yet/i)).toBeDefined();
   });
 
   it('should show journey created message when journey exists with status 0', () => {

@@ -16,6 +16,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { Order, OrderStatus } from '@/domain/orders/order';
 import { usePlatform } from './platform.provider';
 import { OrderWithAsset } from '@/app/types/shared';
+import { P2PDeliveryDetails } from '@/domain/p2p';
 
 type CustomerContextType = {
   orders: OrderWithAsset[];
@@ -33,6 +34,11 @@ type CustomerContextType = {
     orderId: string,
     journeyId: string,
   ) => Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }>;
+  /** Create a delivery journey for an accepted P2P order that has no journey */
+  createP2PJourney: (
+    orderId: string,
+    delivery: P2PDeliveryDetails,
+  ) => Promise<void>;
 };
 
 // Create context
@@ -345,6 +351,50 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     [repoContext],
   );
 
+  /**
+   * Create a delivery journey for an accepted P2P order that has no journey yet.
+   * This handles orders that "slipped through" before the Accept & Schedule flow.
+   */
+  const createP2PJourney = useCallback(
+    async (orderId: string, delivery: P2PDeliveryDetails) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const ausys = repoContext.getAusysContract();
+
+        console.log('[CustomerProvider] createP2PJourney', {
+          orderId,
+          sender: delivery.senderNodeAddress,
+          receiver: delivery.receiverAddress,
+        });
+
+        const journeyTx = await ausys.createOrderJourney(
+          orderId as any,
+          delivery.senderNodeAddress,
+          delivery.receiverAddress,
+          delivery.parcelData as any,
+          delivery.bountyWei,
+          delivery.etaTimestamp,
+          delivery.tokenQuantity,
+          delivery.assetId,
+        );
+        await journeyTx.wait();
+        console.log('[CustomerProvider] createOrderJourney tx confirmed');
+
+        // Refresh orders to pick up the new journey
+        await loadCustomerOrders();
+      } catch (err) {
+        console.error('[CustomerProvider] createP2PJourney error:', err);
+        setError('Failed to create delivery journey');
+        handleContractError(err, 'create P2P journey');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [repoContext, loadCustomerOrders],
+  );
+
   const refreshOrders = useCallback(async () => {
     await loadCustomerOrders();
   }, [loadCustomerOrders]);
@@ -363,6 +413,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,
+    createP2PJourney,
   };
 
   return (

@@ -25,6 +25,8 @@ export interface P2POrderFlowProps {
   onSignDelivery?: (orderId: string, journeyId: string) => Promise<void>;
   /** Callback to complete handoff */
   onCompleteHandoff?: (orderId: string, journeyId: string) => Promise<void>;
+  /** Callback to schedule delivery for orders stuck without a journey */
+  onScheduleDelivery?: (orderId: string) => void;
   /** Function to fetch live signature states from the contract */
   fetchSignatureState?: (
     orderId: string,
@@ -123,7 +125,7 @@ function getStatusMessage(
 ): string {
   switch (stepIndex) {
     case 0:
-      return 'Waiting for a delivery journey to be created for this order.';
+      return 'No delivery journey yet. Schedule delivery to move this order forward.';
     case 1:
       return 'Journey created. Waiting for driver to pick up the package.';
     case 2:
@@ -154,6 +156,7 @@ export function P2POrderFlow({
   order,
   onSignDelivery,
   onCompleteHandoff,
+  onScheduleDelivery,
   fetchSignatureState,
   isActionLoading = false,
 }: P2POrderFlowProps) {
@@ -233,6 +236,10 @@ export function P2POrderFlow({
   };
 
   // Determine which action to show
+  const showScheduleButton =
+    currentStep === 0 &&
+    onScheduleDelivery &&
+    order.currentStatus !== OrderStatus.SETTLED;
   const showSignButton =
     currentStep === 2 &&
     !buyerSigned &&
@@ -341,6 +348,19 @@ export function P2POrderFlow({
       )}
 
       {/* Action buttons */}
+      {showScheduleButton && (
+        <GlowButton
+          onClick={() => onScheduleDelivery!(order.id)}
+          loading={isActionLoading}
+          disabled={isActionLoading}
+          variant="primary"
+          size="sm"
+          leftIcon={<Truck className="w-4 h-4" />}
+        >
+          Schedule Delivery
+        </GlowButton>
+      )}
+
       {showSignButton && (
         <GlowButton
           onClick={handleSignDelivery}

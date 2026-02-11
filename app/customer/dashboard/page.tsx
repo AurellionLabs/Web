@@ -44,9 +44,15 @@ import { useToast } from '@/hooks/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import { OrderStatus } from '@/domain/orders/order';
 import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
+import {
+  DeliveryDetailsDialog,
+  DeliveryFormData,
+} from '@/app/components/p2p/delivery-details-dialog';
+import { P2PDeliveryDetails } from '@/domain/p2p';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_AUSYS_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract } from 'ethers';
+import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';
 
@@ -174,8 +180,10 @@ export default function CustomerDashboard() {
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,
+    createP2PJourney,
   } = useCustomer();
   const { toast } = useToast();
+  const { address: walletAddress } = useWallet();
 
   // User holdings for redemption
   const {
@@ -219,6 +227,12 @@ export default function CustomerDashboard() {
     Record<string, boolean>
   >({});
   const [p2pActionLoading, setP2PActionLoading] = useState(false);
+  // State for scheduling delivery on stuck P2P orders
+  const [scheduleDeliveryOrderId, setScheduleDeliveryOrderId] = useState<
+    string | null
+  >(null);
+  const [scheduleDeliveryDialogOpen, setScheduleDeliveryDialogOpen] =
+    useState(false);
 
   useEffect(() => {
     setCurrentUserRole('customer');
@@ -362,6 +376,70 @@ export default function CustomerDashboard() {
         description: 'Failed to complete handoff. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setP2PActionLoading(false);
+    }
+  };
+
+  // Schedule delivery for a stuck P2P order (no journey yet)
+  const handleScheduleDelivery = (orderId: string) => {
+    setScheduleDeliveryOrderId(orderId);
+    setScheduleDeliveryDialogOpen(true);
+  };
+
+  const handleConfirmScheduleDelivery = async (
+    deliveryData: DeliveryFormData,
+  ) => {
+    if (!scheduleDeliveryOrderId || !walletAddress) return;
+    const order = orders.find((o) => o.id === scheduleDeliveryOrderId);
+    if (!order) return;
+    try {
+      setP2PActionLoading(true);
+
+      const senderNode =
+        deliveryData.senderNodeAddress ||
+        order.seller ||
+        order.nodes?.[0] ||
+        '';
+
+      const delivery: P2PDeliveryDetails = {
+        senderNodeAddress: senderNode,
+        receiverAddress: walletAddress,
+        parcelData: {
+          startLocation: {
+            lat: order.locationData?.startLocation?.lat || '',
+            lng: order.locationData?.startLocation?.lng || '',
+          },
+          endLocation: { lat: '', lng: '' },
+          startName: order.locationData?.startName || 'Seller Location',
+          endName: deliveryData.deliveryAddress,
+        },
+        bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
+        etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
+        tokenQuantity: BigInt(order.tokenQuantity),
+        assetId: BigInt(order.tokenId),
+        deliveryAddress: deliveryData.deliveryAddress,
+      };
+
+      await createP2PJourney(scheduleDeliveryOrderId, delivery);
+      setScheduleDeliveryDialogOpen(false);
+      setScheduleDeliveryOrderId(null);
+      toast({
+        title: 'Delivery Scheduled',
+        description: 'A delivery journey has been created for this order.',
+      });
+    } catch (err) {
+      console.error('Error scheduling delivery:', err);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Failed to schedule delivery. Please try again.';
+      toast({
+        title: 'Error',
+        description: msg,
+        variant: 'destructive',
+      });
+      throw err; // Re-throw so dialog can show the error
     } finally {
       setP2PActionLoading(false);
     }
@@ -811,6 +889,7 @@ export default function CustomerDashboard() {
                               order={order}
                               onSignDelivery={handleSignP2PDelivery}
                               onCompleteHandoff={handleCompleteP2PHandoff}
+                              onScheduleDelivery={handleScheduleDelivery}
                               fetchSignatureState={getP2PSignatureState}
                               isActionLoading={p2pActionLoading}
                             />
@@ -876,6 +955,46 @@ export default function CustomerDashboard() {
           </div>
         </GlassCard>
       </div>
+
+      {/* Delivery Details Dialog for stuck P2P orders */}
+      {scheduleDeliveryOrderId &&
+        (() => {
+          const stuckOrder = orders.find(
+            (o) => o.id === scheduleDeliveryOrderId,
+          );
+          if (!stuckOrder) return null;
+          // Build a P2POffer-shaped object from the order for the dialog
+          const pseudoOffer = {
+            id: stuckOrder.id,
+            creator: stuckOrder.seller,
+            targetCounterparty: null,
+            token: stuckOrder.token,
+            tokenId: stuckOrder.tokenId,
+            quantity: BigInt(stuckOrder.tokenQuantity),
+            price: BigInt(stuckOrder.price),
+            txFee: BigInt(stuckOrder.txFee),
+            isSellerInitiated: true,
+            status: 1, // PROCESSING
+            buyer: stuckOrder.buyer,
+            seller: stuckOrder.seller,
+            createdAt: 0,
+            expiresAt: 0,
+            locationData: stuckOrder.locationData,
+            nodes: stuckOrder.nodes || [],
+          };
+          return (
+            <DeliveryDetailsDialog
+              offer={pseudoOffer as any}
+              open={scheduleDeliveryDialogOpen}
+              onOpenChange={(open) => {
+                setScheduleDeliveryDialogOpen(open);
+                if (!open) setScheduleDeliveryOrderId(null);
+              }}
+              onConfirm={handleConfirmScheduleDelivery}
+              assetName={stuckOrder.asset?.name}
+            />
+          );
+        })()}
     </div>
   );
 }
