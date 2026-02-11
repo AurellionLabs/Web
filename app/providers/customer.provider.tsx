@@ -360,7 +360,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         setError(null);
-        const ausys = repoContext.getAusysContract();
+        // Use the Diamond contract (has createOrderJourney), not the Ausys contract
+        const diamond = repoContext.getDiamondContext().getDiamond();
 
         console.log('[CustomerProvider] createP2PJourney', {
           orderId,
@@ -368,11 +369,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           receiver: delivery.receiverAddress,
         });
 
-        const journeyTx = await ausys.createOrderJourney(
-          orderId as any,
+        const journeyTx = await diamond.createOrderJourney(
+          orderId,
           delivery.senderNodeAddress,
           delivery.receiverAddress,
-          delivery.parcelData as any,
+          delivery.parcelData,
           delivery.bountyWei,
           delivery.etaTimestamp,
           delivery.tokenQuantity,
