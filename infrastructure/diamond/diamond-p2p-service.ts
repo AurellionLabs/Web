@@ -48,6 +48,8 @@ const P2P_ERROR_MAP: Record<string, string> = {
   '0xb7f05f41': 'Payment token has not been configured on the contract.',
   '0xe237d922':
     'The Diamond contract needs approval to transfer your tokens. This should be requested automatically.',
+  '0x03dee4c5':
+    'Insufficient token balance. You do not have enough of this asset to create the offer.',
 };
 
 /**
