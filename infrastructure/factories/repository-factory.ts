@@ -6,7 +6,7 @@ import { DriverRepository } from '@/infrastructure/repositories/driver-repositor
 import { BlockchainNodeRepository } from '@/infrastructure/repositories/node-repository';
 import {
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
-  NEXT_PUBLIC_AUSYS_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
@@ -97,7 +97,7 @@ export class RepositoryFactory {
   public async createOrderRepository(
     userProvider: Provider,
     signer: Signer,
-    contractAddress: string = NEXT_PUBLIC_AUSYS_ADDRESS,
+    contractAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
   ): Promise<OrderRepository> {
     if (!this.isInitialized) {
       await this.initialize(userProvider, signer);
@@ -114,7 +114,7 @@ export class RepositoryFactory {
   public async createDriverRepository(
     userProvider: Provider,
     signer: Signer,
-    contractAddress: string = NEXT_PUBLIC_AUSYS_ADDRESS,
+    contractAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
   ): Promise<DriverRepository> {
     if (!this.isInitialized) {
       await this.initialize(userProvider, signer);

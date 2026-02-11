@@ -4,7 +4,7 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useWallet } from '@/hooks/useWallet';
 import {
-  NEXT_PUBLIC_AUSYS_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
 import { AuraAsset__factory, Ausys__factory } from '@/lib/contracts';
@@ -83,7 +83,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       const readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
 
       const ausysContract = Ausys__factory.connect(
-        NEXT_PUBLIC_AUSYS_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         signer,
       );
 
