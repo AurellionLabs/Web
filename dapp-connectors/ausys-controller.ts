@@ -86,7 +86,7 @@ export const jobCreation = async (
 ) => {
   try {
     const contract = await getAusysContract();
-    const tx = await contract.journeyCreation(
+    const tx = await contract.createJourney(
       senderAddress,
       recipientWalletAddress,
       locationData,
@@ -108,7 +108,7 @@ export const customerPackageSign = async (
 ) => {
   try {
     const contract = await getAusysContract();
-    const journey = await contract.journeyIdToJourney(journeyId);
+    const journey = await contract.getJourney(journeyId);
 
     // Check if the current user is the receiver of the journey
     const currentUser = getWalletAddress();
@@ -134,7 +134,7 @@ export const customerPackageSign = async (
 export const driverPackageSign = async (journeyId: string) => {
   try {
     const contract = await getAusysContract();
-    const journey = await contract.journeyIdToJourney(journeyId);
+    const journey = await contract.getJourney(journeyId);
     const tx = await contract.packageSign(
       getWalletAddress(),
       journey.sender,
@@ -169,7 +169,7 @@ export const fetchCustomerJobs = async () => {
 
     for (const journeyId of journeyIds) {
       try {
-        const journey = await contract.journeyIdToJourney(journeyId);
+        const journey = await contract.getJourney(journeyId);
         journeys.push(journey);
       } catch (err) {
         console.error(`Error fetching job object with ID ${journeyId}:`, err);
@@ -204,7 +204,7 @@ export const fetchAllJourneys = async () => {
     const journeys = await Promise.all(
       Array.from(journeyIdsFromOrders).map(async (journeyId) => {
         try {
-          const journey = await contract.journeyIdToJourney(journeyId);
+          const journey = await contract.getJourney(journeyId);
           // Validate journey has required fields
           if (
             !journey ||
@@ -251,7 +251,7 @@ export const fetchAllJourneys = async () => {
 
 export const fetchJourney = async (journeyId: string) => {
   const contract = await getAusysContract();
-  const journey = await contract.journeyIdToJourney(journeyId);
+  const journey = await contract.getJourney(journeyId);
   return journey;
 };
 
@@ -280,7 +280,7 @@ export const fetchReceiverJobs = async () => {
 
     for (const journeyId of jobs) {
       try {
-        const jobsObj = await contract.journeyIdToJourney(journeyId);
+        const jobsObj = await contract.getJourney(journeyId);
         jobsObjList.push(jobsObj);
       } catch (err) {
         console.error(
@@ -351,7 +351,7 @@ export const fetchAllJourneyIds = async () => {
 export const checkIfDriverAssignedToJobId = async (journeyId: string) => {
   const contract = await getAusysContract();
   try {
-    const journey = await contract.journeyIdToJourney(journeyId);
+    const journey = await contract.getJourney(journeyId);
     return journey.driver !== ethers.ZeroAddress;
   } catch (error) {
     handleContractError(error, 'check driver assignment');
@@ -361,7 +361,7 @@ export const checkIfDriverAssignedToJobId = async (journeyId: string) => {
 export const assignDriverToJobId = async (journeyId: string) => {
   const contract = await getAusysContract();
   try {
-    const tx = await contract.assignDriverToJourneyId(
+    const tx = await contract.assignDriverToJourney(
       getWalletAddress(),
       journeyId,
     );
@@ -429,12 +429,12 @@ export async function customerMakeOrder(
 
     // Make static call to orderCreation
     const contract = await getAusysContract();
-    const result = await contract.orderCreation(orderData);
+    const result = await contract.createAuSysOrder(orderData);
     console.log('Order creation result:', result);
 
     // Execute the transaction
     console.log('executing order journey creation');
-    const tx = await contract.orderJourneyCreation(
+    const tx = await contract.createOrderJourney(
       orderData.id,
       walletAddress,
       nodeAddress,
@@ -482,7 +482,7 @@ export const orderJourneyCreation = async (
 ) => {
   const contract = await getAusysContract();
   try {
-    const tx = await contract.orderJourneyCreation(
+    const tx = await contract.createOrderJourney(
       orderId,
       sender,
       receiver,
@@ -501,7 +501,7 @@ export const orderJourneyCreation = async (
 export const getJourney = async (journeyId: BytesLike) => {
   const contract = await getAusysContract();
   try {
-    const journey = await contract.getjourney(journeyId);
+    const journey = await contract.getJourney(journeyId);
     return journey;
   } catch (error) {
     handleContractError(error, 'get journey');
@@ -564,7 +564,7 @@ export const contractCreateOrderTransaction = async (
   try {
     const contract = await getAusysContract();
     console.log('Executing orderCreation transaction...');
-    const tx = await contract.orderCreation(orderData, { ...overrides });
+    const tx = await contract.createAuSysOrder(orderData, { ...overrides });
     const receipt = await tx.wait(); // Initial wait
     // Add another wait just in case state propagation is slow (unlikely but worth trying)
     if (receipt) {

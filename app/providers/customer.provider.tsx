@@ -178,7 +178,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const journeyId = orderToConfirm.journeyIds[0];
 
         // 1. Sign the receipt (receiver confirms receipt) - this sets customerHandOff[receiver][id] = true
-        const journey = await ausys.idToJourney(journeyId as any);
+        const journey = await ausys.getJourney(journeyId as any);
         console.log(
           '[CustomerProvider] confirmReceipt - Journey status before signing:',
           {
@@ -332,7 +332,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     ): Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }> => {
       try {
         const ausys = repoContext.getAusysContract();
-        const journey = await ausys.idToJourney(journeyId as any);
+        const journey = await ausys.getJourney(journeyId as any);
 
         const [buyerSigned, driverDeliverySigned] = await Promise.all([
           ausys.customerHandOff(journey.receiver, journeyId as any),

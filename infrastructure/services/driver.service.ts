@@ -40,7 +40,7 @@ export class DriverService implements IDriverService {
       // Reference: ausys-controller.ts#assignDriverToJobId
       await sendContractTxWithReadEstimation(
         contract as unknown as ethers.Contract,
-        'assignDriverToJourneyId',
+        'assignDriverToJourney',
         [driverAddress, journeyId],
         { from: driverAddress },
       );
@@ -63,7 +63,7 @@ export class DriverService implements IDriverService {
     try {
       // Reference: ausys-controller.ts#packageHandOn
       // Need to get the customer/sender address first
-      const journey = await contract.getjourney(journeyId);
+      const journey = await contract.getJourney(journeyId);
       if (!journey || journey.sender === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no sender.`);
       }
@@ -94,7 +94,7 @@ export class DriverService implements IDriverService {
     try {
       // Reference: ausys-controller.ts#driverPackageSign
       // Need to get the sender address first
-      const journey = await contract.getjourney(journeyId);
+      const journey = await contract.getJourney(journeyId);
       if (!journey || journey.sender === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no sender.`);
       }
@@ -125,7 +125,7 @@ export class DriverService implements IDriverService {
     try {
       // Reference: ausys-controller.ts#packageHandOff
       // Need to get the receiver address first
-      const journey = await contract.getjourney(journeyId);
+      const journey = await contract.getJourney(journeyId);
       if (!journey || journey.receiver === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no receiver.`);
       }

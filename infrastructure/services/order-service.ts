@@ -166,7 +166,7 @@ export class OrderService implements IOrderService {
 
       const { receipt } = await sendContractTxWithReadEstimation(
         contractWithSigner as unknown as ethers.Contract,
-        'journeyCreation',
+        'createJourney',
         [
           connectedSignerAddress,
           recipientWalletAddress,
@@ -203,7 +203,7 @@ export class OrderService implements IOrderService {
       const contractWithSigner = this.contract.connect(this.currentSigner);
 
       // Fetch journey details to verify receiver
-      const journey = await contractWithSigner.getjourney(journeyId);
+      const journey = await contractWithSigner.getJourney(journeyId);
 
       if (journey.receiver.toLowerCase() !== signerAddress.toLowerCase()) {
         throw new Error(
@@ -323,7 +323,7 @@ export class OrderService implements IOrderService {
       // Call the contract's orderCreation with mapped struct
       const { receipt } = await sendContractTxWithReadEstimation(
         contractWithSigner as unknown as ethers.Contract,
-        'orderCreation',
+        'createAuSysOrder',
         [contractOrder],
         { from: signerAddress },
       );
@@ -437,7 +437,7 @@ export class OrderService implements IOrderService {
 
       const { receipt } = await sendContractTxWithReadEstimation(
         contract as unknown as ethers.Contract,
-        'orderJourneyCreation',
+        'createOrderJourney',
         [
           orderId,
           senderNodeAddress,
@@ -451,12 +451,12 @@ export class OrderService implements IOrderService {
         { from: await this.currentSigner.getAddress() },
       );
       console.log(
-        `[OrderService] orderJourneyCreation tx confirmed. Status: ${receipt?.status}`,
+        `[OrderService] createOrderJourney tx confirmed. Status: ${receipt?.status}`,
       );
 
       if (!receipt || receipt.status !== 1) {
         throw new Error(
-          `orderJourneyCreation transaction failed or reverted. Hash: ${receipt?.hash}`,
+          `createOrderJourney transaction failed or reverted. Hash: ${receipt?.hash}`,
         );
       }
 

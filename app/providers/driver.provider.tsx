@@ -106,7 +106,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('[Accept] Checking driver role for', driverWalletAddress);
         const DRIVER_ROLE = await (ausys as any).DRIVER_ROLE();
-        const hasDriverRole = await (ausys as any).hasRole(
+        const hasDriverRole = await (ausys as any).hasAuSysRole(
           DRIVER_ROLE,
           driverWalletAddress,
         );
@@ -141,7 +141,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Assign driver to journey
-      await ausys.assignDriverToJourneyId(driverWalletAddress!, jobId as any);
+      await ausys.assignDriverToJourney(driverWalletAddress!, jobId as any);
       await refreshDeliveries();
     } catch (err) {
       setError(
@@ -169,7 +169,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       console.log('[confirmPickup] Driver address:', driverWalletAddress);
       console.log('[confirmPickup] Journey ID:', jobId);
       try {
-        const journey = await (ausys as any).idToJourney(jobId);
+        const journey = await (ausys as any).getJourney(jobId);
         console.log('[confirmPickup] Journey details:', {
           sender: journey.sender,
           receiver: journey.receiver,
@@ -231,7 +231,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const ausys = repoContext.getAusysContract();
 
       // Log signature status before calling handOff
-      const journey = await ausys.idToJourney(jobId as any);
+      const journey = await ausys.getJourney(jobId as any);
       const isDriverDeliverySigned = await ausys.driverDeliverySigned(
         journey.driver,
         jobId as any,
@@ -280,7 +280,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const ausys = repoContext.getAusysContract();
 
       // Log journey status before signing
-      const journey = await ausys.idToJourney(jobId as any);
+      const journey = await ausys.getJourney(jobId as any);
       console.log(
         '[DriverProvider] packageSign - Journey status before signing:',
         {

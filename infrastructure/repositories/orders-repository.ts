@@ -451,7 +451,7 @@ export class OrderRepository implements IOrderRepository {
     } catch (error) {
       console.error('[OrderRepository] Error fetching journey by ID:', error);
       await this.waitForInitialization();
-      const contractJourney = await this.readContract.getjourney(journeyId);
+      const contractJourney = await this.readContract.getJourney(journeyId);
 
       return {
         parcelData: contractJourney.parcelData,
