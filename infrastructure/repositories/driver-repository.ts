@@ -11,13 +11,13 @@ import type { Ausys } from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
 import { graphqlRequest } from './shared/graph';
 import {
-  GET_AVAILABLE_JOURNEYS,
+  GET_ALL_JOURNEYS_CREATED,
   GET_JOURNEYS_BY_DRIVER,
   extractPonderItems,
   JourneyCreatedRawEvent,
   DriverAssignedRawEvent,
   AuSysJourneyStatusUpdatedRawEvent,
-  AvailableJourneysResponse,
+  AllJourneysCreatedResponse,
   JourneysByDriverResponse,
 } from './shared/graph-queries';
 import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
@@ -74,8 +74,9 @@ export class DriverRepository implements IDriverRepository {
     event: JourneyCreatedRawEvent,
     statusEvent?: AuSysJourneyStatusUpdatedRawEvent,
   ): Delivery {
+    // Pay token is AURA (18 decimals) on testnet, USDC (6) in production
     const bountyFormatted = event.bounty
-      ? ethers.formatUnits(event.bounty, 6)
+      ? ethers.formatUnits(event.bounty, 18)
       : '0';
 
     const driver = statusEvent?.driver || event.driver;
@@ -106,8 +107,9 @@ export class DriverRepository implements IDriverRepository {
     event: DriverAssignedRawEvent,
     statusEvent?: AuSysJourneyStatusUpdatedRawEvent,
   ): Delivery {
+    // Pay token is AURA (18 decimals) on testnet, USDC (6) in production
     const bountyFormatted = event.bounty
-      ? ethers.formatUnits(event.bounty, 6)
+      ? ethers.formatUnits(event.bounty, 18)
       : '0';
 
     const status = statusEvent
@@ -136,9 +138,10 @@ export class DriverRepository implements IDriverRepository {
   async getAvailableDeliveries(): Promise<Delivery[]> {
     console.log('[DriverRepository] Getting available deliveries...');
     try {
-      const response = await graphqlRequest<AvailableJourneysResponse>(
+      // Use ALL_JOURNEYS query which includes status updates
+      const response = await graphqlRequest<AllJourneysCreatedResponse>(
         this.graphQLEndpoint,
-        GET_AVAILABLE_JOURNEYS,
+        GET_ALL_JOURNEYS_CREATED,
         { limit: 200 },
       );
 
@@ -146,9 +149,35 @@ export class DriverRepository implements IDriverRepository {
         response.journeys || { items: [] },
       ) as JourneyCreatedRawEvent[];
 
-      // Filter to only journeys with no driver (driver = zero address)
-      const availableJourneys = journeys.filter(
-        (j) => !j.driver || j.driver === ethers.ZeroAddress,
+      const statusEvents = extractPonderItems(
+        response.statusUpdates || { items: [] },
+      ) as AuSysJourneyStatusUpdatedRawEvent[];
+
+      // Build set of journey IDs that have a driver assigned or status > 0
+      const claimedJourneyIds = new Set<string>();
+      statusEvents.forEach((s) => {
+        // Any status update means the journey has progressed past Pending
+        claimedJourneyIds.add(s.journey_id);
+      });
+
+      // Also check if driver field in status events indicates assignment
+      statusEvents.forEach((s) => {
+        if (s.driver && s.driver !== ethers.ZeroAddress) {
+          claimedJourneyIds.add(s.journey_id);
+        }
+      });
+
+      // Deduplicate journeys by journey_id (keep latest)
+      const journeyMap = new Map<string, JourneyCreatedRawEvent>();
+      journeys.forEach((j) => {
+        if (!journeyMap.has(j.journey_id)) {
+          journeyMap.set(j.journey_id, j);
+        }
+      });
+
+      // Filter to only journeys that haven't been claimed
+      const availableJourneys = Array.from(journeyMap.values()).filter(
+        (j) => !claimedJourneyIds.has(j.journey_id),
       );
 
       const deliveries = availableJourneys.map((j) =>
@@ -156,7 +185,7 @@ export class DriverRepository implements IDriverRepository {
       );
 
       console.log(
-        `[DriverRepository] Found ${deliveries.length} available deliveries.`,
+        `[DriverRepository] Found ${deliveries.length} available deliveries (filtered from ${journeys.length} total).`,
       );
       return deliveries;
     } catch (error) {
@@ -206,11 +235,25 @@ export class DriverRepository implements IDriverRepository {
         }
       });
 
-      // Convert to deliveries
-      const deliveries = assignedEvents.map((assigned) => {
-        const latestStatus = statusMap.get(assigned.journey_id);
-        return this.driverAssignedToDelivery(assigned, latestStatus);
+      // Deduplicate by journey_id — keep the latest event per journey
+      const uniqueAssignments = new Map<string, DriverAssignedRawEvent>();
+      assignedEvents.forEach((event) => {
+        const existing = uniqueAssignments.get(event.journey_id);
+        if (
+          !existing ||
+          BigInt(event.block_timestamp) > BigInt(existing.block_timestamp)
+        ) {
+          uniqueAssignments.set(event.journey_id, event);
+        }
       });
+
+      // Convert to deliveries
+      const deliveries = Array.from(uniqueAssignments.values()).map(
+        (assigned) => {
+          const latestStatus = statusMap.get(assigned.journey_id);
+          return this.driverAssignedToDelivery(assigned, latestStatus);
+        },
+      );
 
       console.log(
         `[DriverRepository] Found ${deliveries.length} deliveries for driver.`,
