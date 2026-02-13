@@ -189,12 +189,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
   const startJourney = async (jobId: string) => {
     if (!driverWalletAddress) {
-      setError('Wallet not connected');
-      return;
+      throw new Error('Wallet not connected');
     }
 
     setIsLoading(true);
-    setError(null);
 
     try {
       const ausys = repoContext.getAusysContract();
@@ -202,9 +200,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       await tx.wait();
       await refreshDeliveries();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to start journey (handOn)',
-      );
+      // Don't setError here — let the caller (handlePickupDelivery) decide
+      // whether this is an expected condition (e.g. SenderNotSigned) or a real error.
       throw err;
     } finally {
       setIsLoading(false);

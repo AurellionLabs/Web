@@ -139,11 +139,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
         return <StatusBadge status="warning" label="Accepted" size="sm" />;
       case DeliveryStatus.AWAITING_SENDER:
         return (
-          <StatusBadge
-            status="warning"
-            label="Waiting for Sender"
-            size="sm"
-          />
+          <StatusBadge status="warning" label="Awaiting Signing" size="sm" />
         );
       case DeliveryStatus.PICKED_UP:
         return <StatusBadge status="warning" label="Picked Up" size="sm" />;
@@ -231,6 +227,14 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
               isLoading={isLoading}
             />
           )}
+          {delivery.currentStatus === DeliveryStatus.AWAITING_SENDER && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span className="text-xs text-amber-300">
+                Awaiting sender signature
+              </span>
+            </div>
+          )}
           {delivery.currentStatus === DeliveryStatus.PICKED_UP &&
             onComplete && (
               <DeliveryActionDialog
@@ -292,21 +296,23 @@ export default function DriverDashboard() {
   );
 
   // Filter deliveries
-  const filteredMyDeliveries = effectiveMyDeliveries.filter((delivery: Delivery) => {
-    if (
-      filters.jobId &&
-      !delivery.jobId.toLowerCase().includes(filters.jobId.toLowerCase())
-    ) {
-      return false;
-    }
-    if (
-      filters.status !== 'all' &&
-      delivery.currentStatus !== parseInt(filters.status as string)
-    ) {
-      return false;
-    }
-    return true;
-  });
+  const filteredMyDeliveries = effectiveMyDeliveries.filter(
+    (delivery: Delivery) => {
+      if (
+        filters.jobId &&
+        !delivery.jobId.toLowerCase().includes(filters.jobId.toLowerCase())
+      ) {
+        return false;
+      }
+      if (
+        filters.status !== 'all' &&
+        delivery.currentStatus !== parseInt(filters.status as string)
+      ) {
+        return false;
+      }
+      return true;
+    },
+  );
 
   const filteredAvailableDeliveries = availableDeliveries.filter(
     (delivery: Delivery) => {
@@ -407,7 +413,7 @@ export default function DriverDashboard() {
           msg.includes('SenderNotSigned') ||
           msg.includes('DriverNotSigned') ||
           msg.includes('0x9651c947') || // DriverNotSigned selector
-          msg.includes('0x7804b64a') || // SenderNotSigned selector
+          msg.includes('0x4b2c0751') || // SenderNotSigned selector
           msg.includes('revert');
 
         if (isSenderPending) {

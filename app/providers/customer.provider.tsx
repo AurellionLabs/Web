@@ -25,6 +25,8 @@ type CustomerContextType = {
   refreshOrders: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   confirmReceipt: (orderId: string) => Promise<void>;
+  /** Sender signs for pickup on a journey (calls packageSign as sender) */
+  signForPickup: (orderId: string, journeyId: string) => Promise<void>;
   /** Sign for delivery on a P2P order (calls packageSign) */
   signP2PDelivery: (orderId: string, journeyId: string) => Promise<void>;
   /** Complete the handoff on a P2P order (calls handOff, triggers settlement) */
@@ -247,6 +249,56 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   );
 
   /**
+   * Sender signs for pickup on a journey.
+   * After signing, attempts handOn to start the journey (requires driver + sender).
+   */
+  const signForPickup = useCallback(
+    async (orderId: string, journeyId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const ausys = repoContext.getAusysContract();
+
+        console.log('[CustomerProvider] signForPickup', {
+          orderId,
+          journeyId,
+        });
+
+        // Sign for pickup as sender
+        const signTx = await ausys.packageSign(journeyId as any);
+        await signTx.wait();
+        console.log('[CustomerProvider] sender packageSign tx confirmed');
+
+        // Try to start journey (handOn) — needs both driver + sender signed
+        try {
+          const handOnTx = await ausys.handOn(journeyId as any);
+          await handOnTx.wait();
+          console.log(
+            '[CustomerProvider] handOn tx confirmed — journey started',
+          );
+        } catch (handOnErr) {
+          // handOn may fail if driver hasn't signed yet — that's fine
+          console.log(
+            '[CustomerProvider] handOn not ready yet (driver may not have signed):',
+            handOnErr instanceof Error ? handOnErr.message : handOnErr,
+          );
+        }
+
+        // Refresh orders to pick up updated state
+        await loadCustomerOrders();
+      } catch (err) {
+        console.error('[CustomerProvider] signForPickup error:', err);
+        setError('Failed to sign for pickup');
+        handleContractError(err, 'sign for pickup');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [repoContext, loadCustomerOrders],
+  );
+
+  /**
    * Sign for delivery on a P2P order.
    * Calls packageSign on the journey, then attempts handOff if both sides signed.
    */
@@ -411,6 +463,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     refreshOrders,
     cancelOrder,
     confirmReceipt,
+    signForPickup,
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,

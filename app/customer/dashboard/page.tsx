@@ -29,6 +29,8 @@ import {
   TrendingUp,
   Wallet,
   Send,
+  MoreHorizontal,
+  PenLine,
 } from 'lucide-react';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
 import { RedemptionDialog } from '@/app/components/redemption/RedemptionDialog';
@@ -42,6 +44,12 @@ import {
 } from '@/app/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { OrderStatus } from '@/domain/orders/order';
 import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
 import {
@@ -177,6 +185,7 @@ export default function CustomerDashboard() {
     refreshOrders,
     cancelOrder,
     confirmReceipt,
+    signForPickup,
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,
@@ -336,11 +345,66 @@ export default function CustomerDashboard() {
     }
   };
 
+  const handleSignForPickup = async (orderId: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order || !order.journeyIds || order.journeyIds.length === 0) {
+      toast({
+        title: 'No Journey',
+        description: 'This order has no delivery journey to sign for.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      setLoading(true);
+      await signForPickup(order.id, order.journeyIds[0]);
+      toast({
+        title: 'Signed for Pickup',
+        description:
+          'Your signature has been recorded. The journey will start once the driver also signs.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Failed to sign for pickup. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleP2PExpand = (orderId: string) => {
     setExpandedP2POrders((prev) => ({
       ...prev,
       [orderId]: !prev[orderId],
     }));
+  };
+
+  const handleSignP2PPickup = async (orderId: string, journeyId: string) => {
+    try {
+      setP2PActionLoading(true);
+      await signForPickup(orderId, journeyId);
+      toast({
+        title: 'Signed for Pickup',
+        description:
+          'Your pickup signature has been recorded. Waiting for the driver to sign.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Failed to sign for pickup. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setP2PActionLoading(false);
+    }
   };
 
   const handleSignP2PDelivery = async (orderId: string, journeyId: string) => {
@@ -845,39 +909,72 @@ export default function CustomerDashboard() {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
-                            {order.currentStatus === OrderStatus.CREATED && (
-                              <OrderActionDialog
-                                order={order}
-                                onConfirm={handleCancelOrder}
-                                variant="cancel"
-                              />
-                            )}
-                            {order.currentStatus === OrderStatus.PROCESSING &&
-                              !isP2P && (
-                                <OrderActionDialog
-                                  order={order}
-                                  onConfirm={handleConfirmReceipt}
-                                  variant="confirm"
-                                  isLoading={loading}
-                                  isWaitingForSignature={
-                                    waitingForSignature[order.id]
-                                  }
-                                  waitingForRole="driver"
-                                />
-                              )}
-                            {isP2P &&
-                              order.currentStatus !== OrderStatus.SETTLED &&
-                              order.currentStatus !== OrderStatus.CANCELLED && (
-                                <button
-                                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleP2PExpand(order.id);
-                                  }}
-                                >
-                                  {isExpanded ? 'Hide Flow' : 'View Flow'}
-                                </button>
-                              )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                className="p-2 rounded-lg hover:bg-glass-hover transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {/* Sign for Pickup — available when order has journeys and is CREATED or PROCESSING */}
+                                {order.journeyIds &&
+                                  order.journeyIds.length > 0 &&
+                                  (order.currentStatus ===
+                                    OrderStatus.CREATED ||
+                                    order.currentStatus ===
+                                      OrderStatus.PROCESSING) && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleSignForPickup(order.id)
+                                      }
+                                      disabled={loading}
+                                    >
+                                      <PenLine className="w-4 h-4 mr-2" />
+                                      Sign for Pickup
+                                    </DropdownMenuItem>
+                                  )}
+                                {/* Confirm Receipt — PROCESSING, non-P2P */}
+                                {order.currentStatus ===
+                                  OrderStatus.PROCESSING &&
+                                  !isP2P && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleConfirmReceipt(order.id)
+                                      }
+                                      disabled={loading}
+                                    >
+                                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                                      Confirm Receipt
+                                    </DropdownMenuItem>
+                                  )}
+                                {/* Cancel Order — only CREATED */}
+                                {order.currentStatus ===
+                                  OrderStatus.CREATED && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleCancelOrder(order.id)}
+                                    className="text-red-400 focus:text-red-400"
+                                  >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Cancel Order
+                                  </DropdownMenuItem>
+                                )}
+                                {/* P2P Flow toggle */}
+                                {isP2P &&
+                                  order.currentStatus !== OrderStatus.SETTLED &&
+                                  order.currentStatus !==
+                                    OrderStatus.CANCELLED && (
+                                    <DropdownMenuItem
+                                      onClick={() => toggleP2PExpand(order.id)}
+                                    >
+                                      <Package className="w-4 h-4 mr-2" />
+                                      {isExpanded
+                                        ? 'Hide P2P Flow'
+                                        : 'View P2P Flow'}
+                                    </DropdownMenuItem>
+                                  )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </td>
                       </tr>
@@ -891,6 +988,7 @@ export default function CustomerDashboard() {
                           >
                             <P2POrderFlow
                               order={order}
+                              onSignForPickup={handleSignP2PPickup}
                               onSignDelivery={handleSignP2PDelivery}
                               onCompleteHandoff={handleCompleteP2PHandoff}
                               onScheduleDelivery={handleScheduleDelivery}

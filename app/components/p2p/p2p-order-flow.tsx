@@ -21,6 +21,8 @@ import { OrderStatus } from '@/domain/orders/order';
 
 export interface P2POrderFlowProps {
   order: OrderWithAsset;
+  /** Callback to sign for pickup as sender (packageSign before handOn) */
+  onSignForPickup?: (orderId: string, journeyId: string) => Promise<void>;
   /** Callback to sign for delivery (packageSign) */
   onSignDelivery?: (orderId: string, journeyId: string) => Promise<void>;
   /** Callback to complete handoff */
@@ -127,7 +129,7 @@ function getStatusMessage(
     case 0:
       return 'No delivery journey yet. Schedule delivery to move this order forward.';
     case 1:
-      return 'Journey created. Waiting for driver to pick up the package.';
+      return 'Journey created. Sign for pickup to allow the driver to start the journey.';
     case 2:
       if (!buyerSigned && !driverSigned) {
         return 'Package is in transit. Sign for delivery when it arrives.';
@@ -154,6 +156,7 @@ function getStatusMessage(
 
 export function P2POrderFlow({
   order,
+  onSignForPickup,
   onSignDelivery,
   onCompleteHandoff,
   onScheduleDelivery,
@@ -235,10 +238,27 @@ export function P2POrderFlow({
     }
   };
 
+  const handleSignForPickup = async () => {
+    if (!onSignForPickup || !journeyId) return;
+    setActionError(null);
+    try {
+      await onSignForPickup(order.id, journeyId);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Failed to sign for pickup',
+      );
+    }
+  };
+
   // Determine which action to show
   const showScheduleButton =
     currentStep === 0 &&
     onScheduleDelivery &&
+    order.currentStatus !== OrderStatus.SETTLED;
+  const showSignForPickupButton =
+    currentStep === 1 &&
+    onSignForPickup &&
+    !!journeyId &&
     order.currentStatus !== OrderStatus.SETTLED;
   const showSignButton =
     currentStep === 2 &&
@@ -358,6 +378,19 @@ export function P2POrderFlow({
           leftIcon={<Truck className="w-4 h-4" />}
         >
           Schedule Delivery
+        </GlowButton>
+      )}
+
+      {showSignForPickupButton && (
+        <GlowButton
+          onClick={handleSignForPickup}
+          loading={isActionLoading}
+          disabled={isActionLoading}
+          variant="primary"
+          size="sm"
+          leftIcon={<Pen className="w-4 h-4" />}
+        >
+          Sign for Pickup
         </GlowButton>
       )}
 
