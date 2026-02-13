@@ -4,7 +4,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Delivery } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { calculateETA } from '../utils/maps';
 
 export interface DriverContextType {
   availableDeliveries: Delivery[];
@@ -22,15 +21,9 @@ export interface DriverContextType {
 const DriverContext = createContext<DriverContextType | undefined>(undefined);
 
 const calculateDeliveryETA = async (delivery: Delivery): Promise<Delivery> => {
-  try {
-    const deliveryETA = await calculateETA(
-      delivery.parcelData.startLocation,
-      delivery.parcelData.endLocation,
-    );
-    return { ...delivery, deliveryETA };
-  } catch (error) {
-    return { ...delivery, deliveryETA: -1 };
-  }
+  // TODO: Re-enable Google Routes API ETA calculation when needed
+  // For now, return a generic placeholder ETA (15 min)
+  return { ...delivery, deliveryETA: 15 };
 };
 
 export function DriverProvider({ children }: { children: React.ReactNode }) {

@@ -108,30 +108,29 @@ describe('calculateETA', () => {
     });
   });
 
-  describe('error handling', () => {
-    it('should throw "Cannot calculate ETA" when API returns non-OK response', async () => {
+  describe('error handling — returns -1 instead of throwing', () => {
+    it('should return -1 when API returns non-OK response', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
+        status: 429,
         text: async () => 'API rate limit exceeded',
       });
 
-      await expect(calculateETA(validOrigin, validDestination)).rejects.toThrow(
-        'Cannot calculate ETA for this route',
-      );
+      const eta = await calculateETA(validOrigin, validDestination);
+      expect(eta).toBe(-1);
     });
 
-    it('should throw "Cannot calculate ETA" when response has no routes', async () => {
+    it('should return -1 when response has no routes', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ routes: [] }),
       });
 
-      await expect(calculateETA(validOrigin, validDestination)).rejects.toThrow(
-        'Cannot calculate ETA for this route',
-      );
+      const eta = await calculateETA(validOrigin, validDestination);
+      expect(eta).toBe(-1);
     });
 
-    it('should throw "Cannot calculate ETA" when route has no duration', async () => {
+    it('should return -1 when route has no duration', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -139,45 +138,68 @@ describe('calculateETA', () => {
         }),
       });
 
-      await expect(calculateETA(validOrigin, validDestination)).rejects.toThrow(
-        'Cannot calculate ETA for this route',
-      );
+      const eta = await calculateETA(validOrigin, validDestination);
+      expect(eta).toBe(-1);
     });
 
-    it('should throw "Cannot calculate ETA" when routes is null', async () => {
+    it('should return -1 when routes is null', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}), // no routes at all
       });
 
-      await expect(calculateETA(validOrigin, validDestination)).rejects.toThrow(
-        'Cannot calculate ETA for this route',
-      );
+      const eta = await calculateETA(validOrigin, validDestination);
+      expect(eta).toBe(-1);
     });
 
-    it('should throw "Cannot calculate ETA" when fetch rejects (network error)', async () => {
+    it('should return -1 when fetch rejects (network error)', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(calculateETA(validOrigin, validDestination)).rejects.toThrow(
-        'Cannot calculate ETA for this route',
-      );
-    });
-
-    it('should throw "Cannot calculate ETA" when API key is missing', async () => {
-      // The function uses process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!
-      // If missing, the API call will likely fail
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        text: async () => 'API key not valid',
-      });
-
-      await expect(calculateETA(validOrigin, validDestination)).rejects.toThrow(
-        'Cannot calculate ETA for this route',
-      );
+      const eta = await calculateETA(validOrigin, validDestination);
+      expect(eta).toBe(-1);
     });
   });
 
-  describe('input validation', () => {
+  describe('input validation — early return -1 for bad coordinates', () => {
+    it('should return -1 for empty lat/lng strings', async () => {
+      const empty: Location = { lat: '', lng: '' };
+      const eta = await calculateETA(empty, validDestination);
+      expect(eta).toBe(-1);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should return -1 for (0, 0) coordinates (unset on-chain default)', async () => {
+      const zero: Location = { lat: '0', lng: '0' };
+      const eta = await calculateETA(zero, validDestination);
+      expect(eta).toBe(-1);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should return -1 for NaN coordinates', async () => {
+      const bad: Location = { lat: 'abc', lng: 'xyz' };
+      const eta = await calculateETA(bad, validDestination);
+      expect(eta).toBe(-1);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should return -1 for out-of-range latitude', async () => {
+      const bad: Location = { lat: '91', lng: '-74.006' };
+      const eta = await calculateETA(bad, validDestination);
+      expect(eta).toBe(-1);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should return -1 when API key is missing', async () => {
+      const origKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+      const eta = await calculateETA(validOrigin, validDestination);
+      expect(eta).toBe(-1);
+      expect(mockFetch).not.toHaveBeenCalled();
+
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = origKey;
+    });
+
     it('should parse string lat/lng to floats for the API request', async () => {
       const origin: Location = { lat: '51.5074', lng: '-0.1278' };
       const dest: Location = { lat: '48.8566', lng: '2.3522' };
