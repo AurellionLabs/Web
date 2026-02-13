@@ -917,21 +917,26 @@ export default function CustomerDashboard() {
                                 <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {/* Sign for Pickup — available when order has journeys and is CREATED or PROCESSING */}
+                                {/* Sign for Delivery — available when order is PROCESSING and has journeys */}
                                 {order.journeyIds &&
                                   order.journeyIds.length > 0 &&
-                                  (order.currentStatus ===
-                                    OrderStatus.CREATED ||
-                                    order.currentStatus ===
-                                      OrderStatus.PROCESSING) && (
+                                  order.currentStatus ===
+                                    OrderStatus.PROCESSING && (
                                     <DropdownMenuItem
-                                      onClick={() =>
-                                        handleSignForPickup(order.id)
-                                      }
+                                      onClick={() => {
+                                        if (isP2P) {
+                                          handleSignP2PDelivery(
+                                            order.id,
+                                            order.journeyIds![0],
+                                          );
+                                        } else {
+                                          handleConfirmReceipt(order.id);
+                                        }
+                                      }}
                                       disabled={loading}
                                     >
                                       <PenLine className="w-4 h-4 mr-2" />
-                                      Sign for Pickup
+                                      Sign for Delivery
                                     </DropdownMenuItem>
                                   )}
                                 {/* Confirm Receipt — PROCESSING, non-P2P */}

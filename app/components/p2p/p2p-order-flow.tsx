@@ -129,7 +129,7 @@ function getStatusMessage(
     case 0:
       return 'No delivery journey yet. Schedule delivery to move this order forward.';
     case 1:
-      return 'Journey created. Sign for pickup to allow the driver to start the journey.';
+      return 'Journey created. Waiting for sender and driver to sign for pickup.';
     case 2:
       if (!buyerSigned && !driverSigned) {
         return 'Package is in transit. Sign for delivery when it arrives.';
@@ -255,11 +255,6 @@ export function P2POrderFlow({
     currentStep === 0 &&
     onScheduleDelivery &&
     order.currentStatus !== OrderStatus.SETTLED;
-  const showSignForPickupButton =
-    currentStep === 1 &&
-    onSignForPickup &&
-    !!journeyId &&
-    order.currentStatus !== OrderStatus.SETTLED;
   const showSignButton =
     currentStep === 2 &&
     !buyerSigned &&
@@ -378,19 +373,6 @@ export function P2POrderFlow({
           leftIcon={<Truck className="w-4 h-4" />}
         >
           Schedule Delivery
-        </GlowButton>
-      )}
-
-      {showSignForPickupButton && (
-        <GlowButton
-          onClick={handleSignForPickup}
-          loading={isActionLoading}
-          disabled={isActionLoading}
-          variant="primary"
-          size="sm"
-          leftIcon={<Pen className="w-4 h-4" />}
-        >
-          Sign for Pickup
         </GlowButton>
       )}
 
