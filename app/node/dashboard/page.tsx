@@ -984,7 +984,7 @@ export default function NodeDashboardPage() {
                       {order.tokenQuantity}
                     </td>
                     <td className="px-4 py-4 font-mono text-foreground">
-                      ${formatTokenAmount(order.price, 6, 2)}
+                      ${formatTokenAmount(order.price, 18, 2)}
                     </td>
                     <td className="px-4 py-4">
                       <StatusBadge

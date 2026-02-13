@@ -383,7 +383,7 @@ function OrdersContent({
                       {order.tokenQuantity}
                     </td>
                     <td className="px-4 py-4 font-mono text-foreground">
-                      {formatTokenAmount(order.price, 6, 2)} USDT
+                      {formatTokenAmount(order.price, 18, 2)} AURA
                     </td>
                     <td className="px-4 py-4">
                       <StatusBadge

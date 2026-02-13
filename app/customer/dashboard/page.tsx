@@ -287,7 +287,11 @@ export default function CustomerDashboard() {
   ).length;
   const totalSpent = filteredOrders
     .filter((order) => order.currentStatus === OrderStatus.SETTLED)
-    .reduce((total, order) => total + parseFloat(order.price), 0);
+    .reduce(
+      (total, order) =>
+        total + parseFloat(formatTokenAmount(order.price, 18, 6)),
+      0,
+    );
 
   // Calculate pagination values
   const totalPages = Math.ceil(sortedOrders.length / ordersPerPage);
@@ -821,7 +825,7 @@ export default function CustomerDashboard() {
                           {order.tokenQuantity}
                         </td>
                         <td className="px-4 py-4 text-sm font-mono text-foreground">
-                          ${formatTokenAmount(order.price, 6, 2)}
+                          ${formatTokenAmount(order.price, 18, 2)}
                         </td>
                         <td className="px-4 py-4">
                           <StatusBadge

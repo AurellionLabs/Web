@@ -46,8 +46,8 @@ async function checkOrderStatus() {
     console.log('Token:', order.token);
     console.log('Token ID:', order.tokenId.toString());
     console.log('Token Quantity:', order.tokenQuantity.toString());
-    console.log('Price:', ethers.formatUnits(order.price, 6), 'USDT');
-    console.log('Tx Fee:', ethers.formatUnits(order.txFee, 6), 'USDT');
+    console.log('Price:', ethers.formatUnits(order.price, 18), 'AURA');
+    console.log('Tx Fee:', ethers.formatUnits(order.txFee, 18), 'AURA');
     console.log('Journey IDs:', order.journeyIds);
     console.log('Nodes:', order.nodes);
   } catch (error) {

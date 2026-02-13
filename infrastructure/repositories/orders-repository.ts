@@ -641,8 +641,9 @@ export class OrderRepository implements IOrderRepository {
         token: contractOrder.token,
         tokenId: String(contractOrder.tokenId),
         tokenQuantity: String(contractOrder.tokenQuantity),
-        price: ethers.formatUnits(contractOrder.price, 6),
-        txFee: ethers.formatUnits(contractOrder.txFee, 6),
+        // Keep raw wei value — formatted at display layer
+        price: contractOrder.price.toString(),
+        txFee: contractOrder.txFee.toString(),
         buyer: contractOrder.buyer,
         seller: contractOrder.seller,
         journeyIds: contractOrder.journeyIds,
