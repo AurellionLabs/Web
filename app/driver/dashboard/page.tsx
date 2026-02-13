@@ -137,6 +137,14 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
         return <StatusBadge status="info" label="Available" size="sm" />;
       case DeliveryStatus.ACCEPTED:
         return <StatusBadge status="warning" label="Accepted" size="sm" />;
+      case DeliveryStatus.AWAITING_SENDER:
+        return (
+          <StatusBadge
+            status="warning"
+            label="Waiting for Sender"
+            size="sm"
+          />
+        );
       case DeliveryStatus.PICKED_UP:
         return <StatusBadge status="warning" label="Picked Up" size="sm" />;
       case DeliveryStatus.COMPLETED:
@@ -257,6 +265,10 @@ export default function DriverDashboard() {
   } = useDriver();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('available');
+  // Local status overrides (e.g., driver signed but waiting for sender)
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, DeliveryStatus>
+  >({});
 
   const [filters, setFilters] = useState({
     jobId: '',
@@ -272,8 +284,15 @@ export default function DriverDashboard() {
     setCurrentUserRole('driver');
   }, [setCurrentUserRole]);
 
+  // Apply local status overrides (e.g., AWAITING_SENDER)
+  const effectiveMyDeliveries = myDeliveries.map((d) =>
+    statusOverrides[d.jobId] !== undefined
+      ? { ...d, currentStatus: statusOverrides[d.jobId] }
+      : d,
+  );
+
   // Filter deliveries
-  const filteredMyDeliveries = myDeliveries.filter((delivery: Delivery) => {
+  const filteredMyDeliveries = effectiveMyDeliveries.filter((delivery: Delivery) => {
     if (
       filters.jobId &&
       !delivery.jobId.toLowerCase().includes(filters.jobId.toLowerCase())
@@ -321,17 +340,19 @@ export default function DriverDashboard() {
 
   // Calculate statistics
   const availableCount = availableDeliveries.length;
-  const toPickupCount = myDeliveries.filter(
-    (delivery: Delivery) => delivery.currentStatus === DeliveryStatus.ACCEPTED,
+  const toPickupCount = effectiveMyDeliveries.filter(
+    (delivery: Delivery) =>
+      delivery.currentStatus === DeliveryStatus.ACCEPTED ||
+      delivery.currentStatus === DeliveryStatus.AWAITING_SENDER,
   ).length;
-  const toCompleteCount = myDeliveries.filter(
+  const toCompleteCount = effectiveMyDeliveries.filter(
     (delivery: Delivery) => delivery.currentStatus === DeliveryStatus.PICKED_UP,
   ).length;
-  const completedDeliveries = myDeliveries.filter(
+  const completedDeliveries = effectiveMyDeliveries.filter(
     (delivery: Delivery) => delivery.currentStatus === DeliveryStatus.COMPLETED,
   ).length;
 
-  const totalEarnings = myDeliveries
+  const totalEarnings = effectiveMyDeliveries
     .filter(
       (delivery: Delivery) =>
         delivery.currentStatus === DeliveryStatus.COMPLETED,
@@ -368,7 +389,10 @@ export default function DriverDashboard() {
 
   const handlePickupDelivery = async (jobId: string) => {
     try {
+      // Step 1: Driver signs for pickup
       await confirmPickup(jobId);
+
+      // Step 2: Try to start journey (requires both driver + sender signatures)
       try {
         await startJourney(jobId);
         toast({
@@ -377,11 +401,25 @@ export default function DriverDashboard() {
             'Pickup signatures confirmed. The journey is now In Progress.',
         });
       } catch (err) {
-        if (err instanceof Error && err.message.includes('SenderNotSigned')) {
+        // If handOn fails because sender hasn't signed yet, that's expected
+        const msg = err instanceof Error ? err.message : String(err);
+        const isSenderPending =
+          msg.includes('SenderNotSigned') ||
+          msg.includes('DriverNotSigned') ||
+          msg.includes('0x9651c947') || // DriverNotSigned selector
+          msg.includes('0x7804b64a') || // SenderNotSigned selector
+          msg.includes('revert');
+
+        if (isSenderPending) {
+          // Update the local status override to show "Awaiting Sender"
+          setStatusOverrides((prev) => ({
+            ...prev,
+            [jobId]: DeliveryStatus.AWAITING_SENDER,
+          }));
           toast({
-            title: 'Waiting on Sender',
+            title: 'Signed for Pickup',
             description:
-              'Pickup started on your side. Waiting for the sender to sign.',
+              'Your signature is recorded. Waiting for the sender to confirm.',
           });
         } else {
           throw err;
@@ -701,6 +739,11 @@ export default function DriverDashboard() {
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value={DeliveryStatus.ACCEPTED.toString()}>
                         Accepted
+                      </SelectItem>
+                      <SelectItem
+                        value={DeliveryStatus.AWAITING_SENDER.toString()}
+                      >
+                        Waiting for Sender
                       </SelectItem>
                       <SelectItem value={DeliveryStatus.PICKED_UP.toString()}>
                         Picked Up

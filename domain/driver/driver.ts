@@ -16,6 +16,7 @@ export enum DeliveryStatus {
   PICKED_UP = 2, // Driver has package, in transit (contract: InTransit)
   COMPLETED = 3, // Package delivered (contract: Delivered)
   CANCELED = 4, // Journey cancelled (contract: Canceled)
+  AWAITING_SENDER = 5, // Driver signed for pickup, waiting for sender to sign
 }
 
 export interface Delivery {
