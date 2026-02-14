@@ -407,6 +407,11 @@ export class DiamondNodeRepository implements NodeRepository {
     const hash = nodeHash.toLowerCase();
     const owner = ownerAddress?.toLowerCase();
 
+    console.log('[DiamondNodeRepository] getNodeOrders', {
+      nodeHash: hash,
+      ownerAddress: owner,
+    });
+
     try {
       const [orderResponse, logisticsResponse] = await Promise.all([
         graphqlRequest<UnifiedOrderEventsResponse>(

@@ -1,12 +1,13 @@
 'use client';
 
-import {
+import React, {
   createContext,
   useContext,
   ReactNode,
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from 'react';
 import {
   Node,
@@ -138,9 +139,16 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       try {
         // Pass both the node hash and the wallet address (owner)
         // so the repository can match orders by logistics node field AND by wallet
+        console.log('[SelectedNodeProvider] loadOrders called', {
+          nodeAddress,
+          walletAddress: address,
+        });
         const nodeOrders = await nodeRepository.getNodeOrders(
           nodeAddress,
           address || undefined,
+        );
+        console.log(
+          `[SelectedNodeProvider] Loaded ${nodeOrders.length} orders for node`,
         );
 
         // Fetch asset details for each order
@@ -267,6 +275,26 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   );
 
   // Clear selection
+  // Re-load orders when wallet address becomes available for an already-selected node.
+  // This handles the race condition where selectNode runs before the wallet connects,
+  // causing P2P queries to use the node hash instead of the wallet address.
+  const prevAddressRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (
+      selectedNodeAddress &&
+      address &&
+      prevAddressRef.current !== address &&
+      nodeRepository
+    ) {
+      console.log(
+        '[SelectedNodeProvider] Wallet address changed, reloading orders',
+        { selectedNodeAddress, address },
+      );
+      loadOrders(selectedNodeAddress);
+    }
+    prevAddressRef.current = address ?? null;
+  }, [address, selectedNodeAddress, nodeRepository, loadOrders]);
+
   const clearSelection = useCallback(() => {
     setSelectedNodeAddress(null);
     setNodeData(null);
