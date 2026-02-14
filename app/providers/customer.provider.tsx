@@ -43,11 +43,16 @@ type CustomerContextType = {
     orderId: string,
     journeyId: string,
   ) => Promise<'settled' | 'driver_not_signed'>;
-  /** Fetch live receiver/driver delivery signature states */
+  /** Fetch live receiver/driver signature states for pickup and delivery */
   getP2PSignatureState: (
     orderId: string,
     journeyId: string,
-  ) => Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }>;
+  ) => Promise<{
+    buyerSigned: boolean;
+    driverDeliverySigned: boolean;
+    senderPickupSigned?: boolean;
+    driverPickupSigned?: boolean;
+  }>;
   /** Create a delivery journey for an accepted P2P order that has no journey */
   createP2PJourney: (
     orderId: string,
@@ -343,17 +348,22 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Fetch live receiver/driver delivery signature states.
+   * Fetch live receiver/driver signature states for both pickup and delivery.
    *
    * Uses journey.journeyStart (set when handOn succeeds) to distinguish
    * pickup sigs from delivery sigs. Only EmitSig events AFTER journeyStart
-   * count as delivery signatures.
+   * count as delivery signatures. Events before are pickup signatures.
    */
   const getP2PSignatureState = useCallback(
     async (
       orderId: string,
       journeyId: string,
-    ): Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }> => {
+    ): Promise<{
+      buyerSigned: boolean;
+      driverDeliverySigned: boolean;
+      senderPickupSigned?: boolean;
+      driverPickupSigned?: boolean;
+    }> => {
       try {
         const ausys = repoContext.getAusysContract();
         const journey = await ausys.getJourney(journeyId as any);
@@ -361,26 +371,48 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
         // Definitive: Delivered means both parties signed and handOff succeeded
         if (status >= 2) {
-          return { buyerSigned: true, driverDeliverySigned: true };
+          return {
+            buyerSigned: true,
+            driverDeliverySigned: true,
+            senderPickupSigned: true,
+            driverPickupSigned: true,
+          };
         }
 
-        // For InTransit, query EmitSig events AFTER journeyStart
-        if (status === 1) {
-          try {
-            const sigResponse =
-              await graphqlRequest<EmitSigEventsByJourneyResponse>(
-                NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
-                GET_EMIT_SIG_EVENTS_BY_JOURNEY,
-                { journeyId, limit: 50 },
-              );
+        // Fetch EmitSig events for this journey
+        try {
+          const sigResponse =
+            await graphqlRequest<EmitSigEventsByJourneyResponse>(
+              NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+              GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+              { journeyId, limit: 50 },
+            );
 
-            const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
-            const receiver = journey.receiver.toLowerCase();
-            const driver = journey.driver.toLowerCase();
-            // journeyStart is set when handOn succeeds (pickup complete)
-            const pickupTimestamp = Number(journey.journeyStart);
+          const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
+          const sender = journey.sender.toLowerCase();
+          const receiver = journey.receiver.toLowerCase();
+          const driver = journey.driver.toLowerCase();
+          const pickupTimestamp = Number(journey.journeyStart);
 
-            // Only sigs AFTER pickup count as delivery sigs
+          if (status === 0) {
+            // Pending — check pickup sigs
+            const senderPickupSigned = sigEvents.some(
+              (e) => e.user.toLowerCase() === sender,
+            );
+            const driverPickupSigned = sigEvents.some(
+              (e) => e.user.toLowerCase() === driver,
+            );
+
+            return {
+              buyerSigned: false,
+              driverDeliverySigned: false,
+              senderPickupSigned,
+              driverPickupSigned,
+            };
+          }
+
+          if (status === 1) {
+            // InTransit — only sigs AFTER pickup count as delivery sigs
             const deliverySigs = sigEvents.filter(
               (e) => Number(e.block_timestamp) > pickupTimestamp,
             );
@@ -392,17 +424,20 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
               (e) => e.user.toLowerCase() === driver,
             );
 
-            return { buyerSigned, driverDeliverySigned };
-          } catch (indexerErr) {
-            console.warn(
-              '[CustomerProvider] EmitSig query failed, using defaults:',
-              indexerErr,
-            );
-            return { buyerSigned: false, driverDeliverySigned: false };
+            return {
+              buyerSigned,
+              driverDeliverySigned,
+              senderPickupSigned: true,
+              driverPickupSigned: true,
+            };
           }
+        } catch (indexerErr) {
+          console.warn(
+            '[CustomerProvider] EmitSig query failed, using defaults:',
+            indexerErr,
+          );
         }
 
-        // Status 0 (Pending) — no delivery signatures possible yet
         return { buyerSigned: false, driverDeliverySigned: false };
       } catch (err) {
         console.warn('[CustomerProvider] getP2PSignatureState error:', err);

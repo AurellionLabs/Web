@@ -173,6 +173,7 @@ export default function NodeDashboardPage() {
     removeSupportingDocument,
     packageSign,
     startJourney,
+    refreshOrders,
   } = useSelectedNode();
 
   const { refreshNodes } = useNodes();
@@ -238,11 +239,17 @@ export default function NodeDashboardPage() {
   /**
    * Fetch live signature states for a P2P order's journey.
    * Uses journey.journeyStart to distinguish pickup sigs from delivery sigs.
+   * Returns pickup signature states for Pending journeys (status 0).
    */
   const getP2PSignatureState = async (
     _orderId: string,
     journeyId: string,
-  ): Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }> => {
+  ): Promise<{
+    buyerSigned: boolean;
+    driverDeliverySigned: boolean;
+    senderPickupSigned?: boolean;
+    driverPickupSigned?: boolean;
+  }> => {
     try {
       const repoContext = RepositoryContext.getInstance();
       const ausys = repoContext.getAusysContract();
@@ -250,23 +257,48 @@ export default function NodeDashboardPage() {
       const status = Number(journey.currentStatus);
 
       if (status >= 2) {
-        return { buyerSigned: true, driverDeliverySigned: true };
+        return {
+          buyerSigned: true,
+          driverDeliverySigned: true,
+          senderPickupSigned: true,
+          driverPickupSigned: true,
+        };
       }
 
-      if (status === 1) {
-        try {
-          const sigResponse =
-            await graphqlRequest<EmitSigEventsByJourneyResponse>(
-              NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
-              GET_EMIT_SIG_EVENTS_BY_JOURNEY,
-              { journeyId, limit: 50 },
-            );
+      // Fetch EmitSig events for this journey
+      try {
+        const sigResponse =
+          await graphqlRequest<EmitSigEventsByJourneyResponse>(
+            NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+            GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+            { journeyId, limit: 50 },
+          );
 
-          const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
-          const receiver = journey.receiver.toLowerCase();
-          const driver = journey.driver.toLowerCase();
-          const pickupTimestamp = Number(journey.journeyStart);
+        const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
+        const sender = journey.sender.toLowerCase();
+        const receiver = journey.receiver.toLowerCase();
+        const driver = journey.driver.toLowerCase();
+        const pickupTimestamp = Number(journey.journeyStart);
 
+        if (status === 0) {
+          // Pending — check pickup signatures (events BEFORE journey start, or all if journeyStart === 0)
+          const senderPickupSigned = sigEvents.some(
+            (e) => e.user.toLowerCase() === sender,
+          );
+          const driverPickupSigned = sigEvents.some(
+            (e) => e.user.toLowerCase() === driver,
+          );
+
+          return {
+            buyerSigned: false,
+            driverDeliverySigned: false,
+            senderPickupSigned,
+            driverPickupSigned,
+          };
+        }
+
+        if (status === 1) {
+          // InTransit — pickup already done, check delivery sigs
           // Only sigs AFTER pickup count as delivery sigs
           const deliverySigs = sigEvents.filter(
             (e) => Number(e.block_timestamp) > pickupTimestamp,
@@ -279,11 +311,15 @@ export default function NodeDashboardPage() {
             (e) => e.user.toLowerCase() === driver,
           );
 
-          return { buyerSigned, driverDeliverySigned };
-        } catch (indexerErr) {
-          console.warn('[NodeDashboard] EmitSig query failed:', indexerErr);
-          return { buyerSigned: false, driverDeliverySigned: false };
+          return {
+            buyerSigned,
+            driverDeliverySigned,
+            senderPickupSigned: true,
+            driverPickupSigned: true,
+          };
         }
+      } catch (indexerErr) {
+        console.warn('[NodeDashboard] EmitSig query failed:', indexerErr);
       }
 
       return { buyerSigned: false, driverDeliverySigned: false };
@@ -584,7 +620,9 @@ export default function NodeDashboardPage() {
     }
   };
 
-  const handleConfirmPickup = async (order: Order) => {
+  const handleConfirmPickup = async (
+    order: Order,
+  ): Promise<'started' | 'waiting_for_driver' | 'signed'> => {
     try {
       const journeyId = order.journeyIds?.[0];
       if (!journeyId) {
@@ -593,7 +631,7 @@ export default function NodeDashboardPage() {
           description: 'No journey found for this order',
           variant: 'destructive',
         });
-        return;
+        return 'signed';
       }
 
       await packageSign(journeyId);
@@ -605,6 +643,14 @@ export default function NodeDashboardPage() {
           title: 'Success',
           description: 'Pickup confirmed and journey started',
         });
+
+        // Wait for indexer to catch up, then refresh
+        console.log('[NodeDashboard] Journey started. Waiting for indexer...');
+        await new Promise((r) => setTimeout(r, 3000));
+        await refreshOrders();
+        setTimeout(() => refreshOrders(), 5000);
+
+        return 'started';
       } catch (e) {
         const err = e as Error;
         const msg = err.message || '';
@@ -620,21 +666,29 @@ export default function NodeDashboardPage() {
           msg.includes('0x4b2c0751') ||
           errData === '0x4b2c0751';
 
-        if (isDriverPending || isSenderPending || msg.includes('revert')) {
-          // Mark this order as signed locally so the UI updates
+        if (isDriverPending) {
           setSignedOrders((prev) => ({ ...prev, [order.id]: true }));
           toast({
             title: 'Pickup Signature Recorded',
-            description: isDriverPending
-              ? 'Your signature is recorded. Waiting for driver to sign.'
-              : 'Your signature is recorded. Waiting for other party to sign.',
+            description:
+              'Your signature is recorded. Waiting for driver to sign.',
           });
+          return 'waiting_for_driver';
+        } else if (isSenderPending || msg.includes('revert')) {
+          setSignedOrders((prev) => ({ ...prev, [order.id]: true }));
+          toast({
+            title: 'Pickup Signature Recorded',
+            description:
+              'Your signature is recorded. Waiting for other party to sign.',
+          });
+          return 'signed';
         } else {
           toast({
             title: 'Error',
             description: 'Pickup signed, but failed to start journey. ' + msg,
             variant: 'destructive',
           });
+          return 'signed';
         }
       }
     } catch (e) {
@@ -644,6 +698,7 @@ export default function NodeDashboardPage() {
         description: err.message || 'Failed to sign for pickup',
         variant: 'destructive',
       });
+      throw e;
     }
   };
 
@@ -1184,13 +1239,16 @@ export default function NodeDashboardPage() {
                               onSignPickup={
                                 order.seller?.toLowerCase() ===
                                 currentNodeData?.owner?.toLowerCase()
-                                  ? async (orderId, journeyId) => {
+                                  ? async (orderId) => {
                                       const matchedOrder = orders.find(
                                         (o) => o.id === orderId,
                                       );
                                       if (matchedOrder) {
-                                        await handleConfirmPickup(matchedOrder);
+                                        return await handleConfirmPickup(
+                                          matchedOrder,
+                                        );
                                       }
+                                      return 'signed';
                                     }
                                   : undefined
                               }

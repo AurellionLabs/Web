@@ -383,8 +383,9 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       const tx = await ausys.packageSign(journeyId as any);
       await tx.wait();
 
-      // Refresh orders to reflect updated signing state
+      // Refresh orders with indexer polling for eventual consistency
       if (selectedNodeAddress) {
+        await new Promise((r) => setTimeout(r, 2000));
         await loadOrders(selectedNodeAddress);
       }
     },
@@ -402,8 +403,17 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       const tx = await ausys.handOn(journeyId as any);
       await tx.wait();
 
-      // Refresh orders to reflect journey status change
+      // Refresh orders with indexer polling for eventual consistency
+      console.log('[NodeProvider] Journey started. Waiting for indexer...');
+      await new Promise((r) => setTimeout(r, 3000));
       await loadOrders(selectedNodeAddress);
+
+      // Follow-up refresh in case indexer was slow
+      setTimeout(() => {
+        if (selectedNodeAddress) {
+          loadOrders(selectedNodeAddress);
+        }
+      }, 5000);
     },
     [diamondInitialized, selectedNodeAddress, loadOrders],
   );

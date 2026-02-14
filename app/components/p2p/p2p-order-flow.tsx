@@ -34,13 +34,24 @@ export interface P2POrderFlowProps {
   ) => Promise<'settled' | 'driver_not_signed' | void>;
   /** Callback to schedule delivery for orders stuck without a journey */
   onScheduleDelivery?: (orderId: string) => void;
-  /** Callback for sender/node to sign for pickup (at journey-pending step) */
-  onSignPickup?: (orderId: string, journeyId: string) => Promise<void>;
+  /** Callback for sender/node to sign for pickup (at journey-pending step).
+   *  Returns 'started' if handOn succeeded (journey in transit),
+   *  'waiting_for_driver' if driver hasn't signed yet,
+   *  or 'signed' if only the sender's signature was recorded. */
+  onSignPickup?: (
+    orderId: string,
+    journeyId: string,
+  ) => Promise<'started' | 'waiting_for_driver' | 'signed'>;
   /** Function to fetch live signature states from the contract */
   fetchSignatureState?: (
     orderId: string,
     journeyId: string,
-  ) => Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }>;
+  ) => Promise<{
+    buyerSigned: boolean;
+    driverDeliverySigned: boolean;
+    senderPickupSigned?: boolean;
+    driverPickupSigned?: boolean;
+  }>;
   /** Whether an action is currently in progress */
   isActionLoading?: boolean;
 }
@@ -178,19 +189,25 @@ export function P2POrderFlow({
   const [waitingForDriver, setWaitingForDriver] = useState(false);
   // Tracks whether we've signed for pickup and are waiting for the other party
   const [pickupSigned, setPickupSigned] = useState(false);
+  // Pickup signature states from EmitSig events
+  const [senderPickupSigned, setSenderPickupSigned] = useState(false);
+  const [driverPickupSigned, setDriverPickupSigned] = useState(false);
 
   const journeyId =
     order.journeyIds && order.journeyIds.length > 0
       ? order.journeyIds[0]
       : null;
 
-  // Fetch live signature state when order is in transit
+  // Fetch live signature state for both pickup and delivery phases
   const loadSignatures = useCallback(
     async (preserveOptimistic = false) => {
       if (!fetchSignatureState || !journeyId) return;
       const journeyStatus = order.journeyStatus ?? null;
+      // Check sigs for both Pending (0) and InTransit (1) phases
       const needsSigCheck =
-        journeyStatus === 1 || order.currentStatus === OrderStatus.PROCESSING;
+        journeyStatus === 0 ||
+        journeyStatus === 1 ||
+        order.currentStatus === OrderStatus.PROCESSING;
       if (!needsSigCheck) return;
 
       try {
@@ -204,6 +221,14 @@ export function P2POrderFlow({
         } else {
           setBuyerSigned(state.buyerSigned);
           setDriverSigned(state.driverDeliverySigned);
+        }
+
+        // Update pickup signature state if provided
+        if (state.senderPickupSigned !== undefined) {
+          setSenderPickupSigned(state.senderPickupSigned);
+        }
+        if (state.driverPickupSigned !== undefined) {
+          setDriverPickupSigned(state.driverPickupSigned);
         }
       } catch (err) {
         console.warn('[P2POrderFlow] Failed to fetch signatures:', err);
@@ -225,9 +250,30 @@ export function P2POrderFlow({
   }, [loadSignatures]);
 
   const currentStep = getCurrentStepIndex(order, buyerSigned, driverSigned);
-  const statusMessage = waitingForDriver
-    ? 'Your delivery signature has been recorded. Waiting for driver to sign.'
-    : getStatusMessage(currentStep, buyerSigned, driverSigned);
+
+  // Build status message with pickup awareness
+  let statusMessage: string;
+  if (waitingForDriver) {
+    statusMessage =
+      'Your delivery signature has been recorded. Waiting for driver to sign.';
+  } else if (currentStep === 1) {
+    // Journey pending — show pickup-aware message
+    if (senderPickupSigned && driverPickupSigned) {
+      statusMessage =
+        'Both parties have signed for pickup. Journey starting...';
+    } else if (driverPickupSigned && !senderPickupSigned) {
+      statusMessage =
+        'Driver has signed for pickup. Sign for pickup to start the journey.';
+    } else if (senderPickupSigned && !driverPickupSigned) {
+      statusMessage =
+        'Your pickup signature is recorded. Waiting for driver to sign for pickup.';
+    } else {
+      statusMessage =
+        'Journey created. Waiting for sender and driver to sign for pickup.';
+    }
+  } else {
+    statusMessage = getStatusMessage(currentStep, buyerSigned, driverSigned);
+  }
 
   // Action handlers
   const handleSignDelivery = async () => {
@@ -264,8 +310,15 @@ export function P2POrderFlow({
     if (!onSignPickup || !journeyId) return;
     setActionError(null);
     try {
-      await onSignPickup(order.id, journeyId);
+      const result = await onSignPickup(order.id, journeyId);
       setPickupSigned(true);
+
+      if (result === 'started') {
+        // Journey started — handOn succeeded, both parties signed
+        // UI will update when orders refresh
+        setPickupSigned(false); // Clear since we've progressed past pickup
+      }
+      // 'waiting_for_driver' or 'signed' — stay in pickupSigned state
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : 'Failed to sign for pickup',
@@ -285,6 +338,7 @@ export function P2POrderFlow({
     order.currentStatus !== OrderStatus.SETTLED;
   const showSignButton =
     currentStep === 2 &&
+    onSignDelivery &&
     !buyerSigned &&
     !waitingForDriver &&
     order.currentStatus !== OrderStatus.SETTLED;
@@ -424,11 +478,42 @@ export function P2POrderFlow({
         </GlowButton>
       )}
 
+      {/* Pickup signature status badges */}
+      {currentStep === 1 &&
+        !sigLoading &&
+        (driverPickupSigned || senderPickupSigned || pickupSigned) && (
+          <div className="flex gap-3 text-xs">
+            <span
+              className={cn(
+                'px-2 py-1 rounded-full',
+                senderPickupSigned || pickupSigned
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-gray-800 text-gray-400',
+              )}
+            >
+              Sender:{' '}
+              {senderPickupSigned || pickupSigned ? 'Signed' : 'Pending'}
+            </span>
+            <span
+              className={cn(
+                'px-2 py-1 rounded-full',
+                driverPickupSigned
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-gray-800 text-gray-400',
+              )}
+            >
+              Driver: {driverPickupSigned ? 'Signed' : 'Pending'}
+            </span>
+          </div>
+        )}
+
       {pickupSigned && currentStep === 1 && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
           <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
           <span className="text-sm text-amber-300">
-            Pickup signature recorded. Waiting for driver to sign for pickup.
+            {driverPickupSigned
+              ? 'Both parties signed. Journey should start shortly...'
+              : 'Pickup signature recorded. Waiting for driver to sign for pickup.'}
           </span>
         </div>
       )}
