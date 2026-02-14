@@ -1605,6 +1605,38 @@ export const GET_JOURNEY_STATUS_UPDATES_ALL = gql`
   }
 `;
 
+/**
+ * Get journeys where a specific address is the sender (for node dashboard).
+ */
+export const GET_JOURNEYS_BY_SENDER_ADDRESS = gql`
+  query GetJourneysBySenderAddress($sender: String!, $limit: Int = 500) {
+    diamondJourneyCreatedEventss(
+      where: { sender: $sender }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        sender
+        receiver
+        driver
+        bounty
+        e_t_a
+        order_id
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export interface JourneysBySenderResponse {
+  diamondJourneyCreatedEventss: { items: JourneyCreatedForOrderRawEvent[] };
+}
+
 // P2P Journey Raw Event Types
 
 export interface JourneyCreatedForOrderRawEvent {

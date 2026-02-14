@@ -45,9 +45,24 @@ import {
   GET_ALL_UNIFIED_ORDER_EVENTS,
   GET_NODE_BY_ADDRESS,
   GET_ALL_NODE_EVENTS,
+  GET_P2P_OFFERS_BY_CREATOR,
+  GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+  GET_AUSYS_ORDER_STATUS_UPDATES,
+  GET_JOURNEYS_BY_SENDER_ADDRESS,
+  GET_JOURNEY_STATUS_UPDATES_ALL,
+} from '../shared/graph-queries';
+import type {
+  P2POffersByCreatorResponse,
+  P2POffersAcceptedByUserResponse,
+  P2POfferDetailsResponse,
+  AuSysOrderStatusUpdatesResponse,
+  JourneysBySenderResponse,
+  JourneyStatusUpdatesAllResponse,
 } from '../shared/graph-queries';
 import {
   aggregateUnifiedOrders,
+  aggregateP2POrdersForUser,
   aggregateNodes,
   NodeEventSources,
 } from '../shared/event-aggregators';
@@ -511,11 +526,23 @@ export class BlockchainNodeRepository implements NodeRepository {
     }
   }
 
+  /**
+   * Get orders for a node. Supports two identification methods:
+   * - nodeHash: the bytes32 node hash (used to match logistics events)
+   * - ownerAddress: the wallet address that owns the node (used for P2P/CLOB queries)
+   * If only nodeHash is provided, CLOB orders are matched via logistics `node` field.
+   * If ownerAddress is also provided, P2P orders by wallet are included too.
+   */
   async getNodeOrders(
-    nodeAddress: string,
-  ): Promise<import('@/domain/orders/order').Order[]> {
+    nodeHash: string,
+    ownerAddress?: string,
+  ): Promise<Order[]> {
+    const hash = nodeHash.toLowerCase();
+    const owner = ownerAddress?.toLowerCase();
+
     try {
-      const [orderResponse, logisticsResponse] = await Promise.all([
+      // 1. Fetch ALL unified orders + logistics (filter by node hash client-side)
+      const [allOrdersResp, logisticsResponse] = await Promise.all([
         graphqlRequest<UnifiedOrderEventsResponse>(
           this.graphQLEndpoint,
           GET_ALL_UNIFIED_ORDER_EVENTS,
@@ -528,23 +555,108 @@ export class BlockchainNodeRepository implements NodeRepository {
         ),
       ]);
 
-      const orders = aggregateUnifiedOrders({
-        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
-        logistics:
-          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+      // Filter logistics events to find orders linked to this node (by node hash)
+      const logisticsItems =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [];
+      const nodeLogistics = logisticsItems.filter(
+        (l) => l.node?.toLowerCase() === hash,
+      );
+      const nodeOrderIds = new Set(
+        nodeLogistics.map((l) => l.unified_order_id.toLowerCase()),
+      );
+
+      // Aggregate all orders, then filter to only those linked to this node
+      const allAggregated = aggregateUnifiedOrders({
+        created: allOrdersResp.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics: logisticsItems,
         journeyUpdates: [],
         settled: [],
       });
 
-      const nodeOrders = orders.filter((order) =>
-        order.journeyIds.some(
-          (jid) => jid.toLowerCase() === nodeAddress.toLowerCase(),
+      // CLOB orders: linked via logistics node field, OR seller matches owner wallet
+      const clobOrders = allAggregated.filter((order) => {
+        const oid = order.unifiedOrderId.toLowerCase();
+        if (nodeOrderIds.has(oid)) return true;
+        if (owner && order.seller.toLowerCase() === owner) return true;
+        return false;
+      });
+
+      // 2. Fetch P2P orders where the node OWNER is creator or acceptor
+      //    (P2P offers use wallet addresses, not node hashes)
+      const queryAddr = owner || hash;
+      const [
+        p2pCreatedResp,
+        p2pAcceptedResp,
+        allP2PCreatedResp,
+        statusResp,
+        journeysResp,
+        journeyStatusResp,
+      ] = await Promise.all([
+        graphqlRequest<P2POffersByCreatorResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_BY_CREATOR,
+          { creator: queryAddr, limit: 500 },
         ),
+        graphqlRequest<P2POffersAcceptedByUserResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_ACCEPTED_BY_USER,
+          { acceptor: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<P2POfferDetailsResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AuSysOrderStatusUpdatesResponse>(
+          this.graphQLEndpoint,
+          GET_AUSYS_ORDER_STATUS_UPDATES,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneysBySenderResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEYS_BY_SENDER_ADDRESS,
+          { sender: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<JourneyStatusUpdatesAllResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATES_ALL,
+          { limit: 500 },
+        ),
+      ]);
+
+      const p2pOrders = aggregateP2POrdersForUser(
+        p2pCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        p2pAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
+        allP2PCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
+        queryAddr,
+        journeysResp.diamondJourneyCreatedEventss?.items || [],
+        journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
       );
 
-      return nodeOrders.map((order) => aggregatedUnifiedOrderToDomain(order));
+      // 3. Merge CLOB + P2P orders, deduplicating by ID
+      const seenIds = new Set<string>();
+      const allOrders: Order[] = [];
+
+      for (const order of clobOrders) {
+        const oid = order.unifiedOrderId.toLowerCase();
+        if (!seenIds.has(oid)) {
+          seenIds.add(oid);
+          allOrders.push(aggregatedUnifiedOrderToDomain(order));
+        }
+      }
+
+      for (const order of p2pOrders) {
+        const oid = order.id.toLowerCase();
+        if (!seenIds.has(oid)) {
+          seenIds.add(oid);
+          allOrders.push(order);
+        }
+      }
+
+      return allOrders;
     } catch (error) {
-      handleContractError(error, `get orders for node ${nodeAddress}`);
+      handleContractError(error, `get orders for node ${nodeHash}`);
       return [];
     }
   }

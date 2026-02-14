@@ -97,7 +97,7 @@ export interface NodeRepository {
   getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'>;
   getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]>;
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
-  getNodeOrders(nodeAddress: string): Promise<Order[]>; // Order type to be imported
+  getNodeOrders(nodeHash: string, ownerAddress?: string): Promise<Order[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
   getAssetBalance(
     ownerAddress: string,

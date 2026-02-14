@@ -396,9 +396,17 @@ export class DiamondNodeRepository implements NodeRepository {
   }
 
   /**
-   * Get orders for a node from GraphQL indexer using raw events
+   * Get orders for a node from GraphQL indexer using raw events.
+   * Matches orders via the logistics event `node` field (node hash) and
+   * optionally via the seller/buyer wallet address (ownerAddress).
    */
-  async getNodeOrders(nodeAddress: string): Promise<Order[]> {
+  async getNodeOrders(
+    nodeHash: string,
+    ownerAddress?: string,
+  ): Promise<Order[]> {
+    const hash = nodeHash.toLowerCase();
+    const owner = ownerAddress?.toLowerCase();
+
     try {
       const [orderResponse, logisticsResponse] = await Promise.all([
         graphqlRequest<UnifiedOrderEventsResponse>(
@@ -413,19 +421,31 @@ export class DiamondNodeRepository implements NodeRepository {
         ),
       ]);
 
+      const logisticsItems =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [];
+
+      // Find order IDs linked to this node via the logistics `node` field
+      const nodeLinkedOrderIds = new Set(
+        logisticsItems
+          .filter((l) => l.node?.toLowerCase() === hash)
+          .map((l) => l.unified_order_id.toLowerCase()),
+      );
+
       const orders = aggregateUnifiedOrders({
         created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
-        logistics:
-          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        logistics: logisticsItems,
         journeyUpdates: [],
         settled: [],
       });
 
-      const nodeOrders = orders.filter((order) =>
-        order.journeyIds.some(
-          (jid) => jid.toLowerCase() === nodeAddress.toLowerCase(),
-        ),
-      );
+      // Filter: order is linked to this node via logistics, OR the seller/buyer is the owner wallet
+      const nodeOrders = orders.filter((order) => {
+        const oid = order.unifiedOrderId.toLowerCase();
+        if (nodeLinkedOrderIds.has(oid)) return true;
+        if (owner && order.seller.toLowerCase() === owner) return true;
+        if (owner && order.buyer.toLowerCase() === owner) return true;
+        return false;
+      });
 
       return nodeOrders.map((order) => aggregatedUnifiedOrderToDomain(order));
     } catch (error) {

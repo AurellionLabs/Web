@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ExternalLink,
   Eye,
+  Clock,
 } from 'lucide-react';
 import {
   GlassCard,
@@ -210,6 +211,9 @@ export default function NodeDashboardPage() {
     description: '',
     documentType: 'certification',
   });
+
+  // Track local status overrides after signing (e.g., awaiting driver signature)
+  const [signedOrders, setSignedOrders] = useState<Record<string, boolean>>({});
 
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
@@ -515,6 +519,8 @@ export default function NodeDashboardPage() {
       }
 
       await packageSign(journeyId);
+
+      // Try to start journey (requires both driver + sender signatures)
       try {
         await startJourney(journeyId);
         toast({
@@ -523,34 +529,32 @@ export default function NodeDashboardPage() {
         });
       } catch (e) {
         const err = e as Error;
+        const msg = err.message || '';
         const errData = (err as any)?.data;
 
-        if (
-          err.message?.includes('DriverNotSigned') ||
-          err.message?.includes('0x9651c947') ||
-          errData === '0x9651c947'
-        ) {
+        const isDriverPending =
+          msg.includes('DriverNotSigned') ||
+          msg.includes('0x9651c947') ||
+          errData === '0x9651c947';
+
+        const isSenderPending =
+          msg.includes('SenderNotSigned') ||
+          msg.includes('0x4b2c0751') ||
+          errData === '0x4b2c0751';
+
+        if (isDriverPending || isSenderPending || msg.includes('revert')) {
+          // Mark this order as signed locally so the UI updates
+          setSignedOrders((prev) => ({ ...prev, [order.id]: true }));
           toast({
             title: 'Pickup Signature Recorded',
-            description:
-              'Your pickup signature has been recorded. Waiting for driver to sign pickup.',
-          });
-        } else if (
-          err.message?.includes('SenderNotSigned') ||
-          err.message?.includes('0x4b2c0751') ||
-          errData === '0x4b2c0751'
-        ) {
-          toast({
-            title: 'Pickup Signature Recorded',
-            description:
-              'Your pickup signature has been recorded. Waiting for sender to sign.',
+            description: isDriverPending
+              ? 'Your signature is recorded. Waiting for driver to sign.'
+              : 'Your signature is recorded. Waiting for other party to sign.',
           });
         } else {
           toast({
             title: 'Error',
-            description:
-              'Pickup signed, but failed to start journey. ' +
-              (err.message || ''),
+            description: 'Pickup signed, but failed to start journey. ' + msg,
             variant: 'destructive',
           });
         }
@@ -559,7 +563,7 @@ export default function NodeDashboardPage() {
       const err = e as Error;
       toast({
         title: 'Error',
-        description: err.message || 'Failed to confirm pickup',
+        description: err.message || 'Failed to sign for pickup',
         variant: 'destructive',
       });
     }
@@ -972,7 +976,14 @@ export default function NodeDashboardPage() {
                     className="hover:bg-glass-hover transition-colors"
                   >
                     <td className="px-4 py-4 font-mono text-sm text-foreground">
-                      {order.id}
+                      <div className="flex items-center gap-2">
+                        {truncateId(order.id, 12)}
+                        {order.isP2P && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">
+                            P2P
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 font-mono text-sm text-foreground">
                       {truncateId(order.buyer, 12)}
@@ -987,28 +998,47 @@ export default function NodeDashboardPage() {
                       ${formatTokenAmount(order.price, 18, 2)}
                     </td>
                     <td className="px-4 py-4">
-                      <StatusBadge
-                        status={
-                          order.currentStatus === OrderStatus.SETTLED
-                            ? 'success'
-                            : order.currentStatus === OrderStatus.CANCELLED
-                              ? 'error'
-                              : order.currentStatus === OrderStatus.PROCESSING
-                                ? 'warning'
-                                : 'pending'
-                        }
-                        label={order.currentStatus}
-                        size="sm"
-                      />
+                      {signedOrders[order.id] &&
+                      order.currentStatus !== OrderStatus.PROCESSING &&
+                      order.currentStatus !== OrderStatus.SETTLED ? (
+                        <StatusBadge
+                          status="warning"
+                          label="Awaiting Driver"
+                          size="sm"
+                        />
+                      ) : (
+                        <StatusBadge
+                          status={
+                            order.currentStatus === OrderStatus.SETTLED
+                              ? 'success'
+                              : order.currentStatus === OrderStatus.CANCELLED
+                                ? 'error'
+                                : order.currentStatus === OrderStatus.PROCESSING
+                                  ? 'warning'
+                                  : 'pending'
+                          }
+                          label={order.currentStatus}
+                          size="sm"
+                        />
+                      )}
                     </td>
                     <td className="px-4 py-4">
-                      {order.currentStatus === OrderStatus.CREATED ? (
+                      {signedOrders[order.id] &&
+                      order.currentStatus !== OrderStatus.PROCESSING &&
+                      order.currentStatus !== OrderStatus.SETTLED ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+                          <span className="text-xs text-amber-300">
+                            Awaiting driver signature
+                          </span>
+                        </div>
+                      ) : order.currentStatus === OrderStatus.CREATED ? (
                         <GlowButton
                           variant="primary"
                           size="sm"
                           onClick={() => handleConfirmPickup(order)}
                         >
-                          Confirm Pickup
+                          Sign for Pickup
                         </GlowButton>
                       ) : order.currentStatus === OrderStatus.PROCESSING ? (
                         <span className="text-sm text-accent font-medium">

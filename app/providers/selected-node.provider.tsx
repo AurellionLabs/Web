@@ -20,6 +20,7 @@ import { useMainProvider } from './main.provider';
 import { useNodes } from './nodes.provider';
 import { usePlatform } from './platform.provider';
 import { useDiamond } from './diamond.provider';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { OrderWithAsset } from '@/app/types/shared';
 
 type SelectedNodeContextType = {
@@ -135,7 +136,12 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
       setOrdersLoading(true);
       try {
-        const nodeOrders = await nodeRepository.getNodeOrders(nodeAddress);
+        // Pass both the node hash and the wallet address (owner)
+        // so the repository can match orders by logistics node field AND by wallet
+        const nodeOrders = await nodeRepository.getNodeOrders(
+          nodeAddress,
+          address || undefined,
+        );
 
         // Fetch asset details for each order
         const ordersWithAssets: OrderWithAsset[] = await Promise.all(
@@ -167,7 +173,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setOrdersLoading(false);
       }
     },
-    [nodeRepository, getAssetByTokenId],
+    [nodeRepository, getAssetByTokenId, address],
   );
 
   // Load assets for selected node
@@ -332,17 +338,23 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   );
 
   // Node custody actions: packageSign and startJourney
-  // These still need to go through the node contract for proper authorization
+  // Uses the AuSys contract on the Diamond for signing and journey management
   const packageSign = useCallback(
     async (journeyId: string) => {
       if (!diamondInitialized) throw new Error('Diamond not initialized');
       if (!selectedNodeAddress) throw new Error('No node selected');
 
-      // TODO: Implement via Diamond's BridgeFacet
-      console.warn(
-        '[packageSign] Not yet implemented for Diamond - use legacy for now',
-      );
-      throw new Error('Package signing via Diamond not yet implemented');
+      const repoContext = RepositoryContext.getInstance();
+      const ausys = repoContext.getAusysContract();
+
+      console.log('[NodeProvider] packageSign', {
+        journeyId,
+        nodeAddress: selectedNodeAddress,
+      });
+
+      const tx = await ausys.packageSign(journeyId as any);
+      await tx.wait();
+      console.log('[NodeProvider] packageSign tx confirmed');
     },
     [diamondInitialized, selectedNodeAddress],
   );
@@ -352,11 +364,17 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       if (!diamondInitialized) throw new Error('Diamond not initialized');
       if (!selectedNodeAddress) throw new Error('No node selected');
 
-      // TODO: Implement via Diamond's BridgeFacet
-      console.warn(
-        '[startJourney] Not yet implemented for Diamond - use legacy for now',
-      );
-      throw new Error('Start journey via Diamond not yet implemented');
+      const repoContext = RepositoryContext.getInstance();
+      const ausys = repoContext.getAusysContract();
+
+      console.log('[NodeProvider] startJourney (handOn)', {
+        journeyId,
+        nodeAddress: selectedNodeAddress,
+      });
+
+      const tx = await ausys.handOn(journeyId as any);
+      await tx.wait();
+      console.log('[NodeProvider] handOn tx confirmed');
     },
     [diamondInitialized, selectedNodeAddress],
   );

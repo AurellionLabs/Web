@@ -193,19 +193,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
 
-        // Verify receiver signature was recorded
-        const isReceiverSigned = await ausys.customerHandOff(
-          journey.receiver,
-          journeyId as any,
+        console.log(
+          '[CustomerProvider] Receiver signed for delivery, attempting handOff...',
         );
-        const isDriverDeliverySigned = await ausys.driverDeliverySigned(
-          journey.driver,
-          journeyId as any,
-        );
-        console.log('[CustomerProvider] After receiver signs:', {
-          receiverSigned: isReceiverSigned,
-          driverDeliverySigned: isDriverDeliverySigned,
-        });
 
         // 2. Try to complete delivery (handOff) - this will work if driver has also signed for delivery
         try {
@@ -375,7 +365,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   /**
    * Fetch live buyer/driver signature states from the contract.
-   * Used by P2POrderFlow to determine which buttons to show.
+   * Uses journey currentStatus as a proxy since the contract storage mappings
+   * (customerHandOff, driverDeliverySigned) don't have public getter functions.
+   *
+   * Journey statuses: 0 = Pending, 1 = InTransit, 2 = Delivered
+   * - InTransit means both sender + driver signed for pickup (handOn succeeded)
+   * - Delivered means both receiver + driver signed for delivery (handOff succeeded)
    */
   const getP2PSignatureState = useCallback(
     async (
@@ -385,15 +380,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       try {
         const ausys = repoContext.getAusysContract();
         const journey = await ausys.getJourney(journeyId as any);
+        const status = Number(journey.currentStatus);
 
-        const [buyerSigned, driverDeliverySigned] = await Promise.all([
-          ausys.customerHandOff(journey.receiver, journeyId as any),
-          ausys.driverDeliverySigned(journey.driver, journeyId as any),
-        ]);
-
+        // If status >= 2 (Delivered), both receiver and driver delivery signatures were present
+        // If status >= 1 (InTransit), pickup signatures were already consumed
+        // For delivery phase: we can't directly read the mappings, so we infer from status
         return {
-          buyerSigned: Boolean(buyerSigned),
-          driverDeliverySigned: Boolean(driverDeliverySigned),
+          buyerSigned: status >= 2, // receiver signed if delivered
+          driverDeliverySigned: status >= 2, // driver delivery signed if delivered
         };
       } catch (err) {
         console.warn('[CustomerProvider] getP2PSignatureState error:', err);
