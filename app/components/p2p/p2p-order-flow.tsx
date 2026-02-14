@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Check,
   Clock,
@@ -252,6 +252,49 @@ export function P2POrderFlow({
     loadSignatures();
   }, [loadSignatures]);
 
+  // Auto-attempt handOn when both pickup sigs are detected on-chain but
+  // the journey is still pending (step 1). This covers the case where both
+  // parties signed but the initial handOn failed or was never called.
+  const autoHandOnAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (
+      senderPickupSigned &&
+      driverPickupSigned &&
+      !autoHandOnAttemptedRef.current &&
+      onSignPickup &&
+      journeyId &&
+      order.journeyStatus === 0 &&
+      order.currentStatus !== OrderStatus.SETTLED
+    ) {
+      autoHandOnAttemptedRef.current = true;
+      console.log(
+        '[P2POrderFlow] Both pickup sigs detected on-chain, auto-attempting startJourney...',
+      );
+      // packageSign is idempotent, startJourney/handOn will succeed if both signed
+      onSignPickup(order.id, journeyId)
+        .then((result) => {
+          if (result === 'started') {
+            console.log(
+              '[P2POrderFlow] Auto startJourney succeeded, journey now InTransit',
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn('[P2POrderFlow] Auto startJourney attempt failed:', err);
+          // Allow retry on next signature state change
+          autoHandOnAttemptedRef.current = false;
+        });
+    }
+  }, [
+    senderPickupSigned,
+    driverPickupSigned,
+    onSignPickup,
+    journeyId,
+    order.id,
+    order.journeyStatus,
+    order.currentStatus,
+  ]);
+
   const currentStep = localSettled
     ? 4
     : getCurrentStepIndex(order, buyerSigned, driverSigned);
@@ -341,6 +384,7 @@ export function P2POrderFlow({
     currentStep === 1 &&
     onSignPickup &&
     !pickupSigned &&
+    !senderPickupSigned &&
     order.currentStatus !== OrderStatus.SETTLED;
   const showSignButton =
     currentStep === 2 &&

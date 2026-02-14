@@ -1243,12 +1243,18 @@ export default function NodeDashboardPage() {
                                       const matchedOrder = orders.find(
                                         (o) => o.id === orderId,
                                       );
-                                      if (matchedOrder) {
-                                        return await handleConfirmPickup(
-                                          matchedOrder,
+                                      if (!matchedOrder) {
+                                        console.error(
+                                          '[NodeDashboard] onSignPickup: order not found in orders array',
+                                          orderId,
+                                        );
+                                        throw new Error(
+                                          'Order not found. Please refresh and try again.',
                                         );
                                       }
-                                      return 'signed';
+                                      return await handleConfirmPickup(
+                                        matchedOrder,
+                                      );
                                     }
                                   : undefined
                               }
