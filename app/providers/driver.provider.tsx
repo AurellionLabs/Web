@@ -312,13 +312,15 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       } catch (handOffErr) {
         const msg =
           handOffErr instanceof Error ? handOffErr.message : String(handOffErr);
-        // ReceiverNotSigned or DriverNotSigned — expected, not an error
-        if (
-          msg.includes('0x9651c947') ||
-          msg.includes('0x9651c547') ||
-          msg.includes('ReceiverNotSigned')
-        ) {
+        // ReceiverNotSigned (0x04d27bc2) — receiver/customer hasn't signed yet
+        if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
           console.log('[DriverProvider] handOff: receiver has not signed yet');
+          await refreshDeliveries();
+          return 'receiver_not_signed';
+        }
+        // DriverNotSigned (0x9651c947) — shouldn't happen since we just signed
+        if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
+          console.warn('[DriverProvider] handOff: driver sig not detected yet');
           await refreshDeliveries();
           return 'receiver_not_signed';
         }

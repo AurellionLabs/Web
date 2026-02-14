@@ -122,6 +122,7 @@ interface DeliveryCardProps {
   onPickup?: (jobId: string) => Promise<void>;
   onComplete?: (jobId: string) => Promise<void>;
   isLoading?: boolean;
+  isWaitingForCustomer?: boolean;
 }
 
 const DeliveryCard: React.FC<DeliveryCardProps> = ({
@@ -130,6 +131,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
   onPickup,
   onComplete,
   isLoading,
+  isWaitingForCustomer,
 }) => {
   const getStatusBadge = () => {
     switch (delivery.currentStatus) {
@@ -242,6 +244,8 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
                 onConfirm={onComplete}
                 variant="complete"
                 isLoading={isLoading}
+                isWaitingForSignature={isWaitingForCustomer}
+                waitingForRole="customer"
               />
             )}
         </div>
@@ -273,6 +277,10 @@ export default function DriverDashboard() {
   const [statusOverrides, setStatusOverrides] = useState<
     Record<string, DeliveryStatus>
   >({});
+  // Track jobs where driver signed for delivery but customer hasn't yet
+  const [waitingForCustomerJobs, setWaitingForCustomerJobs] = useState<
+    Set<string>
+  >(new Set());
 
   const [filters, setFilters] = useState({
     jobId: '',
@@ -462,11 +470,19 @@ export default function DriverDashboard() {
       const result = await completeDelivery(jobId);
 
       if (result === 'settled') {
+        // Clear waiting state for this job
+        setWaitingForCustomerJobs((prev) => {
+          const next = new Set(prev);
+          next.delete(jobId);
+          return next;
+        });
         toast({
           title: 'Delivery Complete',
           description: 'Both parties have signed. Order has been settled.',
         });
       } else if (result === 'receiver_not_signed') {
+        // Track this job as waiting for customer
+        setWaitingForCustomerJobs((prev) => new Set(prev).add(jobId));
         toast({
           title: 'Delivery Signed',
           description:
@@ -799,6 +815,9 @@ export default function DriverDashboard() {
                       onPickup={handlePickupDelivery}
                       onComplete={handleCompleteDelivery}
                       isLoading={isLoading}
+                      isWaitingForCustomer={waitingForCustomerJobs.has(
+                        delivery.jobId,
+                      )}
                     />
                   ))
                 ) : (

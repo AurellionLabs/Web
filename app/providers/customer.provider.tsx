@@ -213,12 +213,18 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             ),
           );
         } catch (handOffErr) {
-          // handOff failed - driver hasn't signed for delivery yet
+          // handOff failed — one side hasn't signed for delivery yet
+          const handOffMsg =
+            handOffErr instanceof Error
+              ? handOffErr.message
+              : String(handOffErr);
           if (
-            handOffErr instanceof Error &&
-            handOffErr.message.includes('0x9651c947')
+            handOffMsg.includes('0x9651c947') ||
+            handOffMsg.includes('DriverNotSigned') ||
+            handOffMsg.includes('0x04d27bc2') ||
+            handOffMsg.includes('ReceiverNotSigned')
           ) {
-            // DriverNotSigned — receipt confirmed, waiting for driver
+            // Expected: receipt confirmed, waiting for other party
             return;
           }
 
@@ -249,7 +255,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       journeyId: string,
     ): Promise<'settled' | 'driver_not_signed' | 'signed'> => {
       try {
-        setIsLoading(true);
+        // NOTE: Do NOT set isLoading here — it unmounts the page and destroys
+        // P2POrderFlow's optimistic state (buyerSigned badge).
         setError(null);
         const ausys = repoContext.getAusysContract();
 
@@ -278,10 +285,17 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             handOffErr instanceof Error
               ? handOffErr.message
               : String(handOffErr);
-          // DriverNotSigned — expected, not an error
-          if (msg.includes('0x9651c947') || msg.includes('0x9651c547')) {
+          // DriverNotSigned (0x9651c947) — driver hasn't signed for delivery
+          if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
             console.log(
               '[CustomerProvider] signP2PDelivery: driver has not signed yet, waiting',
+            );
+            return 'driver_not_signed';
+          }
+          // ReceiverNotSigned (0x04d27bc2) — shouldn't happen since we just signed
+          if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
+            console.warn(
+              '[CustomerProvider] signP2PDelivery: receiver sig not detected yet',
             );
             return 'driver_not_signed';
           }
@@ -294,8 +308,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError('Failed to sign for delivery');
         handleContractError(err, 'sign P2P delivery');
         throw err;
-      } finally {
-        setIsLoading(false);
       }
     },
     [repoContext, loadCustomerOrders],
@@ -312,7 +324,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       journeyId: string,
     ): Promise<'settled' | 'driver_not_signed'> => {
       try {
-        setIsLoading(true);
+        // NOTE: Do NOT set isLoading — same reason as signP2PDelivery
         setError(null);
         const ausys = repoContext.getAusysContract();
 
@@ -331,17 +343,22 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         return 'settled';
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        // DriverNotSigned (0x9651c947 / 0x9651c547) — driver hasn't signed yet
-        if (msg.includes('0x9651c947') || msg.includes('0x9651c547')) {
+        // DriverNotSigned (0x9651c947) — driver hasn't signed for delivery yet
+        if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
           console.log('[CustomerProvider] handOff: driver has not signed yet');
+          return 'driver_not_signed';
+        }
+        // ReceiverNotSigned (0x04d27bc2) — receiver hasn't signed yet
+        if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
+          console.log(
+            '[CustomerProvider] handOff: receiver has not signed yet',
+          );
           return 'driver_not_signed';
         }
         console.error('[CustomerProvider] completeP2PHandoff error:', err);
         setError('Failed to complete handoff');
         handleContractError(err, 'complete P2P handoff');
         throw err;
-      } finally {
-        setIsLoading(false);
       }
     },
     [repoContext, loadCustomerOrders],

@@ -328,6 +328,89 @@ describe('DriverProvider', () => {
     });
   });
 
+  // =====================================================================
+  // completeDelivery - ReceiverNotSigned error handling
+  // =====================================================================
+  describe('completeDelivery - error selector matching', () => {
+    it('should return receiver_not_signed when handOff fails with ReceiverNotSigned (0x04d27bc2)', async () => {
+      mockDiamondContract.handOff = vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'execution reverted (unknown custom error) (action="estimateGas", data="0x04d27bc2")',
+          ),
+        );
+
+      const { result } = renderHook(() => useDriver(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      let deliveryResult: string;
+      await act(async () => {
+        deliveryResult = await result.current.completeDelivery('0xjourney123');
+      });
+
+      // packageSign should have been called first
+      expect(mockDiamondContract.packageSign).toHaveBeenCalledWith(
+        '0xjourney123',
+      );
+      // handOff was attempted but failed
+      expect(mockDiamondContract.handOff).toHaveBeenCalledWith('0xjourney123');
+      // Must return 'receiver_not_signed', NOT 'signed'
+      expect(deliveryResult!).toBe('receiver_not_signed');
+    });
+
+    it('should return settled when handOff succeeds', async () => {
+      const { result } = renderHook(() => useDriver(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      let deliveryResult: string;
+      await act(async () => {
+        deliveryResult = await result.current.completeDelivery('0xjourney123');
+      });
+
+      expect(mockDiamondContract.packageSign).toHaveBeenCalled();
+      expect(mockDiamondContract.handOff).toHaveBeenCalled();
+      expect(deliveryResult!).toBe('settled');
+    });
+
+    it('should NOT match old incorrect selector 0x9651c547 for ReceiverNotSigned', async () => {
+      // 0x9651c547 was a typo in the old code — it's not a valid selector
+      // The correct ReceiverNotSigned selector is 0x04d27bc2
+      mockDiamondContract.handOff = vi
+        .fn()
+        .mockRejectedValue(
+          new Error('execution reverted with data 0x9651c547'),
+        );
+
+      const { result } = renderHook(() => useDriver(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      let deliveryResult: string;
+      await act(async () => {
+        deliveryResult = await result.current.completeDelivery('0xjourney123');
+      });
+
+      // Should NOT return 'receiver_not_signed' for this unknown selector
+      // (it's not ReceiverNotSigned — that's 0x04d27bc2)
+      expect(deliveryResult!).not.toBe('receiver_not_signed');
+    });
+  });
+
   describe('other delivery actions', () => {
     it('confirmPickup should call packageSign on the contract', async () => {
       const { result } = renderHook(() => useDriver(), {
