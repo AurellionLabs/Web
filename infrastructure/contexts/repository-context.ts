@@ -222,6 +222,27 @@ export class RepositoryContext {
   }
 
   /**
+   * Update the signer and reconnect contracts that use it.
+   * Called when the wallet address changes (e.g. role switch).
+   */
+  public async updateSigner(newSigner: ethers.Signer): Promise<void> {
+    const newAddr = await newSigner.getAddress();
+    const oldAddr = this.signer ? await this.signer.getAddress() : 'none';
+
+    if (newAddr.toLowerCase() === oldAddr.toLowerCase()) {
+      return; // No change
+    }
+
+    console.log(`[RepositoryContext] Updating signer: ${oldAddr} → ${newAddr}`);
+    this.signer = newSigner;
+
+    // Reconnect the ausys contract with the new signer
+    if (this.ausysContract) {
+      this.ausysContract = this.ausysContract.connect(newSigner) as Ausys;
+    }
+  }
+
+  /**
    * Get the provider from the signer
    */
   public getProvider(): ethers.Provider {

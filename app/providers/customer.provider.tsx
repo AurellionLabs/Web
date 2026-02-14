@@ -72,8 +72,40 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const repoContext = RepositoryContext.getInstance();
   const orderRepository = repoContext.getOrderRepository();
-  const { address } = useWallet();
+  const { address, connectedWallet } = useWallet();
   const { getAssetByTokenId } = usePlatform();
+
+  /**
+   * Get a signer-aligned Ausys contract.
+   * If the RepositoryContext signer doesn't match the current wallet,
+   * derive a fresh signer from the Privy wallet's Ethereum provider.
+   */
+  const getAlignedAusysContract = useCallback(async () => {
+    const ausys = repoContext.getAusysContract();
+    if (!address) throw new Error('Wallet not connected');
+
+    const signerAddr = await repoContext.getSignerAddress();
+    if (signerAddr.toLowerCase() === address.toLowerCase()) {
+      return ausys; // Already aligned
+    }
+
+    console.warn(
+      `[CustomerProvider] Signer mismatch: stored=${signerAddr}, wallet=${address}. Reconnecting...`,
+    );
+
+    if (connectedWallet) {
+      const ethereumProvider = await connectedWallet.getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethereumProvider);
+      const freshSigner = await provider.getSigner();
+      await repoContext.updateSigner(freshSigner);
+      return repoContext.getAusysContract();
+    }
+
+    console.warn(
+      '[CustomerProvider] No Privy wallet available for signer alignment',
+    );
+    return ausys;
+  }, [repoContext, address, connectedWallet]);
   const loadCustomerOrders = useCallback(async () => {
     if (!orderRepository) {
       setError('Order Repository not available.');
@@ -191,7 +223,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         setError(null);
-        const ausys = repoContext.getAusysContract();
+        const ausys = await getAlignedAusysContract();
         const journeyId = orderToConfirm.journeyIds[0];
 
         // 1. Sign the receipt (receiver confirms receipt) - this sets customerHandOff[receiver][id] = true
@@ -240,7 +272,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [orders, repoContext],
+    [orders, getAlignedAusysContract],
   );
 
   /**
@@ -258,7 +290,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // NOTE: Do NOT set isLoading here — it unmounts the page and destroys
         // P2POrderFlow's optimistic state (buyerSigned badge).
         setError(null);
-        const ausys = repoContext.getAusysContract();
+        const ausys = await getAlignedAusysContract();
 
         // 1. Sign for delivery (receiver confirms delivery receipt)
         const signTx = await ausys.packageSign(journeyId as any);
@@ -318,7 +350,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [repoContext, loadCustomerOrders],
+    [getAlignedAusysContract, loadCustomerOrders],
   );
 
   /**
@@ -334,7 +366,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       try {
         // NOTE: Do NOT set isLoading — same reason as signP2PDelivery
         setError(null);
-        const ausys = repoContext.getAusysContract();
+        const ausys = await getAlignedAusysContract();
 
         const handOffTx = await ausys.handOff(journeyId as any);
         await handOffTx.wait();
@@ -369,7 +401,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [repoContext, loadCustomerOrders],
+    [getAlignedAusysContract, loadCustomerOrders],
   );
 
   /**

@@ -5,11 +5,7 @@ import { ethers } from 'ethers';
 import { Delivery, DeliveryStatus } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { Ausys__factory } from '@/lib/contracts';
-import {
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
@@ -46,7 +42,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { address: driverWalletAddress } = useWallet();
+  const { address: driverWalletAddress, connectedWallet } = useWallet();
   const repoContext = RepositoryContext.getInstance();
   const repository = repoContext.getDriverRepository();
 
@@ -141,30 +137,35 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Ensure the contract's signer matches the wallet address.
-   * If there's a mismatch (e.g. after account switch), reconnect the contract
-   * with a fresh signer derived from the current wallet.
+   * Get a signer-aligned Ausys contract.
+   * If the RepositoryContext signer doesn't match the current wallet,
+   * derive a fresh signer from the Privy wallet's Ethereum provider.
    */
   const getSignerAlignedContract = async () => {
     const ausys = repoContext.getAusysContract();
-    const storedSigner = repoContext.getSigner();
-    const signerAddr = await storedSigner.getAddress();
+    if (!driverWalletAddress) throw new Error('Wallet not connected');
 
-    if (signerAddr.toLowerCase() !== driverWalletAddress!.toLowerCase()) {
-      console.warn(
-        `[DriverProvider] Signer mismatch: signer=${signerAddr}, wallet=${driverWalletAddress}. Reconnecting contract...`,
-      );
-      // Re-derive signer from the stored signer's provider
-      const provider = storedSigner.provider;
-      if (provider && provider instanceof ethers.BrowserProvider) {
-        const freshSigner = await provider.getSigner();
-        return Ausys__factory.connect(NEXT_PUBLIC_DIAMOND_ADDRESS, freshSigner);
-      }
-      // Fallback: return existing contract (may still fail)
-      console.warn(
-        '[DriverProvider] Could not reconnect; using existing signer',
-      );
+    const signerAddr = await repoContext.getSignerAddress();
+    if (signerAddr.toLowerCase() === driverWalletAddress.toLowerCase()) {
+      return ausys; // Already aligned
     }
+
+    console.warn(
+      `[DriverProvider] Signer mismatch: stored=${signerAddr}, wallet=${driverWalletAddress}. Reconnecting...`,
+    );
+
+    if (connectedWallet) {
+      const ethereumProvider = await connectedWallet.getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethereumProvider);
+      const freshSigner = await provider.getSigner();
+      await repoContext.updateSigner(freshSigner);
+      return repoContext.getAusysContract();
+    }
+
+    // Fallback: return existing contract (may still fail)
+    console.warn(
+      '[DriverProvider] No Privy wallet available for signer alignment',
+    );
     return ausys;
   };
 

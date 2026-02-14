@@ -133,6 +133,9 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
     isConnected,
   ]);
 
+  // Track current wallet address for signer updates
+  const currentWalletAddress = privyWallets.wallets?.[0]?.address ?? null;
+
   useEffect(() => {
     let mounted = true;
 
@@ -163,6 +166,50 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
     isConnected,
     privy.authenticated,
   ]);
+
+  // Watch for wallet address changes AFTER initialization and update the signer.
+  // This handles role switches (driver ↔ customer ↔ node) where the connected
+  // Privy wallet changes but RepositoryContext still has the old signer.
+  useEffect(() => {
+    if (!isInitialized || !currentWalletAddress) return;
+
+    let cancelled = false;
+
+    const syncSigner = async () => {
+      try {
+        const repoContext = RepositoryContext.getInstance();
+        const storedAddr = await repoContext.getSignerAddress();
+
+        if (storedAddr.toLowerCase() === currentWalletAddress.toLowerCase()) {
+          return; // Already in sync
+        }
+
+        console.log(
+          `[RepositoryProvider] Wallet changed (${storedAddr} → ${currentWalletAddress}). Updating signer...`,
+        );
+
+        const connectedWallet = privyWallets.wallets?.[0];
+        if (!connectedWallet) return;
+
+        const ethereumProvider = await connectedWallet.getEthereumProvider();
+        const provider = new ethers.BrowserProvider(ethereumProvider);
+        const newSigner = await provider.getSigner();
+
+        if (!cancelled) {
+          await repoContext.updateSigner(newSigner);
+          console.log('[RepositoryProvider] Signer updated successfully.');
+        }
+      } catch (err) {
+        console.error('[RepositoryProvider] Failed to update signer:', err);
+      }
+    };
+
+    syncSigner();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentWalletAddress, isInitialized]);
 
   if (!privy.ready || !privyWallets.ready) {
     return <LoadingScreen />;

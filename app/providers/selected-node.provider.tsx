@@ -16,6 +16,7 @@ import {
   SupportingDocument,
 } from '@/domain/node/node';
 import { Asset } from '@/domain/shared';
+import { ethers } from 'ethers';
 import { useWallet } from '@/hooks/useWallet';
 import { useMainProvider } from './main.provider';
 import { useNodes } from './nodes.provider';
@@ -108,7 +109,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const { address } = useWallet();
+  const { address, connectedWallet } = useWallet();
   const { connected } = useMainProvider();
   const { getNode, refreshNodes } = useNodes();
   const { getAssetByTokenId } = usePlatform();
@@ -365,6 +366,39 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     ],
   );
 
+  /**
+   * Get a signer-aligned Ausys contract.
+   * If the RepositoryContext signer doesn't match the current wallet,
+   * derive a fresh signer from the Privy wallet's Ethereum provider.
+   */
+  const getAlignedAusysContract = useCallback(async () => {
+    const repoContext = RepositoryContext.getInstance();
+    const ausys = repoContext.getAusysContract();
+    if (!address) throw new Error('Wallet not connected');
+
+    const signerAddr = await repoContext.getSignerAddress();
+    if (signerAddr.toLowerCase() === address.toLowerCase()) {
+      return ausys; // Already aligned
+    }
+
+    console.warn(
+      `[NodeProvider] Signer mismatch: stored=${signerAddr}, wallet=${address}. Reconnecting...`,
+    );
+
+    if (connectedWallet) {
+      const ethereumProvider = await connectedWallet.getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethereumProvider);
+      const freshSigner = await provider.getSigner();
+      await repoContext.updateSigner(freshSigner);
+      return repoContext.getAusysContract();
+    }
+
+    console.warn(
+      '[NodeProvider] No Privy wallet available for signer alignment',
+    );
+    return ausys;
+  }, [address, connectedWallet]);
+
   // Node custody actions: packageSign and startJourney
   // Uses the AuSys contract on the Diamond for signing and journey management
   const packageSign = useCallback(
@@ -372,8 +406,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       if (!diamondInitialized) throw new Error('Diamond not initialized');
       if (!selectedNodeAddress) throw new Error('No node selected');
 
-      const repoContext = RepositoryContext.getInstance();
-      const ausys = repoContext.getAusysContract();
+      const ausys = await getAlignedAusysContract();
 
       console.log('[NodeProvider] packageSign', {
         journeyId,
@@ -389,7 +422,12 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         await loadOrders(selectedNodeAddress);
       }
     },
-    [diamondInitialized, selectedNodeAddress, loadOrders],
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      loadOrders,
+      getAlignedAusysContract,
+    ],
   );
 
   const startJourney = useCallback(
@@ -397,8 +435,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       if (!diamondInitialized) throw new Error('Diamond not initialized');
       if (!selectedNodeAddress) throw new Error('No node selected');
 
-      const repoContext = RepositoryContext.getInstance();
-      const ausys = repoContext.getAusysContract();
+      const ausys = await getAlignedAusysContract();
 
       const tx = await ausys.handOn(journeyId as any);
       await tx.wait();
@@ -415,7 +452,12 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         }
       }, 5000);
     },
-    [diamondInitialized, selectedNodeAddress, loadOrders],
+    [
+      diamondInitialized,
+      selectedNodeAddress,
+      loadOrders,
+      getAlignedAusysContract,
+    ],
   );
 
   // Get node status
