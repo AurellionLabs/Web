@@ -21,16 +21,18 @@ export async function calculateETA(
 ): Promise<number> {
   // Validate inputs before hitting the API
   if (!isValidLocation(origin) || !isValidLocation(destination)) {
-    console.warn(
-      '[calculateETA] Skipping — invalid or missing coordinates:',
-      { origin, destination },
-    );
+    console.warn('[calculateETA] Skipping — invalid or missing coordinates:', {
+      origin,
+      destination,
+    });
     return -1;
   }
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
-    console.warn('[calculateETA] Skipping — NEXT_PUBLIC_GOOGLE_MAPS_API_KEY not set');
+    console.warn(
+      '[calculateETA] Skipping — NEXT_PUBLIC_GOOGLE_MAPS_API_KEY not set',
+    );
     return -1;
   }
 
@@ -77,14 +79,21 @@ export async function calculateETA(
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.warn('[calculateETA] Routes API error:', response.status, errorData);
+      console.warn(
+        '[calculateETA] Routes API error:',
+        response.status,
+        errorData,
+      );
       return -1;
     }
 
     const data = await response.json();
 
     if (!data.routes?.[0]?.duration) {
-      console.warn('[calculateETA] No routes returned for:', { origin, destination });
+      console.warn('[calculateETA] No routes returned for:', {
+        origin,
+        destination,
+      });
       return -1;
     }
 
@@ -94,7 +103,10 @@ export async function calculateETA(
     );
     return Math.ceil(durationInSeconds / 60);
   } catch (error) {
-    console.warn('[calculateETA] Failed:', error instanceof Error ? error.message : error);
+    console.warn(
+      '[calculateETA] Failed:',
+      error instanceof Error ? error.message : error,
+    );
     return -1;
   }
 }

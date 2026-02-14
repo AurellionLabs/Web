@@ -287,7 +287,7 @@ export default function P2PMarketOffersPage() {
             },
             endLocation: { lat: '', lng: '' },
             startName:
-              selectedOffer.locationData?.startName || 'Seller Location',
+              selectedOffer.locationData?.startName || 'Pickup Location',
             endName: deliveryData.deliveryAddress,
           },
           bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty

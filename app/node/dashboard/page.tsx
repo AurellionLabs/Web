@@ -950,7 +950,7 @@ export default function NodeDashboardPage() {
                     Order ID
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Buyer
+                    Customer
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Asset

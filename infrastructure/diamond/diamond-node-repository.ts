@@ -471,8 +471,19 @@ export class DiamondNodeRepository implements NodeRepository {
       });
 
       // 2. Fetch P2P orders where the node OWNER is creator or acceptor
-      //    (P2P offers use wallet addresses, not node hashes)
-      const queryAddr = owner || hash;
+      //    P2P offers use wallet addresses, NOT node hashes — skip if no owner wallet
+      if (!owner) {
+        console.log(
+          `[DiamondNodeRepository] No owner wallet, returning ${clobOrders.length} CLOB orders only`,
+        );
+        return clobOrders.map((order) => {
+          const logistics = logisticsByOrder.get(
+            order.unifiedOrderId.toLowerCase(),
+          );
+          return aggregatedUnifiedOrderToDomain(order, logistics);
+        });
+      }
+      const queryAddr = owner;
       const [
         p2pCreatedResp,
         p2pAcceptedResp,

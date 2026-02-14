@@ -127,7 +127,7 @@ export function DeliveryActionDialog({
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Bounty</span>
+                <span className="text-base text-gray-400">Fee</span>
                 <span
                   className={`text-base font-medium text-right ${config.accentColor}`}
                 >

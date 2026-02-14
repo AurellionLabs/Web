@@ -1674,3 +1674,40 @@ export interface JourneyStatusUpdatesAllResponse {
     items: JourneyStatusUpdateRawEvent[];
   };
 }
+
+// ---------------------------------------------------------------------------
+// EmitSig (package signing) events
+// ---------------------------------------------------------------------------
+
+export const GET_EMIT_SIG_EVENTS_BY_JOURNEY = gql`
+  query GetEmitSigEventsByJourney($journeyId: String!, $limit: Int = 50) {
+    diamondEmitSigEventss(
+      where: { event_id: $journeyId }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "asc"
+    ) {
+      items {
+        id
+        user
+        event_id
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export interface EmitSigRawEvent {
+  id: string;
+  user: string;
+  event_id: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface EmitSigEventsByJourneyResponse {
+  diamondEmitSigEventss: { items: EmitSigRawEvent[] };
+}

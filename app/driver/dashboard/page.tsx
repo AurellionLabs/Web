@@ -139,7 +139,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
         return <StatusBadge status="warning" label="Accepted" size="sm" />;
       case DeliveryStatus.AWAITING_SENDER:
         return (
-          <StatusBadge status="warning" label="Awaiting Signing" size="sm" />
+          <StatusBadge status="warning" label="Waiting for Sender" size="sm" />
         );
       case DeliveryStatus.PICKED_UP:
         return <StatusBadge status="warning" label="Picked Up" size="sm" />;
@@ -231,7 +231,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
               <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
               <span className="text-xs text-amber-300">
-                Awaiting sender signature
+                Waiting for sender to sign
               </span>
             </div>
           )}

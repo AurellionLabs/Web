@@ -136,7 +136,7 @@ describe('P2POrderFlow', () => {
     render(<P2POrderFlow order={order} fetchSignatureState={fetchSig} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Buyer: Signed')).toBeDefined();
+      expect(screen.getByText('Customer: Signed')).toBeDefined();
       expect(screen.getByText('Driver: Pending')).toBeDefined();
     });
   });

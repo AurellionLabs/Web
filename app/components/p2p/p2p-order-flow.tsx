@@ -21,9 +21,7 @@ import { OrderStatus } from '@/domain/orders/order';
 
 export interface P2POrderFlowProps {
   order: OrderWithAsset;
-  /** Callback to sign for pickup as sender (packageSign before handOn) */
-  onSignForPickup?: (orderId: string, journeyId: string) => Promise<void>;
-  /** Callback to sign for delivery (packageSign) */
+  /** Callback to sign for delivery (packageSign, then attempts handOff) */
   onSignDelivery?: (orderId: string, journeyId: string) => Promise<void>;
   /** Callback to complete handoff */
   onCompleteHandoff?: (orderId: string, journeyId: string) => Promise<void>;
@@ -156,7 +154,6 @@ function getStatusMessage(
 
 export function P2POrderFlow({
   order,
-  onSignForPickup,
   onSignDelivery,
   onCompleteHandoff,
   onScheduleDelivery,
@@ -234,18 +231,6 @@ export function P2POrderFlow({
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : 'Failed to complete handoff',
-      );
-    }
-  };
-
-  const handleSignForPickup = async () => {
-    if (!onSignForPickup || !journeyId) return;
-    setActionError(null);
-    try {
-      await onSignForPickup(order.id, journeyId);
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : 'Failed to sign for pickup',
       );
     }
   };
@@ -347,7 +332,7 @@ export function P2POrderFlow({
                 : 'bg-gray-800 text-gray-400',
             )}
           >
-            Buyer: {buyerSigned ? 'Signed' : 'Pending'}
+            Customer: {buyerSigned ? 'Signed' : 'Pending'}
           </span>
           <span
             className={cn(

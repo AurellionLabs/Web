@@ -185,7 +185,6 @@ export default function CustomerDashboard() {
     refreshOrders,
     cancelOrder,
     confirmReceipt,
-    signForPickup,
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,
@@ -345,66 +344,11 @@ export default function CustomerDashboard() {
     }
   };
 
-  const handleSignForPickup = async (orderId: string) => {
-    const order = orders.find((o) => o.id === orderId);
-    if (!order || !order.journeyIds || order.journeyIds.length === 0) {
-      toast({
-        title: 'No Journey',
-        description: 'This order has no delivery journey to sign for.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      setLoading(true);
-      await signForPickup(order.id, order.journeyIds[0]);
-      toast({
-        title: 'Signed for Pickup',
-        description:
-          'Your signature has been recorded. The journey will start once the driver also signs.',
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Failed to sign for pickup. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const toggleP2PExpand = (orderId: string) => {
     setExpandedP2POrders((prev) => ({
       ...prev,
       [orderId]: !prev[orderId],
     }));
-  };
-
-  const handleSignP2PPickup = async (orderId: string, journeyId: string) => {
-    try {
-      setP2PActionLoading(true);
-      await signForPickup(orderId, journeyId);
-      toast({
-        title: 'Signed for Pickup',
-        description:
-          'Your pickup signature has been recorded. Waiting for the driver to sign.',
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Failed to sign for pickup. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setP2PActionLoading(false);
-    }
   };
 
   const handleSignP2PDelivery = async (orderId: string, journeyId: string) => {
@@ -479,7 +423,7 @@ export default function CustomerDashboard() {
             lng: order.locationData?.startLocation?.lng || '',
           },
           endLocation: { lat: '', lng: '' },
-          startName: order.locationData?.startName || 'Seller Location',
+          startName: order.locationData?.startName || 'Pickup Location',
           endName: deliveryData.deliveryAddress,
         },
         bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
@@ -993,7 +937,6 @@ export default function CustomerDashboard() {
                           >
                             <P2POrderFlow
                               order={order}
-                              onSignForPickup={handleSignP2PPickup}
                               onSignDelivery={handleSignP2PDelivery}
                               onCompleteHandoff={handleCompleteP2PHandoff}
                               onScheduleDelivery={handleScheduleDelivery}

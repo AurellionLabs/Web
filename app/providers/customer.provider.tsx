@@ -17,6 +17,12 @@ import { Order, OrderStatus } from '@/domain/orders/order';
 import { usePlatform } from './platform.provider';
 import { OrderWithAsset } from '@/app/types/shared';
 import { P2PDeliveryDetails } from '@/domain/p2p';
+import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import {
+  GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+  type EmitSigEventsByJourneyResponse,
+} from '@/infrastructure/shared/graph-queries';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
 type CustomerContextType = {
   orders: OrderWithAsset[];
@@ -25,13 +31,11 @@ type CustomerContextType = {
   refreshOrders: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   confirmReceipt: (orderId: string) => Promise<void>;
-  /** Sender signs for pickup on a journey (calls packageSign as sender) */
-  signForPickup: (orderId: string, journeyId: string) => Promise<void>;
-  /** Sign for delivery on a P2P order (calls packageSign) */
+  /** Sign for delivery on a P2P order (calls packageSign, then attempts handOff) */
   signP2PDelivery: (orderId: string, journeyId: string) => Promise<void>;
   /** Complete the handoff on a P2P order (calls handOff, triggers settlement) */
   completeP2PHandoff: (orderId: string, journeyId: string) => Promise<void>;
-  /** Fetch live buyer/driver signature states from the contract */
+  /** Fetch live receiver/driver delivery signature states */
   getP2PSignatureState: (
     orderId: string,
     journeyId: string,
@@ -67,7 +71,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const userAddr = address as string;
+      if (!address) {
+        setOrders([]);
+        return;
+      }
+
+      const userAddr = address;
 
       // Fetch CLOB buyer orders and P2P orders in parallel
       const [buyerOrders, p2pOrders] = await Promise.all([
@@ -77,13 +86,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           return [] as Order[];
         }),
       ]);
-
-      console.log(
-        'buyerOrders',
-        buyerOrders.length,
-        'p2pOrders',
-        p2pOrders.length,
-      );
 
       // Merge and deduplicate by order ID (P2P orders use different IDs)
       const seenIds = new Set<string>();
@@ -151,10 +153,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const confirmReceipt = useCallback(
     async (orderId: string) => {
-      console.log(
-        '[CustomerProvider] confirmReceipt called for orderId:',
-        orderId,
-      );
       const orderToConfirm = orders.find((o) => o.id === orderId);
 
       if (!orderToConfirm) {
@@ -162,8 +160,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(`Order with ID ${orderId} not found.`);
         return;
       }
-
-      console.log('[CustomerProvider] Order found:', orderToConfirm);
 
       if (
         !orderToConfirm.journeyIds ||
@@ -180,22 +176,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const journeyId = orderToConfirm.journeyIds[0];
 
         // 1. Sign the receipt (receiver confirms receipt) - this sets customerHandOff[receiver][id] = true
-        const journey = await ausys.getJourney(journeyId as any);
-        console.log(
-          '[CustomerProvider] confirmReceipt - Journey status before signing:',
-          {
-            journeyId: journeyId.toString(),
-            journeyStatus: journey.currentStatus.toString(),
-            receiver: journey.receiver,
-          },
-        );
-
+        // 1. Sign the receipt (receiver confirms delivery)
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
-
-        console.log(
-          '[CustomerProvider] Receiver signed for delivery, attempting handOff...',
-        );
 
         // 2. Try to complete delivery (handOff) - this will work if driver has also signed for delivery
         try {
@@ -216,10 +199,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             handOffErr instanceof Error &&
             handOffErr.message.includes('0x9651c947')
           ) {
-            console.log(
-              '[CustomerProvider] Driver has not signed for delivery yet',
-            );
-            // Don't throw error - just inform user that receipt is confirmed
+            // DriverNotSigned — receipt confirmed, waiting for driver
             return;
           }
 
@@ -239,56 +219,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Sender signs for pickup on a journey.
-   * After signing, attempts handOn to start the journey (requires driver + sender).
-   */
-  const signForPickup = useCallback(
-    async (orderId: string, journeyId: string) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const ausys = repoContext.getAusysContract();
-
-        console.log('[CustomerProvider] signForPickup', {
-          orderId,
-          journeyId,
-        });
-
-        // Sign for pickup as sender
-        const signTx = await ausys.packageSign(journeyId as any);
-        await signTx.wait();
-        console.log('[CustomerProvider] sender packageSign tx confirmed');
-
-        // Try to start journey (handOn) — needs both driver + sender signed
-        try {
-          const handOnTx = await ausys.handOn(journeyId as any);
-          await handOnTx.wait();
-          console.log(
-            '[CustomerProvider] handOn tx confirmed — journey started',
-          );
-        } catch (handOnErr) {
-          // handOn may fail if driver hasn't signed yet — that's fine
-          console.log(
-            '[CustomerProvider] handOn not ready yet (driver may not have signed):',
-            handOnErr instanceof Error ? handOnErr.message : handOnErr,
-          );
-        }
-
-        // Refresh orders to pick up updated state
-        await loadCustomerOrders();
-      } catch (err) {
-        console.error('[CustomerProvider] signForPickup error:', err);
-        setError('Failed to sign for pickup');
-        handleContractError(err, 'sign for pickup');
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [repoContext, loadCustomerOrders],
-  );
-
-  /**
    * Sign for delivery on a P2P order.
    * Calls packageSign on the journey, then attempts handOff if both sides signed.
    */
@@ -299,14 +229,38 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(null);
         const ausys = repoContext.getAusysContract();
 
-        console.log('[CustomerProvider] signP2PDelivery', {
-          orderId,
-          journeyId,
-        });
-
+        // 1. Sign for delivery (receiver confirms delivery receipt)
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
-        console.log('[CustomerProvider] packageSign tx confirmed');
+
+        // 2. Attempt handOff — works if driver has also signed for delivery
+        try {
+          const handOffTx = await ausys.handOff(journeyId as any);
+          await handOffTx.wait();
+
+          // Success — update order status optimistically
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId
+                ? { ...o, currentStatus: OrderStatus.SETTLED }
+                : o,
+            ),
+          );
+        } catch (handOffErr) {
+          // handOff failed — driver hasn't signed for delivery yet, that's expected
+          if (
+            handOffErr instanceof Error &&
+            handOffErr.message.includes('0x9651c947')
+          ) {
+            // DriverNotSigned — receiver signed but driver hasn't yet
+            return;
+          }
+          // Other handOff errors — don't throw, the sign itself succeeded
+          console.warn(
+            '[CustomerProvider] handOff not ready yet:',
+            handOffErr instanceof Error ? handOffErr.message : handOffErr,
+          );
+        }
 
         // Refresh orders to pick up updated state
         await loadCustomerOrders();
@@ -333,14 +287,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(null);
         const ausys = repoContext.getAusysContract();
 
-        console.log('[CustomerProvider] completeP2PHandoff', {
-          orderId,
-          journeyId,
-        });
-
         const handOffTx = await ausys.handOff(journeyId as any);
         await handOffTx.wait();
-        console.log('[CustomerProvider] handOff tx confirmed');
 
         // Update local state optimistically
         setOrders((prev) =>
@@ -364,13 +312,16 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Fetch live buyer/driver signature states from the contract.
-   * Uses journey currentStatus as a proxy since the contract storage mappings
-   * (customerHandOff, driverDeliverySigned) don't have public getter functions.
+   * Fetch live receiver/driver delivery signature states.
    *
-   * Journey statuses: 0 = Pending, 1 = InTransit, 2 = Delivered
-   * - InTransit means both sender + driver signed for pickup (handOn succeeded)
-   * - Delivered means both receiver + driver signed for delivery (handOff succeeded)
+   * Uses two data sources:
+   * 1. Journey currentStatus from the contract (definitive for completed states)
+   * 2. EmitSig events from the indexer (tracks individual packageSign calls)
+   *
+   * Contract packageSign emits EmitSig(address user, bytes32 id):
+   * - Receiver can only sign during InTransit (status 1), so any receiver EmitSig → buyerSigned
+   * - Driver signs once for pickup (status 0) and once for delivery (status 1),
+   *   so 2+ driver EmitSig events → driverDeliverySigned
    */
   const getP2PSignatureState = useCallback(
     async (
@@ -382,13 +333,50 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const journey = await ausys.getJourney(journeyId as any);
         const status = Number(journey.currentStatus);
 
-        // If status >= 2 (Delivered), both receiver and driver delivery signatures were present
-        // If status >= 1 (InTransit), pickup signatures were already consumed
-        // For delivery phase: we can't directly read the mappings, so we infer from status
-        return {
-          buyerSigned: status >= 2, // receiver signed if delivered
-          driverDeliverySigned: status >= 2, // driver delivery signed if delivered
-        };
+        // Definitive: Delivered means both parties signed and handOff succeeded
+        if (status >= 2) {
+          return { buyerSigned: true, driverDeliverySigned: true };
+        }
+
+        // For InTransit, query EmitSig events to determine who has signed
+        if (status === 1) {
+          try {
+            const sigResponse =
+              await graphqlRequest<EmitSigEventsByJourneyResponse>(
+                NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+                GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+                { journeyId, limit: 50 },
+              );
+
+            const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
+            const receiver = journey.receiver.toLowerCase();
+            const driver = journey.driver.toLowerCase();
+
+            // Receiver can only sign during InTransit → any match = buyerSigned
+            const buyerSigned = sigEvents.some(
+              (e) => e.user.toLowerCase() === receiver,
+            );
+
+            // Driver signs once for pickup (status 0), once for delivery (status 1)
+            // 2+ driver sigs = both pickup + delivery signed
+            const driverSigCount = sigEvents.filter(
+              (e) => e.user.toLowerCase() === driver,
+            ).length;
+            const driverDeliverySigned = driverSigCount >= 2;
+
+            return { buyerSigned, driverDeliverySigned };
+          } catch (indexerErr) {
+            // Indexer unavailable — fall back to safe defaults
+            console.warn(
+              '[CustomerProvider] EmitSig query failed, using defaults:',
+              indexerErr,
+            );
+            return { buyerSigned: false, driverDeliverySigned: false };
+          }
+        }
+
+        // Status 0 (Pending) — no delivery signatures possible yet
+        return { buyerSigned: false, driverDeliverySigned: false };
       } catch (err) {
         console.warn('[CustomerProvider] getP2PSignatureState error:', err);
         return { buyerSigned: false, driverDeliverySigned: false };
@@ -409,12 +397,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // Use the Diamond contract (has createOrderJourney), not the Ausys contract
         const diamond = repoContext.getDiamondContext().getDiamond();
 
-        console.log('[CustomerProvider] createP2PJourney', {
-          orderId,
-          sender: delivery.senderNodeAddress,
-          receiver: delivery.receiverAddress,
-        });
-
         const journeyTx = await diamond.createOrderJourney(
           orderId,
           delivery.senderNodeAddress,
@@ -426,7 +408,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           delivery.assetId,
         );
         await journeyTx.wait();
-        console.log('[CustomerProvider] createOrderJourney tx confirmed');
 
         // Refresh orders to pick up the new journey
         await loadCustomerOrders();
@@ -457,7 +438,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     refreshOrders,
     cancelOrder,
     confirmReceipt,
-    signForPickup,
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,
