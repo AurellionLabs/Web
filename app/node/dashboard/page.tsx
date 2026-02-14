@@ -61,6 +61,14 @@ import type { Asset } from '@/domain/shared';
 import { Order, OrderStatus } from '@/domain/orders';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import {
+  GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+  type EmitSigEventsByJourneyResponse,
+} from '@/infrastructure/shared/graph-queries';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -214,6 +222,73 @@ export default function NodeDashboardPage() {
 
   // Track local status overrides after signing (e.g., awaiting driver signature)
   const [signedOrders, setSignedOrders] = useState<Record<string, boolean>>({});
+
+  // Track which P2P orders are expanded to show the flow detail
+  const [expandedP2POrders, setExpandedP2POrders] = useState<
+    Record<string, boolean>
+  >({});
+
+  const toggleP2PExpand = (orderId: string) => {
+    setExpandedP2POrders((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  };
+
+  /**
+   * Fetch live signature states for a P2P order's journey.
+   * Uses EmitSig events from the indexer + contract journey state.
+   */
+  const getP2PSignatureState = async (
+    _orderId: string,
+    journeyId: string,
+  ): Promise<{ buyerSigned: boolean; driverDeliverySigned: boolean }> => {
+    try {
+      const repoContext = RepositoryContext.getInstance();
+      const ausys = repoContext.getAusysContract();
+      const journey = await ausys.getJourney(journeyId as any);
+      const status = Number(journey.currentStatus);
+
+      // Delivered means both parties signed and handOff succeeded
+      if (status >= 2) {
+        return { buyerSigned: true, driverDeliverySigned: true };
+      }
+
+      // For InTransit, query EmitSig events
+      if (status === 1) {
+        try {
+          const sigResponse =
+            await graphqlRequest<EmitSigEventsByJourneyResponse>(
+              NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+              GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+              { journeyId, limit: 50 },
+            );
+
+          const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
+          const receiver = journey.receiver.toLowerCase();
+          const driver = journey.driver.toLowerCase();
+
+          const buyerSigned = sigEvents.some(
+            (e) => e.user.toLowerCase() === receiver,
+          );
+          const driverSigCount = sigEvents.filter(
+            (e) => e.user.toLowerCase() === driver,
+          ).length;
+          const driverDeliverySigned = driverSigCount >= 2;
+
+          return { buyerSigned, driverDeliverySigned };
+        } catch (indexerErr) {
+          console.warn('[NodeDashboard] EmitSig query failed:', indexerErr);
+          return { buyerSigned: false, driverDeliverySigned: false };
+        }
+      }
+
+      return { buyerSigned: false, driverDeliverySigned: false };
+    } catch (err) {
+      console.warn('[NodeDashboard] getP2PSignatureState error:', err);
+      return { buyerSigned: false, driverDeliverySigned: false };
+    }
+  };
 
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
@@ -970,98 +1045,139 @@ export default function NodeDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-glass-border">
-                {currentOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-glass-hover transition-colors"
-                  >
-                    <td className="px-4 py-4 font-mono text-sm text-foreground">
-                      <div className="flex items-center gap-2">
-                        {truncateId(order.id, 12)}
-                        {order.isP2P && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">
-                            P2P
-                          </span>
+                {currentOrders.map((order) => {
+                  const isP2P = Boolean(order.isP2P);
+                  const isExpanded = expandedP2POrders[order.id];
+
+                  return (
+                    <React.Fragment key={order.id}>
+                      <tr
+                        className={cn(
+                          'hover:bg-glass-hover transition-colors',
+                          isP2P && 'cursor-pointer',
+                          isExpanded && 'bg-glass-hover',
                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 font-mono text-sm text-foreground">
-                      {truncateId(order.buyer, 12)}
-                    </td>
-                    <td className="px-4 py-4 capitalize text-foreground">
-                      {order.asset?.name || 'Unknown Asset'}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-foreground">
-                      {order.tokenQuantity}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-foreground">
-                      ${formatTokenAmount(order.price, 18, 2)}
-                    </td>
-                    <td className="px-4 py-4">
-                      {signedOrders[order.id] &&
-                      order.currentStatus !== OrderStatus.PROCESSING &&
-                      order.currentStatus !== OrderStatus.SETTLED ? (
-                        <StatusBadge
-                          status="warning"
-                          label="Awaiting Driver"
-                          size="sm"
-                        />
-                      ) : (
-                        <StatusBadge
-                          status={
-                            order.currentStatus === OrderStatus.SETTLED
-                              ? 'success'
-                              : order.currentStatus === OrderStatus.CANCELLED
-                                ? 'error'
-                                : order.currentStatus === OrderStatus.PROCESSING
-                                  ? 'warning'
-                                  : 'pending'
-                          }
-                          label={order.currentStatus}
-                          size="sm"
-                        />
+                        onClick={
+                          isP2P ? () => toggleP2PExpand(order.id) : undefined
+                        }
+                      >
+                        <td className="px-4 py-4 font-mono text-sm text-foreground">
+                          <div className="flex items-center gap-2">
+                            {truncateId(order.id, 12)}
+                            {isP2P && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">
+                                P2P
+                              </span>
+                            )}
+                            {isP2P && (
+                              <ChevronDown
+                                className={cn(
+                                  'w-3 h-3 text-muted-foreground transition-transform',
+                                  isExpanded && 'rotate-180',
+                                )}
+                              />
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 font-mono text-sm text-foreground">
+                          {truncateId(order.buyer, 12)}
+                        </td>
+                        <td className="px-4 py-4 capitalize text-foreground">
+                          {order.asset?.name || 'Unknown Asset'}
+                        </td>
+                        <td className="px-4 py-4 font-mono text-foreground">
+                          {order.tokenQuantity}
+                        </td>
+                        <td className="px-4 py-4 font-mono text-foreground">
+                          ${formatTokenAmount(order.price, 18, 2)}
+                        </td>
+                        <td className="px-4 py-4">
+                          {signedOrders[order.id] &&
+                          order.currentStatus !== OrderStatus.PROCESSING &&
+                          order.currentStatus !== OrderStatus.SETTLED ? (
+                            <StatusBadge
+                              status="warning"
+                              label="Awaiting Driver"
+                              size="sm"
+                            />
+                          ) : (
+                            <StatusBadge
+                              status={
+                                order.currentStatus === OrderStatus.SETTLED
+                                  ? 'success'
+                                  : order.currentStatus ===
+                                      OrderStatus.CANCELLED
+                                    ? 'error'
+                                    : order.currentStatus ===
+                                        OrderStatus.PROCESSING
+                                      ? 'warning'
+                                      : 'pending'
+                              }
+                              label={order.currentStatus}
+                              size="sm"
+                            />
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          {signedOrders[order.id] &&
+                          order.currentStatus !== OrderStatus.PROCESSING &&
+                          order.currentStatus !== OrderStatus.SETTLED ? (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                              <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+                              <span className="text-xs text-amber-300">
+                                Awaiting driver signature
+                              </span>
+                            </div>
+                          ) : order.currentStatus === OrderStatus.CREATED &&
+                            order.seller?.toLowerCase() ===
+                              currentNodeData?.owner?.toLowerCase() ? (
+                            <GlowButton
+                              variant="primary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleConfirmPickup(order);
+                              }}
+                            >
+                              Sign for Pickup
+                            </GlowButton>
+                          ) : order.currentStatus === OrderStatus.CREATED ? (
+                            <span className="text-sm text-muted-foreground">
+                              Pending
+                            </span>
+                          ) : order.currentStatus === OrderStatus.PROCESSING ? (
+                            <span className="text-sm text-accent font-medium">
+                              In Transit
+                            </span>
+                          ) : order.currentStatus === OrderStatus.SETTLED ? (
+                            <span className="text-sm text-trading-buy font-medium">
+                              Completed
+                            </span>
+                          ) : order.currentStatus === OrderStatus.CANCELLED ? (
+                            <span className="text-sm text-trading-sell font-medium">
+                              Cancelled
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+
+                      {/* Expandable P2P Order Flow row */}
+                      {isP2P && isExpanded && (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-4 py-2 bg-surface-overlay/50"
+                          >
+                            <P2POrderFlow
+                              order={order}
+                              fetchSignatureState={getP2PSignatureState}
+                            />
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                    <td className="px-4 py-4">
-                      {signedOrders[order.id] &&
-                      order.currentStatus !== OrderStatus.PROCESSING &&
-                      order.currentStatus !== OrderStatus.SETTLED ? (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                          <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-                          <span className="text-xs text-amber-300">
-                            Awaiting driver signature
-                          </span>
-                        </div>
-                      ) : order.currentStatus === OrderStatus.CREATED &&
-                        order.seller?.toLowerCase() ===
-                          currentNodeData?.owner?.toLowerCase() ? (
-                        <GlowButton
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleConfirmPickup(order)}
-                        >
-                          Sign for Pickup
-                        </GlowButton>
-                      ) : order.currentStatus === OrderStatus.CREATED ? (
-                        <span className="text-sm text-muted-foreground">
-                          Pending
-                        </span>
-                      ) : order.currentStatus === OrderStatus.PROCESSING ? (
-                        <span className="text-sm text-accent font-medium">
-                          In Transit
-                        </span>
-                      ) : order.currentStatus === OrderStatus.SETTLED ? (
-                        <span className="text-sm text-trading-buy font-medium">
-                          Completed
-                        </span>
-                      ) : order.currentStatus === OrderStatus.CANCELLED ? (
-                        <span className="text-sm text-trading-sell font-medium">
-                          Cancelled
-                        </span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
 
