@@ -27,8 +27,25 @@ import {
   GET_LOGISTICS_ORDER_CREATED_EVENTS,
   GET_ALL_UNIFIED_ORDER_EVENTS,
   GET_SUPPORTED_ASSET_ADDED_EVENTS,
+  GET_P2P_OFFERS_BY_CREATOR,
+  GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+  GET_AUSYS_ORDER_STATUS_UPDATES,
+  GET_JOURNEYS_BY_SENDER_ADDRESS,
+  GET_JOURNEY_STATUS_UPDATES_ALL,
 } from '@/infrastructure/shared/graph-queries';
-import { aggregateUnifiedOrders } from '@/infrastructure/shared/event-aggregators';
+import type {
+  P2POffersByCreatorResponse,
+  P2POffersAcceptedByUserResponse,
+  P2POfferDetailsResponse,
+  AuSysOrderStatusUpdatesResponse,
+  JourneysBySenderResponse,
+  JourneyStatusUpdatesAllResponse,
+} from '@/infrastructure/shared/graph-queries';
+import {
+  aggregateUnifiedOrders,
+  aggregateP2POrdersForUser,
+} from '@/infrastructure/shared/event-aggregators';
 import {
   AggregatedUnifiedOrder,
   LogisticsOrderCreatedEvent,
@@ -397,8 +414,8 @@ export class DiamondNodeRepository implements NodeRepository {
 
   /**
    * Get orders for a node from GraphQL indexer using raw events.
-   * Matches orders via the logistics event `node` field (node hash) and
-   * optionally via the seller/buyer wallet address (ownerAddress).
+   * Fetches both CLOB orders (via logistics node field / seller wallet)
+   * AND P2P orders (via creator/acceptor wallet address).
    */
   async getNodeOrders(
     nodeHash: string,
@@ -413,6 +430,7 @@ export class DiamondNodeRepository implements NodeRepository {
     });
 
     try {
+      // 1. Fetch CLOB orders + logistics data
       const [orderResponse, logisticsResponse] = await Promise.all([
         graphqlRequest<UnifiedOrderEventsResponse>(
           this.graphQLEndpoint,
@@ -436,15 +454,15 @@ export class DiamondNodeRepository implements NodeRepository {
           .map((l) => l.unified_order_id.toLowerCase()),
       );
 
-      const orders = aggregateUnifiedOrders({
+      const allAggregated = aggregateUnifiedOrders({
         created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
         logistics: logisticsItems,
         journeyUpdates: [],
         settled: [],
       });
 
-      // Filter: order is linked to this node via logistics, OR the seller/buyer is the owner wallet
-      const nodeOrders = orders.filter((order) => {
+      // Filter CLOB: linked via logistics node field, OR seller/buyer matches owner wallet
+      const clobOrders = allAggregated.filter((order) => {
         const oid = order.unifiedOrderId.toLowerCase();
         if (nodeLinkedOrderIds.has(oid)) return true;
         if (owner && order.seller.toLowerCase() === owner) return true;
@@ -452,7 +470,87 @@ export class DiamondNodeRepository implements NodeRepository {
         return false;
       });
 
-      return nodeOrders.map((order) => aggregatedUnifiedOrderToDomain(order));
+      // 2. Fetch P2P orders where the node OWNER is creator or acceptor
+      //    (P2P offers use wallet addresses, not node hashes)
+      const queryAddr = owner || hash;
+      const [
+        p2pCreatedResp,
+        p2pAcceptedResp,
+        allP2PCreatedResp,
+        statusResp,
+        journeysResp,
+        journeyStatusResp,
+      ] = await Promise.all([
+        graphqlRequest<P2POffersByCreatorResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_BY_CREATOR,
+          { creator: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<P2POffersAcceptedByUserResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_ACCEPTED_BY_USER,
+          { acceptor: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<P2POfferDetailsResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AuSysOrderStatusUpdatesResponse>(
+          this.graphQLEndpoint,
+          GET_AUSYS_ORDER_STATUS_UPDATES,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneysBySenderResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEYS_BY_SENDER_ADDRESS,
+          { sender: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<JourneyStatusUpdatesAllResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATES_ALL,
+          { limit: 500 },
+        ),
+      ]);
+
+      const p2pOrders = aggregateP2POrdersForUser(
+        p2pCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        p2pAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
+        allP2PCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
+        queryAddr,
+        journeysResp.diamondJourneyCreatedEventss?.items || [],
+        journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
+      );
+
+      console.log(
+        `[DiamondNodeRepository] Found ${clobOrders.length} CLOB + ${p2pOrders.length} P2P orders`,
+      );
+
+      // 3. Merge CLOB + P2P orders, deduplicating by ID
+      const seenIds = new Set<string>();
+      const allOrders: Order[] = [];
+
+      for (const order of clobOrders) {
+        const oid = order.unifiedOrderId.toLowerCase();
+        if (!seenIds.has(oid)) {
+          seenIds.add(oid);
+          allOrders.push(aggregatedUnifiedOrderToDomain(order));
+        }
+      }
+
+      for (const order of p2pOrders) {
+        const oid = order.id.toLowerCase();
+        if (!seenIds.has(oid)) {
+          seenIds.add(oid);
+          allOrders.push(order);
+        }
+      }
+
+      console.log(
+        `[DiamondNodeRepository] Returning ${allOrders.length} total orders`,
+      );
+      return allOrders;
     } catch (error) {
       console.error(
         '[DiamondNodeRepository] Error getting node orders:',
