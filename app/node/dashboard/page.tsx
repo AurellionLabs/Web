@@ -1131,7 +1131,9 @@ export default function NodeDashboardPage() {
                                 Awaiting driver signature
                               </span>
                             </div>
-                          ) : order.currentStatus === OrderStatus.CREATED &&
+                          ) : (order.currentStatus === OrderStatus.CREATED ||
+                              (order.currentStatus === OrderStatus.PROCESSING &&
+                                order.journeyStatus === 0)) &&
                             order.seller?.toLowerCase() ===
                               currentNodeData?.owner?.toLowerCase() ? (
                             <GlowButton
@@ -1147,6 +1149,11 @@ export default function NodeDashboardPage() {
                           ) : order.currentStatus === OrderStatus.CREATED ? (
                             <span className="text-sm text-muted-foreground">
                               Pending
+                            </span>
+                          ) : order.currentStatus === OrderStatus.PROCESSING &&
+                            order.journeyStatus === 0 ? (
+                            <span className="text-sm text-amber-400 font-medium">
+                              Awaiting Pickup
                             </span>
                           ) : order.currentStatus === OrderStatus.PROCESSING ? (
                             <span className="text-sm text-accent font-medium">
@@ -1174,6 +1181,19 @@ export default function NodeDashboardPage() {
                             <P2POrderFlow
                               order={order}
                               fetchSignatureState={getP2PSignatureState}
+                              onSignPickup={
+                                order.seller?.toLowerCase() ===
+                                currentNodeData?.owner?.toLowerCase()
+                                  ? async (orderId, journeyId) => {
+                                      const matchedOrder = orders.find(
+                                        (o) => o.id === orderId,
+                                      );
+                                      if (matchedOrder) {
+                                        await handleConfirmPickup(matchedOrder);
+                                      }
+                                    }
+                                  : undefined
+                              }
                             />
                           </td>
                         </tr>

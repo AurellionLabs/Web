@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Clock, Truck, Package, Loader2, Pen } from 'lucide-react';
+import {
+  Check,
+  Clock,
+  Truck,
+  Package,
+  Loader2,
+  Pen,
+  PackageCheck,
+} from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { cn } from '@/lib/utils';
 import { OrderWithAsset, P2POrderDetail } from '@/app/types/shared';
@@ -26,6 +34,8 @@ export interface P2POrderFlowProps {
   ) => Promise<'settled' | 'driver_not_signed' | void>;
   /** Callback to schedule delivery for orders stuck without a journey */
   onScheduleDelivery?: (orderId: string) => void;
+  /** Callback for sender/node to sign for pickup (at journey-pending step) */
+  onSignPickup?: (orderId: string, journeyId: string) => Promise<void>;
   /** Function to fetch live signature states from the contract */
   fetchSignatureState?: (
     orderId: string,
@@ -156,6 +166,7 @@ export function P2POrderFlow({
   onSignDelivery,
   onCompleteHandoff,
   onScheduleDelivery,
+  onSignPickup,
   fetchSignatureState,
   isActionLoading = false,
 }: P2POrderFlowProps) {
@@ -165,6 +176,8 @@ export function P2POrderFlow({
   const [actionError, setActionError] = useState<string | null>(null);
   // Tracks whether we're waiting for the other party after a successful sign
   const [waitingForDriver, setWaitingForDriver] = useState(false);
+  // Tracks whether we've signed for pickup and are waiting for the other party
+  const [pickupSigned, setPickupSigned] = useState(false);
 
   const journeyId =
     order.journeyIds && order.journeyIds.length > 0
@@ -246,10 +259,29 @@ export function P2POrderFlow({
     }
   };
 
+  // Handler for sender to sign for pickup
+  const handleSignPickup = async () => {
+    if (!onSignPickup || !journeyId) return;
+    setActionError(null);
+    try {
+      await onSignPickup(order.id, journeyId);
+      setPickupSigned(true);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Failed to sign for pickup',
+      );
+    }
+  };
+
   // Determine which action to show
   const showScheduleButton =
     currentStep === 0 &&
     onScheduleDelivery &&
+    order.currentStatus !== OrderStatus.SETTLED;
+  const showPickupButton =
+    currentStep === 1 &&
+    onSignPickup &&
+    !pickupSigned &&
     order.currentStatus !== OrderStatus.SETTLED;
   const showSignButton =
     currentStep === 2 &&
@@ -377,6 +409,28 @@ export function P2POrderFlow({
         >
           Schedule Delivery
         </GlowButton>
+      )}
+
+      {showPickupButton && (
+        <GlowButton
+          onClick={handleSignPickup}
+          loading={isActionLoading}
+          disabled={isActionLoading}
+          variant="primary"
+          size="sm"
+          leftIcon={<PackageCheck className="w-4 h-4" />}
+        >
+          Sign for Pickup
+        </GlowButton>
+      )}
+
+      {pickupSigned && currentStep === 1 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+          <span className="text-sm text-amber-300">
+            Pickup signature recorded. Waiting for driver to sign for pickup.
+          </span>
+        </div>
       )}
 
       {showSignButton && (
