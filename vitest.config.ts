@@ -18,17 +18,14 @@ export default defineConfig({
       '**/node_modules/**',
       // Exclude hardhat-dependent tests (run separately with hardhat test)
       'test/dapp-listener.integration.test.ts',
-      'test/repositories/BlockchainNodeRepository.test.ts',
-      'test/repositories/OrderRepository.test.ts',
       'test/services/OrderService.test.ts',
       'test/services/OrderBridgeService.test.ts',
       'test/infrastructure/services/node-asset.service.integration.test.ts',
       'test/infrastructure/services/node-asset.service.test.ts',
       'test/infrastructure/repositories/orders-repository.unit.test.ts',
+      // Exclude tests with complex mocking or TypeScript issues (need refactor)
       'test/repositories/CLOBRepository.test.ts',
-      // Exclude hook test with complex mocking (needs refactor)
       'test/hooks/useUnifiedOrder.test.ts',
-      // Exclude test with TypeScript transformer issues
       'test/infrastructure/repositories/platform-repository.test.ts',
     ],
     coverage: {

@@ -94,7 +94,7 @@ describe('P2POrderFlow', () => {
     render(<P2POrderFlow order={order} />);
 
     expect(
-      screen.getByText(/journey created.*waiting for driver/i),
+      screen.getByText(/journey created.*waiting for.*sign/i),
     ).toBeDefined();
   });
 
