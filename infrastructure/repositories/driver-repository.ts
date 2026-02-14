@@ -138,7 +138,7 @@ export class DriverRepository implements IDriverRepository {
   async getAvailableDeliveries(): Promise<Delivery[]> {
     console.log('[DriverRepository] Getting available deliveries...');
     try {
-      // Use ALL_JOURNEYS query which includes status updates
+      // Use ALL_JOURNEYS query which includes status updates + driver assignments
       const response = await graphqlRequest<AllJourneysCreatedResponse>(
         this.graphQLEndpoint,
         GET_ALL_JOURNEYS_CREATED,
@@ -153,18 +153,28 @@ export class DriverRepository implements IDriverRepository {
         response.statusUpdates || { items: [] },
       ) as AuSysJourneyStatusUpdatedRawEvent[];
 
-      // Build set of journey IDs that have a driver assigned or status > 0
+      const driverAssignments = extractPonderItems(
+        response.driverAssignments || { items: [] },
+      );
+
+      // Build set of journey IDs that have been claimed (driver assigned or status > 0)
       const claimedJourneyIds = new Set<string>();
+
+      // Any status update means the journey has progressed past Pending
       statusEvents.forEach((s) => {
-        // Any status update means the journey has progressed past Pending
         claimedJourneyIds.add(s.journey_id);
       });
 
-      // Also check if driver field in status events indicates assignment
+      // Check driver field in status events
       statusEvents.forEach((s) => {
         if (s.driver && s.driver !== ethers.ZeroAddress) {
           claimedJourneyIds.add(s.journey_id);
         }
+      });
+
+      // DriverAssigned events — the key filter: a driver was assigned to this journey
+      driverAssignments.forEach((da) => {
+        claimedJourneyIds.add(da.journey_id);
       });
 
       // Deduplicate journeys by journey_id (keep latest)
@@ -185,7 +195,7 @@ export class DriverRepository implements IDriverRepository {
       );
 
       console.log(
-        `[DriverRepository] Found ${deliveries.length} available deliveries (filtered from ${journeys.length} total).`,
+        `[DriverRepository] Found ${deliveries.length} available deliveries (filtered from ${journeys.length} total, ${claimedJourneyIds.size} claimed).`,
       );
       return deliveries;
     } catch (error) {

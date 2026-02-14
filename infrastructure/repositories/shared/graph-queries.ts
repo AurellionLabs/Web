@@ -984,6 +984,18 @@ export const GET_ALL_JOURNEYS_CREATED = gql`
         transaction_hash
       }
     }
+    driverAssignments: diamondDriverAssignedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        driver
+        block_timestamp
+      }
+    }
   }
 `;
 
@@ -1168,6 +1180,14 @@ export interface AuSysJourneyStatusUpdatedRawEvent {
 export interface AllJourneysCreatedResponse {
   journeys: { items: JourneyCreatedRawEvent[] };
   statusUpdates: { items: AuSysJourneyStatusUpdatedRawEvent[] };
+  driverAssignments: {
+    items: Array<{
+      id: string;
+      journey_id: string;
+      driver: string;
+      block_timestamp: string;
+    }>;
+  };
 }
 
 export interface JourneysByDriverResponse {

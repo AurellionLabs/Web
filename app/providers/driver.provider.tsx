@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ethers } from 'ethers';
-import { Delivery } from '@/domain/driver/driver';
+import { Delivery, DeliveryStatus } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { Ausys__factory } from '@/lib/contracts';
@@ -77,7 +77,13 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       );
       const mineWithETA = await Promise.all(mine.map(calculateDeliveryETA));
 
-      setAvailableDeliveries(availableWithETA);
+      // Ensure no job appears in both lists: remove from available if in myDeliveries
+      const myJobIds = new Set(mineWithETA.map((d) => d.jobId.toLowerCase()));
+      const dedupedAvailable = availableWithETA.filter(
+        (d) => !myJobIds.has(d.jobId.toLowerCase()),
+      );
+
+      setAvailableDeliveries(dedupedAvailable);
       setMyDeliveries(mineWithETA);
     } catch (err) {
       setError(
@@ -168,7 +174,31 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         jobId,
       );
       await ausys.assignDriverToJourney(driverWalletAddress!, jobId as any);
+
+      // Optimistically move the job from available → myDeliveries
+      const acceptedJob = availableDeliveries.find(
+        (d) => d.jobId.toLowerCase() === jobId.toLowerCase(),
+      );
+      if (acceptedJob) {
+        setAvailableDeliveries((prev) =>
+          prev.filter((d) => d.jobId.toLowerCase() !== jobId.toLowerCase()),
+        );
+        setMyDeliveries((prev) => [
+          { ...acceptedJob, currentStatus: DeliveryStatus.ACCEPTED },
+          ...prev,
+        ]);
+      }
+
+      // Wait for indexer to catch up, then refresh with real data
+      console.log('[Accept] Tx confirmed. Waiting for indexer to catch up...');
+      await new Promise((r) => setTimeout(r, 3000));
       await refreshDeliveries();
+
+      // Schedule a follow-up refresh in case the first was too early
+      setTimeout(() => {
+        console.log('[Accept] Follow-up refresh for indexer consistency.');
+        refreshDeliveries();
+      }, 5000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
 
