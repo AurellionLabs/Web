@@ -382,9 +382,13 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
       const tx = await ausys.packageSign(journeyId as any);
       await tx.wait();
-      console.log('[NodeProvider] packageSign tx confirmed');
+
+      // Refresh orders to reflect updated signing state
+      if (selectedNodeAddress) {
+        await loadOrders(selectedNodeAddress);
+      }
     },
-    [diamondInitialized, selectedNodeAddress],
+    [diamondInitialized, selectedNodeAddress, loadOrders],
   );
 
   const startJourney = useCallback(
@@ -395,16 +399,13 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       const repoContext = RepositoryContext.getInstance();
       const ausys = repoContext.getAusysContract();
 
-      console.log('[NodeProvider] startJourney (handOn)', {
-        journeyId,
-        nodeAddress: selectedNodeAddress,
-      });
-
       const tx = await ausys.handOn(journeyId as any);
       await tx.wait();
-      console.log('[NodeProvider] handOn tx confirmed');
+
+      // Refresh orders to reflect journey status change
+      await loadOrders(selectedNodeAddress);
     },
-    [diamondInitialized, selectedNodeAddress],
+    [diamondInitialized, selectedNodeAddress, loadOrders],
   );
 
   // Get node status

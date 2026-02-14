@@ -1032,7 +1032,9 @@ export default function NodeDashboardPage() {
                             Awaiting driver signature
                           </span>
                         </div>
-                      ) : order.currentStatus === OrderStatus.CREATED ? (
+                      ) : order.currentStatus === OrderStatus.CREATED &&
+                        order.seller?.toLowerCase() ===
+                          currentNodeData?.owner?.toLowerCase() ? (
                         <GlowButton
                           variant="primary"
                           size="sm"
@@ -1040,6 +1042,10 @@ export default function NodeDashboardPage() {
                         >
                           Sign for Pickup
                         </GlowButton>
+                      ) : order.currentStatus === OrderStatus.CREATED ? (
+                        <span className="text-sm text-muted-foreground">
+                          Pending
+                        </span>
                       ) : order.currentStatus === OrderStatus.PROCESSING ? (
                         <span className="text-sm text-accent font-medium">
                           In Transit

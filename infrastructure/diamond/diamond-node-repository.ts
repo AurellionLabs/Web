@@ -106,6 +106,7 @@ function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
     case 'cancelled':
       return OrderStatus.CANCELLED;
     case 'matched':
+      return OrderStatus.PROCESSING;
     case 'created':
       return OrderStatus.CREATED;
     default:
@@ -461,6 +462,11 @@ export class DiamondNodeRepository implements NodeRepository {
         settled: [],
       });
 
+      // Build logistics lookup for order → logistics data
+      const logisticsByOrder = new Map(
+        logisticsItems.map((l) => [l.unified_order_id.toLowerCase(), l]),
+      );
+
       // Filter CLOB: linked via logistics node field, OR seller/buyer matches owner wallet
       const clobOrders = allAggregated.filter((order) => {
         const oid = order.unifiedOrderId.toLowerCase();
@@ -473,9 +479,6 @@ export class DiamondNodeRepository implements NodeRepository {
       // 2. Fetch P2P orders where the node OWNER is creator or acceptor
       //    P2P offers use wallet addresses, NOT node hashes — skip if no owner wallet
       if (!owner) {
-        console.log(
-          `[DiamondNodeRepository] No owner wallet, returning ${clobOrders.length} CLOB orders only`,
-        );
         return clobOrders.map((order) => {
           const logistics = logisticsByOrder.get(
             order.unifiedOrderId.toLowerCase(),
@@ -546,7 +549,8 @@ export class DiamondNodeRepository implements NodeRepository {
         const oid = order.unifiedOrderId.toLowerCase();
         if (!seenIds.has(oid)) {
           seenIds.add(oid);
-          allOrders.push(aggregatedUnifiedOrderToDomain(order));
+          const logistics = logisticsByOrder.get(oid);
+          allOrders.push(aggregatedUnifiedOrderToDomain(order, logistics));
         }
       }
 

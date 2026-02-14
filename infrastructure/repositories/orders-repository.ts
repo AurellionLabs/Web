@@ -133,6 +133,7 @@ function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
     case 'cancelled':
       return OrderStatus.CANCELLED;
     case 'matched':
+      return OrderStatus.PROCESSING;
     case 'created':
       return OrderStatus.CREATED;
     default:
