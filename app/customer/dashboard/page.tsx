@@ -354,17 +354,35 @@ export default function CustomerDashboard() {
   const handleSignP2PDelivery = async (orderId: string, journeyId: string) => {
     try {
       setP2PActionLoading(true);
-      await signP2PDelivery(orderId, journeyId);
-      toast({
-        title: 'Delivery Signed',
-        description: 'Your delivery signature has been recorded on-chain.',
-      });
+      const result = await signP2PDelivery(orderId, journeyId);
+
+      if (result === 'settled') {
+        toast({
+          title: 'Order Settled',
+          description:
+            'Both parties signed. Tokens and payment have been distributed.',
+        });
+      } else if (result === 'driver_not_signed') {
+        toast({
+          title: 'Delivery Signed',
+          description:
+            'Your signature has been recorded. Waiting for driver to sign.',
+        });
+      } else {
+        toast({
+          title: 'Delivery Signed',
+          description: 'Your delivery signature has been recorded on-chain.',
+        });
+      }
+
+      return result;
     } catch (err) {
       toast({
         title: 'Error',
         description: 'Failed to sign for delivery. Please try again.',
         variant: 'destructive',
       });
+      throw err;
     } finally {
       setP2PActionLoading(false);
     }
@@ -376,18 +394,30 @@ export default function CustomerDashboard() {
   ) => {
     try {
       setP2PActionLoading(true);
-      await completeP2PHandoff(orderId, journeyId);
-      toast({
-        title: 'Handoff Complete',
-        description:
-          'The order has been settled. Tokens and payment distributed.',
-      });
+      const result = await completeP2PHandoff(orderId, journeyId);
+
+      if (result === 'settled') {
+        toast({
+          title: 'Handoff Complete',
+          description:
+            'The order has been settled. Tokens and payment distributed.',
+        });
+      } else if (result === 'driver_not_signed') {
+        toast({
+          title: 'Waiting for Driver',
+          description:
+            'The driver has not signed for delivery yet. Please wait.',
+        });
+      }
+
+      return result;
     } catch (err) {
       toast({
         title: 'Error',
         description: 'Failed to complete handoff. Please try again.',
         variant: 'destructive',
       });
+      throw err;
     } finally {
       setP2PActionLoading(false);
     }

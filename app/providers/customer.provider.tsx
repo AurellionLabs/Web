@@ -31,10 +31,18 @@ type CustomerContextType = {
   refreshOrders: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   confirmReceipt: (orderId: string) => Promise<void>;
-  /** Sign for delivery on a P2P order (calls packageSign, then attempts handOff) */
-  signP2PDelivery: (orderId: string, journeyId: string) => Promise<void>;
-  /** Complete the handoff on a P2P order (calls handOff, triggers settlement) */
-  completeP2PHandoff: (orderId: string, journeyId: string) => Promise<void>;
+  /** Sign for delivery on a P2P order (calls packageSign, then auto-attempts handOff).
+   *  Returns 'settled' if handOff succeeded, 'driver_not_signed' if driver hasn't signed,
+   *  or 'signed' if only the signature recorded. */
+  signP2PDelivery: (
+    orderId: string,
+    journeyId: string,
+  ) => Promise<'settled' | 'driver_not_signed' | 'signed'>;
+  /** Attempt handOff on a P2P order. Returns 'settled' or 'driver_not_signed'. */
+  completeP2PHandoff: (
+    orderId: string,
+    journeyId: string,
+  ) => Promise<'settled' | 'driver_not_signed'>;
   /** Fetch live receiver/driver delivery signature states */
   getP2PSignatureState: (
     orderId: string,
@@ -87,33 +95,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         }),
       ]);
 
-      // DEBUG: Log raw P2P orders and their buyer/seller fields
-      console.log('[CustomerProvider] userAddr:', userAddr.toLowerCase());
-      console.log(
-        '[CustomerProvider] allP2POrders:',
-        allP2POrders.map((o) => ({
-          id: o.id.slice(0, 10),
-          buyer: o.buyer,
-          seller: o.seller,
-          isP2P: o.isP2P,
-        })),
-      );
-
       // Customer dashboard only shows P2P orders where the user is the BUYER.
       // Seller P2P orders belong on the node dashboard (seller = node operator).
       const p2pBuyerOrders = allP2POrders.filter(
         (order) => order.buyer?.toLowerCase() === userAddr.toLowerCase(),
       );
-
-      console.log(
-        '[CustomerProvider] p2pBuyerOrders after filter:',
-        p2pBuyerOrders.map((o) => ({
-          id: o.id.slice(0, 10),
-          buyer: o.buyer,
-          seller: o.seller,
-        })),
-      );
-      console.log('[CustomerProvider] buyerOrders (CLOB):', buyerOrders.length);
 
       // Merge and deduplicate by order ID
       const seenIds = new Set<string>();
@@ -125,13 +111,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           allOrders.push(order);
         }
       }
-
-      console.log(
-        '[CustomerProvider] final allOrders count:',
-        allOrders.length,
-        'p2p:',
-        allOrders.filter((o) => o.isP2P).length,
-      );
 
       // Fetch asset details for each order
       const ordersWithAssets: OrderWithAsset[] = await Promise.all(
@@ -255,10 +234,15 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   /**
    * Sign for delivery on a P2P order.
-   * Calls packageSign on the journey, then attempts handOff if both sides signed.
+   * Calls packageSign on the journey, then auto-attempts handOff.
+   * Returns 'settled' if handOff succeeds, 'driver_not_signed' if
+   * the driver hasn't signed yet (not an error — just waiting).
    */
   const signP2PDelivery = useCallback(
-    async (orderId: string, journeyId: string) => {
+    async (
+      orderId: string,
+      journeyId: string,
+    ): Promise<'settled' | 'driver_not_signed' | 'signed'> => {
       try {
         setIsLoading(true);
         setError(null);
@@ -268,7 +252,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
 
-        // 2. Attempt handOff — works if driver has also signed for delivery
+        // 2. Auto-attempt handOff — succeeds if driver has also signed
         try {
           const handOffTx = await ausys.handOff(journeyId as any);
           await handOffTx.wait();
@@ -281,24 +265,25 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
                 : o,
             ),
           );
-        } catch (handOffErr) {
-          // handOff failed — driver hasn't signed for delivery yet, that's expected
-          if (
-            handOffErr instanceof Error &&
-            handOffErr.message.includes('0x9651c947')
-          ) {
-            // DriverNotSigned — receiver signed but driver hasn't yet
-            return;
-          }
-          // Other handOff errors — don't throw, the sign itself succeeded
-          console.warn(
-            '[CustomerProvider] handOff not ready yet:',
-            handOffErr instanceof Error ? handOffErr.message : handOffErr,
-          );
-        }
 
-        // Refresh orders to pick up updated state
-        await loadCustomerOrders();
+          await loadCustomerOrders();
+          return 'settled';
+        } catch (handOffErr) {
+          const msg =
+            handOffErr instanceof Error
+              ? handOffErr.message
+              : String(handOffErr);
+          // DriverNotSigned — expected, not an error
+          if (msg.includes('0x9651c947') || msg.includes('0x9651c547')) {
+            console.log(
+              '[CustomerProvider] signP2PDelivery: driver has not signed yet, waiting',
+            );
+            return 'driver_not_signed';
+          }
+          // Other handOff errors — the sign itself succeeded, don't throw
+          console.warn('[CustomerProvider] handOff not ready yet:', msg);
+          return 'signed';
+        }
       } catch (err) {
         console.error('[CustomerProvider] signP2PDelivery error:', err);
         setError('Failed to sign for delivery');
@@ -312,11 +297,15 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Complete the handoff on a P2P order (triggers settlement).
-   * Both buyer and driver must have signed before calling this.
+   * Attempt to complete the handoff on a P2P order (triggers settlement).
+   * If the driver hasn't signed yet, resolves with 'driver_not_signed'
+   * instead of throwing — the UI can show a waiting state.
    */
   const completeP2PHandoff = useCallback(
-    async (orderId: string, journeyId: string) => {
+    async (
+      orderId: string,
+      journeyId: string,
+    ): Promise<'settled' | 'driver_not_signed'> => {
       try {
         setIsLoading(true);
         setError(null);
@@ -334,7 +323,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
         // Also refresh from indexer
         await loadCustomerOrders();
+        return 'settled';
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // DriverNotSigned (0x9651c947 / 0x9651c547) — driver hasn't signed yet
+        if (msg.includes('0x9651c947') || msg.includes('0x9651c547')) {
+          console.log('[CustomerProvider] handOff: driver has not signed yet');
+          return 'driver_not_signed';
+        }
         console.error('[CustomerProvider] completeP2PHandoff error:', err);
         setError('Failed to complete handoff');
         handleContractError(err, 'complete P2P handoff');

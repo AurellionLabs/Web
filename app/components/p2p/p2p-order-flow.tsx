@@ -21,10 +21,17 @@ import { OrderStatus } from '@/domain/orders/order';
 
 export interface P2POrderFlowProps {
   order: OrderWithAsset;
-  /** Callback to sign for delivery (packageSign, then attempts handOff) */
-  onSignDelivery?: (orderId: string, journeyId: string) => Promise<void>;
-  /** Callback to complete handoff */
-  onCompleteHandoff?: (orderId: string, journeyId: string) => Promise<void>;
+  /** Callback to sign for delivery (packageSign, then auto-attempts handOff).
+   *  Returns 'settled', 'driver_not_signed', or 'signed'. */
+  onSignDelivery?: (
+    orderId: string,
+    journeyId: string,
+  ) => Promise<'settled' | 'driver_not_signed' | 'signed' | void>;
+  /** Callback to attempt handoff. Returns 'settled' or 'driver_not_signed'. */
+  onCompleteHandoff?: (
+    orderId: string,
+    journeyId: string,
+  ) => Promise<'settled' | 'driver_not_signed' | void>;
   /** Callback to schedule delivery for orders stuck without a journey */
   onScheduleDelivery?: (orderId: string) => void;
   /** Function to fetch live signature states from the contract */
@@ -164,6 +171,8 @@ export function P2POrderFlow({
   const [driverSigned, setDriverSigned] = useState(false);
   const [sigLoading, setSigLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Tracks whether we're waiting for the other party after a successful sign
+  const [waitingForDriver, setWaitingForDriver] = useState(false);
 
   const journeyId =
     order.journeyIds && order.journeyIds.length > 0
@@ -171,51 +180,73 @@ export function P2POrderFlow({
       : null;
 
   // Fetch live signature state when order is in transit
-  const loadSignatures = useCallback(async () => {
-    if (!fetchSignatureState || !journeyId) return;
-    const journeyStatus = order.journeyStatus ?? null;
-    const needsSigCheck =
-      journeyStatus === 1 || order.currentStatus === OrderStatus.PROCESSING;
-    if (!needsSigCheck) return;
+  const loadSignatures = useCallback(
+    async (preserveOptimistic = false) => {
+      if (!fetchSignatureState || !journeyId) return;
+      const journeyStatus = order.journeyStatus ?? null;
+      const needsSigCheck =
+        journeyStatus === 1 || order.currentStatus === OrderStatus.PROCESSING;
+      if (!needsSigCheck) return;
 
-    try {
-      setSigLoading(true);
-      const state = await fetchSignatureState(order.id, journeyId);
-      setBuyerSigned(state.buyerSigned);
-      setDriverSigned(state.driverDeliverySigned);
-    } catch (err) {
-      console.warn('[P2POrderFlow] Failed to fetch signatures:', err);
-    } finally {
-      setSigLoading(false);
-    }
-  }, [
-    fetchSignatureState,
-    journeyId,
-    order.id,
-    order.journeyStatus,
-    order.currentStatus,
-  ]);
+      try {
+        setSigLoading(true);
+        const state = await fetchSignatureState(order.id, journeyId);
+
+        // When preserving optimistic state, only UPGRADE (false→true), never downgrade
+        if (preserveOptimistic) {
+          setBuyerSigned((prev) => prev || state.buyerSigned);
+          setDriverSigned((prev) => prev || state.driverDeliverySigned);
+        } else {
+          setBuyerSigned(state.buyerSigned);
+          setDriverSigned(state.driverDeliverySigned);
+        }
+      } catch (err) {
+        console.warn('[P2POrderFlow] Failed to fetch signatures:', err);
+      } finally {
+        setSigLoading(false);
+      }
+    },
+    [
+      fetchSignatureState,
+      journeyId,
+      order.id,
+      order.journeyStatus,
+      order.currentStatus,
+    ],
+  );
 
   useEffect(() => {
     loadSignatures();
   }, [loadSignatures]);
 
   const currentStep = getCurrentStepIndex(order, buyerSigned, driverSigned);
-  const statusMessage = getStatusMessage(
-    currentStep,
-    buyerSigned,
-    driverSigned,
-  );
+  const statusMessage = waitingForDriver
+    ? 'Your delivery signature has been recorded. Waiting for driver to sign.'
+    : getStatusMessage(currentStep, buyerSigned, driverSigned);
 
   // Action handlers
   const handleSignDelivery = async () => {
     if (!onSignDelivery || !journeyId) return;
     setActionError(null);
+    setWaitingForDriver(false);
     try {
-      await onSignDelivery(order.id, journeyId);
+      const result = await onSignDelivery(order.id, journeyId);
+
+      // Always set buyer as signed — the packageSign succeeded
       setBuyerSigned(true);
-      // Re-check signatures after signing
-      await loadSignatures();
+
+      if (result === 'settled') {
+        // HandOff succeeded — both signed, order settled
+        setDriverSigned(true);
+        setWaitingForDriver(false);
+      } else if (result === 'driver_not_signed') {
+        // Driver hasn't signed yet — show waiting state
+        setWaitingForDriver(true);
+      } else {
+        // 'signed' or void — re-check after a delay to let indexer catch up
+        setWaitingForDriver(true);
+        setTimeout(() => loadSignatures(true), 3000);
+      }
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : 'Failed to sign for delivery',
@@ -227,7 +258,14 @@ export function P2POrderFlow({
     if (!onCompleteHandoff || !journeyId) return;
     setActionError(null);
     try {
-      await onCompleteHandoff(order.id, journeyId);
+      const result = await onCompleteHandoff(order.id, journeyId);
+
+      if (result === 'driver_not_signed') {
+        // Not an error — driver hasn't signed yet
+        setWaitingForDriver(true);
+        setDriverSigned(false);
+      }
+      // 'settled' → the provider already updated the order state
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : 'Failed to complete handoff',
@@ -243,11 +281,13 @@ export function P2POrderFlow({
   const showSignButton =
     currentStep === 2 &&
     !buyerSigned &&
+    !waitingForDriver &&
     order.currentStatus !== OrderStatus.SETTLED;
   const showHandoffButton =
     currentStep === 3 &&
     buyerSigned &&
     driverSigned &&
+    !waitingForDriver &&
     order.currentStatus !== OrderStatus.SETTLED;
 
   return (
@@ -343,6 +383,16 @@ export function P2POrderFlow({
             )}
           >
             Driver: {driverSigned ? 'Signed' : 'Pending'}
+          </span>
+        </div>
+      )}
+
+      {/* Waiting for driver indicator */}
+      {waitingForDriver && order.currentStatus !== OrderStatus.SETTLED && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+          <span className="text-sm text-amber-300">
+            Waiting for driver to sign for delivery
           </span>
         </div>
       )}
