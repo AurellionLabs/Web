@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useDriver } from '@/app/providers/driver.provider';
 import {
@@ -43,6 +43,14 @@ import {
 import { DeliveryActionDialog } from '@/app/components/ui/delivery-action-dialog';
 import { Delivery, DeliveryStatus } from '@/domain/driver';
 import { cn } from '@/lib/utils';
+import { useWallet } from '@/hooks/useWallet';
+import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import {
+  GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+  type EmitSigEventsByJourneyResponse,
+} from '@/infrastructure/shared/graph-queries';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 type TabType = 'available' | 'my-deliveries';
 
@@ -272,6 +280,7 @@ export default function DriverDashboard() {
     startJourney,
   } = useDriver();
   const { toast } = useToast();
+  const { address } = useWallet();
   const [activeTab, setActiveTab] = useState<TabType>('available');
   // Local status overrides (e.g., driver signed but waiting for sender)
   const [statusOverrides, setStatusOverrides] = useState<
@@ -281,6 +290,9 @@ export default function DriverDashboard() {
   const [waitingForCustomerJobs, setWaitingForCustomerJobs] = useState<
     Set<string>
   >(new Set());
+
+  // Ref to avoid re-checking the same delivery jobs on every render
+  const checkedDeliveryJobsRef = useRef<Set<string>>(new Set());
 
   const [filters, setFilters] = useState({
     jobId: '',
@@ -296,12 +308,97 @@ export default function DriverDashboard() {
     setCurrentUserRole('driver');
   }, [setCurrentUserRole]);
 
-  // Apply local status overrides (e.g., AWAITING_SENDER)
-  const effectiveMyDeliveries = myDeliveries.map((d) =>
-    statusOverrides[d.jobId] !== undefined
-      ? { ...d, currentStatus: statusOverrides[d.jobId] }
-      : d,
-  );
+  // On load/refresh, check EmitSig events for PICKED_UP deliveries to restore
+  // the "waiting for customer" state (waitingForCustomerJobs is local React
+  // state and resets on reload). Pickup-phase checking is handled by the
+  // DriverProvider which sets AWAITING_SENDER directly on delivery objects.
+  useEffect(() => {
+    const checkDeliverySignatures = async () => {
+      if (!address || myDeliveries.length === 0) return;
+      const driverAddr = address.toLowerCase();
+
+      const uncheckedPickedUp = myDeliveries.filter(
+        (d) =>
+          d.currentStatus === DeliveryStatus.PICKED_UP &&
+          !checkedDeliveryJobsRef.current.has(d.jobId),
+      );
+
+      if (uncheckedPickedUp.length === 0) return;
+
+      uncheckedPickedUp.forEach((d) =>
+        checkedDeliveryJobsRef.current.add(d.jobId),
+      );
+      const newWaitingJobs = new Set<string>();
+
+      await Promise.all(
+        uncheckedPickedUp.map(async (delivery) => {
+          try {
+            const ausys = RepositoryContext.getInstance().getAusysContract();
+            const journey = await ausys.getJourney(delivery.jobId as any);
+            const pickupTimestamp = Number(journey.journeyStart);
+            const receiverAddr = journey.receiver.toLowerCase();
+
+            const sigResponse =
+              await graphqlRequest<EmitSigEventsByJourneyResponse>(
+                NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+                GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+                { journeyId: delivery.jobId, limit: 50 },
+              );
+
+            const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
+            // Only sigs after journey started count as delivery sigs
+            const deliverySigs = sigEvents.filter(
+              (e) => Number(e.block_timestamp) > pickupTimestamp,
+            );
+
+            const driverDeliverySigned = deliverySigs.some(
+              (e) => e.user.toLowerCase() === driverAddr,
+            );
+            const receiverSigned = deliverySigs.some(
+              (e) => e.user.toLowerCase() === receiverAddr,
+            );
+
+            if (driverDeliverySigned && !receiverSigned) {
+              newWaitingJobs.add(delivery.jobId);
+              console.log(
+                `[DriverDashboard] Restored waitingForCustomer for ${delivery.jobId}`,
+              );
+            }
+          } catch (err) {
+            checkedDeliveryJobsRef.current.delete(delivery.jobId);
+            console.warn(
+              `[DriverDashboard] Delivery sig check failed for ${delivery.jobId}:`,
+              err,
+            );
+          }
+        }),
+      );
+
+      if (newWaitingJobs.size > 0) {
+        setWaitingForCustomerJobs(
+          (prev) => new Set([...prev, ...newWaitingJobs]),
+        );
+      }
+    };
+
+    checkDeliverySignatures();
+  }, [myDeliveries, address]);
+
+  // Apply local status overrides (e.g., AWAITING_SENDER), but only when still
+  // relevant. If the underlying delivery has progressed (e.g., ACCEPTED → PICKED_UP),
+  // ignore the stale override so the real status takes precedence.
+  const effectiveMyDeliveries = myDeliveries.map((d) => {
+    const override = statusOverrides[d.jobId];
+    if (override === undefined) return d;
+    // AWAITING_SENDER only applies while the delivery is still ACCEPTED
+    if (
+      override === DeliveryStatus.AWAITING_SENDER &&
+      d.currentStatus !== DeliveryStatus.ACCEPTED
+    ) {
+      return d;
+    }
+    return { ...d, currentStatus: override };
+  });
 
   // Filter deliveries
   const filteredMyDeliveries = effectiveMyDeliveries.filter(

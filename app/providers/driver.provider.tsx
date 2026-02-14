@@ -6,7 +6,15 @@ import { Delivery, DeliveryStatus } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { Ausys__factory } from '@/lib/contracts';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+} from '@/chain-constants';
+import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import {
+  GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+  type EmitSigEventsByJourneyResponse,
+} from '@/infrastructure/shared/graph-queries';
 
 export interface DriverContextType {
   availableDeliveries: Delivery[];
@@ -83,8 +91,46 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         (d) => !myJobIds.has(d.jobId.toLowerCase()),
       );
 
+      // Check EmitSig events for ACCEPTED deliveries to detect if driver
+      // has already signed for pickup (restore AWAITING_SENDER on reload)
+      const driverAddr = driverWalletAddress.toLowerCase();
+      const mineWithSigState = await Promise.all(
+        mineWithETA.map(async (delivery) => {
+          if (delivery.currentStatus !== DeliveryStatus.ACCEPTED) {
+            return delivery;
+          }
+          try {
+            const sigResponse =
+              await graphqlRequest<EmitSigEventsByJourneyResponse>(
+                NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+                GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+                { journeyId: delivery.jobId, limit: 50 },
+              );
+            const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
+            const driverSigned = sigEvents.some(
+              (e) => e.user.toLowerCase() === driverAddr,
+            );
+            if (driverSigned) {
+              console.log(
+                `[DriverProvider] Driver already signed for pickup on ${delivery.jobId}, setting AWAITING_SENDER`,
+              );
+              return {
+                ...delivery,
+                currentStatus: DeliveryStatus.AWAITING_SENDER,
+              };
+            }
+          } catch (err) {
+            console.warn(
+              `[DriverProvider] EmitSig check failed for ${delivery.jobId}:`,
+              err,
+            );
+          }
+          return delivery;
+        }),
+      );
+
       setAvailableDeliveries(dedupedAvailable);
-      setMyDeliveries(mineWithETA);
+      setMyDeliveries(mineWithSigState);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to load deliveries',
