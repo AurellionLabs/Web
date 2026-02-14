@@ -79,7 +79,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       const userAddr = address;
 
       // Fetch CLOB buyer orders and P2P orders in parallel
-      const [buyerOrders, p2pOrders] = await Promise.all([
+      const [buyerOrders, allP2POrders] = await Promise.all([
         orderRepository.getBuyerOrders(userAddr),
         orderRepository.getP2POrdersForUser(userAddr).catch((err) => {
           console.warn('[CustomerProvider] Failed to load P2P orders:', err);
@@ -87,10 +87,16 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         }),
       ]);
 
-      // Merge and deduplicate by order ID (P2P orders use different IDs)
+      // Customer dashboard only shows P2P orders where the user is the BUYER.
+      // Seller P2P orders belong on the node dashboard (seller = node operator).
+      const p2pBuyerOrders = allP2POrders.filter(
+        (order) => order.buyer?.toLowerCase() === userAddr.toLowerCase(),
+      );
+
+      // Merge and deduplicate by order ID
       const seenIds = new Set<string>();
       const allOrders: Order[] = [];
-      for (const order of [...buyerOrders, ...p2pOrders]) {
+      for (const order of [...buyerOrders, ...p2pBuyerOrders]) {
         const oid = order.id.toLowerCase();
         if (!seenIds.has(oid)) {
           seenIds.add(oid);
