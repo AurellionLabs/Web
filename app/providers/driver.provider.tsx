@@ -1,9 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { ethers } from 'ethers';
 import { Delivery } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { Ausys__factory } from '@/lib/contracts';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 
 export interface DriverContextType {
   availableDeliveries: Delivery[];
@@ -85,6 +88,34 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Ensure the contract's signer matches the wallet address.
+   * If there's a mismatch (e.g. after account switch), reconnect the contract
+   * with a fresh signer derived from the current wallet.
+   */
+  const getSignerAlignedContract = async () => {
+    const ausys = repoContext.getAusysContract();
+    const storedSigner = repoContext.getSigner();
+    const signerAddr = await storedSigner.getAddress();
+
+    if (signerAddr.toLowerCase() !== driverWalletAddress!.toLowerCase()) {
+      console.warn(
+        `[DriverProvider] Signer mismatch: signer=${signerAddr}, wallet=${driverWalletAddress}. Reconnecting contract...`,
+      );
+      // Re-derive signer from the stored signer's provider
+      const provider = storedSigner.provider;
+      if (provider && provider instanceof ethers.BrowserProvider) {
+        const freshSigner = await provider.getSigner();
+        return Ausys__factory.connect(NEXT_PUBLIC_DIAMOND_ADDRESS, freshSigner);
+      }
+      // Fallback: return existing contract (may still fail)
+      console.warn(
+        '[DriverProvider] Could not reconnect; using existing signer',
+      );
+    }
+    return ausys;
+  };
+
   const acceptDelivery = async (jobId: string) => {
     if (!driverWalletAddress) {
       setError('Wallet not connected');
@@ -95,9 +126,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      const ausys = repoContext.getAusysContract();
+      const ausys = await getSignerAlignedContract();
 
-      // Check and grant DRIVER_ROLE if needed
+      // Check and grant DRIVER_ROLE if needed (best-effort; contract enforces it)
       try {
         console.log('[Accept] Checking driver role for', driverWalletAddress);
         const DRIVER_ROLE = await (ausys as any).DRIVER_ROLE();
@@ -110,7 +141,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
           console.log(
             '[Accept] Driver role not found, attempting to grant via setDriver...',
           );
-          // Try to self-grant driver role (requires ADMIN_ROLE or contract owner)
           try {
             const tx = await (ausys as any).setDriver(
               driverWalletAddress,
@@ -120,28 +150,38 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
             console.log('[Accept] Driver role granted successfully');
           } catch (roleErr) {
             console.warn('[Accept] Could not auto-grant driver role:', roleErr);
-            setError(
-              'You need DRIVER_ROLE to accept deliveries. Please contact an admin.',
-            );
-            throw new Error(
-              'Missing DRIVER_ROLE. Contact admin to grant driver permissions.',
-            );
+            // Don't throw here — let assignDriverToJourney attempt and fail
+            // with a clear InvalidCaller error if the role is truly missing.
           }
         } else {
           console.log('[Accept] Driver role already granted');
         }
-      } catch (e) {
-        console.error('[Accept] Role check/grant failed:', e);
-        // Continue anyway in case role check failed but user actually has role
+      } catch (roleCheckErr) {
+        console.error('[Accept] Role check failed (non-fatal):', roleCheckErr);
+        // Continue anyway — the contract will enforce the role check
       }
 
       // Assign driver to journey
+      console.log(
+        '[Accept] Calling assignDriverToJourney',
+        driverWalletAddress,
+        jobId,
+      );
       await ausys.assignDriverToJourney(driverWalletAddress!, jobId as any);
       await refreshDeliveries();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to accept delivery',
-      );
+      const msg = err instanceof Error ? err.message : String(err);
+
+      // Decode InvalidCaller (0x48f5c3ed) — caller not authorized or missing role
+      if (msg.includes('0x48f5c3ed') || msg.includes('InvalidCaller')) {
+        setError(
+          'Your wallet is not authorized to accept this delivery. ' +
+            'Please ensure you are using the correct wallet and have the DRIVER_ROLE. ' +
+            'Try refreshing the page.',
+        );
+      } else {
+        setError(msg || 'Failed to accept delivery');
+      }
       throw err;
     } finally {
       setIsLoading(false);
@@ -158,7 +198,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      const ausys = repoContext.getAusysContract();
+      const ausys = await getSignerAlignedContract();
 
       // Debug: Check journey details
       console.log('[confirmPickup] Driver address:', driverWalletAddress);
@@ -197,7 +237,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
 
     try {
-      const ausys = repoContext.getAusysContract();
+      const ausys = await getSignerAlignedContract();
       const tx = await ausys.handOn(jobId as any);
       await tx.wait();
       await refreshDeliveries();
@@ -227,7 +267,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      const ausys = repoContext.getAusysContract();
+      const ausys = await getSignerAlignedContract();
 
       // 1. Sign for delivery (driver confirms delivery)
       const signTx = await ausys.packageSign(jobId as any);
@@ -278,7 +318,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      const ausys = repoContext.getAusysContract();
+      const ausys = await getSignerAlignedContract();
 
       // Log journey status before signing
       const journey = await ausys.getJourney(jobId as any);

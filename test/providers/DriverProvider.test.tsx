@@ -58,9 +58,17 @@ const mockRepository = {
   getMyDeliveries: vi.fn().mockResolvedValue([]),
 };
 
+const mockSigner = {
+  getAddress: vi
+    .fn()
+    .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c'),
+  provider: null,
+};
+
 const mockRepoContext = {
   getAusysContract: vi.fn().mockReturnValue(mockDiamondContract),
   getDriverRepository: vi.fn().mockReturnValue(mockRepository),
+  getSigner: vi.fn().mockReturnValue(mockSigner),
 };
 
 vi.mock('@/infrastructure/contexts/repository-context', () => {
@@ -81,6 +89,13 @@ vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_AUSYS_SUBGRAPH_URL: 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'http://localhost:42069',
   NEXT_PUBLIC_AURA_GOAT_ADDRESS: '0x0000000000000000000000000000000000000001',
+  NEXT_PUBLIC_DIAMOND_ADDRESS: '0x0000000000000000000000000000000000000002',
+}));
+
+vi.mock('@/lib/contracts', () => ({
+  Ausys__factory: {
+    connect: vi.fn().mockImplementation(() => mockDiamondContract),
+  },
 }));
 
 // Mock calculateETA to avoid network calls
@@ -116,6 +131,10 @@ describe('DriverProvider', () => {
     mockRepoContext.getDriverRepository = vi
       .fn()
       .mockReturnValue(mockRepository);
+    mockRepoContext.getSigner = vi.fn().mockReturnValue(mockSigner);
+    mockSigner.getAddress = vi
+      .fn()
+      .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c');
   });
 
   afterEach(() => {

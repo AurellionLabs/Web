@@ -436,8 +436,21 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         );
         await journeyTx.wait();
 
-        // Refresh orders to pick up the new journey
+        // Wait for indexer to catch up (eventual consistency) then refresh.
+        // The indexer typically needs 2-4s to process a new block.
+        console.log(
+          '[CustomerProvider] Journey tx confirmed. Waiting for indexer...',
+        );
+        await new Promise((r) => setTimeout(r, 3000));
         await loadCustomerOrders();
+
+        // Schedule a second refresh in case the first was too early
+        setTimeout(() => {
+          console.log(
+            '[CustomerProvider] Doing follow-up refresh for journey indexing.',
+          );
+          loadCustomerOrders();
+        }, 5000);
       } catch (err) {
         console.error('[CustomerProvider] createP2PJourney error:', err);
         setError('Failed to create delivery journey');

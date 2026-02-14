@@ -385,9 +385,22 @@ export default function DriverDashboard() {
       });
       setActiveTab('my-deliveries');
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Show a user-friendly message for known contract errors
+      let description = 'Failed to accept delivery. Please try again.';
+      if (msg.includes('0x48f5c3ed') || msg.includes('InvalidCaller')) {
+        description =
+          'Your wallet is not authorized. Ensure you have the Driver role and try refreshing the page.';
+      } else if (
+        msg.includes('0xd5391167') ||
+        msg.includes('DriverMaxAssignment')
+      ) {
+        description =
+          'Maximum delivery assignments reached. Complete existing deliveries first.';
+      }
       toast({
         title: 'Error',
-        description: 'Failed to accept delivery. Please try again.',
+        description,
         variant: 'destructive',
       });
     }
