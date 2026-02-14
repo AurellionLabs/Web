@@ -345,14 +345,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   /**
    * Fetch live receiver/driver delivery signature states.
    *
-   * Uses two data sources:
-   * 1. Journey currentStatus from the contract (definitive for completed states)
-   * 2. EmitSig events from the indexer (tracks individual packageSign calls)
-   *
-   * Contract packageSign emits EmitSig(address user, bytes32 id):
-   * - Receiver can only sign during InTransit (status 1), so any receiver EmitSig → buyerSigned
-   * - Driver signs once for pickup (status 0) and once for delivery (status 1),
-   *   so 2+ driver EmitSig events → driverDeliverySigned
+   * Uses journey.journeyStart (set when handOn succeeds) to distinguish
+   * pickup sigs from delivery sigs. Only EmitSig events AFTER journeyStart
+   * count as delivery signatures.
    */
   const getP2PSignatureState = useCallback(
     async (
@@ -369,7 +364,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           return { buyerSigned: true, driverDeliverySigned: true };
         }
 
-        // For InTransit, query EmitSig events to determine who has signed
+        // For InTransit, query EmitSig events AFTER journeyStart
         if (status === 1) {
           try {
             const sigResponse =
@@ -382,22 +377,23 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
             const receiver = journey.receiver.toLowerCase();
             const driver = journey.driver.toLowerCase();
+            // journeyStart is set when handOn succeeds (pickup complete)
+            const pickupTimestamp = Number(journey.journeyStart);
 
-            // Receiver can only sign during InTransit → any match = buyerSigned
-            const buyerSigned = sigEvents.some(
-              (e) => e.user.toLowerCase() === receiver,
+            // Only sigs AFTER pickup count as delivery sigs
+            const deliverySigs = sigEvents.filter(
+              (e) => Number(e.block_timestamp) > pickupTimestamp,
             );
 
-            // Driver signs once for pickup (status 0), once for delivery (status 1)
-            // 2+ driver sigs = both pickup + delivery signed
-            const driverSigCount = sigEvents.filter(
+            const buyerSigned = deliverySigs.some(
+              (e) => e.user.toLowerCase() === receiver,
+            );
+            const driverDeliverySigned = deliverySigs.some(
               (e) => e.user.toLowerCase() === driver,
-            ).length;
-            const driverDeliverySigned = driverSigCount >= 2;
+            );
 
             return { buyerSigned, driverDeliverySigned };
           } catch (indexerErr) {
-            // Indexer unavailable — fall back to safe defaults
             console.warn(
               '[CustomerProvider] EmitSig query failed, using defaults:',
               indexerErr,

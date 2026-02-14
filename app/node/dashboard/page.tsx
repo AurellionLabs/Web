@@ -237,7 +237,7 @@ export default function NodeDashboardPage() {
 
   /**
    * Fetch live signature states for a P2P order's journey.
-   * Uses EmitSig events from the indexer + contract journey state.
+   * Uses journey.journeyStart to distinguish pickup sigs from delivery sigs.
    */
   const getP2PSignatureState = async (
     _orderId: string,
@@ -249,12 +249,10 @@ export default function NodeDashboardPage() {
       const journey = await ausys.getJourney(journeyId as any);
       const status = Number(journey.currentStatus);
 
-      // Delivered means both parties signed and handOff succeeded
       if (status >= 2) {
         return { buyerSigned: true, driverDeliverySigned: true };
       }
 
-      // For InTransit, query EmitSig events
       if (status === 1) {
         try {
           const sigResponse =
@@ -267,14 +265,19 @@ export default function NodeDashboardPage() {
           const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
           const receiver = journey.receiver.toLowerCase();
           const driver = journey.driver.toLowerCase();
+          const pickupTimestamp = Number(journey.journeyStart);
 
-          const buyerSigned = sigEvents.some(
+          // Only sigs AFTER pickup count as delivery sigs
+          const deliverySigs = sigEvents.filter(
+            (e) => Number(e.block_timestamp) > pickupTimestamp,
+          );
+
+          const buyerSigned = deliverySigs.some(
             (e) => e.user.toLowerCase() === receiver,
           );
-          const driverSigCount = sigEvents.filter(
+          const driverDeliverySigned = deliverySigs.some(
             (e) => e.user.toLowerCase() === driver,
-          ).length;
-          const driverDeliverySigned = driverSigCount >= 2;
+          );
 
           return { buyerSigned, driverDeliverySigned };
         } catch (indexerErr) {

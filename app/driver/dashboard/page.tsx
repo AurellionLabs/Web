@@ -445,19 +445,33 @@ export default function DriverDashboard() {
 
   const handleCompleteDelivery = async (jobId: string) => {
     try {
-      await packageSign(jobId);
-      await completeDelivery(jobId);
-      toast({
-        title: 'Delivery Confirmed',
-        description: 'You have successfully delivered the parcel.',
-      });
+      // completeDelivery now handles both packageSign + auto-attempt handOff
+      const result = await completeDelivery(jobId);
+
+      if (result === 'settled') {
+        toast({
+          title: 'Delivery Complete',
+          description: 'Both parties have signed. Order has been settled.',
+        });
+      } else if (result === 'receiver_not_signed') {
+        toast({
+          title: 'Delivery Signed',
+          description:
+            'Your signature has been recorded. Waiting for customer to sign.',
+        });
+      } else {
+        toast({
+          title: 'Delivery Signed',
+          description: 'Your delivery signature has been recorded.',
+        });
+      }
     } catch (err) {
       toast({
         title: 'Error',
         description:
           err instanceof Error
             ? err.message
-            : 'Failed to confirm delivery. Please try again.',
+            : 'Failed to sign for delivery. Please try again.',
         variant: 'destructive',
       });
     }

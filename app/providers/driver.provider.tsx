@@ -13,7 +13,9 @@ export interface DriverContextType {
   refreshDeliveries: () => Promise<void>;
   acceptDelivery: (jobId: string) => Promise<void>;
   confirmPickup: (jobId: string) => Promise<void>;
-  completeDelivery: (jobId: string) => Promise<void>;
+  completeDelivery: (
+    jobId: string,
+  ) => Promise<'settled' | 'receiver_not_signed' | 'signed'>;
   packageSign: (jobId: string) => Promise<void>;
   startJourney: (jobId: string) => Promise<void>;
 }
@@ -208,10 +210,17 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const completeDelivery = async (jobId: string) => {
+  /**
+   * Complete delivery: sign for delivery (packageSign) then auto-attempt handOff.
+   * If handOff fails because receiver hasn't signed yet, that's expected — not an error.
+   * Returns 'settled' if handOff succeeds, 'receiver_not_signed' if receiver hasn't signed.
+   */
+  const completeDelivery = async (
+    jobId: string,
+  ): Promise<'settled' | 'receiver_not_signed' | 'signed'> => {
     if (!driverWalletAddress) {
       setError('Wallet not connected');
-      return;
+      return 'signed';
     }
 
     setIsLoading(true);
@@ -220,25 +229,38 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     try {
       const ausys = repoContext.getAusysContract();
 
-      // Log journey status before calling handOff
-      const journey = await ausys.getJourney(jobId as any);
-      console.log(
-        '[DriverProvider] completeDelivery - Status before handOff:',
-        {
-          jobId,
-          journeyStatus: journey.currentStatus.toString(),
-          driver: journey.driver,
-          receiver: journey.receiver,
-        },
-      );
+      // 1. Sign for delivery (driver confirms delivery)
+      const signTx = await ausys.packageSign(jobId as any);
+      await signTx.wait();
 
-      const tx = await ausys.handOff(jobId as any);
-      await tx.wait();
-      await refreshDeliveries();
+      // 2. Auto-attempt handOff — succeeds if receiver has also signed
+      try {
+        const handOffTx = await ausys.handOff(jobId as any);
+        await handOffTx.wait();
+        await refreshDeliveries();
+        return 'settled';
+      } catch (handOffErr) {
+        const msg =
+          handOffErr instanceof Error ? handOffErr.message : String(handOffErr);
+        // ReceiverNotSigned or DriverNotSigned — expected, not an error
+        if (
+          msg.includes('0x9651c947') ||
+          msg.includes('0x9651c547') ||
+          msg.includes('ReceiverNotSigned')
+        ) {
+          console.log('[DriverProvider] handOff: receiver has not signed yet');
+          await refreshDeliveries();
+          return 'receiver_not_signed';
+        }
+        // Other errors — the sign itself succeeded, don't crash
+        console.warn('[DriverProvider] handOff not ready yet:', msg);
+        await refreshDeliveries();
+        return 'signed';
+      }
     } catch (err) {
-      console.error('[DriverProvider] handOff error:', err);
+      console.error('[DriverProvider] completeDelivery error:', err);
       setError(
-        err instanceof Error ? err.message : 'Failed to complete delivery',
+        err instanceof Error ? err.message : 'Failed to sign for delivery',
       );
       throw err;
     } finally {

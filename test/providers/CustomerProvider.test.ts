@@ -121,106 +121,122 @@ describe('Customer Provider Business Logic', () => {
       expect(status >= 2).toBe(true);
     });
 
-    it('should query EmitSig events when status is 1 (InTransit)', async () => {
-      const ausys = makeAusysContract({
-        getJourney: vi.fn().mockResolvedValue({
-          currentStatus: BigInt(1),
-          sender: '0xSender',
-          receiver: '0xReceiver',
-          driver: '0xDriver',
-        }),
-      });
-
-      // Simulate: receiver has signed, driver has 2 sigs (pickup + delivery)
-      graphqlRequestMock.mockResolvedValueOnce({
-        diamondEmitSigEventss: {
-          items: [
-            {
-              user: '0xsender',
-              event_id: '0xJourney1',
-              block_timestamp: '100',
-            },
-            {
-              user: '0xdriver',
-              event_id: '0xJourney1',
-              block_timestamp: '101',
-            },
-            {
-              user: '0xreceiver',
-              event_id: '0xJourney1',
-              block_timestamp: '200',
-            },
-            {
-              user: '0xdriver',
-              event_id: '0xJourney1',
-              block_timestamp: '201',
-            },
-          ],
-        },
-      });
-
-      const journey = await ausys.getJourney('0xJourney1');
-      const status = Number(journey.currentStatus);
-      expect(status).toBe(1);
-
-      // Now simulate the indexer query
-      const sigResponse = await graphqlRequestMock();
-      const sigEvents = sigResponse.diamondEmitSigEventss.items;
-      const receiver = journey.receiver.toLowerCase();
-      const driver = journey.driver.toLowerCase();
-
-      const buyerSigned = sigEvents.some(
-        (e: any) => e.user.toLowerCase() === receiver,
-      );
-      const driverSigCount = sigEvents.filter(
-        (e: any) => e.user.toLowerCase() === driver,
-      ).length;
-      const driverDeliverySigned = driverSigCount >= 2;
-
-      expect(buyerSigned).toBe(true);
-      expect(driverDeliverySigned).toBe(true);
-    });
-
-    it('should return both false when status is 1 and no delivery signatures exist', async () => {
-      // Only pickup signatures (sender + driver once each)
+    it('should use journeyStart timestamp to distinguish delivery sigs from pickup sigs', async () => {
+      // journeyStart = 150 (pickup completed at this time)
+      // Sigs before 150 are pickup sigs, sigs after 150 are delivery sigs
+      const pickupTimestamp = 150;
       const sigEvents = [
-        { user: '0xsender', event_id: '0xJourney1', block_timestamp: '100' },
-        { user: '0xdriver', event_id: '0xJourney1', block_timestamp: '101' },
+        // Pickup phase sigs (before journeyStart)
+        { user: '0xsender', event_id: '0xJ', block_timestamp: '100' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '101' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '102' }, // extra driver pickup sig
+        // Delivery phase sigs (after journeyStart)
+        { user: '0xreceiver', event_id: '0xJ', block_timestamp: '200' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '201' },
       ];
 
       const receiver = '0xreceiver';
       const driver = '0xdriver';
 
-      const buyerSigned = sigEvents.some(
+      // Only sigs AFTER pickupTimestamp count as delivery sigs
+      const deliverySigs = sigEvents.filter(
+        (e) => Number(e.block_timestamp) > pickupTimestamp,
+      );
+
+      const buyerSigned = deliverySigs.some(
         (e) => e.user.toLowerCase() === receiver,
       );
-      const driverSigCount = sigEvents.filter(
+      const driverDeliverySigned = deliverySigs.some(
         (e) => e.user.toLowerCase() === driver,
-      ).length;
-      const driverDeliverySigned = driverSigCount >= 2;
+      );
 
-      expect(buyerSigned).toBe(false);
-      expect(driverDeliverySigned).toBe(false); // only 1 driver sig = pickup only
+      expect(buyerSigned).toBe(true);
+      expect(driverDeliverySigned).toBe(true);
+      // Old logic would have said driverSigCount=3 >= 2 → true (accidentally correct here)
+      // but the new logic is correct for the right reason
     });
 
-    it('should detect buyer signed but driver not yet for delivery', async () => {
-      // Receiver signed, but driver only signed once (pickup)
+    it('should return driverSigned=false when all driver sigs are from pickup phase', async () => {
+      // journeyStart = 150
+      // Driver signed 4 times during pickup but never during delivery
+      const pickupTimestamp = 150;
       const sigEvents = [
         { user: '0xsender', event_id: '0xJ', block_timestamp: '100' },
         { user: '0xdriver', event_id: '0xJ', block_timestamp: '101' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '102' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '103' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '104' },
+        // Receiver signed for delivery
         { user: '0xreceiver', event_id: '0xJ', block_timestamp: '200' },
       ];
 
       const receiver = '0xreceiver';
       const driver = '0xdriver';
 
-      const buyerSigned = sigEvents.some(
+      const deliverySigs = sigEvents.filter(
+        (e) => Number(e.block_timestamp) > pickupTimestamp,
+      );
+
+      const buyerSigned = deliverySigs.some(
         (e) => e.user.toLowerCase() === receiver,
       );
-      const driverSigCount = sigEvents.filter(
+      const driverDeliverySigned = deliverySigs.some(
         (e) => e.user.toLowerCase() === driver,
-      ).length;
-      const driverDeliverySigned = driverSigCount >= 2;
+      );
+
+      expect(buyerSigned).toBe(true);
+      // Key assertion: driver has NOT signed for delivery despite 4 total sigs
+      expect(driverDeliverySigned).toBe(false);
+    });
+
+    it('should return both false when no sigs exist after pickup', async () => {
+      const pickupTimestamp = 150;
+      // Only pickup sigs
+      const sigEvents = [
+        { user: '0xsender', event_id: '0xJ', block_timestamp: '100' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '101' },
+      ];
+
+      const receiver = '0xreceiver';
+      const driver = '0xdriver';
+
+      const deliverySigs = sigEvents.filter(
+        (e) => Number(e.block_timestamp) > pickupTimestamp,
+      );
+
+      const buyerSigned = deliverySigs.some(
+        (e) => e.user.toLowerCase() === receiver,
+      );
+      const driverDeliverySigned = deliverySigs.some(
+        (e) => e.user.toLowerCase() === driver,
+      );
+
+      expect(buyerSigned).toBe(false);
+      expect(driverDeliverySigned).toBe(false);
+    });
+
+    it('should detect buyer signed but driver not yet for delivery', async () => {
+      const pickupTimestamp = 150;
+      const sigEvents = [
+        { user: '0xsender', event_id: '0xJ', block_timestamp: '100' },
+        { user: '0xdriver', event_id: '0xJ', block_timestamp: '101' },
+        // Only receiver signed after pickup
+        { user: '0xreceiver', event_id: '0xJ', block_timestamp: '200' },
+      ];
+
+      const receiver = '0xreceiver';
+      const driver = '0xdriver';
+
+      const deliverySigs = sigEvents.filter(
+        (e) => Number(e.block_timestamp) > pickupTimestamp,
+      );
+
+      const buyerSigned = deliverySigs.some(
+        (e) => e.user.toLowerCase() === receiver,
+      );
+      const driverDeliverySigned = deliverySigs.some(
+        (e) => e.user.toLowerCase() === driver,
+      );
 
       expect(buyerSigned).toBe(true);
       expect(driverDeliverySigned).toBe(false);
