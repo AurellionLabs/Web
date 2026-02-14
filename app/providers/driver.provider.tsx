@@ -307,7 +307,24 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       try {
         const handOffTx = await ausys.handOff(jobId as any);
         await handOffTx.wait();
-        await refreshDeliveries();
+
+        // Optimistically update this delivery to completed
+        setMyDeliveries((prev) =>
+          prev.map((d) =>
+            d.jobId === jobId
+              ? { ...d, currentStatus: DeliveryStatus.COMPLETED }
+              : d,
+          ),
+        );
+
+        // Delay indexer refresh so optimistic state isn't overwritten
+        setTimeout(async () => {
+          console.log(
+            '[DriverProvider] Refreshing deliveries after settlement...',
+          );
+          await refreshDeliveries();
+        }, 5000);
+
         return 'settled';
       } catch (handOffErr) {
         const msg =

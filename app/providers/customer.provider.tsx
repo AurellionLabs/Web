@@ -278,7 +278,15 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             ),
           );
 
-          await loadCustomerOrders();
+          // Delay indexer refresh so the optimistic SETTLED status isn't
+          // overwritten by stale PROCESSING data from the indexer.
+          setTimeout(async () => {
+            console.log(
+              '[CustomerProvider] Refreshing orders after settlement...',
+            );
+            await loadCustomerOrders();
+          }, 5000);
+
           return 'settled';
         } catch (handOffErr) {
           const msg =

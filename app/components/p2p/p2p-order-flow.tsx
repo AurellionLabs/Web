@@ -192,6 +192,9 @@ export function P2POrderFlow({
   // Pickup signature states from EmitSig events
   const [senderPickupSigned, setSenderPickupSigned] = useState(false);
   const [driverPickupSigned, setDriverPickupSigned] = useState(false);
+  // Local settled flag — set when handOff succeeds, so we don't wait for
+  // the order prop to update from the indexer before showing step 4
+  const [localSettled, setLocalSettled] = useState(false);
 
   const journeyId =
     order.journeyIds && order.journeyIds.length > 0
@@ -249,7 +252,9 @@ export function P2POrderFlow({
     loadSignatures();
   }, [loadSignatures]);
 
-  const currentStep = getCurrentStepIndex(order, buyerSigned, driverSigned);
+  const currentStep = localSettled
+    ? 4
+    : getCurrentStepIndex(order, buyerSigned, driverSigned);
 
   // Build status message with pickup awareness
   let statusMessage: string;
@@ -290,6 +295,7 @@ export function P2POrderFlow({
         // HandOff succeeded — both signed, order settled
         setDriverSigned(true);
         setWaitingForDriver(false);
+        setLocalSettled(true);
       } else if (result === 'driver_not_signed') {
         // Driver hasn't signed yet — show waiting state
         setWaitingForDriver(true);
