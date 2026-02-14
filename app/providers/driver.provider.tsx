@@ -350,49 +350,76 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const signTx = await ausys.packageSign(jobId as any);
       await signTx.wait();
 
-      // 2. Auto-attempt handOff — succeeds if receiver has also signed
-      try {
-        const handOffTx = await ausys.handOff(jobId as any);
-        await handOffTx.wait();
+      // 2. Auto-attempt handOff with retry — RPC may not have propagated
+      //    the packageSign state change yet.
+      const MAX_HANDOFF_ATTEMPTS = 3;
+      for (let attempt = 1; attempt <= MAX_HANDOFF_ATTEMPTS; attempt++) {
+        try {
+          const handOffTx = await ausys.handOff(jobId as any);
+          await handOffTx.wait();
 
-        // Optimistically update this delivery to completed
-        setMyDeliveries((prev) =>
-          prev.map((d) =>
-            d.jobId === jobId
-              ? { ...d, currentStatus: DeliveryStatus.COMPLETED }
-              : d,
-          ),
-        );
-
-        // Delay indexer refresh so optimistic state isn't overwritten
-        setTimeout(async () => {
-          console.log(
-            '[DriverProvider] Refreshing deliveries after settlement...',
+          // Optimistically update this delivery to completed
+          setMyDeliveries((prev) =>
+            prev.map((d) =>
+              d.jobId === jobId
+                ? { ...d, currentStatus: DeliveryStatus.COMPLETED }
+                : d,
+            ),
           );
-          await refreshDeliveries();
-        }, 5000);
 
-        return 'settled';
-      } catch (handOffErr) {
-        const msg =
-          handOffErr instanceof Error ? handOffErr.message : String(handOffErr);
-        // ReceiverNotSigned (0x04d27bc2) — receiver/customer hasn't signed yet
-        if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
-          console.log('[DriverProvider] handOff: receiver has not signed yet');
+          // Delay indexer refresh so optimistic state isn't overwritten
+          setTimeout(async () => {
+            console.log(
+              '[DriverProvider] Refreshing deliveries after settlement...',
+            );
+            await refreshDeliveries();
+          }, 5000);
+
+          return 'settled';
+        } catch (handOffErr) {
+          const msg =
+            handOffErr instanceof Error
+              ? handOffErr.message
+              : String(handOffErr);
+
+          // DriverNotSigned — we just signed as driver, RPC likely stale.
+          // Retry after a short delay to let state propagate.
+          if (
+            (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) &&
+            attempt < MAX_HANDOFF_ATTEMPTS
+          ) {
+            console.log(
+              `[DriverProvider] handOff: driver sig not propagated yet, retrying (${attempt}/${MAX_HANDOFF_ATTEMPTS})...`,
+            );
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
+
+          // ReceiverNotSigned — receiver genuinely hasn't signed yet
+          if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
+            console.log(
+              '[DriverProvider] handOff: receiver has not signed yet',
+            );
+            await refreshDeliveries();
+            return 'receiver_not_signed';
+          }
+          // DriverNotSigned after all retries
+          if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
+            console.warn(
+              '[DriverProvider] handOff: driver sig not detected after retries',
+            );
+            await refreshDeliveries();
+            return 'receiver_not_signed';
+          }
+          // Other errors — the sign itself succeeded, don't crash
+          console.warn('[DriverProvider] handOff not ready yet:', msg);
           await refreshDeliveries();
-          return 'receiver_not_signed';
+          return 'signed';
         }
-        // DriverNotSigned (0x9651c947) — shouldn't happen since we just signed
-        if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
-          console.warn('[DriverProvider] handOff: driver sig not detected yet');
-          await refreshDeliveries();
-          return 'receiver_not_signed';
-        }
-        // Other errors — the sign itself succeeded, don't crash
-        console.warn('[DriverProvider] handOff not ready yet:', msg);
-        await refreshDeliveries();
-        return 'signed';
       }
+      // Shouldn't reach here
+      await refreshDeliveries();
+      return 'signed';
     } catch (err) {
       console.error('[DriverProvider] completeDelivery error:', err);
       setError(

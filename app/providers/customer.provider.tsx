@@ -231,37 +231,56 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
 
-        // 2. Try to complete delivery (handOff) - this will work if driver has also signed for delivery
-        try {
-          const handOffTx = await ausys.handOff(journeyId as any);
-          await handOffTx.wait();
+        // 2. Try to complete delivery (handOff) with retry for RPC propagation
+        const MAX_ATTEMPTS = 3;
+        let settled = false;
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          try {
+            const handOffTx = await ausys.handOff(journeyId as any);
+            await handOffTx.wait();
 
-          // Success! Update order status
-          setOrders((prevOrders) =>
-            prevOrders.map((order) =>
-              order.id === orderId
-                ? { ...order, currentStatus: OrderStatus.SETTLED }
-                : order,
-            ),
-          );
-        } catch (handOffErr) {
-          // handOff failed — one side hasn't signed for delivery yet
-          const handOffMsg =
-            handOffErr instanceof Error
-              ? handOffErr.message
-              : String(handOffErr);
-          if (
-            handOffMsg.includes('0x9651c947') ||
-            handOffMsg.includes('DriverNotSigned') ||
-            handOffMsg.includes('0x04d27bc2') ||
-            handOffMsg.includes('ReceiverNotSigned')
-          ) {
-            // Expected: receipt confirmed, waiting for other party
-            return;
+            // Success! Update order status
+            setOrders((prevOrders) =>
+              prevOrders.map((order) =>
+                order.id === orderId
+                  ? { ...order, currentStatus: OrderStatus.SETTLED }
+                  : order,
+              ),
+            );
+            settled = true;
+            break;
+          } catch (handOffErr) {
+            const handOffMsg =
+              handOffErr instanceof Error
+                ? handOffErr.message
+                : String(handOffErr);
+
+            // ReceiverNotSigned after we just signed — RPC stale, retry
+            if (
+              (handOffMsg.includes('0x04d27bc2') ||
+                handOffMsg.includes('ReceiverNotSigned')) &&
+              attempt < MAX_ATTEMPTS
+            ) {
+              console.log(
+                `[CustomerProvider] confirmReceipt: receiver sig not propagated, retrying (${attempt}/${MAX_ATTEMPTS})...`,
+              );
+              await new Promise((r) => setTimeout(r, 2000));
+              continue;
+            }
+
+            // Expected: one side hasn't signed yet
+            if (
+              handOffMsg.includes('0x9651c947') ||
+              handOffMsg.includes('DriverNotSigned') ||
+              handOffMsg.includes('0x04d27bc2') ||
+              handOffMsg.includes('ReceiverNotSigned')
+            ) {
+              return;
+            }
+
+            // Other errors should be thrown
+            throw handOffErr;
           }
-
-          // Other errors should be thrown
-          throw handOffErr;
         }
       } catch (err) {
         console.error('Error confirming receipt:', err);
@@ -296,53 +315,77 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
 
-        // 2. Auto-attempt handOff — succeeds if driver has also signed
-        try {
-          const handOffTx = await ausys.handOff(journeyId as any);
-          await handOffTx.wait();
+        // 2. Auto-attempt handOff with retry — the RPC may not have propagated
+        //    our packageSign state change to the node that processes handOff.
+        const MAX_HANDOFF_ATTEMPTS = 3;
+        for (let attempt = 1; attempt <= MAX_HANDOFF_ATTEMPTS; attempt++) {
+          try {
+            const handOffTx = await ausys.handOff(journeyId as any);
+            await handOffTx.wait();
 
-          // Success — update order status optimistically
-          setOrders((prev) =>
-            prev.map((o) =>
-              o.id === orderId
-                ? { ...o, currentStatus: OrderStatus.SETTLED }
-                : o,
-            ),
-          );
-
-          // Delay indexer refresh so the optimistic SETTLED status isn't
-          // overwritten by stale PROCESSING data from the indexer.
-          setTimeout(async () => {
-            console.log(
-              '[CustomerProvider] Refreshing orders after settlement...',
+            // Success — update order status optimistically
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.id === orderId
+                  ? { ...o, currentStatus: OrderStatus.SETTLED }
+                  : o,
+              ),
             );
-            await loadCustomerOrders();
-          }, 5000);
 
-          return 'settled';
-        } catch (handOffErr) {
-          const msg =
-            handOffErr instanceof Error
-              ? handOffErr.message
-              : String(handOffErr);
-          // DriverNotSigned (0x9651c947) — driver hasn't signed for delivery
-          if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
-            console.log(
-              '[CustomerProvider] signP2PDelivery: driver has not signed yet, waiting',
-            );
-            return 'driver_not_signed';
+            // Delay indexer refresh so the optimistic SETTLED status isn't
+            // overwritten by stale PROCESSING data from the indexer.
+            setTimeout(async () => {
+              console.log(
+                '[CustomerProvider] Refreshing orders after settlement...',
+              );
+              await loadCustomerOrders();
+            }, 5000);
+
+            return 'settled';
+          } catch (handOffErr) {
+            const msg =
+              handOffErr instanceof Error
+                ? handOffErr.message
+                : String(handOffErr);
+
+            // ReceiverNotSigned — we just signed as receiver, RPC likely stale.
+            // Retry after a short delay to let state propagate.
+            if (
+              (msg.includes('0x04d27bc2') ||
+                msg.includes('ReceiverNotSigned')) &&
+              attempt < MAX_HANDOFF_ATTEMPTS
+            ) {
+              console.log(
+                `[CustomerProvider] handOff: receiver sig not propagated yet, retrying (${attempt}/${MAX_HANDOFF_ATTEMPTS})...`,
+              );
+              await new Promise((r) => setTimeout(r, 2000));
+              continue;
+            }
+
+            // DriverNotSigned (0x9651c947) — driver genuinely hasn't signed
+            if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
+              console.log(
+                '[CustomerProvider] signP2PDelivery: driver has not signed yet, waiting',
+              );
+              return 'driver_not_signed';
+            }
+            // ReceiverNotSigned after all retries — treat as waiting
+            if (
+              msg.includes('0x04d27bc2') ||
+              msg.includes('ReceiverNotSigned')
+            ) {
+              console.warn(
+                '[CustomerProvider] signP2PDelivery: receiver sig not detected after retries',
+              );
+              return 'driver_not_signed';
+            }
+            // Other handOff errors — the sign itself succeeded, don't throw
+            console.warn('[CustomerProvider] handOff not ready yet:', msg);
+            return 'signed';
           }
-          // ReceiverNotSigned (0x04d27bc2) — shouldn't happen since we just signed
-          if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
-            console.warn(
-              '[CustomerProvider] signP2PDelivery: receiver sig not detected yet',
-            );
-            return 'driver_not_signed';
-          }
-          // Other handOff errors — the sign itself succeeded, don't throw
-          console.warn('[CustomerProvider] handOff not ready yet:', msg);
-          return 'signed';
         }
+        // Shouldn't reach here, but just in case
+        return 'signed';
       } catch (err) {
         console.error('[CustomerProvider] signP2PDelivery error:', err);
         setError('Failed to sign for delivery');
