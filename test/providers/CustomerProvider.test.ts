@@ -297,4 +297,199 @@ describe('Customer Provider Business Logic', () => {
       expect(queryAddr).not.toBe(hash);
     });
   });
+
+  // =====================================================================
+  // CRITICAL: Customer dashboard must NEVER show seller/node-operator orders
+  // =====================================================================
+  describe('Customer dashboard order visibility', () => {
+    it('should NOT show P2P orders where the user is the SELLER (node operator)', async () => {
+      // This test simulates the exact scenario: a node operator creates
+      // seller-initiated P2P offers. These must NOT appear on the
+      // customer dashboard even though getP2POrdersForUser returns them.
+      const { aggregateP2POrdersForUser } = await import(
+        '@/infrastructure/shared/event-aggregators'
+      );
+
+      const NODE_OPERATOR = '0xfde9344cabfa9504eead8a3e4e2096da1316bbaf';
+      const CUSTOMER = '0x16a1e17144f10091d6da0eca7f336ccc76462e03';
+
+      // Simulate the node operator's created offers (seller-initiated)
+      const createdByUser = [
+        {
+          id: 'evt-1',
+          order_id: '0x8a35acfbc15ff81a39ae7d344fd709f28e8600b4',
+          creator: NODE_OPERATOR,
+          is_seller_initiated: true,
+          token: '0xtoken',
+          token_id: '100',
+          token_quantity: '140',
+          price: '100000000000000000000',
+          target_counterparty: CUSTOMER,
+          expires_at: '0',
+          block_number: '1000',
+          block_timestamp: '1700000000',
+          transaction_hash: '0x' + 'f'.repeat(64),
+        },
+        {
+          id: 'evt-2',
+          order_id: '0xc2575a0e9e593c00f959f8c92f12db2869c3395a',
+          creator: NODE_OPERATOR,
+          is_seller_initiated: true,
+          token: '0xtoken',
+          token_id: '100',
+          token_quantity: '100',
+          price: '40000000000000000000',
+          target_counterparty: CUSTOMER,
+          expires_at: '0',
+          block_number: '1001',
+          block_timestamp: '1700000100',
+          transaction_hash: '0x' + 'e'.repeat(64),
+        },
+        {
+          id: 'evt-3',
+          order_id: '0xb10e2d527612073b26eecdfd717e6a320cf44b4a',
+          creator: NODE_OPERATOR,
+          is_seller_initiated: false, // buy offer — creator IS buyer
+          token: '0xtoken',
+          token_id: '200',
+          token_quantity: '100000',
+          price: '1000000000000000000000',
+          target_counterparty: '0x0000000000000000000000000000000000000000',
+          expires_at: '0',
+          block_number: '1002',
+          block_timestamp: '1700000200',
+          transaction_hash: '0x' + 'd'.repeat(64),
+        },
+      ];
+
+      // aggregateP2POrdersForUser returns ALL orders involving this user
+      const allP2POrders = aggregateP2POrdersForUser(
+        createdByUser,
+        [],
+        createdByUser,
+        [],
+        NODE_OPERATOR,
+      );
+
+      expect(allP2POrders).toHaveLength(3);
+
+      // Apply the same filter as customer.provider.tsx loadCustomerOrders
+      const userAddr = NODE_OPERATOR.toLowerCase();
+      const p2pBuyerOrders = allP2POrders.filter(
+        (order) => order.buyer?.toLowerCase() === userAddr,
+      );
+
+      // Only the buy offer (is_seller_initiated=false) should pass the filter.
+      // The 2 seller-initiated orders must be EXCLUDED.
+      expect(p2pBuyerOrders).toHaveLength(1);
+      expect(p2pBuyerOrders[0].id).toBe(
+        '0xb10e2d527612073b26eecdfd717e6a320cf44b4a',
+      );
+
+      // Verify the seller orders did NOT leak through
+      const sellerOrderIds = [
+        '0x8a35acfbc15ff81a39ae7d344fd709f28e8600b4',
+        '0xc2575a0e9e593c00f959f8c92f12db2869c3395a',
+      ];
+      for (const oid of sellerOrderIds) {
+        expect(p2pBuyerOrders.find((o) => o.id === oid)).toBeUndefined();
+      }
+    });
+
+    it('should show P2P orders where the user IS the buyer (accepted seller offer)', async () => {
+      const { aggregateP2POrdersForUser } = await import(
+        '@/infrastructure/shared/event-aggregators'
+      );
+
+      const BUYER = '0xaaaa000000000000000000000000000000000001';
+      const SELLER = '0xbbbb000000000000000000000000000000000002';
+
+      const created = [
+        {
+          id: 'evt-1',
+          order_id: '0x1111',
+          creator: SELLER,
+          is_seller_initiated: true,
+          token: '0xtoken',
+          token_id: '100',
+          token_quantity: '10',
+          price: '5000',
+          target_counterparty: BUYER,
+          expires_at: '0',
+          block_number: '1000',
+          block_timestamp: '1700000000',
+          transaction_hash: '0x' + 'f'.repeat(64),
+        },
+      ];
+
+      const accepted = [
+        {
+          id: 'evt-2',
+          order_id: '0x1111',
+          acceptor: BUYER,
+          is_seller_initiated: true,
+          block_number: '1001',
+          block_timestamp: '1700000100',
+          transaction_hash: '0x' + 'e'.repeat(64),
+        },
+      ];
+
+      const allP2POrders = aggregateP2POrdersForUser(
+        [],
+        accepted,
+        created,
+        [],
+        BUYER,
+      );
+
+      // Buyer accepted a seller's offer → buyer IS the buyer
+      const userAddr = BUYER.toLowerCase();
+      const p2pBuyerOrders = allP2POrders.filter(
+        (order) => order.buyer?.toLowerCase() === userAddr,
+      );
+
+      expect(p2pBuyerOrders).toHaveLength(1);
+      expect(p2pBuyerOrders[0].buyer).toBe(BUYER.toLowerCase());
+      expect(p2pBuyerOrders[0].seller).toBe(SELLER);
+    });
+
+    it('buyer/seller fields must never both equal the user address for created offers', async () => {
+      // This is the exact bug that caused the dashboard leak.
+      // If buyer === seller === user, the filter can never work.
+      const { aggregateP2POrdersForUser } = await import(
+        '@/infrastructure/shared/event-aggregators'
+      );
+
+      const USER = '0xfde9344cabfa9504eead8a3e4e2096da1316bbaf';
+      const COUNTERPARTY = '0x16a1e17144f10091d6da0eca7f336ccc76462e03';
+
+      const created = [
+        {
+          id: 'evt-1',
+          order_id: '0xaaa1',
+          creator: USER,
+          is_seller_initiated: true,
+          token: '0xtoken',
+          token_id: '100',
+          token_quantity: '10',
+          price: '5000',
+          target_counterparty: COUNTERPARTY,
+          expires_at: '0',
+          block_number: '1000',
+          block_timestamp: '1700000000',
+          transaction_hash: '0x' + 'f'.repeat(64),
+        },
+      ];
+
+      const orders = aggregateP2POrdersForUser(created, [], created, [], USER);
+
+      expect(orders).toHaveLength(1);
+      // THE CRITICAL ASSERTION: buyer and seller must be DIFFERENT
+      expect(orders[0].buyer).not.toBe(orders[0].seller);
+      // Seller = user (creator of sell offer)
+      expect(orders[0].seller).toBe(USER.toLowerCase());
+      // Buyer = counterparty (NOT the user)
+      expect(orders[0].buyer).toBe(COUNTERPARTY);
+    });
+  });
 });

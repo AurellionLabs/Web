@@ -338,4 +338,171 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     expect(orders[0].journeyStatus).toBeNull();
     expect(orders[0].isP2P).toBe(true);
   });
+
+  // =============================================================================
+  // BUYER / SELLER ASSIGNMENT TESTS
+  // =============================================================================
+
+  describe('buyer/seller assignment for created offers', () => {
+    const COUNTERPARTY = '0x4444444444444444444444444444444444444444';
+
+    it('seller-initiated: creator is seller, target_counterparty is buyer', () => {
+      const created = [
+        makeCreatedEvent({
+          order_id: '0xA1',
+          creator: USER_ADDR,
+          is_seller_initiated: true,
+          target_counterparty: COUNTERPARTY,
+        }),
+      ];
+
+      const orders = aggregateP2POrdersForUser(
+        created,
+        [],
+        created,
+        [],
+        USER_ADDR,
+      );
+
+      expect(orders).toHaveLength(1);
+      expect(orders[0].seller).toBe(USER_ADDR.toLowerCase());
+      expect(orders[0].buyer).toBe(COUNTERPARTY);
+    });
+
+    it('buyer-initiated: creator is buyer, target_counterparty is seller', () => {
+      const created = [
+        makeCreatedEvent({
+          order_id: '0xA2',
+          creator: USER_ADDR,
+          is_seller_initiated: false,
+          target_counterparty: COUNTERPARTY,
+        }),
+      ];
+
+      const orders = aggregateP2POrdersForUser(
+        created,
+        [],
+        created,
+        [],
+        USER_ADDR,
+      );
+
+      expect(orders).toHaveLength(1);
+      expect(orders[0].buyer).toBe(USER_ADDR.toLowerCase());
+      expect(orders[0].seller).toBe(COUNTERPARTY);
+    });
+
+    it('open offer (zero counterparty): creator is seller, buyer is zero address', () => {
+      const created = [
+        makeCreatedEvent({
+          order_id: '0xA3',
+          creator: USER_ADDR,
+          is_seller_initiated: true,
+          target_counterparty: '0x0000000000000000000000000000000000000000',
+        }),
+      ];
+
+      const orders = aggregateP2POrdersForUser(
+        created,
+        [],
+        created,
+        [],
+        USER_ADDR,
+      );
+
+      expect(orders).toHaveLength(1);
+      expect(orders[0].seller).toBe(USER_ADDR.toLowerCase());
+      // Open offer: no buyer yet
+      expect(orders[0].buyer).toBe(
+        '0x0000000000000000000000000000000000000000',
+      );
+    });
+  });
+
+  describe('buyer/seller assignment for accepted offers', () => {
+    const CREATOR = '0x5555555555555555555555555555555555555555';
+
+    it('accepting seller-initiated offer: acceptor is buyer, creator is seller', () => {
+      const createdEvent = makeCreatedEvent({
+        order_id: '0xB1',
+        creator: CREATOR,
+        is_seller_initiated: true,
+      });
+      const accepted = [
+        makeAcceptedEvent({ order_id: '0xB1', acceptor: USER_ADDR }),
+      ];
+
+      const orders = aggregateP2POrdersForUser(
+        [],
+        accepted,
+        [createdEvent],
+        [],
+        USER_ADDR,
+      );
+
+      expect(orders).toHaveLength(1);
+      expect(orders[0].buyer).toBe(USER_ADDR.toLowerCase());
+      expect(orders[0].seller).toBe(CREATOR);
+    });
+
+    it('accepting buyer-initiated offer: acceptor is seller, creator is buyer', () => {
+      const createdEvent = makeCreatedEvent({
+        order_id: '0xB2',
+        creator: CREATOR,
+        is_seller_initiated: false,
+      });
+      const accepted = [
+        makeAcceptedEvent({
+          order_id: '0xB2',
+          acceptor: USER_ADDR,
+          is_seller_initiated: false,
+        }),
+      ];
+
+      const orders = aggregateP2POrdersForUser(
+        [],
+        accepted,
+        [createdEvent],
+        [],
+        USER_ADDR,
+      );
+
+      expect(orders).toHaveLength(1);
+      expect(orders[0].seller).toBe(USER_ADDR.toLowerCase());
+      expect(orders[0].buyer).toBe(CREATOR);
+    });
+  });
+
+  describe('customer vs node dashboard filtering', () => {
+    const NODE_ADDR = '0x6666666666666666666666666666666666666666';
+    const CUSTOMER_ADDR = '0x7777777777777777777777777777777777777777';
+
+    it('seller-initiated order should NOT appear on customer dashboard for the seller', () => {
+      // Node creates a sell offer targeting a customer
+      const created = [
+        makeCreatedEvent({
+          order_id: '0xC1',
+          creator: NODE_ADDR,
+          is_seller_initiated: true,
+          target_counterparty: CUSTOMER_ADDR,
+        }),
+      ];
+
+      // When queried from the node's perspective
+      const orders = aggregateP2POrdersForUser(
+        created,
+        [],
+        created,
+        [],
+        NODE_ADDR,
+      );
+
+      expect(orders).toHaveLength(1);
+      // The node is the seller — NOT the buyer
+      expect(orders[0].seller).toBe(NODE_ADDR.toLowerCase());
+      expect(orders[0].buyer).toBe(CUSTOMER_ADDR);
+      // So a customer filter (order.buyer === nodeAddr) would correctly EXCLUDE this
+      expect(orders[0].buyer).not.toBe(NODE_ADDR.toLowerCase());
+    });
+  });
 });

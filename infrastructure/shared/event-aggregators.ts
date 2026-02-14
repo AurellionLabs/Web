@@ -809,6 +809,7 @@ export function aggregateP2POrdersForUser(
     created: P2POfferCreatedRawEvent,
     isBuyer: boolean,
     defaultStatus: number,
+    counterparty: string,
   ): Order {
     const oid = orderId.toLowerCase();
     const contractStatus = statusMap.get(oid) ?? defaultStatus;
@@ -831,8 +832,8 @@ export function aggregateP2POrdersForUser(
       tokenQuantity: created.token_quantity,
       price: created.price,
       txFee: '0',
-      buyer: isBuyer ? addr : created.creator,
-      seller: isBuyer ? created.creator : addr,
+      buyer: isBuyer ? addr : counterparty,
+      seller: isBuyer ? counterparty : addr,
       journeyIds,
       nodes: [],
       currentStatus: contractStatusToOrderStatus(contractStatus),
@@ -843,16 +844,21 @@ export function aggregateP2POrdersForUser(
   }
 
   // 1) Orders the user created
+  //    The user is the creator, so the OTHER party is target_counterparty.
   for (const ce of createdByUser) {
     const oid = ce.order_id.toLowerCase();
     if (seenOrderIds.has(oid)) continue;
     seenOrderIds.add(oid);
 
     const isBuyer = !ce.is_seller_initiated;
-    orders.push(buildOrder(ce.order_id, ce, isBuyer, 0));
+    // counterparty = target_counterparty (the other side of the trade)
+    orders.push(
+      buildOrder(ce.order_id, ce, isBuyer, 0, ce.target_counterparty),
+    );
   }
 
   // 2) Orders the user accepted (they are the counterparty)
+  //    The user is the acceptor, so the OTHER party is the original creator.
   for (const ae of acceptedByUser) {
     const oid = ae.order_id.toLowerCase();
     if (seenOrderIds.has(oid)) continue;
@@ -863,7 +869,8 @@ export function aggregateP2POrdersForUser(
 
     // If user accepted a seller-initiated offer, user is buyer; otherwise user is seller
     const isBuyer = created.is_seller_initiated;
-    orders.push(buildOrder(ae.order_id, created, isBuyer, 1));
+    // counterparty = the original creator (the other side of the trade)
+    orders.push(buildOrder(ae.order_id, created, isBuyer, 1, created.creator));
   }
 
   return orders;

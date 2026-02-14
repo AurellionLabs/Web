@@ -87,11 +87,33 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         }),
       ]);
 
+      // DEBUG: Log raw P2P orders and their buyer/seller fields
+      console.log('[CustomerProvider] userAddr:', userAddr.toLowerCase());
+      console.log(
+        '[CustomerProvider] allP2POrders:',
+        allP2POrders.map((o) => ({
+          id: o.id.slice(0, 10),
+          buyer: o.buyer,
+          seller: o.seller,
+          isP2P: o.isP2P,
+        })),
+      );
+
       // Customer dashboard only shows P2P orders where the user is the BUYER.
       // Seller P2P orders belong on the node dashboard (seller = node operator).
       const p2pBuyerOrders = allP2POrders.filter(
         (order) => order.buyer?.toLowerCase() === userAddr.toLowerCase(),
       );
+
+      console.log(
+        '[CustomerProvider] p2pBuyerOrders after filter:',
+        p2pBuyerOrders.map((o) => ({
+          id: o.id.slice(0, 10),
+          buyer: o.buyer,
+          seller: o.seller,
+        })),
+      );
+      console.log('[CustomerProvider] buyerOrders (CLOB):', buyerOrders.length);
 
       // Merge and deduplicate by order ID
       const seenIds = new Set<string>();
@@ -103,6 +125,13 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           allOrders.push(order);
         }
       }
+
+      console.log(
+        '[CustomerProvider] final allOrders count:',
+        allOrders.length,
+        'p2p:',
+        allOrders.filter((o) => o.isP2P).length,
+      );
 
       // Fetch asset details for each order
       const ordersWithAssets: OrderWithAsset[] = await Promise.all(
