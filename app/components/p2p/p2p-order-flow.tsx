@@ -252,6 +252,36 @@ export function P2POrderFlow({
     loadSignatures();
   }, [loadSignatures]);
 
+  // Poll signature state while waiting, so the UI updates when the other
+  // party signs without requiring a manual reload.
+  useEffect(() => {
+    // Only poll when we're in a waiting state and the order isn't settled
+    const needsPolling =
+      (waitingForDriver ||
+        (buyerSigned && !driverSigned) ||
+        (!buyerSigned && driverSigned)) &&
+      order.currentStatus !== OrderStatus.SETTLED &&
+      !localSettled &&
+      journeyId;
+
+    if (!needsPolling) return;
+
+    const interval = setInterval(() => {
+      console.log('[P2POrderFlow] Polling signatures...');
+      loadSignatures(true);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [
+    waitingForDriver,
+    buyerSigned,
+    driverSigned,
+    order.currentStatus,
+    localSettled,
+    journeyId,
+    loadSignatures,
+  ]);
+
   // Auto-attempt handOn when both pickup sigs are detected on-chain but
   // the journey is still pending (step 1). This covers the case where both
   // parties signed but the initial handOn failed or was never called.
@@ -293,6 +323,51 @@ export function P2POrderFlow({
     order.id,
     order.journeyStatus,
     order.currentStatus,
+  ]);
+
+  // Auto-attempt handOff when both delivery sigs are detected on-chain but
+  // the order hasn't settled yet. This is the delivery-phase equivalent of
+  // the pickup autoHandOn above.
+  const autoHandOffAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (
+      buyerSigned &&
+      driverSigned &&
+      !autoHandOffAttemptedRef.current &&
+      onCompleteHandoff &&
+      journeyId &&
+      order.currentStatus !== OrderStatus.SETTLED &&
+      !localSettled
+    ) {
+      autoHandOffAttemptedRef.current = true;
+      console.log(
+        '[P2POrderFlow] Both delivery sigs detected, auto-attempting handOff...',
+      );
+      onCompleteHandoff(order.id, journeyId)
+        .then((result) => {
+          if (result === 'settled') {
+            console.log('[P2POrderFlow] Auto handOff succeeded, order settled');
+            setLocalSettled(true);
+            setWaitingForDriver(false);
+          } else {
+            // Driver sig may not be on-chain yet — allow retry
+            console.log('[P2POrderFlow] Auto handOff returned:', result);
+            autoHandOffAttemptedRef.current = false;
+          }
+        })
+        .catch((err) => {
+          console.warn('[P2POrderFlow] Auto handOff attempt failed:', err);
+          autoHandOffAttemptedRef.current = false;
+        });
+    }
+  }, [
+    buyerSigned,
+    driverSigned,
+    onCompleteHandoff,
+    journeyId,
+    order.id,
+    order.currentStatus,
+    localSettled,
   ]);
 
   const currentStep = localSettled
