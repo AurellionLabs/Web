@@ -1,15 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  Check,
-  Clock,
-  Truck,
-  Package,
-  Loader2,
-  Pen,
-  ArrowRight,
-} from 'lucide-react';
+import { Check, Clock, Truck, Package, Loader2, Pen } from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { cn } from '@/lib/utils';
 import { OrderWithAsset, P2POrderDetail } from '@/app/types/shared';
@@ -147,7 +139,7 @@ function getStatusMessage(
       }
       return 'Both signatures received. Ready to complete handoff.';
     case 3:
-      return 'Both parties have signed. Complete the handoff to settle the order.';
+      return 'Both parties have signed. Settling the order automatically...';
     case 4:
       return 'Order is settled. Tokens and payment have been distributed.';
     default:
@@ -254,25 +246,6 @@ export function P2POrderFlow({
     }
   };
 
-  const handleCompleteHandoff = async () => {
-    if (!onCompleteHandoff || !journeyId) return;
-    setActionError(null);
-    try {
-      const result = await onCompleteHandoff(order.id, journeyId);
-
-      if (result === 'driver_not_signed') {
-        // Not an error — driver hasn't signed yet
-        setWaitingForDriver(true);
-        setDriverSigned(false);
-      }
-      // 'settled' → the provider already updated the order state
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : 'Failed to complete handoff',
-      );
-    }
-  };
-
   // Determine which action to show
   const showScheduleButton =
     currentStep === 0 &&
@@ -283,12 +256,7 @@ export function P2POrderFlow({
     !buyerSigned &&
     !waitingForDriver &&
     order.currentStatus !== OrderStatus.SETTLED;
-  const showHandoffButton =
-    currentStep === 3 &&
-    buyerSigned &&
-    driverSigned &&
-    !waitingForDriver &&
-    order.currentStatus !== OrderStatus.SETTLED;
+  // HandOff is always auto-attempted after signing — no manual button needed
 
   return (
     <div className="space-y-4 p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">
@@ -424,18 +392,7 @@ export function P2POrderFlow({
         </GlowButton>
       )}
 
-      {showHandoffButton && (
-        <GlowButton
-          onClick={handleCompleteHandoff}
-          loading={isActionLoading}
-          disabled={isActionLoading}
-          variant="primary"
-          size="sm"
-          leftIcon={<ArrowRight className="w-4 h-4" />}
-        >
-          Complete Handoff
-        </GlowButton>
-      )}
+      {/* HandOff is auto-attempted after each sign — no manual button */}
 
       {/* Error display */}
       {actionError && (

@@ -141,7 +141,7 @@ describe('P2POrderFlow', () => {
     });
   });
 
-  it('should show complete handoff button when both parties have signed', async () => {
+  it('should show settling message when both parties have signed', async () => {
     const fetchSig = vi.fn().mockResolvedValue({
       buyerSigned: true,
       driverDeliverySigned: true,
@@ -152,16 +152,10 @@ describe('P2POrderFlow', () => {
       journeyStatus: 1,
     });
 
-    render(
-      <P2POrderFlow
-        order={order}
-        fetchSignatureState={fetchSig}
-        onCompleteHandoff={vi.fn()}
-      />,
-    );
+    render(<P2POrderFlow order={order} fetchSignatureState={fetchSig} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Complete Handoff')).toBeDefined();
+      expect(screen.getByText(/both parties have signed/i)).toBeDefined();
     });
   });
 
@@ -208,8 +202,7 @@ describe('P2POrderFlow', () => {
     });
   });
 
-  it('should call onCompleteHandoff when handoff button is clicked', async () => {
-    const onHandoff = vi.fn().mockResolvedValue(undefined);
+  it('should not show any manual handoff button (handOff is auto-attempted)', async () => {
     const fetchSig = vi.fn().mockResolvedValue({
       buyerSigned: true,
       driverDeliverySigned: true,
@@ -220,23 +213,14 @@ describe('P2POrderFlow', () => {
       journeyStatus: 1,
     });
 
-    render(
-      <P2POrderFlow
-        order={order}
-        onCompleteHandoff={onHandoff}
-        fetchSignatureState={fetchSig}
-      />,
-    );
+    render(<P2POrderFlow order={order} fetchSignatureState={fetchSig} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Complete Handoff')).toBeDefined();
+      expect(screen.getByText(/both parties have signed/i)).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText('Complete Handoff'));
-
-    await waitFor(() => {
-      expect(onHandoff).toHaveBeenCalledWith('0xorder1', '0xjourney1');
-    });
+    // No "Complete Handoff" button should exist
+    expect(screen.queryByText('Complete Handoff')).toBeNull();
   });
 
   it('should display error message when sign action fails', async () => {
