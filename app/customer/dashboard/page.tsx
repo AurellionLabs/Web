@@ -4,14 +4,25 @@ import React, { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { StatusBadge } from '@/app/components/ui/status-badge';
-import { AnimatedNumber } from '@/app/components/ui/animated-number';
+  EvaPanel,
+  HexStatCard,
+  ScanTable,
+  ChevronTableRow,
+  TrapButton,
+  EvaButton,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  LaurelAccent,
+  HexCluster,
+  GreekKeyStrip,
+  TargetRings,
+} from '@/app/components/eva/eva-components';
+import {
+  ATFieldGauge,
+  LiveWaveform,
+  ChevronDataStream,
+} from '@/app/components/eva/eva-animations';
 import { cn } from '@/lib/utils';
 import {
   Activity,
@@ -87,91 +98,7 @@ const getStatusLabel = (status: OrderStatus): string => {
   }
 };
 
-/**
- * StatCard - Glowing stat card component
- */
-interface StatCardProps {
-  title: string;
-  value: number | string;
-  icon: React.ElementType;
-  iconColor: string;
-  prefix?: string;
-  suffix?: string;
-  trend?: number;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  icon: Icon,
-  iconColor,
-  prefix,
-  suffix,
-  trend,
-}) => (
-  <GlassCard hover className="relative overflow-hidden">
-    {/* Background glow */}
-    <div
-      className={cn(
-        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
-        iconColor,
-      )}
-    />
-
-    <div className="relative flex items-start justify-between">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground mb-1">
-          {title}
-        </p>
-        <div className="flex items-baseline gap-1">
-          {prefix && (
-            <span className="text-2xl font-bold text-foreground">{prefix}</span>
-          )}
-          {typeof value === 'number' ? (
-            <AnimatedNumber
-              value={value}
-              fixed={0}
-              className="text-2xl font-bold text-foreground"
-            />
-          ) : (
-            <span className="text-2xl font-bold text-foreground">{value}</span>
-          )}
-          {suffix && (
-            <span className="text-lg text-muted-foreground">{suffix}</span>
-          )}
-        </div>
-        {trend !== undefined && (
-          <div
-            className={cn(
-              'flex items-center gap-1 mt-2 text-xs font-medium',
-              trend >= 0 ? 'text-trading-buy' : 'text-trading-sell',
-            )}
-          >
-            <TrendingUp className={cn('w-3 h-3', trend < 0 && 'rotate-180')} />
-            <span>
-              {trend >= 0 ? '+' : ''}
-              {trend.toFixed(1)}%
-            </span>
-            <span className="text-muted-foreground">vs last week</span>
-          </div>
-        )}
-      </div>
-      <div
-        className={cn(
-          'p-3 rounded-xl',
-          iconColor.replace('bg-', 'bg-opacity-20 '),
-        )}
-      >
-        <Icon
-          className={cn(
-            'w-6 h-6',
-            iconColor.replace('bg-', 'text-').replace('-500', '-400'),
-          )}
-        />
-      </div>
-    </div>
-  </GlassCard>
-);
+/* StatCard removed — using HexStatCard from EVA components */
 
 /**
  * CustomerDashboard - Dashboard with terminal styling
@@ -520,8 +447,10 @@ export default function CustomerDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-          <span className="text-muted-foreground">Loading orders...</span>
+          <RefreshCw className="w-8 h-8 text-gold animate-spin" />
+          <span className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40">
+            Loading orders...
+          </span>
         </div>
       </div>
     );
@@ -531,119 +460,138 @@ export default function CustomerDashboard() {
     return (
       <div className="min-h-screen p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
-          <GlassCard className="border-trading-sell/30">
-            <h2 className="text-lg font-semibold text-trading-sell mb-2">
-              Error Loading Orders
-            </h2>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <GlowButton variant="outline" onClick={() => refreshOrders()}>
+          <EvaPanel label="Error" sysId="ERR.ORD" accent="crimson">
+            <p className="font-mono text-sm text-foreground/50 mb-4">{error}</p>
+            <TrapButton variant="gold" onClick={() => refreshOrders()}>
               Try Again
-            </GlowButton>
-          </GlassCard>
+            </TrapButton>
+          </EvaPanel>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6">
+    <div className="min-h-screen p-4 md:p-6 lg:p-8 relative">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">
-              Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Overview of your orders and trading activity
-            </p>
+        {/* ── Page Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <LaurelAccent side="left" className="hidden md:block mt-1" />
+            <div>
+              <h1 className="font-serif text-3xl md:text-4xl text-foreground">
+                Dashboard
+              </h1>
+              <p className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40 mt-1">
+                Overview of your orders and trading activity
+              </p>
+              <GreekKeyStrip color="crimson" />
+            </div>
           </div>
-          <GlowButton
-            variant="secondary"
-            onClick={() => refreshOrders()}
-            leftIcon={<RefreshCw className="w-4 h-4" />}
-          >
-            Refresh
-          </GlowButton>
+          <TrapButton variant="gold" onClick={() => refreshOrders()}>
+            <span className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </span>
+          </TrapButton>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="In Progress"
-            value={activeOrders}
-            icon={Activity}
-            iconColor="bg-yellow-500"
-          />
-          <StatCard
-            title="Completed"
-            value={completedOrders}
-            icon={Package}
-            iconColor="bg-green-500"
-            trend={12.5}
-          />
-          <StatCard
-            title="Pending"
-            value={pendingOrders}
-            icon={Clock}
-            iconColor="bg-blue-500"
-          />
-          <StatCard
-            title="Total Spent"
-            value={totalSpent / 1000000} // Convert from USDT units
-            icon={ShoppingCart}
-            iconColor="bg-purple-500"
-            prefix="$"
+        <EvaScanLine variant="mixed" />
+
+        {/* ── Stats Overview — Hex Cards ── */}
+        <div className="relative">
+          <HexCluster size="md" className="absolute top-2 right-8" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <HexStatCard
+              label="In Progress"
+              value={String(activeOrders)}
+              color="gold"
+              powerLevel={Math.min(activeOrders * 2, 10)}
+            />
+            <HexStatCard
+              label="Completed"
+              value={String(completedOrders)}
+              sub="+12.5% vs last week"
+              color="emerald"
+              powerLevel={Math.min(completedOrders, 10)}
+            />
+            <HexStatCard
+              label="Pending"
+              value={String(pendingOrders)}
+              color="crimson"
+              powerLevel={Math.min(pendingOrders * 3, 10)}
+            />
+            <HexStatCard
+              label="Total Spent"
+              value={`$${(totalSpent / 1000000).toFixed(2)}`}
+              color="gold"
+              powerLevel={6}
+            />
+          </div>
+          <div className="mt-4">
+            <GreekKeyStrip color="gold" />
+          </div>
+        </div>
+
+        {/* ── Portfolio Security — AT Field Gauge ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ATFieldGauge label="Portfolio Security Shield" />
+          <LiveWaveform
+            label="Portfolio Value Feed"
+            sublabel="TARGET: HOLDINGS / PATTERN GOLD"
+            height={100}
           />
         </div>
+
+        {/* ── Chevron Data Stream divider ── */}
+        <ChevronDataStream text="Monitoring Asset Holdings" speed="5s" />
+
+        <EvaSectionMarker section="SEC.01" label="Holdings" variant="gold" />
 
         {/* My Assets - Holdings available for redemption */}
-        <GlassCard>
-          <GlassCardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <GlassCardTitle className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5" />
-                  My Assets
-                </GlassCardTitle>
-                <GlassCardDescription>
-                  Tokenized assets you own - redeem to receive physical delivery
-                </GlassCardDescription>
-              </div>
-              <GlowButton
-                variant="ghost"
-                size="sm"
-                onClick={() => refetchHoldings()}
-                disabled={holdingsLoading}
-              >
-                <RefreshCw
-                  className={cn('w-4 h-4', holdingsLoading && 'animate-spin')}
-                />
-              </GlowButton>
-            </div>
-          </GlassCardHeader>
+        <EvaPanel
+          label="My Assets"
+          sublabel="Tokenized assets you own"
+          sysId="AST.HLD"
+          status="active"
+          accent="gold"
+        >
+          <div className="flex items-center justify-end mb-4">
+            <EvaButton
+              variant="gold"
+              size="sm"
+              onClick={() => refetchHoldings()}
+              disabled={holdingsLoading}
+            >
+              <RefreshCw
+                className={cn('w-4 h-4', holdingsLoading && 'animate-spin')}
+              />
+            </EvaButton>
+          </div>
 
           {holdingsLoading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-6 h-6 text-accent animate-spin" />
+              <RefreshCw className="w-6 h-6 text-gold animate-spin" />
             </div>
           ) : holdingsError ? (
             <div className="text-center py-8">
-              <p className="text-trading-sell text-sm">{holdingsError}</p>
-              <GlowButton
-                variant="outline"
+              <p className="font-mono text-sm text-crimson">{holdingsError}</p>
+              <TrapButton
+                variant="gold"
                 size="sm"
                 onClick={() => refetchHoldings()}
                 className="mt-4"
               >
                 Try Again
-              </GlowButton>
+              </TrapButton>
             </div>
           ) : holdings.length === 0 ? (
             <div className="text-center py-12">
-              <Wallet className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-muted-foreground">No assets in your wallet</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">
+              <TargetRings size={80} className="mx-auto mb-4" />
+              <p className="font-mono text-sm text-foreground/40">
+                No assets in your wallet
+              </p>
+              <p className="font-mono text-xs text-foreground/20 mt-1">
                 Trade on the order book to acquire tokenized assets
               </p>
             </div>
@@ -652,68 +600,75 @@ export default function CustomerDashboard() {
               {holdings.map((holding) => (
                 <div
                   key={holding.tokenId}
-                  className={cn(
-                    'relative p-4 rounded-xl',
-                    'bg-glass-bg border border-glass-border',
-                    'hover:border-accent/30 transition-all duration-200',
-                    'group',
-                  )}
+                  className="relative group"
+                  style={{
+                    clipPath:
+                      'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+                  }}
                 >
-                  {/* Asset glow effect */}
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div
+                    className="absolute inset-0 bg-card/70 group-hover:bg-card/90 transition-colors"
+                    style={{
+                      clipPath:
+                        'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+                    }}
+                  />
+                  <div className="absolute left-0 top-0 bottom-3 w-[3px] bg-gold/30" />
+                  <div className="absolute inset-0 eva-hex-pattern opacity-15 pointer-events-none" />
 
-                  <div className="relative">
+                  <div className="relative p-5">
                     {/* Asset header */}
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h4 className="font-semibold text-foreground">
+                        <span className="font-mono text-sm font-bold text-foreground/90">
                           {holding.name}
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
+                        </span>
+                        <span className="font-mono text-[10px] tracking-[0.15em] text-foreground/30 block mt-0.5 uppercase">
                           {holding.assetClass}
-                        </p>
+                        </span>
                       </div>
-                      <StatusBadge
-                        status="connected"
+                      <EvaStatusBadge
+                        status="active"
                         label={holding.className}
-                        size="sm"
                       />
                     </div>
 
                     {/* Balance */}
-                    <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-2xl font-bold text-foreground">
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className="font-mono text-3xl font-bold text-gold tabular-nums">
                         {holding.balance.toString()}
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="font-mono text-xs text-foreground/30 uppercase tracking-wider">
                         units
                       </span>
                     </div>
 
                     {/* Token ID */}
-                    <p className="text-xs font-mono text-muted-foreground mb-4">
+                    <p className="font-mono text-[10px] text-foreground/20 mb-4 tabular-nums">
                       Token: {holding.tokenId.slice(0, 12)}...
                     </p>
 
                     {/* Redeem button */}
-                    <GlowButton
-                      variant="primary"
+                    <TrapButton
+                      variant="gold"
                       size="sm"
                       className="w-full"
-                      leftIcon={<Send className="w-4 h-4" />}
                       onClick={() => {
                         setSelectedHolding(holding);
                         setIsRedemptionOpen(true);
                       }}
                     >
-                      Redeem for Delivery
-                    </GlowButton>
+                      <span className="flex items-center gap-2">
+                        <Send className="w-3 h-3" />
+                        Redeem for Delivery
+                      </span>
+                    </TrapButton>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </GlassCard>
+        </EvaPanel>
 
         {/* Redemption Dialog */}
         {selectedHolding && (
@@ -736,15 +691,15 @@ export default function CustomerDashboard() {
           />
         )}
 
-        {/* Recent Orders */}
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle>Recent Orders</GlassCardTitle>
-            <GlassCardDescription>
-              Your latest order activity
-            </GlassCardDescription>
-          </GlassCardHeader>
+        <EvaSectionMarker section="SEC.02" label="Orders" variant="crimson" />
 
+        {/* Recent Orders */}
+        <EvaPanel
+          label="Recent Orders"
+          sublabel="Latest order activity"
+          sysId="ORD.RCT"
+          accent="crimson"
+        >
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="space-y-2">
@@ -866,19 +821,15 @@ export default function CustomerDashboard() {
                           ${formatTokenAmount(order.price, 18, 2)}
                         </td>
                         <td className="px-4 py-4">
-                          <StatusBadge
+                          <EvaStatusBadge
                             status={
                               order.currentStatus === OrderStatus.SETTLED
-                                ? 'connected'
-                                : order.currentStatus === OrderStatus.CANCELLED
-                                  ? 'disconnected'
-                                  : order.currentStatus ===
-                                      OrderStatus.PROCESSING
-                                    ? 'warning'
-                                    : 'pending'
+                                ? 'completed'
+                                : order.currentStatus === OrderStatus.PROCESSING
+                                  ? 'processing'
+                                  : 'created'
                             }
                             label={getStatusLabel(order.currentStatus)}
-                            size="sm"
                           />
                         </td>
                         <td className="px-4 py-4">
@@ -991,8 +942,8 @@ export default function CustomerDashboard() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-glass-border">
-                <div className="text-sm text-muted-foreground">
+              <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-border/15">
+                <div className="font-mono text-xs text-foreground/30 tracking-wider">
                   Showing {startIndex + 1} to{' '}
                   {Math.min(endIndex, sortedOrders.length)} of{' '}
                   {sortedOrders.length} orders
@@ -1001,39 +952,39 @@ export default function CustomerDashboard() {
                   <button
                     onClick={goToFirstPage}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsLeft className="w-4 h-4 text-muted-foreground" />
+                    <ChevronsLeft className="w-4 h-4 text-foreground/40" />
                   </button>
                   <button
                     onClick={goToPreviousPage}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                    <ChevronLeft className="w-4 h-4 text-foreground/40" />
                   </button>
-                  <span className="px-4 text-sm text-muted-foreground">
+                  <span className="px-4 font-mono text-xs text-foreground/30 tabular-nums">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     onClick={goToNextPage}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <ChevronRight className="w-4 h-4 text-foreground/40" />
                   </button>
                   <button
                     onClick={goToLastPage}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                    <ChevronsRight className="w-4 h-4 text-foreground/40" />
                   </button>
                 </div>
               </div>
             )}
           </div>
-        </GlassCard>
+        </EvaPanel>
       </div>
 
       {/* Delivery Details Dialog for stuck P2P orders */}

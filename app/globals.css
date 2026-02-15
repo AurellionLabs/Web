@@ -3,18 +3,28 @@
 @tailwind utilities;
 
 /* ============================================
-   AURELLION PROTOCOL - DESIGN SYSTEM
-   Red & Gold blockchain protocol aesthetic
+   AURELLION PROTOCOL — NERV × GREEK PHILOSOPHY
+   Evangelion technical UI + Classical aesthetics
+   Non-rectangular. Aggressive shapes. Philosophy.
    ============================================ */
 
 @layer base {
   :root {
-    /* === Surface Colors === */
-    --surface-base: 0 0% 2%;
-    --surface-elevated: 0 0% 5%;
-    --surface-overlay: 0 0% 8%;
+    /* === Surface Colors (Obsidian base) === */
+    --surface-base: 0 0% 5%;
+    --surface-elevated: 0 0% 8%;
+    --surface-overlay: 0 0% 11%;
 
-    /* === Primary Accent - Gold/Amber === */
+    /* === EVA Color System === */
+    --gold: 43 65% 62%;
+    --gold-light: 43 50% 75%;
+    --gold-dark: 43 50% 40%;
+    --crimson: 0 70% 38%;
+    --crimson-dark: 0 55% 22%;
+    --obsidian: 0 0% 5%;
+    --marble: 40 20% 92%;
+
+    /* === Primary Accent Scale (Gold) === */
     --accent-50: 48 100% 96%;
     --accent-100: 48 96% 89%;
     --accent-200: 48 97% 77%;
@@ -26,7 +36,7 @@
     --accent-800: 23 83% 31%;
     --accent-900: 22 78% 26%;
 
-    /* === Secondary Accent - Red === */
+    /* === Secondary Accent Scale (Red/Crimson) === */
     --red-50: 0 86% 97%;
     --red-100: 0 93% 94%;
     --red-200: 0 96% 89%;
@@ -49,36 +59,36 @@
     --glass-border: 0 0% 100% / 0.08;
     --glass-hover: 0 0% 100% / 0.06;
 
-    /* === Semantic Tokens === */
-    --background: var(--surface-base);
-    --foreground: 0 0% 98%;
-    --card: var(--surface-elevated);
-    --card-foreground: 0 0% 98%;
-    --popover: var(--surface-overlay);
-    --popover-foreground: 0 0% 98%;
-    --primary: var(--accent-500);
-    --primary-foreground: 0 0% 2%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 55%;
-    --accent: var(--accent-500);
-    --accent-foreground: 0 0% 2%;
-    --destructive: var(--red-500);
+    /* === Semantic Tokens (EVA-aligned) === */
+    --background: var(--obsidian);
+    --foreground: 40 15% 88%;
+    --card: 0 0% 8%;
+    --card-foreground: 40 15% 88%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 40 15% 88%;
+    --primary: 43 60% 62%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 60% 30%;
+    --secondary-foreground: 40 15% 92%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 40 8% 55%;
+    --accent: 0 65% 35%;
+    --accent-foreground: 40 15% 92%;
+    --destructive: 0 84% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: var(--accent-500);
+    --border: 43 18% 22%;
+    --input: 0 0% 14%;
+    --ring: 43 60% 62%;
 
     /* === Chart Colors === */
-    --chart-1: var(--accent-500);
-    --chart-2: var(--trading-buy);
-    --chart-3: var(--red-500);
-    --chart-4: 262 83% 58%;
-    --chart-5: 189 94% 43%;
+    --chart-1: 43 60% 62%;
+    --chart-2: 0 60% 35%;
+    --chart-3: 43 30% 45%;
+    --chart-4: 0 40% 25%;
+    --chart-5: 43 40% 72%;
 
     /* === Layout === */
-    --radius: 0.5rem;
+    --radius: 0.125rem;
     --header-height: 64px;
 
     /* === Sidebar === */
@@ -93,8 +103,8 @@
   }
 
   .dark {
-    --background: var(--surface-base);
-    --foreground: 0 0% 98%;
+    --background: var(--obsidian);
+    --foreground: 40 15% 88%;
   }
 }
 
@@ -121,43 +131,252 @@
       'calt' 1;
   }
 
-  /* Plus Jakarta Sans for all headings - clean, geometric, rounded */
+  /* Serif for headings — the Greek philosophy voice */
   h1,
   h2,
-  h3,
+  h3 {
+    font-family: var(--font-serif), 'Playfair Display', 'Georgia', serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 0.9;
+  }
+
   h4,
   h5,
   h6 {
-    font-family: var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif;
-    font-weight: 600;
+    font-family: var(--font-mono), 'Space Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.8125rem;
   }
 
-  /* Custom scrollbar */
+  /* Angular scrollbar — no border-radius */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 4px;
+    height: 4px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--surface-base));
+    background: hsl(0 0% 7%);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
-    border-radius: 4px;
+    background: hsl(43 56% 56% / 0.2);
+    border-radius: 0;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(43 56% 56% / 0.4);
+  }
+
+  /* Selection — gold tinted */
+  ::selection {
+    background: hsl(43 56% 56% / 0.2);
+    color: hsl(43 30% 90%);
   }
 }
 
+/* ============================================
+   EVA BACKGROUND PATTERNS
+   ============================================ */
+
+/* Horizontal CRT scan lines — Evangelion monitor feel */
+.eva-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(139, 26, 26, 0.015) 2px,
+    rgba(139, 26, 26, 0.015) 4px
+  );
+  pointer-events: none;
+}
+
+/* Technical grid overlay — NERV control room */
+.eva-grid {
+  background-image: linear-gradient(
+      rgba(197, 165, 90, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(197, 165, 90, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Hexagonal dot pattern — AT Field texture */
+.eva-hex-pattern {
+  background-image: radial-gradient(
+    circle,
+    rgba(197, 165, 90, 0.04) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* Diagonal hazard stripes — Eva warning tape */
+.eva-hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    rgba(139, 26, 26, 0.08) 4px,
+    rgba(139, 26, 26, 0.08) 8px
+  );
+}
+
+/* ============================================
+   EVA ANIMATIONS
+   ============================================ */
+
+/* Ticker / Marquee scroll */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-ticker {
+  animation: ticker 60s linear infinite;
+}
+
+@keyframes ticker-fast {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-ticker-fast {
+  animation: ticker-fast 25s linear infinite;
+}
+
+/* EVA pulse — status indicator breathing */
+@keyframes eva-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.animate-eva-pulse {
+  animation: eva-pulse 3s ease-in-out infinite;
+}
+
+/* Fade in up — entrance animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+.animate-fade-in-up-delay {
+  animation: fade-in-up 0.8s ease-out 0.2s forwards;
+  opacity: 0;
+}
+.animate-fade-in-up-delay-2 {
+  animation: fade-in-up 0.8s ease-out 0.4s forwards;
+  opacity: 0;
+}
+
+/* Spin keyframe for reticle animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* General keyframes */
+@keyframes flash-green {
+  0% {
+    background-color: hsl(var(--trading-buy) / 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes flash-red {
+  0% {
+    background-color: hsl(var(--trading-sell) / 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes pulse-status {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(1.2);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+
 @layer utilities {
-  /* === Text Utilities === */
   .text-balance {
     text-wrap: balance;
   }
 
+  /* Mono trading font */
   .font-mono-trading {
     font-family: var(--font-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
@@ -212,7 +431,7 @@
   }
 
   .glass-card {
-    @apply glass rounded-xl p-6;
+    @apply glass p-6;
   }
 
   /* === Glow Effects === */
@@ -258,6 +477,26 @@
 
   .text-glow-red {
     text-shadow: 0 0 20px hsl(var(--red-500) / 0.5);
+  }
+
+  /* === EVA Color Utilities === */
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+  .text-crimson {
+    color: hsl(var(--crimson));
+  }
+  .bg-gold {
+    background-color: hsl(var(--gold));
+  }
+  .bg-crimson {
+    background-color: hsl(var(--crimson));
+  }
+  .border-gold {
+    border-color: hsl(var(--gold));
+  }
+  .border-crimson {
+    border-color: hsl(var(--crimson));
   }
 
   /* === Background Gradients === */
@@ -311,11 +550,9 @@
   .surface-base {
     background: hsl(var(--surface-base));
   }
-
   .surface-elevated {
     background: hsl(var(--surface-elevated));
   }
-
   .surface-overlay {
     background: hsl(var(--surface-overlay));
   }
@@ -324,19 +561,15 @@
   .price-up {
     @apply text-green-500;
   }
-
   .price-down {
     @apply text-red-500;
   }
-
   .price-flash-up {
     animation: flash-green 0.5s ease-out;
   }
-
   .price-flash-down {
     animation: flash-red 0.5s ease-out;
   }
-
   .orderbook-bid-depth {
     background: linear-gradient(
       to left,
@@ -344,7 +577,6 @@
       transparent 100%
     );
   }
-
   .orderbook-ask-depth {
     background: linear-gradient(
       to right,
@@ -357,7 +589,6 @@
   .border-glow {
     border: 1px solid hsl(var(--accent-500) / 0.3);
   }
-
   .border-glass {
     border: 1px solid hsl(var(--glass-border));
   }
@@ -373,10 +604,10 @@
   .status-live {
     @apply relative;
   }
-
   .status-live::before {
     content: '';
-    @apply absolute -left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-500;
+    @apply absolute -left-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
     animation: pulse-status 2s ease-in-out infinite;
   }
 
@@ -384,15 +615,12 @@
   .hover-lift {
     @apply transition-transform duration-300;
   }
-
   .hover-lift:hover {
     transform: translateY(-2px);
   }
-
   .hover-glow {
     @apply transition-shadow duration-300;
   }
-
   .hover-glow:hover {
     @apply glow-accent-sm;
   }
@@ -408,7 +636,6 @@
       hsl(var(--accent-500)) 100%
     );
   }
-
   .btn-glow::before {
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
@@ -418,44 +645,38 @@
       hsl(var(--accent-400)) 100%
     );
   }
-
   .btn-glow:hover::before {
     @apply opacity-100;
   }
-
   .btn-glow:hover {
     @apply glow-accent;
   }
 
   /* === Card Variants === */
   .card-trading {
-    @apply glass rounded-lg border-glass;
+    @apply glass border-glass;
   }
-
   .card-elevated {
-    @apply surface-elevated rounded-xl border border-glass;
+    @apply surface-elevated border border-glass;
   }
 
   /* === Table Styles === */
   .table-trading {
     @apply w-full font-mono-trading text-sm;
   }
-
   .table-trading th {
     @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider;
   }
-
   .table-trading td {
     @apply px-4 py-3 border-t border-glass;
   }
-
   .table-trading tr:hover {
     @apply bg-white/[0.02];
   }
 
   /* === Input Styles === */
   .input-trading {
-    @apply w-full px-4 py-3 rounded-lg font-mono-trading;
+    @apply w-full px-4 py-3 font-mono-trading;
     @apply surface-elevated border border-glass;
     @apply focus:outline-none focus:border-accent-500/50 focus:glow-accent-sm;
     @apply transition-all duration-200;
@@ -463,101 +684,20 @@
 
   /* === Tab Styles === */
   .tabs-trading {
-    @apply flex gap-1 p-1 rounded-lg surface-elevated;
+    @apply flex gap-1 p-1 surface-elevated;
   }
-
   .tab-trading {
-    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200;
+    @apply px-4 py-2 text-sm font-medium transition-all duration-200;
     @apply text-muted-foreground hover:text-foreground;
+    font-family: var(--font-mono), monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.75rem;
   }
-
   .tab-trading[data-state='active'],
   .tab-trading.active {
-    @apply bg-accent/10 text-amber-400;
-  }
-}
-
-/* === Keyframe Animations === */
-@keyframes flash-green {
-  0% {
-    background-color: hsl(var(--trading-buy) / 0.3);
-  }
-  100% {
-    background-color: transparent;
-  }
-}
-
-@keyframes flash-red {
-  0% {
-    background-color: hsl(var(--trading-sell) / 0.3);
-  }
-  100% {
-    background-color: transparent;
-  }
-}
-
-@keyframes pulse-status {
-  0%,
-  100% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: translateY(-50%) scale(1.2);
-  }
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scale-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
+    @apply text-amber-400;
+    background: hsl(var(--gold) / 0.08);
   }
 }
 
@@ -565,21 +705,14 @@
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
-
 .animate-shimmer {
   animation: shimmer 2s linear infinite;
   background-size: 200% 100%;
 }
-
 .animate-gradient {
   animation: gradient-shift 8s ease infinite;
   background-size: 200% 200%;
 }
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s ease-out forwards;
-}
-
 .animate-scale-in {
   animation: scale-in 0.3s ease-out forwards;
 }

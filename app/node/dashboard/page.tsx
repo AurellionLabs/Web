@@ -23,14 +23,26 @@ import {
   Clock,
 } from 'lucide-react';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { StatusBadge } from '@/app/components/ui/status-badge';
-import { AnimatedNumber } from '@/app/components/ui/animated-number';
+  EvaPanel,
+  HexStatCard,
+  ScanTable,
+  ChevronTableRow,
+  TrapButton,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  EvaProgress,
+  LaurelAccent,
+  HexCluster,
+  TargetRings,
+  GreekKeyStrip,
+  EvaSystemReadout,
+} from '@/app/components/eva/eva-components';
+import {
+  SpinningReticle,
+  PulsingHexNetwork,
+  CascadeLoadBars,
+} from '@/app/components/eva/eva-animations';
 import {
   Dialog,
   DialogContent,
@@ -93,65 +105,7 @@ interface EditingCapacity {
   value: string;
 }
 
-/**
- * StatCard - Protocol stat card component
- */
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ElementType;
-  iconColor: string;
-  description?: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  icon: Icon,
-  iconColor,
-  description,
-}) => (
-  <GlassCard hover className="relative overflow-hidden">
-    <div
-      className={cn(
-        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
-        iconColor,
-      )}
-    />
-    <div className="relative flex items-start justify-between">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground mb-1">
-          {title}
-        </p>
-        {typeof value === 'number' ? (
-          <AnimatedNumber
-            value={value}
-            size="lg"
-            className="font-bold text-foreground"
-          />
-        ) : (
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-        )}
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-      </div>
-      <div
-        className={cn(
-          'p-3 rounded-xl',
-          iconColor.replace('bg-', 'bg-opacity-20 '),
-        )}
-      >
-        <Icon
-          className={cn(
-            'w-6 h-6',
-            iconColor.replace('bg-', 'text-').replace('-500', '-400'),
-          )}
-        />
-      </div>
-    </div>
-  </GlassCard>
-);
+/* StatCard removed — using HexStatCard from EVA components */
 
 export default function NodeDashboardPage() {
   const {
@@ -800,10 +754,12 @@ export default function NodeDashboardPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-          <p className="text-muted-foreground">Loading node data...</p>
+          <RefreshCw className="w-8 h-8 text-gold animate-spin" />
+          <p className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40">
+            Loading node data...
+          </p>
           {nodeIdFromUrl && (
-            <p className="text-sm text-muted-foreground/50 font-mono">
+            <p className="font-mono text-xs text-foreground/20 tabular-nums">
               Node ID: {nodeIdFromUrl.slice(0, 10)}...
             </p>
           )}
@@ -815,47 +771,47 @@ export default function NodeDashboardPage() {
   if (!currentNodeData && !nodeIdFromUrl) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <GlassCard className="text-center py-12 px-8">
-          <Server className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            No Node Selected
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            Please select a node to view its dashboard
-          </p>
-          <GlowButton
-            variant="primary"
-            onClick={() => router.push('/node/overview')}
-          >
-            Go to Node Overview
-          </GlowButton>
-        </GlassCard>
+        <EvaPanel label="No Node Selected" sysId="ERR.404" accent="crimson">
+          <div className="text-center py-8 px-6">
+            <TargetRings size={80} className="mx-auto mb-4" />
+            <p className="font-mono text-sm text-foreground/40 mb-6">
+              Please select a node to view its dashboard
+            </p>
+            <TrapButton
+              variant="gold"
+              onClick={() => router.push('/node/overview')}
+            >
+              Go to Node Overview
+            </TrapButton>
+          </div>
+        </EvaPanel>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground">
-                Node Dashboard
-              </h1>
-              {isReadOnly && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium">
-                  <Eye className="w-3 h-3" />
-                  View Only
-                </span>
-              )}
+    <div className="min-h-screen p-4 md:p-6 lg:p-8 relative">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* ── Page Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative">
+          <div className="flex items-start gap-4">
+            <LaurelAccent side="left" className="hidden md:block mt-1" />
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-serif text-3xl md:text-4xl text-foreground">
+                  Node Dashboard
+                </h1>
+                {isReadOnly && (
+                  <EvaStatusBadge status="pending" label="View Only" />
+                )}
+              </div>
+              <p className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40 mt-1">
+                {isReadOnly
+                  ? 'Viewing node details in read-only mode'
+                  : 'Manage your node and its assets'}
+              </p>
+              <GreekKeyStrip color="crimson" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {isReadOnly
-                ? 'Viewing node details in read-only mode'
-                : 'Manage your node and its assets'}
-            </p>
           </div>
           {!isReadOnly && (
             <Dialog
@@ -870,13 +826,12 @@ export default function NodeDashboardPage() {
               }}
             >
               <DialogTrigger asChild>
-                <GlowButton
-                  variant="primary"
-                  leftIcon={<Plus className="w-4 h-4" />}
-                  loading={isTokenizing}
-                >
-                  Add Asset
-                </GlowButton>
+                <TrapButton variant="crimson" disabled={isTokenizing}>
+                  <span className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Asset
+                  </span>
+                </TrapButton>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
@@ -911,19 +866,18 @@ export default function NodeDashboardPage() {
                       }
                     />
                     {capacityError && (
-                      <p className="text-sm font-medium text-trading-sell">
+                      <p className="text-sm font-medium text-crimson font-mono">
                         {capacityError}
                       </p>
                     )}
-                    <GlowButton
-                      type="submit"
-                      variant="primary"
+                    <TrapButton
+                      variant="gold"
+                      onClick={form.handleSubmit(onSubmit)}
+                      disabled={isTokenizing}
                       className="w-full"
-                      glow
-                      loading={isTokenizing}
                     >
-                      Tokenize Asset
-                    </GlowButton>
+                      {isTokenizing ? 'Tokenizing...' : 'Tokenize Asset'}
+                    </TrapButton>
                   </form>
                 </Form>
               </DialogContent>
@@ -931,658 +885,764 @@ export default function NodeDashboardPage() {
           )}
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard
-            title="Supported Assets"
-            value={supportedAssetsCount}
-            icon={Package}
-            iconColor="bg-accent"
-            description="Total assets tokenized"
-          />
-          <StatCard
-            title="Total Quantity"
-            value={totalTokenizedQuantity}
-            icon={DollarSign}
-            iconColor="bg-green-500"
-            description="Total tokenized units"
-          />
-          <StatCard
-            title="Node Status"
-            value={currentNodeData?.status || 'Unknown'}
-            icon={Activity}
-            iconColor={
-              currentNodeData?.status === 'Active'
-                ? 'bg-green-500'
-                : 'bg-red-500'
-            }
-            description="Current operational status"
-          />
+        <EvaScanLine variant="mixed" />
+
+        {/* ── Stats Overview — Hex Cards + Spinning Reticle ── */}
+        <div className="relative">
+          <HexCluster size="md" className="absolute top-2 right-8" />
+          <div className="grid grid-cols-12 gap-3">
+            {/* Node Status — large notched card with Spinning Reticle */}
+            <div
+              className="col-span-12 md:col-span-5 relative overflow-hidden"
+              style={{
+                clipPath:
+                  'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+              }}
+            >
+              <div
+                className="absolute inset-0 bg-card/70"
+                style={{
+                  clipPath:
+                    'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+                }}
+              />
+              <div
+                className={`absolute top-0 left-0 w-1 bottom-4 ${currentNodeData?.status === 'Active' ? 'bg-emerald-500/40' : 'bg-crimson/40'}`}
+              />
+              <div className="absolute inset-0 eva-hex-pattern opacity-20 pointer-events-none" />
+              <EvaSystemReadout
+                lines={['NODE.CTRL', 'UPTIME:OK', 'SYNC:100%']}
+                position="right"
+              />
+              <div className="relative p-6 ml-1 flex items-center gap-6">
+                <div className="flex-1">
+                  <span className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/45 block mb-3 font-bold">
+                    Node Status
+                  </span>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative">
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full ${currentNodeData?.status === 'Active' ? 'bg-emerald-500' : 'bg-crimson'}`}
+                      />
+                      <div
+                        className={`absolute inset-0 w-3.5 h-3.5 rounded-full animate-ping opacity-30 ${currentNodeData?.status === 'Active' ? 'bg-emerald-500' : 'bg-crimson'}`}
+                      />
+                    </div>
+                    <span
+                      className={`font-mono text-4xl font-bold ${currentNodeData?.status === 'Active' ? 'text-emerald-400' : 'text-crimson'}`}
+                    >
+                      {currentNodeData?.status || 'Unknown'}
+                    </span>
+                  </div>
+                  <EvaProgress
+                    value={currentNodeData?.status === 'Active' ? 99 : 20}
+                    color={
+                      currentNodeData?.status === 'Active'
+                        ? 'emerald'
+                        : 'crimson'
+                    }
+                  />
+                </div>
+                {/* Spinning Reticle — Node Sync Visualization */}
+                <div className="hidden lg:block">
+                  <SpinningReticle size={130} label="NODE SYNC" />
+                </div>
+              </div>
+            </div>
+            {/* Hex stat cards */}
+            <div className="col-span-12 md:col-span-7 grid grid-cols-2 gap-3">
+              <HexStatCard
+                label="Supported Assets"
+                value={String(supportedAssetsCount)}
+                sub="Total assets tokenized"
+                color="gold"
+                powerLevel={Math.min(supportedAssetsCount, 10)}
+              />
+              <HexStatCard
+                label="Total Quantity"
+                value={totalTokenizedQuantity.toLocaleString()}
+                sub="Total tokenized units"
+                color="gold"
+                powerLevel={Math.min(
+                  Math.ceil(totalTokenizedQuantity / 500),
+                  10,
+                )}
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <GreekKeyStrip color="gold" />
+          </div>
         </div>
 
+        <EvaSectionMarker
+          section="SEC.01"
+          label="Asset Registry"
+          variant="gold"
+        />
+
         {/* Tokenized Assets Summary */}
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle>Tokenized Assets</GlassCardTitle>
-            <GlassCardDescription>
-              Summary of tokenized assets by class
-            </GlassCardDescription>
-          </GlassCardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-glass-border">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Asset Class
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Quantity
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-glass-border">
-                {getAssetsSummaryByClass().length > 0 ? (
-                  getAssetsSummaryByClass().map((summary) => (
-                    <tr
-                      key={summary.assetClass}
-                      className="hover:bg-glass-hover transition-colors"
-                    >
-                      <td className="px-4 py-4 capitalize font-medium text-foreground">
-                        {summary.assetClass}
-                      </td>
-                      <td className="px-4 py-4 font-mono text-foreground">
-                        {summary.totalQuantity}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={2}
-                      className="px-4 py-8 text-center text-muted-foreground"
-                    >
-                      No tokenized assets found
+        <div className="relative">
+          <TargetRings
+            size={44}
+            className="absolute top-6 right-12 hidden lg:block"
+          />
+          <EvaPanel
+            label="Tokenized Assets"
+            sublabel="Summary by class"
+            sysId="REG.001"
+            status="active"
+            accent="gold"
+          >
+            <ScanTable headers={['Asset Class', 'Quantity']}>
+              {getAssetsSummaryByClass().length > 0 ? (
+                getAssetsSummaryByClass().map((summary, i) => (
+                  <ChevronTableRow
+                    key={summary.assetClass}
+                    highlight={i === 0}
+                    index={i + 1}
+                  >
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-gold rotate-45" />
+                        <span className="font-mono text-base text-foreground/85 font-bold capitalize">
+                          {summary.assetClass}
+                        </span>
+                      </div>
                     </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </GlassCard>
+                    <td className="py-4 px-4 text-right">
+                      <span className="font-mono text-xl font-bold text-gold tabular-nums">
+                        {summary.totalQuantity.toLocaleString()}
+                      </span>
+                    </td>
+                  </ChevronTableRow>
+                ))
+              ) : (
+                <tr>
+                  <td />
+                  <td
+                    colSpan={2}
+                    className="px-4 py-8 text-center font-mono text-sm text-foreground/30"
+                  >
+                    No tokenized assets found
+                  </td>
+                  <td />
+                </tr>
+              )}
+            </ScanTable>
+          </EvaPanel>
+        </div>
+
+        <EvaScanLine variant="crimson" />
 
         {/* Asset Details */}
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle>Asset Details</GlassCardTitle>
-            <GlassCardDescription>
-              Capacity and attributes for each tokenized asset
-            </GlassCardDescription>
-          </GlassCardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-glass-border">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Asset
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Class
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Quantity
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Trading
-                  </th>
-                </tr>
-              </thead>
-              <tbody>{renderAssetDetailsRows()}</tbody>
-            </table>
-          </div>
-        </GlassCard>
+        <EvaPanel
+          label="Asset Details"
+          sublabel="Capacity and attributes"
+          sysId="AST.DTL"
+          accent="crimson"
+        >
+          <ScanTable headers={['ID', 'Asset', 'Class', 'Quantity', 'Trading']}>
+            {renderAssetDetailsRows()}
+          </ScanTable>
+        </EvaPanel>
+
+        <EvaSectionMarker section="SEC.02" label="Orders" variant="crimson" />
 
         {/* Orders */}
-        <GlassCard>
-          <GlassCardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <GlassCardTitle>Orders</GlassCardTitle>
-              <GlassCardDescription>
-                Track your accepted orders and their status
-              </GlassCardDescription>
-            </div>
-            <GlowButton
-              variant="outline"
-              onClick={async () => {
-                setIsViewingOrders(true);
-                try {
-                  if (!selectedNodeAddress) {
-                    toast({
-                      title: 'Error',
-                      description: 'No node selected to view orders.',
-                      variant: 'destructive',
-                    });
-                    return;
+        <div className="relative">
+          <LaurelAccent
+            side="right"
+            className="absolute right-4 top-12 hidden xl:block"
+          />
+          <EvaPanel
+            label="Orders"
+            sublabel="Track accepted orders"
+            sysId="ORD.TRK"
+            accent="crimson"
+          >
+            <div className="flex items-center justify-end mb-4">
+              <TrapButton
+                variant="gold"
+                size="sm"
+                onClick={async () => {
+                  setIsViewingOrders(true);
+                  try {
+                    if (!selectedNodeAddress) {
+                      toast({
+                        title: 'Error',
+                        description: 'No node selected to view orders.',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+                    await router.push(`/node/${selectedNodeAddress}/orders`);
+                  } finally {
+                    setIsViewingOrders(false);
                   }
-                  await router.push(`/node/${selectedNodeAddress}/orders`);
-                } finally {
-                  setIsViewingOrders(false);
-                }
-              }}
-              loading={isViewingOrders}
-            >
-              View All Orders
-            </GlowButton>
-          </GlassCardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-glass-border">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Order ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Asset
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Quantity
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Value
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-glass-border">
-                {currentOrders.map((order) => {
-                  const isP2P = Boolean(order.isP2P);
-                  const isExpanded = expandedP2POrders[order.id];
+                }}
+                disabled={isViewingOrders}
+              >
+                View All Orders
+              </TrapButton>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-glass-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Order ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Asset
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Quantity
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Value
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-glass-border">
+                  {currentOrders.map((order) => {
+                    const isP2P = Boolean(order.isP2P);
+                    const isExpanded = expandedP2POrders[order.id];
 
-                  return (
-                    <React.Fragment key={order.id}>
-                      <tr
-                        className={cn(
-                          'hover:bg-glass-hover transition-colors',
-                          isP2P && 'cursor-pointer',
-                          isExpanded && 'bg-glass-hover',
-                        )}
-                        onClick={
-                          isP2P ? () => toggleP2PExpand(order.id) : undefined
-                        }
-                      >
-                        <td className="px-4 py-4 font-mono text-sm text-foreground">
-                          <div className="flex items-center gap-2">
-                            {truncateId(order.id, 12)}
-                            {isP2P && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">
-                                P2P
-                              </span>
-                            )}
-                            {isP2P && (
-                              <ChevronDown
-                                className={cn(
-                                  'w-3 h-3 text-muted-foreground transition-transform',
-                                  isExpanded && 'rotate-180',
-                                )}
+                    return (
+                      <React.Fragment key={order.id}>
+                        <tr
+                          className={cn(
+                            'hover:bg-glass-hover transition-colors',
+                            isP2P && 'cursor-pointer',
+                            isExpanded && 'bg-glass-hover',
+                          )}
+                          onClick={
+                            isP2P ? () => toggleP2PExpand(order.id) : undefined
+                          }
+                        >
+                          <td className="px-4 py-4 font-mono text-sm text-foreground">
+                            <div className="flex items-center gap-2">
+                              {truncateId(order.id, 12)}
+                              {isP2P && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">
+                                  P2P
+                                </span>
+                              )}
+                              {isP2P && (
+                                <ChevronDown
+                                  className={cn(
+                                    'w-3 h-3 text-muted-foreground transition-transform',
+                                    isExpanded && 'rotate-180',
+                                  )}
+                                />
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 font-mono text-sm text-foreground">
+                            {truncateId(order.buyer, 12)}
+                          </td>
+                          <td className="px-4 py-4 capitalize text-foreground">
+                            {order.asset?.name || 'Unknown Asset'}
+                          </td>
+                          <td className="px-4 py-4 font-mono text-foreground">
+                            {order.tokenQuantity}
+                          </td>
+                          <td className="px-4 py-4 font-mono text-foreground">
+                            ${formatTokenAmount(order.price, 18, 2)}
+                          </td>
+                          <td className="px-4 py-4">
+                            {signedOrders[order.id] &&
+                            order.currentStatus !== OrderStatus.PROCESSING &&
+                            order.currentStatus !== OrderStatus.SETTLED ? (
+                              <EvaStatusBadge
+                                status="pending"
+                                label="Awaiting Driver"
                               />
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 font-mono text-sm text-foreground">
-                          {truncateId(order.buyer, 12)}
-                        </td>
-                        <td className="px-4 py-4 capitalize text-foreground">
-                          {order.asset?.name || 'Unknown Asset'}
-                        </td>
-                        <td className="px-4 py-4 font-mono text-foreground">
-                          {order.tokenQuantity}
-                        </td>
-                        <td className="px-4 py-4 font-mono text-foreground">
-                          ${formatTokenAmount(order.price, 18, 2)}
-                        </td>
-                        <td className="px-4 py-4">
-                          {signedOrders[order.id] &&
-                          order.currentStatus !== OrderStatus.PROCESSING &&
-                          order.currentStatus !== OrderStatus.SETTLED ? (
-                            <StatusBadge
-                              status="warning"
-                              label="Awaiting Driver"
-                              size="sm"
-                            />
-                          ) : (
-                            <StatusBadge
-                              status={
-                                order.currentStatus === OrderStatus.SETTLED
-                                  ? 'success'
-                                  : order.currentStatus ===
-                                      OrderStatus.CANCELLED
-                                    ? 'error'
+                            ) : (
+                              <EvaStatusBadge
+                                status={
+                                  order.currentStatus === OrderStatus.SETTLED
+                                    ? 'completed'
                                     : order.currentStatus ===
                                         OrderStatus.PROCESSING
-                                      ? 'warning'
-                                      : 'pending'
-                              }
-                              label={order.currentStatus}
-                              size="sm"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          {signedOrders[order.id] &&
-                          order.currentStatus !== OrderStatus.PROCESSING &&
-                          order.currentStatus !== OrderStatus.SETTLED ? (
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                              <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-                              <span className="text-xs text-amber-300">
-                                Awaiting driver signature
+                                      ? 'processing'
+                                      : 'created'
+                                }
+                                label={order.currentStatus}
+                              />
+                            )}
+                          </td>
+                          <td className="px-4 py-4">
+                            {signedOrders[order.id] &&
+                            order.currentStatus !== OrderStatus.PROCESSING &&
+                            order.currentStatus !== OrderStatus.SETTLED ? (
+                              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+                                <span className="text-xs text-amber-300">
+                                  Awaiting driver signature
+                                </span>
+                              </div>
+                            ) : (order.currentStatus === OrderStatus.CREATED ||
+                                (order.currentStatus ===
+                                  OrderStatus.PROCESSING &&
+                                  order.journeyStatus === 0)) &&
+                              order.seller?.toLowerCase() ===
+                                currentNodeData?.owner?.toLowerCase() ? (
+                              <TrapButton
+                                variant="gold"
+                                size="sm"
+                                onClick={() => {
+                                  handleConfirmPickup(order);
+                                }}
+                              >
+                                Sign for Pickup
+                              </TrapButton>
+                            ) : order.currentStatus === OrderStatus.CREATED ? (
+                              <span className="text-sm text-muted-foreground">
+                                Pending
                               </span>
-                            </div>
-                          ) : (order.currentStatus === OrderStatus.CREATED ||
-                              (order.currentStatus === OrderStatus.PROCESSING &&
-                                order.journeyStatus === 0)) &&
-                            order.seller?.toLowerCase() ===
-                              currentNodeData?.owner?.toLowerCase() ? (
-                            <GlowButton
-                              variant="primary"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleConfirmPickup(order);
-                              }}
-                            >
-                              Sign for Pickup
-                            </GlowButton>
-                          ) : order.currentStatus === OrderStatus.CREATED ? (
-                            <span className="text-sm text-muted-foreground">
-                              Pending
-                            </span>
-                          ) : order.currentStatus === OrderStatus.PROCESSING &&
-                            order.journeyStatus === 0 ? (
-                            <span className="text-sm text-amber-400 font-medium">
-                              Awaiting Pickup
-                            </span>
-                          ) : order.currentStatus === OrderStatus.PROCESSING ? (
-                            <span className="text-sm text-accent font-medium">
-                              In Transit
-                            </span>
-                          ) : order.currentStatus === OrderStatus.SETTLED ? (
-                            <span className="text-sm text-trading-buy font-medium">
-                              Completed
-                            </span>
-                          ) : order.currentStatus === OrderStatus.CANCELLED ? (
-                            <span className="text-sm text-trading-sell font-medium">
-                              Cancelled
-                            </span>
-                          ) : null}
-                        </td>
-                      </tr>
-
-                      {/* Expandable P2P Order Flow row */}
-                      {isP2P && isExpanded && (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-4 py-2 bg-surface-overlay/50"
-                          >
-                            <P2POrderFlow
-                              order={order}
-                              fetchSignatureState={getP2PSignatureState}
-                              onSignPickup={
-                                order.seller?.toLowerCase() ===
-                                currentNodeData?.owner?.toLowerCase()
-                                  ? async (orderId) => {
-                                      const matchedOrder = orders.find(
-                                        (o) => o.id === orderId,
-                                      );
-                                      if (!matchedOrder) {
-                                        console.error(
-                                          '[NodeDashboard] onSignPickup: order not found in orders array',
-                                          orderId,
-                                        );
-                                        throw new Error(
-                                          'Order not found. Please refresh and try again.',
-                                        );
-                                      }
-                                      return await handleConfirmPickup(
-                                        matchedOrder,
-                                      );
-                                    }
-                                  : undefined
-                              }
-                            />
+                            ) : order.currentStatus ===
+                                OrderStatus.PROCESSING &&
+                              order.journeyStatus === 0 ? (
+                              <span className="text-sm text-amber-400 font-medium">
+                                Awaiting Pickup
+                              </span>
+                            ) : order.currentStatus ===
+                              OrderStatus.PROCESSING ? (
+                              <span className="text-sm text-accent font-medium">
+                                In Transit
+                              </span>
+                            ) : order.currentStatus === OrderStatus.SETTLED ? (
+                              <span className="text-sm text-trading-buy font-medium">
+                                Completed
+                              </span>
+                            ) : order.currentStatus ===
+                              OrderStatus.CANCELLED ? (
+                              <span className="text-sm text-trading-sell font-medium">
+                                Cancelled
+                              </span>
+                            ) : null}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
 
-            {orders.length === 0 && (
-              <div className="text-center py-12">
-                <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground">No orders found</p>
-              </div>
-            )}
-
-            {/* Pagination Controls */}
-            {orders.length > ordersPerPage && (
-              <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-glass-border">
-                <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to{' '}
-                  {Math.min(endIndex, orders.length)} of {orders.length} orders
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={goToFirstPage}
-                    disabled={currentPage === 1}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronsLeft className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={goToPreviousPage}
-                    disabled={currentPage === 1}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                  <span className="px-4 text-sm text-muted-foreground">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={goToNextPage}
-                    disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={goToLastPage}
-                    disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </GlassCard>
-
-        {/* Node Location */}
-        <GlassCard className="overflow-hidden">
-          <GlassCardHeader>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-accent" />
-              <GlassCardTitle>Node Location</GlassCardTitle>
-            </div>
-            <GlassCardDescription>
-              Physical location of your node in the network
-            </GlassCardDescription>
-          </GlassCardHeader>
-          <MapView
-            lat={currentNodeData?.location?.location?.lat || '0'}
-            lng={currentNodeData?.location?.location?.lng || '0'}
-            addressName={
-              currentNodeData?.location?.addressName || 'Unknown Location'
-            }
-          />
-        </GlassCard>
-
-        {/* Supporting Documents */}
-        <GlassCard>
-          <GlassCardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-accent" />
-                <GlassCardTitle>Supporting Documents</GlassCardTitle>
-              </div>
-              <GlassCardDescription>
-                Certifications, audits, and other supporting documentation
-              </GlassCardDescription>
-            </div>
-            {!isReadOnly && (
-              <Dialog
-                open={isAddDocumentOpen}
-                onOpenChange={setIsAddDocumentOpen}
-              >
-                <DialogTrigger asChild>
-                  <GlowButton
-                    variant="outline"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    loading={isAddingDocument}
-                  >
-                    Add Document
-                  </GlowButton>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>Add Supporting Document</DialogTitle>
-                    <DialogDescription>
-                      Add a certification, audit report, or other supporting
-                      document. IPFS and Arweave URLs are automatically marked
-                      as immutable.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleAddDocument} className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        Document URL *
-                      </label>
-                      <Input
-                        placeholder="https://... or ipfs://..."
-                        value={documentForm.url}
-                        onChange={(e) =>
-                          setDocumentForm({
-                            ...documentForm,
-                            url: e.target.value,
-                          })
-                        }
-                        className="bg-neutral-900/50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        Title *
-                      </label>
-                      <Input
-                        placeholder="e.g., Annual Security Audit 2024"
-                        value={documentForm.title}
-                        onChange={(e) =>
-                          setDocumentForm({
-                            ...documentForm,
-                            title: e.target.value,
-                          })
-                        }
-                        className="bg-neutral-900/50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        Description
-                      </label>
-                      <Input
-                        placeholder="Brief description of the document"
-                        value={documentForm.description}
-                        onChange={(e) =>
-                          setDocumentForm({
-                            ...documentForm,
-                            description: e.target.value,
-                          })
-                        }
-                        className="bg-neutral-900/50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        Document Type
-                      </label>
-                      <select
-                        value={documentForm.documentType}
-                        onChange={(e) =>
-                          setDocumentForm({
-                            ...documentForm,
-                            documentType: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 rounded-lg bg-neutral-900/50 border border-neutral-700/50 text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                      >
-                        <option value="certification">Certification</option>
-                        <option value="audit">Audit Report</option>
-                        <option value="license">License</option>
-                        <option value="legal">Legal Document</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <GlowButton
-                      type="submit"
-                      variant="primary"
-                      className="w-full"
-                      glow
-                      loading={isAddingDocument}
-                    >
-                      Add Document
-                    </GlowButton>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            )}
-          </GlassCardHeader>
-
-          {/* Active Documents */}
-          <div className="space-y-3">
-            {documentsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="w-6 h-6 text-accent animate-spin" />
-              </div>
-            ) : activeDocuments.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground">No documents attached</p>
-                {!isReadOnly && (
-                  <p className="text-sm text-muted-foreground/50 mt-1">
-                    Add certifications, audits, or other supporting documents
-                  </p>
-                )}
-              </div>
-            ) : (
-              activeDocuments.map((doc, index) => (
-                <div
-                  key={`${doc.url}-${index}`}
-                  className="p-4 rounded-lg bg-neutral-900/30 border border-neutral-800/50 hover:border-neutral-700/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-medium text-foreground">
-                          {doc.title}
-                        </h4>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 text-xs capitalize">
-                          {doc.documentType}
-                        </span>
-                        {doc.isFrozen && (
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 text-amber-400 text-xs"
-                            title="Content is immutable (IPFS/Arweave)"
-                          >
-                            <Lock className="w-3 h-3" />
-                            Frozen
-                          </span>
+                        {/* Expandable P2P Order Flow row */}
+                        {isP2P && isExpanded && (
+                          <tr>
+                            <td
+                              colSpan={7}
+                              className="px-4 py-2 bg-surface-overlay/50"
+                            >
+                              <P2POrderFlow
+                                order={order}
+                                fetchSignatureState={getP2PSignatureState}
+                                onSignPickup={
+                                  order.seller?.toLowerCase() ===
+                                  currentNodeData?.owner?.toLowerCase()
+                                    ? async (orderId) => {
+                                        const matchedOrder = orders.find(
+                                          (o) => o.id === orderId,
+                                        );
+                                        if (!matchedOrder) {
+                                          console.error(
+                                            '[NodeDashboard] onSignPickup: order not found in orders array',
+                                            orderId,
+                                          );
+                                          throw new Error(
+                                            'Order not found. Please refresh and try again.',
+                                          );
+                                        }
+                                        return await handleConfirmPickup(
+                                          matchedOrder,
+                                        );
+                                      }
+                                    : undefined
+                                }
+                              />
+                            </td>
+                          </tr>
                         )}
-                      </div>
-                      {doc.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {doc.description}
-                        </p>
-                      )}
-                      <a
-                        href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent/80 mt-2 transition-colors"
-                      >
-                        <Link2 className="w-3 h-3" />
-                        <span className="truncate max-w-[300px]">
-                          {doc.url}
-                        </span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                      <p className="text-xs text-muted-foreground/50 mt-2">
-                        Added{' '}
-                        {new Date(doc.addedAt * 1000).toLocaleDateString()} by{' '}
-                        {doc.addedBy.slice(0, 6)}...{doc.addedBy.slice(-4)}
-                      </p>
-                    </div>
-                    {!isReadOnly && (
-                      <button
-                        onClick={() => handleRemoveDocument(doc.url)}
-                        className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                        title="Remove document"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {orders.length === 0 && (
+                <div className="text-center py-12">
+                  <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No orders found</p>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {orders.length > ordersPerPage && (
+                <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-border/15">
+                  <div className="font-mono text-xs text-foreground/30 tracking-wider">
+                    Showing {startIndex + 1} to{' '}
+                    {Math.min(endIndex, orders.length)} of {orders.length}{' '}
+                    orders
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={goToFirstPage}
+                      disabled={currentPage === 1}
+                      className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronsLeft className="w-4 h-4 text-foreground/40" />
+                    </button>
+                    <button
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-foreground/40" />
+                    </button>
+                    <span className="px-4 font-mono text-xs text-foreground/30 tabular-nums">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-foreground/40" />
+                    </button>
+                    <button
+                      onClick={goToLastPage}
+                      disabled={currentPage === totalPages}
+                      className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronsRight className="w-4 h-4 text-foreground/40" />
+                    </button>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              )}
+            </div>
+          </EvaPanel>
+        </div>
 
-          {/* Document History (Removed Documents) */}
-          {removedDocuments.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-neutral-800/50">
-              <button
-                onClick={() => setShowDocumentHistory(!showDocumentHistory)}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ChevronDown
-                  className={cn(
-                    'w-4 h-4 transition-transform',
-                    showDocumentHistory && 'rotate-180',
-                  )}
-                />
-                View {removedDocuments.length} removed document
-                {removedDocuments.length !== 1 ? 's' : ''}
-              </button>
+        <EvaSectionMarker section="SEC.03" label="Geography" variant="gold" />
 
-              {showDocumentHistory && (
-                <div className="mt-4 space-y-3">
-                  {removedDocuments.map((doc, index) => (
-                    <div
-                      key={`removed-${doc.url}-${index}`}
-                      className="p-4 rounded-lg bg-neutral-900/20 border border-neutral-800/30 opacity-60"
+        {/* Node Location */}
+        <div className="relative">
+          <HexCluster
+            size="lg"
+            className="absolute top-4 left-12 hidden lg:block"
+          />
+          <EvaPanel
+            label="Node Location"
+            sublabel="Physical node in network"
+            sysId="GEO.SYS"
+            status="active"
+            accent="gold"
+          >
+            <MapView
+              lat={currentNodeData?.location?.location?.lat || '0'}
+              lng={currentNodeData?.location?.location?.lng || '0'}
+              addressName={
+                currentNodeData?.location?.addressName || 'Unknown Location'
+              }
+            />
+          </EvaPanel>
+        </div>
+
+        {/* ── Network Topology — Pulsing Hex Network ── */}
+        <EvaSectionMarker
+          section="SEC.03b"
+          label="Network Topology"
+          variant="gold"
+        />
+        <EvaPanel
+          label="Node Network"
+          sublabel="Active tokenization nodes"
+          sysId="NET.TOP"
+          status="active"
+          accent="gold"
+        >
+          <PulsingHexNetwork />
+        </EvaPanel>
+
+        {/* ── System Health — Cascading Load Bars ── */}
+        <EvaSectionMarker
+          section="SEC.03c"
+          label="System Health"
+          variant="crimson"
+        />
+        <EvaPanel
+          label="System Diagnostics"
+          sublabel="Node subsystem status"
+          sysId="SYS.DGN"
+          accent="crimson"
+        >
+          <CascadeLoadBars
+            labels={[
+              'CHAIN SYNC',
+              'ORACLE FEED',
+              'COMPLIANCE',
+              'TOKEN ENGINE',
+              'CUSTODY LINK',
+              'SETTLEMENT',
+              'AUDIT LOG',
+              'AT FIELD',
+            ]}
+          />
+        </EvaPanel>
+
+        <EvaSectionMarker
+          section="SEC.04"
+          label="Documentation"
+          variant="crimson"
+        />
+
+        {/* Supporting Documents */}
+        <div className="relative">
+          <LaurelAccent
+            side="right"
+            className="absolute right-4 top-10 hidden xl:block"
+          />
+          <EvaPanel
+            label="Supporting Documents"
+            sublabel="Certifications and audits"
+            sysId="DOC.SYS"
+            accent="crimson"
+          >
+            <div className="flex items-center justify-end mb-4">
+              {!isReadOnly && (
+                <Dialog
+                  open={isAddDocumentOpen}
+                  onOpenChange={setIsAddDocumentOpen}
+                >
+                  <DialogTrigger asChild>
+                    <TrapButton
+                      variant="gold"
+                      size="sm"
+                      disabled={isAddingDocument}
                     >
-                      <div className="flex items-start gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-medium text-foreground line-through">
+                      <span className="flex items-center gap-2">
+                        <span className="text-crimson">+</span> Add Document
+                      </span>
+                    </TrapButton>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>Add Supporting Document</DialogTitle>
+                      <DialogDescription>
+                        Add a certification, audit report, or other supporting
+                        document. IPFS and Arweave URLs are automatically marked
+                        as immutable.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleAddDocument} className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Document URL *
+                        </label>
+                        <Input
+                          placeholder="https://... or ipfs://..."
+                          value={documentForm.url}
+                          onChange={(e) =>
+                            setDocumentForm({
+                              ...documentForm,
+                              url: e.target.value,
+                            })
+                          }
+                          className="bg-neutral-900/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Title *
+                        </label>
+                        <Input
+                          placeholder="e.g., Annual Security Audit 2024"
+                          value={documentForm.title}
+                          onChange={(e) =>
+                            setDocumentForm({
+                              ...documentForm,
+                              title: e.target.value,
+                            })
+                          }
+                          className="bg-neutral-900/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Description
+                        </label>
+                        <Input
+                          placeholder="Brief description of the document"
+                          value={documentForm.description}
+                          onChange={(e) =>
+                            setDocumentForm({
+                              ...documentForm,
+                              description: e.target.value,
+                            })
+                          }
+                          className="bg-neutral-900/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Document Type
+                        </label>
+                        <select
+                          value={documentForm.documentType}
+                          onChange={(e) =>
+                            setDocumentForm({
+                              ...documentForm,
+                              documentType: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-lg bg-neutral-900/50 border border-neutral-700/50 text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        >
+                          <option value="certification">Certification</option>
+                          <option value="audit">Audit Report</option>
+                          <option value="license">License</option>
+                          <option value="legal">Legal Document</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <TrapButton
+                        variant="gold"
+                        onClick={handleAddDocument as any}
+                        disabled={isAddingDocument}
+                        className="w-full"
+                      >
+                        {isAddingDocument ? 'Adding...' : 'Add Document'}
+                      </TrapButton>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+
+            {/* Active Documents */}
+            <div className="space-y-3">
+              {documentsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="w-6 h-6 text-accent animate-spin" />
+                </div>
+              ) : activeDocuments.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No documents attached</p>
+                  {!isReadOnly && (
+                    <p className="text-sm text-muted-foreground/50 mt-1">
+                      Add certifications, audits, or other supporting documents
+                    </p>
+                  )}
+                </div>
+              ) : (
+                activeDocuments.map((doc, index) => (
+                  <div
+                    key={`${doc.url}-${index}`}
+                    className="p-4 rounded-lg bg-neutral-900/30 border border-neutral-800/50 hover:border-neutral-700/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-medium text-foreground">
+                            {doc.title}
+                          </h4>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 text-xs capitalize">
+                            {doc.documentType}
+                          </span>
+                          {doc.isFrozen && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 text-amber-400 text-xs"
+                              title="Content is immutable (IPFS/Arweave)"
+                            >
+                              <Lock className="w-3 h-3" />
+                              Frozen
+                            </span>
+                          )}
+                        </div>
+                        {doc.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {doc.description}
+                          </p>
+                        )}
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent/80 mt-2 transition-colors"
+                        >
+                          <Link2 className="w-3 h-3" />
+                          <span className="truncate max-w-[300px]">
+                            {doc.url}
+                          </span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        <p className="text-xs text-muted-foreground/50 mt-2">
+                          Added{' '}
+                          {new Date(doc.addedAt * 1000).toLocaleDateString()} by{' '}
+                          {doc.addedBy.slice(0, 6)}...{doc.addedBy.slice(-4)}
+                        </p>
+                      </div>
+                      {!isReadOnly && (
+                        <button
+                          onClick={() => handleRemoveDocument(doc.url)}
+                          className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          title="Remove document"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Document History (Removed Documents) */}
+            {removedDocuments.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-neutral-800/50">
+                <button
+                  onClick={() => setShowDocumentHistory(!showDocumentHistory)}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronDown
+                    className={cn(
+                      'w-4 h-4 transition-transform',
+                      showDocumentHistory && 'rotate-180',
+                    )}
+                  />
+                  View {removedDocuments.length} removed document
+                  {removedDocuments.length !== 1 ? 's' : ''}
+                </button>
+
+                {showDocumentHistory && (
+                  <div className="mt-2 space-y-2">
+                    {removedDocuments.map((doc, index) => (
+                      <div
+                        key={`removed-${doc.url}-${index}`}
+                        className="relative bg-background/20 opacity-50"
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-foreground/8" />
+                        <div className="px-5 py-4 ml-[3px]">
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="font-mono text-sm text-foreground/35 line-through">
                               {doc.title}
-                            </h4>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-800/50 text-neutral-400 text-xs capitalize">
-                              {doc.documentType}
                             </span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 text-xs">
-                              Removed
-                            </span>
+                            <EvaStatusBadge status="pending" label="Removed" />
                           </div>
                           {doc.description && (
-                            <p className="text-sm text-muted-foreground/50 mt-1">
+                            <p className="font-mono text-xs text-foreground/20 mt-1">
                               {doc.description}
                             </p>
                           )}
-                          <p className="text-xs text-muted-foreground/50 mt-2">
+                          <p className="font-mono text-xs text-foreground/15 mt-2">
                             Removed{' '}
                             {doc.removedAt
                               ? new Date(
@@ -1594,13 +1654,13 @@ export default function NodeDashboardPage() {
                           </p>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </GlassCard>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </EvaPanel>
+        </div>
       </div>
     </div>
   );

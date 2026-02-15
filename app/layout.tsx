@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
+import {
+  Plus_Jakarta_Sans,
+  Space_Mono,
+  Playfair_Display,
+} from 'next/font/google';
 import './globals.css';
 import { MainProvider } from './providers/main.provider';
 import { NodesProvider } from './providers/nodes.provider';
@@ -15,9 +19,8 @@ import { PrivyProviderWrapper } from './providers/privy.provider';
 import { Toaster } from './components/ui/toaster';
 
 /**
- * Primary font for the entire application
- * Plus Jakarta Sans - Clean, modern, geometric with rounded terminals
- * Matches the Altura.trade aesthetic
+ * Body / fallback sans-serif
+ * Inter via Plus Jakarta Sans lineage — clean, neutral, disappears into UI
  */
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -27,13 +30,26 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 /**
- * Monospace font for trading data, numbers, and code
- * JetBrains Mono - Excellent for tabular data
+ * Monospace for EVA technical readouts, data, system IDs
+ * Space Mono — angular, aggressive, fits the NERV aesthetic
  */
-const jetbrainsMono = JetBrains_Mono({
+const spaceMono = Space_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
   display: 'swap',
+  weight: ['400', '700'],
+});
+
+/**
+ * Serif for headlines, philosophy quotes, section titles
+ * Playfair Display — the Greek philosophy voice
+ */
+const playfairDisplay = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800', '900'],
+  style: ['normal', 'italic'],
 });
 
 export const metadata: Metadata = {
@@ -56,7 +72,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${plusJakartaSans.variable} ${jetbrainsMono.variable}`}
+      className={`dark ${plusJakartaSans.variable} ${spaceMono.variable} ${playfairDisplay.variable}`}
       suppressHydrationWarning
     >
       <body className={`${plusJakartaSans.className} antialiased`}>

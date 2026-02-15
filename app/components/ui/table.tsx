@@ -58,11 +58,20 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+      'relative group border-b border-border/15 transition-colors hover:bg-gold/[0.02] data-[state=selected]:bg-gold/[0.04]',
       className,
     )}
     {...props}
-  />
+  >
+    {/* Chevron accent on hover */}
+    <div
+      className="absolute left-0 top-1 bottom-1 w-1 bg-transparent group-hover:bg-gold/25 transition-colors pointer-events-none"
+      style={{
+        clipPath: 'polygon(0 0, 100% 20%, 100% 80%, 0 100%)',
+      }}
+    />
+    {props.children}
+  </tr>
 ));
 TableRow.displayName = 'TableRow';
 
@@ -73,7 +82,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0',
+      'h-12 px-4 text-left align-middle font-mono text-xs tracking-[0.15em] uppercase font-bold text-gold/50 [&:has([role=checkbox])]:pr-0',
       className,
     )}
     {...props}
@@ -87,7 +96,10 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}
+    className={cn(
+      'p-4 align-middle font-mono text-sm [&:has([role=checkbox])]:pr-0',
+      className,
+    )}
     {...props}
   />
 ));
@@ -99,7 +111,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn('mt-4 text-sm text-muted-foreground', className)}
+    className={cn('mt-4 text-sm text-muted-foreground font-mono', className)}
     {...props}
   />
 ));

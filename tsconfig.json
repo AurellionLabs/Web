@@ -34,6 +34,8 @@
     "dapp-connectors",
     "typechain-types",
     "ralph",
-    "ralphy"
+    "ralphy",
+    "aurellion-rwa-tokenization",
+    "aurellion-rwa-tokenization-with-anims"
   ]
 }

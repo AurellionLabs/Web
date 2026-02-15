@@ -11,53 +11,44 @@ const config: Config = {
   theme: {
     extend: {
       // ============================================
-      // FONT FAMILIES
+      // FONT FAMILIES — Three-voice type system
+      // Serif (philosophy) + Mono (data) + Sans (body)
       // ============================================
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
-        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-serif)', 'Georgia', 'serif'],
+        display: ['var(--font-serif)', 'Georgia', 'serif'],
       },
 
       // ============================================
-      // COLORS - Aurellion Red & Gold Theme
+      // COLORS — EVA × Greek Philosophy palette
       // ============================================
       colors: {
-        // Semantic colors from CSS variables
+        // Semantic from CSS variables
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
 
-        // Card colors
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-
-        // Popover colors
         popover: {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))',
         },
-
-        // Primary accent (Gold)
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
         },
-
-        // Secondary
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
         },
-
-        // Muted
         muted: {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
-
-        // Accent (Gold)
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
@@ -72,19 +63,14 @@ const config: Config = {
           800: 'hsl(var(--accent-800))',
           900: 'hsl(var(--accent-900))',
         },
-
-        // Destructive (Red)
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
-
-        // Border, input, ring
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
 
-        // Chart colors
         chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',
@@ -93,7 +79,6 @@ const config: Config = {
           '5': 'hsl(var(--chart-5))',
         },
 
-        // Sidebar
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',
           foreground: 'hsl(var(--sidebar-foreground))',
@@ -105,14 +90,12 @@ const config: Config = {
           ring: 'hsl(var(--sidebar-ring))',
         },
 
-        // Surface colors
         surface: {
           base: 'hsl(var(--surface-base))',
           elevated: 'hsl(var(--surface-elevated))',
           overlay: 'hsl(var(--surface-overlay))',
         },
 
-        // Trading colors
         trading: {
           buy: 'hsl(var(--trading-buy))',
           sell: 'hsl(var(--trading-sell))',
@@ -120,14 +103,26 @@ const config: Config = {
           'sell-muted': 'hsl(var(--trading-sell-muted))',
         },
 
-        // Glass colors
         glass: {
           bg: 'hsl(var(--glass-bg))',
           border: 'hsl(var(--glass-border))',
           hover: 'hsl(var(--glass-hover))',
         },
 
-        // Aurellion specific colors
+        // EVA color shorthands
+        gold: {
+          DEFAULT: 'hsl(var(--gold))',
+          light: 'hsl(var(--gold-light))',
+          dark: 'hsl(var(--gold-dark))',
+        },
+        crimson: {
+          DEFAULT: 'hsl(var(--crimson))',
+          dark: 'hsl(var(--crimson-dark))',
+        },
+        obsidian: 'hsl(var(--obsidian))',
+        marble: 'hsl(var(--marble))',
+
+        // Aurellion named colours (legacy compat)
         aurellion: {
           gold: '#f59e0b',
           'gold-light': '#fbbf24',
@@ -139,7 +134,7 @@ const config: Config = {
       },
 
       // ============================================
-      // BORDER RADIUS
+      // BORDER RADIUS — Angular, minimal
       // ============================================
       borderRadius: {
         lg: 'var(--radius)',
@@ -162,7 +157,7 @@ const config: Config = {
       },
 
       // ============================================
-      // BOX SHADOW - Gold & Red Glows
+      // BOX SHADOW — Gold & Red Glows
       // ============================================
       boxShadow: {
         'glow-sm':
@@ -179,7 +174,7 @@ const config: Config = {
       },
 
       // ============================================
-      // KEYFRAMES
+      // KEYFRAMES — EVA + Standard
       // ============================================
       keyframes: {
         'accordion-down': {
@@ -239,6 +234,18 @@ const config: Config = {
           from: { backgroundColor: 'hsl(var(--trading-sell) / 0.3)' },
           to: { backgroundColor: 'transparent' },
         },
+        ticker: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        'ticker-fast': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        'eva-pulse': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.4' },
+        },
       },
 
       // ============================================
@@ -259,6 +266,9 @@ const config: Config = {
         'gradient-shift': 'gradient-shift 8s ease infinite',
         'flash-green': 'flash-green 0.5s ease-out',
         'flash-red': 'flash-red 0.5s ease-out',
+        ticker: 'ticker 60s linear infinite',
+        'ticker-fast': 'ticker-fast 25s linear infinite',
+        'eva-pulse': 'eva-pulse 3s ease-in-out infinite',
       },
 
       // ============================================

@@ -3,18 +3,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image';
 import { RoleSelector } from '@/app/components/ui/role-selector';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { cn } from '@/lib/utils';
 import ConnectButton from '../ConnectButtont';
-import { StatusBadge } from '../ui/status-badge';
 import { Menu, X } from 'lucide-react';
 
-/**
- * Navigation link component with animated underline - Gold accent
- */
+/* ─────────────────────────────────────────
+   NERV × AURELLION — HEADER & NAV
+   Evangelion command bar + Greek philosophy
+   ───────────────────────────────────────── */
+
 interface NavLinkProps {
   href: string;
   isActive: boolean;
@@ -25,24 +25,24 @@ const NavLink: React.FC<NavLinkProps> = ({ href, isActive, children }) => (
   <Link
     href={href}
     className={cn(
-      'relative py-2 text-sm font-medium transition-colors duration-200',
-      isActive ? 'text-amber-400' : 'text-neutral-400 hover:text-amber-300',
+      'relative px-4 py-2.5 font-mono text-sm tracking-[0.12em] uppercase transition-all duration-300 font-bold',
+      isActive ? 'text-gold' : 'text-foreground/40 hover:text-foreground/75',
     )}
   >
-    {children}
-    {/* Animated underline - Gold */}
-    <span
-      className={cn(
-        'absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-red-500 to-amber-500 transition-all duration-300',
-        isActive ? 'w-full' : 'w-0 group-hover:w-full',
-      )}
-    />
+    {isActive && (
+      <>
+        <div className="absolute inset-0 border border-gold/30 bg-gold/[0.04]" />
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gold/70" />
+        <div className="absolute top-0 left-0 w-2 h-[2px] bg-crimson" />
+        <div className="absolute top-0 left-0 w-[2px] h-2 bg-crimson" />
+        <div className="absolute top-0 right-0 w-2 h-[2px] bg-crimson" />
+      </>
+    )}
+    <span className="relative z-10">{children}</span>
   </Link>
 );
 
-/**
- * Customer navigation links
- */
+/** Customer navigation */
 const CustomerNav: React.FC<{ pathname: string }> = ({ pathname }) => (
   <>
     <NavLink
@@ -75,9 +75,7 @@ const CustomerNav: React.FC<{ pathname: string }> = ({ pathname }) => (
   </>
 );
 
-/**
- * Node navigation links
- */
+/** Node navigation */
 const NodeNav: React.FC<{ pathname: string }> = ({ pathname }) => (
   <>
     <NavLink href="/node/overview" isActive={pathname === '/node/overview'}>
@@ -89,9 +87,7 @@ const NodeNav: React.FC<{ pathname: string }> = ({ pathname }) => (
   </>
 );
 
-/**
- * Driver navigation links
- */
+/** Driver navigation */
 const DriverNav: React.FC<{ pathname: string }> = ({ pathname }) => (
   <NavLink href="/driver/dashboard" isActive={pathname === '/driver/dashboard'}>
     Dashboard
@@ -99,11 +95,13 @@ const DriverNav: React.FC<{ pathname: string }> = ({ pathname }) => (
 );
 
 /**
- * ClientHeader - Aurellion protocol-style navigation header with red/gold theme
+ * ClientHeader — NERV command bar with system ticker,
+ * clipped logo, trapezoid nav items, and system clock
  */
 export function ClientHeader() {
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [time, setTime] = useState('');
   const { currentUserRole } = useMainProvider();
   const pathname = usePathname();
 
@@ -111,216 +109,237 @@ export function ClientHeader() {
     setMounted(true);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
+  // System clock
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      setTime(
+        now.toLocaleTimeString('en-US', {
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }),
+      );
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (!mounted) return null;
 
-  const isLandingPage = pathname === '/';
-
   return (
-    <header
-      className={cn(
-        'sticky top-0 z-50 backdrop-blur-md border-b transition-all duration-300',
-        isLandingPage
-          ? 'bg-transparent border-transparent'
-          : 'bg-[#050505]/90 border-neutral-800/50',
-      )}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo section */}
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-3 group">
-              {/* Logo container with gold glow */}
-              <div className="relative w-9 h-9 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:border-amber-500/60 group-hover:shadow-glow-sm">
-                <Image
-                  src="/logo.png"
-                  alt="Aurellion Labs Logo"
-                  width={24}
-                  height={24}
-                  priority
-                  className="object-contain"
-                />
-              </div>
-              {/* Logo text with gradient */}
-              <span
-                className="font-bold text-lg hidden sm:block"
-                style={{
-                  background:
-                    'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                Aurellion
-              </span>
-            </Link>
-
-            {/* Desktop navigation */}
-            <nav className="hidden md:flex items-center gap-6">
-              {currentUserRole === 'customer' && (
-                <CustomerNav pathname={pathname} />
-              )}
-              {currentUserRole === 'node' && <NodeNav pathname={pathname} />}
-              {currentUserRole === 'driver' && (
-                <DriverNav pathname={pathname} />
-              )}
-            </nav>
-          </div>
-
-          {/* Right section */}
-          <div className="flex items-center gap-3">
-            {/* Status badge - hidden on mobile */}
-            <div className="hidden lg:block">
-              <StatusBadge status="live" label="Mainnet" pulse size="sm" />
-            </div>
-
-            {/* Role selector */}
-            <div className="hidden sm:block">
-              <RoleSelector />
-            </div>
-
-            {/* Connect button */}
-            <ConnectButton />
-
-            {/* Wallet connection */}
-            <div className="hidden sm:block">
-              <WalletConnection />
-            </div>
-
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg bg-neutral-900/50 border border-neutral-700/50 text-neutral-300 hover:text-amber-400 hover:border-amber-500/30 transition-colors"
-              aria-label="Toggle menu"
+    <header className="sticky top-0 z-50">
+      {/* ── System Ticker Bar ── */}
+      <div className="h-7 bg-background border-b border-border/25 overflow-hidden flex items-center relative">
+        <div className="absolute left-0 top-0 bottom-0 w-8 bg-crimson/10" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-crimson/10" />
+        <div className="flex items-center animate-ticker-fast whitespace-nowrap">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <span
+              key={i}
+              className="font-mono text-[11px] tracking-[0.15em] uppercase text-foreground/25 mx-8"
             >
-              {mobileMenuOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+              AURELLION PROTOCOL v2.1 &middot; TESTNET &middot; BLOCK 19,847,293
+              &middot; GAS 12 GWEI &middot; ETH $3,842.17 &middot; TVL $2.4B
+              &middot; 847 ASSETS TOKENIZED &middot;&nbsp;
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* ── Main Navigation Bar ── */}
+      <nav className="relative flex items-center justify-between px-4 md:px-8 py-3 bg-background/95 backdrop-blur-sm border-b border-border/35">
+        {/* Left vertical accent bar */}
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold/25" />
+
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-3 group">
+          {/* Square logo with corner brackets */}
+          <div className="relative w-10 h-10 bg-card/80 border border-gold/40 group-hover:border-gold/70 transition-colors duration-300 overflow-hidden">
+            {/* Corner brackets — crimson */}
+            <div className="absolute top-0 left-0 w-2.5 h-[2px] bg-crimson" />
+            <div className="absolute top-0 left-0 w-[2px] h-2.5 bg-crimson" />
+            <div className="absolute bottom-0 right-0 w-2.5 h-[2px] bg-crimson/50" />
+            <div className="absolute bottom-0 right-0 w-[2px] h-2.5 bg-crimson/50" />
+            {/* Hex background */}
+            <div className="absolute inset-0 eva-hex-pattern opacity-30" />
+            <span className="absolute inset-0 flex items-center justify-center font-serif text-base text-gold font-bold">
+              A
+            </span>
+          </div>
+          <div className="hidden md:block">
+            <span className="font-serif text-lg tracking-wide text-foreground block leading-none">
+              Aurellion
+            </span>
+            <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-crimson/70 font-bold">
+              Protocol v2.1
+            </span>
+          </div>
+        </Link>
+
+        {/* Desktop navigation */}
+        <div className="hidden md:flex items-center gap-[2px]">
+          {currentUserRole === 'customer' && (
+            <CustomerNav pathname={pathname} />
+          )}
+          {currentUserRole === 'node' && <NodeNav pathname={pathname} />}
+          {currentUserRole === 'driver' && <DriverNav pathname={pathname} />}
+        </div>
+
+        {/* Right section */}
+        <div className="flex items-center gap-3">
+          {/* System time */}
+          <div className="hidden lg:flex items-center gap-2.5 px-3 py-2 bg-card/50 border border-border/30">
+            <div className="flex gap-[2px]">
+              <div className="w-1 h-3 bg-crimson/40" />
+              <div className="w-0.5 h-3 bg-crimson/20" />
+            </div>
+            <span className="font-mono text-[11px] tracking-[0.08em] text-crimson/60 uppercase font-bold">
+              SYS
+            </span>
+            <span className="font-mono text-sm tabular-nums text-foreground/50 font-bold">
+              {time}
+            </span>
+          </div>
+
+          {/* Role selector */}
+          <div className="hidden sm:block">
+            <RoleSelector />
+          </div>
+
+          {/* Connect button */}
+          <ConnectButton />
+
+          {/* Wallet connection */}
+          <div className="hidden sm:block">
+            <WalletConnection />
+          </div>
+
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 bg-card/50 border border-border/50 text-foreground/50 hover:text-gold hover:border-gold/30 transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      </nav>
+
+      {/* Bottom accent — Eva hazard style */}
+      <div className="flex h-[3px]">
+        <div className="w-12 bg-crimson/50" />
+        <div className="flex-1 eva-hazard" />
+        <div className="w-32 bg-crimson/25" />
+        <div className="flex-1 eva-hazard" />
+        <div className="w-12 bg-crimson/50" />
+      </div>
+
+      {/* ── Mobile Menu ── */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-neutral-800/50 bg-[#050505]/95 backdrop-blur-md">
+        <div className="md:hidden border-t border-border/25 bg-background/95 backdrop-blur-md">
           <div className="px-4 py-4 space-y-4">
-            {/* Mobile navigation */}
-            <nav className="flex flex-col gap-2">
+            <nav className="flex flex-col gap-1">
               {currentUserRole === 'customer' && (
                 <>
-                  <Link
+                  <MobileNavLink
                     href="/customer/dashboard"
-                    className={cn(
-                      'px-4 py-2 rounded-lg transition-colors',
-                      pathname === '/customer/dashboard'
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                    )}
+                    active={pathname === '/customer/dashboard'}
                   >
                     Dashboard
-                  </Link>
-                  <Link
+                  </MobileNavLink>
+                  <MobileNavLink
                     href="/customer/pools"
-                    className={cn(
-                      'px-4 py-2 rounded-lg transition-colors',
-                      pathname.startsWith('/customer/pools')
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                    )}
+                    active={pathname.startsWith('/customer/pools')}
                   >
                     Yield
-                  </Link>
-                  <Link
+                  </MobileNavLink>
+                  <MobileNavLink
                     href="/customer/trading"
-                    className={cn(
-                      'px-4 py-2 rounded-lg transition-colors',
-                      pathname.startsWith('/customer/trading')
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                    )}
+                    active={pathname.startsWith('/customer/trading')}
                   >
                     Trading
-                  </Link>
-                  <Link
+                  </MobileNavLink>
+                  <MobileNavLink
                     href="/customer/p2p"
-                    className={cn(
-                      'px-4 py-2 rounded-lg transition-colors',
-                      pathname.startsWith('/customer/p2p')
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                    )}
+                    active={pathname.startsWith('/customer/p2p')}
                   >
                     P2P
-                  </Link>
-                  <Link
+                  </MobileNavLink>
+                  <MobileNavLink
                     href="/customer/faucet"
-                    className={cn(
-                      'px-4 py-2 rounded-lg transition-colors',
-                      pathname === '/customer/faucet'
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                    )}
+                    active={pathname === '/customer/faucet'}
                   >
                     Faucet
-                  </Link>
+                  </MobileNavLink>
                 </>
               )}
               {currentUserRole === 'node' && (
                 <>
-                  <Link
+                  <MobileNavLink
                     href="/node/overview"
-                    className={cn(
-                      'px-4 py-2 rounded-lg transition-colors',
-                      pathname === '/node/overview'
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                    )}
+                    active={pathname === '/node/overview'}
                   >
                     Overview
-                  </Link>
-                  <Link
+                  </MobileNavLink>
+                  <MobileNavLink
                     href="/node/explorer"
-                    className={cn(
-                      'px-4 py-2 rounded-lg transition-colors',
-                      pathname === '/node/explorer'
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                    )}
+                    active={pathname === '/node/explorer'}
                   >
                     Explorer
-                  </Link>
+                  </MobileNavLink>
                 </>
               )}
               {currentUserRole === 'driver' && (
-                <Link
+                <MobileNavLink
                   href="/driver/dashboard"
-                  className={cn(
-                    'px-4 py-2 rounded-lg transition-colors',
-                    pathname === '/driver/dashboard'
-                      ? 'bg-amber-500/10 text-amber-400'
-                      : 'text-neutral-400 hover:text-amber-300 hover:bg-neutral-800/50',
-                  )}
+                  active={pathname === '/driver/dashboard'}
                 >
                   Dashboard
-                </Link>
+                </MobileNavLink>
               )}
             </nav>
-
-            {/* Mobile role selector */}
-            <div className="pt-2 border-t border-neutral-800/50">
+            <div className="pt-2 border-t border-border/25">
               <RoleSelector />
             </div>
           </div>
         </div>
       )}
     </header>
+  );
+}
+
+/** Mobile nav link with EVA styling */
+function MobileNavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'px-4 py-2.5 font-mono text-sm tracking-[0.1em] uppercase font-bold transition-colors',
+        active
+          ? 'bg-gold/[0.06] text-gold border-l-2 border-gold/50'
+          : 'text-foreground/40 hover:text-gold/70 hover:bg-gold/[0.03]',
+      )}
+    >
+      {children}
+    </Link>
   );
 }
