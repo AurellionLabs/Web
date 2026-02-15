@@ -13,7 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useRouter } from 'next/navigation';
-import { useNodes } from '@/app/providers/nodes.provider';
+import { useNodesSafe } from '@/app/providers/nodes.provider';
 
 const roles = [
   {
@@ -35,7 +35,8 @@ export function RoleSelector() {
   const [isNavigating, setIsNavigating] = React.useState(false);
   const { currentUserRole, setCurrentUserRole } = useMainProvider();
   const router = useRouter();
-  const { isRegisteredNode: nodeStatus } = useNodes();
+  const nodesContext = useNodesSafe();
+  const nodeStatus = nodesContext?.isRegisteredNode ?? false;
 
   const checkNodeRegistration = async () => {
     try {

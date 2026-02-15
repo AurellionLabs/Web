@@ -193,3 +193,12 @@ export function useNodes() {
   }
   return context;
 }
+
+/**
+ * Safe version of useNodes that returns null when outside NodesProvider.
+ * Use this in components that may render both inside and outside the
+ * authenticated (app) route group (e.g. the header).
+ */
+export function useNodesSafe() {
+  return useContext(NodesContext) ?? null;
+}
