@@ -12,13 +12,16 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { StatusBadge } from '@/app/components/ui/status-badge';
+  EvaPanel,
+  TrapButton,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+  ScanTable,
+  ChevronTableRow,
+} from '@/app/components/eva/eva-components';
 import {
   ChevronLeft,
   ChevronRight,
@@ -76,8 +79,10 @@ export default function OrdersPage() {
       fallback={
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
-            <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-            <span className="text-muted-foreground">Loading...</span>
+            <RefreshCw className="w-8 h-8 text-gold animate-spin" />
+            <span className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40">
+              Loading...
+            </span>
           </div>
         </div>
       }
@@ -197,54 +202,73 @@ function OrdersContent({
 
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
-  const getStatusBadgeStatus = (status: string) => {
+  const getEvaBadgeStatus = (
+    status: string,
+  ): 'active' | 'pending' | 'processing' | 'completed' | 'created' => {
     switch (status.toLowerCase()) {
       case 'settled':
-        return 'success';
+        return 'completed';
       case 'cancelled':
-        return 'error';
-      case 'processing':
-        return 'warning';
-      default:
         return 'pending';
+      case 'processing':
+        return 'processing';
+      default:
+        return 'created';
     }
   };
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Decorative top accent */}
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              View and manage all orders for this node
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+          <div className="flex items-center gap-3">
+            <LaurelAccent side="left" />
+            <div>
+              <h1 className="font-serif text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
+                Orders
+              </h1>
+              <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40 mt-1">
+                View and manage all orders for this node
+              </p>
+            </div>
+            <LaurelAccent side="right" />
           </div>
-          <GlowButton
-            variant="outline"
+          <TrapButton
+            variant="gold"
             onClick={onRefresh}
-            loading={isRefreshing}
-            leftIcon={<RefreshCw className="w-4 h-4" />}
+            disabled={isRefreshing}
           >
-            Refresh Orders
-          </GlowButton>
+            <span className="flex items-center gap-2">
+              <RefreshCw
+                className={cn('w-4 h-4', isRefreshing && 'animate-spin')}
+              />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Orders'}
+            </span>
+          </TrapButton>
         </div>
 
-        {/* Filters */}
-        <GlassCard>
-          <GlassCardHeader>
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-accent" />
-              <GlassCardTitle>Filter Orders</GlassCardTitle>
-            </div>
-            <GlassCardDescription>
-              Use the filters below to find specific orders
-            </GlassCardDescription>
-          </GlassCardHeader>
+        <EvaScanLine variant="mixed" />
+
+        {/* Filters Section */}
+        <EvaSectionMarker
+          section="Filters"
+          label="Order Query Parameters"
+          variant="crimson"
+        />
+
+        <EvaPanel
+          label="Filter Orders"
+          sublabel="Use the filters below to find specific orders"
+          sysId="FLT-01"
+          accent="crimson"
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/45">
                 Order ID
               </label>
               <Input
@@ -253,11 +277,11 @@ function OrdersContent({
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, orderId: e.target.value }))
                 }
-                className="bg-surface-overlay border-glass-border"
+                className="bg-background/60 border-border/40 font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/45">
                 Customer ID
               </label>
               <Input
@@ -269,11 +293,11 @@ function OrdersContent({
                     customerId: e.target.value,
                   }))
                 }
-                className="bg-surface-overlay border-glass-border"
+                className="bg-background/60 border-border/40 font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/45">
                 Asset Type
               </label>
               <Select
@@ -282,7 +306,7 @@ function OrdersContent({
                   setFilters((prev) => ({ ...prev, assetType: value }))
                 }
               >
-                <SelectTrigger className="bg-surface-overlay border-glass-border">
+                <SelectTrigger className="bg-background/60 border-border/40 font-mono text-sm">
                   <SelectValue placeholder="Select asset type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -296,7 +320,7 @@ function OrdersContent({
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/45">
                 Status
               </label>
               <Select
@@ -305,7 +329,7 @@ function OrdersContent({
                   setFilters((prev) => ({ ...prev, status: value }))
                 }
               >
-                <SelectTrigger className="bg-surface-overlay border-glass-border">
+                <SelectTrigger className="bg-background/60 border-border/40 font-mono text-sm">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -318,89 +342,78 @@ function OrdersContent({
               </Select>
             </div>
           </div>
-        </GlassCard>
+        </EvaPanel>
 
-        {/* Orders Table */}
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle>Orders List</GlassCardTitle>
-            <GlassCardDescription>
-              All orders matching your filter criteria
-            </GlassCardDescription>
-          </GlassCardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-glass-border">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Order ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Asset
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('quantity')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    >
-                      Quantity
-                      <ArrowUpDown className="w-3 h-3" />
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('value')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    >
-                      Value
-                      <ArrowUpDown className="w-3 h-3" />
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-glass-border">
-                {displayedOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-glass-hover transition-colors"
+        <EvaScanLine variant="gold" />
+
+        {/* Orders Table Section */}
+        <EvaSectionMarker
+          section="Orders List"
+          label="Matching Filter Criteria"
+          variant="gold"
+        />
+
+        <EvaPanel
+          label="Orders List"
+          sublabel="All orders matching your filter criteria"
+          sysId="ORD-TBL"
+          accent="gold"
+          noPadding
+        >
+          <div className="p-5">
+            <ScanTable
+              headers={[
+                'Order ID',
+                'Customer',
+                'Asset',
+                'Quantity ↕',
+                'Value ↕',
+                'Status',
+              ]}
+            >
+              {displayedOrders.map((order, idx) => (
+                <ChevronTableRow key={order.id} index={idx}>
+                  <td className="px-4 py-4 font-mono text-sm tracking-[0.05em] text-foreground/80">
+                    {order.id}
+                  </td>
+                  <td className="px-4 py-4 font-mono text-sm tracking-[0.05em] text-foreground/80">
+                    {order.buyer.slice(0, 8)}...{order.buyer.slice(-6)}
+                  </td>
+                  <td className="px-4 py-4 font-mono text-sm tracking-[0.05em] uppercase text-foreground/80">
+                    {order.asset?.name || 'Unknown Asset'}
+                  </td>
+                  <td
+                    className="px-4 py-4 font-mono text-sm text-gold tabular-nums cursor-pointer"
+                    onClick={() => handleSort('quantity')}
                   >
-                    <td className="px-4 py-4 font-mono text-sm text-foreground">
-                      {order.id}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-sm text-foreground">
-                      {order.buyer.slice(0, 8)}...{order.buyer.slice(-6)}
-                    </td>
-                    <td className="px-4 py-4 capitalize text-foreground">
-                      {order.asset?.name || 'Unknown Asset'}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-foreground">
+                    <span className="flex items-center gap-1">
                       {order.tokenQuantity}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-foreground">
+                      <ArrowUpDown className="w-3 h-3 text-foreground/20" />
+                    </span>
+                  </td>
+                  <td
+                    className="px-4 py-4 font-mono text-sm text-gold tabular-nums cursor-pointer"
+                    onClick={() => handleSort('value')}
+                  >
+                    <span className="flex items-center gap-1">
                       {formatTokenAmount(order.price, 18, 2)} AURA
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge
-                        status={getStatusBadgeStatus(order.currentStatus)}
-                        label={order.currentStatus}
-                        size="sm"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <ArrowUpDown className="w-3 h-3 text-foreground/20" />
+                    </span>
+                  </td>
+                  <td className="px-4 py-4">
+                    <EvaStatusBadge
+                      status={getEvaBadgeStatus(order.currentStatus)}
+                      label={order.currentStatus}
+                    />
+                  </td>
+                </ChevronTableRow>
+              ))}
+            </ScanTable>
 
             {displayedOrders.length === 0 && (
               <div className="text-center py-12">
-                <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground">
+                <Package className="w-12 h-12 text-foreground/10 mx-auto mb-4" />
+                <p className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/30">
                   No orders found matching your criteria
                 </p>
               </div>
@@ -409,53 +422,75 @@ function OrdersContent({
 
           {/* Pagination */}
           {filteredOrders.length > ordersPerPage && (
-            <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-glass-border">
-              <div className="text-sm text-muted-foreground">
-                Showing{' '}
-                {Math.min(
-                  filteredOrders.length,
-                  (currentPage - 1) * ordersPerPage + 1,
-                )}{' '}
-                to{' '}
-                {Math.min(filteredOrders.length, currentPage * ordersPerPage)}{' '}
-                of {filteredOrders.length} entries
+            <>
+              <EvaScanLine variant="mixed" />
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="font-mono text-[11px] tracking-[0.1em] uppercase text-foreground/40">
+                  Showing{' '}
+                  {Math.min(
+                    filteredOrders.length,
+                    (currentPage - 1) * ordersPerPage + 1,
+                  )}{' '}
+                  to{' '}
+                  {Math.min(filteredOrders.length, currentPage * ordersPerPage)}{' '}
+                  of {filteredOrders.length} entries
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="p-2 hover:bg-gold/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    style={{
+                      clipPath:
+                        'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+                    }}
+                  >
+                    <ChevronsLeft className="w-4 h-4 text-gold/60" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 hover:bg-gold/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    style={{
+                      clipPath:
+                        'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+                    }}
+                  >
+                    <ChevronLeft className="w-4 h-4 text-gold/60" />
+                  </button>
+                  <span className="px-4 font-mono text-[11px] tracking-[0.15em] uppercase text-foreground/50">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 hover:bg-gold/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    style={{
+                      clipPath:
+                        'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+                    }}
+                  >
+                    <ChevronRight className="w-4 h-4 text-gold/60" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 hover:bg-gold/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    style={{
+                      clipPath:
+                        'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+                    }}
+                  >
+                    <ChevronsRight className="w-4 h-4 text-gold/60" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronsLeft className="w-4 h-4 text-muted-foreground" />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-                </button>
-                <span className="px-4 text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg hover:bg-glass-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-                </button>
-              </div>
-            </div>
+            </>
           )}
-        </GlassCard>
+        </EvaPanel>
+
+        {/* Bottom decorative accent */}
+        <GreekKeyStrip color="crimson" />
       </div>
     </div>
   );

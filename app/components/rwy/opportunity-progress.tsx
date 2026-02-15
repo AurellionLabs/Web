@@ -1,6 +1,7 @@
 'use client';
 
 import { RWYOpportunityStatus, RWYStatusLabels } from '@/domain/rwy';
+import { EvaProgress } from '@/app/components/eva/eva-components';
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,8 +25,16 @@ export function OpportunityProgress({
   // Handle cancelled status separately
   if (currentStatus === RWYOpportunityStatus.CANCELLED) {
     return (
-      <div className="flex items-center justify-center p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-        <span className="text-red-500 font-medium">Opportunity Cancelled</span>
+      <div
+        className="flex items-center justify-center p-4 bg-crimson/10 border border-crimson/30"
+        style={{
+          clipPath:
+            'polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px)',
+        }}
+      >
+        <span className="font-mono text-sm font-bold tracking-[0.15em] uppercase text-crimson">
+          Opportunity Cancelled
+        </span>
       </div>
     );
   }
@@ -51,8 +60,8 @@ export function OpportunityProgress({
               {index > 0 && (
                 <div
                   className={cn(
-                    'absolute h-0.5 w-full -translate-x-1/2',
-                    isCompleted ? 'bg-emerald-500' : 'bg-muted',
+                    'absolute h-[2px] w-full -translate-x-1/2',
+                    isCompleted ? 'bg-emerald-500' : 'bg-border/20',
                   )}
                   style={{
                     width: 'calc(100% - 2rem)',
@@ -61,27 +70,50 @@ export function OpportunityProgress({
                 />
               )}
 
-              {/* Step Circle */}
+              {/* Step Circle — sharp hexagonal feel */}
               <div className="relative flex items-center justify-center">
                 {isCompleted ? (
-                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                  <div
+                    className="w-8 h-8 flex items-center justify-center bg-emerald-500/15"
+                    style={{
+                      clipPath:
+                        'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                    }}
+                  >
+                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                  </div>
                 ) : isCurrent ? (
                   <div className="relative">
-                    <Circle className="h-8 w-8 text-primary fill-primary/20" />
-                    <Loader2 className="absolute inset-0 h-8 w-8 text-primary animate-spin" />
+                    <div
+                      className="w-8 h-8 flex items-center justify-center bg-gold/15"
+                      style={{
+                        clipPath:
+                          'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                      }}
+                    >
+                      <Loader2 className="h-5 w-5 text-gold animate-spin" />
+                    </div>
                   </div>
                 ) : (
-                  <Circle className="h-8 w-8 text-muted-foreground" />
+                  <div
+                    className="w-8 h-8 flex items-center justify-center bg-foreground/5"
+                    style={{
+                      clipPath:
+                        'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                    }}
+                  >
+                    <Circle className="h-4 w-4 text-foreground/20" />
+                  </div>
                 )}
               </div>
 
               {/* Step Label */}
               <span
                 className={cn(
-                  'mt-2 text-xs font-medium text-center',
-                  isCompleted && 'text-emerald-500',
-                  isCurrent && 'text-primary',
-                  isPending && 'text-muted-foreground',
+                  'mt-2 font-mono text-[10px] tracking-[0.12em] uppercase font-bold text-center',
+                  isCompleted && 'text-emerald-400',
+                  isCurrent && 'text-gold',
+                  isPending && 'text-foreground/30',
                 )}
               >
                 {step.label}
@@ -102,9 +134,11 @@ export function OpportunityProgressCompact({
 }: OpportunityProgressProps) {
   if (currentStatus === RWYOpportunityStatus.CANCELLED) {
     return (
-      <div className="flex items-center gap-2 text-red-500">
-        <Circle className="h-3 w-3 fill-red-500" />
-        <span className="text-xs font-medium">Cancelled</span>
+      <div className="flex items-center gap-2 text-crimson">
+        <Circle className="h-3 w-3 fill-crimson" />
+        <span className="font-mono text-[10px] tracking-[0.15em] uppercase font-bold">
+          Cancelled
+        </span>
       </div>
     );
   }
@@ -115,17 +149,14 @@ export function OpportunityProgressCompact({
   const progress = ((currentStepIndex + 1) / PROGRESS_STEPS.length) * 100;
 
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-muted-foreground">Progress</span>
-        <span className="font-medium">{RWYStatusLabels[currentStatus]}</span>
+    <div className="space-y-1.5">
+      <div className="flex justify-between font-mono text-[10px] tracking-[0.12em] uppercase">
+        <span className="text-foreground/40">Progress</span>
+        <span className="font-bold text-gold">
+          {RWYStatusLabels[currentStatus]}
+        </span>
       </div>
-      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-500"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <EvaProgress value={progress} max={100} color="emerald" segments={14} />
     </div>
   );
 }

@@ -10,6 +10,13 @@ import {
   OpportunityCard,
   OpportunityCardSkeleton,
 } from '@/app/components/rwy/opportunity-card';
+import {
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -18,7 +25,6 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/app/components/ui/tabs';
-import { Badge } from '@/app/components/ui/badge';
 import {
   Search,
   Filter,
@@ -89,17 +95,27 @@ export default function RWYOpportunitiesPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-8">
+      {/* Greek Key Strip */}
+      <GreekKeyStrip color="gold" />
+
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Real World Yield Opportunities
-        </h1>
-        <p className="text-muted-foreground max-w-2xl">
+      <div className="space-y-3">
+        <EvaSectionMarker section="RWY" label="Yield Opportunities" />
+        <div className="flex items-center gap-3">
+          <LaurelAccent side="left" />
+          <h1 className="font-serif text-3xl font-bold tracking-[0.15em] uppercase">
+            Real World Yield Opportunities
+          </h1>
+          <LaurelAccent side="right" />
+        </div>
+        <p className="text-foreground/50 font-mono text-sm tracking-[0.08em] max-w-2xl">
           Stake your tokenized commodities into processing opportunities and
           earn real-world yields. Your assets are processed by verified
           operators and profits are automatically distributed.
         </p>
       </div>
+
+      <EvaScanLine variant="mixed" />
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -109,8 +125,12 @@ export default function RWYOpportunitiesPage() {
               <TrendingUp className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Active</p>
-              <p className="text-2xl font-bold">{stats.active}</p>
+              <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+                Active
+              </p>
+              <p className="text-2xl font-bold font-mono tabular-nums">
+                {stats.active}
+              </p>
             </div>
           </div>
         </div>
@@ -121,8 +141,12 @@ export default function RWYOpportunitiesPage() {
               <Clock className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">In Progress</p>
-              <p className="text-2xl font-bold">{stats.inProgress}</p>
+              <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+                In Progress
+              </p>
+              <p className="text-2xl font-bold font-mono tabular-nums">
+                {stats.inProgress}
+              </p>
             </div>
           </div>
         </div>
@@ -133,8 +157,12 @@ export default function RWYOpportunitiesPage() {
               <CheckCircle2 className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Completed</p>
-              <p className="text-2xl font-bold">{stats.completed}</p>
+              <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+                Completed
+              </p>
+              <p className="text-2xl font-bold font-mono tabular-nums">
+                {stats.completed}
+              </p>
             </div>
           </div>
         </div>
@@ -145,12 +173,18 @@ export default function RWYOpportunitiesPage() {
               <Filter className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold">{allOpportunities.length}</p>
+              <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+                Total
+              </p>
+              <p className="text-2xl font-bold font-mono tabular-nums">
+                {allOpportunities.length}
+              </p>
             </div>
           </div>
         </div>
       </div>
+
+      <EvaScanLine variant="gold" />
 
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -174,26 +208,36 @@ export default function RWYOpportunitiesPage() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="active" className="gap-2">
             <TrendingUp className="h-4 w-4" />
-            Active
-            <Badge variant="secondary" className="ml-1">
-              {stats.active}
-            </Badge>
+            <span className="font-mono tracking-[0.08em] uppercase text-xs">
+              Active
+            </span>
+            <EvaStatusBadge status="active" label={String(stats.active)} />
           </TabsTrigger>
           <TabsTrigger value="in-progress" className="gap-2">
             <Clock className="h-4 w-4" />
-            In Progress
-            <Badge variant="secondary" className="ml-1">
-              {stats.inProgress}
-            </Badge>
+            <span className="font-mono tracking-[0.08em] uppercase text-xs">
+              In Progress
+            </span>
+            <EvaStatusBadge
+              status="processing"
+              label={String(stats.inProgress)}
+            />
           </TabsTrigger>
           <TabsTrigger value="completed" className="gap-2">
             <CheckCircle2 className="h-4 w-4" />
-            Completed
-            <Badge variant="secondary" className="ml-1">
-              {stats.completed}
-            </Badge>
+            <span className="font-mono tracking-[0.08em] uppercase text-xs">
+              Completed
+            </span>
+            <EvaStatusBadge
+              status="completed"
+              label={String(stats.completed)}
+            />
           </TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="all">
+            <span className="font-mono tracking-[0.08em] uppercase text-xs">
+              All
+            </span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6">
@@ -206,10 +250,12 @@ export default function RWYOpportunitiesPage() {
           ) : error ? (
             <div className="text-center py-12">
               <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <h3 className="text-lg font-semibold">
+              <h3 className="font-mono text-lg font-bold tracking-[0.1em] uppercase">
                 Error Loading Opportunities
               </h3>
-              <p className="text-muted-foreground mt-2">{error}</p>
+              <p className="text-foreground/40 font-mono text-sm mt-2">
+                {error}
+              </p>
               <Button
                 variant="outline"
                 onClick={() => refetch()}
@@ -221,8 +267,10 @@ export default function RWYOpportunitiesPage() {
           ) : filteredOpportunities.length === 0 ? (
             <div className="text-center py-12">
               <Filter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold">No Opportunities Found</h3>
-              <p className="text-muted-foreground mt-2">
+              <h3 className="font-mono text-lg font-bold tracking-[0.1em] uppercase">
+                No Opportunities Found
+              </h3>
+              <p className="text-foreground/40 font-mono text-sm mt-2">
                 {searchQuery
                   ? 'Try adjusting your search terms'
                   : 'Check back later for new opportunities'}
@@ -240,6 +288,8 @@ export default function RWYOpportunitiesPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <GreekKeyStrip color="gold" />
     </div>
   );
 }

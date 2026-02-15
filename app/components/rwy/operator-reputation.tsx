@@ -3,13 +3,10 @@
 import { RWYOperatorStats, Address } from '@/domain/rwy';
 import { useRWYOperatorStats } from '@/hooks/useRWYOpportunity';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { Progress } from '@/app/components/ui/progress';
+  EvaPanel,
+  EvaStatusBadge,
+  EvaProgress,
+} from '@/app/components/eva/eva-components';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
   Shield,
@@ -31,16 +28,16 @@ function getReputationLevel(reputation: number): {
   icon: typeof Star;
 } {
   if (reputation >= 100)
-    return { level: 'Elite', color: 'text-amber-500', icon: Star };
+    return { level: 'Elite', color: 'text-gold', icon: Star };
   if (reputation >= 50)
-    return { level: 'Trusted', color: 'text-emerald-500', icon: CheckCircle2 };
+    return { level: 'Trusted', color: 'text-emerald-400', icon: CheckCircle2 };
   if (reputation >= 20)
-    return { level: 'Verified', color: 'text-blue-500', icon: Shield };
+    return { level: 'Verified', color: 'text-gold/70', icon: Shield };
   if (reputation >= 5)
-    return { level: 'New', color: 'text-purple-500', icon: TrendingUp };
+    return { level: 'New', color: 'text-foreground/50', icon: TrendingUp };
   return {
     level: 'Unrated',
-    color: 'text-muted-foreground',
+    color: 'text-foreground/30',
     icon: AlertTriangle,
   };
 }
@@ -55,30 +52,28 @@ export function OperatorReputation({
     return compact ? (
       <Skeleton className="h-6 w-24" />
     ) : (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-20 w-full" />
-        </CardContent>
-      </Card>
+      <div
+        className="bg-card/60 border border-border/20 p-5"
+        style={{
+          clipPath:
+            'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+        }}
+      >
+        <Skeleton className="h-5 w-32 mb-4" />
+        <Skeleton className="h-20 w-full" />
+      </div>
     );
   }
 
   if (error || !stats) {
     return compact ? (
-      <Badge variant="outline" className="text-muted-foreground">
-        Unknown Operator
-      </Badge>
+      <EvaStatusBadge status="pending" label="Unknown Operator" />
     ) : (
-      <Card className="border-amber-500/30 bg-amber-500/5">
-        <CardContent className="py-4">
-          <p className="text-sm text-amber-500">
-            Unable to load operator information
-          </p>
-        </CardContent>
-      </Card>
+      <EvaPanel label="Operator" status="warning" accent="crimson">
+        <p className="font-mono text-sm tracking-[0.05em] text-gold">
+          Unable to load operator information
+        </p>
+      </EvaPanel>
     );
   }
 
@@ -89,95 +84,132 @@ export function OperatorReputation({
     return (
       <div className="flex items-center gap-2">
         <Icon className={`h-4 w-4 ${color}`} />
-        <Badge variant="outline" className={color}>
-          {level}
-        </Badge>
+        <EvaStatusBadge
+          status={stats.reputation >= 50 ? 'active' : 'pending'}
+          label={level}
+        />
         {stats.approved && (
-          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
         )}
       </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-base">
-          <span className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            Operator Reputation
-          </span>
-          {stats.approved && (
-            <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
-              <CheckCircle2 className="mr-1 h-3 w-3" />
-              Approved
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Reputation Level */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icon className={`h-6 w-6 ${color}`} />
-            <div>
-              <p className={`font-semibold ${color}`}>{level} Operator</p>
-              <p className="text-xs text-muted-foreground">
-                {stats.reputation} reputation points
-              </p>
-            </div>
-          </div>
+    <EvaPanel
+      label="Operator Reputation"
+      status={stats.approved ? 'active' : 'pending'}
+    >
+      {/* Approved Badge */}
+      {stats.approved && (
+        <div className="flex justify-end -mt-1 mb-3">
+          <EvaStatusBadge status="active" label="Approved" />
         </div>
+      )}
 
-        {/* Reputation Progress */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Reputation Score</span>
-            <span>{stats.reputation}/100</span>
+      {/* Reputation Level */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 flex items-center justify-center bg-card/80"
+            style={{
+              clipPath:
+                'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+            }}
+          >
+            <Icon className={`h-5 w-5 ${color}`} />
           </div>
-          <Progress value={reputationProgress} className="h-2" />
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
-          <div className="p-3 rounded-lg bg-muted/50 text-center">
-            <p className="text-2xl font-bold">{stats.successfulOps}</p>
-            <p className="text-xs text-muted-foreground">
-              Successful Operations
+          <div>
+            <p
+              className={`font-mono text-sm font-bold tracking-[0.1em] uppercase ${color}`}
+            >
+              {level} Operator
             </p>
-          </div>
-          <div className="p-3 rounded-lg bg-muted/50 text-center">
-            <p className="text-2xl font-bold">{stats.activeOpportunities}</p>
-            <p className="text-xs text-muted-foreground">
-              Active Opportunities
+            <p className="font-mono text-[10px] tracking-[0.1em] text-foreground/35">
+              {stats.reputation} reputation points
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Total Value Processed */}
-        <div className="p-3 rounded-lg bg-gradient-to-r from-primary/10 to-emerald-500/10 text-center">
-          <p className="text-xs text-muted-foreground mb-1">
-            Total Value Processed
+      {/* Reputation Progress */}
+      <div className="space-y-1.5 mb-5">
+        <div className="flex justify-between font-mono text-[10px] tracking-[0.12em] uppercase text-foreground/40">
+          <span>Reputation Score</span>
+          <span className="font-bold text-gold">{stats.reputation}/100</span>
+        </div>
+        <EvaProgress
+          value={reputationProgress}
+          max={100}
+          color="gold"
+          segments={20}
+        />
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <div
+          className="p-3 bg-background/60 border border-border/20 text-center"
+          style={{
+            clipPath:
+              'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+          }}
+        >
+          <p className="font-mono text-2xl font-bold text-foreground/80">
+            {stats.successfulOps}
           </p>
-          <p className="text-lg font-bold">
-            {Number(
-              ethers.formatUnits(stats.totalValueProcessed, 18),
-            ).toLocaleString('en-US', {
-              style: 'currency',
-              currency: 'USD',
-              minimumFractionDigits: 0,
-            })}
+          <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-foreground/35">
+            Successful Operations
           </p>
         </div>
-
-        {/* Operator Address */}
-        <div className="pt-2 border-t">
-          <p className="text-xs text-muted-foreground">Operator Address</p>
-          <p className="font-mono text-xs truncate">{operatorAddress}</p>
+        <div
+          className="p-3 bg-background/60 border border-border/20 text-center"
+          style={{
+            clipPath:
+              'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+          }}
+        >
+          <p className="font-mono text-2xl font-bold text-foreground/80">
+            {stats.activeOpportunities}
+          </p>
+          <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-foreground/35">
+            Active Opportunities
+          </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Total Value Processed */}
+      <div
+        className="p-3 bg-gold/5 border border-gold/15 text-center mb-5"
+        style={{
+          clipPath:
+            'polygon(6px 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0 50%)',
+        }}
+      >
+        <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/40 mb-1">
+          Total Value Processed
+        </p>
+        <p className="font-mono text-lg font-bold text-gold">
+          {Number(
+            ethers.formatUnits(stats.totalValueProcessed, 18),
+          ).toLocaleString('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+          })}
+        </p>
+      </div>
+
+      {/* Operator Address */}
+      <div className="pt-3 border-t border-border/15">
+        <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/35">
+          Operator Address
+        </p>
+        <p className="font-mono text-xs truncate text-foreground/50">
+          {operatorAddress}
+        </p>
+      </div>
+    </EvaPanel>
   );
 }
 
@@ -202,7 +234,9 @@ export function OperatorReputationBadge({
   const { level, color, icon: Icon } = getReputationLevel(stats.reputation);
 
   return (
-    <span className={`inline-flex items-center gap-1 text-xs ${color}`}>
+    <span
+      className={`inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.12em] uppercase font-bold ${color}`}
+    >
       <Icon className="h-3 w-3" />
       {level}
     </span>

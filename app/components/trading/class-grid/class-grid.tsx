@@ -29,6 +29,7 @@ export interface ClassGridProps {
  * - Responsive grid layout (2-4 columns)
  * - Memoized for performance
  * - Passes testId to children for E2E testing
+ * - EVA design system styling
  *
  * @example
  * ```tsx
@@ -50,6 +51,7 @@ export const ClassGrid = memo<ClassGridProps>(function ClassGrid({
       className={cn(
         'grid gap-6',
         'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+        'font-mono',
         className,
       )}
     >

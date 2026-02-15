@@ -4,14 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useDriver } from '@/app/providers/driver.provider';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { StatusBadge } from '@/app/components/ui/status-badge';
-import { AnimatedNumber } from '@/app/components/ui/animated-number';
+  EvaPanel,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  HexStatCard,
+  TargetRings,
+  TrapButton,
+  EvaStatusBadge,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
+import {
+  CascadeLoadBars,
+  ChevronDataStream,
+} from '@/app/components/eva/eva-animations';
 import {
   Activity,
   Package,
@@ -55,13 +61,13 @@ import { RepositoryContext } from '@/infrastructure/contexts/repository-context'
 type TabType = 'available' | 'my-deliveries';
 
 /**
- * StatCard - Protocol stat card component
+ * StatCard - Protocol stat card using HexStatCard
  */
 interface StatCardProps {
   title: string;
   value: number | string;
-  icon: React.ElementType;
-  iconColor: string;
+  color?: 'gold' | 'crimson' | 'emerald';
+  powerLevel?: number;
   onClick?: () => void;
   isClickable?: boolean;
 }
@@ -69,56 +75,25 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({
   title,
   value,
-  icon: Icon,
-  iconColor,
+  color = 'gold',
+  powerLevel = 0,
   onClick,
   isClickable = false,
 }) => (
-  <GlassCard
-    hover={isClickable}
+  <div
     className={cn(
-      'relative overflow-hidden',
       isClickable &&
-        'cursor-pointer transition-all duration-300 hover:scale-[1.02]',
+        'cursor-pointer transition-transform duration-300 hover:scale-[1.03]',
     )}
     onClick={onClick}
   >
-    <div
-      className={cn(
-        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
-        iconColor,
-      )}
+    <HexStatCard
+      label={title}
+      value={typeof value === 'number' ? value.toString() : value}
+      color={color}
+      powerLevel={powerLevel}
     />
-    <div className="relative flex items-start justify-between">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground mb-1">
-          {title}
-        </p>
-        {typeof value === 'number' ? (
-          <AnimatedNumber
-            value={value}
-            size="lg"
-            className="font-bold text-foreground"
-          />
-        ) : (
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-        )}
-      </div>
-      <div
-        className={cn(
-          'p-3 rounded-xl',
-          iconColor.replace('bg-', 'bg-opacity-20 '),
-        )}
-      >
-        <Icon
-          className={cn(
-            'w-6 h-6',
-            iconColor.replace('bg-', 'text-').replace('-500', '-400'),
-          )}
-        />
-      </div>
-    </div>
-  </GlassCard>
+  </div>
 );
 
 /**
@@ -144,30 +119,36 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
   const getStatusBadge = () => {
     switch (delivery.currentStatus) {
       case DeliveryStatus.PENDING:
-        return <StatusBadge status="info" label="Available" size="sm" />;
+        return <EvaStatusBadge status="created" label="Available" />;
       case DeliveryStatus.ACCEPTED:
-        return <StatusBadge status="warning" label="Accepted" size="sm" />;
+        return <EvaStatusBadge status="processing" label="Accepted" />;
       case DeliveryStatus.AWAITING_SENDER:
-        return (
-          <StatusBadge status="warning" label="Waiting for Sender" size="sm" />
-        );
+        return <EvaStatusBadge status="pending" label="Waiting for Sender" />;
       case DeliveryStatus.PICKED_UP:
-        return <StatusBadge status="warning" label="Picked Up" size="sm" />;
+        return <EvaStatusBadge status="active" label="Picked Up" />;
       case DeliveryStatus.COMPLETED:
-        return <StatusBadge status="success" label="Completed" size="sm" />;
+        return <EvaStatusBadge status="completed" label="Completed" />;
       default:
-        return <StatusBadge status="neutral" label="Unknown" size="sm" />;
+        return <EvaStatusBadge status="pending" label="Unknown" />;
     }
   };
 
   return (
-    <GlassCard hover className="transition-all duration-300">
+    <EvaPanel
+      label="Delivery"
+      sysId={`JOB-${delivery.jobId.slice(0, 6)}`}
+      accent={
+        delivery.currentStatus === DeliveryStatus.COMPLETED ? 'gold' : 'crimson'
+      }
+    >
       <div className="flex flex-col md:flex-row justify-between gap-4">
         <div className="space-y-4 flex-1">
           {/* Header */}
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Job ID:</span>
-            <span className="font-mono font-medium text-foreground">
+            <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+              Job ID:
+            </span>
+            <span className="font-mono font-bold text-gold tracking-wider">
               {delivery.jobId}
             </span>
             {getStatusBadge()}
@@ -176,21 +157,23 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
           {/* Locations */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+              <MapPin className="w-4 h-4 text-crimson mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">Pickup Location</p>
-                <p className="text-sm text-foreground">
+                <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40">
+                  Pickup Location
+                </p>
+                <p className="font-mono text-sm text-foreground/80">
                   {delivery.parcelData.startName}
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <Navigation className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+              <Navigation className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">
+                <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40">
                   Delivery Location
                 </p>
-                <p className="text-sm text-foreground">
+                <p className="font-mono text-sm text-foreground/80">
                   {delivery.parcelData.endName}
                 </p>
               </div>
@@ -198,14 +181,14 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
           </div>
 
           {/* Meta info */}
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <div className="flex items-center gap-6 font-mono text-xs text-foreground/40 tracking-wider">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              <span>ETA: {delivery.ETA} mins</span>
+              <span className="uppercase">ETA: {delivery.ETA} mins</span>
             </div>
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4" />
-              <span className="font-mono truncate max-w-[120px]">
+              <span className="tabular-nums truncate max-w-[120px]">
                 {delivery.customer.slice(0, 6)}...{delivery.customer.slice(-4)}
               </span>
             </div>
@@ -215,8 +198,10 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
         {/* Right side - Fee and Action */}
         <div className="flex flex-col items-end justify-between gap-4">
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Fee</p>
-            <p className="text-2xl font-bold text-accent">
+            <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40">
+              Fee
+            </p>
+            <p className="font-mono text-2xl font-bold tabular-nums text-gold">
               ${delivery.fee.toFixed(2)}
             </p>
           </div>
@@ -238,9 +223,15 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
             />
           )}
           {delivery.currentStatus === DeliveryStatus.AWAITING_SENDER && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div
+              className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20"
+              style={{
+                clipPath:
+                  'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+              }}
+            >
               <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span className="text-xs text-amber-300">
+              <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-amber-300">
                 Waiting for sender to sign
               </span>
             </div>
@@ -258,12 +249,12 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
             )}
         </div>
       </div>
-    </GlassCard>
+    </EvaPanel>
   );
 };
 
 /**
- * DriverDashboard - Driver dashboard with Aurellion theme
+ * DriverDashboard - Driver dashboard with EVA/NERV theme
  */
 export default function DriverDashboard() {
   const { setCurrentUserRole } = useMainProvider();
@@ -607,8 +598,13 @@ export default function DriverDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-          <span className="text-muted-foreground">Loading deliveries...</span>
+          <div className="relative">
+            <TargetRings size={80} />
+            <RefreshCw className="w-8 h-8 text-gold animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/50">
+            Loading deliveries...
+          </span>
         </div>
       </div>
     );
@@ -618,15 +614,15 @@ export default function DriverDashboard() {
     return (
       <div className="min-h-screen p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <GlassCard className="border-trading-sell/30">
-            <h2 className="text-lg font-semibold text-trading-sell mb-2">
+          <EvaPanel label="System Error" accent="crimson" status="warning">
+            <h2 className="font-mono text-lg font-bold tracking-[0.15em] uppercase text-crimson mb-2">
               Error Loading Deliveries
             </h2>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <GlowButton variant="outline" onClick={() => refreshDeliveries()}>
-              Try Again
-            </GlowButton>
-          </GlassCard>
+            <p className="font-mono text-xs text-foreground/40 mb-4">{error}</p>
+            <TrapButton variant="crimson" onClick={() => refreshDeliveries()}>
+              TRY AGAIN
+            </TrapButton>
+          </EvaPanel>
         </div>
       </div>
     );
@@ -637,30 +633,40 @@ export default function DriverDashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Driver Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Welcome back! Here's an overview of your deliveries
-            </p>
+          <div className="flex items-center gap-4">
+            <LaurelAccent side="left" />
+            <div>
+              <h1 className="font-serif text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
+                Driver Dashboard
+              </h1>
+              <p className="font-mono text-xs tracking-[0.1em] uppercase text-foreground/40 mt-1">
+                Welcome back — here is an overview of your deliveries
+              </p>
+            </div>
           </div>
-          <GlowButton
-            variant="outline"
-            onClick={() => refreshDeliveries()}
-            leftIcon={<RefreshCw className="w-4 h-4" />}
-          >
-            Refresh
-          </GlowButton>
+          <TrapButton variant="gold" onClick={() => refreshDeliveries()}>
+            <span className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              REFRESH
+            </span>
+          </TrapButton>
         </div>
 
+        <GreekKeyStrip color="gold" />
+
         {/* Stats Overview */}
+        <EvaSectionMarker
+          section="OVERVIEW"
+          label="DELIVERY METRICS"
+          variant="gold"
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <StatCard
             title="Available"
             value={availableCount}
-            icon={Package}
-            iconColor="bg-blue-500"
+            color="gold"
+            powerLevel={Math.min(10, availableCount)}
             onClick={() => {
               setActiveTab('available');
               setFilters({
@@ -676,8 +682,8 @@ export default function DriverDashboard() {
           <StatCard
             title="To Pick Up"
             value={toPickupCount}
-            icon={MapPin}
-            iconColor="bg-amber-500"
+            color="gold"
+            powerLevel={Math.min(10, toPickupCount * 3)}
             onClick={() => {
               setActiveTab('my-deliveries');
               setFilters({
@@ -693,8 +699,8 @@ export default function DriverDashboard() {
           <StatCard
             title="To Complete"
             value={toCompleteCount}
-            icon={Navigation}
-            iconColor="bg-accent"
+            color="crimson"
+            powerLevel={Math.min(10, toCompleteCount * 3)}
             onClick={() => {
               setActiveTab('my-deliveries');
               setFilters({
@@ -710,8 +716,8 @@ export default function DriverDashboard() {
           <StatCard
             title="Completed"
             value={completedDeliveries}
-            icon={CheckCircle2}
-            iconColor="bg-green-500"
+            color="emerald"
+            powerLevel={Math.min(10, Math.ceil(completedDeliveries / 2))}
             onClick={() => {
               setActiveTab('my-deliveries');
               setFilters({
@@ -727,10 +733,37 @@ export default function DriverDashboard() {
           <StatCard
             title="Total Earnings"
             value={`$${totalEarnings.toFixed(2)}`}
-            icon={DollarSign}
-            iconColor="bg-purple-500"
+            color="gold"
+            powerLevel={Math.min(10, Math.ceil(totalEarnings / 50))}
           />
         </div>
+
+        {/* Delivery Subsystem Metrics */}
+        <ChevronDataStream text="Delivery Subsystem Diagnostics" />
+
+        <CascadeLoadBars
+          labels={[
+            'GPS LOCK',
+            'ROUTE CALC',
+            'ETA ENGINE',
+            'DISPATCH',
+            'TRACKING',
+            'SETTLEMENT',
+            'COMMS',
+            'VERIFY',
+          ]}
+        />
+
+        <EvaScanLine variant="mixed" />
+
+        {/* Deliveries Section */}
+        <EvaSectionMarker
+          section="DELIVERIES"
+          label="JOB MANAGEMENT"
+          variant="crimson"
+        />
+
+        <ChevronDataStream text="Processing Delivery Data" speed="6s" />
 
         {/* Tabs */}
         <Tabs
@@ -742,34 +775,33 @@ export default function DriverDashboard() {
             setCurrentPage(1);
           }}
         >
-          <TabsList className="grid w-full grid-cols-2 bg-surface-overlay border border-glass-border">
+          <TabsList className="grid w-full grid-cols-2 bg-card/60 border border-border/30">
             <TabsTrigger
               value="available"
-              className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
+              className="font-mono text-xs tracking-[0.15em] uppercase data-[state=active]:bg-gold/15 data-[state=active]:text-gold"
             >
               Available Deliveries
             </TabsTrigger>
             <TabsTrigger
               value="my-deliveries"
-              className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
+              className="font-mono text-xs tracking-[0.15em] uppercase data-[state=active]:bg-crimson/15 data-[state=active]:text-crimson"
             >
               My Deliveries
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="available" className="mt-6">
-            <GlassCard>
-              <GlassCardHeader>
-                <GlassCardTitle>Available Deliveries</GlassCardTitle>
-                <GlassCardDescription>
-                  Browse and accept delivery requests
-                </GlassCardDescription>
-              </GlassCardHeader>
-
+            <EvaPanel
+              label="Available Deliveries"
+              sublabel="Browse and accept delivery requests"
+              sysId="AVL-01"
+              accent="gold"
+              status="active"
+            >
               {/* Filters */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40 font-bold">
                     Job ID
                   </label>
                   <Input
@@ -781,11 +813,11 @@ export default function DriverDashboard() {
                         jobId: e.target.value,
                       }))
                     }
-                    className="bg-surface-overlay border-glass-border"
+                    className="bg-background/60 border-border/40 font-mono"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40 font-bold">
                     Pickup Location
                   </label>
                   <Input
@@ -797,11 +829,11 @@ export default function DriverDashboard() {
                         pickupLocation: e.target.value,
                       }))
                     }
-                    className="bg-surface-overlay border-glass-border"
+                    className="bg-background/60 border-border/40 font-mono"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40 font-bold">
                     Drop-off Location
                   </label>
                   <Input
@@ -813,13 +845,15 @@ export default function DriverDashboard() {
                         dropOffLocation: e.target.value,
                       }))
                     }
-                    className="bg-surface-overlay border-glass-border"
+                    className="bg-background/60 border-border/40 font-mono"
                   />
                 </div>
               </div>
 
+              <EvaScanLine variant="gold" />
+
               {/* Delivery List */}
-              <div className="space-y-4">
+              <div className="space-y-4 mt-4">
                 {paginatedDeliveries.length > 0 ? (
                   paginatedDeliveries.map((delivery) => (
                     <DeliveryCard
@@ -831,29 +865,31 @@ export default function DriverDashboard() {
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <Truck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                    <p className="text-muted-foreground">
+                    <div className="flex justify-center mb-4">
+                      <TargetRings size={48} />
+                    </div>
+                    <Truck className="w-12 h-12 text-foreground/15 mx-auto mb-4" />
+                    <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/30">
                       No available deliveries
                     </p>
                   </div>
                 )}
               </div>
-            </GlassCard>
+            </EvaPanel>
           </TabsContent>
 
           <TabsContent value="my-deliveries" className="mt-6">
-            <GlassCard>
-              <GlassCardHeader>
-                <GlassCardTitle>My Deliveries</GlassCardTitle>
-                <GlassCardDescription>
-                  Manage your accepted deliveries
-                </GlassCardDescription>
-              </GlassCardHeader>
-
+            <EvaPanel
+              label="My Deliveries"
+              sublabel="Manage your accepted deliveries"
+              sysId="MYD-02"
+              accent="crimson"
+              status="active"
+            >
               {/* Filters */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40 font-bold">
                     Job ID
                   </label>
                   <Input
@@ -865,11 +901,11 @@ export default function DriverDashboard() {
                         jobId: e.target.value,
                       }))
                     }
-                    className="bg-surface-overlay border-glass-border"
+                    className="bg-background/60 border-border/40 font-mono"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40 font-bold">
                     Status
                   </label>
                   <Select
@@ -878,7 +914,7 @@ export default function DriverDashboard() {
                       setFilters((prev) => ({ ...prev, status: value }))
                     }
                   >
-                    <SelectTrigger className="bg-surface-overlay border-glass-border">
+                    <SelectTrigger className="bg-background/60 border-border/40 font-mono text-xs tracking-wider uppercase">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -902,8 +938,10 @@ export default function DriverDashboard() {
                 </div>
               </div>
 
+              <EvaScanLine variant="crimson" />
+
               {/* Delivery List */}
-              <div className="space-y-4">
+              <div className="space-y-4 mt-4">
                 {paginatedDeliveries.length > 0 ? (
                   paginatedDeliveries.map((delivery) => (
                     <DeliveryCard
@@ -919,45 +957,58 @@ export default function DriverDashboard() {
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <Truck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                    <p className="text-muted-foreground">No deliveries found</p>
+                    <div className="flex justify-center mb-4">
+                      <TargetRings size={48} />
+                    </div>
+                    <Truck className="w-12 h-12 text-foreground/15 mx-auto mb-4" />
+                    <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/30">
+                      No deliveries found
+                    </p>
                   </div>
                 )}
               </div>
-            </GlassCard>
+            </EvaPanel>
           </TabsContent>
         </Tabs>
 
         {/* Pagination */}
         {currentDeliveries.length > deliveriesPerPage && (
           <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
+            <div className="font-mono text-xs tracking-[0.1em] uppercase text-foreground/40 tabular-nums">
               Showing {startIndex + 1} to{' '}
               {Math.min(endIndex, currentDeliveries.length)} of{' '}
               {currentDeliveries.length} deliveries
             </div>
             <div className="flex gap-2">
-              <GlowButton
-                variant="outline"
+              <TrapButton
+                variant="gold"
+                size="sm"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                leftIcon={<ChevronLeft className="w-4 h-4" />}
               >
-                Previous
-              </GlowButton>
-              <GlowButton
-                variant="outline"
+                <span className="flex items-center gap-2">
+                  <ChevronLeft className="w-4 h-4" />
+                  PREVIOUS
+                </span>
+              </TrapButton>
+              <TrapButton
+                variant="gold"
+                size="sm"
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
                 disabled={currentPage === totalPages}
-                rightIcon={<ChevronRight className="w-4 h-4" />}
               >
-                Next
-              </GlowButton>
+                <span className="flex items-center gap-2">
+                  NEXT
+                  <ChevronRight className="w-4 h-4" />
+                </span>
+              </TrapButton>
             </div>
           </div>
         )}
+
+        <GreekKeyStrip color="crimson" />
       </div>
     </div>
   );

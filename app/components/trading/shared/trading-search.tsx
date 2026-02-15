@@ -35,7 +35,7 @@ export interface TradingSearchProps {
  * Features:
  * - Debounced onChange for performance
  * - Clear button
- * - Glass-morphism styling
+ * - EVA design system styling with sharp corners and clip-path
  * - Focus ring on interaction
  *
  * @example
@@ -104,13 +104,16 @@ export const TradingSearch = memo<TradingSearchProps>(function TradingSearch({
   }, []);
 
   return (
-    <div className={cn('relative', className)} data-testid={testId}>
+    <div className={cn('relative group', className)} data-testid={testId}>
+      {/* Left accent bar */}
+      <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-gold/20 group-focus-within:bg-gold/60 transition-colors z-10" />
+
       {/* Search icon */}
       <Search
         className={cn(
-          'absolute left-4 top-1/2 -translate-y-1/2',
-          'w-5 h-5 text-muted-foreground',
-          'pointer-events-none',
+          'absolute left-5 top-1/2 -translate-y-1/2',
+          'w-5 h-5 text-foreground/35',
+          'pointer-events-none z-10',
         )}
       />
 
@@ -123,14 +126,18 @@ export const TradingSearch = memo<TradingSearchProps>(function TradingSearch({
         placeholder={placeholder}
         autoFocus={autoFocus}
         className={cn(
-          'w-full pl-12 pr-10 py-3',
-          'bg-glass-bg backdrop-blur-md',
-          'border border-glass-border rounded-xl',
-          'text-foreground placeholder:text-muted-foreground',
+          'w-full pl-13 pr-10 py-3',
+          'bg-background/80',
+          'border border-border/40',
+          'font-mono text-sm tracking-[0.05em] uppercase',
+          'text-foreground/80 placeholder:text-foreground/25',
           'transition-all duration-200',
-          'focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/20',
-          'hover:border-glass-border-hover',
+          'focus:outline-none focus:border-gold/50',
         )}
+        style={{
+          clipPath:
+            'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+        }}
       />
 
       {/* Clear button */}
@@ -139,10 +146,9 @@ export const TradingSearch = memo<TradingSearchProps>(function TradingSearch({
           type="button"
           onClick={handleClear}
           className={cn(
-            'absolute right-3 top-1/2 -translate-y-1/2',
-            'p-1 rounded-md',
-            'text-muted-foreground hover:text-foreground',
-            'hover:bg-muted/20',
+            'absolute right-3 top-1/2 -translate-y-1/2 z-10',
+            'p-1',
+            'text-foreground/35 hover:text-gold',
             'transition-colors',
           )}
           aria-label="Clear search"

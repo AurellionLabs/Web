@@ -18,11 +18,7 @@ import {
   GreekKeyStrip,
   TargetRings,
 } from '@/app/components/eva/eva-components';
-import {
-  ATFieldGauge,
-  LiveWaveform,
-  ChevronDataStream,
-} from '@/app/components/eva/eva-animations';
+import { ChevronDataStream } from '@/app/components/eva/eva-animations';
 import { cn } from '@/lib/utils';
 import {
   Activity,
@@ -533,18 +529,8 @@ export default function CustomerDashboard() {
           </div>
         </div>
 
-        {/* ── Portfolio Security — AT Field Gauge ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ATFieldGauge label="Portfolio Security Shield" />
-          <LiveWaveform
-            label="Portfolio Value Feed"
-            sublabel="TARGET: HOLDINGS / PATTERN GOLD"
-            height={100}
-          />
-        </div>
-
         {/* ── Chevron Data Stream divider ── */}
-        <ChevronDataStream text="Monitoring Asset Holdings" speed="5s" />
+        <ChevronDataStream text="Order Activity Stream" speed="5s" />
 
         <EvaSectionMarker section="SEC.01" label="Holdings" variant="gold" />
 

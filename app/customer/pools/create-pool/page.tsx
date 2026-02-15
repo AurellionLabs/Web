@@ -41,12 +41,13 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
+  EvaPanel,
+  TrapButton,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
@@ -108,8 +109,8 @@ const getFileIcon = (fileType: string) => {
   } else {
     return {
       icon: FileText,
-      color: 'text-muted-foreground',
-      bgColor: 'bg-glass-bg',
+      color: 'text-foreground/40',
+      bgColor: 'bg-card/60',
     };
   }
 };
@@ -459,15 +460,17 @@ export default function CreatePoolPage() {
         <div className="max-w-2xl mx-auto">
           <Link
             href="/customer/pools"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="inline-flex items-center font-mono text-sm text-foreground/40 hover:text-foreground tracking-[0.1em] uppercase transition-colors mb-6"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Pools
           </Link>
           <div className="text-center py-12">
-            <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
-            <h2 className="text-xl font-semibold">Checking Operator Status</h2>
-            <p className="text-muted-foreground mt-2">
+            <Loader2 className="h-12 w-12 text-gold mx-auto mb-4 animate-spin" />
+            <h2 className="font-mono text-xl font-bold tracking-[0.15em] uppercase">
+              Checking Operator Status
+            </h2>
+            <p className="font-mono text-sm text-foreground/40 mt-2 tracking-[0.08em]">
               Verifying your operator permissions...
             </p>
           </div>
@@ -483,26 +486,38 @@ export default function CreatePoolPage() {
         <div className="max-w-2xl mx-auto">
           <Link
             href="/customer/pools"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="inline-flex items-center font-mono text-sm text-foreground/40 hover:text-foreground tracking-[0.1em] uppercase transition-colors mb-6"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Pools
           </Link>
           <div className="text-center py-12">
-            <Shield className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold">Operator Access Required</h2>
-            <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+            <Shield className="h-12 w-12 text-gold mx-auto mb-4" />
+            <h2 className="font-mono text-xl font-bold tracking-[0.15em] uppercase">
+              Operator Access Required
+            </h2>
+            <p className="font-mono text-sm text-foreground/40 mt-2 max-w-md mx-auto tracking-[0.05em]">
               Your wallet is not approved as an operator. Only approved
               operators can create yield pools. Contact the platform
               administrator to request operator access.
             </p>
-            <div className="mt-6 p-4 bg-muted/50 rounded-lg max-w-md mx-auto">
-              <p className="text-sm text-muted-foreground">Your Address:</p>
-              <p className="font-mono text-sm break-all">{address}</p>
+            <div
+              className="mt-6 p-4 bg-card/40 border border-border/20 max-w-md mx-auto"
+              style={{
+                clipPath:
+                  'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)',
+              }}
+            >
+              <p className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
+                Your Address:
+              </p>
+              <p className="font-mono text-sm break-all text-foreground/60 mt-1">
+                {address}
+              </p>
             </div>
             <div className="mt-6">
               <Link href="/customer/pools">
-                <GlowButton variant="outline">Browse Existing Pools</GlowButton>
+                <TrapButton variant="crimson">Browse Existing Pools</TrapButton>
               </Link>
             </div>
           </div>
@@ -517,51 +532,60 @@ export default function CreatePoolPage() {
         {/* Back link */}
         <Link
           href="/customer/pools"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center font-mono text-sm text-foreground/40 hover:text-foreground tracking-[0.1em] uppercase transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Pools
         </Link>
 
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
         <div className="text-center">
-          <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Plus className="w-8 h-8 text-accent" />
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <LaurelAccent side="left" />
+            <div
+              className="w-16 h-16 bg-gold/10 flex items-center justify-center"
+              style={{
+                clipPath:
+                  'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+              }}
+            >
+              <Plus className="w-8 h-8 text-gold" />
+            </div>
+            <LaurelAccent side="right" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="font-mono text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
             Create New Pool
           </h1>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="font-mono text-sm text-foreground/40 tracking-[0.08em] mt-2">
             Set up a new yield pool by providing the required details below
           </p>
         </div>
 
-        <GlassCard>
+        <EvaPanel label="Create Pool" sysId="POOL-NEW" status="pending">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Basic Info Section */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Zap className="w-4 h-4 text-accent" />
-                  <span>Basic Information</span>
-                </div>
+                <EvaSectionMarker section="Basic Information" variant="gold" />
 
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-muted-foreground">
+                      <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                         Pool Name
                       </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Enter pool name"
-                          className="bg-surface-overlay border-glass-border"
+                          className="bg-background/80 border-border/40 font-mono"
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription className="text-muted-foreground/70">
+                      <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                         Choose a descriptive name for your pool
                       </FormDescription>
                       <FormMessage />
@@ -574,17 +598,17 @@ export default function CreatePoolPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-muted-foreground">
+                      <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                         Description
                       </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Enter pool description"
-                          className="bg-surface-overlay border-glass-border"
+                          className="bg-background/80 border-border/40 font-mono"
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription className="text-muted-foreground/70">
+                      <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                         Describe the pool and its purpose
                       </FormDescription>
                       <FormMessage />
@@ -597,7 +621,7 @@ export default function CreatePoolPage() {
                   name="assetName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-muted-foreground">
+                      <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                         Asset
                       </FormLabel>
                       <Select
@@ -605,7 +629,7 @@ export default function CreatePoolPage() {
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-surface-overlay border-glass-border">
+                          <SelectTrigger className="bg-background/80 border-border/40 font-mono">
                             <SelectValue placeholder="Select an asset" />
                           </SelectTrigger>
                         </FormControl>
@@ -617,7 +641,7 @@ export default function CreatePoolPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription className="text-muted-foreground/70">
+                      <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                         Select the asset for this pool
                       </FormDescription>
                       <FormMessage />
@@ -627,11 +651,8 @@ export default function CreatePoolPage() {
               </div>
 
               {/* Pool Parameters Section */}
-              <div className="space-y-4 pt-4 border-t border-glass-border">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Zap className="w-4 h-4 text-accent" />
-                  <span>Pool Parameters</span>
-                </div>
+              <div className="space-y-4 pt-4">
+                <EvaSectionMarker section="Pool Parameters" variant="crimson" />
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -639,7 +660,7 @@ export default function CreatePoolPage() {
                     name="durationDays"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Duration (Days)
                         </FormLabel>
                         <FormControl>
@@ -648,7 +669,7 @@ export default function CreatePoolPage() {
                             min="1"
                             step="1"
                             placeholder="e.g., 30"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
@@ -662,7 +683,7 @@ export default function CreatePoolPage() {
                     name="rewardRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           APY (%)
                         </FormLabel>
                         <FormControl>
@@ -672,7 +693,7 @@ export default function CreatePoolPage() {
                             min="1"
                             max="100"
                             placeholder="e.g., 12.5"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
@@ -688,7 +709,7 @@ export default function CreatePoolPage() {
                     name="assetPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Asset Price (USD)
                         </FormLabel>
                         <FormControl>
@@ -697,11 +718,11 @@ export default function CreatePoolPage() {
                             step="any"
                             min="0"
                             placeholder="e.g., 100"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription className="text-muted-foreground/70">
+                        <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                           Display price in USD
                         </FormDescription>
                         <FormMessage />
@@ -714,7 +735,7 @@ export default function CreatePoolPage() {
                     name="fundingGoal"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Funding Goal
                         </FormLabel>
                         <FormControl>
@@ -723,7 +744,7 @@ export default function CreatePoolPage() {
                             step="any"
                             min="0"
                             placeholder="e.g., 10000"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
@@ -737,7 +758,7 @@ export default function CreatePoolPage() {
                     name="minSalePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Target Sale Price
                         </FormLabel>
                         <FormControl>
@@ -746,11 +767,11 @@ export default function CreatePoolPage() {
                             step="any"
                             min="0"
                             placeholder="e.g., 10"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription className="text-muted-foreground/70">
+                        <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                           Expected sale price per unit
                         </FormDescription>
                         <FormMessage />
@@ -765,7 +786,7 @@ export default function CreatePoolPage() {
                     name="collateralAmount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Your Collateral (AURA)
                         </FormLabel>
                         <FormControl>
@@ -774,35 +795,39 @@ export default function CreatePoolPage() {
                             step="any"
                             min="0"
                             placeholder="e.g., 2000"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription className="text-muted-foreground/70">
+                        <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                           Your stake to back this opportunity
                         </FormDescription>
                         <FormMessage />
                         {minimumRequiredCollateral !== null && (
                           <div
-                            className={`mt-2 p-3 rounded-lg border ${
+                            className={`mt-2 p-3 border ${
                               parseFloat(field.value || '0') >=
                                 minimumRequiredCollateral || isInsured
-                                ? 'bg-green-500/10 border-green-500/30'
+                                ? 'bg-emerald-500/10 border-emerald-500/30'
                                 : 'bg-amber-500/10 border-amber-500/30'
                             }`}
+                            style={{
+                              clipPath:
+                                'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                            }}
                           >
                             <p
-                              className={`text-sm font-medium ${
+                              className={`font-mono text-sm font-bold ${
                                 parseFloat(field.value || '0') >=
                                   minimumRequiredCollateral || isInsured
-                                  ? 'text-green-400'
+                                  ? 'text-emerald-400'
                                   : 'text-amber-400'
                               }`}
                             >
                               {isInsured ? (
                                 <>
                                   <Shield className="w-3 h-3 inline mr-1" />
-                                  Insured - Collateral optional
+                                  Insured — Collateral optional
                                 </>
                               ) : (
                                 <>
@@ -813,7 +838,7 @@ export default function CreatePoolPage() {
                               )}
                             </p>
                             {!isInsured && (
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="font-mono text-[10px] text-foreground/30 mt-1 tracking-wider">
                                 20% of ({fundingGoal || '0'} × $
                                 {minSalePrice || '0'} = $
                                 {(
@@ -825,7 +850,7 @@ export default function CreatePoolPage() {
                             )}
                             {isInsured &&
                               parseFloat(field.value || '0') === 0 && (
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="font-mono text-[10px] text-foreground/30 mt-1 tracking-wider">
                                   Insurance covers investor protection
                                 </p>
                               )}
@@ -838,11 +863,12 @@ export default function CreatePoolPage() {
               </div>
 
               {/* Advanced Parameters Section */}
-              <div className="space-y-4 pt-4 border-t border-glass-border">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Zap className="w-4 h-4 text-accent" />
-                  <span>Advanced Parameters (Optional)</span>
-                </div>
+              <div className="space-y-4 pt-4">
+                <EvaSectionMarker
+                  section="Advanced Parameters"
+                  label="Optional"
+                  variant="gold"
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -850,7 +876,7 @@ export default function CreatePoolPage() {
                     name="operatorFeeBps"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Operator Fee (bps)
                         </FormLabel>
                         <FormControl>
@@ -860,11 +886,11 @@ export default function CreatePoolPage() {
                             min="0"
                             max="1000"
                             placeholder="e.g., 500"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription className="text-muted-foreground/70">
+                        <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                           Fee for operator (1-10%)
                         </FormDescription>
                         <FormMessage />
@@ -877,7 +903,7 @@ export default function CreatePoolPage() {
                     name="processingDays"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Processing Days
                         </FormLabel>
                         <FormControl>
@@ -886,11 +912,11 @@ export default function CreatePoolPage() {
                             step="1"
                             min="1"
                             placeholder="e.g., 30"
-                            className="bg-surface-overlay border-glass-border"
+                            className="bg-background/80 border-border/40 font-mono tabular-nums"
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription className="text-muted-foreground/70">
+                        <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                           Days to process after funding
                         </FormDescription>
                         <FormMessage />
@@ -901,22 +927,29 @@ export default function CreatePoolPage() {
               </div>
 
               {/* Insurance Section */}
-              <div className="space-y-4 pt-4 border-t border-glass-border">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Shield className="w-4 h-4 text-green-500" />
-                  <span>Insurance (Optional)</span>
-                </div>
+              <div className="space-y-4 pt-4">
+                <EvaSectionMarker
+                  section="Insurance"
+                  label="Optional"
+                  variant="gold"
+                />
 
                 <FormField
                   control={form.control}
                   name="isInsured"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-glass-border p-4 bg-surface-overlay">
+                    <FormItem
+                      className="flex flex-row items-center justify-between p-4 bg-background/60 border border-border/30"
+                      style={{
+                        clipPath:
+                          'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)',
+                      }}
+                    >
                       <div className="space-y-0.5">
-                        <FormLabel className="text-foreground">
+                        <FormLabel className="font-mono text-sm font-bold text-foreground tracking-[0.1em] uppercase">
                           Pool Insurance
                         </FormLabel>
-                        <FormDescription className="text-muted-foreground/70">
+                        <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                           Mark this pool as insured to attract more investors
                         </FormDescription>
                       </div>
@@ -927,8 +960,8 @@ export default function CreatePoolPage() {
                           aria-checked={field.value}
                           onClick={() => field.onChange(!field.value)}
                           className={cn(
-                            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
-                            field.value ? 'bg-green-500' : 'bg-neutral-600',
+                            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2',
+                            field.value ? 'bg-emerald-500' : 'bg-neutral-600',
                           )}
                         >
                           <span
@@ -949,7 +982,7 @@ export default function CreatePoolPage() {
                     name="insuranceDocument"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-muted-foreground">
+                        <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                           Insurance Document
                         </FormLabel>
                         <FormControl>
@@ -957,34 +990,38 @@ export default function CreatePoolPage() {
                             <div className="flex items-center justify-center w-full">
                               <label
                                 htmlFor="insurance-upload"
-                                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl transition-colors border-green-500/30 cursor-pointer bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/50"
+                                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed transition-colors border-emerald-500/30 cursor-pointer bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                                style={{
+                                  clipPath:
+                                    'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)',
+                                }}
                               >
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                  <Shield className="w-8 h-8 mb-4 text-green-500" />
+                                  <Shield className="w-8 h-8 mb-4 text-emerald-500" />
                                   {field.value ? (
                                     <>
-                                      <p className="mb-2 text-sm text-green-400">
-                                        <span className="font-semibold">
+                                      <p className="mb-2 font-mono text-sm text-emerald-400">
+                                        <span className="font-bold">
                                           {field.value.name}
                                         </span>
                                       </p>
-                                      <p className="text-xs text-muted-foreground">
+                                      <p className="font-mono text-[10px] text-foreground/30 tracking-wider">
                                         {(
                                           field.value.size /
                                           (1024 * 1024)
                                         ).toFixed(2)}{' '}
-                                        MB - Click to replace
+                                        MB — Click to replace
                                       </p>
                                     </>
                                   ) : (
                                     <>
-                                      <p className="mb-2 text-sm text-muted-foreground">
-                                        <span className="font-semibold text-green-400">
+                                      <p className="mb-2 font-mono text-sm text-foreground/40">
+                                        <span className="font-bold text-emerald-400">
                                           Click to upload
                                         </span>{' '}
                                         insurance certificate
                                       </p>
-                                      <p className="text-xs text-muted-foreground">
+                                      <p className="font-mono text-[10px] text-foreground/30 tracking-wider">
                                         PDF or image (MAX. 4MB)
                                       </p>
                                     </>
@@ -1005,14 +1042,20 @@ export default function CreatePoolPage() {
                               </label>
                             </div>
                             {field.value && (
-                              <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                              <div
+                                className="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30"
+                                style={{
+                                  clipPath:
+                                    'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                                }}
+                              >
                                 <div className="flex items-center gap-3">
-                                  <Shield className="w-5 h-5 text-green-500" />
+                                  <Shield className="w-5 h-5 text-emerald-500" />
                                   <div>
-                                    <p className="text-sm font-medium text-foreground">
+                                    <p className="font-mono text-sm font-bold text-foreground">
                                       {field.value.name}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="font-mono text-[10px] text-foreground/30 tracking-wider">
                                       Insurance document uploaded
                                     </p>
                                   </div>
@@ -1020,7 +1063,7 @@ export default function CreatePoolPage() {
                                 <button
                                   type="button"
                                   onClick={() => field.onChange(null)}
-                                  className="p-1.5 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                                  className="p-1.5 text-foreground/30 hover:text-crimson transition-colors"
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
@@ -1028,7 +1071,7 @@ export default function CreatePoolPage() {
                             )}
                           </div>
                         </FormControl>
-                        <FormDescription className="text-muted-foreground/70">
+                        <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                           Upload your insurance certificate or policy document
                         </FormDescription>
                         <FormMessage />
@@ -1038,14 +1081,20 @@ export default function CreatePoolPage() {
                 )}
 
                 {isInsured && (
-                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                  <div
+                    className="p-4 bg-emerald-500/10 border border-emerald-500/30"
+                    style={{
+                      clipPath:
+                        'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)',
+                    }}
+                  >
                     <div className="flex items-start gap-3">
-                      <Shield className="w-5 h-5 text-green-500 mt-0.5" />
+                      <Shield className="w-5 h-5 text-emerald-500 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-green-400">
+                        <p className="font-mono text-sm font-bold text-emerald-400 tracking-[0.1em] uppercase">
                           Insured Pool Benefits
                         </p>
-                        <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                        <ul className="font-mono text-[10px] text-foreground/30 mt-2 space-y-1 tracking-wider">
                           <li>• Higher visibility in pool listings</li>
                           <li>• Increased investor confidence</li>
                           <li>• Can operate with lower or zero collateral</li>
@@ -1058,13 +1107,19 @@ export default function CreatePoolPage() {
               </div>
 
               {/* Documents Section */}
-              <div className="space-y-4 pt-4 border-t border-glass-border">
+              <div className="space-y-4 pt-4">
+                <EvaSectionMarker
+                  section="Documents"
+                  label="Optional"
+                  variant="crimson"
+                />
+
                 <FormField
                   control={form.control}
                   name="supportingDocuments"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-muted-foreground">
+                      <FormLabel className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                         Supporting Documents (Optional)
                       </FormLabel>
                       <FormControl>
@@ -1072,44 +1127,48 @@ export default function CreatePoolPage() {
                           <div className="flex items-center justify-center w-full">
                             <label
                               htmlFor="file-upload"
-                              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl transition-colors ${
+                              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed transition-colors ${
                                 (field.value?.length || 0) >= MAX_FILES_ALLOWED
-                                  ? 'border-glass-border bg-glass-bg cursor-not-allowed opacity-50'
-                                  : 'border-glass-border cursor-pointer bg-glass-bg hover:bg-glass-hover hover:border-accent/30'
+                                  ? 'border-border/20 bg-card/30 cursor-not-allowed opacity-50'
+                                  : 'border-border/30 cursor-pointer bg-card/20 hover:bg-card/40 hover:border-gold/30'
                               }`}
+                              style={{
+                                clipPath:
+                                  'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)',
+                              }}
                             >
                               <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                 <Upload
                                   className={`w-8 h-8 mb-4 ${
                                     (field.value?.length || 0) >=
                                     MAX_FILES_ALLOWED
-                                      ? 'text-muted-foreground/30'
-                                      : 'text-muted-foreground'
+                                      ? 'text-foreground/10'
+                                      : 'text-foreground/30'
                                   }`}
                                 />
                                 {(field.value?.length || 0) >=
                                 MAX_FILES_ALLOWED ? (
                                   <>
-                                    <p className="mb-2 text-sm text-muted-foreground/50">
+                                    <p className="mb-2 font-mono text-sm text-foreground/20 tracking-wider">
                                       Maximum {MAX_FILES_ALLOWED} files reached
                                     </p>
-                                    <p className="text-xs text-muted-foreground/50">
+                                    <p className="font-mono text-[10px] text-foreground/15 tracking-wider">
                                       Remove a file to upload more
                                     </p>
                                   </>
                                 ) : (
                                   <>
-                                    <p className="mb-2 text-sm text-muted-foreground">
-                                      <span className="font-semibold text-foreground">
+                                    <p className="mb-2 font-mono text-sm text-foreground/40">
+                                      <span className="font-bold text-foreground/70">
                                         Click to upload
                                       </span>{' '}
                                       or drag and drop
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="font-mono text-[10px] text-foreground/30 tracking-wider">
                                       PDF, Word documents, or images (MAX. 4MB
                                       each)
                                     </p>
-                                    <p className="text-xs text-muted-foreground/70 mt-1">
+                                    <p className="font-mono text-[10px] text-foreground/20 mt-1 tracking-wider">
                                       {field.value?.length || 0} of{' '}
                                       {MAX_FILES_ALLOWED} files
                                     </p>
@@ -1150,7 +1209,7 @@ export default function CreatePoolPage() {
 
                           {field.value && field.value.length > 0 && (
                             <div className="space-y-3">
-                              <p className="text-sm font-medium text-foreground">
+                              <p className="font-mono text-sm font-bold text-foreground tracking-[0.1em] uppercase">
                                 {field.value.length} file
                                 {field.value.length > 1 ? 's' : ''} selected
                               </p>
@@ -1164,21 +1223,29 @@ export default function CreatePoolPage() {
                                   return (
                                     <div
                                       key={index}
-                                      className={`flex items-center justify-between p-3 rounded-lg ${bgColor} border border-glass-border transition-colors`}
+                                      className={`flex items-center justify-between p-3 ${bgColor} border border-border/20 transition-colors`}
+                                      style={{
+                                        clipPath:
+                                          'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                                      }}
                                     >
                                       <div className="flex items-center space-x-3">
                                         <div
-                                          className={`p-2 rounded-lg ${bgColor}`}
+                                          className={`p-2 ${bgColor}`}
+                                          style={{
+                                            clipPath:
+                                              'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                                          }}
                                         >
                                           <Icon
                                             className={`w-4 h-4 ${color}`}
                                           />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                          <p className="text-sm font-medium text-foreground truncate">
+                                          <p className="font-mono text-sm font-bold text-foreground truncate">
                                             {file.name}
                                           </p>
-                                          <p className="text-xs text-muted-foreground">
+                                          <p className="font-mono text-[10px] text-foreground/30 tracking-wider">
                                             {(
                                               file.size /
                                               (1024 * 1024)
@@ -1189,7 +1256,7 @@ export default function CreatePoolPage() {
                                       </div>
                                       <button
                                         type="button"
-                                        className="p-1.5 rounded-lg hover:bg-glass-hover text-muted-foreground hover:text-foreground transition-colors"
+                                        className="p-1.5 text-foreground/30 hover:text-crimson transition-colors"
                                         onClick={() => {
                                           const newFiles =
                                             field.value?.filter(
@@ -1208,7 +1275,7 @@ export default function CreatePoolPage() {
                           )}
                         </div>
                       </FormControl>
-                      <FormDescription className="text-muted-foreground/70">
+                      <FormDescription className="font-mono text-[10px] text-foreground/25 tracking-wider">
                         Upload up to {MAX_FILES_ALLOWED} supporting documents
                       </FormDescription>
                       <FormMessage />
@@ -1221,23 +1288,26 @@ export default function CreatePoolPage() {
               {isConnected &&
                 collateralAmount &&
                 parseFloat(collateralAmount) > 0 && (
-                  <div className="space-y-4 pt-4 border-t border-glass-border">
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                      <Coins className="w-4 h-4 text-accent" />
-                      <span>Token Approval</span>
-                    </div>
+                  <div className="space-y-4 pt-4">
+                    <EvaSectionMarker section="Token Approval" variant="gold" />
 
-                    <div className="p-4 rounded-lg bg-surface-overlay border border-glass-border">
+                    <div
+                      className="p-4 bg-background/60 border border-border/30"
+                      style={{
+                        clipPath:
+                          'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)',
+                      }}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-foreground">
+                          <p className="font-mono text-sm font-bold text-foreground tracking-[0.1em] uppercase">
                             AURA Token Allowance
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="font-mono text-[10px] text-foreground/30 tracking-wider">
                             Balance: {formattedBalance} AURA
                           </p>
                           {!hasSufficientBalance && (
-                            <p className="text-xs text-amber-500 flex items-center gap-1">
+                            <p className="font-mono text-[10px] text-amber-500 flex items-center gap-1 tracking-wider">
                               <AlertTriangle className="w-3 h-3" />
                               Insufficient balance for collateral
                             </p>
@@ -1245,31 +1315,33 @@ export default function CreatePoolPage() {
                         </div>
 
                         {tokenApprovalLoading ? (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2 font-mono text-sm text-foreground/40 tracking-wider">
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Checking...
                           </div>
                         ) : hasTokenApproval ? (
-                          <div className="flex items-center gap-2 text-sm text-green-500">
+                          <div className="flex items-center gap-2 font-mono text-sm text-emerald-500 tracking-wider font-bold">
                             <Check className="w-4 h-4" />
                             Approved
                           </div>
                         ) : (
-                          <GlowButton
+                          <button
                             type="button"
-                            variant="outline"
-                            size="sm"
                             onClick={handleApproveTokens}
-                            loading={isApproving}
                             disabled={isApproving}
+                            className="relative font-mono tracking-[0.12em] uppercase font-bold transition-all duration-300 bg-gold/10 hover:bg-gold/20 text-gold px-4 py-1.5 text-[11px] disabled:opacity-40 disabled:pointer-events-none"
+                            style={{
+                              clipPath:
+                                'polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)',
+                            }}
                           >
                             {isApproving ? 'Approving...' : 'Approve AURA'}
-                          </GlowButton>
+                          </button>
                         )}
                       </div>
 
                       {!hasTokenApproval && !tokenApprovalLoading && (
-                        <p className="text-xs text-muted-foreground mt-3">
+                        <p className="font-mono text-[10px] text-foreground/25 mt-3 tracking-wider">
                           You need to approve the platform to use your AURA
                           tokens as collateral before creating a pool.
                         </p>
@@ -1278,13 +1350,13 @@ export default function CreatePoolPage() {
                   </div>
                 )}
 
+              <EvaScanLine variant="mixed" />
+
               <div className="pt-4">
-                <GlowButton
-                  type="submit"
-                  variant="primary"
+                <TrapButton
+                  variant="gold"
+                  size="lg"
                   className="w-full"
-                  glow
-                  loading={form.formState.isSubmitting || loading}
                   disabled={
                     Boolean(form.formState.isSubmitting) ||
                     Boolean(loading) ||
@@ -1300,11 +1372,13 @@ export default function CreatePoolPage() {
                         parseFloat(collateralAmount) > 0
                       ? 'Approve Tokens First'
                       : 'Create Pool'}
-                </GlowButton>
+                </TrapButton>
               </div>
             </form>
           </Form>
-        </GlassCard>
+        </EvaPanel>
+
+        <GreekKeyStrip color="gold" />
       </div>
     </div>
   );

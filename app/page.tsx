@@ -283,7 +283,7 @@ export default function LandingPage() {
           <div className="max-w-7xl mx-auto">
             <LiveWaveform
               label="Tokenization Volume Feed"
-              sublabel="TARGET: RWA LIQUIDITY / PATTERN GOLD"
+              sublabel="FEED: RWA MARKET / LIVE DATA"
               height={140}
             />
           </div>

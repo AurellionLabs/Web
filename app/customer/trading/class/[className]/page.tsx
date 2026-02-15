@@ -9,9 +9,18 @@ import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 import { Asset } from '@/domain/shared';
 import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
 
+// EVA Components
+import {
+  EvaPanel,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
+import { LiveWaveform } from '@/app/components/eva/eva-animations';
+
 // Components
-import { GlassCard } from '@/app/components/ui/glass-card';
-import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel } from '@/app/components/trading/trade-panel';
 import {
@@ -731,13 +740,13 @@ function ClassDetailPageContent() {
           {/* Content skeleton */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-3">
-              <div className="h-96 bg-glass-bg rounded-xl border border-glass-border animate-pulse" />
+              <div className="h-96 bg-card/60 rounded-xl border border-border/30 animate-pulse" />
             </div>
             <div className="lg:col-span-6">
               <AssetTableSkeleton rows={6} />
             </div>
             <div className="lg:col-span-3">
-              <div className="h-96 bg-glass-bg rounded-xl border border-glass-border animate-pulse" />
+              <div className="h-96 bg-card/60 rounded-xl border border-border/30 animate-pulse" />
             </div>
           </div>
         </div>
@@ -766,47 +775,58 @@ function ClassDetailPageContent() {
   return (
     <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-[1800px] mx-auto">
+        {/* Decorative top accent */}
+        <GreekKeyStrip color="gold" />
+
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6">
+        <div className="flex items-center gap-2 text-sm mb-6 mt-4">
           <Link
             href="/customer/trading"
-            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40 hover:text-gold transition-colors flex items-center gap-1"
           >
             <ArrowLeft className="w-4 h-4" />
             Trading
           </Link>
-          <span className="text-muted-foreground/50">/</span>
-          <span className="text-foreground font-medium capitalize">
+          <span className="text-foreground/20 font-mono">/</span>
+          <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/70 font-bold">
             {className}
           </span>
         </div>
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground capitalize">
-              {className}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {assets.length} assets • {assetTypes.length} types available
-            </p>
+          <div className="flex items-center gap-3">
+            <LaurelAccent side="left" />
+            <div>
+              <h1 className="font-serif text-3xl font-bold tracking-[0.15em] uppercase text-foreground">
+                {className}
+              </h1>
+              <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40 mt-1">
+                {assets.length} assets • {assetTypes.length} types available
+              </p>
+            </div>
+            <LaurelAccent side="right" />
           </div>
           <div className="flex items-center gap-3">
-            <StatusBadge status="live" label="Live" pulse size="sm" />
+            <EvaStatusBadge status="active" label="LIVE" />
             <button
               onClick={handleRefresh}
               disabled={isRefreshing || isLoading}
               className={cn(
-                'p-2 rounded-lg',
-                'bg-glass-bg border border-glass-border',
-                'hover:border-accent/30 transition-colors',
+                'p-2',
+                'bg-card/60 border border-border/30',
+                'hover:border-gold/30 transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
               aria-label="Refresh assets"
             >
               <RefreshCw
                 className={cn(
-                  'w-4 h-4 text-muted-foreground',
+                  'w-4 h-4 text-foreground/50',
                   (isRefreshing || isLoading) && 'animate-spin',
                 )}
               />
@@ -814,10 +834,18 @@ function ClassDetailPageContent() {
           </div>
         </div>
 
+        <EvaScanLine variant="mixed" />
+
         {/* Main content grid - Hyperliquid-style layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
           {/* Left sidebar - Asset Types & Filters */}
           <div className="lg:col-span-3 space-y-6">
+            <EvaSectionMarker
+              section="ASSETS"
+              label="Type Selection"
+              variant="gold"
+            />
+
             {/* Asset type selector */}
             <AssetTypeSelector
               assets={assets}
@@ -840,67 +868,105 @@ function ClassDetailPageContent() {
 
             {/* Filtered assets summary */}
             {selectedAssetType && filteredAssets.length > 0 && (
-              <GlassCard>
-                <h4 className="text-sm font-medium text-foreground mb-3">
-                  Matching Assets ({filteredAssets.length})
-                </h4>
+              <EvaPanel
+                label="Matching Assets"
+                sublabel={`${filteredAssets.length} found`}
+                sysId="AST-FLT"
+                accent="gold"
+              >
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {filteredAssets.slice(0, 10).map((asset, i) => (
                     <div
                       key={`${asset.name}-${asset.tokenId || i}`}
-                      className="flex items-center justify-between p-2 rounded-lg bg-surface-overlay/50"
+                      className="flex items-center justify-between p-2 border-b border-border/10"
                     >
-                      <span className="text-sm text-foreground">
+                      <span className="font-mono text-sm text-foreground/80">
                         {asset.name}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="font-mono text-xs tracking-[0.15em] text-foreground/40">
                         Token #{asset.tokenId || 'N/A'}
                       </span>
                     </div>
                   ))}
                   {filteredAssets.length > 10 && (
-                    <p className="text-xs text-muted-foreground text-center py-2">
+                    <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/30 text-center py-2">
                       +{filteredAssets.length - 10} more assets
                     </p>
                   )}
                 </div>
-              </GlassCard>
+              </EvaPanel>
             )}
           </div>
 
-          {/* Center - Price Chart (larger) */}
-          <div className="lg:col-span-6">
+          {/* Center - Price Chart + LiveWaveform */}
+          <div className="lg:col-span-6 space-y-6">
+            <EvaSectionMarker
+              section="MARKET DATA"
+              label="Price Analysis"
+              variant="crimson"
+            />
+
             {/* Prompt to select asset type */}
             {!selectedAssetType ? (
-              <GlassCard className="text-center py-16">
-                <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp className="w-8 h-8 text-accent" />
+              <EvaPanel
+                label="Market Data"
+                sysId="MKT-00"
+                status="pending"
+                accent="gold"
+                className="text-center"
+              >
+                <div className="py-12">
+                  <div
+                    className="w-16 h-16 flex items-center justify-center mx-auto mb-4"
+                    style={{
+                      clipPath:
+                        'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                      background: 'hsl(43 65% 62% / 0.08)',
+                    }}
+                  >
+                    <TrendingUp className="w-8 h-8 text-gold/60" />
+                  </div>
+                  <h3 className="font-serif text-xl tracking-[0.15em] uppercase text-foreground/80 mb-2">
+                    Select an Asset Type
+                  </h3>
+                  <p className="font-mono text-xs tracking-[0.1em] text-foreground/40 max-w-md mx-auto">
+                    Choose an asset type from the left panel to view price
+                    charts, order book, and trading options.
+                  </p>
                 </div>
-                <h3 className="text-xl font-display font-semibold text-foreground mb-2">
-                  Select an Asset Type
-                </h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  Choose an asset type from the left panel to view price charts,
-                  order book, and trading options.
-                </p>
-              </GlassCard>
+              </EvaPanel>
             ) : (
-              /* Professional Price Chart */
-              <PriceChart
-                data={chartData}
-                timePeriod={chartPeriod}
-                mode="candlestick"
-                height={500}
-                showVolume={true}
-                assetName={selectedAssetType}
-                currentPrice={basePrice}
-                onTimePeriodChange={handleChartPeriodChange}
-              />
+              <>
+                {/* Professional Price Chart */}
+                <PriceChart
+                  data={chartData}
+                  timePeriod={chartPeriod}
+                  mode="candlestick"
+                  height={500}
+                  showVolume={true}
+                  assetName={selectedAssetType}
+                  currentPrice={basePrice}
+                  onTimePeriodChange={handleChartPeriodChange}
+                />
+
+                {/* LiveWaveform - Real-time trading data feed */}
+                <LiveWaveform
+                  height={100}
+                  label="Price Activity Feed"
+                  sublabel={`TARGET: ${selectedAssetType?.toUpperCase()} / PATTERN BLUE`}
+                />
+              </>
             )}
           </div>
 
           {/* Right sidebar - Order Book + Trade Panel (stacked) */}
           <div className="lg:col-span-3">
+            <EvaSectionMarker
+              section="ORDERS"
+              label="Execution"
+              variant="crimson"
+            />
+
             <div className="sticky top-20 space-y-6">
               {/* Order Book (compact) */}
               {selectedAssetType && tradeableAsset && (
@@ -915,6 +981,8 @@ function ClassDetailPageContent() {
                 />
               )}
 
+              <EvaScanLine variant="gold" />
+
               {/* Trade Panel */}
               {selectedAssetType && tradeableAsset ? (
                 <TradePanel
@@ -926,14 +994,25 @@ function ClassDetailPageContent() {
                   onPlaceOrder={handlePlaceOrder}
                 />
               ) : (
-                <GlassCard className="text-center py-12">
-                  <p className="text-sm text-muted-foreground">
+                <EvaPanel
+                  label="Trade"
+                  sysId="TRD-00"
+                  status="offline"
+                  accent="crimson"
+                  className="text-center"
+                >
+                  <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/30 py-8">
                     Select an asset type to place an order
                   </p>
-                </GlassCard>
+                </EvaPanel>
               )}
             </div>
           </div>
+        </div>
+
+        {/* Bottom decorative accent */}
+        <div className="mt-8">
+          <GreekKeyStrip color="gold" />
         </div>
       </div>
 

@@ -10,14 +10,10 @@ import {
 import { useRWYStakeActions } from '@/hooks/useRWYActions';
 import { useRWYStake, useRWYExpectedProfit } from '@/hooks/useRWYOpportunity';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+  EvaPanel,
+  TrapButton,
+  EvaProgress,
+} from '@/app/components/eva/eva-components';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Slider } from '@/app/components/ui/slider';
@@ -124,71 +120,78 @@ export function StakeForm({
 
   if (!canStake) {
     return (
-      <Card className="border-amber-500/30 bg-amber-500/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-500">
-            <AlertCircle className="h-5 w-5" />
-            Staking Closed
-          </CardTitle>
-          <CardDescription>
+      <EvaPanel label="Staking Closed" status="warning" accent="crimson">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-gold" />
+          <p className="font-mono text-sm tracking-[0.05em] text-foreground/50">
             This opportunity is no longer accepting stakes.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          </p>
+        </div>
+      </EvaPanel>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Coins className="h-5 w-5 text-primary" />
-          Stake Commodities
-        </CardTitle>
-        <CardDescription>
-          Stake your {opportunity.inputTokenName || 'tokens'} to earn{' '}
-          {bpsToPercent(opportunity.promisedYieldBps)} yield
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
+    <EvaPanel
+      label="Stake Commodities"
+      sublabel={`Stake your ${opportunity.inputTokenName || 'tokens'} to earn ${bpsToPercent(opportunity.promisedYieldBps)} yield`}
+      status="active"
+    >
+      <div className="space-y-6">
         {/* Existing Stake Info */}
         {existingStake && BigInt(existingStake.amount) > 0n && (
-          <Alert className="border-emerald-500/30 bg-emerald-500/5">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            <AlertDescription className="text-emerald-500">
+          <div
+            className="flex items-center gap-3 p-3 bg-emerald-500/8 border border-emerald-500/20"
+            style={{
+              clipPath: 'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+            }}
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span className="font-mono text-xs tracking-[0.05em] text-emerald-400">
               You have staked {ethers.formatUnits(existingStake.amount, 18)}{' '}
               tokens in this opportunity.
-            </AlertDescription>
-          </Alert>
+            </span>
+          </div>
         )}
 
         {/* Amount Input */}
         <div className="space-y-2">
-          <div className="flex justify-between">
-            <Label htmlFor="amount">Amount to Stake</Label>
-            <span className="text-sm text-muted-foreground">
+          <div className="flex justify-between items-center">
+            <Label
+              htmlFor="amount"
+              className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/45 font-bold"
+            >
+              Amount to Stake
+            </Label>
+            <span className="font-mono text-xs tracking-[0.05em] text-foreground/35">
               Balance: {ethers.formatUnits(userBalance, 18)}
             </span>
           </div>
-          <div className="relative">
+          <div className="relative group">
+            <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-gold/20 group-focus-within:bg-gold/60 transition-colors" />
             <Input
               id="amount"
               type="number"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="pr-16"
+              className="pr-16 pl-4 font-mono bg-background/80 border-border/40 focus:border-gold/50"
+              style={{
+                clipPath:
+                  'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+              }}
             />
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1 h-7 text-xs"
               onClick={handleMaxClick}
+              className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] tracking-[0.15em] uppercase font-bold text-gold/60 hover:text-gold px-2 py-1 bg-gold/8 hover:bg-gold/15 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%)',
+              }}
             >
               MAX
-            </Button>
+            </button>
           </div>
 
           {/* Amount Slider */}
@@ -199,7 +202,7 @@ export function StakeForm({
             onValueChange={handleSliderChange}
             className="mt-4"
           />
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between font-mono text-[9px] tracking-[0.1em] uppercase text-foreground/30">
             <span>0%</span>
             <span>25%</span>
             <span>50%</span>
@@ -210,33 +213,47 @@ export function StakeForm({
 
         {/* Expected Returns */}
         {amountBigInt > 0n && (
-          <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              Expected Returns
+          <div
+            className="p-4 bg-background/60 border border-border/20 space-y-3"
+            style={{
+              clipPath:
+                'polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px)',
+            }}
+          >
+            <h4 className="font-mono text-xs tracking-[0.15em] uppercase font-bold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
+              <span className="text-foreground/60">Expected Returns</span>
             </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-muted-foreground">Your Share</p>
-                <p className="font-semibold">
+                <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/35">
+                  Your Share
+                </p>
+                <p className="font-mono text-sm font-bold text-foreground/80">
                   {(userShareBps / 100).toFixed(2)}%
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Expected Profit</p>
-                <p className="font-semibold text-emerald-500">
+                <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/35">
+                  Expected Profit
+                </p>
+                <p className="font-mono text-sm font-bold text-emerald-400">
                   {ethers.formatUnits(expectedProfit, 18)} AURUM
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Promised Yield</p>
-                <p className="font-semibold">
+                <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/35">
+                  Promised Yield
+                </p>
+                <p className="font-mono text-sm font-bold text-foreground/80">
                   {bpsToPercent(opportunity.promisedYieldBps)}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Est. APY</p>
-                <p className="font-semibold text-amber-500">
+                <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/35">
+                  Est. APY
+                </p>
+                <p className="font-mono text-sm font-bold text-gold">
                   {opportunity.estimatedAPY.toFixed(1)}%
                 </p>
               </div>
@@ -265,60 +282,72 @@ export function StakeForm({
 
         {/* Success Display */}
         {txHash && (
-          <Alert className="border-emerald-500/30 bg-emerald-500/5">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            <AlertDescription className="text-emerald-500">
+          <div
+            className="flex items-center gap-3 p-3 bg-emerald-500/8 border border-emerald-500/20"
+            style={{
+              clipPath: 'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+            }}
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span className="font-mono text-xs tracking-[0.05em] text-emerald-400">
               Transaction successful!{' '}
               <a
                 href={`https://basescan.org/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline"
+                className="underline hover:text-emerald-300"
               >
                 View on Explorer
               </a>
-            </AlertDescription>
-          </Alert>
+            </span>
+          </div>
         )}
-      </CardContent>
 
-      <CardFooter className="flex gap-3">
-        {checkingApproval ? (
-          <Button disabled className="w-full">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Checking Approval...
-          </Button>
-        ) : !isApproved ? (
-          <Button onClick={handleApprove} disabled={loading} className="w-full">
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Approving...
-              </>
-            ) : (
-              'Approve Tokens'
-            )}
-          </Button>
-        ) : (
-          <Button
-            onClick={handleStake}
-            disabled={loading || !isValidAmount}
-            className="w-full"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Staking...
-              </>
-            ) : (
-              <>
-                <Coins className="mr-2 h-4 w-4" />
-                Stake {amount || '0'} Tokens
-              </>
-            )}
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-2">
+          {checkingApproval ? (
+            <TrapButton disabled className="w-full" variant="gold">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block" />
+              Checking Approval...
+            </TrapButton>
+          ) : !isApproved ? (
+            <TrapButton
+              onClick={handleApprove}
+              disabled={loading}
+              className="w-full"
+              variant="gold"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block" />
+                  Approving...
+                </>
+              ) : (
+                'Approve Tokens'
+              )}
+            </TrapButton>
+          ) : (
+            <TrapButton
+              onClick={handleStake}
+              disabled={loading || !isValidAmount}
+              className="w-full"
+              variant="gold"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block" />
+                  Staking...
+                </>
+              ) : (
+                <>
+                  <Coins className="mr-2 h-4 w-4 inline-block" />
+                  Stake {amount || '0'} Tokens
+                </>
+              )}
+            </TrapButton>
+          )}
+        </div>
+      </div>
+    </EvaPanel>
   );
 }

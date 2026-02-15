@@ -7,7 +7,15 @@ import { useMainProvider } from '@/app/providers/main.provider';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { cn } from '@/lib/utils';
-import { GlowButton } from '@/app/components/ui/glow-button';
+import {
+  TrapButton,
+  EvaPanel,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+  HexStatCard,
+} from '@/app/components/eva/eva-components';
 import { Plus, Package, BarChart3, Handshake } from 'lucide-react';
 import type { P2POffer } from '@/domain/p2p';
 
@@ -114,157 +122,172 @@ export default function P2PPage() {
   return (
     <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-[1800px] mx-auto">
+        {/* Decorative top strip */}
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">
-              P2P Trading
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Select a market to view and create peer-to-peer offers
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 mt-6">
+          <div className="flex items-center gap-3">
+            <LaurelAccent side="left" />
+            <div>
+              <h1 className="font-serif text-3xl font-bold text-foreground tracking-[0.15em] uppercase">
+                P2P Trading
+              </h1>
+              <p className="font-mono text-sm text-foreground/40 mt-1 tracking-[0.1em] uppercase">
+                Select a market to view and create peer-to-peer offers
+              </p>
+            </div>
+            <LaurelAccent side="right" />
           </div>
           <div className="flex items-center gap-3">
-            <GlowButton
-              variant="primary"
-              size="sm"
+            <TrapButton
+              variant="gold"
+              size="default"
               onClick={() => router.push('/customer/p2p/create')}
               disabled={!connected}
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Offer
-            </GlowButton>
+              <span className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Create Offer
+              </span>
+            </TrapButton>
           </div>
         </div>
 
+        <EvaScanLine variant="mixed" />
+
         {/* Market Grid */}
+        <EvaSectionMarker
+          section="Markets"
+          label="Asset Classes"
+          variant="gold"
+        />
+
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
               <div
                 key={i}
-                className="h-56 rounded-xl bg-neutral-800/30 animate-pulse"
+                className="h-56 bg-card/40 animate-pulse"
+                style={{
+                  clipPath:
+                    'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+                }}
               />
             ))}
           </div>
         ) : assetClasses.length === 0 ? (
-          <div className="text-center py-16">
-            <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              No Markets Available
-            </h3>
-            <p className="text-muted-foreground">
-              No asset classes have been configured yet.
-            </p>
-          </div>
+          <EvaPanel label="No Markets" sysId="MKT-000" status="offline">
+            <div className="text-center py-16">
+              <Package className="w-12 h-12 mx-auto mb-4 text-foreground/20" />
+              <h3 className="font-mono text-lg font-bold text-foreground tracking-[0.15em] uppercase mb-2">
+                No Markets Available
+              </h3>
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
+                No asset classes have been configured yet.
+              </p>
+            </div>
+          </EvaPanel>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {assetClasses.map((ac) => {
               const icon = getClassIcon(ac.name);
+              const offerCount = offersLoading
+                ? '...'
+                : String(classOfferCounts[ac.name.toLowerCase()] ?? 0);
+
               return (
                 <Link
                   key={ac.name}
                   href={`/customer/p2p/market/${encodeURIComponent(ac.name)}`}
-                  className={cn(
-                    'group block',
-                    'bg-glass-bg backdrop-blur-md',
-                    'border border-glass-border',
-                    'rounded-xl p-6',
-                    'transition-all duration-300 ease-out',
-                    'hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5',
-                    'hover:-translate-y-1',
-                    'focus:outline-none focus:ring-2 focus:ring-accent/50',
-                  )}
+                  className="group block"
                 >
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
+                  <EvaPanel
+                    label={ac.name}
+                    sysId={`MKT-${ac.name.slice(0, 3).toUpperCase()}`}
+                    status="active"
+                    className="transition-all duration-300 group-hover:ring-1 group-hover:ring-gold/30"
+                  >
+                    {/* Icon */}
+                    <div className="flex items-start justify-between mb-5">
+                      <div
+                        className={cn(
+                          'w-14 h-14',
+                          'bg-gold/10 border border-gold/20',
+                          'flex items-center justify-center',
+                          'text-2xl',
+                          'transition-transform duration-300',
+                          'group-hover:scale-110',
+                        )}
+                        style={{
+                          clipPath:
+                            'polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%)',
+                        }}
+                      >
+                        {typeof icon === 'string' ? icon : icon}
+                      </div>
+                    </div>
+
+                    {/* Stats Row */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between font-mono text-sm">
+                        <span className="text-foreground/40 flex items-center gap-2 tracking-[0.1em] uppercase">
+                          <Handshake className="w-4 h-4" />
+                          Open Offers
+                        </span>
+                        <span className="font-mono font-bold text-gold tabular-nums">
+                          {offerCount}
+                        </span>
+                      </div>
+
+                      <EvaScanLine variant="gold" />
+
+                      <div className="flex items-center justify-between font-mono text-sm">
+                        <span className="text-foreground/40 flex items-center gap-2 tracking-[0.1em] uppercase">
+                          <BarChart3 className="w-4 h-4" />
+                          Asset Types
+                        </span>
+                        <span className="font-mono font-bold text-foreground tabular-nums">
+                          {ac.assetTypeCount}
+                        </span>
+                      </div>
+
+                      <EvaScanLine variant="gold" />
+
+                      <div className="flex items-center justify-between font-mono text-sm">
+                        <span className="text-foreground/40 flex items-center gap-2 tracking-[0.1em] uppercase">
+                          <Package className="w-4 h-4" />
+                          Total Assets
+                        </span>
+                        <span className="font-mono font-bold text-foreground tabular-nums">
+                          {ac.assetCount}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Hover indicator */}
                     <div
                       className={cn(
-                        'w-14 h-14 rounded-xl',
-                        'bg-accent/10 border border-accent/20',
+                        'mt-4 pt-3',
                         'flex items-center justify-center',
-                        'text-2xl',
-                        'transition-transform duration-300',
-                        'group-hover:scale-110',
+                        'font-mono text-sm tracking-[0.15em] uppercase',
+                        'text-foreground/20',
+                        'opacity-0 group-hover:opacity-100 transition-opacity',
                       )}
                     >
-                      {typeof icon === 'string' ? icon : icon}
+                      <span className="text-gold font-bold">View Offers →</span>
                     </div>
-                    <div
-                      className={cn(
-                        'px-2 py-1 rounded-full text-xs font-medium',
-                        'bg-trading-buy/10 text-trading-buy',
-                      )}
-                    >
-                      Active
-                    </div>
-                  </div>
-
-                  {/* Name */}
-                  <h3
-                    className={cn(
-                      'text-xl font-display font-semibold text-foreground',
-                      'mb-3 capitalize',
-                      'group-hover:text-accent transition-colors',
-                    )}
-                  >
-                    {ac.name}
-                  </h3>
-
-                  {/* Stats */}
-                  <div className="space-y-2">
-                    {/* Open Offers */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Handshake className="w-4 h-4" />
-                        Open Offers
-                      </span>
-                      <span className="font-mono text-foreground">
-                        {offersLoading
-                          ? '...'
-                          : (classOfferCounts[ac.name.toLowerCase()] ?? 0)}
-                      </span>
-                    </div>
-
-                    {/* Asset Types */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4" />
-                        Asset Types
-                      </span>
-                      <span className="font-mono text-foreground">
-                        {ac.assetTypeCount}
-                      </span>
-                    </div>
-
-                    {/* Total Assets */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        Total Assets
-                      </span>
-                      <span className="font-mono text-foreground">
-                        {ac.assetCount}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Hover indicator */}
-                  <div
-                    className={cn(
-                      'mt-4 pt-4 border-t border-glass-border',
-                      'flex items-center justify-center',
-                      'text-sm text-muted-foreground',
-                      'opacity-0 group-hover:opacity-100 transition-opacity',
-                    )}
-                  >
-                    <span className="text-accent">View Offers →</span>
-                  </div>
+                  </EvaPanel>
                 </Link>
               );
             })}
           </div>
         )}
+
+        {/* Bottom decorative strip */}
+        <div className="mt-8">
+          <GreekKeyStrip color="crimson" />
+        </div>
       </div>
     </div>
   );

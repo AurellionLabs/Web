@@ -2,18 +2,23 @@
 
 import { FC, useEffect, useState, useCallback, useRef } from 'react';
 import { useTrade } from '@/app/providers/trade.provider';
-import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
 import { PriceChange } from '@/app/components/ui/price-change';
-import { StatusBadge } from '@/app/components/ui/status-badge';
 import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
 import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
 import { UserOrders } from '@/app/components/trading/user-orders';
+
+// EVA Components
+import {
+  EvaPanel,
+  TrapButton,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
+
 import type {
   PlaceLimitOrderParams,
   CLOBTrade,
@@ -126,19 +131,18 @@ interface RecentTradesProps {
 }
 
 const RecentTrades: FC<RecentTradesProps> = ({ trades, isLoading }) => (
-  <GlassCard padding={false}>
-    <div className="p-4 border-b border-glass-border">
-      <h3 className="text-lg font-semibold text-foreground">Recent Trades</h3>
-    </div>
-    <div className="divide-y divide-glass-border max-h-64 overflow-y-auto">
+  <EvaPanel label="Recent Trades" sysId="TRD-LOG" accent="crimson" noPadding>
+    <div className="divide-y divide-border/10 max-h-64 overflow-y-auto">
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-accent" />
+          <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>
       ) : trades.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <p className="text-muted-foreground text-sm">No trades yet</p>
-          <p className="text-muted-foreground/60 text-xs mt-1">
+          <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+            No trades yet
+          </p>
+          <p className="font-mono text-[10px] tracking-[0.1em] text-foreground/25 mt-1">
             Be the first to trade this asset
           </p>
         </div>
@@ -148,7 +152,7 @@ const RecentTrades: FC<RecentTradesProps> = ({ trades, isLoading }) => (
             key={trade.id}
             className="flex items-center justify-between px-4 py-2 text-sm"
           >
-            <span className="text-muted-foreground font-mono text-xs">
+            <span className="text-foreground/40 font-mono text-xs">
               {trade.time}
             </span>
             <span
@@ -162,11 +166,15 @@ const RecentTrades: FC<RecentTradesProps> = ({ trades, isLoading }) => (
             <span className="text-foreground font-mono">{trade.quantity}</span>
             <span
               className={cn(
-                'text-xs px-2 py-0.5 rounded',
+                'font-mono text-[11px] tracking-[0.15em] uppercase font-bold px-2 py-0.5',
                 trade.side === 'buy'
                   ? 'bg-trading-buy/10 text-trading-buy'
                   : 'bg-trading-sell/10 text-trading-sell',
               )}
+              style={{
+                clipPath:
+                  'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+              }}
             >
               {trade.side.toUpperCase()}
             </span>
@@ -174,7 +182,7 @@ const RecentTrades: FC<RecentTradesProps> = ({ trades, isLoading }) => (
         ))
       )}
     </div>
-  </GlassCard>
+  </EvaPanel>
 );
 
 /**
@@ -711,20 +719,31 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   if (!asset) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
-        <GlassCard className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-foreground mb-4">
-            Asset Not Found
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            The asset you're looking for doesn't exist or has been removed.
-          </p>
-          <Link href="/customer/trading">
-            <GlowButton variant="primary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Trading
-            </GlowButton>
-          </Link>
-        </GlassCard>
+        <EvaPanel
+          label="Asset Not Found"
+          sysId="ERR-404"
+          status="offline"
+          accent="crimson"
+          className="text-center max-w-md"
+        >
+          <div className="py-6">
+            <h1 className="font-serif text-2xl font-bold tracking-[0.15em] uppercase text-foreground mb-4">
+              Asset Not Found
+            </h1>
+            <p className="font-mono text-xs tracking-[0.1em] text-foreground/40 mb-6">
+              The asset you&apos;re looking for doesn&apos;t exist or has been
+              removed.
+            </p>
+            <Link href="/customer/trading">
+              <TrapButton variant="gold">
+                <span className="flex items-center gap-2">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Trading
+                </span>
+              </TrapButton>
+            </Link>
+          </div>
+        </EvaPanel>
       </div>
     );
   }
@@ -732,20 +751,25 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   return (
     <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-[1800px] mx-auto">
+        {/* Decorative top accent */}
+        <GreekKeyStrip color="gold" />
+
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6 overflow-x-auto whitespace-nowrap">
+        <div className="flex items-center gap-2 text-sm mb-6 mt-4 overflow-x-auto whitespace-nowrap">
           <Link
             href="/customer/trading"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40 hover:text-gold transition-colors"
           >
             Trading
           </Link>
-          <span className="text-muted-foreground/50">/</span>
-          <span className="text-muted-foreground">
+          <span className="text-foreground/20 font-mono">/</span>
+          <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
             {asset.nodeLocation.addressName}
           </span>
-          <span className="text-muted-foreground/50">/</span>
-          <span className="text-foreground font-medium">{asset.name}</span>
+          <span className="text-foreground/20 font-mono">/</span>
+          <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/70 font-bold">
+            {asset.name}
+          </span>
         </div>
 
         {/* Header */}
@@ -753,27 +777,40 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           <div className="flex items-center gap-4">
             <Link
               href="/customer/trading"
-              className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+              className="p-2 bg-card/60 border border-border/30 hover:border-gold/30 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
             >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+              <ArrowLeft className="w-5 h-5 text-foreground/50" />
             </Link>
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                <span className="text-lg font-bold text-accent">
+              <LaurelAccent side="left" />
+              <div
+                className="w-12 h-12 flex items-center justify-center"
+                style={{
+                  clipPath:
+                    'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                  background: 'hsl(43 65% 62% / 0.08)',
+                }}
+              >
+                <span className="font-mono text-lg font-bold text-gold">
                   {asset.name.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-display font-bold text-foreground">
+                <div className="flex items-center gap-3">
+                  <h1 className="font-serif text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
                     {asset.name}
                   </h1>
-                  <StatusBadge status="live" size="sm" />
+                  <EvaStatusBadge status="active" label="LIVE" />
                 </div>
-                <p className="text-sm text-muted-foreground capitalize">
+                <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
                   {asset.class}
                 </p>
               </div>
+              <LaurelAccent side="right" />
             </div>
           </div>
 
@@ -781,49 +818,79 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+              className="p-2 bg-card/60 border border-border/30 hover:border-gold/30 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
             >
               <RefreshCw
                 className={cn(
-                  'w-4 h-4 text-muted-foreground',
+                  'w-4 h-4 text-foreground/50',
                   isRefreshing && 'animate-spin',
                 )}
               />
             </button>
-            <button className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors">
-              <Share2 className="w-4 h-4 text-muted-foreground" />
+            <button
+              className="p-2 bg-card/60 border border-border/30 hover:border-gold/30 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
+            >
+              <Share2 className="w-4 h-4 text-foreground/50" />
             </button>
             <Link href={`/customer/trading/${params.id}/order`}>
-              <GlowButton variant="primary">Place Order</GlowButton>
+              <TrapButton variant="gold">Place Order</TrapButton>
             </Link>
           </div>
         </div>
 
+        <EvaScanLine variant="mixed" />
+
         {/* Main content grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
           {/* Left side - Chart and Order book */}
           <div className="lg:col-span-8 space-y-6">
+            <EvaSectionMarker
+              section="Market Data"
+              label="Price Analysis"
+              variant="crimson"
+            />
+
             {/* Price and chart */}
-            <GlassCard>
+            <EvaPanel
+              label={asset.name}
+              sublabel="Price Chart"
+              sysId="CHT-01"
+              status="active"
+              accent="gold"
+            >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                  <div className="text-3xl font-display font-bold text-foreground mb-1">
+                  <div className="font-mono text-3xl font-bold text-gold tabular-nums mb-1">
                     ${formatTokenAmount(basePrice.toString(), 0, 2)}
                   </div>
                   <PriceChange value={marketStats?.change24h || 0} showIcon />
                 </div>
 
                 {/* Time period tabs */}
-                <div className="flex gap-1 p-1 rounded-lg bg-surface-overlay">
+                <div
+                  className="flex gap-1 p-1 bg-background/60 border border-border/20"
+                  style={{
+                    clipPath:
+                      'polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px)',
+                  }}
+                >
                   {TIME_PERIODS.map((period) => (
                     <button
                       key={period.value}
                       onClick={() => handlePeriodChange(period.value)}
                       className={cn(
-                        'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
+                        'px-3 py-1.5 font-mono text-xs tracking-[0.12em] uppercase font-bold transition-all duration-200',
                         selectedPeriod === period.value
-                          ? 'bg-accent/20 text-accent'
-                          : 'text-muted-foreground hover:text-foreground',
+                          ? 'bg-gold/15 text-gold'
+                          : 'text-foreground/35 hover:text-foreground/60',
                       )}
                     >
                       {period.label}
@@ -836,14 +903,14 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               <div className="h-[300px] md:h-[400px]">
                 {isLoadingChart ? (
                   <div className="h-full flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                    <Loader2 className="w-8 h-8 animate-spin text-gold" />
                   </div>
                 ) : priceHistory.dates.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center">
-                    <p className="text-muted-foreground">
+                    <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
                       No price data available
                     </p>
-                    <p className="text-muted-foreground/60 text-sm mt-1">
+                    <p className="font-mono text-[10px] tracking-[0.1em] text-foreground/25 mt-1">
                       Price history will appear after trades occur
                     </p>
                   </div>
@@ -851,9 +918,16 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                   <Chart priceData={priceHistory} timeRange={selectedPeriod} />
                 )}
               </div>
-            </GlassCard>
+            </EvaPanel>
+
+            <EvaScanLine variant="gold" />
 
             {/* Order book and Recent trades */}
+            <EvaSectionMarker
+              section="Order Flow"
+              label="Book & Trades"
+              variant="gold"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <OrderBook
                 assetId={asset.id}
@@ -866,7 +940,14 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               <RecentTrades trades={recentTrades} isLoading={isLoadingTrades} />
             </div>
 
+            <EvaScanLine variant="crimson" />
+
             {/* User's Orders Section */}
+            <EvaSectionMarker
+              section="Your Orders"
+              label="Active & History"
+              variant="crimson"
+            />
             <UserOrders
               baseToken={NEXT_PUBLIC_AURA_GOAT_ADDRESS}
               baseTokenId={getTokenId()}
@@ -877,6 +958,12 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
           {/* Right side - Trade panel and Stats */}
           <div className="lg:col-span-4 space-y-6">
+            <EvaSectionMarker
+              section="Execute"
+              label="Trade Panel"
+              variant="crimson"
+            />
+
             {/* Trade panel */}
             <TradePanel
               asset={asset}
@@ -887,56 +974,67 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               onPlaceOrder={handlePlaceOrder}
             />
 
-            {/* Asset stats */}
-            <GlassCard>
-              <GlassCardHeader>
-                <GlassCardTitle>Asset Details</GlassCardTitle>
-              </GlassCardHeader>
+            <EvaScanLine variant="mixed" />
 
+            {/* Asset stats */}
+            <EvaPanel
+              label="Asset Details"
+              sysId="AST-DTL"
+              status="active"
+              accent="gold"
+            >
               <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
+                <div className="flex justify-between items-center py-2 border-b border-border/10">
+                  <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
                     Available Quantity
                   </span>
-                  <span className="font-mono text-foreground">
+                  <span className="font-mono text-sm font-bold text-gold tabular-nums">
                     {parseInt(asset.capacity)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
+                <div className="flex justify-between items-center py-2 border-b border-border/10">
+                  <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
                     Total Value
                   </span>
-                  <span className="font-mono text-foreground">
+                  <span className="font-mono text-sm font-bold text-gold tabular-nums">
                     ${asset.totalValue.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
+                <div className="flex justify-between items-center py-2 border-b border-border/10">
+                  <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
                     Asset Class
                   </span>
-                  <span className="capitalize text-foreground">
+                  <span className="font-mono text-sm font-bold text-foreground/70 uppercase tracking-[0.1em]">
                     {asset.class}
                   </span>
                 </div>
 
-                <div className="pt-4 border-t border-glass-border">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                <EvaScanLine variant="gold" />
+
+                <div>
+                  <h4 className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/40 font-bold mb-3">
                     Node Information
                   </h4>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/30">
                         Name
                       </span>
-                      <p className="text-sm text-foreground">
+                      <p className="font-mono text-sm text-foreground/70">
                         {asset.nodeLocation.addressName}
                       </p>
                     </div>
                     <div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/30">
                         Address
                       </span>
-                      <p className="text-xs font-mono text-muted-foreground bg-surface-overlay p-2 rounded-lg break-all">
+                      <p
+                        className="font-mono text-[11px] text-foreground/40 bg-background/60 p-2 break-all border border-border/15"
+                        style={{
+                          clipPath:
+                            'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                        }}
+                      >
                         {asset.nodeAddress}
                       </p>
                     </div>
@@ -945,32 +1043,43 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
                 {/* Asset Attributes */}
                 {assetAttributes.length > 0 && (
-                  <div className="pt-4 border-t border-glass-border">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                      Attributes
-                    </h4>
-                    <div className="space-y-2">
-                      {assetAttributes.map((attribute, index) => (
-                        <div key={index}>
-                          <span className="text-xs text-muted-foreground">
-                            {attribute.name}
-                          </span>
-                          <p className="text-sm text-foreground">
-                            {attribute.value}
-                          </p>
-                          {attribute.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {attribute.description}
+                  <>
+                    <EvaScanLine variant="crimson" />
+                    <div>
+                      <h4 className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/40 font-bold mb-3">
+                        Attributes
+                      </h4>
+                      <div className="space-y-3">
+                        {assetAttributes.map((attribute, index) => (
+                          <div
+                            key={index}
+                            className="py-1 border-b border-border/10"
+                          >
+                            <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/30">
+                              {attribute.name}
+                            </span>
+                            <p className="font-mono text-sm text-foreground/70">
+                              {attribute.value}
                             </p>
-                          )}
-                        </div>
-                      ))}
+                            {attribute.description && (
+                              <p className="font-mono text-[10px] text-foreground/25 mt-0.5">
+                                {attribute.description}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
-            </GlassCard>
+            </EvaPanel>
           </div>
+        </div>
+
+        {/* Bottom decorative accent */}
+        <div className="mt-8">
+          <GreekKeyStrip color="gold" />
         </div>
       </div>
 

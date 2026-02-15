@@ -5,12 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, HelpCircle, X, Info, Droplets } from 'lucide-react';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { StatusBadge } from '@/app/components/ui/status-badge';
+  EvaPanel,
+  TrapButton,
+  EvaStatusBadge,
+  EvaDataRow,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
@@ -239,8 +242,10 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-          <span className="text-muted-foreground">Loading pool data...</span>
+          <RefreshCw className="w-8 h-8 text-gold animate-spin" />
+          <span className="font-mono text-sm text-foreground/40 tracking-[0.15em] uppercase">
+            Loading pool data...
+          </span>
         </div>
       </div>
     );
@@ -249,98 +254,120 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen p-6 lg:p-8">
       <div className="max-w-2xl mx-auto space-y-6">
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href={`/customer/pools/${params.id}`}
-              className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+              className="p-2 bg-card/60 border border-border/30 hover:border-gold/30 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
             >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+              <ArrowLeft className="w-5 h-5 text-foreground/50" />
             </Link>
+            <LaurelAccent side="left" />
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="font-mono text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
                 Add Liquidity
               </h1>
-              <p className="text-sm text-muted-foreground">{pool.name}</p>
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.08em]">
+                {pool.name}
+              </p>
             </div>
           </div>
           <Link
             href={`/customer/pools/${params.id}`}
-            className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+            className="p-2 bg-card/60 border border-border/30 hover:border-crimson/30 transition-colors"
+            style={{
+              clipPath:
+                'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+            }}
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <X className="w-5 h-5 text-foreground/50" />
           </Link>
         </div>
 
+        <EvaSectionMarker section="Pool Information" variant="gold" />
+
         {/* Pool Information */}
-        <GlassCard>
+        <EvaPanel label="Pool Info" sysId="POOL-INF" status="active">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
-                  <Droplets className="w-5 h-5 text-accent" />
+                <div
+                  className="w-10 h-10 bg-gold/10 flex items-center justify-center"
+                  style={{
+                    clipPath:
+                      'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                  }}
+                >
+                  <Droplets className="w-5 h-5 text-gold" />
                 </div>
-                <h2 className="text-xl font-semibold text-foreground">
+                <span className="font-mono text-lg font-bold tracking-[0.12em] uppercase text-foreground">
                   Pool Information
-                </h2>
+                </span>
               </div>
-              <StatusBadge
-                status="success"
+              <EvaStatusBadge
+                status="active"
                 label={`APY: ${poolData.supplyAPY}`}
-                size="sm"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <span className="text-muted-foreground text-sm">
+                <span className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                   Asset Price
                 </span>
-                <div className="text-lg font-semibold text-foreground">
+                <div className="font-mono text-lg font-bold text-gold tabular-nums">
                   {poolData.assetPrice}
                 </div>
               </div>
               <div className="space-y-2">
-                <span className="text-muted-foreground text-sm">
+                <span className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                   Remaining Capacity
                 </span>
-                <div className="text-lg font-semibold text-foreground">
+                <div className="font-mono text-lg font-bold text-foreground tabular-nums">
                   {remainingCapacityFormatted > 0
                     ? `${remainingCapacityFormatted.toLocaleString()} AURA`
                     : 'Pool is full'}
                 </div>
               </div>
               <div className="space-y-2 md:text-right">
-                <span className="text-muted-foreground text-sm">
+                <span className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
                   Supply APY
                 </span>
-                <div className="text-lg font-semibold text-trading-buy">
+                <div className="font-mono text-lg font-bold text-emerald-400 tabular-nums">
                   {poolData.supplyAPY}
                 </div>
               </div>
             </div>
           </div>
-        </GlassCard>
+        </EvaPanel>
+
+        <EvaScanLine variant="mixed" />
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Amount Input */}
-          <GlassCard>
+          <EvaPanel label="Amount to Supply" sysId="AMT-01" accent="gold">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="text-lg font-semibold text-foreground">
-                  Amount to Supply
-                </label>
-              </div>
-
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
-                    <span className="text-accent text-sm font-bold">
+                  <div
+                    className="w-8 h-8 bg-gold/10 flex items-center justify-center"
+                    style={{
+                      clipPath:
+                        'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                    }}
+                  >
+                    <span className="text-gold font-mono text-sm font-bold">
                       {pool.assetName.slice(0, 1)}
                     </span>
                   </div>
-                  <span className="font-semibold text-lg text-foreground">
+                  <span className="font-mono text-lg font-bold tracking-[0.1em] uppercase text-foreground">
                     {pool.assetName}
                   </span>
                 </div>
@@ -349,92 +376,109 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
                   value={assetAmount}
                   onChange={handleInputChange}
                   placeholder="0.00"
-                  className="w-full bg-surface-overlay border border-glass-border rounded-xl px-6 py-4 pr-20 text-right text-2xl font-medium text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                  className="w-full bg-background/80 border border-border/40 px-6 py-4 pr-20 text-right font-mono text-2xl font-bold text-foreground tabular-nums focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/30 transition-colors"
+                  style={{
+                    clipPath:
+                      'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                  }}
                 />
               </div>
 
               {validationError && (
-                <div className="bg-trading-sell/10 border border-trading-sell/20 rounded-lg p-3">
-                  <p className="text-trading-sell text-sm">{validationError}</p>
+                <div
+                  className="bg-crimson/10 border border-crimson/20 p-3"
+                  style={{
+                    clipPath:
+                      'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                  }}
+                >
+                  <p className="font-mono text-sm text-crimson">
+                    {validationError}
+                  </p>
                 </div>
               )}
             </div>
-          </GlassCard>
+          </EvaPanel>
 
           {/* Fee Breakdown */}
           {tokenAmount && (
-            <GlassCard>
+            <EvaPanel
+              label="Transaction Summary"
+              sysId="FEE-01"
+              accent="crimson"
+            >
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Info className="w-5 h-5 text-blue-400" />
-                  <label className="text-lg font-semibold text-foreground">
-                    Transaction Summary
-                  </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="w-4 h-4 text-gold/60" />
+                  <span className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase">
+                    Fee Breakdown
+                  </span>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">
-                      Liquidity Amount
-                    </span>
-                    <span className="font-medium font-mono text-foreground">
-                      ${formatTokenAmount(tokenAmount, 0, 2)} AURA
-                    </span>
-                  </div>
+                <EvaDataRow
+                  label="Liquidity Amount"
+                  value={`$${formatTokenAmount(tokenAmount, 0, 2)} AURA`}
+                  valueColor="gold"
+                />
+                <EvaDataRow
+                  label={`Platform Fee (${PLATFORM_FEE_PERCENTAGE}%)`}
+                  value={`$${formatTokenAmount(platformFee, 0, 2)} AURA`}
+                  valueColor="crimson"
+                />
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">
-                      Platform Fee ({PLATFORM_FEE_PERCENTAGE}%)
-                    </span>
-                    <span className="font-medium font-mono text-accent">
-                      ${formatTokenAmount(platformFee, 0, 2)} AURA
-                    </span>
-                  </div>
+                <EvaScanLine variant="gold" />
 
-                  <div className="border-t border-glass-border"></div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-foreground">
-                      Total Amount
-                    </span>
-                    <span className="text-lg font-semibold font-mono text-foreground">
-                      ${formatTokenAmount(totalAmount, 0, 2)} AURA
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="font-mono text-sm font-bold text-foreground tracking-[0.1em] uppercase">
+                    Total Amount
+                  </span>
+                  <span className="font-mono text-lg font-bold text-gold tabular-nums">
+                    ${formatTokenAmount(totalAmount, 0, 2)} AURA
+                  </span>
                 </div>
               </div>
-            </GlassCard>
+            </EvaPanel>
           )}
 
           {/* Error Display */}
           {error && (
-            <div className="bg-trading-sell/10 border border-trading-sell/20 rounded-xl p-4">
-              <p className="text-trading-sell">{error}</p>
+            <div
+              className="bg-crimson/10 border border-crimson/20 p-4"
+              style={{
+                clipPath:
+                  'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+              }}
+            >
+              <p className="font-mono text-sm text-crimson">{error}</p>
             </div>
           )}
 
           {/* Submit Button */}
-          <GlowButton
-            type="submit"
-            variant="primary"
-            className="w-full h-14 text-lg"
-            glow
-            loading={stakeLoading || loading}
-            disabled={!isAmountValid()}
+          <TrapButton
+            variant="gold"
+            size="lg"
+            className="w-full"
+            disabled={!isAmountValid() || stakeLoading || loading}
           >
-            Add Liquidity - ${formatTokenAmount(totalAmount || '0', 0, 2)} AURA
-          </GlowButton>
+            {stakeLoading || loading
+              ? 'Processing...'
+              : `Add Liquidity — $${formatTokenAmount(totalAmount || '0', 0, 2)} AURA`}
+          </TrapButton>
         </form>
+
+        <EvaScanLine variant="gold" />
 
         {/* Footer */}
         <div className="text-center space-y-2">
-          <p className="text-muted-foreground text-sm">
+          <p className="font-mono text-xs text-foreground/30 tracking-[0.1em] uppercase">
             By adding liquidity, you agree to the pool terms and conditions.
           </p>
-          <p className="text-muted-foreground/70 text-xs">
+          <p className="font-mono text-[10px] text-foreground/20 tracking-wider">
             Platform fee: {PLATFORM_FEE_PERCENTAGE}% • Total includes all fees
           </p>
         </div>
+
+        <GreekKeyStrip color="gold" />
       </div>
     </div>
   );

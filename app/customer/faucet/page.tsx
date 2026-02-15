@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { AnimatedNumber } from '@/app/components/ui/animated-number';
+  EvaPanel,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+  TargetRings,
+  TrapButton,
+} from '@/app/components/eva/eva-components';
+import { BootSequence } from '@/app/components/eva/eva-animations';
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
@@ -102,42 +104,58 @@ export default function FaucetPage() {
     <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-amber-500/30 mb-4">
-            <Droplets className="w-8 h-8 text-amber-400" />
+        <div className="text-center mb-8 relative">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 hidden sm:block">
+            <LaurelAccent side="left" />
           </div>
-          <h1 className="text-3xl font-display font-bold text-foreground mb-2">
-            AURA Token Faucet
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 hidden sm:block">
+            <LaurelAccent side="right" />
+          </div>
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 relative">
+            <TargetRings size={64} />
+            <Droplets className="w-6 h-6 text-gold absolute" />
+          </div>
+          <h1 className="font-serif text-3xl font-bold tracking-[0.15em] uppercase text-foreground mb-2">
+            AURA TOKEN FAUCET
           </h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
+          <p className="font-mono text-sm tracking-[0.08em] text-foreground/50 max-w-md mx-auto uppercase">
             Mint test AURA tokens for trading on Base Sepolia testnet. These
             tokens have no real value.
           </p>
         </div>
 
-        {/* Balance Card */}
-        <GlassCard variant="glow" className="relative overflow-hidden">
-          {/* Background decoration */}
-          <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-amber-500/10 blur-3xl" />
-          <div className="absolute -left-8 -bottom-8 w-24 h-24 rounded-full bg-red-500/10 blur-2xl" />
+        <GreekKeyStrip color="gold" />
 
+        {/* Balance Section */}
+        <EvaSectionMarker
+          section="BALANCE"
+          label="WALLET STATUS"
+          variant="gold"
+        />
+
+        <EvaPanel
+          label="Your Balance"
+          sysId="BAL-01"
+          status={isConnected ? 'active' : 'offline'}
+          accent="gold"
+        >
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-amber-400" />
-                <span className="text-sm font-medium text-muted-foreground">
-                  Your Balance
+                <Wallet className="w-5 h-5 text-gold" />
+                <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/50">
+                  Current Holdings
                 </span>
               </div>
               <button
                 onClick={refreshBalance}
                 disabled={isLoadingBalance}
-                className="p-2 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
+                className="p-2 hover:bg-gold/5 transition-colors disabled:opacity-50"
                 title="Refresh balance"
               >
                 <RefreshCw
                   className={cn(
-                    'w-4 h-4 text-muted-foreground',
+                    'w-4 h-4 text-foreground/40',
                     isLoadingBalance && 'animate-spin',
                   )}
                 />
@@ -147,46 +165,56 @@ export default function FaucetPage() {
             <div className="flex items-baseline gap-2 mb-2">
               {isConnected ? (
                 <>
-                  <span className="text-4xl font-display font-bold text-foreground">
+                  <span className="font-mono text-4xl font-bold tabular-nums text-gold">
                     {isLoadingBalance ? (
-                      <span className="animate-pulse">...</span>
+                      <span className="animate-pulse">---</span>
                     ) : (
-                      <AnimatedNumber
-                        value={parseFloat(balance.replace(/,/g, '')) || 0}
-                        fixed={0}
-                      />
+                      (
+                        parseFloat(balance.replace(/,/g, '')) || 0
+                      ).toLocaleString()
                     )}
                   </span>
-                  <span className="text-xl text-amber-400 font-semibold">
+                  <span className="font-mono text-xl tracking-[0.15em] text-gold/60 font-semibold uppercase">
                     {symbol}
                   </span>
                 </>
               ) : (
-                <span className="text-2xl text-muted-foreground">
+                <span className="font-mono text-lg tracking-[0.1em] text-foreground/40 uppercase">
                   Connect wallet to view balance
                 </span>
               )}
             </div>
 
             {isConnected && address && (
-              <p className="text-sm text-muted-foreground font-mono">
+              <p className="font-mono text-sm text-foreground/30 tracking-wider">
                 {truncateAddress(address)}
               </p>
             )}
           </div>
-        </GlassCard>
+        </EvaPanel>
 
-        {/* Mint Card */}
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle className="flex items-center gap-2">
-              <Coins className="w-5 h-5 text-amber-400" />
-              Mint Tokens
-            </GlassCardTitle>
-            <GlassCardDescription>
+        <EvaScanLine variant="mixed" />
+
+        {/* Mint Section */}
+        <EvaSectionMarker
+          section="MINT"
+          label="TOKEN GENERATION"
+          variant="crimson"
+        />
+
+        <EvaPanel
+          label="Mint Tokens"
+          sublabel="TOKEN FAUCET"
+          sysId="MINT-02"
+          status={isMinting ? 'warning' : 'active'}
+          accent="crimson"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Coins className="w-5 h-5 text-gold" />
+            <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
               Select an amount or enter a custom value (max 10,000 per mint)
-            </GlassCardDescription>
-          </GlassCardHeader>
+            </span>
+          </div>
 
           {/* Preset amounts */}
           <div className="grid grid-cols-5 gap-2 mb-4">
@@ -195,12 +223,15 @@ export default function FaucetPage() {
                 key={amount}
                 onClick={() => handlePresetClick(amount)}
                 className={cn(
-                  'py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200',
-                  'border',
+                  'py-2 px-3 text-sm font-mono font-bold tracking-[0.1em] transition-all duration-200',
                   mintAmount === amount.toString()
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
-                    : 'bg-surface-overlay border-glass-border text-muted-foreground hover:border-amber-500/30 hover:text-foreground',
+                    ? 'bg-gold/15 text-gold'
+                    : 'bg-card/60 text-foreground/40 hover:text-gold hover:bg-gold/5',
                 )}
+                style={{
+                  clipPath:
+                    'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+                }}
               >
                 {amount.toLocaleString()}
               </button>
@@ -217,42 +248,78 @@ export default function FaucetPage() {
                 placeholder="Enter amount"
                 min={1}
                 max={10000}
-                className="bg-surface-overlay border-glass-border focus:border-amber-500/50"
+                className="bg-background/60 border-border/40 focus:border-gold/50 font-mono"
               />
             </div>
-            <GlowButton
-              variant="primary"
-              glow
+            <TrapButton
+              variant="gold"
               onClick={handleMint}
               disabled={!isConnected || isMinting || !mintAmount}
-              loading={isMinting}
-              leftIcon={<Sparkles className="w-4 h-4" />}
             >
-              {isMinting ? 'Minting...' : 'Mint'}
-            </GlowButton>
+              <span className="flex items-center gap-2">
+                {isMinting ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {isMinting ? 'MINTING...' : 'MINT'}
+              </span>
+            </TrapButton>
           </div>
+
+          {/* Boot Sequence — shown when minting is in progress */}
+          {isMinting && (
+            <div className="mb-4">
+              <BootSequence
+                items={[
+                  { label: 'CONNECT WALLET', code: 'WALLET.CONN' },
+                  { label: 'APPROVE CONTRACT', code: 'CTR.APPROVE' },
+                  { label: 'MINT TOKENS', code: 'TKN.MINT.EXE' },
+                  { label: 'CONFIRM TRANSACTION', code: 'TX.CONFIRM' },
+                ]}
+              />
+            </div>
+          )}
 
           {/* Status messages */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-4">
+            <div
+              className="flex items-center gap-2 p-3 bg-crimson/10 border border-crimson/30 text-crimson text-sm mb-4"
+              style={{
+                clipPath:
+                  'polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)',
+              }}
+            >
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
+              <span className="font-mono text-xs tracking-[0.1em] uppercase">
+                {error}
+              </span>
             </div>
           )}
 
           {showSuccess && lastTxHash && (
-            <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm mb-4">
+            <div
+              className="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm mb-4"
+              style={{
+                clipPath:
+                  'polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)',
+              }}
+            >
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                <span>Successfully minted {mintAmount} AURA!</span>
+                <span className="font-mono text-xs tracking-[0.1em] uppercase">
+                  Successfully minted {mintAmount} AURA
+                </span>
               </div>
               <a
                 href={`https://sepolia.basescan.org/tx/${lastTxHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-green-400 hover:text-green-300 transition-colors"
+                className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
               >
-                <span className="text-xs">View tx</span>
+                <span className="font-mono text-[10px] tracking-[0.15em] uppercase">
+                  View TX
+                </span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -261,26 +328,35 @@ export default function FaucetPage() {
           {/* Not connected state */}
           {!isConnected && (
             <div className="text-center py-4">
-              <p className="text-muted-foreground text-sm">
+              <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
                 Please connect your wallet to mint AURA tokens
               </p>
             </div>
           )}
-        </GlassCard>
+        </EvaPanel>
+
+        <EvaScanLine variant="gold" />
 
         {/* Info Card */}
-        <GlassCard className="bg-amber-500/5 border-amber-500/20">
+        <EvaPanel label="Notice" sysId="INFO-03" accent="gold" status="warning">
           <div className="flex gap-4">
             <div className="flex-shrink-0">
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-amber-400" />
+              <div
+                className="w-10 h-10 flex items-center justify-center"
+                style={{
+                  clipPath:
+                    'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                  background: 'hsl(43 65% 62% / 0.1)',
+                }}
+              >
+                <AlertCircle className="w-5 h-5 text-gold" />
               </div>
             </div>
             <div>
-              <h4 className="font-semibold text-foreground mb-1">
+              <h4 className="font-mono text-sm font-bold tracking-[0.15em] uppercase text-foreground mb-1">
                 Testnet Tokens Only
               </h4>
-              <p className="text-sm text-muted-foreground mb-3">
+              <p className="font-mono text-xs tracking-[0.08em] text-foreground/40 mb-3 leading-relaxed">
                 These AURA tokens are for testing purposes on Base Sepolia
                 testnet. They have no monetary value and cannot be transferred
                 to mainnet.
@@ -290,17 +366,17 @@ export default function FaucetPage() {
                   href={`https://sepolia.basescan.org/token/${NEXT_PUBLIC_AURA_TOKEN_ADDRESS}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                  className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.15em] uppercase text-gold hover:text-gold/80 transition-colors"
                 >
                   View token contract
                   <ExternalLink className="w-3 h-3" />
                 </a>
-                <span className="text-muted-foreground/50">•</span>
+                <span className="text-foreground/20">•</span>
                 <a
                   href="https://www.alchemy.com/faucets/base-sepolia"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                  className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.15em] uppercase text-gold hover:text-gold/80 transition-colors"
                 >
                   Get testnet ETH
                   <ExternalLink className="w-3 h-3" />
@@ -308,45 +384,61 @@ export default function FaucetPage() {
               </div>
             </div>
           </div>
-        </GlassCard>
+        </EvaPanel>
+
+        <GreekKeyStrip color="crimson" />
 
         {/* Token Details */}
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle>Token Details</GlassCardTitle>
-          </GlassCardHeader>
+        <EvaSectionMarker
+          section="DETAILS"
+          label="CONTRACT DATA"
+          variant="gold"
+        />
 
+        <EvaPanel label="Token Details" sysId="TKN-04" accent="gold">
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-glass-border">
-              <span className="text-sm text-muted-foreground">Name</span>
-              <span className="text-sm font-medium text-foreground">Aura</span>
+            <div className="flex justify-between items-center py-2 border-b border-border/10">
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+                Name
+              </span>
+              <span className="font-mono text-sm font-bold text-gold">
+                Aura
+              </span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-glass-border">
-              <span className="text-sm text-muted-foreground">Symbol</span>
-              <span className="text-sm font-medium text-foreground">
+            <div className="flex justify-between items-center py-2 border-b border-border/10">
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+                Symbol
+              </span>
+              <span className="font-mono text-sm font-bold text-gold">
                 {symbol}
               </span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-glass-border">
-              <span className="text-sm text-muted-foreground">Network</span>
-              <span className="text-sm font-medium text-foreground">
+            <div className="flex justify-between items-center py-2 border-b border-border/10">
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+                Network
+              </span>
+              <span className="font-mono text-sm font-bold text-gold">
                 Base Sepolia
               </span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-muted-foreground">Contract</span>
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+                Contract
+              </span>
               <a
                 href={`https://sepolia.basescan.org/token/${NEXT_PUBLIC_AURA_TOKEN_ADDRESS}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-mono text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1"
+                className="font-mono text-sm text-gold hover:text-gold/80 transition-colors flex items-center gap-1"
               >
                 {truncateAddress(NEXT_PUBLIC_AURA_TOKEN_ADDRESS)}
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>
-        </GlassCard>
+        </EvaPanel>
+
+        <EvaScanLine variant="mixed" />
       </div>
     </div>
   );

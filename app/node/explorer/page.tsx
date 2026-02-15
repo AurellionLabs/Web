@@ -12,8 +12,16 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { GlassCard } from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
+import {
+  EvaPanel,
+  TrapButton,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+  TargetRings,
+} from '@/app/components/eva/eva-components';
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useDiamond } from '@/app/providers/diamond.provider';
@@ -164,19 +172,24 @@ export default function NodeExplorerPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-amber-500/30 mb-4">
             <Server className="w-8 h-8 text-amber-400" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Node Explorer
-          </h1>
-          <p className="text-muted-foreground">
+          <div className="flex items-center justify-center gap-3">
+            <LaurelAccent side="left" />
+            <h1 className="text-3xl font-serif font-bold tracking-[0.15em] uppercase text-foreground">
+              Node Explorer
+            </h1>
+            <LaurelAccent side="right" />
+          </div>
+          <p className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/50 mt-2">
             Search for nodes by wallet address or node ID
           </p>
+          <GreekKeyStrip width="full" color="gold" />
         </div>
 
-        {/* Search Card */}
-        <GlassCard className="p-6">
+        {/* Search Panel */}
+        <EvaPanel label="Node Search" sysId="SYS-EXPL" accent="gold">
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/30 z-10" />
               <Input
                 type="text"
                 placeholder="Enter wallet address (0x...) or node ID"
@@ -190,103 +203,123 @@ export default function NodeExplorerPage() {
                   }
                 }}
                 className={cn(
-                  'pl-12 pr-4 py-6 text-lg bg-neutral-900/50 border-neutral-700/50',
-                  'focus:border-amber-500/50 focus:ring-amber-500/20',
-                  'placeholder:text-neutral-500',
-                  error && 'border-red-500/50',
+                  'pl-12 pr-4 py-6 text-lg bg-background/60 border-border/40',
+                  'focus:border-gold/50 focus:ring-gold/20',
+                  'placeholder:text-foreground/25',
+                  'font-mono tracking-[0.05em]',
+                  error && 'border-crimson/50',
                 )}
               />
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 flex items-center gap-2">
+              <p className="font-mono text-sm tracking-[0.05em] text-crimson flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 {error}
               </p>
             )}
 
-            <GlowButton
-              type="submit"
-              variant="primary"
-              className="w-full py-6 text-lg"
-              glow
-              loading={isSearching}
-              rightIcon={
-                isSearching ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <ArrowRight className="w-5 h-5" />
-                )
-              }
+            <TrapButton
+              variant="gold"
+              size="lg"
+              className="w-full"
+              disabled={isSearching}
             >
-              {isSearching ? 'Searching...' : 'Search'}
-            </GlowButton>
+              {isSearching ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Searching...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  Search
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              )}
+            </TrapButton>
           </form>
 
           {/* Helper text */}
           {!showResults && (
-            <div className="mt-6 pt-6 border-t border-neutral-800/50">
-              <p className="text-sm text-muted-foreground text-center">
-                Enter a wallet address to see all nodes owned by that address,
-                or enter a node ID to view directly
-              </p>
-            </div>
+            <>
+              <EvaScanLine variant="mixed" />
+              <div className="flex flex-col items-center gap-3 py-2">
+                <TargetRings size={40} />
+                <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/35 text-center">
+                  Enter a wallet address to see all nodes owned by that address,
+                  or enter a node ID to view directly
+                </p>
+              </div>
+            </>
           )}
-        </GlassCard>
+        </EvaPanel>
 
         {/* Search Results */}
         {showResults && searchResults.length > 0 && (
           <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+            <EvaSectionMarker
+              section="Results"
+              label={`${searchResults.length} node${searchResults.length !== 1 ? 's' : ''} found`}
+              variant="gold"
+            />
+
+            <div className="flex items-center justify-between px-1">
+              <h2 className="font-mono text-sm tracking-[0.12em] uppercase font-bold text-foreground/80">
                 Nodes owned by{' '}
-                <span className="text-amber-400 font-mono">
+                <span className="text-gold font-mono">
                   {truncateHash(searchedAddress || '')}
                 </span>
               </h2>
-              <span className="text-sm text-muted-foreground">
-                {searchResults.length} node
-                {searchResults.length !== 1 ? 's' : ''} found
-              </span>
             </div>
+
+            <EvaScanLine variant="gold" />
 
             <div className="space-y-3">
               {searchResults.map((node) => (
-                <GlassCard
+                <EvaPanel
                   key={node.nodeHash}
-                  hover
-                  className="p-4 cursor-pointer transition-all hover:border-amber-500/30"
-                  onClick={() => handleNodeSelect(node.nodeHash)}
+                  label={truncateHash(node.nodeHash)}
+                  sublabel={node.addressName}
+                  status={node.status === 'Active' ? 'active' : 'offline'}
+                  accent={node.status === 'Active' ? 'gold' : 'crimson'}
+                  noPadding
                 >
-                  <div className="flex items-center justify-between">
+                  <div
+                    className="flex items-center justify-between px-5 py-4 cursor-pointer transition-all hover:bg-gold/[0.03]"
+                    onClick={() => handleNodeSelect(node.nodeHash)}
+                  >
                     <div className="flex items-center gap-4">
                       <div
                         className={cn(
-                          'p-3 rounded-xl',
+                          'p-3',
                           node.status === 'Active'
-                            ? 'bg-green-500/20'
-                            : 'bg-neutral-500/20',
+                            ? 'bg-emerald-500/10'
+                            : 'bg-foreground/5',
                         )}
+                        style={{
+                          clipPath:
+                            'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                        }}
                       >
                         <Server
                           className={cn(
                             'w-5 h-5',
                             node.status === 'Active'
-                              ? 'text-green-400'
-                              : 'text-neutral-400',
+                              ? 'text-emerald-400'
+                              : 'text-foreground/30',
                           )}
                         />
                       </div>
                       <div>
-                        <p className="font-mono text-sm text-foreground">
+                        <p className="font-mono text-sm tracking-[0.08em] text-foreground/80">
                           {truncateHash(node.nodeHash)}
                         </p>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1 font-mono text-[11px] tracking-[0.05em] text-foreground/40">
                             <MapPin className="w-3 h-3" />
                             {node.addressName}
                           </span>
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1 font-mono text-[11px] tracking-[0.05em] text-foreground/40">
                             <Package className="w-3 h-3" />
                             {node.assetCount} asset
                             {node.assetCount !== 1 ? 's' : ''}
@@ -295,20 +328,14 @@ export default function NodeExplorerPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span
-                        className={cn(
-                          'px-2 py-1 rounded-full text-xs font-medium',
-                          node.status === 'Active'
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-neutral-500/20 text-neutral-400',
-                        )}
-                      >
-                        {node.status}
-                      </span>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      <EvaStatusBadge
+                        status={node.status === 'Active' ? 'active' : 'pending'}
+                        label={node.status}
+                      />
+                      <ChevronRight className="w-5 h-5 text-foreground/25" />
                     </div>
                   </div>
-                </GlassCard>
+                </EvaPanel>
               ))}
             </div>
           </div>
@@ -316,12 +343,15 @@ export default function NodeExplorerPage() {
 
         {/* Example addresses */}
         {!showResults && (
-          <div className="mt-6 text-center">
-            <p className="text-xs text-muted-foreground/50">Example formats:</p>
-            <p className="text-xs text-muted-foreground/50 font-mono mt-1">
+          <div className="mt-6 text-center space-y-2">
+            <GreekKeyStrip width="full" color="crimson" />
+            <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/25">
+              Example formats
+            </p>
+            <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-foreground/25 mt-1">
               Wallet: 0x1234...5678 (42 chars) → Shows all owned nodes
             </p>
-            <p className="text-xs text-muted-foreground/50 font-mono">
+            <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-foreground/25">
               Node ID: 0xabcd...ef01 (66 chars) → Direct view
             </p>
           </div>

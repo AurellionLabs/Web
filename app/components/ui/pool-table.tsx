@@ -4,7 +4,7 @@ import { PoolRow } from './pool-row';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { Pool } from '@/domain/pool';
-import { GlassCard } from './glass-card';
+import { EvaPanel } from '@/app/components/eva/eva-components';
 
 interface PoolTableProps {
   pools: Pool[];
@@ -12,34 +12,44 @@ interface PoolTableProps {
 
 export function PoolTable({ pools }: PoolTableProps) {
   return (
-    <GlassCard className="p-0 overflow-hidden">
+    <EvaPanel label="Liquidity Pools" noPadding>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-sm text-neutral-500 border-b border-neutral-800/50">
-              <th className="py-3 px-4 text-left font-medium">#</th>
-              <th className="py-3 px-4 text-left font-medium">Pool</th>
-              <th className="py-3 px-4 text-right font-medium">TVL</th>
-              <th className="py-3 px-4 text-right font-medium">APR</th>
-              <th className="py-3 px-4 text-right font-medium">Collateral</th>
+            <tr className="border-b border-border/20">
+              <th className="py-3 px-4 text-left font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                #
+              </th>
+              <th className="py-3 px-4 text-left font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                Pool
+              </th>
+              <th className="py-3 px-4 text-right font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                TVL
+              </th>
+              <th className="py-3 px-4 text-right font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                APR
+              </th>
+              <th className="py-3 px-4 text-right font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                Collateral
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border/10">
             {pools.map((pool, index) => (
               <PoolRow key={pool.id} index={index + 1} pool={pool} />
             ))}
           </tbody>
         </table>
       </div>
-      <div className="p-4 border-t border-neutral-800/50">
+      <div className="p-4 border-t border-border/20">
         <Link
           href="/customer/pools/explore"
-          className="text-amber-400 hover:text-amber-300 flex items-center gap-1 text-sm transition-colors"
+          className="text-gold hover:text-gold/80 flex items-center gap-1 font-mono text-xs tracking-[0.12em] uppercase font-bold transition-colors"
         >
           Explore more pools
           <ArrowUpRight className="w-4 h-4" />
         </Link>
       </div>
-    </GlassCard>
+    </EvaPanel>
   );
 }

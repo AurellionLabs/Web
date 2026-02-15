@@ -16,12 +16,13 @@ import {
   FormMessage,
 } from '@/app/components/ui/form';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
+  EvaPanel,
+  TrapButton,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
 import { Button } from '@/app/components/ui/button';
 import {
   Command,
@@ -98,7 +99,7 @@ const LocationInput = ({
       <Input
         placeholder="Loading..."
         disabled
-        className="bg-surface-overlay border-glass-border"
+        className="bg-background/80 border-border/40 font-mono"
       />
     );
 
@@ -124,14 +125,14 @@ const LocationInput = ({
         id="location-input"
         placeholder="Search for a location"
         defaultValue={defaultValue}
-        className="bg-surface-overlay border-glass-border"
+        className="bg-background/80 border-border/40 font-mono"
       />
     </Autocomplete>
   );
 };
 
 /**
- * NodeRegistrationPage - Register a new node with Aurellion theme
+ * NodeRegistrationPage - Register a new node with EVA/NERV theme
  */
 export default function NodeRegistrationPage() {
   const router = useRouter();
@@ -236,46 +237,74 @@ export default function NodeRegistrationPage() {
       <div className="max-w-2xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Server className="w-8 h-8 text-accent" />
+          <div
+            className="w-16 h-16 bg-gold/10 flex items-center justify-center mx-auto mb-4"
+            style={{
+              clipPath:
+                'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)',
+            }}
+          >
+            <Server className="w-8 h-8 text-gold" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Register as a Node
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">
+          <div className="flex items-center justify-center gap-3">
+            <LaurelAccent side="left" />
+            <h1 className="font-mono text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
+              Register as a Node
+            </h1>
+            <LaurelAccent side="right" />
+          </div>
+          <p className="font-mono text-sm tracking-[0.08em] uppercase text-foreground/40 mt-2">
             Provide your details to register as a node in the network
           </p>
+          <div className="mt-4">
+            <GreekKeyStrip color="gold" />
+          </div>
         </div>
 
-        <GlassCard>
+        <EvaPanel
+          label="Node Registration"
+          sublabel="SYS:REG"
+          sysId="FORM-01"
+          status="pending"
+        >
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Location Section */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <MapPin className="w-4 h-4 text-accent" />
-                  <span>Location Details</span>
-                </div>
+                <EvaSectionMarker
+                  section="Location"
+                  label="Details"
+                  variant="crimson"
+                />
 
                 <FormField
                   control={form.control}
                   name="addressName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-muted-foreground">
+                      <FormLabel className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/45 font-bold">
                         Location
                       </FormLabel>
                       <FormControl>
-                        <LocationInput
-                          defaultValue={field.value}
-                          onLocationSelect={(address, lat, lng) => {
-                            field.onChange(address);
-                            form.setValue('lat', lat);
-                            form.setValue('lng', lng);
+                        <div
+                          className="relative group"
+                          style={{
+                            clipPath:
+                              'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
                           }}
-                        />
+                        >
+                          <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-gold/20 group-focus-within:bg-gold/60 transition-colors" />
+                          <LocationInput
+                            defaultValue={field.value}
+                            onLocationSelect={(address, lat, lng) => {
+                              field.onChange(address);
+                              form.setValue('lat', lat);
+                              form.setValue('lng', lng);
+                            }}
+                          />
+                        </div>
                       </FormControl>
-                      <FormDescription className="text-muted-foreground/70">
+                      <FormDescription className="font-mono text-[11px] tracking-[0.08em] text-foreground/30">
                         Search for your location
                       </FormDescription>
                       <FormMessage />
@@ -285,18 +314,20 @@ export default function NodeRegistrationPage() {
               </div>
 
               {/* Assets Section */}
-              <div className="space-y-4 pt-4 border-t border-glass-border">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Package className="w-4 h-4 text-accent" />
-                  <span>Supported Assets</span>
-                </div>
+              <div className="space-y-4">
+                <EvaScanLine variant="mixed" />
+                <EvaSectionMarker
+                  section="Assets"
+                  label="Supported"
+                  variant="gold"
+                />
 
                 <FormField
                   control={form.control}
                   name="supportedAssets"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-muted-foreground">
+                      <FormLabel className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/45 font-bold">
                         Asset Classes
                       </FormLabel>
                       <FormControl>
@@ -306,8 +337,12 @@ export default function NodeRegistrationPage() {
                               variant="outline"
                               role="combobox"
                               aria-expanded={open}
-                              className="w-full justify-between bg-surface-overlay border-glass-border hover:bg-surface-overlay/80"
+                              className="w-full justify-between bg-background/80 border-border/40 hover:bg-background/60 font-mono text-xs tracking-[0.08em] uppercase"
                               type="button"
+                              style={{
+                                clipPath:
+                                  'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                              }}
                             >
                               {field.value.length > 0
                                 ? `${field.value.length} asset${field.value.length === 1 ? '' : 's'} selected`
@@ -320,7 +355,7 @@ export default function NodeRegistrationPage() {
                               <CommandInput placeholder="Search assets..." />
                               <CommandList>
                                 {isLoading ? (
-                                  <div className="p-4 text-center text-sm text-muted-foreground">
+                                  <div className="p-4 text-center font-mono text-sm tracking-[0.08em] text-foreground/40">
                                     Loading assets...
                                   </div>
                                 ) : (
@@ -370,7 +405,7 @@ export default function NodeRegistrationPage() {
                           </PopoverContent>
                         </Popover>
                       </FormControl>
-                      <FormDescription className="text-muted-foreground/70">
+                      <FormDescription className="font-mono text-[11px] tracking-[0.08em] text-foreground/30">
                         Select the assets you can support in your operations
                       </FormDescription>
                       <FormMessage />
@@ -390,7 +425,7 @@ export default function NodeRegistrationPage() {
                           selectedAssets={form.watch('supportedAssets')}
                         />
                       </FormControl>
-                      <FormDescription className="text-muted-foreground/70">
+                      <FormDescription className="font-mono text-[11px] tracking-[0.08em] text-foreground/30">
                         Enter the capacity for each selected asset
                       </FormDescription>
                       <FormMessage />
@@ -399,24 +434,28 @@ export default function NodeRegistrationPage() {
                 />
               </div>
 
-              <div className="pt-4">
-                <GlowButton
-                  type="submit"
-                  variant="primary"
-                  className="w-full"
-                  glow
-                  loading={form.formState.isSubmitting || isLoading}
-                >
-                  {form.formState.isSubmitting
-                    ? 'Registering...'
-                    : isLoading
-                      ? 'Loading assets...'
-                      : 'Register as Node'}
-                </GlowButton>
+              <EvaScanLine variant="crimson" />
+
+              <div className="pt-2">
+                <GreekKeyStrip color="crimson" />
+                <div className="pt-4">
+                  <TrapButton
+                    variant="gold"
+                    size="lg"
+                    className="w-full"
+                    disabled={form.formState.isSubmitting || isLoading}
+                  >
+                    {form.formState.isSubmitting
+                      ? 'Registering...'
+                      : isLoading
+                        ? 'Loading assets...'
+                        : 'Register as Node'}
+                  </TrapButton>
+                </div>
               </div>
             </form>
           </Form>
-        </GlassCard>
+        </EvaPanel>
       </div>
     </div>
   );

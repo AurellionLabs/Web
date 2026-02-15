@@ -1393,7 +1393,7 @@ export default function NodeDashboardPage() {
               'CUSTODY LINK',
               'SETTLEMENT',
               'AUDIT LOG',
-              'AT FIELD',
+              'SECURITY',
             ]}
           />
         </EvaPanel>

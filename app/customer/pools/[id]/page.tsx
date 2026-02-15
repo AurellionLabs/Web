@@ -14,14 +14,18 @@ import {
   Zap,
 } from 'lucide-react';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { StatusBadge } from '@/app/components/ui/status-badge';
-import { AnimatedNumber } from '@/app/components/ui/animated-number';
+  EvaPanel,
+  HexStatCard,
+  TrapButton,
+  EvaStatusBadge,
+  EvaDataRow,
+  EvaProgress,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
+import { ATFieldGauge } from '@/app/components/eva/eva-animations';
 import { TransactionTable } from '@/app/components/ui/transaction-table';
 import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
@@ -32,65 +36,6 @@ import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 const Chart = dynamic(() => import('./chart'), { ssr: false });
-
-/**
- * StatCard - Pool stat card component
- */
-interface StatCardProps {
-  title: string;
-  value: string;
-  change?: string;
-  icon: React.ElementType;
-  iconColor: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  change,
-  icon: Icon,
-  iconColor,
-}) => (
-  <GlassCard hover className="relative overflow-hidden">
-    <div
-      className={cn(
-        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
-        iconColor,
-      )}
-    />
-    <div className="relative">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <div
-          className={cn(
-            'p-2 rounded-lg',
-            iconColor.replace('bg-', 'bg-opacity-20 '),
-          )}
-        >
-          <Icon
-            className={cn(
-              'w-4 h-4',
-              iconColor.replace('bg-', 'text-').replace('-500', '-400'),
-            )}
-          />
-        </div>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-foreground">{value}</span>
-        {change && (
-          <span
-            className={cn(
-              'text-sm font-medium',
-              change.startsWith('+') ? 'text-trading-buy' : 'text-trading-sell',
-            )}
-          >
-            {change}
-          </span>
-        )}
-      </div>
-    </div>
-  </GlassCard>
-);
 
 export default function PoolDetails({ params }: { params: { id: string } }) {
   const { address } = useWallet();
@@ -280,18 +225,20 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     return `${minutes}m`;
   };
 
-  const getStatusBadgeStatus = (status: PoolStatus) => {
+  const getEvaStatus = (
+    status: PoolStatus,
+  ): 'active' | 'pending' | 'processing' | 'completed' | 'created' => {
     switch (status) {
       case PoolStatus.PENDING:
         return 'pending';
       case PoolStatus.ACTIVE:
-        return 'success';
+        return 'active';
       case PoolStatus.COMPLETE:
-        return 'info';
+        return 'completed';
       case PoolStatus.PAID:
-        return 'success';
+        return 'completed';
       default:
-        return 'neutral';
+        return 'pending';
     }
   };
 
@@ -330,8 +277,10 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-          <span className="text-muted-foreground">Loading pool details...</span>
+          <RefreshCw className="w-8 h-8 text-gold animate-spin" />
+          <span className="font-mono text-sm text-foreground/40 tracking-[0.15em] uppercase">
+            Loading pool details...
+          </span>
         </div>
       </div>
     );
@@ -340,27 +289,33 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link
               href="/customer/pools"
-              className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+              className="p-2 bg-card/60 border border-border/30 hover:border-gold/30 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
             >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+              <ArrowLeft className="w-5 h-5 text-foreground/50" />
             </Link>
+            <LaurelAccent side="left" />
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-foreground">
+                <h1 className="font-mono text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
                   {poolData.name}
                 </h1>
-                <StatusBadge
-                  status={getStatusBadgeStatus(poolData.status)}
+                <EvaStatusBadge
+                  status={getEvaStatus(poolData.status)}
                   label={getStatusText(poolData.status)}
-                  size="sm"
                 />
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.08em] mt-1">
                 {poolData.description}
               </p>
             </div>
@@ -369,17 +324,27 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors"
+              className="p-2 bg-card/60 border border-border/30 hover:border-gold/30 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
             >
               <RefreshCw
                 className={cn(
-                  'w-4 h-4 text-muted-foreground',
+                  'w-4 h-4 text-foreground/50',
                   isRefreshing && 'animate-spin',
                 )}
               />
             </button>
-            <button className="p-2 rounded-lg bg-glass-bg border border-glass-border hover:border-accent/30 transition-colors">
-              <Share2 className="w-4 h-4 text-muted-foreground" />
+            <button
+              className="p-2 bg-card/60 border border-border/30 hover:border-gold/30 transition-colors"
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
+            >
+              <Share2 className="w-4 h-4 text-foreground/50" />
             </button>
           </div>
         </div>
@@ -388,53 +353,64 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
           {/* Left Content - Takes 3 columns */}
           <div className="xl:col-span-3 space-y-8">
+            <EvaSectionMarker section="Pool Metrics" variant="gold" />
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard
-                title="Total Value Locked"
+              <HexStatCard
+                label="Total Value Locked"
                 value={`$${formatTokenAmount(poolData.tvl, 18)}`}
-                change={poolData.volumeChange}
-                icon={Droplets}
-                iconColor="bg-accent"
+                sub={poolData.volumeChange}
+                color="gold"
+                powerLevel={Math.min(
+                  10,
+                  Math.ceil(poolData.completionPercentage / 10),
+                )}
               />
-              <StatCard
-                title="Volume (24h)"
+              <HexStatCard
+                label="Volume (24h)"
                 value={`$${formatTokenAmount(poolData.volume24h, 18)}`}
-                change={poolData.volumeChange}
-                icon={TrendingUp}
-                iconColor="bg-green-500"
+                sub={poolData.volumeChange}
+                color="emerald"
+                powerLevel={5}
               />
-              <StatCard
-                title="Time Remaining"
+              <HexStatCard
+                label="Time Remaining"
                 value={formatTime(poolData.timeRemaining)}
-                icon={Clock}
-                iconColor="bg-blue-500"
+                color="crimson"
+                powerLevel={Math.min(
+                  10,
+                  Math.ceil((poolData.timeRemaining / (86400 * 30)) * 10),
+                )}
               />
-              <StatCard
-                title="APR"
+              <HexStatCard
+                label="APR"
                 value={poolData.reward}
-                icon={Zap}
-                iconColor="bg-purple-500"
+                color="gold"
+                powerLevel={7}
               />
             </div>
 
+            <EvaScanLine variant="mixed" />
+
             {/* Chart */}
-            <GlassCard>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-foreground">
-                  Pool Activity
-                </h2>
-                <div className="flex gap-1 p-1 rounded-lg bg-surface-overlay">
+            <EvaPanel label="Pool Activity" sysId="CHART-01" status="active">
+              <div className="flex items-center justify-end mb-6">
+                <div className="flex gap-1 p-1 bg-background/40 border border-border/20">
                   {['1H', '1D', '1W', '1M'].map((range) => (
                     <button
                       key={range}
                       onClick={() => setTimeRange(range)}
                       className={cn(
-                        'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
+                        'px-3 py-1.5 font-mono text-xs font-bold tracking-[0.12em] uppercase transition-all duration-200',
                         timeRange === range
-                          ? 'bg-accent/20 text-accent'
-                          : 'text-muted-foreground hover:text-foreground',
+                          ? 'bg-gold/15 text-gold'
+                          : 'text-foreground/35 hover:text-foreground/60',
                       )}
+                      style={{
+                        clipPath:
+                          'polygon(4px 0, calc(100% - 4px) 0, 100% 50%, calc(100% - 4px) 100%, 4px 100%, 0 50%)',
+                      }}
                     >
                       {range}
                     </button>
@@ -442,42 +418,44 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 </div>
               </div>
               <Chart timeRange={timeRange} groupedStakes={groupedStake} />
-            </GlassCard>
+            </EvaPanel>
 
             {/* Transactions */}
-            <GlassCard>
-              <GlassCardHeader>
-                <GlassCardTitle>Recent Transactions</GlassCardTitle>
-              </GlassCardHeader>
+            <EvaPanel label="Recent Transactions" sysId="TXN-01">
               <TransactionTable poolId={params.id} />
-            </GlassCard>
+            </EvaPanel>
           </div>
 
           {/* Right Sidebar */}
           <div className="xl:col-span-1 space-y-6">
+            {/* AT Field Gauge — Pool Capacity */}
+            <ATFieldGauge label="Pool Capacity" cellCount={60} />
+
             {/* Completion Progress */}
-            <GlassCard>
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                Completion Progress
-              </h3>
+            <EvaPanel label="Completion" sysId="PROG-01" accent="gold">
               <div className="space-y-4">
                 {parseFloat(poolData.fundingGoal) > 0 ? (
                   <>
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="text-trading-buy font-semibold">
+                      <span className="font-mono text-xs text-foreground/50 tracking-[0.15em] uppercase">
+                        Progress
+                      </span>
+                      <span className="font-mono text-sm font-bold text-emerald-400 tabular-nums">
                         {poolData.completionPercentage.toFixed(1)}%
                       </span>
                     </div>
-                    <div className="w-full bg-glass-bg rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-accent to-secondary h-3 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${Math.min(poolData.completionPercentage, 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="text-sm text-muted-foreground text-center">
+                    <EvaProgress
+                      value={poolData.completionPercentage}
+                      max={100}
+                      color={
+                        poolData.completionPercentage > 80
+                          ? 'emerald'
+                          : poolData.completionPercentage > 40
+                            ? 'gold'
+                            : 'crimson'
+                      }
+                    />
+                    <div className="font-mono text-xs text-foreground/30 text-center tracking-wider">
                       ${formatTokenAmount(poolData.tvl, 18)} of $
                       {formatTokenAmount(poolData.fundingGoal, 18)} raised
                     </div>
@@ -485,53 +463,56 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                 ) : (
                   <>
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">
+                      <span className="font-mono text-xs text-foreground/50 tracking-[0.15em] uppercase">
                         Total Locked
                       </span>
-                      <span className="text-accent font-semibold">
+                      <span className="font-mono text-sm font-bold text-gold tabular-nums">
                         ${formatTokenAmount(poolData.tvl, 18)}
                       </span>
                     </div>
-                    <div className="text-sm text-muted-foreground text-center py-2">
-                      No funding goal set - unlimited capacity
+                    <div className="font-mono text-xs text-foreground/30 text-center py-2">
+                      No funding goal set — unlimited capacity
                     </div>
                   </>
                 )}
               </div>
-            </GlassCard>
+            </EvaPanel>
+
+            <EvaScanLine variant="crimson" />
 
             {/* Pool Details */}
-            <GlassCard>
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                Pool Details
-              </h3>
-              <div className="space-y-4">
+            <EvaPanel label="Pool Details" sysId="DTL-01">
+              <div className="space-y-1">
                 {/* Supporting Documents */}
                 {poolData.supportingDocuments.length > 0 && (
-                  <div className="pb-4 border-b border-glass-border">
-                    <span className="text-muted-foreground text-sm block mb-3">
+                  <div className="pb-4 mb-2 border-b border-border/15">
+                    <span className="font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase block mb-3">
                       Supporting Documents
                     </span>
                     <div className="space-y-2">
                       {poolData.supportingDocuments.map((doc, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-3 p-2 bg-glass-bg rounded-lg border border-glass-border"
+                          className="flex items-center gap-3 p-2 bg-card/40 border border-border/20"
+                          style={{
+                            clipPath:
+                              'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                          }}
                         >
-                          <div className="p-1.5 bg-glass-bg rounded-md">
-                            <FileText className="w-3 h-3 text-muted-foreground" />
+                          <div className="p-1.5 bg-card/60">
+                            <FileText className="w-3 h-3 text-foreground/40" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-foreground truncate">
+                            <p className="font-mono text-xs font-bold text-foreground truncate">
                               {doc.name}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="font-mono text-[10px] text-foreground/30">
                               {doc.ipfsHash ? 'Available' : 'Processing...'}
                             </p>
                           </div>
                           {doc.ipfsHash && (
                             <button
-                              className="p-1.5 rounded-lg hover:bg-glass-hover text-muted-foreground hover:text-foreground transition-colors"
+                              className="p-1.5 text-foreground/30 hover:text-gold transition-colors"
                               onClick={() => {
                                 window.open(
                                   `https://ipfs.io/ipfs/${doc.ipfsHash}`,
@@ -548,80 +529,69 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
-                    <span className="text-muted-foreground text-sm">Asset</span>
-                    <span className="font-medium text-foreground">
-                      {poolData.token0Balance}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
-                    <span className="text-muted-foreground text-sm">
-                      Funding Goal
-                    </span>
-                    <span className="font-medium text-foreground">
-                      ${formatTokenAmount(poolData.fundingGoal, 18)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
-                    <span className="text-muted-foreground text-sm">
-                      Current TVL
-                    </span>
-                    <span className="font-medium text-foreground">
-                      ${formatTokenAmount(poolData.tvl, 18)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-glass-border">
-                    <span className="text-muted-foreground text-sm">
-                      Time Remaining
-                    </span>
-                    <span className="font-medium text-foreground">
-                      {formatTime(poolData.timeRemaining)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground text-sm">
-                      Status
-                    </span>
-                    <StatusBadge
-                      status={getStatusBadgeStatus(poolData.status)}
-                      label={getStatusText(poolData.status)}
-                      size="sm"
-                    />
-                  </div>
+                <EvaDataRow
+                  label="Asset"
+                  value={poolData.token0Balance}
+                  valueColor="gold"
+                />
+                <EvaDataRow
+                  label="Funding Goal"
+                  value={`$${formatTokenAmount(poolData.fundingGoal, 18)}`}
+                  valueColor="gold"
+                />
+                <EvaDataRow
+                  label="Current TVL"
+                  value={`$${formatTokenAmount(poolData.tvl, 18)}`}
+                  valueColor="emerald"
+                />
+                <EvaDataRow
+                  label="Time Remaining"
+                  value={formatTime(poolData.timeRemaining)}
+                  valueColor="crimson"
+                />
+                <div className="flex items-center justify-between py-2.5">
+                  <span className="font-mono text-sm text-foreground/50">
+                    Status
+                  </span>
+                  <EvaStatusBadge
+                    status={getEvaStatus(poolData.status)}
+                    label={getStatusText(poolData.status)}
+                  />
                 </div>
               </div>
-            </GlassCard>
+            </EvaPanel>
 
             {/* Action Buttons */}
             <div className="space-y-3">
               {pool?.status === PoolStatus.ACTIVE && (
-                <GlowButton
-                  variant="primary"
+                <TrapButton
+                  variant="gold"
+                  size="lg"
                   className="w-full"
-                  glow
                   onClick={() => {
                     window.location.href = `/customer/pools/${params.id}/add-liquidity`;
                   }}
                 >
                   Add Liquidity
-                </GlowButton>
+                </TrapButton>
               )}
 
               {(pool?.status === PoolStatus.COMPLETE ||
                 pool?.status === PoolStatus.ACTIVE) && (
-                <GlowButton
-                  variant="outline"
+                <TrapButton
+                  variant="crimson"
                   className="w-full"
                   onClick={handleRewardClaim}
-                  loading={isClaimingReward}
+                  disabled={isClaimingReward}
                 >
-                  Claim Reward
-                </GlowButton>
+                  {isClaimingReward ? 'Claiming...' : 'Claim Reward'}
+                </TrapButton>
               )}
             </div>
           </div>
         </div>
+
+        <GreekKeyStrip color="gold" />
       </div>
     </div>
   );

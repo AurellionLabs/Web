@@ -7,15 +7,18 @@ import { useDiamond } from '@/app/providers/diamond.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
-import { StatusBadge } from '@/app/components/ui/status-badge';
 import type { Asset } from '@/domain/shared';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
+  EvaPanel,
+  TrapButton,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+  HexStatCard,
+  EvaButton,
+} from '@/app/components/eva/eva-components';
 import {
   RefreshCw,
   Plus,
@@ -405,170 +408,187 @@ export default function P2PMarketOffersPage() {
     const assetMeta = assetMetadataMap.get(offer.tokenId);
 
     return (
-      <GlassCard key={offer.id} className="relative overflow-hidden">
+      <EvaPanel
+        key={offer.id}
+        label={assetMeta?.name || `Token ${offer.tokenId.slice(0, 8)}...`}
+        sublabel={
+          assetMeta
+            ? `TID: ${offer.tokenId.slice(0, 10)}...${offer.tokenId.slice(-6)}`
+            : truncateAddress(offer.token)
+        }
+        sysId={offer.isSellerInitiated ? 'SELL' : 'BUY'}
+        accent={offer.isSellerInitiated ? 'gold' : 'crimson'}
+        className="relative"
+      >
         {/* Offer type badge */}
-        <div
-          className={cn(
-            'absolute top-0 right-0 px-3 py-1 text-xs font-medium rounded-bl-lg',
-            offer.isSellerInitiated
-              ? 'bg-emerald-500/20 text-emerald-400 border-l border-b border-emerald-500/30'
-              : 'bg-blue-500/20 text-blue-400 border-l border-b border-blue-500/30',
-          )}
-        >
-          {offer.isSellerInitiated ? 'SELL' : 'BUY'}
-        </div>
-
-        <GlassCardHeader className="pb-3">
-          <GlassCardTitle className="text-lg flex items-center gap-2">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
             {offer.isSellerInitiated ? (
               <Tag className="w-4 h-4 text-emerald-400" />
             ) : (
               <ShoppingCart className="w-4 h-4 text-blue-400" />
             )}
-            {assetMeta ? (
-              <>
-                {assetMeta.name}
-                {assetMeta.assetClass && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
-                    {assetMeta.assetClass}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="inline-block h-5 w-24 bg-neutral-700/50 rounded animate-pulse" />
+            {assetMeta?.assetClass && (
+              <EvaStatusBadge status="pending" label={assetMeta.assetClass} />
             )}
-          </GlassCardTitle>
-          <GlassCardDescription className="text-xs">
-            {assetMeta
-              ? `Token ID: ${offer.tokenId.slice(0, 10)}...${offer.tokenId.slice(-6)}`
-              : truncateAddress(offer.token)}
-          </GlassCardDescription>
-        </GlassCardHeader>
-
-        <div className="px-6 pb-6 space-y-4">
-          {/* Asset Attributes */}
-          {assetMeta?.attributes && assetMeta.attributes.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {assetMeta.attributes.map((attr) => (
-                <span
-                  key={attr.name}
-                  className="px-2 py-0.5 rounded-md text-xs bg-neutral-700/60 text-neutral-200"
-                >
-                  {attr.name
-                    .split('_')
-                    .filter(Boolean)
-                    .map(
-                      (w) =>
-                        w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
-                    )
-                    .join(' ')}
-                  : {attr.values.length > 0 ? attr.values.join(', ') : 'N/A'}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Quantity and Price */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Quantity</p>
-              <p className="text-lg font-semibold text-foreground">
-                {offer.quantity.toString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Price</p>
-              <p className="text-lg font-semibold text-amber-400">
-                ${formatPrice(offer.price)}
-              </p>
-            </div>
           </div>
+          <EvaStatusBadge
+            status={offer.isSellerInitiated ? 'active' : 'processing'}
+            label={offer.isSellerInitiated ? 'SELL' : 'BUY'}
+          />
+        </div>
 
-          {/* Creator and Expiry */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <User className="w-3 h-3" />
-              <span>{isMine ? 'You' : truncateAddress(offer.creator)}</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              <span>{formatExpiry(offer.expiresAt)}</span>
-            </div>
+        {/* Asset Attributes */}
+        {assetMeta?.attributes && assetMeta.attributes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {assetMeta.attributes.map((attr) => (
+              <span
+                key={attr.name}
+                className="px-2 py-0.5 font-mono text-xs bg-card/80 text-foreground/50 border border-border/20"
+              >
+                {attr.name
+                  .split('_')
+                  .filter(Boolean)
+                  .map(
+                    (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+                  )
+                  .join(' ')}
+                : {attr.values.length > 0 ? attr.values.join(', ') : 'N/A'}
+              </span>
+            ))}
           </div>
+        )}
 
-          {/* Target counterparty */}
-          {offer.targetCounterparty && (
-            <div className="text-xs text-muted-foreground bg-neutral-800/50 rounded-lg px-3 py-2">
-              <span className="text-amber-400">Targeted:</span>{' '}
-              {truncateAddress(offer.targetCounterparty)}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="pt-2">
-            {isMine ? (
-              <GlowButton
-                variant="secondary"
-                size="sm"
-                className="w-full"
-                onClick={() => handleCancelOffer(offer.id)}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <X className="w-4 h-4 mr-2" />
-                )}
-                Cancel Offer
-              </GlowButton>
-            ) : isTargetedToOther(offer) ? (
-              <div className="text-xs text-center text-neutral-500 py-2">
-                Targeted to another buyer
-              </div>
-            ) : (
-              <GlowButton
-                variant="primary"
-                size="sm"
-                className="w-full"
-                onClick={() => handleAcceptOffer(offer.id)}
-                disabled={isProcessing || !connected}
-              >
-                {isProcessing ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                )}
-                {offer.isSellerInitiated ? 'Buy Now' : 'Sell Now'}
-              </GlowButton>
-            )}
+        {/* Quantity and Price */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/40 font-bold mb-1">
+              Quantity
+            </p>
+            <p className="font-mono text-lg font-bold text-foreground tabular-nums">
+              {offer.quantity.toString()}
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/40 font-bold mb-1">
+              Price
+            </p>
+            <p className="font-mono text-lg font-bold text-gold tabular-nums">
+              ${formatPrice(offer.price)}
+            </p>
           </div>
         </div>
-      </GlassCard>
+
+        <EvaScanLine variant="gold" />
+
+        {/* Creator and Expiry */}
+        <div className="flex items-center justify-between font-mono text-sm mt-3">
+          <div className="flex items-center gap-2 text-foreground/40">
+            <User className="w-3 h-3" />
+            <span className="tracking-[0.08em]">
+              {isMine ? 'You' : truncateAddress(offer.creator)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-foreground/40">
+            <Clock className="w-3 h-3" />
+            <span className="tracking-[0.08em]">
+              {formatExpiry(offer.expiresAt)}
+            </span>
+          </div>
+        </div>
+
+        {/* Target counterparty */}
+        {offer.targetCounterparty && (
+          <div className="font-mono text-xs text-foreground/30 bg-card/60 border border-border/15 px-3 py-2 mt-3">
+            <span className="text-gold font-bold tracking-[0.1em]">
+              TARGETED:
+            </span>{' '}
+            {truncateAddress(offer.targetCounterparty)}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="pt-4">
+          {isMine ? (
+            <TrapButton
+              variant="crimson"
+              size="sm"
+              className="w-full"
+              onClick={() => handleCancelOffer(offer.id)}
+              disabled={isProcessing}
+            >
+              <span className="flex items-center justify-center gap-2">
+                {isProcessing ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <X className="w-4 h-4" />
+                )}
+                Cancel Offer
+              </span>
+            </TrapButton>
+          ) : isTargetedToOther(offer) ? (
+            <div className="font-mono text-xs text-center text-foreground/25 py-2 tracking-[0.1em] uppercase">
+              Targeted to another buyer
+            </div>
+          ) : (
+            <TrapButton
+              variant={offer.isSellerInitiated ? 'emerald' : 'gold'}
+              size="sm"
+              className="w-full"
+              onClick={() => handleAcceptOffer(offer.id)}
+              disabled={isProcessing || !connected}
+            >
+              <span className="flex items-center justify-center gap-2">
+                {isProcessing ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )}
+                {offer.isSellerInitiated ? 'Buy Now' : 'Sell Now'}
+              </span>
+            </TrapButton>
+          )}
+        </div>
+      </EvaPanel>
     );
   };
 
   // Empty state
   const renderEmptyState = () => (
-    <div className="text-center py-16">
-      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-800/50 flex items-center justify-center">
-        <ShoppingCart className="w-8 h-8 text-muted-foreground" />
+    <EvaPanel
+      label={activeTab === 'my' ? 'No Offers Created' : 'No Open Offers'}
+      sysId="EMPTY"
+      status="offline"
+    >
+      <div className="text-center py-12">
+        <div
+          className="w-16 h-16 mx-auto mb-4 bg-card/80 flex items-center justify-center"
+          style={{
+            clipPath:
+              'polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%)',
+          }}
+        >
+          <ShoppingCart className="w-8 h-8 text-foreground/20" />
+        </div>
+        <h3 className="font-mono text-lg font-bold text-foreground tracking-[0.15em] uppercase mb-2">
+          {activeTab === 'my' ? 'No Offers Created' : 'No Open Offers'}
+        </h3>
+        <p className="font-mono text-sm text-foreground/40 mb-6 max-w-md mx-auto tracking-[0.05em]">
+          {activeTab === 'my'
+            ? `You haven't created any ${className} P2P offers yet.`
+            : `No open ${className} P2P offers at the moment. Be the first!`}
+        </p>
+        <TrapButton
+          variant="gold"
+          onClick={() => router.push('/customer/p2p/create')}
+        >
+          <span className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Create Offer
+          </span>
+        </TrapButton>
       </div>
-      <h3 className="text-lg font-semibold text-foreground mb-2">
-        {activeTab === 'my' ? 'No Offers Created' : 'No Open Offers'}
-      </h3>
-      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-        {activeTab === 'my'
-          ? `You haven't created any ${className} P2P offers yet.`
-          : `No open ${className} P2P offers at the moment. Be the first!`}
-      </p>
-      <GlowButton
-        variant="primary"
-        onClick={() => router.push('/customer/p2p/create')}
-      >
-        <Plus className="w-4 h-4 mr-2" />
-        Create Offer
-      </GlowButton>
-    </div>
+    </EvaPanel>
   );
 
   // Loading skeleton
@@ -577,7 +597,11 @@ export default function P2PMarketOffersPage() {
       {[...Array(8)].map((_, i) => (
         <div
           key={i}
-          className="h-64 rounded-xl bg-neutral-800/30 animate-pulse"
+          className="h-64 bg-card/40 animate-pulse"
+          style={{
+            clipPath:
+              'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+          }}
         />
       ))}
     </div>
@@ -586,100 +610,113 @@ export default function P2PMarketOffersPage() {
   return (
     <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-[1800px] mx-auto">
+        {/* Decorative top strip */}
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 mt-6">
           <button
             onClick={() => router.push('/customer/p2p')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="flex items-center gap-2 font-mono text-sm text-foreground/40 hover:text-foreground transition-colors mb-4 tracking-[0.1em] uppercase"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-display font-bold text-foreground">
-                {className} P2P Market
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Peer-to-peer offers for {className} assets
-              </p>
+            <div className="flex items-center gap-3">
+              <LaurelAccent side="left" />
+              <div>
+                <h1 className="font-serif text-3xl font-bold text-foreground tracking-[0.15em] uppercase">
+                  {className} P2P Market
+                </h1>
+                <p className="font-mono text-sm text-foreground/40 mt-1 tracking-[0.1em] uppercase">
+                  Peer-to-peer offers for {className} assets
+                </p>
+              </div>
+              <LaurelAccent side="right" />
             </div>
             <div className="flex items-center gap-3">
-              <StatusBadge status="live" label="Live" pulse size="sm" />
+              <EvaStatusBadge status="active" label="Live" />
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing || isLoading}
                 className={cn(
-                  'p-2 rounded-lg',
-                  'bg-glass-bg border border-glass-border',
-                  'hover:border-accent/30 transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  'p-2',
+                  'bg-card/60 border border-border/25',
+                  'hover:border-gold/30 transition-colors',
+                  'disabled:opacity-40 disabled:pointer-events-none',
                 )}
+                style={{
+                  clipPath:
+                    'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+                }}
                 aria-label="Refresh offers"
               >
                 <RefreshCw
                   className={cn(
-                    'w-4 h-4 text-muted-foreground',
+                    'w-4 h-4 text-foreground/40',
                     (isRefreshing || isLoading) && 'animate-spin',
                   )}
                 />
               </button>
-              <GlowButton
-                variant="primary"
+              <TrapButton
+                variant="gold"
                 size="sm"
                 onClick={() => router.push('/customer/p2p/create')}
                 disabled={!connected}
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Offer
-              </GlowButton>
+                <span className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create Offer
+                </span>
+              </TrapButton>
             </div>
           </div>
         </div>
 
+        <EvaScanLine variant="mixed" />
+
         {/* Tabs and Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 mt-4">
           {/* Tabs */}
-          <div className="flex items-center gap-2 p-1 bg-neutral-800/50 rounded-lg">
-            <button
+          <div className="flex items-center gap-1">
+            <EvaButton
+              variant="gold"
+              size="sm"
+              active={activeTab === 'all'}
               onClick={() => setActiveTab('all')}
-              className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                activeTab === 'all'
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
             >
               All Offers
-            </button>
-            <button
+            </EvaButton>
+            <EvaButton
+              variant="gold"
+              size="sm"
+              active={activeTab === 'my'}
               onClick={() => setActiveTab('my')}
-              className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                activeTab === 'my'
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
             >
               My Offers
               {filteredMyOffers.length > 0 && (
-                <span className="ml-2 px-2 py-0.5 text-xs bg-amber-500/20 rounded-full">
+                <span className="ml-2 px-2 py-0.5 text-[10px] bg-gold/20 text-gold">
                   {filteredMyOffers.length}
                 </span>
               )}
-            </button>
+            </EvaButton>
           </div>
 
           {/* Filter */}
           {activeTab === 'all' && (
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Filter className="w-4 h-4 text-foreground/30" />
               <select
                 value={filterType}
                 onChange={(e) =>
                   setFilterType(e.target.value as 'all' | 'buy' | 'sell')
                 }
-                className="bg-neutral-800/50 border border-glass-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-amber-500/50"
+                className="bg-background/80 border border-border/40 rounded-none px-3 py-2 font-mono text-sm text-foreground focus:outline-none focus:border-gold/50"
+                style={{
+                  clipPath:
+                    'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                }}
               >
                 <option value="all">All Types</option>
                 <option value="sell">Sell Offers</option>
@@ -691,18 +728,25 @@ export default function P2PMarketOffersPage() {
 
         {/* Error Banner */}
         {errorMessage && (
-          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-            <X className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
-            <span className="flex-1">{errorMessage}</span>
+          <div className="mb-6 flex items-start gap-3 border border-crimson/30 bg-crimson/5 px-4 py-3 font-mono text-sm text-crimson">
+            <X className="w-4 h-4 mt-0.5 shrink-0" />
+            <span className="flex-1 tracking-[0.05em]">{errorMessage}</span>
             <button
               onClick={() => setErrorMessage(null)}
-              className="shrink-0 text-red-400 hover:text-red-300 transition-colors"
+              className="shrink-0 text-crimson/60 hover:text-crimson transition-colors"
               aria-label="Dismiss error"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
+
+        {/* Section Marker */}
+        <EvaSectionMarker
+          section={activeTab === 'all' ? 'Open Offers' : 'My Offers'}
+          label={className}
+          variant="crimson"
+        />
 
         {/* Content */}
         {isLoading ? (
@@ -722,6 +766,11 @@ export default function P2PMarketOffersPage() {
         ) : (
           renderEmptyState()
         )}
+
+        {/* Bottom decorative strip */}
+        <div className="mt-8">
+          <GreekKeyStrip color="crimson" />
+        </div>
       </div>
 
       {/* Delivery Details Dialog */}

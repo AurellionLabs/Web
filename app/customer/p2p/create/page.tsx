@@ -9,12 +9,15 @@ import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import type { Asset } from '@/domain/shared';
 import {
-  GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardDescription,
-} from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
+  EvaPanel,
+  TrapButton,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+  EvaDataRow,
+  EvaStatusBadge,
+} from '@/app/components/eva/eva-components';
 import { Input } from '@/app/components/ui/input';
 import {
   ArrowLeft,
@@ -309,13 +312,17 @@ export default function CreateP2POfferPage() {
         <div key={step} className="flex items-center">
           <div
             className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
+              'w-8 h-8 flex items-center justify-center font-mono text-sm font-bold tracking-[0.1em] transition-colors',
               index < currentStepIndex
-                ? 'bg-emerald-500 text-white'
+                ? 'bg-emerald-500/20 text-emerald-400'
                 : index === currentStepIndex
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-neutral-700 text-neutral-400',
+                  ? 'bg-gold/20 text-gold'
+                  : 'bg-card/60 text-foreground/30',
             )}
+            style={{
+              clipPath:
+                'polygon(4px 0, calc(100% - 4px) 0, 100% 50%, calc(100% - 4px) 100%, 4px 100%, 0 50%)',
+            }}
           >
             {index < currentStepIndex ? (
               <Check className="w-4 h-4" />
@@ -326,8 +333,8 @@ export default function CreateP2POfferPage() {
           {index < steps.length - 1 && (
             <div
               className={cn(
-                'w-12 h-0.5 mx-1',
-                index < currentStepIndex ? 'bg-emerald-500' : 'bg-neutral-700',
+                'w-12 h-[2px] mx-1',
+                index < currentStepIndex ? 'bg-emerald-500/50' : 'bg-border/20',
               )}
             />
           )}
@@ -343,10 +350,10 @@ export default function CreateP2POfferPage() {
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
                 What would you like to do?
               </h2>
-              <p className="text-muted-foreground">
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
                 Choose whether you want to buy or sell assets
               </p>
             </div>
@@ -362,22 +369,32 @@ export default function CreateP2POfferPage() {
                     selectedAttributes: {},
                   })
                 }
-                className={cn(
-                  'p-8 rounded-xl border-2 transition-all text-left',
-                  formData.offerType === 'buy'
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-glass-border bg-glass-bg hover:border-blue-500/50',
-                )}
+                className="text-left"
               >
-                <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-4">
-                  <ShoppingCart className="w-8 h-8 text-blue-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  I want to Buy
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Create a buy offer and wait for a seller to accept your terms
-                </p>
+                <EvaPanel
+                  label="Buy"
+                  sysId="BUY-01"
+                  accent="gold"
+                  className={cn(
+                    'transition-all duration-300',
+                    formData.offerType === 'buy'
+                      ? 'ring-1 ring-gold/50'
+                      : 'hover:ring-1 hover:ring-gold/20',
+                  )}
+                >
+                  <div className="py-4">
+                    <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 mx-auto">
+                      <ShoppingCart className="w-8 h-8 text-blue-400" />
+                    </div>
+                    <h3 className="font-mono text-lg font-bold text-foreground tracking-[0.12em] uppercase text-center mb-2">
+                      I want to Buy
+                    </h3>
+                    <p className="font-mono text-xs text-foreground/40 text-center tracking-[0.08em]">
+                      Create a buy offer and wait for a seller to accept your
+                      terms
+                    </p>
+                  </div>
+                </EvaPanel>
               </button>
 
               {/* Sell Option */}
@@ -390,22 +407,32 @@ export default function CreateP2POfferPage() {
                     selectedAttributes: {},
                   })
                 }
-                className={cn(
-                  'p-8 rounded-xl border-2 transition-all text-left',
-                  formData.offerType === 'sell'
-                    ? 'border-emerald-500 bg-emerald-500/10'
-                    : 'border-glass-border bg-glass-bg hover:border-emerald-500/50',
-                )}
+                className="text-left"
               >
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
-                  <Tag className="w-8 h-8 text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  I want to Sell
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Create a sell offer and wait for a buyer to accept your terms
-                </p>
+                <EvaPanel
+                  label="Sell"
+                  sysId="SELL-01"
+                  accent="crimson"
+                  className={cn(
+                    'transition-all duration-300',
+                    formData.offerType === 'sell'
+                      ? 'ring-1 ring-emerald-500/50'
+                      : 'hover:ring-1 hover:ring-emerald-500/20',
+                  )}
+                >
+                  <div className="py-4">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 mx-auto">
+                      <Tag className="w-8 h-8 text-emerald-400" />
+                    </div>
+                    <h3 className="font-mono text-lg font-bold text-foreground tracking-[0.12em] uppercase text-center mb-2">
+                      I want to Sell
+                    </h3>
+                    <p className="font-mono text-xs text-foreground/40 text-center tracking-[0.08em]">
+                      Create a sell offer and wait for a buyer to accept your
+                      terms
+                    </p>
+                  </div>
+                </EvaPanel>
               </button>
             </div>
           </div>
@@ -415,240 +442,266 @@ export default function CreateP2POfferPage() {
         return (
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
                 Select Asset
               </h2>
-              <p className="text-muted-foreground">
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
                 {isSellFlow
                   ? 'Choose from the assets you own'
                   : 'Choose the asset class and then select the specific asset'}
               </p>
             </div>
 
-            <div className="space-y-4">
-              {/* Asset Class Selection */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Asset Class
-                </label>
-                <select
-                  value={formData.assetClass}
-                  onChange={(e) =>
-                    updateFormData({
-                      assetClass: e.target.value,
-                      tokenId: '',
-                      selectedAttributes: {},
-                    })
-                  }
-                  className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
-                >
-                  <option value="">Select an asset class</option>
-                  {(isSellFlow ? ownedAssetClasses : supportedAssetClasses).map(
-                    (assetClass) => (
+            <EvaPanel label="Asset Selection" sysId="AST-SEL">
+              <div className="space-y-4">
+                {/* Asset Class Selection */}
+                <div>
+                  <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                    Asset Class
+                  </label>
+                  <select
+                    value={formData.assetClass}
+                    onChange={(e) =>
+                      updateFormData({
+                        assetClass: e.target.value,
+                        tokenId: '',
+                        selectedAttributes: {},
+                      })
+                    }
+                    className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
+                    style={{
+                      clipPath:
+                        'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                    }}
+                  >
+                    <option value="">Select an asset class</option>
+                    {(isSellFlow
+                      ? ownedAssetClasses
+                      : supportedAssetClasses
+                    ).map((assetClass) => (
                       <option key={assetClass} value={assetClass}>
                         {assetClass}
                       </option>
-                    ),
-                  )}
-                </select>
-                {isSellFlow &&
-                  ownedAssetClasses.length === 0 &&
-                  !isLoadingSellable && (
-                    <p className="text-xs text-amber-400 mt-1">
-                      You don&apos;t own any tokenized assets yet
-                    </p>
-                  )}
-              </div>
-
-              {/* Asset Selection - SELL FLOW: show owned assets with balances */}
-              {isSellFlow ? (
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Your Assets
-                  </label>
-                  {isLoadingSellable ? (
-                    <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Loading your assets...
-                    </div>
-                  ) : !formData.assetClass ? (
-                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
-                      <p>Select an asset class first</p>
-                    </div>
-                  ) : sellableAssets.length === 0 ? (
-                    <div className="p-6 text-center border border-glass-border rounded-lg bg-neutral-800/30">
-                      <Package className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">
-                        No {formData.assetClass} assets in your wallet
+                    ))}
+                  </select>
+                  {isSellFlow &&
+                    ownedAssetClasses.length === 0 &&
+                    !isLoadingSellable && (
+                      <p className="font-mono text-xs text-gold mt-1 tracking-[0.08em]">
+                        You don&apos;t own any tokenized assets yet
                       </p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        Tokenize assets from your node to sell them here
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {sellableAssets.map((asset) => (
-                        <button
-                          key={asset.tokenId}
-                          onClick={() =>
-                            updateFormData({
-                              tokenId: asset.tokenId,
-                              selectedAttributes: {},
-                            })
-                          }
-                          className={cn(
-                            'w-full p-4 rounded-xl border-2 transition-all text-left',
-                            formData.tokenId === asset.tokenId
-                              ? 'border-emerald-500 bg-emerald-500/10'
-                              : 'border-glass-border bg-glass-bg hover:border-emerald-500/50',
-                          )}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {asset.name}
-                              </p>
-                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
-                                {asset.class}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-semibold text-foreground">
-                                {asset.balance}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                available
-                              </p>
-                            </div>
-                          </div>
-                          {/* Show attributes if any */}
-                          {asset.attributes && asset.attributes.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {asset.attributes.map((attr) => (
-                                <span
-                                  key={attr.name}
-                                  className="px-2 py-0.5 rounded-md text-xs bg-neutral-700/60 text-neutral-200"
-                                >
-                                  {formatAttributeName(attr.name)}: {attr.value}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    )}
                 </div>
-              ) : (
-                /* Asset Selection - BUY FLOW: show all tokenizable assets */
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Asset
-                  </label>
-                  {loadingAssets ? (
-                    <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Loading assets...
-                    </div>
-                  ) : !formData.assetClass ? (
-                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
-                      <p>Select an asset class first</p>
-                    </div>
-                  ) : classAssets.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground border border-glass-border rounded-lg bg-neutral-800/30">
-                      <p>No assets found for this class</p>
-                    </div>
-                  ) : (
-                    <select
-                      value={formData.tokenId}
-                      onChange={(e) =>
-                        updateFormData({
-                          tokenId: e.target.value,
-                          selectedAttributes: {},
-                        })
-                      }
-                      className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
-                    >
-                      <option value="">Select an asset</option>
-                      {classAssets.map((asset: any) => (
-                        <option
-                          key={String(asset?.tokenId ?? asset?.tokenID)}
-                          value={String(asset?.tokenId ?? asset?.tokenID)}
-                        >
-                          {asset.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  {selectedAsset && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Token ID: {formData.tokenId}
-                    </p>
-                  )}
-                </div>
-              )}
 
-              {/* Attribute Selection (buy flow only - sell flow shows attributes inline) */}
-              {!isSellFlow &&
-                selectedAsset &&
-                selectedAsset.attributes &&
-                selectedAsset.attributes.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t border-glass-border">
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground mb-1">
-                        Specify Details
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        Select the specific attributes for this asset
-                      </p>
-                    </div>
-                    {selectedAsset.attributes.map((attribute) => {
-                      const hasOptions =
-                        Array.isArray(attribute.values) &&
-                        attribute.values.length > 0;
-                      if (!hasOptions) return null;
-                      return (
-                        <div key={attribute.name}>
-                          <label className="block text-sm font-medium text-foreground mb-2">
-                            {formatAttributeName(attribute.name)}
-                          </label>
-                          <select
-                            value={
-                              formData.selectedAttributes[attribute.name] || ''
-                            }
-                            onChange={(e) =>
+                <EvaScanLine variant="gold" />
+
+                {/* Asset Selection - SELL FLOW: show owned assets with balances */}
+                {isSellFlow ? (
+                  <div>
+                    <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                      Your Assets
+                    </label>
+                    {isLoadingSellable ? (
+                      <div className="p-4 font-mono text-sm text-foreground/40 flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Loading your assets...
+                      </div>
+                    ) : !formData.assetClass ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>Select an asset class first</p>
+                      </div>
+                    ) : sellableAssets.length === 0 ? (
+                      <div className="p-6 text-center border border-border/20 bg-card/40">
+                        <Package className="w-8 h-8 mx-auto mb-2 text-foreground/20" />
+                        <p className="font-mono text-sm text-foreground/40">
+                          No {formData.assetClass} assets in your wallet
+                        </p>
+                        <p className="font-mono text-xs text-foreground/25 mt-1">
+                          Tokenize assets from your node to sell them here
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {sellableAssets.map((asset) => (
+                          <button
+                            key={asset.tokenId}
+                            onClick={() =>
                               updateFormData({
-                                selectedAttributes: {
-                                  ...formData.selectedAttributes,
-                                  [attribute.name]: e.target.value,
-                                },
+                                tokenId: asset.tokenId,
+                                selectedAttributes: {},
                               })
                             }
-                            className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
+                            className={cn(
+                              'w-full p-4 border transition-all text-left',
+                              formData.tokenId === asset.tokenId
+                                ? 'border-emerald-500/50 bg-emerald-500/5'
+                                : 'border-border/20 bg-card/40 hover:border-emerald-500/30',
+                            )}
+                            style={{
+                              clipPath:
+                                'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+                            }}
                           >
-                            <option value="">
-                              Select{' '}
-                              {formatAttributeName(
-                                attribute.name,
-                              ).toLowerCase()}
-                            </option>
-                            {attribute.values.map((val) => (
-                              <option key={val} value={val}>
-                                {val}
-                              </option>
-                            ))}
-                          </select>
-                          {attribute.description && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {attribute.description}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-mono font-bold text-foreground tracking-[0.08em]">
+                                  {asset.name}
+                                </p>
+                                <EvaStatusBadge
+                                  status="active"
+                                  label={asset.class}
+                                />
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono text-lg font-bold text-gold tabular-nums">
+                                  {asset.balance}
+                                </p>
+                                <p className="font-mono text-xs text-foreground/30 tracking-[0.1em] uppercase">
+                                  available
+                                </p>
+                              </div>
+                            </div>
+                            {/* Show attributes if any */}
+                            {asset.attributes &&
+                              asset.attributes.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                  {asset.attributes.map((attr) => (
+                                    <span
+                                      key={attr.name}
+                                      className="px-2 py-0.5 font-mono text-xs bg-card/80 text-foreground/50 border border-border/20"
+                                    >
+                                      {formatAttributeName(attr.name)}:{' '}
+                                      {attr.value}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Asset Selection - BUY FLOW: show all tokenizable assets */
+                  <div>
+                    <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                      Asset
+                    </label>
+                    {loadingAssets ? (
+                      <div className="p-4 font-mono text-sm text-foreground/40 flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Loading assets...
+                      </div>
+                    ) : !formData.assetClass ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>Select an asset class first</p>
+                      </div>
+                    ) : classAssets.length === 0 ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>No assets found for this class</p>
+                      </div>
+                    ) : (
+                      <select
+                        value={formData.tokenId}
+                        onChange={(e) =>
+                          updateFormData({
+                            tokenId: e.target.value,
+                            selectedAttributes: {},
+                          })
+                        }
+                        className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
+                        style={{
+                          clipPath:
+                            'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                        }}
+                      >
+                        <option value="">Select an asset</option>
+                        {classAssets.map((asset: any) => (
+                          <option
+                            key={String(asset?.tokenId ?? asset?.tokenID)}
+                            value={String(asset?.tokenId ?? asset?.tokenID)}
+                          >
+                            {asset.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {selectedAsset && (
+                      <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.08em]">
+                        Token ID: {formData.tokenId}
+                      </p>
+                    )}
                   </div>
                 )}
-            </div>
+
+                {/* Attribute Selection (buy flow only - sell flow shows attributes inline) */}
+                {!isSellFlow &&
+                  selectedAsset &&
+                  selectedAsset.attributes &&
+                  selectedAsset.attributes.length > 0 && (
+                    <div className="space-y-4 pt-4">
+                      <EvaScanLine variant="mixed" />
+                      <div>
+                        <h3 className="font-mono text-xs font-bold text-foreground/50 mb-1 tracking-[0.2em] uppercase">
+                          Specify Details
+                        </h3>
+                        <p className="font-mono text-xs text-foreground/30 tracking-[0.08em]">
+                          Select the specific attributes for this asset
+                        </p>
+                      </div>
+                      {selectedAsset.attributes.map((attribute) => {
+                        const hasOptions =
+                          Array.isArray(attribute.values) &&
+                          attribute.values.length > 0;
+                        if (!hasOptions) return null;
+                        return (
+                          <div key={attribute.name}>
+                            <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                              {formatAttributeName(attribute.name)}
+                            </label>
+                            <select
+                              value={
+                                formData.selectedAttributes[attribute.name] ||
+                                ''
+                              }
+                              onChange={(e) =>
+                                updateFormData({
+                                  selectedAttributes: {
+                                    ...formData.selectedAttributes,
+                                    [attribute.name]: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
+                              style={{
+                                clipPath:
+                                  'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                              }}
+                            >
+                              <option value="">
+                                Select{' '}
+                                {formatAttributeName(
+                                  attribute.name,
+                                ).toLowerCase()}
+                              </option>
+                              {attribute.values.map((val) => (
+                                <option key={val} value={val}>
+                                  {val}
+                                </option>
+                              ))}
+                            </select>
+                            {attribute.description && (
+                              <p className="font-mono text-xs text-foreground/30 mt-1">
+                                {attribute.description}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+              </div>
+            </EvaPanel>
           </div>
         );
 
@@ -656,84 +709,96 @@ export default function CreateP2POfferPage() {
         return (
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
                 Set Terms
               </h2>
-              <p className="text-muted-foreground">
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
                 Enter the quantity and price for your offer
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Quantity
-                </label>
-                <Input
-                  type="number"
-                  placeholder="Enter quantity"
-                  value={formData.quantity}
-                  onChange={(e) => updateFormData({ quantity: e.target.value })}
-                  min="1"
-                  max={
-                    isSellFlow
-                      ? sellableAssets.find(
+            <EvaPanel label="Offer Terms" sysId="TRM-01">
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                    Quantity
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="Enter quantity"
+                    value={formData.quantity}
+                    onChange={(e) =>
+                      updateFormData({ quantity: e.target.value })
+                    }
+                    min="1"
+                    max={
+                      isSellFlow
+                        ? sellableAssets.find(
+                            (a) => a.tokenId === formData.tokenId,
+                          )?.balance
+                        : undefined
+                    }
+                    className="bg-background/80 border-border/40 font-mono rounded-none"
+                  />
+                  {isSellFlow && formData.tokenId && (
+                    <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.08em]">
+                      Available balance:{' '}
+                      <span className="text-gold font-bold">
+                        {sellableAssets.find(
                           (a) => a.tokenId === formData.tokenId,
-                        )?.balance
-                      : undefined
-                  }
-                  className="bg-neutral-800/50"
-                />
-                {isSellFlow && formData.tokenId && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Available balance:{' '}
-                    <span className="text-foreground font-medium">
-                      {sellableAssets.find(
-                        (a) => a.tokenId === formData.tokenId,
-                      )?.balance ?? '0'}
-                    </span>
+                        )?.balance ?? '0'}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <EvaScanLine variant="gold" />
+
+                <div>
+                  <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                    Price (USD)
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="Enter total price"
+                    value={formData.price}
+                    onChange={(e) => updateFormData({ price: e.target.value })}
+                    min="0"
+                    step="0.01"
+                    className="bg-background/80 border-border/40 font-mono rounded-none"
+                  />
+                  <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.08em]">
+                    Total price for all {formData.quantity || '0'} units
                   </p>
-                )}
-              </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Price (USD)
-                </label>
-                <Input
-                  type="number"
-                  placeholder="Enter total price"
-                  value={formData.price}
-                  onChange={(e) => updateFormData({ price: e.target.value })}
-                  min="0"
-                  step="0.01"
-                  className="bg-neutral-800/50"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total price for all {formData.quantity || '0'} units
-                </p>
-              </div>
+                <EvaScanLine variant="gold" />
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Expiry
-                </label>
-                <select
-                  value={formData.expiryHours}
-                  onChange={(e) =>
-                    updateFormData({ expiryHours: e.target.value })
-                  }
-                  className="w-full bg-neutral-800/50 border border-glass-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-amber-500/50"
-                >
-                  <option value="1">1 hour</option>
-                  <option value="6">6 hours</option>
-                  <option value="24">24 hours</option>
-                  <option value="72">3 days</option>
-                  <option value="168">7 days</option>
-                  <option value="0">No expiry</option>
-                </select>
+                <div>
+                  <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                    Expiry
+                  </label>
+                  <select
+                    value={formData.expiryHours}
+                    onChange={(e) =>
+                      updateFormData({ expiryHours: e.target.value })
+                    }
+                    className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
+                    style={{
+                      clipPath:
+                        'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                    }}
+                  >
+                    <option value="1">1 hour</option>
+                    <option value="6">6 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="72">3 days</option>
+                    <option value="168">7 days</option>
+                    <option value="0">No expiry</option>
+                  </select>
+                </div>
               </div>
-            </div>
+            </EvaPanel>
           </div>
         );
 
@@ -741,10 +806,10 @@ export default function CreateP2POfferPage() {
         return (
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
                 Choose a Driver
               </h2>
-              <p className="text-muted-foreground">
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
                 Select who will deliver the physical asset
               </p>
             </div>
@@ -758,27 +823,31 @@ export default function CreateP2POfferPage() {
                     logisticsPartner: '',
                   })
                 }
-                className={cn(
-                  'w-full p-6 rounded-xl border-2 transition-all text-left',
-                  formData.logisticsType === 'network'
-                    ? 'border-amber-500 bg-amber-500/10'
-                    : 'border-glass-border bg-glass-bg hover:border-amber-500/50',
-                )}
+                className="w-full text-left"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
-                    <Globe className="w-6 h-6 text-amber-400" />
+                <EvaPanel
+                  label="Aurellion Network"
+                  sysId="NET-DRV"
+                  accent="gold"
+                  className={cn(
+                    'transition-all duration-300',
+                    formData.logisticsType === 'network'
+                      ? 'ring-1 ring-gold/50'
+                      : 'hover:ring-1 hover:ring-gold/20',
+                  )}
+                >
+                  <div className="flex items-center gap-4 py-2">
+                    <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
+                      <Globe className="w-6 h-6 text-gold" />
+                    </div>
+                    <div>
+                      <p className="font-mono text-sm text-foreground/40 tracking-[0.08em]">
+                        Let any verified driver from our network accept the
+                        delivery
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      Aurellion Network
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Let any verified driver from our network accept the
-                      delivery
-                    </p>
-                  </div>
-                </div>
+                </EvaPanel>
               </button>
 
               {/* Specific Driver Option */}
@@ -789,38 +858,42 @@ export default function CreateP2POfferPage() {
                     logisticsPartner: '',
                   })
                 }
-                className={cn(
-                  'w-full p-6 rounded-xl border-2 transition-all text-left',
-                  formData.logisticsType === 'custom'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-glass-border bg-glass-bg hover:border-purple-500/50',
-                )}
+                className="w-full text-left"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                    <Wallet className="w-6 h-6 text-purple-400" />
+                <EvaPanel
+                  label="Specific Driver"
+                  sysId="CUS-DRV"
+                  accent="crimson"
+                  className={cn(
+                    'transition-all duration-300',
+                    formData.logisticsType === 'custom'
+                      ? 'ring-1 ring-crimson/50'
+                      : 'hover:ring-1 hover:ring-crimson/20',
+                  )}
+                >
+                  <div className="flex items-center gap-4 py-2">
+                    <div className="w-12 h-12 rounded-full bg-crimson/10 flex items-center justify-center">
+                      <Wallet className="w-6 h-6 text-crimson" />
+                    </div>
+                    <div>
+                      <p className="font-mono text-sm text-foreground/40 tracking-[0.08em]">
+                        Assign a specific wallet address as the driver
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      Specific Driver
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Assign a specific wallet address as the driver
-                    </p>
-                  </div>
-                </div>
+                </EvaPanel>
               </button>
 
               {/* Network - No selection needed, any driver can accept */}
               {formData.logisticsType === 'network' && (
-                <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <div className="mt-4 p-4 bg-gold/5 border border-gold/20">
                   <div className="flex items-start gap-3">
-                    <Truck className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm">
-                      <p className="text-amber-400 font-medium mb-1">
+                    <Truck className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-mono text-sm text-gold font-bold mb-1 tracking-[0.08em] uppercase">
                         Open to all network drivers
                       </p>
-                      <p className="text-muted-foreground">
+                      <p className="font-mono text-xs text-foreground/40 tracking-[0.05em]">
                         Any verified driver in the Aurellion network can accept
                         this delivery job. The first driver to accept will be
                         assigned.
@@ -833,7 +906,7 @@ export default function CreateP2POfferPage() {
               {/* Specific Driver Wallet Input */}
               {formData.logisticsType === 'custom' && (
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
                     Driver Wallet Address
                   </label>
                   <Input
@@ -843,15 +916,15 @@ export default function CreateP2POfferPage() {
                     onChange={(e) =>
                       updateFormData({ logisticsPartner: e.target.value })
                     }
-                    className="bg-neutral-800/50"
+                    className="bg-background/80 border-border/40 font-mono rounded-none"
                   />
                   {formData.logisticsPartner &&
                     !isAddress(formData.logisticsPartner) && (
-                      <p className="text-xs text-red-400 mt-1">
+                      <p className="font-mono text-xs text-crimson mt-1">
                         Please enter a valid Ethereum address
                       </p>
                     )}
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.05em]">
                     Only this wallet will be able to accept the delivery job
                   </p>
                 </div>
@@ -864,10 +937,10 @@ export default function CreateP2POfferPage() {
         return (
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
                 Who can accept?
               </h2>
-              <p className="text-muted-foreground">
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
                 Choose if this offer is open to everyone or a specific address
               </p>
             </div>
@@ -876,57 +949,61 @@ export default function CreateP2POfferPage() {
               {/* Public Option */}
               <button
                 onClick={() => updateFormData({ targetType: 'public' })}
-                className={cn(
-                  'w-full p-6 rounded-xl border-2 transition-all text-left',
-                  formData.targetType === 'public'
-                    ? 'border-amber-500 bg-amber-500/10'
-                    : 'border-glass-border bg-glass-bg hover:border-amber-500/50',
-                )}
+                className="w-full text-left"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
-                    <ShoppingCart className="w-6 h-6 text-amber-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      Public Offer
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
+                <EvaPanel
+                  label="Public Offer"
+                  sysId="PUB-01"
+                  accent="gold"
+                  className={cn(
+                    'transition-all duration-300',
+                    formData.targetType === 'public'
+                      ? 'ring-1 ring-gold/50'
+                      : 'hover:ring-1 hover:ring-gold/20',
+                  )}
+                >
+                  <div className="flex items-center gap-4 py-2">
+                    <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
+                      <ShoppingCart className="w-6 h-6 text-gold" />
+                    </div>
+                    <p className="font-mono text-sm text-foreground/40 tracking-[0.08em]">
                       Anyone can accept this offer
                     </p>
                   </div>
-                </div>
+                </EvaPanel>
               </button>
 
               {/* Targeted Option */}
               <button
                 onClick={() => updateFormData({ targetType: 'targeted' })}
-                className={cn(
-                  'w-full p-6 rounded-xl border-2 transition-all text-left',
-                  formData.targetType === 'targeted'
-                    ? 'border-amber-500 bg-amber-500/10'
-                    : 'border-glass-border bg-glass-bg hover:border-amber-500/50',
-                )}
+                className="w-full text-left"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                    <User className="w-6 h-6 text-purple-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      Targeted Offer
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
+                <EvaPanel
+                  label="Targeted Offer"
+                  sysId="TGT-01"
+                  accent="crimson"
+                  className={cn(
+                    'transition-all duration-300',
+                    formData.targetType === 'targeted'
+                      ? 'ring-1 ring-crimson/50'
+                      : 'hover:ring-1 hover:ring-crimson/20',
+                  )}
+                >
+                  <div className="flex items-center gap-4 py-2">
+                    <div className="w-12 h-12 rounded-full bg-crimson/10 flex items-center justify-center">
+                      <User className="w-6 h-6 text-crimson" />
+                    </div>
+                    <p className="font-mono text-sm text-foreground/40 tracking-[0.08em]">
                       Only a specific address can accept
                     </p>
                   </div>
-                </div>
+                </EvaPanel>
               </button>
 
               {/* Target Address Input */}
               {formData.targetType === 'targeted' && (
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
                     Target Address
                   </label>
                   <Input
@@ -936,11 +1013,11 @@ export default function CreateP2POfferPage() {
                     onChange={(e) =>
                       updateFormData({ targetAddress: e.target.value })
                     }
-                    className="bg-neutral-800/50"
+                    className="bg-background/80 border-border/40 font-mono rounded-none"
                   />
                   {formData.targetAddress &&
                     !isAddress(formData.targetAddress) && (
-                      <p className="text-xs text-red-400 mt-1">
+                      <p className="font-mono text-xs text-crimson mt-1">
                         Please enter a valid Ethereum address
                       </p>
                     )}
@@ -954,43 +1031,44 @@ export default function CreateP2POfferPage() {
         return (
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
                 Review Your Offer
               </h2>
-              <p className="text-muted-foreground">
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
                 Please review the details before submitting
               </p>
             </div>
 
-            <GlassCard>
-              <div className="p-6 space-y-4">
+            <EvaPanel label="Offer Summary" sysId="REV-01" status="pending">
+              <div className="space-y-1">
                 {/* Offer Type */}
-                <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Offer Type</span>
-                  <span
-                    className={cn(
-                      'px-3 py-1 rounded-full text-sm font-medium',
-                      formData.offerType === 'sell'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-blue-500/20 text-blue-400',
-                    )}
-                  >
-                    {formData.offerType === 'sell' ? 'SELL' : 'BUY'}
+                <div className="flex items-center justify-between py-3 border-b border-border/10">
+                  <span className="font-mono text-sm text-foreground/50">
+                    Offer Type
                   </span>
+                  <EvaStatusBadge
+                    status={
+                      formData.offerType === 'sell' ? 'active' : 'processing'
+                    }
+                    label={formData.offerType === 'sell' ? 'SELL' : 'BUY'}
+                  />
                 </div>
 
                 {/* Asset */}
-                <div className="py-3 border-b border-glass-border">
+                <div className="py-3 border-b border-border/10">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Asset</span>
+                    <span className="font-mono text-sm text-foreground/50">
+                      Asset
+                    </span>
                     <div className="text-right flex items-center gap-2">
-                      <span className="text-foreground font-medium">
+                      <span className="font-mono text-sm font-bold text-foreground">
                         {selectedAsset?.name || formData.assetClass}
                       </span>
                       {formData.assetClass && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
-                          {formData.assetClass}
-                        </span>
+                        <EvaStatusBadge
+                          status="pending"
+                          label={formData.assetClass}
+                        />
                       )}
                     </div>
                   </div>
@@ -1001,7 +1079,7 @@ export default function CreateP2POfferPage() {
                         ([name, value]) => (
                           <span
                             key={name}
-                            className="px-2 py-1 rounded-md text-xs bg-neutral-700/60 text-neutral-200"
+                            className="px-2 py-1 font-mono text-xs bg-card/80 text-foreground/50 border border-border/20"
                           >
                             {formatAttributeName(name)}: {value}
                           </span>
@@ -1009,39 +1087,29 @@ export default function CreateP2POfferPage() {
                       )}
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1 text-right">
+                  <p className="font-mono text-xs text-foreground/25 mt-1 text-right tracking-[0.05em]">
                     Token ID: {formData.tokenId}
                   </p>
                 </div>
 
-                {/* Quantity */}
-                <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Quantity</span>
-                  <span className="text-foreground font-medium">
-                    {formData.quantity}
-                  </span>
-                </div>
-
-                {/* Price */}
-                <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Price</span>
-                  <span className="text-amber-400 font-medium">
-                    ${parseFloat(formData.price).toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Fee */}
-                <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Fee (2%)</span>
-                  <span className="text-foreground font-medium">
-                    ${(parseFloat(formData.price) * 0.02).toLocaleString()}
-                  </span>
-                </div>
+                <EvaDataRow label="Quantity" value={formData.quantity} />
+                <EvaDataRow
+                  label="Price"
+                  value={`$${parseFloat(formData.price).toLocaleString()}`}
+                  valueColor="gold"
+                />
+                <EvaDataRow
+                  label="Fee (2%)"
+                  value={`$${(parseFloat(formData.price) * 0.02).toLocaleString()}`}
+                  valueColor="crimson"
+                />
 
                 {/* Expiry */}
-                <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Expiry</span>
-                  <span className="text-foreground font-medium flex items-center gap-2">
+                <div className="flex items-center justify-between py-2.5 border-b border-border/10">
+                  <span className="font-mono text-sm text-foreground/50">
+                    Expiry
+                  </span>
+                  <span className="font-mono text-sm font-bold text-foreground flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     {formData.expiryHours === '0'
                       ? 'No expiry'
@@ -1050,10 +1118,12 @@ export default function CreateP2POfferPage() {
                 </div>
 
                 {/* Driver */}
-                <div className="flex items-center justify-between py-3 border-b border-glass-border">
-                  <span className="text-muted-foreground">Driver</span>
+                <div className="flex items-center justify-between py-2.5 border-b border-border/10">
+                  <span className="font-mono text-sm text-foreground/50">
+                    Driver
+                  </span>
                   <div className="text-right">
-                    <span className="text-foreground font-medium flex items-center gap-2 justify-end">
+                    <span className="font-mono text-sm font-bold text-foreground flex items-center gap-2 justify-end">
                       <Truck className="w-4 h-4" />
                       {formData.logisticsType === 'network'
                         ? 'Any Network Driver'
@@ -1061,7 +1131,7 @@ export default function CreateP2POfferPage() {
                     </span>
                     {formData.logisticsType === 'custom' &&
                       formData.logisticsPartner && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="font-mono text-xs text-foreground/30">
                           {formData.logisticsPartner.slice(0, 6)}...
                           {formData.logisticsPartner.slice(-4)}
                         </span>
@@ -1070,27 +1140,29 @@ export default function CreateP2POfferPage() {
                 </div>
 
                 {/* Target */}
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-muted-foreground">Target</span>
-                  <span className="text-foreground font-medium">
+                <div className="flex items-center justify-between py-2.5">
+                  <span className="font-mono text-sm text-foreground/50">
+                    Target
+                  </span>
+                  <span className="font-mono text-sm font-bold text-foreground">
                     {formData.targetType === 'public'
                       ? 'Public (anyone)'
                       : `${formData.targetAddress.slice(0, 6)}...${formData.targetAddress.slice(-4)}`}
                   </span>
                 </div>
               </div>
-            </GlassCard>
+            </EvaPanel>
 
             {/* Warning */}
-            <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="text-amber-400 font-medium mb-1">
+            <div className="flex items-start gap-3 p-4 bg-gold/5 border border-gold/20">
+              <AlertCircle className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-mono text-sm text-gold font-bold mb-1 tracking-[0.08em] uppercase">
                   {formData.offerType === 'sell'
                     ? 'Your tokens will be escrowed'
                     : 'Your payment will be escrowed'}
                 </p>
-                <p className="text-muted-foreground">
+                <p className="font-mono text-xs text-foreground/40 tracking-[0.05em]">
                   {formData.offerType === 'sell'
                     ? `${formData.quantity} tokens will be held in escrow until the offer is accepted or canceled.`
                     : `$${(parseFloat(formData.price) * 1.02).toLocaleString()} (including fee) will be held in escrow until the offer is accepted or canceled.`}
@@ -1100,9 +1172,9 @@ export default function CreateP2POfferPage() {
 
             {/* Error */}
             {error && (
-              <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-400">{error}</p>
+              <div className="flex items-start gap-3 p-4 bg-crimson/5 border border-crimson/30">
+                <AlertCircle className="w-5 h-5 text-crimson flex-shrink-0 mt-0.5" />
+                <p className="font-mono text-sm text-crimson">{error}</p>
               </div>
             )}
           </div>
@@ -1116,64 +1188,86 @@ export default function CreateP2POfferPage() {
   return (
     <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
+        {/* Decorative top strip */}
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 mt-6">
           <button
             onClick={goBack}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="flex items-center gap-2 font-mono text-sm text-foreground/40 hover:text-foreground transition-colors mb-4 tracking-[0.1em] uppercase"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <h1 className="text-3xl font-display font-bold text-foreground">
-            Create P2P Offer
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Create a new peer-to-peer trade offer
-          </p>
+          <div className="flex items-center gap-3">
+            <LaurelAccent side="left" />
+            <div>
+              <h1 className="font-serif text-3xl font-bold text-foreground tracking-[0.15em] uppercase">
+                Create P2P Offer
+              </h1>
+              <p className="font-mono text-sm text-foreground/40 mt-1 tracking-[0.1em] uppercase">
+                Create a new peer-to-peer trade offer
+              </p>
+            </div>
+            <LaurelAccent side="right" />
+          </div>
         </div>
 
+        <EvaScanLine variant="mixed" />
+
         {/* Step Indicator */}
-        {renderStepIndicator()}
+        <div className="mt-6">{renderStepIndicator()}</div>
 
         {/* Step Content */}
         <div className="mb-8">{renderStepContent()}</div>
 
         {/* Navigation */}
         <div className="flex items-center justify-between max-w-xl mx-auto">
-          <GlowButton variant="secondary" onClick={goBack}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </GlowButton>
+          <TrapButton variant="crimson" onClick={goBack}>
+            <span className="flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </span>
+          </TrapButton>
 
           {currentStep === 'review' ? (
-            <GlowButton
-              variant="primary"
+            <TrapButton
+              variant="emerald"
               onClick={handleSubmit}
               disabled={isSubmitting || !connected}
             >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Create Offer
-                </>
-              )}
-            </GlowButton>
+              <span className="flex items-center gap-2">
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Create Offer
+                  </>
+                )}
+              </span>
+            </TrapButton>
           ) : (
-            <GlowButton
-              variant="primary"
+            <TrapButton
+              variant="gold"
               onClick={goNext}
               disabled={!canProceed()}
             >
-              Next
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </GlowButton>
+              <span className="flex items-center gap-2">
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </span>
+            </TrapButton>
           )}
+        </div>
+
+        {/* Bottom decorative strip */}
+        <div className="mt-8">
+          <GreekKeyStrip color="crimson" />
         </div>
       </div>
     </div>

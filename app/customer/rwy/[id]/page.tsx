@@ -19,15 +19,16 @@ import { OpportunityProgress } from '@/app/components/rwy/opportunity-progress';
 import { StakeForm } from '@/app/components/rwy/stake-form';
 import { OperatorReputation } from '@/app/components/rwy/operator-reputation';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
+  EvaPanel,
+  EvaStatusBadge,
+  EvaProgress,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
+import { ATFieldGauge } from '@/app/components/eva/eva-animations';
 import { Button } from '@/app/components/ui/button';
-import { Progress } from '@/app/components/ui/progress';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Separator } from '@/app/components/ui/separator';
 import {
@@ -63,8 +64,10 @@ export default function RWYOpportunityDetailPage() {
       <div className="container mx-auto py-8 px-4">
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-semibold">Opportunity Not Found</h2>
-          <p className="text-muted-foreground mt-2">
+          <h2 className="font-mono text-xl font-bold tracking-[0.15em] uppercase">
+            Opportunity Not Found
+          </h2>
+          <p className="text-foreground/40 font-mono text-sm mt-2">
             {error || 'This opportunity does not exist.'}
           </p>
           <Link href="/customer/rwy">
@@ -91,21 +94,35 @@ export default function RWYOpportunityDetailPage() {
         </Button>
       </Link>
 
+      {/* Greek Key Strip */}
+      <GreekKeyStrip color="gold" />
+
       {/* Header */}
       <div className="flex flex-col lg:flex-row gap-6 justify-between">
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <EvaSectionMarker
+            section="RWY Detail"
+            label={`OPP-${opportunityId.slice(0, 8)}`}
+          />
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">{opportunity.name}</h1>
-            <Badge
-              variant={
-                isActive ? 'default' : isCancelled ? 'destructive' : 'secondary'
+            <LaurelAccent side="left" />
+            <h1 className="font-serif text-3xl font-bold tracking-[0.15em] uppercase">
+              {opportunity.name}
+            </h1>
+            <EvaStatusBadge
+              status={
+                isActive
+                  ? 'active'
+                  : isCancelled
+                    ? 'pending'
+                    : opportunity.status === RWYOpportunityStatus.COMPLETED
+                      ? 'completed'
+                      : 'processing'
               }
-              className="text-sm"
-            >
-              {RWYStatusLabels[opportunity.status]}
-            </Badge>
+              label={RWYStatusLabels[opportunity.status]}
+            />
           </div>
-          <p className="text-muted-foreground max-w-2xl">
+          <p className="text-foreground/50 font-mono text-sm tracking-[0.06em] max-w-2xl">
             {opportunity.description}
           </p>
         </div>
@@ -114,57 +131,60 @@ export default function RWYOpportunityDetailPage() {
         <div className="flex gap-4">
           <div className="text-center p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
             <TrendingUp className="h-6 w-6 text-emerald-500 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-emerald-500">
+            <p className="text-2xl font-bold font-mono tabular-nums text-emerald-500">
               {bpsToPercent(opportunity.promisedYieldBps)}
             </p>
-            <p className="text-xs text-muted-foreground">Promised Yield</p>
+            <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+              Promised Yield
+            </p>
           </div>
           <div className="text-center p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
             <Clock className="h-6 w-6 text-blue-500 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-blue-500">
+            <p className="text-2xl font-bold font-mono tabular-nums text-blue-500">
               {isActive
                 ? formatTimeRemaining(opportunity.timeToFundingDeadline)
                 : 'N/A'}
             </p>
-            <p className="text-xs text-muted-foreground">Time Left</p>
+            <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+              Time Left
+            </p>
           </div>
         </div>
       </div>
 
+      <EvaScanLine variant="mixed" />
+
       {/* Progress Tracker */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Opportunity Progress</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <OpportunityProgress currentStatus={opportunity.status} />
-        </CardContent>
-      </Card>
+      <EvaPanel label="Opportunity Progress" sysId="PROG-01">
+        <OpportunityProgress currentStatus={opportunity.status} />
+      </EvaPanel>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Funding Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5 text-primary" />
-                Funding Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <EvaPanel
+            label="Funding Progress"
+            sysId="FUND-01"
+            status={isActive ? 'active' : 'pending'}
+          >
+            <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="font-medium">
+                  <span className="text-foreground/40 font-mono tracking-[0.1em] uppercase text-xs">
+                    Progress
+                  </span>
+                  <span className="font-mono font-bold text-gold tabular-nums">
                     {opportunity.formattedProgress}
                   </span>
                 </div>
-                <Progress value={opportunity.fundingProgress} className="h-3" />
+                <EvaProgress value={opportunity.fundingProgress} color="gold" />
                 <div className="flex justify-between text-sm">
-                  <span>{opportunity.formattedTVL} raised</span>
-                  <span className="text-muted-foreground">
+                  <span className="font-mono text-sm">
+                    {opportunity.formattedTVL} raised
+                  </span>
+                  <span className="text-foreground/40 font-mono text-sm">
                     {opportunity.formattedGoal} goal
                   </span>
                 </div>
@@ -174,123 +194,115 @@ export default function RWYOpportunityDetailPage() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Stakers</p>
-                  <p className="text-xl font-semibold flex items-center gap-2">
+                  <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+                    Stakers
+                  </p>
+                  <p className="text-xl font-bold font-mono tabular-nums flex items-center gap-2">
                     <Users className="h-4 w-4 text-purple-500" />
                     {opportunity.stakerCount}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Est. APY</p>
-                  <p className="text-xl font-semibold text-amber-500">
+                  <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+                    Est. APY
+                  </p>
+                  <p className="text-xl font-bold font-mono tabular-nums text-amber-500">
                     {opportunity.estimatedAPY.toFixed(1)}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Operator Fee</p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
+                    Operator Fee
+                  </p>
+                  <p className="text-xl font-bold font-mono tabular-nums">
                     {bpsToPercent(opportunity.operatorFeeBps)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs font-mono tracking-[0.15em] uppercase text-foreground/40">
                     Min Sale Price
                   </p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-xl font-bold font-mono tabular-nums">
                     {ethers.formatUnits(opportunity.minSalePrice, 18)} AURUM
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </EvaPanel>
+
+          {/* AT Field Gauge — Funding Progress Visualization */}
+          <ATFieldGauge label="Funding Progress" />
 
           {/* Commodity Flow */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-primary" />
-                Commodity Processing Flow
-              </CardTitle>
-              <CardDescription>
-                How your staked commodities will be processed
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-muted/50 via-primary/5 to-muted/50">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
-                    <Package className="h-8 w-8 text-primary" />
-                  </div>
-                  <p className="font-medium">
-                    {opportunity.inputTokenName || 'Input Commodity'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Token ID: {opportunity.inputTokenId}
-                  </p>
+          <EvaPanel
+            label="Commodity Processing Flow"
+            sublabel="How your staked commodities will be processed"
+            sysId="FLOW-01"
+          >
+            <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-muted/50 via-primary/5 to-muted/50">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                  <Package className="h-8 w-8 text-primary" />
                 </div>
+                <p className="font-mono font-bold tracking-[0.08em] uppercase text-sm">
+                  {opportunity.inputTokenName || 'Input Commodity'}
+                </p>
+                <p className="text-xs font-mono text-foreground/40 tracking-wide">
+                  Token ID: {opportunity.inputTokenId}
+                </p>
+              </div>
 
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="flex items-center gap-2 px-4">
-                    <div className="h-0.5 w-8 bg-primary/30" />
-                    <ArrowRight className="h-6 w-6 text-primary" />
-                    <div className="h-0.5 w-8 bg-primary/30" />
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-2">
-                    <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                  </div>
-                  <p className="font-medium">
-                    {opportunity.outputTokenName || 'Processed Output'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Expected:{' '}
-                    {ethers.formatUnits(opportunity.expectedOutputAmount, 18)}{' '}
-                    units
-                  </p>
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex items-center gap-2 px-4">
+                  <div className="h-0.5 w-8 bg-primary/30" />
+                  <ArrowRight className="h-6 w-6 text-primary" />
+                  <div className="h-0.5 w-8 bg-primary/30" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-2">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                </div>
+                <p className="font-mono font-bold tracking-[0.08em] uppercase text-sm">
+                  {opportunity.outputTokenName || 'Processed Output'}
+                </p>
+                <p className="text-xs font-mono text-foreground/40 tracking-wide">
+                  Expected:{' '}
+                  {ethers.formatUnits(opportunity.expectedOutputAmount, 18)}{' '}
+                  units
+                </p>
+              </div>
+            </div>
+          </EvaPanel>
 
           {/* Stakers List */}
           {stakers.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Stakers ({stakers.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {stakers.map((stake, index) => (
-                    <div
-                      key={stake.staker}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground">
-                          #{index + 1}
-                        </span>
-                        <span className="font-mono text-sm">
-                          {stake.staker.slice(0, 6)}...{stake.staker.slice(-4)}
-                        </span>
-                        {stake.claimed && (
-                          <Badge variant="outline" className="text-emerald-500">
-                            Claimed
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="font-medium">
-                        {ethers.formatUnits(stake.amount, 18)} tokens
+            <EvaPanel label={`Stakers (${stakers.length})`} sysId="STK-01">
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {stakers.map((stake, index) => (
+                  <div
+                    key={stake.staker}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-mono text-foreground/40 tabular-nums">
+                        #{index + 1}
                       </span>
+                      <span className="font-mono text-sm tracking-wide">
+                        {stake.staker.slice(0, 6)}...{stake.staker.slice(-4)}
+                      </span>
+                      {stake.claimed && (
+                        <EvaStatusBadge status="completed" label="Claimed" />
+                      )}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <span className="font-mono font-bold text-sm tabular-nums">
+                      {ethers.formatUnits(stake.amount, 18)} tokens
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </EvaPanel>
           )}
         </div>
 
@@ -308,50 +320,48 @@ export default function RWYOpportunityDetailPage() {
           <OperatorReputation operatorAddress={opportunity.operator} />
 
           {/* Collateral Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Security</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <EvaPanel label="Security" sysId="SEC-01">
+            <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-mono text-foreground/40 tracking-[0.08em]">
                   Operator Collateral
                 </span>
-                <span className="font-medium">
+                <span className="font-mono font-bold text-sm tabular-nums">
                   {ethers.formatEther(opportunity.operatorCollateral)} ETH
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-mono text-foreground/40 tracking-[0.08em]">
                   Collateral Ratio
                 </span>
-                <span className="font-medium">20%</span>
+                <span className="font-mono font-bold text-sm tabular-nums">
+                  20%
+                </span>
               </div>
               <Separator />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs font-mono text-foreground/30 tracking-wide">
                 Operator collateral is locked and can be slashed if obligations
                 are not met.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </EvaPanel>
 
           {/* Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Timeline</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <EvaPanel label="Timeline" sysId="TIME-01">
+            <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Created</span>
-                <span className="text-sm">
+                <span className="text-sm font-mono text-foreground/40 tracking-[0.08em]">
+                  Created
+                </span>
+                <span className="text-sm font-mono tabular-nums">
                   {new Date(opportunity.createdAt * 1000).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-mono text-foreground/40 tracking-[0.08em]">
                   Funding Deadline
                 </span>
-                <span className="text-sm">
+                <span className="text-sm font-mono tabular-nums">
                   {new Date(
                     opportunity.fundingDeadline * 1000,
                   ).toLocaleDateString()}
@@ -359,18 +369,20 @@ export default function RWYOpportunityDetailPage() {
               </div>
               {opportunity.fundedAt && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Funded</span>
-                  <span className="text-sm">
+                  <span className="text-sm font-mono text-foreground/40 tracking-[0.08em]">
+                    Funded
+                  </span>
+                  <span className="text-sm font-mono tabular-nums">
                     {new Date(opportunity.fundedAt * 1000).toLocaleDateString()}
                   </span>
                 </div>
               )}
               {opportunity.processingDeadline > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm font-mono text-foreground/40 tracking-[0.08em]">
                     Processing Deadline
                   </span>
-                  <span className="text-sm">
+                  <span className="text-sm font-mono tabular-nums">
                     {new Date(
                       opportunity.processingDeadline * 1000,
                     ).toLocaleDateString()}
@@ -379,20 +391,22 @@ export default function RWYOpportunityDetailPage() {
               )}
               {opportunity.completedAt && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm font-mono text-foreground/40 tracking-[0.08em]">
                     Completed
                   </span>
-                  <span className="text-sm">
+                  <span className="text-sm font-mono tabular-nums">
                     {new Date(
                       opportunity.completedAt * 1000,
                     ).toLocaleDateString()}
                   </span>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </EvaPanel>
         </div>
       </div>
+
+      <GreekKeyStrip color="gold" />
     </div>
   );
 }

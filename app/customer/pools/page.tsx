@@ -13,10 +13,17 @@ import {
   Filter,
 } from 'lucide-react';
 import { PoolTable } from '@/app/components/ui/pool-table';
-import { GlassCard } from '@/app/components/ui/glass-card';
-import { GlowButton } from '@/app/components/ui/glow-button';
-import { AnimatedNumber } from '@/app/components/ui/animated-number';
-import { StatusBadge } from '@/app/components/ui/status-badge';
+import {
+  EvaPanel,
+  HexStatCard,
+  TrapButton,
+  EvaButton,
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
 import { useEffect, useState, useMemo } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
@@ -25,73 +32,7 @@ import { formatTokenAmount } from '@/lib/formatters';
 import { Pool } from '@/domain/pool';
 
 /**
- * StatCard - Protocol stat card component
- */
-interface StatCardProps {
-  title: string;
-  value: number;
-  prefix?: string;
-  suffix?: string;
-  icon: React.ElementType;
-  iconColor: string;
-  description?: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  prefix,
-  suffix,
-  icon: Icon,
-  iconColor,
-  description,
-}) => (
-  <GlassCard hover className="relative overflow-hidden">
-    {/* Background glow */}
-    <div
-      className={cn(
-        'absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20',
-        iconColor,
-      )}
-    />
-
-    <div className="relative">
-      <div className="flex items-center justify-between mb-4">
-        <div
-          className={cn(
-            'p-2 rounded-lg',
-            iconColor.replace('bg-', 'bg-') + '/10',
-          )}
-        >
-          <Icon className={cn('w-5 h-5', iconColor.replace('bg-', 'text-'))} />
-        </div>
-        <StatusBadge status="live" size="sm" />
-      </div>
-
-      <p className="text-sm text-neutral-400 mb-1">{title}</p>
-      <div className="flex items-baseline gap-1">
-        {prefix && (
-          <span className="text-2xl font-semibold text-white">{prefix}</span>
-        )}
-        <AnimatedNumber
-          value={value}
-          precision={value >= 1000 ? 0 : 1}
-          size="lg"
-          className="text-white"
-        />
-        {suffix && (
-          <span className="text-lg text-neutral-400 ml-1">{suffix}</span>
-        )}
-      </div>
-      {description && (
-        <p className="text-xs text-neutral-500 mt-2">{description}</p>
-      )}
-    </div>
-  </GlassCard>
-);
-
-/**
- * PoolsPage - Yield pools page with protocol aesthetic
+ * PoolsPage - Yield pools page with EVA protocol aesthetic
  */
 type FilterType = 'all' | 'insured' | 'collateralized' | 'no-collateral';
 
@@ -209,132 +150,145 @@ export default function PoolsPage() {
   return (
     <div className="min-h-screen p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-white">Yield Pools</h1>
-            <p className="text-sm text-neutral-400 mt-1">
-              Earn yield on your real-world asset positions
-            </p>
+          <div className="flex items-center gap-3">
+            <LaurelAccent side="left" />
+            <div>
+              <h1 className="font-mono text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
+                Yield Pools
+              </h1>
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.08em] mt-1">
+                Earn yield on your real-world asset positions
+              </p>
+            </div>
+            <LaurelAccent side="right" />
           </div>
           <div className="flex items-center gap-3">
-            <GlowButton
-              variant="outline"
+            <EvaStatusBadge status="active" label="LIVE" />
+            <TrapButton
+              variant="crimson"
+              size="sm"
               onClick={handleRefresh}
-              loading={isRefreshing}
-              leftIcon={<RefreshCw className="w-4 h-4" />}
+              disabled={isRefreshing}
             >
-              Refresh
-            </GlowButton>
+              <RefreshCw
+                className={cn(
+                  'w-3.5 h-3.5 inline mr-1.5',
+                  isRefreshing && 'animate-spin',
+                )}
+              />
+              {isRefreshing ? 'Refreshing' : 'Refresh'}
+            </TrapButton>
             <Link href="/customer/pools/create-pool">
-              <GlowButton
-                variant="primary"
-                leftIcon={<Plus className="w-4 h-4" />}
-              >
+              <TrapButton variant="gold">
+                <Plus className="w-3.5 h-3.5 inline mr-1.5" />
                 Create Pool
-              </GlowButton>
+              </TrapButton>
             </Link>
           </div>
         </div>
 
+        <EvaSectionMarker section="Protocol Stats" variant="gold" />
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            title="Total Value Locked"
-            value={totalTvl}
-            prefix="$"
-            icon={Droplets}
-            iconColor="bg-amber-500"
-            description="Across all pools"
+          <HexStatCard
+            label="Total Value Locked"
+            value={`$${totalTvl.toLocaleString(undefined, { maximumFractionDigits: totalTvl >= 1000 ? 0 : 1 })}`}
+            sub="Across all pools"
+            color="gold"
+            powerLevel={
+              totalTvl > 0 ? Math.min(10, Math.ceil(totalTvl / 10000) || 1) : 0
+            }
           />
-          <StatCard
-            title="24h Volume"
-            value={totalVolume}
-            prefix="$"
-            icon={TrendingUp}
-            iconColor="bg-green-500"
-            description="Last 24 hours"
+          <HexStatCard
+            label="24h Volume"
+            value={`$${totalVolume.toLocaleString(undefined, { maximumFractionDigits: totalVolume >= 1000 ? 0 : 1 })}`}
+            sub="Last 24 hours"
+            color="emerald"
+            powerLevel={
+              totalVolume > 0
+                ? Math.min(10, Math.ceil(totalVolume / 5000) || 1)
+                : 0
+            }
           />
-          <StatCard
-            title="Average APY"
-            value={avgApy}
-            suffix="%"
-            icon={Zap}
-            iconColor="bg-purple-500"
-            description="Weighted by TVL"
+          <HexStatCard
+            label="Average APY"
+            value={`${avgApy.toFixed(1)}%`}
+            sub="Weighted by TVL"
+            color="crimson"
+            powerLevel={
+              avgApy > 0 ? Math.min(10, Math.ceil(avgApy / 3) || 1) : 0
+            }
           />
         </div>
 
+        <EvaScanLine variant="mixed" />
+
         {/* Pool Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 text-sm text-neutral-400 mr-2">
+          <div className="flex items-center gap-2 font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase mr-2">
             <Filter className="w-4 h-4" />
             <span>Filter:</span>
           </div>
-          <button
+          <EvaButton
+            variant="gold"
+            size="sm"
+            active={activeFilter === 'all'}
             onClick={() => setActiveFilter('all')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-              activeFilter === 'all'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
-            )}
           >
             All Pools ({pools?.length || 0})
-          </button>
-          <button
+          </EvaButton>
+          <EvaButton
+            variant="emerald"
+            size="sm"
+            active={activeFilter === 'insured'}
             onClick={() => setActiveFilter('insured')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5',
-              activeFilter === 'insured'
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
-            )}
           >
-            <Shield className="w-3.5 h-3.5" />
+            <Shield className="w-3.5 h-3.5 inline mr-1" />
             Insured ({poolCounts.insured})
-          </button>
-          <button
+          </EvaButton>
+          <EvaButton
+            variant="gold"
+            size="sm"
+            active={activeFilter === 'collateralized'}
             onClick={() => setActiveFilter('collateralized')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5',
-              activeFilter === 'collateralized'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
-            )}
           >
-            <Coins className="w-3.5 h-3.5" />
-            Collateralized ({poolCounts.collateralized})
-          </button>
-          <button
+            <Coins className="w-3.5 h-3.5 inline mr-1" />
+            Collateral ({poolCounts.collateralized})
+          </EvaButton>
+          <EvaButton
+            variant="crimson"
+            size="sm"
+            active={activeFilter === 'no-collateral'}
             onClick={() => setActiveFilter('no-collateral')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-              activeFilter === 'no-collateral'
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 border border-transparent',
-            )}
           >
             No Collateral ({poolCounts.noCollateral})
-          </button>
+          </EvaButton>
         </div>
 
         {/* Pools section */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">
-              {activeFilter === 'all'
-                ? 'All Pools'
-                : activeFilter === 'insured'
-                  ? 'Insured Pools'
-                  : activeFilter === 'collateralized'
-                    ? 'Collateralized Pools'
-                    : 'Pools Without Collateral'}
-            </h2>
+            <EvaSectionMarker
+              section={
+                activeFilter === 'all'
+                  ? 'All Pools'
+                  : activeFilter === 'insured'
+                    ? 'Insured Pools'
+                    : activeFilter === 'collateralized'
+                      ? 'Collateralized Pools'
+                      : 'No Collateral'
+              }
+              variant="crimson"
+            />
             {activeFilter !== 'all' && (
               <button
                 onClick={() => setActiveFilter('all')}
-                className="text-sm text-neutral-400 hover:text-white transition-colors"
+                className="font-mono text-xs text-foreground/40 hover:text-foreground tracking-[0.1em] uppercase transition-colors"
               >
                 Clear filter
               </button>
@@ -342,24 +296,35 @@ export default function PoolsPage() {
           </div>
 
           {loading && (
-            <GlassCard className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4">
-                <RefreshCw className="w-8 h-8 text-amber-500 animate-spin" />
-                <span className="text-neutral-400">Loading pools...</span>
+            <EvaPanel label="Loading" sysId="POOL-LOAD" status="pending">
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <RefreshCw className="w-8 h-8 text-gold animate-spin" />
+                  <span className="font-mono text-sm text-foreground/40 tracking-[0.1em] uppercase">
+                    Loading pools...
+                  </span>
+                </div>
               </div>
-            </GlassCard>
+            </EvaPanel>
           )}
 
           {error && (
-            <GlassCard className="border-red-500/30">
-              <h3 className="text-lg font-semibold text-red-400 mb-2">
+            <EvaPanel
+              label="Error"
+              sysId="ERR-01"
+              status="warning"
+              accent="crimson"
+            >
+              <h3 className="font-mono text-lg font-bold text-crimson tracking-[0.1em] uppercase mb-2">
                 Error Loading Pools
               </h3>
-              <p className="text-neutral-400 mb-4">{error.message}</p>
-              <GlowButton variant="outline" onClick={handleRefresh}>
+              <p className="font-mono text-sm text-foreground/40 mb-4">
+                {error.message}
+              </p>
+              <TrapButton variant="crimson" size="sm" onClick={handleRefresh}>
                 Try Again
-              </GlowButton>
-            </GlassCard>
+              </TrapButton>
+            </EvaPanel>
           )}
 
           {filteredPools && filteredPools.length > 0 ? (
@@ -367,58 +332,59 @@ export default function PoolsPage() {
           ) : (
             !loading &&
             !error && (
-              <GlassCard className="text-center py-12">
-                <Droplets className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">
-                  {activeFilter === 'all'
-                    ? 'No Pools Available'
-                    : `No ${activeFilter === 'insured' ? 'Insured' : activeFilter === 'collateralized' ? 'Collateralized' : 'Uncollateralized'} Pools`}
-                </h3>
-                <p className="text-neutral-400 mb-6">
-                  {activeFilter === 'all'
-                    ? 'Be the first to create a liquidity pool'
-                    : 'Try a different filter or create a new pool'}
-                </p>
-                <Link href="/customer/pools/create-pool">
-                  <GlowButton
-                    variant="primary"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                  >
-                    Create Pool
-                  </GlowButton>
-                </Link>
-              </GlassCard>
+              <EvaPanel label="No Pools" sysId="POOL-EMPTY" status="pending">
+                <div className="text-center py-12">
+                  <Droplets className="w-12 h-12 text-foreground/20 mx-auto mb-4" />
+                  <h3 className="font-mono text-lg font-bold text-foreground tracking-[0.1em] uppercase mb-2">
+                    {activeFilter === 'all'
+                      ? 'No Pools Available'
+                      : `No ${activeFilter === 'insured' ? 'Insured' : activeFilter === 'collateralized' ? 'Collateralized' : 'Uncollateralized'} Pools`}
+                  </h3>
+                  <p className="font-mono text-sm text-foreground/40 mb-6">
+                    {activeFilter === 'all'
+                      ? 'Be the first to create a liquidity pool'
+                      : 'Try a different filter or create a new pool'}
+                  </p>
+                  <Link href="/customer/pools/create-pool">
+                    <TrapButton variant="gold">
+                      <Plus className="w-3.5 h-3.5 inline mr-1.5" />
+                      Create Pool
+                    </TrapButton>
+                  </Link>
+                </div>
+              </EvaPanel>
             )
           )}
         </div>
 
-        {/* Learn more section */}
-        <GlassCard hover className="relative overflow-hidden">
-          {/* Background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-purple-500/5" />
+        <EvaScanLine variant="gold" />
 
-          <div className="relative flex items-start gap-4">
-            <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Zap className="w-6 h-6 text-amber-500" />
+        {/* Learn more section */}
+        <EvaPanel label="Learn" sublabel="Liquidity Provision" sysId="INFO-01">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Zap className="w-6 h-6 text-gold" />
             </div>
             <div>
-              <h3 className="font-semibold text-white mb-1">
+              <h3 className="font-mono font-bold text-foreground tracking-[0.1em] uppercase mb-1">
                 Learn About Liquidity Provision
               </h3>
-              <p className="text-sm text-neutral-400 mb-3">
+              <p className="font-mono text-sm text-foreground/40 mb-3">
                 Understand how to maximize your yields through strategic
                 liquidity provision.
               </p>
               <a
                 href="#"
-                className="text-amber-400 hover:text-amber-300 flex items-center gap-1 text-sm font-medium transition-colors"
+                className="text-gold hover:text-gold/80 flex items-center gap-1 font-mono text-sm font-bold tracking-[0.1em] uppercase transition-colors"
               >
                 Learn more
                 <ArrowUpRight className="w-4 h-4" />
               </a>
             </div>
           </div>
-        </GlassCard>
+        </EvaPanel>
+
+        <GreekKeyStrip color="gold" />
       </div>
     </div>
   );

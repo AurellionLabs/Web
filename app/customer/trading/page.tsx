@@ -3,7 +3,14 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { cn } from '@/lib/utils';
-import { StatusBadge } from '@/app/components/ui/status-badge';
+import {
+  EvaStatusBadge,
+  EvaSectionMarker,
+  EvaScanLine,
+  GreekKeyStrip,
+  LaurelAccent,
+} from '@/app/components/eva/eva-components';
+import { ChevronDataStream } from '@/app/components/eva/eva-animations';
 import { RefreshCw } from 'lucide-react';
 
 // Trading components
@@ -122,27 +129,38 @@ function TradingPageContent() {
   return (
     <div className="min-h-screen p-4 sm:p-6">
       <div className="max-w-[1800px] mx-auto">
+        {/* Decorative top accent */}
+        <GreekKeyStrip color="gold" />
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">
-              Trading
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Trade tokenized real-world assets on the order book
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 mt-6">
+          <div className="flex items-center gap-3">
+            <LaurelAccent side="left" />
+            <div>
+              <h1 className="text-3xl font-serif font-bold text-foreground tracking-[0.15em] uppercase">
+                Trading
+              </h1>
+              <p className="text-sm font-mono text-muted-foreground mt-1 tracking-[0.15em] uppercase">
+                Trade tokenized real-world assets on the order book
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            <StatusBadge status="live" label="Live" pulse size="sm" />
+            <EvaStatusBadge status="active" label="LIVE" />
             <button
               onClick={handleRefresh}
               disabled={isRefreshing || isLoading}
               className={cn(
-                'p-2 rounded-lg',
-                'bg-glass-bg border border-glass-border',
-                'hover:border-accent/30 transition-colors',
+                'p-2',
+                'bg-card/60 border border-border/40',
+                'hover:border-gold/30 transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
+                'font-mono',
               )}
+              style={{
+                clipPath:
+                  'polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px)',
+              }}
               aria-label="Refresh asset classes"
             >
               <RefreshCw
@@ -155,6 +173,13 @@ function TradingPageContent() {
           </div>
         </div>
 
+        {/* Section marker for search */}
+        <EvaSectionMarker
+          section="SEARCH"
+          label="Filter Asset Classes"
+          variant="gold"
+        />
+
         {/* Search bar */}
         <div className="mb-8 max-w-md">
           <TradingSearch
@@ -166,10 +191,13 @@ function TradingPageContent() {
           />
         </div>
 
+        {/* Chevron data stream section divider */}
+        <ChevronDataStream text="Asset Classes" speed="4s" />
+
         {/* Asset class count */}
         {!isLoading && classes.length > 0 && (
-          <div className="flex items-center gap-2 mb-6">
-            <span className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 mb-6 mt-6">
+            <span className="text-sm font-mono text-muted-foreground tracking-[0.15em] uppercase">
               {searchQuery
                 ? `${filteredClasses.length} of ${classes.length} asset classes`
                 : `${classes.length} asset classes available`}
@@ -177,8 +205,15 @@ function TradingPageContent() {
           </div>
         )}
 
+        <EvaScanLine variant="mixed" />
+
         {/* Main content */}
-        {renderContent()}
+        <div className="mt-6">{renderContent()}</div>
+
+        {/* Bottom decorative accent */}
+        <div className="mt-8">
+          <GreekKeyStrip color="crimson" />
+        </div>
       </div>
     </div>
   );
