@@ -1249,8 +1249,9 @@ export function TerminalOutput({
     let i = 0;
     const id = setInterval(() => {
       if (i < allLines.length) {
-        setLines((p) => [...p, allLines[i]]);
+        const value = allLines[i];
         i++;
+        setLines((p) => [...p, value]);
       } else {
         i = 0;
         setLines([]);
@@ -1304,13 +1305,15 @@ export function TerminalOutput({
           <div
             key={i}
             className={`${
-              line.startsWith('> "')
-                ? 'text-gold/60 italic'
-                : line.includes('[OK]')
-                  ? 'text-emerald-400/80'
-                  : line === '> _'
-                    ? 'text-gold animate-pulse'
-                    : 'text-foreground/50'
+              !line
+                ? 'text-foreground/50'
+                : line.startsWith('> "')
+                  ? 'text-gold/60 italic'
+                  : line.includes('[OK]')
+                    ? 'text-emerald-400/80'
+                    : line === '> _'
+                      ? 'text-gold animate-pulse'
+                      : 'text-foreground/50'
             }`}
           >
             {line}

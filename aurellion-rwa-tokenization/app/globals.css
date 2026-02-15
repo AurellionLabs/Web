@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 5%;
+    --foreground: 40 15% 88%;
+    --card: 0 0% 8%;
+    --card-foreground: 40 15% 88%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 40 15% 88%;
+    --primary: 43 60% 62%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 60% 30%;
+    --secondary-foreground: 40 15% 92%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 40 8% 55%;
+    --accent: 0 65% 35%;
+    --accent-foreground: 40 15% 92%;
+    --destructive: 0 84% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 43 18% 22%;
+    --input: 0 0% 14%;
+    --ring: 43 60% 62%;
+    --chart-1: 43 60% 62%;
+    --chart-2: 0 60% 35%;
+    --chart-3: 43 30% 45%;
+    --chart-4: 0 40% 25%;
+    --chart-5: 43 40% 72%;
+    --radius: 0.125rem;
+    --gold: 43 65% 62%;
+    --gold-light: 43 50% 75%;
+    --gold-dark: 43 50% 40%;
+    --crimson: 0 70% 38%;
+    --crimson-dark: 0 55% 22%;
+    --obsidian: 0 0% 5%;
+    --marble: 40 20% 92%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ===== Evangelion Scan Lines ===== */
+.eva-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(139, 26, 26, 0.015) 2px,
+    rgba(139, 26, 26, 0.015) 4px
+  );
+  pointer-events: none;
+}
+
+/* ===== Eva Grid Overlay ===== */
+.eva-grid {
+  background-image: linear-gradient(
+      rgba(197, 165, 90, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(197, 165, 90, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ===== Hex pattern for backgrounds ===== */
+.eva-hex-pattern {
+  background-image: radial-gradient(
+    circle,
+    rgba(197, 165, 90, 0.04) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* ===== Ticker / Marquee ===== */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-ticker {
+  animation: ticker 60s linear infinite;
+}
+
+@keyframes ticker-fast {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-ticker-fast {
+  animation: ticker-fast 25s linear infinite;
+}
+
+/* ===== Subtle pulse for status indicators ===== */
+@keyframes eva-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.animate-eva-pulse {
+  animation: eva-pulse 3s ease-in-out infinite;
+}
+
+/* ===== Fade in up ===== */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up-delay {
+  animation: fade-in-up 0.8s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-up-delay-2 {
+  animation: fade-in-up 0.8s ease-out 0.4s forwards;
+  opacity: 0;
+}
+
+/* ===== Crimson warning stripe (Eva hazard tape) ===== */
+.eva-hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    rgba(139, 26, 26, 0.08) 4px,
+    rgba(139, 26, 26, 0.08) 8px
+  );
+}
+
+/* ===== Custom scrollbar ===== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(0 0% 7%);
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(43 56% 56% / 0.2);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(43 56% 56% / 0.4);
+}
+
+/* ===== Selection color ===== */
+::selection {
+  background: hsl(43 56% 56% / 0.2);
+  color: hsl(43 30% 90%);
+}
