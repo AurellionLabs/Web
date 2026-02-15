@@ -6,14 +6,7 @@ import {
 } from 'next/font/google';
 import './globals.css';
 import { MainProvider } from './providers/main.provider';
-import { NodesProvider } from './providers/nodes.provider';
-import { SelectedNodeProvider } from './providers/selected-node.provider';
 import { ClientLayout } from '@/app/components/layout/client-layout';
-import { TradeProvider } from './providers/trade.provider';
-import { CustomerProvider } from './providers/customer.provider';
-import { DriverProvider } from './providers/driver.provider';
-import { PlatformProvider } from './providers/platform.provider';
-import { RepositoryProvider } from './providers/RepositoryProvider';
 import { DiamondProvider } from './providers/diamond.provider';
 import { PrivyProviderWrapper } from './providers/privy.provider';
 import { Toaster } from './components/ui/toaster';
@@ -79,22 +72,8 @@ export default function RootLayout({
         <PrivyProviderWrapper>
           <MainProvider>
             <DiamondProvider>
-              <RepositoryProvider>
-                <PlatformProvider>
-                  <NodesProvider>
-                    <SelectedNodeProvider>
-                      <CustomerProvider>
-                        <DriverProvider>
-                          <TradeProvider>
-                            <ClientLayout>{children}</ClientLayout>
-                            <Toaster />
-                          </TradeProvider>
-                        </DriverProvider>
-                      </CustomerProvider>
-                    </SelectedNodeProvider>
-                  </NodesProvider>
-                </PlatformProvider>
-              </RepositoryProvider>
+              <ClientLayout>{children}</ClientLayout>
+              <Toaster />
             </DiamondProvider>
           </MainProvider>
         </PrivyProviderWrapper>

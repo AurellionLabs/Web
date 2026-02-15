@@ -8,29 +8,17 @@ import {
   EvaSectionMarker,
   EvaScanLine,
   GreekKeyStrip,
-  HexStatCard,
   TargetRings,
   TrapButton,
-  EvaStatusBadge,
   LaurelAccent,
 } from '@/app/components/eva/eva-components';
 import {
   CascadeLoadBars,
   ChevronDataStream,
 } from '@/app/components/eva/eva-animations';
-import {
-  Activity,
-  Package,
-  Clock,
-  CheckCircle2,
-  RefreshCw,
-  MapPin,
-  Truck,
-  Navigation,
-  DollarSign,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { StatCard } from '@/app/components/driver/stat-card';
+import { DeliveryCard } from '@/app/components/driver/delivery-card';
+import { RefreshCw, Truck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/app/components/ui/input';
 import {
   Select,
@@ -46,9 +34,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/app/components/ui/tabs';
-import { DeliveryActionDialog } from '@/app/components/ui/delivery-action-dialog';
 import { Delivery, DeliveryStatus } from '@/domain/driver';
-import { cn } from '@/lib/utils';
 import { useWallet } from '@/hooks/useWallet';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
@@ -59,199 +45,6 @@ import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 type TabType = 'available' | 'my-deliveries';
-
-/**
- * StatCard - Protocol stat card using HexStatCard
- */
-interface StatCardProps {
-  title: string;
-  value: number | string;
-  color?: 'gold' | 'crimson' | 'emerald';
-  powerLevel?: number;
-  onClick?: () => void;
-  isClickable?: boolean;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  color = 'gold',
-  powerLevel = 0,
-  onClick,
-  isClickable = false,
-}) => (
-  <div
-    className={cn(
-      isClickable &&
-        'cursor-pointer transition-transform duration-300 hover:scale-[1.03]',
-    )}
-    onClick={onClick}
-  >
-    <HexStatCard
-      label={title}
-      value={typeof value === 'number' ? value.toString() : value}
-      color={color}
-      powerLevel={powerLevel}
-    />
-  </div>
-);
-
-/**
- * DeliveryCard - Card for displaying delivery information
- */
-interface DeliveryCardProps {
-  delivery: Delivery;
-  onAccept?: (jobId: string) => Promise<void>;
-  onPickup?: (jobId: string) => Promise<void>;
-  onComplete?: (jobId: string) => Promise<void>;
-  isLoading?: boolean;
-  isWaitingForCustomer?: boolean;
-}
-
-const DeliveryCard: React.FC<DeliveryCardProps> = ({
-  delivery,
-  onAccept,
-  onPickup,
-  onComplete,
-  isLoading,
-  isWaitingForCustomer,
-}) => {
-  const getStatusBadge = () => {
-    switch (delivery.currentStatus) {
-      case DeliveryStatus.PENDING:
-        return <EvaStatusBadge status="created" label="Available" />;
-      case DeliveryStatus.ACCEPTED:
-        return <EvaStatusBadge status="processing" label="Accepted" />;
-      case DeliveryStatus.AWAITING_SENDER:
-        return <EvaStatusBadge status="pending" label="Waiting for Sender" />;
-      case DeliveryStatus.PICKED_UP:
-        return <EvaStatusBadge status="active" label="Picked Up" />;
-      case DeliveryStatus.COMPLETED:
-        return <EvaStatusBadge status="completed" label="Completed" />;
-      default:
-        return <EvaStatusBadge status="pending" label="Unknown" />;
-    }
-  };
-
-  return (
-    <EvaPanel
-      label="Delivery"
-      sysId={`JOB-${delivery.jobId.slice(0, 6)}`}
-      accent={
-        delivery.currentStatus === DeliveryStatus.COMPLETED ? 'gold' : 'crimson'
-      }
-    >
-      <div className="flex flex-col md:flex-row justify-between gap-4">
-        <div className="space-y-4 flex-1">
-          {/* Header */}
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
-              Job ID:
-            </span>
-            <span className="font-mono font-bold text-gold tracking-wider">
-              {delivery.jobId}
-            </span>
-            {getStatusBadge()}
-          </div>
-
-          {/* Locations */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 text-crimson mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40">
-                  Pickup Location
-                </p>
-                <p className="font-mono text-sm text-foreground/80">
-                  {delivery.parcelData.startName}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Navigation className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40">
-                  Delivery Location
-                </p>
-                <p className="font-mono text-sm text-foreground/80">
-                  {delivery.parcelData.endName}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Meta info */}
-          <div className="flex items-center gap-6 font-mono text-xs text-foreground/40 tracking-wider">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span className="uppercase">ETA: {delivery.ETA} mins</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              <span className="tabular-nums truncate max-w-[120px]">
-                {delivery.customer.slice(0, 6)}...{delivery.customer.slice(-4)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right side - Fee and Action */}
-        <div className="flex flex-col items-end justify-between gap-4">
-          <div className="text-right">
-            <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/40">
-              Fee
-            </p>
-            <p className="font-mono text-2xl font-bold tabular-nums text-gold">
-              ${delivery.fee.toFixed(2)}
-            </p>
-          </div>
-
-          {delivery.currentStatus === DeliveryStatus.PENDING && onAccept && (
-            <DeliveryActionDialog
-              delivery={delivery}
-              onConfirm={onAccept}
-              variant="accept"
-              isLoading={isLoading}
-            />
-          )}
-          {delivery.currentStatus === DeliveryStatus.ACCEPTED && onPickup && (
-            <DeliveryActionDialog
-              delivery={delivery}
-              onConfirm={onPickup}
-              variant="pickup"
-              isLoading={isLoading}
-            />
-          )}
-          {delivery.currentStatus === DeliveryStatus.AWAITING_SENDER && (
-            <div
-              className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20"
-              style={{
-                clipPath:
-                  'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
-              }}
-            >
-              <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-amber-300">
-                Waiting for sender to sign
-              </span>
-            </div>
-          )}
-          {delivery.currentStatus === DeliveryStatus.PICKED_UP &&
-            onComplete && (
-              <DeliveryActionDialog
-                delivery={delivery}
-                onConfirm={onComplete}
-                variant="complete"
-                isLoading={isLoading}
-                isWaitingForSignature={isWaitingForCustomer}
-                waitingForRole="customer"
-              />
-            )}
-        </div>
-      </div>
-    </EvaPanel>
-  );
-};
 
 /**
  * DriverDashboard - Driver dashboard with EVA/NERV theme
@@ -738,19 +531,39 @@ export default function DriverDashboard() {
           />
         </div>
 
-        {/* Delivery Subsystem Metrics */}
-        <ChevronDataStream text="Delivery Subsystem Diagnostics" />
+        {/* Driver Performance Metrics */}
+        <ChevronDataStream text="Driver Performance Metrics" />
 
         <CascadeLoadBars
           labels={[
-            'GPS LOCK',
-            'ROUTE CALC',
-            'ETA ENGINE',
-            'DISPATCH',
-            'TRACKING',
+            'COMPLETION RATE',
+            'ACCEPTANCE RATE',
+            'ON-TIME RATE',
             'SETTLEMENT',
-            'COMMS',
-            'VERIFY',
+          ]}
+          values={[
+            // Completion: completed / total assigned
+            effectiveMyDeliveries.length > 0
+              ? Math.round(
+                  (completedDeliveries / effectiveMyDeliveries.length) * 100,
+                )
+              : 0,
+            // Acceptance: accepted deliveries / available + accepted
+            availableCount + effectiveMyDeliveries.length > 0
+              ? Math.round(
+                  (effectiveMyDeliveries.length /
+                    (availableCount + effectiveMyDeliveries.length)) *
+                    100,
+                )
+              : 0,
+            // On-time: placeholder 100% (ETA integration is TODO)
+            completedDeliveries > 0 ? 100 : 0,
+            // Settlement: completed / total assigned
+            effectiveMyDeliveries.length > 0
+              ? Math.round(
+                  (completedDeliveries / effectiveMyDeliveries.length) * 100,
+                )
+              : 0,
           ]}
         />
 
@@ -1007,8 +820,6 @@ export default function DriverDashboard() {
             </div>
           </div>
         )}
-
-        <GreekKeyStrip color="crimson" />
       </div>
     </div>
   );

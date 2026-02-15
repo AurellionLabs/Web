@@ -282,10 +282,54 @@ export default function LandingPage() {
         <div className="px-6 md:px-16 lg:px-24 pb-12">
           <div className="max-w-7xl mx-auto">
             <LiveWaveform
-              label="Tokenization Volume Feed"
-              sublabel="FEED: RWA MARKET / LIVE DATA"
+              label="Active Price Discovery"
+              sublabel="FEED: SOURCE PRICING / LIVE DATA"
               height={140}
             />
+
+            {/* Price Discovery blurb */}
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-7">
+                <div className="flex gap-4">
+                  <div className="w-[2px] bg-gold/30 shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-mono text-sm tracking-[0.15em] uppercase text-gold mb-3">
+                      Source-Level Price Discovery
+                    </h3>
+                    <p className="font-sans text-sm leading-relaxed text-foreground/50">
+                      By enabling the tokenization of physical assets at their
+                      source — the goat herder, the gemstone mine, the grain
+                      producer — we disintermediate the layers of middlemen that
+                      chip away at true value. Price discovery happens where
+                      value originates, not where it&apos;s arbitraged. This is
+                      fairer for producers, more transparent for buyers, and
+                      creates markets that are fundamentally more liquid than
+                      anything that exists today.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="lg:col-span-5 border border-border/25 bg-card/40 p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/30 block mb-1">
+                      Middlemen Removed
+                    </span>
+                    <span className="font-mono text-xl font-bold text-gold">
+                      3–7 layers
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/30 block mb-1">
+                      Price Efficiency
+                    </span>
+                    <span className="font-mono text-xl font-bold text-emerald-400">
+                      +40–60%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -482,7 +526,7 @@ export default function LandingPage() {
       <section className="relative border-t border-border/20">
         <EvaSectionMarker
           section="SEC.05"
-          label="MAGI Authorization"
+          label="Aurum Authorization"
           variant="crimson"
         />
         <div className="px-6 md:px-16 lg:px-24 pb-12">
@@ -492,11 +536,14 @@ export default function LandingPage() {
                 Consensus-Driven <span className="text-gold">Governance</span>
               </h2>
               <p className="font-sans text-base text-foreground/40 max-w-lg mx-auto">
-                Every tokenization decision passes through a tri-node consensus
-                protocol. Click each node to cast your vote.
+                Every tokenization decision passes through a multi-node
+                consensus protocol. Click each node to cast your vote.
               </p>
             </div>
-            <MagiVoting proposal="Deploy RWA Tokenization Contract v2.1" />
+            <MagiVoting
+              proposal="Deploy RWA Tokenization Contract v2.1"
+              autoApprove
+            />
           </div>
         </div>
       </section>
@@ -590,7 +637,7 @@ export default function LandingPage() {
                 '> INITIALIZING AURELLION PROTOCOL v2.1.7...',
                 '> CONNECTING TO ETHEREUM MAINNET...',
                 '> BLOCK: 19,847,293 | GAS: 12 GWEI',
-                '> MAGI SYSTEM CHECK: MELCHIOR [OK] BALTHASAR [OK] CASPER [OK]',
+                '> AURUM SYSTEM CHECK: MELCHIOR [OK] BALTHASAR [OK] CASPER [OK]',
                 '> AT FIELD GENERATOR: ONLINE',
                 '> TOKENIZATION ENGINE: LOADED',
                 '> LOADING ASSET REGISTRY...',

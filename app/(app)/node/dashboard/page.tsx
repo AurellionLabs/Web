@@ -42,6 +42,7 @@ import {
   SpinningReticle,
   PulsingHexNetwork,
   CascadeLoadBars,
+  useCounter,
 } from '@/app/components/eva/eva-animations';
 import {
   Dialog,
@@ -174,6 +175,22 @@ export default function NodeDashboardPage() {
     description: '',
     documentType: 'certification',
   });
+
+  // ── Order completion percentage (completed vs total) ──
+  const totalOrders = orders?.length || 0;
+  const completedOrders =
+    orders?.filter((o) => o.currentStatus === OrderStatus.SETTLED).length || 0;
+  const orderCompletionTarget =
+    totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
+  const [completionMounted, setCompletionMounted] = useState(false);
+  useEffect(() => {
+    if (totalOrders > 0) setCompletionMounted(true);
+  }, [totalOrders]);
+  const animatedCompletion = useCounter(
+    orderCompletionTarget,
+    2000,
+    completionMounted,
+  );
 
   // Track local status overrides after signing (e.g., awaiting driver signature)
   const [signedOrders, setSignedOrders] = useState<Record<string, boolean>>({});
@@ -387,6 +404,56 @@ export default function NodeDashboardPage() {
     (total, asset) => total + Number(asset.amount),
     0,
   );
+
+  // ── Reputation scores (4 categories) ──
+  // 1. Amount Tokenized — tokenized quantity vs total capacity
+  const totalCapacity =
+    currentNodeData?.assets?.reduce(
+      (sum, a) => sum + Number(a.capacity || 0),
+      0,
+    ) || 0;
+  const reputationTokenized =
+    totalCapacity > 0
+      ? Math.min(
+          Math.round((totalTokenizedQuantity / totalCapacity) * 100),
+          100,
+        )
+      : 0;
+
+  // 2. Security — has audit/insurance docs been uploaded?
+  const securityDocTypes = ['audit', 'insurance', 'certification'];
+  const uploadedSecurityDocs =
+    supportingDocuments?.filter((d) =>
+      securityDocTypes.some((t) => d.documentType?.toLowerCase().includes(t)),
+    )?.length || 0;
+  const reputationSecurity = Math.min(
+    Math.round(
+      (uploadedSecurityDocs / Math.max(securityDocTypes.length, 1)) * 100,
+    ),
+    100,
+  );
+
+  // 3. Chain Sync — orders that have been attested (processing or settled) vs total
+  const attestedOrders =
+    orders?.filter(
+      (o) =>
+        o.currentStatus === OrderStatus.PROCESSING ||
+        o.currentStatus === OrderStatus.SETTLED,
+    ).length || 0;
+  const reputationChainSync =
+    totalOrders > 0 ? Math.round((attestedOrders / totalOrders) * 100) : 0;
+
+  // 4. Settlement — settled orders vs orders needing settlement
+  const ordersNeedingSettlement =
+    orders?.filter(
+      (o) =>
+        o.currentStatus === OrderStatus.PROCESSING ||
+        o.currentStatus === OrderStatus.SETTLED,
+    ).length || 0;
+  const reputationSettlement =
+    ordersNeedingSettlement > 0
+      ? Math.round((completedOrders / ordersNeedingSettlement) * 100)
+      : 0;
 
   const getAssetsSummaryByClass = () => {
     const summary: Record<string, { quantity: number }> = {};
@@ -826,7 +893,7 @@ export default function NodeDashboardPage() {
               }}
             >
               <DialogTrigger asChild>
-                <TrapButton variant="crimson" disabled={isTokenizing}>
+                <TrapButton variant="gold" disabled={isTokenizing}>
                   <span className="flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     Add Asset
@@ -934,14 +1001,28 @@ export default function NodeDashboardPage() {
                       {currentNodeData?.status || 'Unknown'}
                     </span>
                   </div>
-                  <EvaProgress
-                    value={currentNodeData?.status === 'Active' ? 99 : 20}
-                    color={
-                      currentNodeData?.status === 'Active'
-                        ? 'emerald'
-                        : 'crimson'
-                    }
-                  />
+                  <div className="mt-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-foreground/35">
+                        Order Completion
+                      </span>
+                      <span
+                        className={`font-mono text-sm font-bold tabular-nums ${animatedCompletion === 100 ? 'text-emerald-400' : animatedCompletion >= 50 ? 'text-gold' : 'text-crimson'}`}
+                      >
+                        {animatedCompletion}%
+                      </span>
+                    </div>
+                    <EvaProgress
+                      value={animatedCompletion}
+                      color={
+                        animatedCompletion === 100
+                          ? 'emerald'
+                          : animatedCompletion >= 50
+                            ? 'gold'
+                            : 'crimson'
+                      }
+                    />
+                  </div>
                 </div>
                 {/* Spinning Reticle — Node Sync Visualization */}
                 <div className="hidden lg:block">
@@ -1372,28 +1453,30 @@ export default function NodeDashboardPage() {
           <PulsingHexNetwork />
         </EvaPanel>
 
-        {/* ── System Health — Cascading Load Bars ── */}
+        {/* ── Node Reputation — Cascading Load Bars ── */}
         <EvaSectionMarker
           section="SEC.03c"
-          label="System Health"
-          variant="crimson"
+          label="Node Reputation"
+          variant="gold"
         />
         <EvaPanel
-          label="System Diagnostics"
-          sublabel="Node subsystem status"
-          sysId="SYS.DGN"
-          accent="crimson"
+          label="Reputation Grading"
+          sublabel="Performance & trust metrics"
+          sysId="REP.GRD"
+          accent="gold"
         >
           <CascadeLoadBars
             labels={[
-              'CHAIN SYNC',
-              'ORACLE FEED',
-              'COMPLIANCE',
-              'TOKEN ENGINE',
-              'CUSTODY LINK',
-              'SETTLEMENT',
-              'AUDIT LOG',
+              'AMOUNT TOKENIZED',
               'SECURITY',
+              'CHAIN SYNC',
+              'SETTLEMENT',
+            ]}
+            values={[
+              reputationTokenized,
+              reputationSecurity,
+              reputationChainSync,
+              reputationSettlement,
             ]}
           />
         </EvaPanel>

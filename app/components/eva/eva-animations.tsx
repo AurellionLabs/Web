@@ -527,9 +527,11 @@ export function SyncDataPanel({
 export function MagiVoting({
   proposal = 'Deploy Tokenization Contract',
   magiNames,
+  autoApprove = false,
 }: {
   proposal?: string;
   magiNames?: { name: string; role: string; color: string }[];
+  autoApprove?: boolean;
 }) {
   const [magiVotes, setMagiVotes] = useState([false, false, false]);
 
@@ -538,6 +540,28 @@ export function MagiVoting({
     { name: 'BALTHASAR-2', role: 'Ethical Judgment', color: 'crimson' },
     { name: 'CASPER-3', role: 'Maternal Instinct', color: 'gold' },
   ];
+
+  // Auto-animate nodes turning green sequentially on mount
+  useEffect(() => {
+    if (!autoApprove) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    defaultMagi.forEach((_, i) => {
+      timers.push(
+        setTimeout(
+          () => {
+            setMagiVotes((prev) => {
+              const next = [...prev];
+              next[i] = true;
+              return next;
+            });
+          },
+          1200 + i * 800,
+        ),
+      );
+    });
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoApprove]);
 
   const approvedCount = magiVotes.filter(Boolean).length;
 
@@ -1126,14 +1150,17 @@ function CascadeBar({
   label,
   delay,
   index,
+  targetValue,
 }: {
   label: string;
   delay: number;
   index: number;
+  targetValue?: number;
 }) {
   const [width, setWidth] = useState(0);
   useEffect(() => {
-    const target = 40 + Math.random() * 55;
+    const target =
+      targetValue !== undefined ? targetValue : 40 + Math.random() * 55;
     const timeout = setTimeout(() => {
       const id = setInterval(() => {
         setWidth((p) => {
@@ -1147,7 +1174,7 @@ function CascadeBar({
       return () => clearInterval(id);
     }, delay + 800);
     return () => clearTimeout(timeout);
-  }, [delay]);
+  }, [delay, targetValue]);
 
   return (
     <div
@@ -1196,7 +1223,13 @@ function CascadeBar({
   );
 }
 
-export function CascadeLoadBars({ labels }: { labels?: string[] }) {
+export function CascadeLoadBars({
+  labels,
+  values,
+}: {
+  labels?: string[];
+  values?: number[];
+}) {
   const defaultLabels = labels || [
     'LCL FILL',
     'PLUG DEPTH',
@@ -1211,7 +1244,13 @@ export function CascadeLoadBars({ labels }: { labels?: string[] }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {defaultLabels.map((label, i) => (
-        <CascadeBar key={label} label={label} delay={i * 200} index={i} />
+        <CascadeBar
+          key={label}
+          label={label}
+          delay={i * 200}
+          index={i}
+          targetValue={values?.[i]}
+        />
       ))}
     </div>
   );
@@ -1232,7 +1271,7 @@ export function TerminalOutput({
     '> INITIALIZING AURELLION PROTOCOL v2.1.7...',
     '> CONNECTING TO ETHEREUM MAINNET...',
     '> BLOCK: 19,847,293 | GAS: 12 GWEI',
-    '> MAGI SYSTEM CHECK: MELCHIOR [OK] BALTHASAR [OK] CASPER [OK]',
+    '> AURUM SYSTEM CHECK: MELCHIOR [OK] BALTHASAR [OK] CASPER [OK]',
     '> AT FIELD GENERATOR: ONLINE',
     '> TOKENIZATION ENGINE: LOADED',
     '> LOADING ASSET REGISTRY...',
