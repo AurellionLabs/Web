@@ -652,8 +652,12 @@ contract AuSysFacet is ReentrancyGuard {
         O.journeyIds.push(journeyId);
         s.journeyToAusysOrderId[journeyId] = orderId;
 
-        // Update order token quantity
-        O.tokenQuantity += tokenQuantity;
+        // Set token quantity only if not already set (P2P orders set it at creation).
+        // For non-P2P orders the quantity is already set during createAuSysOrder,
+        // so we should never blindly accumulate here.
+        if (O.tokenQuantity == 0) {
+            O.tokenQuantity = tokenQuantity;
+        }
 
         emit JourneyCreated(
             journeyId,
@@ -929,6 +933,36 @@ contract AuSysFacet is ReentrancyGuard {
 
         emit AuSysOrderSettled(orderId);
     }
+
+    // ============================================================================
+    // ADMIN DATA REPAIR
+    // ============================================================================
+
+    /**
+     * @notice Admin function to correct a corrupted order tokenQuantity.
+     * @dev Needed to fix orders where createOrderJourney's O.tokenQuantity += tokenQuantity
+     *      accidentally doubled the stored quantity. Only callable by admin/owner.
+     * @param orderId The order to fix
+     * @param correctQuantity The correct token quantity
+     */
+    function adminFixOrderTokenQuantity(
+        bytes32 orderId,
+        uint256 correctQuantity
+    ) external adminOnly {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
+        if (O.id == bytes32(0)) revert OfferNotFound();
+        require(correctQuantity > 0, "Quantity must be positive");
+
+        uint256 oldQuantity = O.tokenQuantity;
+        O.tokenQuantity = correctQuantity;
+
+        emit AuSysOrderStatusUpdated(orderId, O.currentStatus); // re-emit to signal data change
+        // Custom event for auditing the correction
+        emit OrderQuantityCorrected(orderId, oldQuantity, correctQuantity);
+    }
+
+    event OrderQuantityCorrected(bytes32 indexed orderId, uint256 oldQuantity, uint256 newQuantity);
 
     // ============================================================================
     // ERC1155 RECEIVER (required for holding tokens)

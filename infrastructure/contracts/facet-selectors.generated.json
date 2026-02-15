@@ -111,6 +111,7 @@
       "DISPATCHER_ROLE": "0x9ef5aee9",
       "DRIVER_ROLE": "0x56537593",
       "acceptP2POffer": "0xe4189a40",
+      "adminFixOrderTokenQuantity": "0x838e751b",
       "assignDriverToJourney": "0x26ed9054",
       "cancelP2POffer": "0xf8919799",
       "createAuSysOrder": "0xaefc63a0",
@@ -138,6 +139,7 @@
       "0x9ef5aee9",
       "0x56537593",
       "0xe4189a40",
+      "0x838e751b",
       "0x26ed9054",
       "0xf8919799",
       "0xaefc63a0",
@@ -214,7 +216,12 @@
       "onERC1155BatchReceived": "0xbc197c81",
       "onERC1155Received": "0xf23a6e61"
     },
-    "allSelectors": ["0xe1f1c4a7", "0x76e8374b", "0xbc197c81", "0xf23a6e61"]
+    "allSelectors": [
+      "0xe1f1c4a7",
+      "0x76e8374b",
+      "0xbc197c81",
+      "0xf23a6e61"
+    ]
   },
   "CLOBAdminFacet": {
     "selectors": {
@@ -330,7 +337,9 @@
     "selectors": {
       "diamondCut": "0x1f931c1c"
     },
-    "allSelectors": ["0x1f931c1c"]
+    "allSelectors": [
+      "0x1f931c1c"
+    ]
   },
   "OwnershipFacet": {
     "selectors": {
@@ -354,7 +363,11 @@
       "onERC1155Received": "0xf23a6e61",
       "supportsInterface": "0x01ffc9a7"
     },
-    "allSelectors": ["0xbc197c81", "0xf23a6e61", "0x01ffc9a7"]
+    "allSelectors": [
+      "0xbc197c81",
+      "0xf23a6e61",
+      "0x01ffc9a7"
+    ]
   },
   "OperatorFacet": {
     "selectors": {

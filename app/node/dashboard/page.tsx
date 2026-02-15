@@ -427,9 +427,10 @@ export default function NodeDashboardPage() {
   };
 
   const supportedAssetsCount = assets.length;
-  // Total quantity of all tokenized assets
+  // Total quantity of all tokenized assets — use actual ERC1155 balance (amount),
+  // which correctly accounts for tokens escrowed in active orders.
   const totalTokenizedQuantity = assets.reduce(
-    (total, asset) => total + Number(asset.capacity),
+    (total, asset) => total + Number(asset.amount),
     0,
   );
 
@@ -438,7 +439,7 @@ export default function NodeDashboardPage() {
 
     assets.forEach((asset) => {
       const assetClass = asset.class || 'Unknown';
-      const quantity = Number(asset.capacity) || 0;
+      const quantity = Number(asset.amount) || 0;
 
       if (summary[assetClass]) {
         summary[assetClass].quantity += quantity;
@@ -553,7 +554,7 @@ export default function NodeDashboardPage() {
             <td className="p-4 text-foreground">{asset.name}</td>
             <td className="p-4 capitalize text-foreground">{asset.class}</td>
             <td className="p-4 font-mono text-foreground">
-              {Number(asset.capacity ?? '0')}
+              {Number(asset.amount ?? '0')}
             </td>
             <td className="p-4 font-mono text-muted-foreground text-sm">
               Set via trading

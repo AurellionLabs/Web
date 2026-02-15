@@ -297,10 +297,11 @@ export class DiamondNodeRepository implements NodeRepository {
    * Strategy:
    * 1. Get the node's inventory from Diamond (which tokens are credited to this node)
    * 2. Query raw events from indexer for asset metadata
+   * 3. Fetch actual ERC1155 balances from on-chain (source of truth)
    *
-   * Note: Assets are minted to the Diamond contract address, and Diamond internally
-   * tracks which node owns which tokens via creditNodeTokens(). So we query the
-   * indexer by tokenId, not by account.
+   * Note: The 'amount' field now reflects the ACTUAL ERC1155 balance of the
+   * node owner, which correctly accounts for tokens escrowed in active orders.
+   * 'capacity' is retained as the registered maximum.
    */
   async getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]> {
     try {
@@ -332,7 +333,11 @@ export class DiamondNodeRepository implements NodeRepository {
 
       const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
 
-      // Step 3: Fetch IPFS metadata for each asset and combine with raw event data
+      // Step 3: Get the node owner address for ERC1155 balance lookups
+      const nodeOwner = node.owner;
+      const auraAsset = this.context.getAuraAsset();
+
+      // Step 4: Fetch IPFS metadata and actual ERC1155 balances for each asset
       const assetsWithMetadata = await Promise.all(
         node.assets.map(async (nodeAsset) => {
           // Find matching raw event for this asset on this node
@@ -345,9 +350,24 @@ export class DiamondNodeRepository implements NodeRepository {
           // Fetch IPFS metadata
           const metadata = await this.fetchAssetMetadata(nodeAsset.tokenId);
 
+          // Fetch actual ERC1155 balance of the node owner (source of truth).
+          // This naturally excludes tokens escrowed in the Diamond for active orders.
+          let actualBalance: string;
+          try {
+            const bal = await auraAsset.balanceOf(nodeOwner, nodeAsset.tokenId);
+            actualBalance = bal.toString();
+          } catch (e) {
+            console.warn(
+              '[DiamondNodeRepository] balanceOf failed for token',
+              nodeAsset.tokenId,
+              '— falling back to capacity',
+            );
+            actualBalance = nodeAsset.capacity.toString();
+          }
+
           return {
             id: nodeAsset.tokenId,
-            amount: nodeAsset.capacity.toString(),
+            amount: actualBalance,
             name: metadata.name,
             class: metadata.class || 'Unknown',
             fileHash: metadata.fileHash,
