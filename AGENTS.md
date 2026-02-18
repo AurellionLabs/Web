@@ -8,99 +8,171 @@ Web3/DeFi platform with Next.js 14, Solidity 0.8.28 (Diamond Pattern), Ponder in
 npm run dev              # Start Next.js dev server
 npm run build            # TypeScript check + Next.js build
 npm run build:full       # Compile contracts + extract ABIs + build
-npm run typecheck        # TypeScript only
-npm run format           # Prettier format all files
+npm run contract:update # Compile contracts + generate ABIs + typechain
+npm run contract:compile # Compile Solidity contracts only
+npm run contract:gen    # Generate TypeScript types from ABIs
+npm run contract:deploy # Deploy contracts to baseSepolia
+npm run contract:validate # Validate ABI consistency
+npm run typecheck        # TypeScript only (tsc --noEmit)
 npm run lint             # Next.js ESLint
+npm run format           # Prettier format all files
 ```
 
 ## Testing Commands
 
-### Unit/Integration Tests
+### Single Test Execution
+
+```bash
+# Vitest (unit/integration tests)
+npx vitest run test/infrastructure/services/OrderBridgeService.test.ts  # Service test
+npx vitest run test/repositories/CLOBRepository.test.ts                 # Repository test
+npx vitest run test/hooks/useUnifiedOrder.test.ts                       # Hook test
+npx vitest run -t "test name pattern"                                   # By pattern
+npx vitest run test/infrastructure/services/**/*.service.test.ts        # All service tests
+npx vitest run test/infrastructure/repositories/**/*.unit.test.ts      # All repo tests
+
+# Hardhat (smart contract tests)
+npx hardhat test test/OrderBridge.test.ts                               # Single contract
+npx hardhat test test/OrderBridge.test.ts --grep "test name"            # By pattern
+
+# Forge (Diamond tests)
+forge test --match-contract ContractName -vv                           # Single contract
+forge test --match-test "testName" -vv                                 # Single test
+
+# Playwright (browser tests)
+npx playwright test path/to/test.spec.ts                               # Single file
+npx playwright test path/to/test.spec.ts --grep "test name"            # By pattern
+
+# E2E Tests
+npx vitest run --config e2e/vitest.config.ts                           # All E2E
+```
+
+### Full Test Suites
 
 ```bash
 npm run test             # All Vitest tests
 npm run test:unit        # Excludes deployment tests
-npx vitest run path/to/test.test.ts              # Single test file
-npx vitest run -t "test name pattern"            # By pattern
-npx vitest                                       # Watch mode
-```
-
-### Service/Repository Tests
-
-```bash
+npm run test:coverage    # With coverage report
 npm run test:service     # Unit + integration tests
 npm run test:service:unit
 npm run test:service:integration
-npx vitest run test/services/OrderBridgeService.test.ts  # Specific service
-npm run test:repo:unit   # Repository unit tests
-npx vitest run test/repositories/CLOBRepository.test.ts   # Specific repo
-npm run test:hooks       # Hook tests
-```
-
-### Smart Contract Tests
-
-```bash
+npm run test:repo:unit
+npm run test:hooks
 npm run test:hardhat     # All Hardhat tests
-npx hardhat test test/OrderBridge.test.ts         # Single Hardhat test
 npm run test:diamond     # Forge Diamond tests
-forge test --match-contract ContractName -vv      # Forge single contract
-```
-
-### E2E Tests
-
-```bash
 npm run test:e2e         # Uses Hardhat chain
 npm run test:e2e:fast    # Fast mode
-npm run test:e2e:anvil    # With Anvil chain
-npx vitest run --config e2e/vitest.config.ts e2e/tests/mytest.test.ts
+npm run test:e2e:anvil   # With Anvil chain
+npm run test:browser     # All Playwright tests
+npm run test:browser:headed
 ```
 
-### Browser Tests
+### Additional Test Commands
 
 ```bash
-npm run test:browser             # All Playwright tests
-npm run test:browser:headed      # Visible browser
-npx playwright test path/to/test.spec.ts
+npm run test:deployment      # Deployment verification tests
+npm run test:smoke           # Smoke tests
+npm run validate:queries     # GraphQL query validation
 ```
 
 ## Code Style
 
 ### TypeScript
 
-- **Formatting**: 2 spaces, semicolons, single quotes, 80 char width
-- **Imports**: `'use client'`, React core, external libs, `@/lib/...`, `@/components/...`, types
+- **Formatting**: 2 spaces, semicolons, single quotes, 80 char width (Prettier)
+- **Strict Mode**: Enabled in tsconfig.json
 - **Naming**: Components `PascalCase`, hooks `useX`, booleans `isX/hasX`, constants `SCREAMING_SNAKE_CASE`
-- **Types**: `interface` for structures, `type` for unions, `I` prefix for services
-- **Exports**: Named export + default at file end
-- **Error handling**: Use `{ success: boolean; data?: T; error?: string }` pattern
+- **Types**: `interface` for structures, `type` for unions, `I` prefix for service interfaces
+
+### Import Order
+
+```typescript
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
+
+import { Button } from '@/components/ui/button';
+import { useOrderBook } from '@/hooks/useOrderBook';
+import { formatWei } from '@/lib/formatters';
+import { OrderSide } from '@/types';
+import type { IOrderService } from '@/infrastructure/services/interfaces';
+```
+
+### File Naming
+
+- Components: `PascalCase.tsx` | Hooks: `camelCase.ts`
+- Services: `PascalCase.service.ts` | Repositories: `PascalCase.repository.ts`
+- Utils: `camelCase.ts` | Constants: `SCREAMING_SNAKE_CASE.ts`
+
+### Error Handling Pattern
+
+```typescript
+// Service layer - always return result object
+async function getOrder(
+  id: string,
+): Promise<{ success: boolean; data?: Order; error?: string }> {
+  try {
+    const order = await repository.findById(id);
+    return { success: true, data: order };
+  } catch (e) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : 'Unknown error',
+    };
+  }
+}
+
+// React hooks - handle result objects
+const { data, error } = useQuery({
+  queryKey: ['order', id],
+  queryFn: () => orderService.getOrder(id),
+});
+```
+
+### Component Patterns
+
+- Use `'use client'` directive for client components
+- Prefer function components with hooks over class components
+- Extract reusable logic into custom hooks (`useX.ts`)
+- Use Radix UI primitives for accessible UI components
+- Colocate component styles with components using Tailwind CSS
+
+### Data Fetching
+
+- Use TanStack Query (React Query) for server state
+- Define query keys as arrays: `['entity', id, options]`
+- Prefer custom hooks that wrap useQuery/useMutation
+- Handle loading/error states explicitly in UI
 
 ### Solidity
 
 - **Formatting**: 4 spaces, 120 char width (Foundry)
-- **Naming**: Contracts `PascalCase`, events/errors `PascalCase`, internal `_prefix`, constants `SCREAMING_SNAKE_CASE`
+- **Naming**: Contracts `PascalCase`, events/errors `PascalCase`, internal `_prefix`
 - **Documentation**: NatSpec required (`@title`, `@notice`, `@dev`, `@return`)
-
-## Path Aliases
-
-```typescript
-import { Button } from '@/app/components/ui/button';
-import { useOrderBook } from '@/hooks/useOrderBook';
-import { formatWei } from '@/lib/formatters';
-```
+- **Pattern**: Diamond proxy pattern with facets
+- **Testing**: Use Forge for Diamond facet tests
 
 ## Project Structure
 
 ```
-app/                  # Next.js App Router
-contracts/diamond/    # Diamond facets
-hooks/                # React hooks
+app/                  # Next.js App Router (pages/api, layouts, etc.)
+components/           # React components (UI primitives in components/ui/)
+contracts/            # Solidity contracts
+  diamond/           # Diamond facets
+  mocks/             # Mock contracts for testing
+hooks/               # React hooks (custom hooks)
 infrastructure/       # Services & repositories
-lib/                  # Utilities
-test/                 # Unit tests
-e2e/tests/            # E2E tests
-e2e/browser/          # Playwright tests
+  services/          # Business logic services
+  repositories/      # Data access layer
+  shared/            # Shared utilities (event aggregators)
+lib/                 # Utilities, formatters, helpers
+test/                 # Unit/integration tests
+e2e/tests/            # E2E tests (Vitest)
+e2e/browser/          # Playwright browser tests
 indexer/              # Ponder indexer
-typechain-types/      # Generated types
+typechain-types/      # Generated types from ABIs
+scripts/              # Deployment scripts
 ```
 
 ## Indexer Pattern

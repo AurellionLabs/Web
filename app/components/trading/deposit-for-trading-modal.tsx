@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ethers } from 'ethers';
-import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 
 interface DepositForTradingModalProps {
   open: boolean;
@@ -82,15 +82,13 @@ export function DepositForTradingModal({
       const signer = await provider.getSigner();
 
       const auraAsset = new ethers.Contract(
-        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         [
           'function isApprovedForAll(address account, address operator) view returns (bool)',
         ],
         signer,
       );
 
-      // Get Diamond address from the contract
-      const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import('@/chain-constants');
       const approved = await auraAsset.isApprovedForAll(
         address,
         NEXT_PUBLIC_DIAMOND_ADDRESS,
@@ -121,14 +119,13 @@ export function DepositForTradingModal({
       const signer = await provider.getSigner();
 
       const auraAsset = new ethers.Contract(
-        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         [
           'function setApprovalForAll(address operator, bool approved) external',
         ],
         signer,
       );
 
-      const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import('@/chain-constants');
       const tx = await auraAsset.setApprovalForAll(
         NEXT_PUBLIC_DIAMOND_ADDRESS,
         true,

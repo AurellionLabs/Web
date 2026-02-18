@@ -232,11 +232,11 @@ contract AssetsFacetTest is DiamondTestBase {
 
         assertTrue(assets.isInCustody(id), 'Token should be in custody');
         
-        (address custodian, uint256 amount) = assets.getCustodyInfo(id);
-        // The custodian is set to `account` (the recipient) in nodeMint, not msg.sender
-        // This matches the legacy AuraAsset behavior where the custodian is the token holder
-        assertEq(custodian, user1, 'Custodian should be the recipient (account)');
+        uint256 amount = assets.getCustodyInfo(id, user1);
         assertEq(amount, 100, 'Custody amount should match');
+        
+        uint256 totalAmount = assets.getTotalCustodyAmount(id);
+        assertEq(totalAmount, 100, 'Total custody amount should match');
     }
 
     // ============================================================================
@@ -254,11 +254,11 @@ contract AssetsFacetTest is DiamondTestBase {
         vm.prank(nodeOperator);
         (, uint256 id) = assets.nodeMint(user1, assetDef, 100, 'COMMODITY', '');
 
-        // Redeem
+        // Redeem (specify user1 as custodian since they received the tokens)
         vm.prank(user1);
-        assets.redeem(id, 50);
+        assets.redeem(id, 50, user1);
 
-        (address custodian, uint256 custodyAmount) = assets.getCustodyInfo(id);
+        uint256 custodyAmount = assets.getCustodyInfo(id, user1);
         assertEq(custodyAmount, 50, 'Custody amount should decrease');
     }
 
@@ -275,7 +275,7 @@ contract AssetsFacetTest is DiamondTestBase {
         uint256 supplyBefore = assets.totalSupply(id);
 
         vm.prank(user1);
-        assets.redeem(id, 50);
+        assets.redeem(id, 50, user1);
 
         assertEq(assets.balanceOf(user1, id), 50, 'Balance should decrease');
         assertEq(assets.totalSupply(id), supplyBefore - 50, 'Supply should decrease');
@@ -293,7 +293,7 @@ contract AssetsFacetTest is DiamondTestBase {
 
         vm.prank(user1);
         vm.expectRevert();
-        assets.redeem(id, 200); // More than balance
+        assets.redeem(id, 200, user1); // More than balance
     }
 
     // ============================================================================

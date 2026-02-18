@@ -42,11 +42,11 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
   bytes32[] public ipfsID;
 
   // ============== CUSTODY TRACKING ==============
-  // Maps tokenId => custodian node address
-  // Set when asset is minted, persists through transfers, cleared on redeem
-  mapping(uint256 => address) public tokenCustodian;
-  
-  // Maps tokenId => total amount currently in custody (minted but not redeemed)
+  // Maps tokenId => custodian => amount in custody
+  // Multiple nodes can mint the same tokenId; each tracks their own custody
+  mapping(uint256 => mapping(address => uint256)) public tokenCustodianAmounts;
+
+  // Maps tokenId => total amount currently in custody across all custodians
   mapping(uint256 => uint256) public tokenCustodyAmount;
   
   // Event emitted when custody is established (at mint)
@@ -153,14 +153,9 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
     _mint(account, tokenID, amount, data);
 
     // ============== ESTABLISH CUSTODY ==============
-    // The minting node becomes the custodian for this tokenId
-    // If this is the first mint for this tokenId, set the custodian
-    // If already has a custodian, it must be the same node (can't have multiple custodians)
-    if (tokenCustodian[tokenID] == address(0)) {
-      tokenCustodian[tokenID] = account;
-    } else {
-      require(tokenCustodian[tokenID] == account, 'Token already has different custodian');
-    }
+    // The minting node becomes a custodian for this tokenId
+    // Multiple nodes can mint the same tokenId; each tracks their own custody
+    tokenCustodianAmounts[tokenID][account] += amount;
     tokenCustodyAmount[tokenID] += amount;
     emit CustodyEstablished(tokenID, account, amount);
     // ================================================
@@ -212,44 +207,46 @@ contract AuraAsset is ERC1155, ERC1155Burnable, Ownable, ERC1155Supply {
    * 
    * The custodian node is responsible for physical delivery after this call.
    */
-  function redeem(uint256 tokenId, uint256 amount) external {
+  function redeem(uint256 tokenId, uint256 amount, address custodian) external {
     require(balanceOf(msg.sender, tokenId) >= amount, 'Insufficient balance');
-    require(tokenCustodyAmount[tokenId] >= amount, 'Exceeds custody amount');
-    
-    address custodian = tokenCustodian[tokenId];
-    require(custodian != address(0), 'No custodian for token');
+    require(tokenCustodianAmounts[tokenId][custodian] >= amount, 'Exceeds custody amount');
     
     // Burn the tokens
     _burn(msg.sender, tokenId, amount);
     
-    // Release from custody
+    // Release from custody (per-custodian and total)
+    tokenCustodianAmounts[tokenId][custodian] -= amount;
     tokenCustodyAmount[tokenId] -= amount;
-    
-    // If all tokens redeemed, clear the custodian
-    if (tokenCustodyAmount[tokenId] == 0) {
-      delete tokenCustodian[tokenId];
-    }
     
     emit CustodyReleased(tokenId, custodian, amount, msg.sender);
   }
 
   /**
-   * @dev Get custody info for a token
+   * @dev Get custody amount for a specific custodian of a token
    * @param tokenId The token ID to query
-   * @return custodian The custodian node address
-   * @return amount The amount currently in custody
+   * @param custodian The custodian address to query
+   * @return amount The amount this custodian holds in custody
    */
-  function getCustodyInfo(uint256 tokenId) external view returns (address custodian, uint256 amount) {
-    return (tokenCustodian[tokenId], tokenCustodyAmount[tokenId]);
+  function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount) {
+    return tokenCustodianAmounts[tokenId][custodian];
   }
 
   /**
-   * @dev Check if a token is in custody
+   * @dev Get total custody amount across all custodians
+   * @param tokenId The token ID to query
+   * @return amount The total amount in custody
+   */
+  function getTotalCustodyAmount(uint256 tokenId) external view returns (uint256 amount) {
+    return tokenCustodyAmount[tokenId];
+  }
+
+  /**
+   * @dev Check if a token is in custody by any custodian
    * @param tokenId The token ID to check
-   * @return True if the token has a custodian
+   * @return True if any custodian holds this token
    */
   function isInCustody(uint256 tokenId) external view returns (bool) {
-    return tokenCustodian[tokenId] != address(0);
+    return tokenCustodyAmount[tokenId] > 0;
   }
 
   /**

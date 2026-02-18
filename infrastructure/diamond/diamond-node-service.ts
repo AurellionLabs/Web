@@ -8,7 +8,6 @@
 import { ethers } from 'ethers';
 import { Node } from '@/domain/node';
 import { DiamondContext } from './diamond-context';
-import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
 
 export interface INodeService {
   registerNode(nodeData: Node): Promise<string>;

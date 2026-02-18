@@ -1,5 +1,5 @@
 // Auto-generated from AssetsFacet.sol - DO NOT EDIT
-// Generated at: 2026-02-09T01:17:08.028Z
+// Generated at: 2026-02-17T21:53:30.130Z
 
 export const AssetsFacetABI = [
   {
@@ -642,14 +642,14 @@ export const AssetsFacetABI = [
         name: 'tokenId',
         type: 'uint256',
       },
-    ],
-    name: 'getCustodyInfo',
-    outputs: [
       {
         internalType: 'address',
         name: 'custodian',
         type: 'address',
       },
+    ],
+    name: 'getCustodyInfo',
+    outputs: [
       {
         internalType: 'uint256',
         name: 'amount',
@@ -692,6 +692,25 @@ export const AssetsFacetABI = [
       {
         internalType: 'uint256',
         name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    name: 'getTotalCustodyAmount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: 'amount',
         type: 'uint256',
       },
     ],
@@ -930,6 +949,11 @@ export const AssetsFacetABI = [
         internalType: 'uint256',
         name: 'amount',
         type: 'uint256',
+      },
+      {
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
       },
     ],
     name: 'redeem',

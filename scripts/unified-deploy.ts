@@ -720,28 +720,47 @@ async function postDeploymentConfig(
 ) {
   console.log('\n⚙️  Post-deployment configuration...\n');
 
+  // Merge addresses deployed in this run with already-known addresses from
+  // chain-constants.ts so partial deploy modes can still run full configuration.
+  const existingAddresses = loadExistingAddresses();
+  const resolvedAddresses: Record<string, string> = { ...addresses };
+  for (const [name, cfg] of Object.entries(CONTRACTS)) {
+    if (
+      !resolvedAddresses[name] &&
+      cfg.chainConstantKey &&
+      existingAddresses[cfg.chainConstantKey]
+    ) {
+      resolvedAddresses[name] = existingAddresses[cfg.chainConstantKey];
+    }
+  }
+
   // Set NodeManager in AuSys if both exist
-  if (addresses.AuSys && addresses.AurumNodeManager) {
+  if (resolvedAddresses.AuSys && resolvedAddresses.AurumNodeManager) {
     console.log('   Setting NodeManager in AuSys...');
-    const auSys = await ethers.getContractAt('Ausys', addresses.AuSys);
     try {
-      const tx = await auSys.setNodeManager(addresses.AurumNodeManager);
+      const auSys = await ethers.getContractAt(
+        'Ausys',
+        resolvedAddresses.AuSys,
+      );
+      const tx = await auSys.setNodeManager(resolvedAddresses.AurumNodeManager);
       await tx.wait();
       console.log('   ✓ NodeManager set');
     } catch (e: any) {
-      console.log(`   ⚠️  Could not set NodeManager: ${e.message}`);
+      console.log(
+        `   ⚠️  Could not set NodeManager in standalone AuSys: ${e.message}`,
+      );
     }
   }
 
   // Add AuraAsset token to AurumNodeManager
-  if (addresses.AurumNodeManager && addresses.AuraAsset) {
+  if (resolvedAddresses.AurumNodeManager && resolvedAddresses.AuraAsset) {
     console.log('   Adding AuraAsset to AurumNodeManager...');
-    const nodeManager = await ethers.getContractAt(
-      'AurumNodeManager',
-      addresses.AurumNodeManager,
-    );
     try {
-      const tx = await nodeManager.addToken(addresses.AuraAsset);
+      const nodeManager = await ethers.getContractAt(
+        'AurumNodeManager',
+        resolvedAddresses.AurumNodeManager,
+      );
+      const tx = await nodeManager.addToken(resolvedAddresses.AuraAsset);
       await tx.wait();
       console.log('   ✓ AuraAsset token added');
     } catch (e: any) {
@@ -751,13 +770,13 @@ async function postDeploymentConfig(
 
   // CRITICAL: Set Diamond as NodeManager for AuraAsset
   // This allows AuraAsset.nodeMint() to validate the Diamond as a valid node
-  if (addresses.Diamond && addresses.AuraAsset) {
+  if (resolvedAddresses.Diamond && resolvedAddresses.AuraAsset) {
     console.log('   Setting Diamond as NodeManager for AuraAsset...');
-    const auraAsset = await ethers.getContractAt(
-      'AuraAsset',
-      addresses.AuraAsset,
-    );
     try {
+      const auraAsset = await ethers.getContractAt(
+        'AuraAsset',
+        resolvedAddresses.AuraAsset,
+      );
       // Check current NodeManager first
       let currentNodeManager: string | null = null;
       try {
@@ -768,11 +787,12 @@ async function postDeploymentConfig(
 
       if (
         currentNodeManager &&
-        currentNodeManager.toLowerCase() === addresses.Diamond.toLowerCase()
+        currentNodeManager.toLowerCase() ===
+          resolvedAddresses.Diamond.toLowerCase()
       ) {
         console.log('   ✓ Diamond is already the NodeManager');
       } else {
-        const tx = await auraAsset.setNodeManager(addresses.Diamond);
+        const tx = await auraAsset.setNodeManager(resolvedAddresses.Diamond);
         await tx.wait();
         console.log('   ✓ Diamond set as NodeManager for AuraAsset');
       }
@@ -780,10 +800,10 @@ async function postDeploymentConfig(
       // Verify the configuration works
       const diamond = await ethers.getContractAt(
         'NodesFacet',
-        addresses.Diamond,
+        resolvedAddresses.Diamond,
       );
       try {
-        const status = await diamond.getNodeStatus(addresses.Diamond);
+        const status = await diamond.getNodeStatus(resolvedAddresses.Diamond);
         if (status === '0x01') {
           console.log(
             '   ✓ Verified: Diamond returns status 1 (valid node) for itself',
@@ -805,11 +825,14 @@ async function postDeploymentConfig(
   }
 
   // Set AuraAsset address in Diamond's NodesFacet storage
-  if (addresses.Diamond && addresses.AuraAsset) {
+  if (resolvedAddresses.Diamond && resolvedAddresses.AuraAsset) {
     console.log('   Setting AuraAsset address in Diamond...');
-    const diamond = await ethers.getContractAt('NodesFacet', addresses.Diamond);
+    const diamond = await ethers.getContractAt(
+      'NodesFacet',
+      resolvedAddresses.Diamond,
+    );
     try {
-      const tx = await diamond.setAuraAssetAddress(addresses.AuraAsset);
+      const tx = await diamond.setAuraAssetAddress(resolvedAddresses.AuraAsset);
       await tx.wait();
       console.log('   ✓ AuraAsset address set in Diamond');
     } catch (e: any) {
@@ -821,11 +844,11 @@ async function postDeploymentConfig(
   }
 
   // Add default asset classes to Diamond's AssetsFacet
-  if (addresses.Diamond) {
+  if (resolvedAddresses.Diamond) {
     console.log('   Adding default asset classes to Diamond...');
     const assetsFacet = await ethers.getContractAt(
       'AssetsFacet',
-      addresses.Diamond,
+      resolvedAddresses.Diamond,
     );
 
     const defaultClasses = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
@@ -853,6 +876,121 @@ async function postDeploymentConfig(
       console.log(`   ✓ Added ${addedCount} asset classes`);
     } else {
       console.log('   ✓ All default asset classes already exist');
+    }
+  }
+
+  // Configure AuSysFacet payment token for P2P escrows.
+  // Required for buy-offer creation and sell-offer acceptance.
+  if (resolvedAddresses.Diamond && resolvedAddresses.Aura) {
+    console.log('   Configuring AuSys pay token on Diamond...');
+    try {
+      const auSysFacet = await ethers.getContractAt(
+        'AuSysFacet',
+        resolvedAddresses.Diamond,
+      );
+      const currentPayToken = await auSysFacet.getPayToken();
+      if (currentPayToken === ethers.ZeroAddress) {
+        const tx = await auSysFacet.setPayToken(resolvedAddresses.Aura);
+        await tx.wait();
+        console.log(`   ✓ AuSys pay token set to ${resolvedAddresses.Aura}`);
+      } else if (
+        currentPayToken.toLowerCase() !== resolvedAddresses.Aura.toLowerCase()
+      ) {
+        console.log(
+          `   ⚠️  AuSys pay token already set to ${currentPayToken} (not overwriting with ${resolvedAddresses.Aura})`,
+        );
+      } else {
+        console.log('   ✓ AuSys pay token already configured');
+      }
+    } catch (e: any) {
+      console.log(`   ⚠️  Could not configure AuSys pay token: ${e.message}`);
+    }
+  }
+
+  // Configure RWY staking defaults so feature works without separate scripts.
+  if (resolvedAddresses.Diamond) {
+    console.log('   Configuring RWY staking defaults on Diamond...');
+    try {
+      const rwyFacet = await ethers.getContractAt(
+        'RWYStakingFacet',
+        resolvedAddresses.Diamond,
+      );
+
+      // Initialize defaults only when unset.
+      try {
+        const cfg = await rwyFacet.getRWYConfig();
+        if (cfg[0] === 0n || cfg[1] === 0n || cfg[2] === 0n || cfg[3] === 0n) {
+          const tx = await rwyFacet.initializeRWYStaking();
+          await tx.wait();
+          console.log('   ✓ Initialized RWY staking defaults');
+        } else {
+          console.log('   ✓ RWY staking defaults already initialized');
+        }
+      } catch (initError: any) {
+        console.log(
+          `   ⚠️  Could not initialize RWY staking defaults: ${initError.message}`,
+        );
+      }
+
+      // Set RWY quote token if unset.
+      if (resolvedAddresses.Aura) {
+        try {
+          const currentQuote = await rwyFacet.getRWYQuoteToken();
+          if (currentQuote === ethers.ZeroAddress) {
+            const tx = await rwyFacet.setRWYQuoteToken(resolvedAddresses.Aura);
+            await tx.wait();
+            console.log(
+              `   ✓ RWY quote token set to ${resolvedAddresses.Aura}`,
+            );
+          } else {
+            console.log('   ✓ RWY quote token already configured');
+          }
+        } catch (quoteErr: any) {
+          console.log(
+            `   ⚠️  Could not configure RWY quote token: ${quoteErr.message}`,
+          );
+        }
+      }
+
+      // Set RWY CLOB address if available and currently unset.
+      if (resolvedAddresses.CLOB) {
+        try {
+          const currentClob = await rwyFacet.getRWYCLOBAddress();
+          if (currentClob === ethers.ZeroAddress) {
+            const tx = await rwyFacet.setRWYCLOBAddress(resolvedAddresses.CLOB);
+            await tx.wait();
+            console.log(
+              `   ✓ RWY CLOB address set to ${resolvedAddresses.CLOB}`,
+            );
+          } else {
+            console.log('   ✓ RWY CLOB address already configured');
+          }
+        } catch (clobErr: any) {
+          console.log(
+            `   ⚠️  Could not configure RWY CLOB address: ${clobErr.message}`,
+          );
+        }
+      }
+
+      // Set RWY fee recipient if unset.
+      try {
+        const currentRecipient = await rwyFacet.getRWYFeeRecipient();
+        if (currentRecipient === ethers.ZeroAddress) {
+          const tx = await rwyFacet.setRWYFeeRecipient(deployer);
+          await tx.wait();
+          console.log(`   ✓ RWY fee recipient set to ${deployer}`);
+        } else {
+          console.log('   ✓ RWY fee recipient already configured');
+        }
+      } catch (feeErr: any) {
+        console.log(
+          `   ⚠️  Could not configure RWY fee recipient: ${feeErr.message}`,
+        );
+      }
+    } catch (e: any) {
+      console.log(
+        `   ⚠️  RWYStakingFacet configuration skipped/unavailable: ${e.message}`,
+      );
     }
   }
 }
@@ -1180,6 +1318,15 @@ async function updateFacet(
   console.log(`Deployer: ${deployer.address}`);
   console.log(`Diamond: ${diamondAddress}\n`);
 
+  // Build contract-name keyed addresses from chain constants so facet upgrades
+  // can reuse postDeploymentConfig() the same way deploy modes do.
+  const configAddresses: Record<string, string> = {};
+  for (const [name, cfg] of Object.entries(CONTRACTS)) {
+    if (cfg.chainConstantKey && existingAddresses[cfg.chainConstantKey]) {
+      configAddresses[name] = existingAddresses[cfg.chainConstantKey];
+    }
+  }
+
   // Get selectors - try FACET_SELECTORS first, then auto-extract from contract
   let selectors = FACET_SELECTORS[facetName];
   if (!selectors || selectors.length === 0) {
@@ -1249,6 +1396,11 @@ async function updateFacet(
       console.log(
         '✅ All selectors already point to correct facet. No changes needed.\n',
       );
+      // Still run post-deploy config for facet upgrades so any required
+      // idempotent setup is applied even when selector state is unchanged.
+      if (!dryRun) {
+        await postDeploymentConfig(configAddresses, deployer.address);
+      }
       return {
         network: network.name,
         chainId,
@@ -1380,6 +1532,9 @@ async function updateFacet(
     // Generate indexer from updated contract ABIs
     if (!dryRun) {
       runIndexerGeneration();
+      // Facet upgrades should run the same post-deployment configuration path.
+      configAddresses[facetName] = facetAddress;
+      await postDeploymentConfig(configAddresses, deployer.address);
     }
 
     return {
@@ -1422,6 +1577,10 @@ async function updateFacet(
   console.log(
     `   ✓ ${action === 'remove' ? 'Removed' : 'Updated'} ${selectors.length} selectors\n`,
   );
+
+  // Facet upgrades should run the same post-deployment configuration path.
+  configAddresses[facetName] = facetAddress;
+  await postDeploymentConfig(configAddresses, deployer.address);
 
   return {
     network: network.name,

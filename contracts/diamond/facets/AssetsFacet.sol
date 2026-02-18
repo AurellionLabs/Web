@@ -80,7 +80,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     error InsufficientBalance();
     error ExceedsCustodyAmount();
     error NoCustodian();
-    error DifferentCustodian();
+    error DifferentCustodian(); // DEPRECATED: multi-custodian model now allows different minters
     error ERC1155InvalidReceiver(address receiver);
     error ERC1155InsufficientBalance(address sender, uint256 balance, uint256 needed, uint256 tokenId);
     error ERC1155MissingApprovalForAll(address operator, address owner);
@@ -292,12 +292,9 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         // Mint tokens
         _mint(account, tokenID, amount, data);
 
-        // Establish custody (from AuraAsset.sol)
-        if (s.tokenCustodian[tokenID] == address(0)) {
-            s.tokenCustodian[tokenID] = account;
-        } else {
-            if (s.tokenCustodian[tokenID] != account) revert DifferentCustodian();
-        }
+        // Establish custody - track per-custodian amounts
+        // Multiple nodes can mint the same tokenId; each tracks their own custody
+        s.tokenCustodianAmounts[tokenID][account] += amount;
         s.tokenCustodyAmount[tokenID] += amount;
         emit CustodyEstablished(tokenID, account, amount);
 
@@ -342,50 +339,55 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
 
     /**
      * @notice Redeem tokens - burns the tokens and releases them from custody
-     * @dev This triggers physical delivery by the custodian node
+     * @dev This triggers physical delivery by the custodian node.
+     *      The redeemer specifies which custodian to release from.
      * @param tokenId The token ID to redeem
      * @param amount The amount to redeem
+     * @param custodian The custodian node to release custody from
      */
-    function redeem(uint256 tokenId, uint256 amount) external {
+    function redeem(uint256 tokenId, uint256 amount, address custodian) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         if (s.erc1155Balances[tokenId][msg.sender] < amount) revert InsufficientBalance();
-        if (s.tokenCustodyAmount[tokenId] < amount) revert ExceedsCustodyAmount();
-
-        address custodian = s.tokenCustodian[tokenId];
-        if (custodian == address(0)) revert NoCustodian();
+        if (s.tokenCustodianAmounts[tokenId][custodian] < amount) revert ExceedsCustodyAmount();
 
         // Burn the tokens
         _burn(msg.sender, tokenId, amount);
 
-        // Release from custody
+        // Release from custody (per-custodian and total)
+        s.tokenCustodianAmounts[tokenId][custodian] -= amount;
         s.tokenCustodyAmount[tokenId] -= amount;
-
-        // If all tokens redeemed, clear the custodian
-        if (s.tokenCustodyAmount[tokenId] == 0) {
-            delete s.tokenCustodian[tokenId];
-        }
 
         emit CustodyReleased(tokenId, custodian, amount, msg.sender);
     }
 
     /**
-     * @notice Get custody info for a token (from AuraAsset.getCustodyInfo)
+     * @notice Get custody amount for a specific custodian of a token
      * @param tokenId The token ID to query
-     * @return custodian The custodian node address
-     * @return amount The amount currently in custody
+     * @param custodian The custodian address to query
+     * @return amount The amount this custodian holds in custody
      */
-    function getCustodyInfo(uint256 tokenId) external view returns (address custodian, uint256 amount) {
+    function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return (s.tokenCustodian[tokenId], s.tokenCustodyAmount[tokenId]);
+        return s.tokenCustodianAmounts[tokenId][custodian];
     }
 
     /**
-     * @notice Check if a token is in custody (from AuraAsset.isInCustody)
+     * @notice Get total custody amount across all custodians for a token
+     * @param tokenId The token ID to query
+     * @return amount The total amount in custody
+     */
+    function getTotalCustodyAmount(uint256 tokenId) external view returns (uint256 amount) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.tokenCustodyAmount[tokenId];
+    }
+
+    /**
+     * @notice Check if a token is in custody by any custodian
      */
     function isInCustody(uint256 tokenId) external view returns (bool) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.tokenCustodian[tokenId] != address(0);
+        return s.tokenCustodyAmount[tokenId] > 0;
     }
 
     // ============================================================================

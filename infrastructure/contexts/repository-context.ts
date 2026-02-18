@@ -2,13 +2,12 @@ import { NodeRepository } from '@/domain/node/node';
 import { DiamondNodeRepository } from '../diamond/diamond-node-repository';
 import { OrderRepository } from '../repositories/orders-repository';
 import { IOrderRepository } from '@/domain/orders/order';
-import type { AuraAsset, Ausys } from '@/lib/contracts';
+import type { Ausys } from '@/lib/contracts';
 import type { Ausys as LocationContract } from '@/lib/contracts';
 import { BrowserProvider, ethers } from 'ethers';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
 import {
-  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
   NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
   NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
@@ -33,11 +32,8 @@ export class RepositoryContext {
   private diamondContext: DiamondContext | null = null;
   private ausysContract: Ausys | null = null;
   private signer: ethers.Signer | null = null;
-  private auraAssetContract: AuraAsset | null = null;
 
-  private constructor(
-    private readonly auraGoatAddress: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-  ) {}
+  private constructor() {}
 
   /**
    * Get the singleton instance of RepositoryContext
@@ -53,7 +49,6 @@ export class RepositoryContext {
    * Initialize the context with Diamond infrastructure
    */
   public async initialize(
-    auraAssetContract: AuraAsset,
     ausysContract: Ausys,
     provider: BrowserProvider,
     signer: ethers.Signer,
@@ -61,7 +56,6 @@ export class RepositoryContext {
   ) {
     this.ausysContract = ausysContract;
     this.signer = signer;
-    this.auraAssetContract = auraAssetContract;
 
     try {
       console.log(
@@ -98,10 +92,7 @@ export class RepositoryContext {
 
       this.poolRepository = new PoolRepository(provider, signer);
 
-      this.platformRepository = new PlatformRepository(
-        auraAssetContract,
-        pinata,
-      );
+      this.platformRepository = new PlatformRepository(pinata);
 
       console.log(
         '[RepositoryContext] Successfully created Diamond-based repositories',
@@ -200,18 +191,6 @@ export class RepositoryContext {
   }
 
   /**
-   * Get the AuraAsset contract instance
-   */
-  public getAuraAssetContract(): AuraAsset {
-    if (!this.auraAssetContract) {
-      throw new Error(
-        'AuraAssetContract not initialized. Call initialize() first.',
-      );
-    }
-    return this.auraAssetContract;
-  }
-
-  /**
    * Get the current signer
    */
   public getSigner(): ethers.Signer {
@@ -304,6 +283,5 @@ export class RepositoryContext {
     this.diamondContext = null;
     this.ausysContract = null;
     this.signer = null;
-    this.auraAssetContract = null;
   }
 }

@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-02-09T01:17:08.033Z
+// Generated at: 2026-02-17T21:53:30.137Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -171,6 +171,8 @@ export const TABLE_DIAMOND_JOURNEY_CREATED_EVENTS =
   'diamondJourneyCreatedEventss' as const;
 export const TABLE_DIAMOND_NODE_FEE_DISTRIBUTED_EVENTS =
   'diamondNodeFeeDistributedEventss' as const;
+export const TABLE_DIAMOND_ORDER_QUANTITY_CORRECTED_EVENTS =
+  'diamondOrderQuantityCorrectedEventss' as const;
 export const TABLE_DIAMOND_P2_P_OFFER_ACCEPTED_EVENTS =
   'diamondP2POfferAcceptedEventss' as const;
 export const TABLE_DIAMOND_P2_P_OFFER_CANCELED_EVENTS =
@@ -282,6 +284,7 @@ export const VALID_TABLE_NAMES = [
   'diamondJourneyCanceledEventss',
   'diamondJourneyCreatedEventss',
   'diamondNodeFeeDistributedEventss',
+  'diamondOrderQuantityCorrectedEventss',
   'diamondP2POfferAcceptedEventss',
   'diamondP2POfferCanceledEventss',
   'diamondP2POfferCreatedEventss',
@@ -1213,6 +1216,16 @@ export interface diamondNodeFeeDistributedEvent {
   transaction_hash: string;
 }
 
+export interface diamondOrderQuantityCorrectedEvent {
+  id: string;
+  order_id: string;
+  old_quantity: string;
+  new_quantity: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
 export interface diamondP2POfferAcceptedEvent {
   id: string;
   order_id: string;
@@ -1700,6 +1713,10 @@ export interface diamondJourneyCreatedEventsResponse {
 
 export interface diamondNodeFeeDistributedEventsResponse {
   diamondNodeFeeDistributedEventss: PonderItemsResponse<diamondNodeFeeDistributedEvent>;
+}
+
+export interface diamondOrderQuantityCorrectedEventsResponse {
+  diamondOrderQuantityCorrectedEventss: PonderItemsResponse<diamondOrderQuantityCorrectedEvent>;
 }
 
 export interface diamondP2POfferAcceptedEventsResponse {
@@ -2671,6 +2688,16 @@ export const FIELDS_DIAMOND_NODE_FEE_DISTRIBUTED_EVENTS = [
   'transaction_hash',
 ] as const;
 
+export const FIELDS_DIAMOND_ORDER_QUANTITY_CORRECTED_EVENTS = [
+  'id',
+  'order_id',
+  'old_quantity',
+  'new_quantity',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
 export const FIELDS_DIAMOND_P2_P_OFFER_ACCEPTED_EVENTS = [
   'id',
   'order_id',
@@ -2940,6 +2967,7 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     JourneyCanceled: 'diamondJourneyCanceledEventss',
     JourneyCreated: 'diamondJourneyCreatedEventss',
     NodeFeeDistributed: 'diamondNodeFeeDistributedEventss',
+    OrderQuantityCorrected: 'diamondOrderQuantityCorrectedEventss',
     P2POfferAccepted: 'diamondP2POfferAcceptedEventss',
     P2POfferCanceled: 'diamondP2POfferCanceledEventss',
     P2POfferCreated: 'diamondP2POfferCreatedEventss',

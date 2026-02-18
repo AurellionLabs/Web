@@ -3,17 +3,13 @@ import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useWallet } from '@/hooks/useWallet';
-import {
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-} from '@/chain-constants';
-import { AuraAsset__factory, Ausys__factory } from '@/lib/contracts';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import { Ausys__factory } from '@/lib/contracts';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { PinataSDK } from 'pinata';
-import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 
 interface RepositoryProviderProps {
   children: ReactNode;
@@ -78,18 +74,10 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       const provider = new ethers.BrowserProvider(ethereumProvider);
 
       const signer = await provider.getSigner();
-      const network = await provider.getNetwork();
-      const chainId = Number(network.chainId);
-      const readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
 
       const ausysContract = Ausys__factory.connect(
         NEXT_PUBLIC_DIAMOND_ADDRESS,
         signer,
-      );
-
-      const auraAssetContract = AuraAsset__factory.connect(
-        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-        readProvider,
       );
 
       const pinata = new PinataSDK({
@@ -98,13 +86,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       });
 
       const repoContext = RepositoryContext.getInstance();
-      await repoContext.initialize(
-        auraAssetContract,
-        ausysContract,
-        provider,
-        signer,
-        pinata,
-      );
+      await repoContext.initialize(ausysContract, provider, signer, pinata);
       console.log(
         '[RepositoryProvider] RepositoryContext initialized with Diamond.',
       );

@@ -39,7 +39,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { TokenizedAssetAttribute } from '@/domain/node';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import dynamic from 'next/dynamic';
 import { useUserAssets } from '@/hooks/useUserAssets';
 import { useOrderBook } from '@/hooks/useOrderBook';
@@ -237,7 +237,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
   // Fetch order book data for best bid/ask prices
   const { orderBook } = useOrderBook(asset?.id || '', {
-    baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+    baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
     baseTokenId: asset?.id || '0',
     basePrice,
     levels: 10,
@@ -265,7 +265,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
     try {
       // Fetch trades
       const trades = await clobRepository.getTrades(
-        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId,
         20,
       );
@@ -273,7 +273,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
       // Fetch market stats
       const stats = await clobRepository.getMarketStats(
-        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId,
       );
       setMarketStats(stats);
@@ -293,7 +293,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
     try {
       const candles = await priceHistoryService.getCandlestickData(
-        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId,
         selectedPeriod as PriceTimePeriod,
       );
@@ -383,7 +383,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         // asset.id IS the tokenId from the indexer
         const tokenId = asset.id || '0';
         const clobParams: PlaceLimitOrderParams = {
-          baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
           baseTokenId: tokenId,
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
@@ -428,7 +428,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             // Get wallet balance for the modal
             let walletBalance = BigInt(0);
             try {
-              const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+              const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
                 '@/chain-constants'
               );
               const { ethers } = await import('ethers');
@@ -438,7 +438,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                   await connectedWallet.getEthereumProvider();
                 const provider = new ethers.BrowserProvider(ethereumProvider);
                 const auraAsset = new ethers.Contract(
-                  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                  NEXT_PUBLIC_DIAMOND_ADDRESS,
                   [
                     'function balanceOf(address account, uint256 id) view returns (uint256)',
                   ],
@@ -493,7 +493,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               let walletBalance = BigInt(0);
               let nodeBalance = BigInt(0);
               try {
-                const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+                const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
                   '@/chain-constants'
                 );
                 const { ethers } = await import('ethers');
@@ -503,7 +503,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                     await connectedWallet.getEthereumProvider();
                   const provider = new ethers.BrowserProvider(ethereumProvider);
                   const auraAsset = new ethers.Contract(
-                    NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                    NEXT_PUBLIC_DIAMOND_ADDRESS,
                     [
                       'function balanceOf(address account, uint256 id) view returns (uint256)',
                     ],
@@ -576,7 +576,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             // Show deposit modal
             let walletBalance = BigInt(0);
             try {
-              const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+              const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
                 '@/chain-constants'
               );
               const { ethers } = await import('ethers');
@@ -585,7 +585,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                   await connectedWallet.getEthereumProvider();
                 const provider = new ethers.BrowserProvider(ethereumProvider);
                 const auraAsset = new ethers.Contract(
-                  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                  NEXT_PUBLIC_DIAMOND_ADDRESS,
                   [
                     'function balanceOf(address account, uint256 id) view returns (uint256)',
                   ],
@@ -613,7 +613,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
           // Fetch best bid price for market sell
           const orderBookData = await clobRepository.getOrderBook(
-            NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+            NEXT_PUBLIC_DIAMOND_ADDRESS,
             tokenId,
             10,
           );
@@ -931,7 +931,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <OrderBook
                 assetId={asset.id}
-                baseToken={NEXT_PUBLIC_AURA_GOAT_ADDRESS}
+                baseToken={NEXT_PUBLIC_DIAMOND_ADDRESS}
                 baseTokenId={getTokenId()}
                 basePrice={basePrice}
                 maxLevels={8}
@@ -949,7 +949,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               variant="crimson"
             />
             <UserOrders
-              baseToken={NEXT_PUBLIC_AURA_GOAT_ADDRESS}
+              baseToken={NEXT_PUBLIC_DIAMOND_ADDRESS}
               baseTokenId={getTokenId()}
               maxOrders={20}
               refreshInterval={REFRESH_INTERVAL}

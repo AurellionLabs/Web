@@ -1,4 +1,3 @@
-import type { AuraAsset } from '@/lib/contracts';
 import { Asset } from '../shared';
 
 export interface IpfsAssetAttribute {
@@ -52,7 +51,6 @@ export type PlatformState =
   | { status: 'success'; classes: AssetClass[]; assets: Asset[] };
 
 export interface IPlatformRepository {
-  contract: AuraAsset;
   getSupportedAssets(): Promise<Asset[]>;
   getSupportedAssetClasses(): Promise<string[]>;
   getClassAssets(assetClass: string): Promise<Asset[]>;

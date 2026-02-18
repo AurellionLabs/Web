@@ -378,14 +378,12 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       });
 
       // First, approve Diamond to transfer user's tokens
-      const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
-        '@/chain-constants'
-      );
+      const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import('@/chain-constants');
       const { ethers } = await import('ethers');
 
       const signer = await diamondContext.getSigner();
       const auraAsset = new ethers.Contract(
-        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         [
           'function setApprovalForAll(address operator, bool approved) external',
           'function isApprovedForAll(address account, address operator) view returns (bool)',

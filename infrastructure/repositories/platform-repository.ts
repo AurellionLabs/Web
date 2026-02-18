@@ -1,6 +1,5 @@
 import { IPlatformRepository } from '@/domain/platform';
 import { Asset } from '@/domain/shared';
-import type { AuraAsset } from '@/lib/contracts';
 import { PinataSDK } from 'pinata';
 import { graphqlRequest } from './shared/graph';
 import {
@@ -23,14 +22,15 @@ interface SupportedAssetEventsResponse {
 }
 
 export class PlatformRepository implements IPlatformRepository {
-  contract: AuraAsset;
   pinata: PinataSDK;
   private graphEndpoint = NEXT_PUBLIC_INDEXER_URL;
   private processedTokenIds = new Set<string>();
 
-  constructor(_contract: AuraAsset, _pinata: PinataSDK) {
-    this.contract = _contract;
-    this.pinata = _pinata;
+  constructor(_contractOrPinata: unknown, _pinata?: PinataSDK) {
+    // Backward-compatible constructor:
+    // - old callsites/tests: new PlatformRepository(contract, pinata)
+    // - new callsites: new PlatformRepository(pinata)
+    this.pinata = (_pinata ?? _contractOrPinata) as PinataSDK;
   }
 
   async getSupportedAssets(): Promise<Asset[]> {

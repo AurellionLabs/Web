@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-02-09T01:17:08.031Z
+// Generated at: 2026-02-17T21:53:30.135Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer

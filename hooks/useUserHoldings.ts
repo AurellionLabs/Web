@@ -5,8 +5,7 @@ import { useWallet } from './useWallet';
 import { ethers } from 'ethers';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-  NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
@@ -83,7 +82,7 @@ const GET_ALL_SUPPORTED_ASSETS = `
 `;
 
 /**
- * Hook for fetching user's ERC1155 token holdings from AuraAsset contract
+ * Hook for fetching user's ERC1155 token holdings from Diamond AssetsFacet
  *
  * This hook:
  * 1. Queries the indexer for all known tokenIds
@@ -192,8 +191,8 @@ export function useUserHoldings(): UseUserHoldingsReturn {
       const provider = repositoryContext.getProvider();
 
       // Step 3: Create contract instance
-      const auraAssetContract = new ethers.Contract(
-        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+      const diamondAssetContract = new ethers.Contract(
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         ERC1155_ABI,
         provider,
       );
@@ -204,7 +203,10 @@ export function useUserHoldings(): UseUserHoldingsReturn {
 
       let balances: bigint[];
       try {
-        balances = await auraAssetContract.balanceOfBatch(accounts, tokenIds);
+        balances = await diamondAssetContract.balanceOfBatch(
+          accounts,
+          tokenIds,
+        );
       } catch (batchError) {
         console.warn(
           '[useUserHoldings] Batch query failed, falling back to individual queries',
@@ -212,7 +214,7 @@ export function useUserHoldings(): UseUserHoldingsReturn {
         );
         balances = await Promise.all(
           tokenIds.map((tokenId: bigint) =>
-            auraAssetContract.balanceOf(address, tokenId),
+            diamondAssetContract.balanceOf(address, tokenId),
           ),
         );
       }

@@ -19,10 +19,7 @@ import {
 import { Order } from '@/domain/orders';
 import { DiamondContext } from './diamond-context';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
-import {
-  NEXT_PUBLIC_INDEXER_URL,
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
 import {
   GET_LOGISTICS_ORDER_CREATED_EVENTS,
   GET_ALL_UNIFIED_ORDER_EVENTS,
@@ -335,7 +332,7 @@ export class DiamondNodeRepository implements NodeRepository {
 
       // Step 3: Get the node owner address for ERC1155 balance lookups
       const nodeOwner = node.owner;
-      const auraAsset = this.context.getAuraAsset();
+      const diamond = this.context.getDiamond();
 
       // Step 4: Fetch IPFS metadata and actual ERC1155 balances for each asset
       const assetsWithMetadata = await Promise.all(
@@ -354,7 +351,7 @@ export class DiamondNodeRepository implements NodeRepository {
           // This naturally excludes tokens escrowed in the Diamond for active orders.
           let actualBalance: string;
           try {
-            const bal = await auraAsset.balanceOf(nodeOwner, nodeAsset.tokenId);
+            const bal = await diamond.balanceOf(nodeOwner, nodeAsset.tokenId);
             actualBalance = bal.toString();
           } catch (e) {
             console.warn(
@@ -633,8 +630,8 @@ export class DiamondNodeRepository implements NodeRepository {
     _attributes: string[],
   ): Promise<number> {
     try {
-      const auraAsset = this.context.getAuraAsset();
-      const balance = await auraAsset.balanceOf(ownerAddress, assetId);
+      const diamond = this.context.getDiamond();
+      const balance = await diamond.balanceOf(ownerAddress, assetId);
       return Number(balance);
     } catch (error) {
       console.error(

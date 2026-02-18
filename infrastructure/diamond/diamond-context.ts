@@ -6,23 +6,17 @@
  */
 
 import { ethers, Contract, Signer, Provider, BrowserProvider } from 'ethers';
-import {
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 
 // Re-export for convenience
 export { NEXT_PUBLIC_DIAMOND_ADDRESS };
 // Use auto-generated ABI from deploy script - automatically updated on deployment
 import { DIAMOND_ABI } from '@/infrastructure/contracts/diamond-abi.generated';
-// Use AuraAsset ABI from indexer - it has the full ABI including nodeMint
-import { AuraAssetABI } from '@/indexer/abis/generated/AuraAsset';
 
 export class DiamondContext {
   private signer: Signer | null = null;
   private provider: Provider | null = null;
   private diamond: Contract | null = null;
-  private auraAsset: Contract | null = null;
   private initialized = false;
   private readOnly = false;
 
@@ -37,13 +31,6 @@ export class DiamondContext {
     this.diamond = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       DIAMOND_ABI,
-      this.signer,
-    );
-
-    // Connect to AuraAsset for ERC1155 operations
-    this.auraAsset = new ethers.Contract(
-      NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-      AuraAssetABI,
       this.signer,
     );
 
@@ -66,13 +53,6 @@ export class DiamondContext {
     this.diamond = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       DIAMOND_ABI,
-      this.provider,
-    );
-
-    // Connect to AuraAsset for ERC1155 read operations
-    this.auraAsset = new ethers.Contract(
-      NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-      AuraAssetABI,
       this.provider,
     );
 
@@ -109,18 +89,6 @@ export class DiamondContext {
       );
     }
     return this.diamond;
-  }
-
-  /**
-   * Get the AuraAsset contract for ERC1155 operations
-   */
-  getAuraAsset(): Contract {
-    if (!this.auraAsset) {
-      throw new Error(
-        'DiamondContext not initialized. Call initialize() first.',
-      );
-    }
-    return this.auraAsset;
   }
 
   /**
@@ -170,7 +138,6 @@ export class DiamondContext {
     this.signer = null;
     this.provider = null;
     this.diamond = null;
-    this.auraAsset = null;
     this.initialized = false;
   }
 }

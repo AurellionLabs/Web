@@ -1,0 +1,64 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF",
+  "contracts": {
+    "DiamondCutFacet": {
+      "address": "0xf20eBBF5cD6D9Be29C07aefC7A90Fb42C5Fd7770",
+      "blockNumber": 37798347
+    },
+    "DiamondLoupeFacet": {
+      "address": "0x63a67381E5158A5183df4C2dd2a72AfF409eAA01",
+      "blockNumber": 37798349
+    },
+    "OwnershipFacet": {
+      "address": "0x03fc08c2Ee451E86e798DeF0e7262556b66E13e1",
+      "blockNumber": 37798351
+    },
+    "ERC1155ReceiverFacet": {
+      "address": "0xFDb90E10F42b3Da93DBFaC5fEFE8D75E31775e34",
+      "blockNumber": 37798353
+    },
+    "NodesFacet": {
+      "address": "0x12baF2Ba5f512078A9C2Ae0dC1EfE917e9318723",
+      "blockNumber": 37798356
+    },
+    "AssetsFacet": {
+      "address": "0x01aC649863913225b56FD007DD6293683614661B",
+      "blockNumber": 37798359
+    },
+    "OrdersFacet": {
+      "address": "0x3da9c79805af442d1EC0163843b92DF289717a15",
+      "blockNumber": 37798361
+    },
+    "RWYStakingFacet": {
+      "address": "0xa695B719138d91A06FA9Ec24589EA73bdCb10830",
+      "blockNumber": 37798363
+    },
+    "OperatorFacet": {
+      "address": "0x37e5d45e2c1d8f753a50025084E22C312D19DA9b",
+      "blockNumber": 37798365
+    },
+    "BridgeFacet": {
+      "address": "0x83365e0d2fD97Bb0Ba5eCF8D52dF371F2a14315b",
+      "blockNumber": 37798367
+    },
+    "CLOBFacet": {
+      "address": "0x76235E5138910F7033610530d6c01082F23C9d90",
+      "blockNumber": 37798370
+    },
+    "OrderRouterFacet": {
+      "address": "0x2bd1D7DCd64F6705898A9E5aeD5d39c0462B08AB",
+      "blockNumber": 37798373
+    },
+    "AuSysFacet": {
+      "address": "0xae467b753E707A4Acc86Fe4924f477F3788BA3CD",
+      "blockNumber": 37798375
+    },
+    "Diamond": {
+      "address": "0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7",
+      "blockNumber": 37798377
+    }
+  },
+  "timestamp": "2026-02-17T21:51:55.803Z"
+}

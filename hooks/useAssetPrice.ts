@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { CLOBRepository } from '@/infrastructure/repositories/clob-repository';
 import {
-  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
 
@@ -36,7 +36,7 @@ const DEFAULT_PRICE_DATA: AssetPriceData = {
  * Hook to fetch real-time price data from the CLOB orderbook
  *
  * @param tokenId - The token ID to fetch price for
- * @param baseToken - The base token address (defaults to AURA_GOAT)
+ * @param baseToken - The base token address (defaults to Diamond ERC1155)
  * @param pollInterval - How often to refresh price data in ms (default: 10000)
  *
  * @example
@@ -50,7 +50,7 @@ const DEFAULT_PRICE_DATA: AssetPriceData = {
  */
 export function useAssetPrice(
   tokenId: string,
-  baseToken: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  baseToken: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
   pollInterval: number = 10000,
 ): UseAssetPriceReturn {
   const [priceData, setPriceData] = useState<AssetPriceData | null>(null);
@@ -126,7 +126,7 @@ export function useAssetPrice(
  */
 export function useAssetPrices(
   tokenIds: string[],
-  baseToken: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  baseToken: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
 ): {
   prices: Map<string, AssetPriceData>;
   isLoading: boolean;

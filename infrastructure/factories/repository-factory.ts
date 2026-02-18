@@ -8,12 +8,10 @@ import {
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
-  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
 } from '@/chain-constants';
 import {
   AuStake__factory,
   AurumNodeManager__factory,
-  AuraAsset__factory,
   Ausys__factory,
 } from '@/lib/contracts';
 import { PlatformRepository } from '../repositories/platform-repository';
@@ -132,7 +130,7 @@ export class RepositoryFactory {
     userProvider: Provider,
     signer: Signer,
     aurumManagerAddress: string = NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
-    auraGoatAddress: string = NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+    auraGoatAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
     pinata: PinataSDK,
   ): Promise<BlockchainNodeRepository> {
     if (!this.isInitialized) {
@@ -154,14 +152,10 @@ export class RepositoryFactory {
   }
 
   public async createPlatformRepository(
-    signer: Signer,
+    _signer: Signer,
     pinata: PinataSDK,
   ): Promise<PlatformRepository> {
-    const contract = AuraAsset__factory.connect(
-      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-      signer,
-    );
-    return new PlatformRepository(contract, pinata);
+    return new PlatformRepository(pinata);
   }
 
   /**
@@ -196,7 +190,7 @@ export class RepositoryFactory {
         userProvider,
         signer,
         NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
-        NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         pinata,
       ),
       this.createPlatformRepository(signer, pinata),

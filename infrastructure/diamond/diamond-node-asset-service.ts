@@ -2,14 +2,13 @@
  * Diamond Node Asset Service - Handles asset minting and management via Diamond
  *
  * This replaces the legacy NodeAssetService with Diamond-based operations.
- * Asset minting goes through AuraAsset, inventory tracking through Diamond's NodesFacet.
+ * Asset minting and inventory tracking both go through Diamond facets.
  */
 
 import { ethers } from 'ethers';
 import { INodeAssetService, NodeAsset } from '@/domain/node';
 import { Asset } from '@/domain/shared';
 import { DiamondContext } from './diamond-context';
-import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
 // NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
 
 /**
@@ -74,10 +73,10 @@ export class DiamondNodeAssetService implements INodeAssetService {
    * Mint new assets for a node
    *
    * Flow:
-   * 1. Call AuraAsset.nodeMint() to mint ERC1155 tokens to node owner's wallet
+   * 1. Call Diamond AssetsFacet.nodeMint() to mint ERC1155 tokens to node owner's wallet
    *    - Node owner's wallet is validated via getNodeStatus (checks ownerNodes mapping)
    *    - Node owner becomes the custodian for these tokens
-   *    - Custody is tracked in AuraAsset.tokenCustodian mapping
+   *    - Custody is tracked in Diamond AssetsFacet custody mappings
    * 2. Call Diamond.addSupportedAsset() to register asset with capacity
    *
    * Note: Price is NOT set during tokenization. Price is set when placing
@@ -86,7 +85,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
    * CUSTODY MODEL:
    * - Tokens are minted to node owner's wallet (they are the custodian)
    * - Node owner must approve Diamond for CLOB trading (setApprovalForAll)
-   * - Custody is tracked in AuraAsset.tokenCustodian[tokenId]
+   * - Custody is tracked in AssetsFacet.tokenCustodianAmounts[tokenId][custodian]
    * - Only when a user calls redeem() is custody released and tokens burned
    * - This ensures the physical asset backing is always tracked to a responsible node
    */
@@ -96,7 +95,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
     amount: number,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
-    const auraAsset = this.context.getAuraAsset();
     const diamondAddress = this.context.getDiamondAddress();
 
     // Convert to bytes32 format for Diamond operations
@@ -147,13 +145,12 @@ export class DiamondNodeAssetService implements INodeAssetService {
 
       // Step 1: Mint tokens to the node owner's wallet (they are the custodian)
       // The node owner holds the tokens directly and must approve Diamond for CLOB trading
-      const auraAssetAddress = await auraAsset.getAddress();
       console.log(
-        '[DiamondNodeAssetService] Calling nodeMint to node owner wallet...',
+        '[DiamondNodeAssetService] Calling Diamond nodeMint to node owner wallet...',
       );
       console.log(
-        '[DiamondNodeAssetService] AuraAsset contract address:',
-        auraAssetAddress,
+        '[DiamondNodeAssetService] Diamond contract address:',
+        diamondAddress,
       );
       console.log(
         '[DiamondNodeAssetService] Node owner wallet (recipient):',
@@ -163,7 +160,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
         '[DiamondNodeAssetService] contractAsset:',
         JSON.stringify(contractAsset, null, 2),
       );
-      const mintTx = await auraAsset.nodeMint(
+      const mintTx = await diamond.nodeMint(
         nodeOwnerWallet, // Mint to node owner's wallet - they are the custodian
         contractAsset,
         amount,
@@ -183,7 +180,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
       console.log('[DiamondNodeAssetService] Adding supported asset...');
       const addAssetTx = await diamond.addSupportedAsset(
         nodeHash,
-        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        diamondAddress,
         tokenId,
         0n, // Price is 0 - actual price set when placing sell orders on CLOB
         amount,
@@ -201,23 +198,24 @@ export class DiamondNodeAssetService implements INodeAssetService {
     } catch (error: any) {
       console.error('[DiamondNodeAssetService] Error minting asset:', error);
 
-      // Check if this is a "missing revert data" error, which often indicates
-      // that AuraAsset's NodeManager is not set to Diamond address
+      // Extract revert reason if available
       const errorMessage = error?.message || '';
-      const errorCode = error?.code || '';
+      const revertReason = error?.revert?.args?.[0] || '';
 
-      if (
-        errorMessage.includes('missing revert data') ||
-        errorMessage.includes('CALL_EXCEPTION') ||
-        errorCode === 'CALL_EXCEPTION'
-      ) {
+      // Only suggest NodeManager misconfiguration for errors that genuinely
+      // indicate missing revert data (no reason string), not for all CALL_EXCEPTIONs
+      if (errorMessage.includes('missing revert data') && !revertReason) {
         const enhancedError = new Error(
-          'Tokenization failed: AuraAsset NodeManager may not be configured. ' +
-            'The Diamond address must be set as the NodeManager in AuraAsset contract. ' +
-            'Please run: npx hardhat run scripts/set-aura-asset-node-manager.ts --network <network>',
+          'Tokenization failed: transaction reverted without a reason string. ' +
+            'Verify the connected wallet owns an active node and the asset class is active in Diamond.',
         );
         (enhancedError as any).originalError = error;
         throw enhancedError;
+      }
+
+      // Re-throw with the original revert reason if available
+      if (revertReason) {
+        throw new Error(`Tokenization failed: ${revertReason}`);
       }
 
       throw error;

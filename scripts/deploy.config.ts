@@ -367,6 +367,7 @@ export const CONTRACTS: Record<string, ContractConfig> = {
         ];
 
         // Build facet cuts
+        const selectorsInBatch = new Set<string>();
         const facetCuts = [];
         for (const facet of facetsToAdd) {
           if (!facet.address) {
@@ -380,14 +381,46 @@ export const CONTRACTS: Record<string, ContractConfig> = {
             continue;
           }
 
+          // Guard against duplicate selectors in computed ABI-derived lists.
+          // Diamond cut "Add" reverts if a selector appears twice in the same batch.
+          const uniqueSelectors = Array.from(new Set(selectors));
+          const duplicateCount = selectors.length - uniqueSelectors.length;
+          if (duplicateCount > 0) {
+            console.log(
+              `   ⚠ ${facet.name}: removed ${duplicateCount} duplicate selector(s) before diamondCut`,
+            );
+          }
+
+          // Also remove selectors duplicated across facets in the same cut batch.
+          // Example: supportsInterface (0x01ffc9a7) can appear in multiple facets.
+          const nonCollidingSelectors = uniqueSelectors.filter((selector) => {
+            if (selectorsInBatch.has(selector)) return false;
+            selectorsInBatch.add(selector);
+            return true;
+          });
+          const crossFacetDuplicates =
+            uniqueSelectors.length - nonCollidingSelectors.length;
+          if (crossFacetDuplicates > 0) {
+            console.log(
+              `   ⚠ ${facet.name}: skipped ${crossFacetDuplicates} selector(s) already present in this cut batch`,
+            );
+          }
+
+          if (nonCollidingSelectors.length === 0) {
+            console.log(
+              `   ⚠ Skipping ${facet.name} - all selectors collide with earlier facets in this batch`,
+            );
+            continue;
+          }
+
           facetCuts.push({
             facetAddress: facet.address,
             action: FacetCutAction.Add,
-            functionSelectors: selectors,
+            functionSelectors: nonCollidingSelectors,
           });
 
           console.log(
-            `   ✓ Prepared ${facet.name} with ${selectors.length} selectors`,
+            `   ✓ Prepared ${facet.name} with ${nonCollidingSelectors.length} selectors`,
           );
         }
 

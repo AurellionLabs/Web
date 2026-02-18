@@ -35,7 +35,7 @@ import {
   Package,
 } from 'lucide-react';
 import { parseUnits, isAddress } from 'ethers';
-import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { useUserAssets } from '@/hooks/useUserAssets';
 
 type Step = 'type' | 'asset' | 'details' | 'logistics' | 'target' | 'review';
@@ -281,8 +281,14 @@ export default function CreateP2POfferPage() {
           : Math.floor(Date.now() / 1000) +
             parseInt(formData.expiryHours) * 3600;
 
+      console.log(
+        '[P2P Create] Creating offer with tokenId:',
+        formData.tokenId,
+        'attributes:',
+        formData.selectedAttributes,
+      );
       await p2pService.createOffer({
-        token: NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        token: NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId: formData.tokenId,
         quantity: BigInt(formData.quantity),
         price: parseUnits(formData.price, 18),

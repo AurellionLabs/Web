@@ -1,5 +1,5 @@
 // Auto-generated from AuSysFacet.sol - DO NOT EDIT
-// Generated at: 2026-02-09T01:17:08.028Z
+// Generated at: 2026-02-17T21:53:30.130Z
 
 export const AuSysFacetABI = [
   {
@@ -684,6 +684,31 @@ export const AuSysFacetABI = [
         type: 'bytes32',
       },
       {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'oldQuantity',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'newQuantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'OrderQuantityCorrected',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
         indexed: true,
         internalType: 'address',
         name: 'acceptor',
@@ -846,6 +871,24 @@ export const AuSysFacetABI = [
       },
     ],
     name: 'acceptP2POffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'uint256',
+        name: 'correctQuantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'adminFixOrderTokenQuantity',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1810,6 +1853,11 @@ export const AuSysFacetEvents = [
     name: 'NodeFeeDistributed',
     signature: 'NodeFeeDistributed(address,uint256)',
     signatureHash: '0x03dec068',
+  },
+  {
+    name: 'OrderQuantityCorrected',
+    signature: 'OrderQuantityCorrected(bytes32,uint256,uint256)',
+    signatureHash: '0x454c9f3d',
   },
   {
     name: 'P2POfferAccepted',

@@ -10,7 +10,7 @@ import {
 } from '@/lib/contracts';
 import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
-  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '@/chain-constants';
 
 /**
@@ -43,7 +43,7 @@ export class ContractContext {
       this.signer,
     );
     this.auraGoat = AuraGoatRed__factory.connect(
-      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
       this.signer,
     );
     // Add connection logic for AURUM_NODE if needed

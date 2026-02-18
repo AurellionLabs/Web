@@ -258,7 +258,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getAssetsSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](17);
+        bytes4[] memory selectors = new bytes4[](18);
         // ERC1155 core
         selectors[0] = AssetsFacet.balanceOf.selector;
         selectors[1] = AssetsFacet.balanceOfBatch.selector;
@@ -279,6 +279,7 @@ abstract contract DiamondTestBase is Test {
         selectors[14] = AssetsFacet.addSupportedClass.selector;
         selectors[15] = AssetsFacet.removeSupportedClass.selector;
         selectors[16] = AssetsFacet.mintBatch.selector;
+        selectors[17] = AssetsFacet.getTotalCustodyAmount.selector;
         return selectors;
     }
 

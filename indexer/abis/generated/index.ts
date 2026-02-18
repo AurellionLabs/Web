@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-02-09T01:17:08.028Z
+// Generated at: 2026-02-17T21:53:30.131Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -2991,6 +2991,31 @@ export const DiamondABI = [
       },
     ],
     name: 'NodeFeeDistributed',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'oldQuantity',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'newQuantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'OrderQuantityCorrected',
     type: 'event',
   },
   {
@@ -7603,6 +7628,24 @@ export const DiamondABI = [
   {
     inputs: [
       {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'uint256',
+        name: 'correctQuantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'adminFixOrderTokenQuantity',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'address',
         name: 'driver',
         type: 'address',
@@ -8597,14 +8640,14 @@ export const DiamondABI = [
         name: 'tokenId',
         type: 'uint256',
       },
-    ],
-    name: 'getCustodyInfo',
-    outputs: [
       {
         internalType: 'address',
         name: 'custodian',
         type: 'address',
       },
+    ],
+    name: 'getCustodyInfo',
+    outputs: [
       {
         internalType: 'uint256',
         name: 'amount',
@@ -8647,6 +8690,25 @@ export const DiamondABI = [
       {
         internalType: 'uint256',
         name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    name: 'getTotalCustodyAmount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: 'amount',
         type: 'uint256',
       },
     ],
@@ -8885,6 +8947,11 @@ export const DiamondABI = [
         internalType: 'uint256',
         name: 'amount',
         type: 'uint256',
+      },
+      {
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
       },
     ],
     name: 'redeem',
@@ -9604,6 +9671,11 @@ export const EventSignatureRegistry = {
     name: 'NodeFeeDistributed',
     facet: 'AuSysFacet',
     signature: 'NodeFeeDistributed(address,uint256)',
+  },
+  '0x454c9f3d': {
+    name: 'OrderQuantityCorrected',
+    facet: 'AuSysFacet',
+    signature: 'OrderQuantityCorrected(bytes32,uint256,uint256)',
   },
   '0x53038a93': {
     name: 'P2POfferAccepted',

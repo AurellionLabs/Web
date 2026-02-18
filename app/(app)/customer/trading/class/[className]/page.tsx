@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 import { Asset } from '@/domain/shared';
-import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 
 // EVA Components
 import {
@@ -208,7 +208,7 @@ function ClassDetailPageContent() {
 
   // Fetch order book data for best bid/ask prices
   const { orderBook } = useOrderBook(tradeableAsset?.id || '', {
-    baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+    baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
     baseTokenId: tradeableAsset?.tokenId || '0',
     basePrice,
     levels: 10,
@@ -230,7 +230,7 @@ function ClassDetailPageContent() {
       setIsLoadingChart(true);
       try {
         const candles = await priceHistoryService.getCandlestickData(
-          NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          NEXT_PUBLIC_DIAMOND_ADDRESS,
           tradeableAsset.tokenId,
           chartPeriod,
         );
@@ -301,10 +301,8 @@ function ClassDetailPageContent() {
         const { orderBridgeService } = await import(
           '@/infrastructure/services/order-bridge-service'
         );
-        const {
-          NEXT_PUBLIC_AURA_GOAT_ADDRESS,
-          NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
-        } = await import('@/chain-constants');
+        const { NEXT_PUBLIC_DIAMOND_ADDRESS, NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } =
+          await import('@/chain-constants');
 
         // Convert price to proper format (wei)
         const priceInWei = BigInt(Math.round(order.price * 1e18));
@@ -325,7 +323,7 @@ function ClassDetailPageContent() {
             : assetWithTokenId.tokenId || '0';
 
         const clobParams = {
-          baseToken: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+          baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
           baseTokenId: effectiveTokenId,
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
@@ -390,7 +388,7 @@ function ClassDetailPageContent() {
             // Get wallet balance for the modal
             let walletBalance = BigInt(0);
             try {
-              const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+              const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
                 '@/chain-constants'
               );
               const { ethers } = await import('ethers');
@@ -400,7 +398,7 @@ function ClassDetailPageContent() {
                   await connectedWallet.getEthereumProvider();
                 const provider = new ethers.BrowserProvider(ethereumProvider);
                 const auraAsset = new ethers.Contract(
-                  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                  NEXT_PUBLIC_DIAMOND_ADDRESS,
                   [
                     'function balanceOf(address account, uint256 id) view returns (uint256)',
                   ],
@@ -464,7 +462,7 @@ function ClassDetailPageContent() {
               let walletBalance = BigInt(0);
               let nodeBalance = BigInt(0);
               try {
-                const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+                const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
                   '@/chain-constants'
                 );
                 const { ethers } = await import('ethers');
@@ -474,7 +472,7 @@ function ClassDetailPageContent() {
                     await connectedWallet.getEthereumProvider();
                   const provider = new ethers.BrowserProvider(ethereumProvider);
                   const auraAsset = new ethers.Contract(
-                    NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                    NEXT_PUBLIC_DIAMOND_ADDRESS,
                     [
                       'function balanceOf(address account, uint256 id) view returns (uint256)',
                     ],
@@ -566,7 +564,7 @@ function ClassDetailPageContent() {
             // Show deposit modal
             let walletBalance = BigInt(0);
             try {
-              const { NEXT_PUBLIC_AURA_ASSET_ADDRESS } = await import(
+              const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
                 '@/chain-constants'
               );
               const { ethers } = await import('ethers');
@@ -575,7 +573,7 @@ function ClassDetailPageContent() {
                   await connectedWallet.getEthereumProvider();
                 const provider = new ethers.BrowserProvider(ethereumProvider);
                 const auraAsset = new ethers.Contract(
-                  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+                  NEXT_PUBLIC_DIAMOND_ADDRESS,
                   [
                     'function balanceOf(address account, uint256 id) view returns (uint256)',
                   ],
@@ -609,7 +607,7 @@ function ClassDetailPageContent() {
             '@/infrastructure/repositories/clob-repository'
           );
           const orderBookData = await clobRepository.getOrderBook(
-            NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+            NEXT_PUBLIC_DIAMOND_ADDRESS,
             tokenId,
             10,
           );
@@ -972,7 +970,7 @@ function ClassDetailPageContent() {
               {selectedAssetType && tradeableAsset && (
                 <OrderBook
                   assetId={tradeableAsset.id}
-                  baseToken={NEXT_PUBLIC_AURA_GOAT_ADDRESS}
+                  baseToken={NEXT_PUBLIC_DIAMOND_ADDRESS}
                   baseTokenId={tradeableAsset.tokenId}
                   basePrice={basePrice}
                   maxLevels={5}

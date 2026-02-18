@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-02-09T01:17:08.030Z
+// Generated at: 2026-02-17T21:53:30.132Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -1453,6 +1453,22 @@ export const diamondNodeFeeDistributedEvents = onchainTable(
   }),
 );
 
+export const diamondOrderQuantityCorrectedEvents = onchainTable(
+  'diamond_order_quantity_corrected_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    order_id: t.hex().notNull(),
+    old_quantity: t.bigint().notNull(),
+    new_quantity: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    orderIdIdx: index().on(table.order_id),
+  }),
+);
+
 export const diamondP2POfferAcceptedEvents = onchainTable(
   'diamond_p2_p_offer_accepted_events',
   (t) => ({
@@ -1785,6 +1801,7 @@ export const tables = {
   diamondJourneyCanceledEvents,
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
+  diamondOrderQuantityCorrectedEvents,
   diamondP2POfferAcceptedEvents,
   diamondP2POfferCanceledEvents,
   diamondP2POfferCreatedEvents,

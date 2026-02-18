@@ -97,10 +97,15 @@ export class NodeInventoryFlows {
   }
 
   /**
-   * Get the AuraAsset (ERC1155) contract
+   * Get the Diamond ERC1155 (AssetsFacet) contract
    */
-  private getAuraAsset(user: TestUser): Contract {
-    return this.context.getContractAs('AuraAsset', user.name);
+  private getDiamondAsset(user: TestUser): Contract {
+    const diamondAddress = this.context.getContractAddress('Diamond');
+    const erc1155Abi = [
+      'function setApprovalForAll(address operator, bool approved) external',
+      'function balanceOf(address account, uint256 id) external view returns (uint256)',
+    ];
+    return new Contract(diamondAddress, erc1155Abi, user.signer);
   }
 
   // ---------------------------------------------------------------------------
@@ -217,7 +222,7 @@ export class NodeInventoryFlows {
     amount: bigint,
   ): Promise<NodeInventoryResult> {
     const diamond = this.getDiamond(user);
-    const auraAsset = this.getAuraAsset(user);
+    const diamondAsset = this.getDiamondAsset(user);
     const diamondAddress = this.context.getContractAddress('Diamond');
 
     try {
@@ -226,7 +231,10 @@ export class NodeInventoryFlows {
       );
 
       // First approve Diamond to transfer tokens
-      const approveTx = await auraAsset.setApprovalForAll(diamondAddress, true);
+      const approveTx = await diamondAsset.setApprovalForAll(
+        diamondAddress,
+        true,
+      );
       await approveTx.wait();
       this.log(`  ✓ Approved Diamond for transfers`);
 
@@ -379,8 +387,8 @@ export class NodeInventoryFlows {
    * Get user's ERC1155 balance (in their wallet, not in Diamond)
    */
   async getUserTokenBalance(user: TestUser, tokenId: bigint): Promise<bigint> {
-    const auraAsset = this.getAuraAsset(user);
-    return auraAsset.balanceOf(user.address, tokenId);
+    const diamondAsset = this.getDiamondAsset(user);
+    return diamondAsset.balanceOf(user.address, tokenId);
   }
 
   /**
@@ -390,9 +398,9 @@ export class NodeInventoryFlows {
     user: TestUser,
     tokenId: bigint,
   ): Promise<bigint> {
-    const auraAsset = this.getAuraAsset(user);
+    const diamondAsset = this.getDiamondAsset(user);
     const diamondAddress = this.context.getContractAddress('Diamond');
-    return auraAsset.balanceOf(diamondAddress, tokenId);
+    return diamondAsset.balanceOf(diamondAddress, tokenId);
   }
 
   // ---------------------------------------------------------------------------

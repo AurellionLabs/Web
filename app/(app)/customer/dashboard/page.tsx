@@ -169,6 +169,23 @@ export default function CustomerDashboard() {
     setCurrentUserRole('customer');
   }, [setCurrentUserRole]);
 
+  // Debug: Log P2P orders with tokenIds
+  useEffect(() => {
+    const p2pOrders = orders.filter((o) => o.isP2P);
+    if (p2pOrders.length > 0) {
+      console.log(
+        '[CustomerDashboard] P2P Orders with tokenIds:',
+        p2pOrders.map((o) => ({
+          id: o.id.slice(0, 10) + '...',
+          tokenId: o.tokenId,
+          tokenQuantity: o.tokenQuantity,
+          isP2P: o.isP2P,
+          isSellerInitiated: (o as any).isSellerInitiated,
+        })),
+      );
+    }
+  }, [orders]);
+
   // Apply filters and sorting
   const filteredOrders = orders.filter((order) => {
     if (
@@ -583,6 +600,17 @@ export default function CustomerDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(() => {
+                console.log(
+                  '[CustomerDashboard] Holdings:',
+                  holdings.map((h) => ({
+                    name: h.name,
+                    tokenId: h.tokenId,
+                    balance: h.balance.toString(),
+                  })),
+                );
+                return null;
+              })()}
               {holdings.map((holding) => (
                 <div
                   key={holding.tokenId}

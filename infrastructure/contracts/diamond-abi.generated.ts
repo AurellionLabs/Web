@@ -4,9 +4,9 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-02-14T11:57:48.598Z
+ * Generated: 2026-02-17T21:53:30.051Z
  * Facets: NodesFacet, AuSysFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
- * Total items: 239
+ * Total items: 240
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -6802,14 +6802,14 @@ export const DIAMOND_ABI: any[] = [
         name: 'tokenId',
         type: 'uint256',
       },
-    ],
-    name: 'getCustodyInfo',
-    outputs: [
       {
         internalType: 'address',
         name: 'custodian',
         type: 'address',
       },
+    ],
+    name: 'getCustodyInfo',
+    outputs: [
       {
         internalType: 'uint256',
         name: 'amount',
@@ -6852,6 +6852,25 @@ export const DIAMOND_ABI: any[] = [
       {
         internalType: 'uint256',
         name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    name: 'getTotalCustodyAmount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: 'amount',
         type: 'uint256',
       },
     ],
@@ -7090,6 +7109,11 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'uint256',
         name: 'amount',
         type: 'uint256',
+      },
+      {
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
       },
     ],
     name: 'redeem',

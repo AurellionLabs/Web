@@ -37,7 +37,7 @@ import {
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ethers } from 'ethers';
 import {
-  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
   NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL,
 } from '@/chain-constants';
@@ -304,7 +304,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
                   const orderData: Order = {
                     id: orderId,
-                    token: NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+                    token: NEXT_PUBLIC_DIAMOND_ADDRESS,
                     tokenId: asset.id,
                     tokenQuantity: String(data.quantity),
                     price: totalPriceWei.toString(),

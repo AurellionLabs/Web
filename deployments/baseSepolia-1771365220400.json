@@ -4,9 +4,9 @@
   "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF",
   "contracts": {
     "AuSysFacet": {
-      "address": "0x8E86F6Ac9DeDC3Da470561b110E8AC7B5c0D6f76",
-      "blockNumber": 37800168
+      "address": "0xFDC5175Bde3e4c4f18C1E2d18736dB3E3D6Aa0f3",
+      "blockNumber": 37798464
     }
   },
-  "timestamp": "2026-02-17T22:50:44.862Z"
+  "timestamp": "2026-02-17T21:53:40.400Z"
 }

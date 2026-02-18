@@ -119,13 +119,13 @@ async function main() {
 
     // Step 6: Check custody info
     console.log('\n=== Step 6: Check Custody Info ===');
-    const custodyInfo = await auraAsset.getCustodyInfo(tokenId);
-    console.log('Custodian:', custodyInfo.custodian);
-    console.log('Custody amount:', custodyInfo.amount.toString());
-    console.log(
-      'Custodian is signer:',
-      custodyInfo.custodian.toLowerCase() === signer.address.toLowerCase(),
+    const custodyAmount = await auraAsset.getCustodyInfo(
+      tokenId,
+      signer.address,
     );
+    console.log('Custody amount for signer:', custodyAmount.toString());
+    const totalCustody = await auraAsset.getTotalCustodyAmount(tokenId);
+    console.log('Total custody amount:', totalCustody.toString());
   } catch (e: any) {
     console.log('❌ Mint failed:', e.message);
     if (e.data) {

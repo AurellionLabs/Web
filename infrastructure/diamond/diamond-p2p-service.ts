@@ -152,6 +152,8 @@ export class DiamondP2PService implements IP2PService {
     };
 
     try {
+      const payTokenAddress = await this.getConfiguredPayTokenAddress();
+
       if (input.isSellOffer) {
         // Sell offer: seller escrows ERC1155 tokens → needs ERC1155 approval
         console.log(
@@ -171,7 +173,7 @@ export class DiamondP2PService implements IP2PService {
           '[DiamondP2PService] Buy offer — ensuring ERC20 approval for',
           totalCost.toString(),
         );
-        await this.ensureQuoteTokenApproval(totalCost);
+        await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       }
 
       const tx = await diamond.createAuSysOrder(order);
@@ -209,7 +211,10 @@ export class DiamondP2PService implements IP2PService {
       throw new Error('Could not find order ID in transaction receipt');
     } catch (error) {
       console.error('[DiamondP2PService] Error creating offer:', error);
-      throw error;
+      const decoded = decodeP2PError(error);
+      const wrapped = new Error(decoded);
+      (wrapped as any).originalError = error;
+      throw wrapped;
     }
   }
 
@@ -233,13 +238,14 @@ export class DiamondP2PService implements IP2PService {
 
       if (order.isSellerInitiated) {
         // Sell offer: acceptor is BUYER → needs ERC20 approval for price + txFee
+        const payTokenAddress = await this.getConfiguredPayTokenAddress();
         const totalCost =
           BigInt(order.price.toString()) + BigInt(order.txFee.toString());
         console.log(
           '[DiamondP2PService] Accepting sell offer — ensuring ERC20 approval for',
           totalCost.toString(),
         );
-        await this.ensureQuoteTokenApproval(totalCost);
+        await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       } else {
         // Buy offer: acceptor is SELLER → needs ERC1155 approval to escrow tokens
         console.log(
@@ -293,6 +299,7 @@ export class DiamondP2PService implements IP2PService {
       // 2. Handle approvals based on offer type
       if (order.isSellerInitiated) {
         // Sell offer: acceptor is BUYER → ERC20 approval for price + txFee + bounty
+        const payTokenAddress = await this.getConfiguredPayTokenAddress();
         const totalCost =
           BigInt(order.price.toString()) +
           BigInt(order.txFee.toString()) +
@@ -301,7 +308,7 @@ export class DiamondP2PService implements IP2PService {
           '[DiamondP2PService] Accepting sell offer with delivery — ERC20 approval for',
           totalCost.toString(),
         );
-        await this.ensureQuoteTokenApproval(totalCost);
+        await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       } else {
         // Buy offer: acceptor is SELLER → ERC1155 approval to escrow tokens
         console.log(
@@ -345,23 +352,26 @@ export class DiamondP2PService implements IP2PService {
    * Ensure the quote token (ERC20) has sufficient allowance for the Diamond contract.
    * If not, request an unlimited approval to avoid repeated approvals.
    */
-  private async ensureQuoteTokenApproval(amount: bigint): Promise<void> {
+  private async ensureQuoteTokenApproval(
+    amount: bigint,
+    quoteTokenAddress: string,
+  ): Promise<void> {
     const signer = this.context.getSigner();
     const signerAddress = await this.context.getSignerAddress();
 
-    // Use context helper if available (for testability), else create contract
-    const quoteToken =
-      'getQuoteTokenContract' in this.context
-        ? (this.context as any).getQuoteTokenContract()
-        : new ethers.Contract(
-            NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
-            ERC20_ABI,
-            signer,
-          );
+    // Use context helper only for the default configured token (keeps tests simple).
+    const shouldUseContextHelper =
+      'getQuoteTokenContract' in this.context &&
+      quoteTokenAddress.toLowerCase() ===
+        NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase();
+    const quoteToken = shouldUseContextHelper
+      ? (this.context as any).getQuoteTokenContract()
+      : new ethers.Contract(quoteTokenAddress, ERC20_ABI, signer);
 
     console.log('[DiamondP2PService] Checking quote token allowance...', {
       signerAddress,
       diamondAddress: NEXT_PUBLIC_DIAMOND_ADDRESS,
+      quoteTokenAddress,
       requiredAmount: amount.toString(),
     });
 
@@ -388,28 +398,67 @@ export class DiamondP2PService implements IP2PService {
   }
 
   /**
+   * Resolve the currently configured AuSys payment token from the Diamond.
+   * Throws a clear user-facing error if it has not been configured.
+   */
+  private async getConfiguredPayTokenAddress(): Promise<string> {
+    const diamond = this.context.getDiamond();
+    const payToken = await diamond.getPayToken();
+
+    if (!payToken || payToken === ethers.ZeroAddress) {
+      throw new Error(
+        'P2P payment token is not configured on this deployment. Please ask the contract owner to call setPayToken(...) on the Diamond before creating or accepting offers.',
+      );
+    }
+
+    if (
+      payToken.toLowerCase() !== NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase()
+    ) {
+      console.warn(
+        '[DiamondP2PService] Contract pay token differs from NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS. Using on-chain pay token.',
+        {
+          configuredInContract: payToken,
+          configuredInFrontend: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+        },
+      );
+    }
+
+    return payToken;
+  }
+
+  /**
    * Ensure the ERC1155 token contract has granted approval to the Diamond.
    * Needed for sell offers where the contract escrows the seller's tokens.
+   * When the token IS the Diamond (AssetsFacet ERC1155), use the Diamond contract
+   * from context so approval and readback use the same facet/ABI.
    */
   private async ensureERC1155Approval(tokenAddress: string): Promise<void> {
     const signer = this.context.getSigner();
     const signerAddress = await this.context.getSignerAddress();
+    const diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
 
-    const erc1155 =
-      'getERC1155Contract' in this.context
+    // When the token is the Diamond (P2P offers use Diamond as the ERC1155), use
+    // the Diamond contract from context so setApprovalForAll/isApprovedForAll
+    // hit AssetsFacet via the same proxy/ABI and storage is consistent.
+    const isDiamondToken =
+      tokenAddress.toLowerCase() === diamondAddress.toLowerCase();
+    const erc1155 = isDiamondToken
+      ? this.context.getDiamond()
+      : 'getERC1155Contract' in this.context
         ? (this.context as any).getERC1155Contract(tokenAddress)
         : new ethers.Contract(tokenAddress, ERC1155_ABI, signer);
 
     console.log('[DiamondP2PService] Checking ERC1155 approval...', {
       tokenAddress,
       signerAddress,
-      diamondAddress: NEXT_PUBLIC_DIAMOND_ADDRESS,
+      diamondAddress,
+      isDiamondToken,
     });
 
     try {
       const isApproved = await erc1155.isApprovedForAll(
         signerAddress,
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
+        diamondAddress,
       );
 
       console.log(
@@ -421,21 +470,25 @@ export class DiamondP2PService implements IP2PService {
         console.log(
           '[DiamondP2PService] ERC1155 not approved, requesting setApprovalForAll...',
         );
-        const tx = await erc1155.setApprovalForAll(
-          NEXT_PUBLIC_DIAMOND_ADDRESS,
-          true,
-        );
+        const tx = await erc1155.setApprovalForAll(diamondAddress, true);
         const receipt = await tx.wait();
         console.log(
           '[DiamondP2PService] ERC1155 approval granted, tx:',
           receipt?.hash,
         );
 
-        // Verify the approval actually took effect
-        const verified = await erc1155.isApprovedForAll(
-          signerAddress,
-          NEXT_PUBLIC_DIAMOND_ADDRESS,
-        );
+        // Verify the approval took effect; retry with short delay to handle RPC propagation
+        let verified = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, 500 * attempt));
+          }
+          verified = await erc1155.isApprovedForAll(
+            signerAddress,
+            diamondAddress,
+          );
+          if (verified) break;
+        }
         console.log('[DiamondP2PService] ERC1155 approval verified:', verified);
         if (!verified) {
           throw new Error(

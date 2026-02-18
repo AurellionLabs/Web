@@ -61,6 +61,9 @@ function createMockContext(overrides: Record<string, any> = {}) {
     acceptP2POffer: vi.fn().mockResolvedValue(mockTx),
     cancelP2POffer: vi.fn().mockResolvedValue(mockTx),
     getAuSysOrder: vi.fn().mockResolvedValue(defaultOrder),
+    getPayToken: vi
+      .fn()
+      .mockResolvedValue('0xQuoteToken0000000000000000000000000000'),
     interface: mockInterface,
     ...overrides.diamond,
   };
@@ -195,6 +198,27 @@ describe('DiamondP2PService', () => {
           isSellOffer: true,
         }),
       ).rejects.toThrow('Diamond: Function does not exist');
+    });
+
+    it('should decode PayTokenNotSet custom error for create offer', async () => {
+      const context = createMockContext({
+        diamond: {
+          getPayToken: vi
+            .fn()
+            .mockResolvedValue('0x0000000000000000000000000000000000000000'),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: false,
+        }),
+      ).rejects.toThrow(/payment token is not configured/i);
     });
 
     it('should request ERC1155 approval for sell offers when not approved', async () => {
@@ -610,6 +634,9 @@ describe('acceptOfferWithDelivery', () => {
       acceptP2POffer: vi.fn().mockResolvedValue(acceptTx),
       cancelP2POffer: vi.fn(),
       getAuSysOrder: vi.fn().mockResolvedValue(sellOrder),
+      getPayToken: vi
+        .fn()
+        .mockResolvedValue('0xQuoteToken0000000000000000000000000000'),
       createOrderJourney: vi.fn().mockResolvedValue(journeyTx),
       interface: mockInterface,
     };

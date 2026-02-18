@@ -13,7 +13,6 @@ import {
 // Mock chain-constants
 vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58',
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0x1235E39477752713902bCE541Fc02ADeb6FF465b',
 }));
 
 // Mock generated ABIs
@@ -21,10 +20,6 @@ vi.mock('@/infrastructure/contracts/diamond-abi.generated', () => ({
   DIAMOND_ABI: [
     'function getNode(bytes32) view returns (tuple(address owner))',
   ],
-}));
-
-vi.mock('@/indexer/abis/generated/AuraAsset', () => ({
-  AuraAssetABI: ['function balanceOf(address,uint256) view returns (uint256)'],
 }));
 
 describe('DiamondContext', () => {
@@ -41,12 +36,6 @@ describe('DiamondContext', () => {
 
     it('should throw when getDiamond() is called', () => {
       expect(() => context.getDiamond()).toThrow(
-        'DiamondContext not initialized',
-      );
-    });
-
-    it('should throw when getAuraAsset() is called', () => {
-      expect(() => context.getAuraAsset()).toThrow(
         'DiamondContext not initialized',
       );
     });
@@ -78,7 +67,6 @@ describe('DiamondContext', () => {
       expect(context.isInitialized()).toBe(true);
       expect(context.isReadOnly()).toBe(false);
       expect(context.getDiamond()).toBeDefined();
-      expect(context.getAuraAsset()).toBeDefined();
     });
 
     it('should expose signer after initialization', async () => {
@@ -133,7 +121,6 @@ describe('DiamondContext', () => {
 
       expect(context.isInitialized()).toBe(false);
       expect(() => context.getDiamond()).toThrow('not initialized');
-      expect(() => context.getAuraAsset()).toThrow('not initialized');
       expect(() => context.getSigner()).toThrow('not initialized');
     });
   });

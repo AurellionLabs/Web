@@ -1,5 +1,5 @@
 // Auto-generated handler for ausys domain - Raw event storage only
-// Generated at: 2026-02-09T01:17:08.032Z
+// Generated at: 2026-02-17T21:53:30.136Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -22,6 +22,7 @@ import {
   diamondJourneyCanceledEvents,
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
+  diamondOrderQuantityCorrectedEvents,
   diamondP2POfferAcceptedEvents,
   diamondP2POfferCanceledEvents,
   diamondP2POfferCreatedEvents,
@@ -405,6 +406,27 @@ ponder.on('Diamond:NodeFeeDistributed', async ({ event, context }) => {
     id: id,
     node: node,
     amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle OrderQuantityCorrected event from AuSysFacet
+ * Signature: OrderQuantityCorrected(bytes32,uint256,uint256)
+ * Hash: 0x454c9f3d
+ */
+ponder.on('Diamond:OrderQuantityCorrected', async ({ event, context }) => {
+  const { orderId, oldQuantity, newQuantity } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondOrderQuantityCorrectedEvents).values({
+    id: id,
+    order_id: orderId,
+    old_quantity: oldQuantity,
+    new_quantity: newQuantity,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

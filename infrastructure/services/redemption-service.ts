@@ -3,7 +3,7 @@
 import { ethers } from 'ethers';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
-import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { Order, OrderStatus } from '@/domain/orders/order';
 import { ParcelData } from '@/domain/shared';
 import { RouteCalculationService } from './route-calculation-service';
@@ -31,10 +31,11 @@ export interface RedemptionResult {
   error?: string;
 }
 
-// AuraAsset ABI for redemption (burns tokens and releases custody)
-const AURA_ASSET_REDEEM_ABI = [
-  'function redeem(uint256 tokenId, uint256 amount) external',
-  'function getCustodyInfo(uint256 tokenId) external view returns (address custodian, uint256 amount)',
+// Diamond AssetsFacet ABI subset for redemption (burns tokens and releases custody)
+const DIAMOND_ASSET_ABI = [
+  'function redeem(uint256 tokenId, uint256 amount, address custodian) external',
+  'function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount)',
+  'function getTotalCustodyAmount(uint256 tokenId) external view returns (uint256 amount)',
   'function isInCustody(uint256 tokenId) external view returns (bool)',
   'function balanceOf(address account, uint256 id) external view returns (uint256)',
 ];
@@ -99,13 +100,16 @@ export class RedemptionService {
       const signerAddress = await signer.getAddress();
 
       // Step 1: Verify user owns enough tokens
-      const auraAssetContract = new ethers.Contract(
-        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-        AURA_ASSET_REDEEM_ABI,
+      const diamondAssetContract = new ethers.Contract(
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
+        DIAMOND_ASSET_ABI,
         signer,
       );
 
-      const balance = await auraAssetContract.balanceOf(signerAddress, tokenId);
+      const balance = await diamondAssetContract.balanceOf(
+        signerAddress,
+        tokenId,
+      );
       if (BigInt(balance) < quantity) {
         throw new Error(
           `Insufficient token balance. Have: ${balance.toString()}, Need: ${quantity.toString()}`,
@@ -135,12 +139,16 @@ export class RedemptionService {
       // Step 3: Redeem the tokens (burns tokens and releases custody)
       // This calls the redeem() function which:
       // - Burns the caller's tokens
-      // - Releases them from custody
+      // - Releases custody from the specified custodian (origin node)
       // - Emits CustodyReleased event (used to trigger physical delivery)
       console.log(
         '[RedemptionService] Redeeming tokens (burn + release custody)...',
       );
-      const redeemTx = await auraAssetContract.redeem(tokenId, quantity);
+      const redeemTx = await diamondAssetContract.redeem(
+        tokenId,
+        quantity,
+        originNode,
+      );
       const redeemReceipt = await redeemTx.wait();
       console.log(
         '[RedemptionService] Tokens redeemed, custody released. Tx:',
@@ -177,7 +185,7 @@ export class RedemptionService {
       // Build the order with the calculated route
       const order: Order = {
         id: '', // Will be assigned by contract
-        token: NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        token: NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId: tokenId,
         tokenQuantity: quantity.toString(),
         price: totalFee.toString(), // Redemption fee

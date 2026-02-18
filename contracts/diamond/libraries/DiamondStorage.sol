@@ -67,8 +67,8 @@ library DiamondStorage {
         mapping(bytes32 => uint256) hashToTokenID;
         bytes32[] ipfsID;
         // Custody tracking (physical asset custody)
-        mapping(uint256 => address) tokenCustodian;
-        mapping(uint256 => uint256) tokenCustodyAmount;
+        mapping(uint256 => address) tokenCustodian; // DEPRECATED: single-custodian model removed
+        mapping(uint256 => uint256) tokenCustodyAmount; // Total custody amount across all custodians
 
         // ======= ORDERS =======
         mapping(bytes32 => Order) orders;
@@ -231,6 +231,11 @@ library DiamondStorage {
         mapping(bytes32 => uint256[]) nodeSupportingDocumentIds;
         // nodeHash => total documents count
         mapping(bytes32 => uint256) totalNodeSupportingDocuments;
+
+        // ======= MULTI-CUSTODIAN TRACKING =======
+        // Per-custodian amounts: tokenId => custodian address => amount in custody
+        // Multiple nodes can mint the same tokenId; each tracks their own custody
+        mapping(uint256 => mapping(address => uint256)) tokenCustodianAmounts;
 
         // ======= RESERVED =======
         uint256[50] __reserved1;
@@ -737,11 +742,11 @@ library AppStorageLib {
     // CUSTODY HELPER FUNCTIONS
     // ============================================================================
 
-    function getTokenCustodian(uint256 tokenId) internal view returns (address) {
-        return s().tokenCustodian[tokenId];
+    function getTokenCustodianAmount(uint256 tokenId, address custodian) internal view returns (uint256) {
+        return s().tokenCustodianAmounts[tokenId][custodian];
     }
 
-    function getTokenCustodyAmount(uint256 tokenId) internal view returns (uint256) {
+    function getTotalCustodyAmount(uint256 tokenId) internal view returns (uint256) {
         return s().tokenCustodyAmount[tokenId];
     }
 }
