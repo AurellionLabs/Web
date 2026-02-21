@@ -1,5 +1,5 @@
 // Auto-generated handler for rwy-staking domain - Raw event storage only
-// Generated at: 2026-02-17T21:53:30.136Z
+// Generated at: 2026-02-19T22:28:44.402Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer

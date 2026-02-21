@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { ethers } from 'ethers';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
@@ -63,6 +64,34 @@ const formatAttributeName = (name: string): string => {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
+
+/**
+ * Compute tokenId from asset definition - matches contract's keccak256 computation
+ * This ensures tokenId is consistent between tokenization and offer creation
+ */
+function computeTokenId(
+  name: string,
+  assetClass: string,
+  attributes: Record<string, string>,
+): string {
+  const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+  const attributeArray = Object.entries(attributes).map(([name, value]) => ({
+    name,
+    values: [value],
+    description: '',
+  }));
+
+  const encodedAsset = abiCoder.encode(
+    [
+      'tuple(string name,string assetClass,tuple(string name,string[] values,string description)[] attributes)',
+    ],
+    [{ name, assetClass, attributes: attributeArray }],
+  );
+
+  const tokenId = BigInt(ethers.keccak256(encodedAsset));
+  return tokenId.toString();
+}
 
 /**
  * P2P Offer Creation Wizard
@@ -281,15 +310,29 @@ export default function CreateP2POfferPage() {
           : Math.floor(Date.now() / 1000) +
             parseInt(formData.expiryHours) * 3600;
 
+      // Compute tokenId on-chain style for buy offers to ensure consistency with tokenization
+      const isBuyOffer = formData.offerType === 'buy';
+      const computedTokenId =
+        isBuyOffer && selectedAsset
+          ? computeTokenId(
+              selectedAsset.name,
+              selectedAsset.assetClass || formData.assetClass,
+              formData.selectedAttributes,
+            )
+          : formData.tokenId;
+
       console.log(
-        '[P2P Create] Creating offer with tokenId:',
-        formData.tokenId,
-        'attributes:',
-        formData.selectedAttributes,
+        '[P2P Create] Creating offer with:',
+        isBuyOffer ? 'computed tokenId' : 'IPFS tokenId',
+        {
+          computedTokenId,
+          ipfsTokenId: formData.tokenId,
+          attributes: formData.selectedAttributes,
+        },
       );
       await p2pService.createOffer({
         token: NEXT_PUBLIC_DIAMOND_ADDRESS,
-        tokenId: formData.tokenId,
+        tokenId: computedTokenId,
         quantity: BigInt(formData.quantity),
         price: parseUnits(formData.price, 18),
         isSellOffer: formData.offerType === 'sell',

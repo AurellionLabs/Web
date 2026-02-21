@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-02-17T22:50:44.862Z
+// Deployed: 2026-02-19T22:29:43.666Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -30,7 +30,7 @@ export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
 export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
 
 export const NEXT_PUBLIC_AUSYS_FACET_ADDRESS =
-  '0x8E86F6Ac9DeDC3Da470561b110E8AC7B5c0D6f76';
+  '0xCA6e4044AA25400F593Efed0B11694f1a6f7c053';
 
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)

@@ -623,7 +623,7 @@ contract AuSysFacet is ReentrancyGuard {
         bool isBuyer = receiver == O.buyer;
         if (!isValidNode && !isBuyer) revert InvalidNode();
 
-        if (msg.sender != O.buyer && !s.ausysRoles[ADMIN_ROLE][msg.sender]) {
+        if (msg.sender != O.buyer && msg.sender != O.seller && !s.ausysRoles[ADMIN_ROLE][msg.sender]) {
             revert InvalidCaller();
         }
         if (ETA <= block.timestamp) revert InvalidETA();

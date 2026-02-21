@@ -4,7 +4,7 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-02-17T21:53:30.051Z
+ * Generated: 2026-02-19T22:28:44.312Z
  * Facets: NodesFacet, AuSysFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
  * Total items: 240
  */

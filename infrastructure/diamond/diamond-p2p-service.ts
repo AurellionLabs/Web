@@ -50,6 +50,8 @@ const P2P_ERROR_MAP: Record<string, string> = {
     'The Diamond contract needs approval to transfer your tokens. This should be requested automatically.',
   '0x03dee4c5':
     'Insufficient token balance. You do not have enough of this asset to create the offer.',
+  '0x48f5c3ed':
+    'You are not authorized to create the delivery journey. Only the buyer, seller, or admin can do this.',
 };
 
 /**
@@ -453,6 +455,7 @@ export class DiamondP2PService implements IP2PService {
       signerAddress,
       diamondAddress,
       isDiamondToken,
+      erc1155Address: erc1155.target,
     });
 
     try {
@@ -491,8 +494,16 @@ export class DiamondP2PService implements IP2PService {
         }
         console.log('[DiamondP2PService] ERC1155 approval verified:', verified);
         if (!verified) {
+          console.error(
+            '[DiamondP2PService] Approval failed - token:',
+            tokenAddress,
+            'signer:',
+            signerAddress,
+            'diamond:',
+            diamondAddress,
+          );
           throw new Error(
-            'ERC1155 approval failed — setApprovalForAll did not take effect',
+            `ERC1155 approval failed — setApprovalForAll did not take effect for token ${tokenAddress}`,
           );
         }
       } else {
