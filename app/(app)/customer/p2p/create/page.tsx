@@ -433,6 +433,14 @@ export default function CreateP2POfferPage() {
                   )}
                 >
                   <div className="py-4">
+                    {formData.offerType === 'buy' && (
+                      <div className="mb-3 inline-flex items-center gap-1 px-2 py-1 border border-gold/70 bg-gold/20">
+                        <Check className="w-3 h-3 text-gold" />
+                        <span className="font-mono text-[10px] font-bold text-gold tracking-[0.12em] uppercase">
+                          Selected
+                        </span>
+                      </div>
+                    )}
                     <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 mx-auto">
                       <ShoppingCart className="w-8 h-8 text-blue-400" />
                     </div>
@@ -472,6 +480,14 @@ export default function CreateP2POfferPage() {
                   )}
                 >
                   <div className="py-4">
+                    {formData.offerType === 'sell' && (
+                      <div className="mb-3 inline-flex items-center gap-1 px-2 py-1 border border-emerald-500/70 bg-emerald-500/20">
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="font-mono text-[10px] font-bold text-emerald-300 tracking-[0.12em] uppercase">
+                          Selected
+                        </span>
+                      </div>
+                    )}
                     <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 mx-auto">
                       <Tag className="w-8 h-8 text-emerald-400" />
                     </div>
@@ -607,6 +623,11 @@ export default function CreateP2POfferPage() {
                                 />
                               </div>
                               <div className="text-right">
+                                {formData.tokenId === asset.tokenId && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-1 border border-emerald-500/70 bg-emerald-500/20 font-mono text-[10px] font-bold text-emerald-300 tracking-[0.12em] uppercase">
+                                    Selected
+                                  </span>
+                                )}
                                 <p className="font-mono text-lg font-bold text-gold tabular-nums">
                                   {asset.balance}
                                 </p>
@@ -892,6 +913,14 @@ export default function CreateP2POfferPage() {
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
+                    {formData.logisticsType === 'network' && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 border border-gold/70 bg-gold/20">
+                        <Check className="w-3 h-3 text-gold" />
+                        <span className="font-mono text-[10px] font-bold text-gold tracking-[0.12em] uppercase">
+                          Selected
+                        </span>
+                      </div>
+                    )}
                     <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
                       <Globe className="w-6 h-6 text-gold" />
                     </div>
@@ -928,6 +957,14 @@ export default function CreateP2POfferPage() {
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
+                    {formData.logisticsType === 'custom' && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 border border-crimson/70 bg-crimson/20">
+                        <Check className="w-3 h-3 text-crimson" />
+                        <span className="font-mono text-[10px] font-bold text-crimson tracking-[0.12em] uppercase">
+                          Selected
+                        </span>
+                      </div>
+                    )}
                     <div className="w-12 h-12 rounded-full bg-crimson/10 flex items-center justify-center">
                       <Wallet className="w-6 h-6 text-crimson" />
                     </div>
@@ -1020,6 +1057,14 @@ export default function CreateP2POfferPage() {
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
+                    {formData.targetType === 'public' && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 border border-gold/70 bg-gold/20">
+                        <Check className="w-3 h-3 text-gold" />
+                        <span className="font-mono text-[10px] font-bold text-gold tracking-[0.12em] uppercase">
+                          Selected
+                        </span>
+                      </div>
+                    )}
                     <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
                       <ShoppingCart className="w-6 h-6 text-gold" />
                     </div>
@@ -1048,6 +1093,14 @@ export default function CreateP2POfferPage() {
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
+                    {formData.targetType === 'targeted' && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 border border-crimson/70 bg-crimson/20">
+                        <Check className="w-3 h-3 text-crimson" />
+                        <span className="font-mono text-[10px] font-bold text-crimson tracking-[0.12em] uppercase">
+                          Selected
+                        </span>
+                      </div>
+                    )}
                     <div className="w-12 h-12 rounded-full bg-crimson/10 flex items-center justify-center">
                       <User className="w-6 h-6 text-crimson" />
                     </div>
