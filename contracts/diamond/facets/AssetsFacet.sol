@@ -81,6 +81,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     error ExceedsCustodyAmount();
     error NoCustodian();
     error DifferentCustodian(); // DEPRECATED: multi-custodian model now allows different minters
+    error CannotRedeemOwnCustody();
     error ERC1155InvalidReceiver(address receiver);
     error ERC1155InsufficientBalance(address sender, uint256 balance, uint256 needed, uint256 tokenId);
     error ERC1155MissingApprovalForAll(address operator, address owner);
@@ -349,6 +350,8 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         if (s.erc1155Balances[tokenId][msg.sender] < amount) revert InsufficientBalance();
+        if (custodian == address(0)) revert NoCustodian();
+        if (msg.sender == custodian) revert CannotRedeemOwnCustody();
         if (s.tokenCustodianAmounts[tokenId][custodian] < amount) revert ExceedsCustodyAmount();
 
         // Burn the tokens

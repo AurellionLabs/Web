@@ -450,7 +450,10 @@ contract AuSysFacetTest is DiamondTestBase {
             nodes: nodes,
             locationData: parcelData,
             currentStatus: 0,
-            contractualAgreement: bytes32(0)
+            contractualAgreement: bytes32(0),
+            isSellerInitiated: false,
+            targetCounterparty: address(0),
+            expiresAt: 0
         });
     }
 

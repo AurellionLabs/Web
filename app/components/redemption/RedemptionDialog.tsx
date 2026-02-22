@@ -171,7 +171,7 @@ export function RedemptionDialog({
         throw new Error('Delivery coordinates not set');
       }
 
-      await redemptionService.requestRedemption({
+      const result = await redemptionService.requestRedemption({
         tokenId: holding.tokenId,
         quantity: BigInt(quantityNum),
         deliveryAddress: deliveryAddress,
@@ -180,6 +180,10 @@ export function RedemptionDialog({
         destinationLat: deliveryCoords.lat,
         destinationLng: deliveryCoords.lng,
       });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Redemption failed');
+      }
 
       setStep('success');
 

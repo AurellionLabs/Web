@@ -91,7 +91,7 @@ export class RedemptionService {
         tokenId,
         quantity: quantity.toString(),
         deliveryAddress,
-        originNode,
+        requestedOriginNode: params.originNode,
         confirmationLevel,
         destination: { lat: destinationLat, lng: destinationLng },
       });
@@ -105,6 +105,27 @@ export class RedemptionService {
         DIAMOND_ASSET_ABI,
         signer,
       );
+
+      if (!originNode || originNode.toLowerCase() === ethers.ZeroAddress) {
+        throw new Error('No origin custody node provided for redemption');
+      }
+
+      // Validate on-chain custody for the provided origin node.
+      const custodyAmount = await diamondAssetContract.getCustodyInfo(
+        tokenId,
+        originNode,
+      );
+      if (BigInt(custodyAmount) < quantity) {
+        throw new Error(
+          'Insufficient custody at the selected origin node for this redemption',
+        );
+      }
+
+      if (originNode.toLowerCase() === signerAddress.toLowerCase()) {
+        throw new Error(
+          'Custodian wallets cannot redeem assets from their own custody',
+        );
+      }
 
       const balance = await diamondAssetContract.balanceOf(
         signerAddress,
@@ -191,7 +212,7 @@ export class RedemptionService {
         price: totalFee.toString(), // Redemption fee
         txFee: (totalFee / 10n).toString(), // 10% to nodes
         buyer: signerAddress,
-        seller: originNode || signerAddress, // Origin node is the "seller" in redemption context
+        seller: originNode, // Origin custodian node is the physical seller in redemption context
         journeyIds: [],
         nodes: route.nodes, // All nodes in the delivery route
         locationData: parcelData,

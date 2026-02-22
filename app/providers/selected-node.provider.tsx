@@ -89,6 +89,9 @@ const SelectedNodeContext = createContext<SelectedNodeContextType | undefined>(
 );
 
 export function SelectedNodeProvider({ children }: { children: ReactNode }) {
+  const INDEXER_POLL_INTERVAL_MS = 1500;
+  const INDEXER_MAX_POLL_ATTEMPTS = 12;
+
   // Selection state
   const [selectedNodeAddress, setSelectedNodeAddress] = useState<string | null>(
     null,
@@ -335,6 +338,59 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     await loadDocuments(selectedNodeAddress);
   }, [selectedNodeAddress, loadDocuments]);
 
+  const waitForIndexedAsset = useCallback(
+    async (
+      nodeAddress: string,
+      expectedTokenId: string,
+      expectedAmount: bigint,
+      expectedTotalAmount: bigint,
+    ): Promise<boolean> => {
+      for (let attempt = 0; attempt < INDEXER_MAX_POLL_ATTEMPTS; attempt++) {
+        if (attempt > 0) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, INDEXER_POLL_INTERVAL_MS),
+          );
+        }
+
+        try {
+          const latestAssets = await getDiamondNodeAssets(nodeAddress);
+          setAssets(latestAssets);
+
+          const totalAmount = latestAssets.reduce(
+            (sum, item) => sum + BigInt(item.amount || '0'),
+            0n,
+          );
+
+          if (!expectedTokenId) {
+            if (totalAmount >= expectedTotalAmount) {
+              return true;
+            }
+            continue;
+          }
+
+          const matchingAsset = latestAssets.find(
+            (item) => item.id === expectedTokenId,
+          );
+          const matchingAmount = matchingAsset
+            ? BigInt(matchingAsset.amount || '0')
+            : 0n;
+
+          if (matchingAmount >= expectedAmount) {
+            return true;
+          }
+        } catch (err) {
+          console.warn(
+            `[SelectedNodeProvider] waitForIndexedAsset poll ${attempt + 1} failed:`,
+            err,
+          );
+        }
+      }
+
+      return false;
+    },
+    [getDiamondNodeAssets],
+  );
+
   // Update node status via Diamond
   const updateNodeStatus = useCallback(
     async (status: 'Active' | 'Inactive') => {
@@ -482,10 +538,42 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        const tokenIdFromAsset = String(asset.tokenId ?? asset.tokenID ?? '');
+        const amountDelta = BigInt(amount);
+        const currentAssetAmount = assets.find(
+          (item) => item.id === tokenIdFromAsset,
+        );
+        const currentAmount = currentAssetAmount
+          ? BigInt(currentAssetAmount.amount || '0')
+          : 0n;
+        const currentTotalAmount = assets.reduce(
+          (sum, item) => sum + BigInt(item.amount || '0'),
+          0n,
+        );
+
         await diamondMintAsset(selectedNodeAddress, asset, amount);
 
         // Refresh assets and nodes
         await Promise.all([refreshAssets(), refreshNodes()]);
+
+        // Indexer/database can lag behind tx confirmation; poll until visible in UI data.
+        const indexed = await waitForIndexedAsset(
+          selectedNodeAddress,
+          tokenIdFromAsset,
+          currentAmount + amountDelta,
+          currentTotalAmount + amountDelta,
+        );
+
+        if (!indexed) {
+          console.warn(
+            '[SelectedNodeProvider] Mint tx confirmed but indexer refresh timed out',
+            {
+              node: selectedNodeAddress,
+              tokenId: tokenIdFromAsset,
+              attempts: INDEXER_MAX_POLL_ATTEMPTS,
+            },
+          );
+        }
       } catch (err) {
         console.error('Error minting asset:', err);
         throw err;
@@ -494,9 +582,11 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     [
       diamondInitialized,
       selectedNodeAddress,
+      assets,
       refreshAssets,
       refreshNodes,
       diamondMintAsset,
+      waitForIndexedAsset,
     ],
   );
 

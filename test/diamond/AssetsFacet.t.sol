@@ -243,6 +243,21 @@ contract AssetsFacetTest is DiamondTestBase {
     // AURA ASSET - REDEMPTION TESTS
     // ============================================================================
 
+    function test_redeem_revertCustodianCannotRedeemOwnCustody() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(nodeOperator);
+        (, uint256 id) = assets.nodeMint(user1, assetDef, 100, 'COMMODITY', '');
+
+        vm.prank(user1);
+        vm.expectRevert(AssetsFacet.CannotRedeemOwnCustody.selector);
+        assets.redeem(id, 10, user1);
+    }
+
     function test_redeem_releasesCustody() public {
         // Mint first
         vm.startPrank(owner);
@@ -254,8 +269,12 @@ contract AssetsFacetTest is DiamondTestBase {
         vm.prank(nodeOperator);
         (, uint256 id) = assets.nodeMint(user1, assetDef, 100, 'COMMODITY', '');
 
-        // Redeem (specify user1 as custodian since they received the tokens)
+        // Non-custodian holder receives part of the balance.
         vm.prank(user1);
+        assets.safeTransferFrom(user1, user2, id, 50, '');
+
+        // Non-custodian holder can redeem.
+        vm.prank(user2);
         assets.redeem(id, 50, user1);
 
         uint256 custodyAmount = assets.getCustodyInfo(id, user1);
@@ -275,9 +294,12 @@ contract AssetsFacetTest is DiamondTestBase {
         uint256 supplyBefore = assets.totalSupply(id);
 
         vm.prank(user1);
+        assets.safeTransferFrom(user1, user2, id, 50, '');
+
+        vm.prank(user2);
         assets.redeem(id, 50, user1);
 
-        assertEq(assets.balanceOf(user1, id), 50, 'Balance should decrease');
+        assertEq(assets.balanceOf(user2, id), 0, 'Redeemer balance should decrease');
         assertEq(assets.totalSupply(id), supplyBefore - 50, 'Supply should decrease');
     }
 
@@ -292,8 +314,15 @@ contract AssetsFacetTest is DiamondTestBase {
         (, uint256 id) = assets.nodeMint(user1, assetDef, 100, 'COMMODITY', '');
 
         vm.prank(user1);
-        vm.expectRevert();
+        assets.safeTransferFrom(user1, user2, id, 10, '');
+
+        vm.prank(user2);
+        vm.expectRevert(AssetsFacet.InsufficientBalance.selector);
         assets.redeem(id, 200, user1); // More than balance
+
+        vm.prank(user1);
+        vm.expectRevert(AssetsFacet.CannotRedeemOwnCustody.selector);
+        assets.redeem(id, 1, user1); // Custodian redemption should be blocked
     }
 
     // ============================================================================
