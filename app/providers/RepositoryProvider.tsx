@@ -15,6 +15,8 @@ interface RepositoryProviderProps {
   children: ReactNode;
 }
 
+const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+
 export function RepositoryProvider({ children }: RepositoryProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -30,48 +32,65 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
 
   const initializeRepository = useCallback(async () => {
     try {
-      console.log('Is privy ready', isReady);
-      console.log('Is privy connected', isConnected);
-      console.log('Is privy authenticated', privy.authenticated);
-      if (isReady && !privy.authenticated) {
-        console.log('calling connect');
-        await connect();
-        if (!privy.authenticated) {
-          throw new Error('Authentication failed after connect attempt.');
-        }
-      }
+      let provider: ethers.BrowserProvider;
 
-      const connectedWallet = privyWallets.wallets?.[0];
-      console.log(
-        '[RepositoryProvider] Checking wallets. Privy Auth State:',
-        privy.authenticated,
-      );
-      console.log(
-        '[RepositoryProvider] Privy Wallets State:',
-        JSON.stringify(privyWallets, null, 2),
-      );
-
-      if (!connectedWallet && privy.authenticated) {
-        await privy.logout();
-        await privy.login();
-        if (!connectedWallet && privy.authenticated) {
-          console.error(
-            'Authenticated but no wallet found. User might need to link a wallet.',
-            privyWallets,
-          );
+      if (IS_E2E_TEST_MODE) {
+        const injectedEthereum = (window as Window & { ethereum?: any })
+          .ethereum;
+        if (!injectedEthereum) {
           throw new Error(
-            `Privy wallet not available even though user is authenticated.`,
+            'E2E test mode requires an injected wallet provider.',
           );
         }
-      } else if (!connectedWallet) {
-        throw new Error(`Privy wallet not available after connection attempt.`);
-      }
 
-      const ethereumProvider = await connectedWallet.getEthereumProvider();
-      if (!ethereumProvider) {
-        throw new Error('Ethereum provider not available from Privy wallet.');
+        provider = new ethers.BrowserProvider(injectedEthereum);
+        await provider.send('eth_requestAccounts', []);
+      } else {
+        console.log('Is privy ready', isReady);
+        console.log('Is privy connected', isConnected);
+        console.log('Is privy authenticated', privy.authenticated);
+        if (isReady && !privy.authenticated) {
+          console.log('calling connect');
+          await connect();
+          if (!privy.authenticated) {
+            throw new Error('Authentication failed after connect attempt.');
+          }
+        }
+
+        const connectedWallet = privyWallets.wallets?.[0];
+        console.log(
+          '[RepositoryProvider] Checking wallets. Privy Auth State:',
+          privy.authenticated,
+        );
+        console.log(
+          '[RepositoryProvider] Privy Wallets State:',
+          JSON.stringify(privyWallets, null, 2),
+        );
+
+        if (!connectedWallet && privy.authenticated) {
+          await privy.logout();
+          await privy.login();
+          if (!connectedWallet && privy.authenticated) {
+            console.error(
+              'Authenticated but no wallet found. User might need to link a wallet.',
+              privyWallets,
+            );
+            throw new Error(
+              `Privy wallet not available even though user is authenticated.`,
+            );
+          }
+        } else if (!connectedWallet) {
+          throw new Error(
+            `Privy wallet not available after connection attempt.`,
+          );
+        }
+
+        const ethereumProvider = await connectedWallet.getEthereumProvider();
+        if (!ethereumProvider) {
+          throw new Error('Ethereum provider not available from Privy wallet.');
+        }
+        provider = new ethers.BrowserProvider(ethereumProvider);
       }
-      const provider = new ethers.BrowserProvider(ethereumProvider);
 
       const signer = await provider.getSigner();
 
@@ -121,7 +140,14 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
   useEffect(() => {
     let mounted = true;
 
-    if (!isReady || !privy.ready || !privyWallets.ready || isInitialized) {
+    if (isInitialized) {
+      return;
+    }
+
+    if (
+      !IS_E2E_TEST_MODE &&
+      (!isReady || !privy.ready || !privyWallets.ready)
+    ) {
       return;
     }
 
@@ -193,7 +219,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
     };
   }, [currentWalletAddress, isInitialized]);
 
-  if (!privy.ready || !privyWallets.ready) {
+  if (!IS_E2E_TEST_MODE && (!privy.ready || !privyWallets.ready)) {
     return <LoadingScreen />;
   }
 

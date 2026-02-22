@@ -9,6 +9,7 @@
  */
 
 import { Page, BrowserContext } from '@playwright/test';
+import { ethers } from 'ethers';
 
 // =============================================================================
 // TYPES
@@ -25,6 +26,8 @@ export interface WalletConfig {
   autoApprove?: boolean;
   /** RPC URL for read operations (optional) */
   rpcUrl?: string;
+  /** Optional private key for real signature generation in tests */
+  privateKey?: string;
 }
 
 export interface MockEthereumConfig {
@@ -37,12 +40,115 @@ export interface MockEthereumConfig {
 // DEFAULT CONFIGURATIONS
 // =============================================================================
 
+const DEFAULT_TEST_PRIVATE_KEY =
+  process.env.PLAYWRIGHT_WALLET_PRIVATE_KEY ||
+  process.env.ARB_PRIVATE_KEY ||
+  process.env.SEP_PRIVATE_KEY;
+
+function normalizePrivateKey(privateKey: string): string {
+  return privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+}
+
+function deriveAddressFromPrivateKey(privateKey?: string): string | null {
+  if (!privateKey) return null;
+  try {
+    return new ethers.Wallet(normalizePrivateKey(privateKey)).address;
+  } catch {
+    return null;
+  }
+}
+
+function resolveWalletConfig(wallet: WalletConfig): WalletConfig {
+  const derivedAddress = deriveAddressFromPrivateKey(wallet.privateKey);
+  if (!derivedAddress) return wallet;
+  return {
+    ...wallet,
+    address: derivedAddress,
+  };
+}
+
+async function signPersonalMessage(privateKey: string, params: any[]) {
+  const signer = new ethers.Wallet(normalizePrivateKey(privateKey));
+  const message = params[0];
+  if (typeof message === 'string' && message.startsWith('0x')) {
+    return signer.signMessage(ethers.getBytes(message));
+  }
+  return signer.signMessage(String(message ?? ''));
+}
+
+async function signTypedDataMessage(privateKey: string, params: any[]) {
+  const signer = new ethers.Wallet(normalizePrivateKey(privateKey));
+  const typedDataInput = params[1];
+  const typedData =
+    typeof typedDataInput === 'string'
+      ? JSON.parse(typedDataInput)
+      : typedDataInput;
+  const { domain = {}, message = {}, types = {} } = typedData || {};
+  const sanitizedTypes = { ...types };
+  delete sanitizedTypes.EIP712Domain;
+  return signer.signTypedData(domain, sanitizedTypes, message);
+}
+
+async function sendSignedTransaction(
+  privateKey: string,
+  params: any[],
+  rpcUrl?: string,
+) {
+  const tx = params[0];
+  if (!tx || typeof tx !== 'object') {
+    throw new Error('Invalid eth_sendTransaction payload.');
+  }
+
+  if (!rpcUrl) {
+    throw new Error('RPC URL required for eth_sendTransaction in test mode.');
+  }
+
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const signer = new ethers.Wallet(normalizePrivateKey(privateKey), provider);
+  const response = await signer.sendTransaction(tx);
+  return response.hash;
+}
+
+async function attachPrivateKeyBindings(
+  target: Page | BrowserContext,
+  privateKey?: string,
+  rpcUrl?: string,
+) {
+  if (!privateKey) return;
+
+  // Ignore duplicate exposure errors across reused pages/contexts.
+  try {
+    await target.exposeFunction(
+      '__walletMockSignPersonal',
+      async (params: any[]) => signPersonalMessage(privateKey, params),
+    );
+  } catch {}
+
+  try {
+    await target.exposeFunction(
+      '__walletMockSignTypedData',
+      async (params: any[]) => signTypedDataMessage(privateKey, params),
+    );
+  } catch {}
+
+  try {
+    await target.exposeFunction(
+      '__walletMockSendTransaction',
+      async (params: any[]) =>
+        sendSignedTransaction(privateKey, params, rpcUrl),
+    );
+  } catch {}
+}
+
 export const BASE_SEPOLIA_CONFIG: WalletConfig = {
-  address: '0x1234567890123456789012345678901234567890',
+  address:
+    deriveAddressFromPrivateKey(DEFAULT_TEST_PRIVATE_KEY) ||
+    '0x1234567890123456789012345678901234567890',
   chainId: '0x14a34', // 84532 in hex
   networkVersion: '84532',
   autoApprove: true,
   rpcUrl: 'https://sepolia.base.org',
+  privateKey: DEFAULT_TEST_PRIVATE_KEY,
 };
 
 export const HARDHAT_CONFIG: WalletConfig = {
@@ -62,7 +168,8 @@ export const HARDHAT_CONFIG: WalletConfig = {
  * This runs before any page scripts, setting up window.ethereum
  */
 function generateInjectionScript(config: MockEthereumConfig): string {
-  const { wallet, mockResponses = {} } = config;
+  const { mockResponses = {} } = config;
+  const wallet = resolveWalletConfig(config.wallet);
 
   return `
     (function() {
@@ -177,10 +284,14 @@ function generateInjectionScript(config: MockEthereumConfig): string {
               ${
                 wallet.autoApprove
                   ? `
-              // Auto-approve: return a mock transaction hash
-              const txHash = '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-              console.log('[MockEthereum] Auto-approved tx:', txHash);
-              return txHash;
+              if (typeof window.__walletMockSendTransaction === 'function') {
+                const txHash = await window.__walletMockSendTransaction(params);
+                console.log('[MockEthereum] Signed tx:', txHash);
+                return txHash;
+              }
+              const fallbackHash = '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+              console.log('[MockEthereum] Auto-approved tx:', fallbackHash);
+              return fallbackHash;
               `
                   : `
               throw { code: 4001, message: 'User rejected the request' };
@@ -192,7 +303,9 @@ function generateInjectionScript(config: MockEthereumConfig): string {
               ${
                 wallet.autoApprove
                   ? `
-              // Return a mock signature
+              if (typeof window.__walletMockSignPersonal === 'function') {
+                return await window.__walletMockSignPersonal(params);
+              }
               return '0x' + Array(130).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
               `
                   : `
@@ -204,7 +317,9 @@ function generateInjectionScript(config: MockEthereumConfig): string {
               ${
                 wallet.autoApprove
                   ? `
-              // Return a mock typed data signature
+              if (typeof window.__walletMockSignTypedData === 'function') {
+                return await window.__walletMockSignTypedData(params);
+              }
               return '0x' + Array(130).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
               `
                   : `
@@ -269,6 +384,8 @@ export async function injectWalletMock(
   page: Page,
   config: MockEthereumConfig = { wallet: BASE_SEPOLIA_CONFIG },
 ): Promise<void> {
+  const wallet = resolveWalletConfig(config.wallet);
+  await attachPrivateKeyBindings(page, wallet.privateKey, wallet.rpcUrl);
   const script = generateInjectionScript(config);
   await page.addInitScript(script);
 }
@@ -288,6 +405,8 @@ export async function injectWalletMockToContext(
   context: BrowserContext,
   config: MockEthereumConfig = { wallet: BASE_SEPOLIA_CONFIG },
 ): Promise<void> {
+  const wallet = resolveWalletConfig(config.wallet);
+  await attachPrivateKeyBindings(context, wallet.privateKey, wallet.rpcUrl);
   const script = generateInjectionScript(config);
   await context.addInitScript(script);
 }
@@ -361,6 +480,9 @@ export async function isWalletConnected(page: Page): Promise<boolean> {
 
 declare global {
   interface Window {
+    __walletMockSignPersonal?: (params: any[]) => Promise<string>;
+    __walletMockSignTypedData?: (params: any[]) => Promise<string>;
+    __walletMockSendTransaction?: (params: any[]) => Promise<string>;
     ethereum?: {
       isMetaMask: boolean;
       isConnected: () => boolean;

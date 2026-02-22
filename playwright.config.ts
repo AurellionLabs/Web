@@ -6,6 +6,7 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
+import 'dotenv/config';
 
 /**
  * See https://playwright.dev/docs/test-configuration
@@ -79,6 +80,10 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_E2E_TEST_MODE: 'true',
+    },
   },
 
   // Output folder for test artifacts
