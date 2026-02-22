@@ -419,16 +419,17 @@ export default function CreateP2POfferPage() {
                   })
                 }
                 className="text-left"
+                aria-pressed={formData.offerType === 'buy'}
               >
                 <EvaPanel
                   label="Buy"
                   sysId="BUY-01"
                   accent="gold"
                   className={cn(
-                    'transition-all duration-300',
+                    'transition-all duration-300 border',
                     formData.offerType === 'buy'
-                      ? 'ring-1 ring-gold/50'
-                      : 'hover:ring-1 hover:ring-gold/20',
+                      ? 'ring-2 ring-gold/70 border-gold/40 bg-gold/5 shadow-[0_0_24px_rgba(245,158,11,0.18)]'
+                      : 'border-border/20 hover:ring-1 hover:ring-gold/20 hover:border-gold/30',
                   )}
                 >
                   <div className="py-4">
@@ -457,16 +458,17 @@ export default function CreateP2POfferPage() {
                   })
                 }
                 className="text-left"
+                aria-pressed={formData.offerType === 'sell'}
               >
                 <EvaPanel
                   label="Sell"
                   sysId="SELL-01"
                   accent="crimson"
                   className={cn(
-                    'transition-all duration-300',
+                    'transition-all duration-300 border',
                     formData.offerType === 'sell'
-                      ? 'ring-1 ring-emerald-500/50'
-                      : 'hover:ring-1 hover:ring-emerald-500/20',
+                      ? 'ring-2 ring-emerald-500/70 border-emerald-500/40 bg-emerald-500/5 shadow-[0_0_24px_rgba(16,185,129,0.18)]'
+                      : 'border-border/20 hover:ring-1 hover:ring-emerald-500/20 hover:border-emerald-500/30',
                   )}
                 >
                   <div className="py-4">
@@ -583,7 +585,7 @@ export default function CreateP2POfferPage() {
                             className={cn(
                               'w-full p-4 border transition-all text-left',
                               formData.tokenId === asset.tokenId
-                                ? 'border-emerald-500/50 bg-emerald-500/5'
+                                ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
                                 : 'border-border/20 bg-card/40 hover:border-emerald-500/30',
                             )}
                             style={{
@@ -593,7 +595,10 @@ export default function CreateP2POfferPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-mono font-bold text-foreground tracking-[0.08em]">
+                                <p className="font-mono font-bold text-foreground tracking-[0.08em] flex items-center gap-2">
+                                  {formData.tokenId === asset.tokenId && (
+                                    <Check className="w-4 h-4 text-emerald-400" />
+                                  )}
                                   {asset.name}
                                 </p>
                                 <EvaStatusBadge
@@ -873,16 +878,17 @@ export default function CreateP2POfferPage() {
                   })
                 }
                 className="w-full text-left"
+                aria-pressed={formData.logisticsType === 'network'}
               >
                 <EvaPanel
                   label="Aurellion Network"
                   sysId="NET-DRV"
                   accent="gold"
                   className={cn(
-                    'transition-all duration-300',
+                    'transition-all duration-300 border',
                     formData.logisticsType === 'network'
-                      ? 'ring-1 ring-gold/50'
-                      : 'hover:ring-1 hover:ring-gold/20',
+                      ? 'ring-2 ring-gold/70 border-gold/40 bg-gold/5 shadow-[0_0_24px_rgba(245,158,11,0.18)]'
+                      : 'border-border/20 hover:ring-1 hover:ring-gold/20 hover:border-gold/30',
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
@@ -908,16 +914,17 @@ export default function CreateP2POfferPage() {
                   })
                 }
                 className="w-full text-left"
+                aria-pressed={formData.logisticsType === 'custom'}
               >
                 <EvaPanel
                   label="Specific Driver"
                   sysId="CUS-DRV"
                   accent="crimson"
                   className={cn(
-                    'transition-all duration-300',
+                    'transition-all duration-300 border',
                     formData.logisticsType === 'custom'
-                      ? 'ring-1 ring-crimson/50'
-                      : 'hover:ring-1 hover:ring-crimson/20',
+                      ? 'ring-2 ring-crimson/70 border-crimson/40 bg-crimson/5 shadow-[0_0_24px_rgba(239,68,68,0.18)]'
+                      : 'border-border/20 hover:ring-1 hover:ring-crimson/20 hover:border-crimson/30',
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
@@ -999,16 +1006,17 @@ export default function CreateP2POfferPage() {
               <button
                 onClick={() => updateFormData({ targetType: 'public' })}
                 className="w-full text-left"
+                aria-pressed={formData.targetType === 'public'}
               >
                 <EvaPanel
                   label="Public Offer"
                   sysId="PUB-01"
                   accent="gold"
                   className={cn(
-                    'transition-all duration-300',
+                    'transition-all duration-300 border',
                     formData.targetType === 'public'
-                      ? 'ring-1 ring-gold/50'
-                      : 'hover:ring-1 hover:ring-gold/20',
+                      ? 'ring-2 ring-gold/70 border-gold/40 bg-gold/5 shadow-[0_0_24px_rgba(245,158,11,0.18)]'
+                      : 'border-border/20 hover:ring-1 hover:ring-gold/20 hover:border-gold/30',
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
@@ -1026,16 +1034,17 @@ export default function CreateP2POfferPage() {
               <button
                 onClick={() => updateFormData({ targetType: 'targeted' })}
                 className="w-full text-left"
+                aria-pressed={formData.targetType === 'targeted'}
               >
                 <EvaPanel
                   label="Targeted Offer"
                   sysId="TGT-01"
                   accent="crimson"
                   className={cn(
-                    'transition-all duration-300',
+                    'transition-all duration-300 border',
                     formData.targetType === 'targeted'
-                      ? 'ring-1 ring-crimson/50'
-                      : 'hover:ring-1 hover:ring-crimson/20',
+                      ? 'ring-2 ring-crimson/70 border-crimson/40 bg-crimson/5 shadow-[0_0_24px_rgba(239,68,68,0.18)]'
+                      : 'border-border/20 hover:ring-1 hover:ring-crimson/20 hover:border-crimson/30',
                   )}
                 >
                   <div className="flex items-center gap-4 py-2">
