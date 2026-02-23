@@ -107,7 +107,7 @@ export default function CreateP2POfferPage() {
   const { setCurrentUserRole, connected } = useMainProvider();
   const { address } = useWallet();
   const { p2pService, initialized: diamondInitialized } = useDiamond();
-  const { supportedAssetClasses, getClassTokenizableAssets } = usePlatform();
+  const { supportedAssetClasses, getClassAssets } = usePlatform();
   const router = useRouter();
 
   // State
@@ -165,14 +165,14 @@ export default function CreateP2POfferPage() {
       if (!formData.assetClass) return;
       setLoadingAssets(true);
       try {
-        const assets = await getClassTokenizableAssets(formData.assetClass);
+        const assets = await getClassAssets(formData.assetClass);
         setClassAssets(assets);
       } finally {
         setLoadingAssets(false);
       }
     };
     loadAssetsForClass();
-  }, [formData.assetClass, getClassTokenizableAssets, isSellFlow]);
+  }, [formData.assetClass, getClassAssets, isSellFlow]);
 
   // Update selected asset when tokenId changes (buy flow)
   useEffect(() => {

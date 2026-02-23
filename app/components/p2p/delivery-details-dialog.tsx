@@ -236,7 +236,7 @@ export function DeliveryDetailsDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
             className={cn(
-              'flex-1 px-4 py-3 rounded-lg text-sm font-medium',
+              'shrink-0 px-5 py-3 rounded-lg text-sm font-medium',
               'bg-neutral-900 text-neutral-300 border border-neutral-800',
               'hover:bg-neutral-800 transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -247,7 +247,7 @@ export function DeliveryDetailsDialog({
           </button>
           <GlowButton
             variant="primary"
-            className="flex-1"
+            className="flex-1 min-w-0"
             onClick={handleConfirm}
             disabled={!deliveryAddress.trim() || isSubmitting}
             loading={isSubmitting}

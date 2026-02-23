@@ -840,6 +840,7 @@ export function aggregateP2POrdersForUser(
       contractualAgreement: '',
       isP2P: true,
       journeyStatus,
+      createdAt: Number(created.block_timestamp) || 0,
     };
   }
 

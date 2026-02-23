@@ -7,6 +7,8 @@ import {
 } from '@privy-io/react-auth';
 import { PrivyWalletRepository } from '@/infrastructure/repositories/privy-wallet-repository';
 
+const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+
 // Helper function to parse chainId string to number
 const parseChainId = (chainIdStr: string | undefined | null): number | null => {
   if (!chainIdStr) return null;
@@ -45,6 +47,8 @@ export function useWallet() {
 
   // Initialize repository when Privy wallets are ready
   useEffect(() => {
+    if (IS_E2E_TEST_MODE) return;
+
     // Check if already initialized or not ready
     if (!privy.ready || !privyWallets.ready || repository) return;
 

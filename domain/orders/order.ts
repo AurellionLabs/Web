@@ -42,6 +42,8 @@ export type Order = {
   isP2P?: boolean;
   /** Current journey status: 0=Pending, 1=InTransit, 2=Delivered. null if no journey yet */
   journeyStatus?: number | null;
+  /** Block timestamp (seconds since epoch) for chronological sorting */
+  createdAt?: number;
 };
 /**
  * Interface defining the data access methods for orders and journeys.

@@ -28,7 +28,7 @@ import {
   GET_P2P_OFFERS_ACCEPTED_BY_USER,
   GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
   GET_AUSYS_ORDER_STATUS_UPDATES,
-  GET_JOURNEYS_BY_SENDER_ADDRESS,
+  GET_JOURNEYS_BY_ORDER,
   GET_JOURNEY_STATUS_UPDATES_ALL,
 } from '@/infrastructure/shared/graph-queries';
 import type {
@@ -36,7 +36,7 @@ import type {
   P2POffersAcceptedByUserResponse,
   P2POfferDetailsResponse,
   AuSysOrderStatusUpdatesResponse,
-  JourneysBySenderResponse,
+  JourneysByOrderResponse,
   JourneyStatusUpdatesAllResponse,
 } from '@/infrastructure/shared/graph-queries';
 import {
@@ -93,6 +93,7 @@ function aggregatedUnifiedOrderToDomain(
     locationData: undefined,
     currentStatus: mapOrderStatus(order.status),
     contractualAgreement: '',
+    createdAt: Number(order.createdAt) || 0,
   };
 }
 
@@ -532,10 +533,10 @@ export class DiamondNodeRepository implements NodeRepository {
           GET_AUSYS_ORDER_STATUS_UPDATES,
           { limit: 500 },
         ),
-        graphqlRequest<JourneysBySenderResponse>(
+        graphqlRequest<JourneysByOrderResponse>(
           this.graphQLEndpoint,
-          GET_JOURNEYS_BY_SENDER_ADDRESS,
-          { sender: queryAddr, limit: 500 },
+          GET_JOURNEYS_BY_ORDER,
+          { limit: 500 },
         ),
         graphqlRequest<JourneyStatusUpdatesAllResponse>(
           this.graphQLEndpoint,
@@ -579,8 +580,10 @@ export class DiamondNodeRepository implements NodeRepository {
         }
       }
 
+      allOrders.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
       console.log(
-        `[DiamondNodeRepository] Returning ${allOrders.length} total orders`,
+        `[DiamondNodeRepository] Returning ${allOrders.length} total orders (newest first)`,
       );
       return allOrders;
     } catch (error) {

@@ -37,8 +37,7 @@ export function GlowButton({
   fullWidth = false,
   ...props
 }: GlowButtonProps) {
-  const baseStyles =
-    'relative overflow-hidden font-medium transition-all duration-300';
+  const baseStyles = 'relative font-medium transition-all duration-300';
 
   const variantStyles = {
     primary: cn(

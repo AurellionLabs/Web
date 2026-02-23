@@ -16,6 +16,7 @@ interface RepositoryProviderProps {
 }
 
 const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+const MAX_E2E_INIT_RETRIES = 5;
 
 export function RepositoryProvider({ children }: RepositoryProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -125,6 +126,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
           : new Error('Failed to initialize repository'),
       );
       setIsInitialized(false);
+      throw err;
     }
   }, [
     connect,
@@ -139,6 +141,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
 
   useEffect(() => {
     let mounted = true;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
     if (isInitialized) {
       return;
@@ -157,6 +160,12 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       } catch (err) {
         if (mounted) {
           console.error('[RepositoryProvider] useEffect init error:', err);
+          if (IS_E2E_TEST_MODE && retryCount < MAX_E2E_INIT_RETRIES) {
+            retryTimeout = setTimeout(() => {
+              if (!mounted) return;
+              setRetryCount((prev) => prev + 1);
+            }, 1000);
+          }
         }
       }
     };
@@ -165,6 +174,9 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
 
     return () => {
       mounted = false;
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
     };
   }, [
     isReady,
@@ -173,6 +185,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
     isInitialized,
     isConnected,
     privy.authenticated,
+    retryCount,
   ]);
 
   // Watch for wallet address changes AFTER initialization and update the signer.
@@ -224,6 +237,18 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
   }
 
   if (!isInitialized) {
+    if (error && retryCount >= MAX_E2E_INIT_RETRIES) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
+          <div className="max-w-xl text-center">
+            <h2 className="mb-2 text-xl font-semibold">
+              Wallet initialization failed
+            </h2>
+            <p className="text-sm text-white/80">{error.message}</p>
+          </div>
+        </div>
+      );
+    }
     return <LoadingScreen />;
   }
 

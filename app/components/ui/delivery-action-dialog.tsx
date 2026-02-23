@@ -52,7 +52,7 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     icon: <CheckCircle2 className="h-6 w-6 text-amber-500" />,
     confirmText: 'Accept Delivery',
     cancelText: 'Cancel',
-    buttonStyle: 'bg-amber-500 hover:bg-amber-600',
+    buttonStyle: 'bg-amber-500 hover:bg-amber-600 text-white',
     triggerText: 'Accept Delivery',
     confirmationMessage:
       'By accepting this delivery, you commit to picking up and delivering the parcel according to the specified locations and timeline.',
@@ -67,7 +67,7 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     icon: <Package className="h-6 w-6 text-blue-500" />,
     confirmText: 'Confirm Pickup',
     cancelText: 'Cancel',
-    buttonStyle: 'bg-blue-500 hover:bg-blue-600',
+    buttonStyle: 'bg-blue-500 hover:bg-blue-600 text-white',
     triggerText: 'Confirm Pickup',
     confirmationMessage:
       'By confirming pickup, you acknowledge that you have received the parcel and will deliver it to the specified destination.',
@@ -82,7 +82,7 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     icon: <Truck className="h-6 w-6 text-green-500" />,
     confirmText: 'Confirm Delivery',
     cancelText: 'Cancel',
-    buttonStyle: 'bg-green-500 hover:bg-green-600',
+    buttonStyle: 'bg-green-500 hover:bg-green-600 text-white',
     triggerText: 'Confirm Delivery',
     confirmationMessage:
       'By confirming delivery, you certify that you have successfully delivered the parcel to the specified destination.',
