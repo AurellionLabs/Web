@@ -454,6 +454,19 @@ export default function NodeDashboardPage() {
     ordersNeedingSettlement > 0
       ? Math.round((completedOrders / ordersNeedingSettlement) * 100)
       : 0;
+  const nodeSyncAggregate = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        (reputationTokenized +
+          reputationSecurity +
+          reputationChainSync +
+          reputationSettlement) /
+          4,
+      ),
+    ),
+  );
 
   const getAssetsSummaryByClass = () => {
     const summary: Record<string, { quantity: number }> = {};
@@ -1026,7 +1039,11 @@ export default function NodeDashboardPage() {
                 </div>
                 {/* Spinning Reticle — Node Sync Visualization */}
                 <div className="hidden lg:block">
-                  <SpinningReticle size={130} label="NODE SYNC" />
+                  <SpinningReticle
+                    size={130}
+                    label="NODE SYNC"
+                    value={nodeSyncAggregate}
+                  />
                 </div>
               </div>
             </div>

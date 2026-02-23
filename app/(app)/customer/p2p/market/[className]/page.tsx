@@ -271,15 +271,79 @@ export default function P2PMarketOffersPage() {
     setIsRefreshing(false);
   }, [loadOffers]);
 
-  // Open delivery dialog before accepting
+  const hasStoredDeliveryDestination = (offer: P2POffer): boolean => {
+    const destination = offer.locationData;
+    return Boolean(
+      destination?.endName?.trim() &&
+        destination?.endLocation?.lat?.trim() &&
+        destination?.endLocation?.lng?.trim(),
+    );
+  };
+
+  // Accept flow:
+  // - seller-initiated offer => buyer enters destination via dialog
+  // - buy offer => use buyer-provided destination stored on the offer
   const handleAcceptOffer = useCallback(
-    (offerId: string) => {
+    async (offerId: string) => {
       const offer = offers.find((o) => o.id === offerId);
       if (!offer) return;
-      setSelectedOffer(offer);
-      setDeliveryDialogOpen(true);
+      if (!p2pService || !address) return;
+
+      if (offer.isSellerInitiated) {
+        setSelectedOffer(offer);
+        setDeliveryDialogOpen(true);
+        return;
+      }
+
+      if (!hasStoredDeliveryDestination(offer)) {
+        setErrorMessage(
+          'This buy offer is missing a delivery destination. Ask the buyer to recreate the offer with a delivery address.',
+        );
+        return;
+      }
+
+      setProcessingOfferId(offer.id);
+      setErrorMessage(null);
+      try {
+        const storedLocation = offer.locationData!;
+        const delivery: P2PDeliveryDetails = {
+          senderNodeAddress:
+            offer.nodes && offer.nodes.length > 0 ? offer.nodes[0] : address,
+          receiverAddress: offer.buyer,
+          parcelData: {
+            startLocation: {
+              lat: storedLocation.startLocation?.lat || '',
+              lng: storedLocation.startLocation?.lng || '',
+            },
+            endLocation: {
+              lat: storedLocation.endLocation.lat,
+              lng: storedLocation.endLocation.lng,
+            },
+            startName: storedLocation.startName || 'Pickup Location',
+            endName: storedLocation.endName,
+          },
+          bountyWei: BigInt('500000000000000000'),
+          etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600),
+          tokenQuantity: BigInt(offer.quantity.toString()),
+          assetId: BigInt(offer.tokenId),
+          deliveryAddress: storedLocation.endName,
+        };
+
+        await p2pService.acceptOfferWithDelivery(offer.id, delivery);
+        await loadOffers();
+      } catch (error: unknown) {
+        console.error('Error accepting buy offer with stored delivery:', error);
+        const msg =
+          error instanceof Error
+            ? error.message
+            : 'Failed to accept offer. Please try again.';
+        setErrorMessage(msg);
+        await loadOffers();
+      } finally {
+        setProcessingOfferId(null);
+      }
     },
-    [offers],
+    [offers, p2pService, address, loadOffers],
   );
 
   // Confirm accept + schedule delivery

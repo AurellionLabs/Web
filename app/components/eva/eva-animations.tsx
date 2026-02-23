@@ -304,21 +304,29 @@ export function SpinningReticle({
   label = 'SYNC RATE',
   size = 256,
   className = '',
+  value,
 }: {
   label?: string;
   size?: number;
   className?: string;
+  value?: number;
 }) {
   const [syncRate, setSyncRate] = useState(0);
 
   useEffect(() => {
+    if (typeof value === 'number') return;
     let t = 0;
     const id = setInterval(() => {
       t += 0.03;
       setSyncRate(Math.floor(72 + Math.sin(t) * 15 + Math.sin(t * 3) * 5));
     }, 60);
     return () => clearInterval(id);
-  }, []);
+  }, [value]);
+
+  const displayValue =
+    typeof value === 'number'
+      ? Math.max(0, Math.min(100, Math.round(value)))
+      : syncRate;
 
   return (
     <div
@@ -453,7 +461,7 @@ export function SpinningReticle({
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="text-center">
           <span className="font-mono text-4xl font-bold text-gold tabular-nums">
-            {syncRate}
+            {displayValue}
           </span>
           <span className="font-mono text-lg text-gold/50">%</span>
           <div className="font-mono text-[9px] text-crimson/50 tracking-[0.3em] mt-1">

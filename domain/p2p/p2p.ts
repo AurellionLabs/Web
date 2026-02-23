@@ -120,6 +120,13 @@ export interface CreateP2POfferInput {
 
   /** Optional: custody nodes */
   nodes?: string[];
+
+  /** Optional: destination selected by buy-offer creator */
+  deliveryDestination?: {
+    address: string;
+    lat: string;
+    lng: string;
+  };
 }
 
 /**

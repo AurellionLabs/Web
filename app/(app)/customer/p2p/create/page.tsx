@@ -38,6 +38,7 @@ import {
 import { parseUnits, isAddress } from 'ethers';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { useUserAssets } from '@/hooks/useUserAssets';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 
 type Step = 'type' | 'asset' | 'details' | 'logistics' | 'target' | 'review';
 
@@ -53,7 +54,12 @@ interface FormData {
   logisticsPartner: string; // Node address for network, wallet address for custom
   targetType: 'public' | 'targeted';
   targetAddress: string;
+  deliveryAddress: string;
+  deliveryLat: string;
+  deliveryLng: string;
 }
+
+const GOOGLE_LIBRARIES: 'places'[] = ['places'];
 
 /** Format snake_case attribute names to Title Case */
 const formatAttributeName = (name: string): string => {
@@ -124,6 +130,9 @@ export default function CreateP2POfferPage() {
     logisticsPartner: '',
     targetType: 'public',
     targetAddress: '',
+    deliveryAddress: '',
+    deliveryLat: '',
+    deliveryLng: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +141,12 @@ export default function CreateP2POfferPage() {
   const [classAssets, setClassAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [loadingAssets, setLoadingAssets] = useState(false);
+  const { isLoaded: mapsLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: GOOGLE_LIBRARIES,
+  });
+  const [autocomplete, setAutocomplete] =
+    useState<google.maps.places.Autocomplete | null>(null);
 
   // Fetch ALL user-owned assets (single hook call to avoid re-render loops)
   const { sellableAssets: allSellableAssets, isLoading: isLoadingSellable } =
@@ -264,6 +279,13 @@ export default function CreateP2POfferPage() {
           parseFloat(formData.price) > 0
         );
       case 'logistics':
+        if (formData.offerType === 'buy') {
+          const hasDestination =
+            formData.deliveryAddress.trim().length > 0 &&
+            formData.deliveryLat.trim().length > 0 &&
+            formData.deliveryLng.trim().length > 0;
+          if (!hasDestination) return false;
+        }
         // Network = open to any driver, no address needed
         // Custom = specific driver wallet required
         return formData.logisticsType === 'network'
@@ -341,6 +363,14 @@ export default function CreateP2POfferPage() {
             ? formData.targetAddress
             : undefined,
         expiresAt,
+        deliveryDestination:
+          formData.offerType === 'buy'
+            ? {
+                address: formData.deliveryAddress.trim(),
+                lat: formData.deliveryLat.trim(),
+                lng: formData.deliveryLng.trim(),
+              }
+            : undefined,
       });
 
       // Brief delay to allow RPC state propagation before navigating
@@ -353,6 +383,18 @@ export default function CreateP2POfferPage() {
       setIsSubmitting(false);
     }
   }, [p2pService, connected, formData, router]);
+
+  const handlePlaceSelect = () => {
+    if (!autocomplete) return;
+    const place = autocomplete.getPlace();
+    if (!place.geometry || !place.geometry.location) return;
+
+    updateFormData({
+      deliveryAddress: place.formatted_address || '',
+      deliveryLat: String(place.geometry.location.lat()),
+      deliveryLng: String(place.geometry.location.lng()),
+    });
+  };
 
   // Render step indicator
   const renderStepIndicator = () => (
@@ -890,6 +932,61 @@ export default function CreateP2POfferPage() {
             </div>
 
             <div className="space-y-4">
+              {formData.offerType === 'buy' && (
+                <EvaPanel
+                  label="Delivery Destination"
+                  sysId="BUY-ADDR"
+                  accent="gold"
+                >
+                  <div className="space-y-2">
+                    <label className="block font-mono text-xs font-bold text-foreground/50 tracking-[0.2em] uppercase">
+                      Where should the seller deliver?
+                    </label>
+                    {mapsLoaded ? (
+                      <Autocomplete
+                        onLoad={(instance) => setAutocomplete(instance)}
+                        onPlaceChanged={handlePlaceSelect}
+                      >
+                        <Input
+                          type="text"
+                          placeholder="Search for delivery address..."
+                          value={formData.deliveryAddress}
+                          onChange={(e) =>
+                            updateFormData({
+                              deliveryAddress: e.target.value,
+                              deliveryLat: '',
+                              deliveryLng: '',
+                            })
+                          }
+                          className="bg-background/80 border-border/40 font-mono rounded-none"
+                        />
+                      </Autocomplete>
+                    ) : (
+                      <Input
+                        type="text"
+                        value={formData.deliveryAddress}
+                        onChange={(e) =>
+                          updateFormData({ deliveryAddress: e.target.value })
+                        }
+                        placeholder="Enter delivery address"
+                        className="bg-background/80 border-border/40 font-mono rounded-none"
+                      />
+                    )}
+                    {formData.deliveryAddress &&
+                      (!formData.deliveryLat || !formData.deliveryLng) && (
+                        <p className="font-mono text-xs text-crimson">
+                          Please choose a suggested address so coordinates are
+                          captured.
+                        </p>
+                      )}
+                    <p className="font-mono text-xs text-foreground/30 tracking-[0.05em]">
+                      This destination is saved with your buy offer and used
+                      when a seller accepts.
+                    </p>
+                  </div>
+                </EvaPanel>
+              )}
+
               {/* Network Drivers Option */}
               <button
                 onClick={() =>
@@ -1249,6 +1346,17 @@ export default function CreateP2POfferPage() {
                       )}
                   </div>
                 </div>
+
+                {formData.offerType === 'buy' && (
+                  <div className="flex items-center justify-between py-2.5 border-b border-border/10">
+                    <span className="font-mono text-sm text-foreground/50">
+                      Delivery Destination
+                    </span>
+                    <span className="font-mono text-sm font-bold text-foreground max-w-[65%] text-right truncate">
+                      {formData.deliveryAddress || 'Not set'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Target */}
                 <div className="flex items-center justify-between py-2.5">
