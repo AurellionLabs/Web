@@ -170,6 +170,63 @@ export default function CreateP2POfferPage() {
   }, [allSellableAssets]);
 
   const isSellFlow = formData.offerType === 'sell';
+  const selectedBuyFilters = useMemo(
+    () =>
+      Object.entries(formData.selectedAttributes).filter(
+        ([, value]) => value && value.trim().length > 0,
+      ),
+    [formData.selectedAttributes],
+  );
+
+  const buyClassAttributeOptions = useMemo(() => {
+    if (isSellFlow) return [] as Array<{ name: string; values: string[] }>;
+
+    const optionsByName = new Map<string, Set<string>>();
+    classAssets.forEach((asset) => {
+      (asset.attributes || []).forEach((attribute) => {
+        if (!attribute?.name) return;
+        const values = optionsByName.get(attribute.name) || new Set<string>();
+        (attribute.values || []).forEach((value) => {
+          if (value) values.add(value);
+        });
+        optionsByName.set(attribute.name, values);
+      });
+    });
+
+    return Array.from(optionsByName.entries())
+      .map(([name, values]) => ({
+        name,
+        values: Array.from(values).sort((a, b) => a.localeCompare(b)),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [classAssets, isSellFlow]);
+
+  const filteredBuyAssets = useMemo(() => {
+    if (isSellFlow) return [] as Asset[];
+
+    const byAttributes = classAssets.filter((asset) => {
+      if (selectedBuyFilters.length === 0) return true;
+      return selectedBuyFilters.every(([filterName, filterValue]) =>
+        (asset.attributes || []).some(
+          (attribute) =>
+            attribute.name === filterName &&
+            Array.isArray(attribute.values) &&
+            attribute.values.includes(filterValue),
+        ),
+      );
+    });
+
+    // Avoid duplicate options when metadata has repeated entries for same tokenId
+    const seenTokenIds = new Set<string>();
+    return byAttributes.filter((asset) => {
+      const tokenId = String(
+        (asset as any)?.tokenId ?? (asset as any)?.tokenID,
+      );
+      if (!tokenId || seenTokenIds.has(tokenId)) return false;
+      seenTokenIds.add(tokenId);
+      return true;
+    });
+  }, [classAssets, selectedBuyFilters, isSellFlow]);
 
   // Load assets when asset class changes (buy flow only)
   useEffect(() => {
@@ -258,17 +315,7 @@ export default function CreateP2POfferPage() {
         if (formData.assetClass === '' || formData.tokenId === '') return false;
         // For sell flow, attributes are already set on the owned token - no selection needed
         if (isSellFlow) return true;
-        // For buy flow, require all attributes with options to have a selected value
-        if (selectedAsset?.attributes) {
-          const selectableAttrs = selectedAsset.attributes.filter(
-            (a) => Array.isArray(a.values) && a.values.length > 0,
-          );
-          if (selectableAttrs.length > 0) {
-            return selectableAttrs.every(
-              (a) => !!formData.selectedAttributes[a.name],
-            );
-          }
-        }
+        // For buy flow, attribute filters are optional; token selection is required.
         return true;
       }
       case 'details':
@@ -701,77 +748,18 @@ export default function CreateP2POfferPage() {
                 ) : (
                   /* Asset Selection - BUY FLOW: show all tokenizable assets */
                   <div>
-                    <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
-                      Asset
-                    </label>
-                    {loadingAssets ? (
-                      <div className="p-4 font-mono text-sm text-foreground/40 flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        Loading assets...
-                      </div>
-                    ) : !formData.assetClass ? (
-                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
-                        <p>Select an asset class first</p>
-                      </div>
-                    ) : classAssets.length === 0 ? (
-                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
-                        <p>No assets found for this class</p>
-                      </div>
-                    ) : (
-                      <select
-                        value={formData.tokenId}
-                        onChange={(e) =>
-                          updateFormData({
-                            tokenId: e.target.value,
-                            selectedAttributes: {},
-                          })
-                        }
-                        className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
-                        style={{
-                          clipPath:
-                            'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
-                        }}
-                      >
-                        <option value="">Select an asset</option>
-                        {classAssets.map((asset: any) => (
-                          <option
-                            key={String(asset?.tokenId ?? asset?.tokenID)}
-                            value={String(asset?.tokenId ?? asset?.tokenID)}
-                          >
-                            {asset.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {selectedAsset && (
-                      <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.08em]">
-                        Token ID: {formData.tokenId}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Attribute Selection (buy flow only - sell flow shows attributes inline) */}
-                {!isSellFlow &&
-                  selectedAsset &&
-                  selectedAsset.attributes &&
-                  selectedAsset.attributes.length > 0 && (
-                    <div className="space-y-4 pt-4">
-                      <EvaScanLine variant="mixed" />
-                      <div>
-                        <h3 className="font-mono text-xs font-bold text-foreground/50 mb-1 tracking-[0.2em] uppercase">
-                          Specify Details
-                        </h3>
-                        <p className="font-mono text-xs text-foreground/30 tracking-[0.08em]">
-                          Select the specific attributes for this asset
-                        </p>
-                      </div>
-                      {selectedAsset.attributes.map((attribute) => {
-                        const hasOptions =
-                          Array.isArray(attribute.values) &&
-                          attribute.values.length > 0;
-                        if (!hasOptions) return null;
-                        return (
+                    {buyClassAttributeOptions.length > 0 && (
+                      <div className="space-y-4 mb-4">
+                        <div>
+                          <h3 className="font-mono text-xs font-bold text-foreground/50 mb-1 tracking-[0.2em] uppercase">
+                            Filter by Attributes
+                          </h3>
+                          <p className="font-mono text-xs text-foreground/30 tracking-[0.08em]">
+                            Pick the exact attributes you want before selecting
+                            a token ID
+                          </p>
+                        </div>
+                        {buyClassAttributeOptions.map((attribute) => (
                           <div key={attribute.name}>
                             <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
                               {formatAttributeName(attribute.name)}
@@ -787,6 +775,7 @@ export default function CreateP2POfferPage() {
                                     ...formData.selectedAttributes,
                                     [attribute.name]: e.target.value,
                                   },
+                                  tokenId: '',
                                 })
                               }
                               className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
@@ -796,10 +785,7 @@ export default function CreateP2POfferPage() {
                               }}
                             >
                               <option value="">
-                                Select{' '}
-                                {formatAttributeName(
-                                  attribute.name,
-                                ).toLowerCase()}
+                                Any {formatAttributeName(attribute.name)}
                               </option>
                               {attribute.values.map((val) => (
                                 <option key={val} value={val}>
@@ -807,16 +793,74 @@ export default function CreateP2POfferPage() {
                                 </option>
                               ))}
                             </select>
-                            {attribute.description && (
-                              <p className="font-mono text-xs text-foreground/30 mt-1">
-                                {attribute.description}
-                              </p>
-                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+
+                    <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                      Asset
+                    </label>
+                    {loadingAssets ? (
+                      <div className="p-4 font-mono text-sm text-foreground/40 flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Loading assets...
+                      </div>
+                    ) : !formData.assetClass ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>Select an asset class first</p>
+                      </div>
+                    ) : filteredBuyAssets.length === 0 ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>No assets match those attribute filters</p>
+                      </div>
+                    ) : (
+                      <select
+                        value={formData.tokenId}
+                        onChange={(e) =>
+                          updateFormData({
+                            tokenId: e.target.value,
+                          })
+                        }
+                        className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
+                        style={{
+                          clipPath:
+                            'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                        }}
+                      >
+                        <option value="">Select an asset</option>
+                        {filteredBuyAssets.map((asset: any) => (
+                          <option
+                            key={String(asset?.tokenId ?? asset?.tokenID)}
+                            value={String(asset?.tokenId ?? asset?.tokenID)}
+                          >
+                            {`${asset.name} • #${String(asset?.tokenId ?? asset?.tokenID).slice(0, 6)}…${String(asset?.tokenId ?? asset?.tokenID).slice(-4)}${
+                              Array.isArray(asset.attributes) &&
+                              asset.attributes.length > 0
+                                ? ` • ${asset.attributes
+                                    .slice(0, 2)
+                                    .map((attr: any) => {
+                                      const attrValue = Array.isArray(
+                                        attr?.values,
+                                      )
+                                        ? attr.values[0]
+                                        : '';
+                                      return `${formatAttributeName(attr?.name || '')}: ${attrValue || '-'}`;
+                                    })
+                                    .join(' • ')}`
+                                : ''
+                            }`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {selectedAsset && (
+                      <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.08em]">
+                        Token ID: {formData.tokenId}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </EvaPanel>
           </div>
