@@ -287,13 +287,18 @@ export function P2POrderFlow({
   // parties signed but the initial handOn failed or was never called.
   const autoHandOnAttemptedRef = useRef(false);
   useEffect(() => {
+    // Indexer can lag and omit a pending-status update, leaving journeyStatus null
+    // even though the on-chain journey is still Pending (0).
+    const isJourneyPendingLike =
+      order.journeyStatus === 0 || order.journeyStatus === null;
+
     if (
       senderPickupSigned &&
       driverPickupSigned &&
       !autoHandOnAttemptedRef.current &&
       onSignPickup &&
       journeyId &&
-      order.journeyStatus === 0 &&
+      isJourneyPendingLike &&
       order.currentStatus !== OrderStatus.SETTLED
     ) {
       autoHandOnAttemptedRef.current = true;

@@ -60,6 +60,9 @@ export function RoleSelector() {
       router.push('/driver/dashboard');
     }
 
+    // Force a route-level refresh so role-specific data providers reload immediately.
+    router.refresh();
+
     // Reset navigating state after a brief moment
     // The loading.tsx files will handle the actual loading UI
     setTimeout(() => setIsNavigating(false), 1000);

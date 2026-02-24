@@ -106,6 +106,15 @@ export class DiamondNodeAssetService implements INodeAssetService {
     // Get the node owner's wallet address - tokens will be minted to their wallet
     const nodeData = await diamond.getNode(nodeHash);
     const nodeOwnerWallet = nodeData.owner;
+    const signerAddress = await this.context.getSignerAddress();
+
+    // AssetsFacet.nodeMint requires msg.sender to be a valid active node owner.
+    // Prevent a confusing unknown custom error by validating wallet ownership up front.
+    if (signerAddress.toLowerCase() !== nodeOwnerWallet.toLowerCase()) {
+      throw new Error(
+        `Tokenization failed: connected wallet ${signerAddress} does not own the selected node (owner: ${nodeOwnerWallet}). Switch to the node owner's wallet and retry.`,
+      );
+    }
 
     console.log('[DiamondNodeAssetService] Minting asset:', {
       nodeHashOrAddress,
@@ -200,7 +209,17 @@ export class DiamondNodeAssetService implements INodeAssetService {
 
       // Extract revert reason if available
       const errorMessage = error?.message || '';
+      const errorData = (error?.data ||
+        error?.info?.error?.data ||
+        '') as string;
       const revertReason = error?.revert?.args?.[0] || '';
+
+      // Decode known custom errors from AssetsFacet
+      if (typeof errorData === 'string' && errorData.startsWith('0x30812d42')) {
+        throw new Error(
+          'Tokenization failed: Invalid node wallet. Connect with an active node owner wallet.',
+        );
+      }
 
       // Only suggest NodeManager misconfiguration for errors that genuinely
       // indicate missing revert data (no reason string), not for all CALL_EXCEPTIONs

@@ -330,6 +330,27 @@ export default function NodeDashboardPage() {
     }
   }, [nodeIdFromUrl, selectedNodeAddress, selectNode]);
 
+  // When returning to this page with an already-selected node, force a fresh load
+  // so newly created offers/orders appear without requiring a hard browser reload.
+  useEffect(() => {
+    if (!nodeIdFromUrl || !selectedNodeAddress) return;
+    if (nodeIdFromUrl !== selectedNodeAddress) return;
+
+    const refreshOnEntry = async () => {
+      try {
+        await refreshOrders();
+        // Follow-up refresh for eventual indexer consistency.
+        setTimeout(() => {
+          refreshOrders();
+        }, 2000);
+      } catch (err) {
+        console.warn('[NodeDashboard] Failed to refresh orders on entry:', err);
+      }
+    };
+
+    refreshOnEntry();
+  }, [nodeIdFromUrl, selectedNodeAddress, refreshOrders]);
+
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
     if (!selectedNodeAddress || !currentNodeData) return;
 
