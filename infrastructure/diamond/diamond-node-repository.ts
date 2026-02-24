@@ -148,8 +148,8 @@ export class DiamondNodeRepository implements NodeRepository {
     );
   }
 
-  private async withPinataRetry<T>(
-    fn: () => Promise<T>,
+  private async withPinataRetry<T = any>(
+    fn: () => Promise<T> | T,
     maxAttempts = 3,
   ): Promise<T> {
     let lastError: unknown;
@@ -242,7 +242,7 @@ export class DiamondNodeRepository implements NodeRepository {
           '[DiamondNodeRepository] Fetching IPFS content from CID:',
           cid,
         );
-        const { data } = await this.withPinataRetry(() =>
+        const { data } = await this.withPinataRetry<any>(() =>
           this.pinata!.gateways.public.get(cid),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;

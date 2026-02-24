@@ -41,8 +41,8 @@ export class PlatformRepository implements IPlatformRepository {
     );
   }
 
-  private async withPinataRetry<T>(
-    fn: () => Promise<T>,
+  private async withPinataRetry<T = any>(
+    fn: () => Promise<T> | T,
     maxAttempts = 3,
   ): Promise<T> {
     let lastError: unknown;
@@ -123,7 +123,7 @@ export class PlatformRepository implements IPlatformRepository {
         try {
           const cid = await this.getAssetCID(event.token, event.token_id);
           if (cid) {
-            const { data } = await this.withPinataRetry(() =>
+            const { data } = await this.withPinataRetry<any>(() =>
               this.pinata.gateways.public.get(cid),
             );
             const json = typeof data === 'string' ? JSON.parse(data) : data;
@@ -348,7 +348,7 @@ export class PlatformRepository implements IPlatformRepository {
     const assets = await this.mapWithConcurrency(list, 3, async (item) => {
       try {
         const cid = item.cid;
-        const { data } = await this.withPinataRetry(() =>
+        const { data } = await this.withPinataRetry<any>(() =>
           this.pinata.gateways.public.get(`${cid}`),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;
@@ -415,7 +415,7 @@ export class PlatformRepository implements IPlatformRepository {
       );
       if (!list || list.length === 0) return null;
       const cid = list[0].cid;
-      const { data } = await this.withPinataRetry(() =>
+      const { data } = await this.withPinataRetry<any>(() =>
         this.pinata.gateways.public.get(`${cid}`),
       );
       const json = typeof data === 'string' ? JSON.parse(data) : data;
@@ -524,7 +524,7 @@ export class PlatformRepository implements IPlatformRepository {
           return null;
         }
         const cid = list[0].cid;
-        const { data } = await this.withPinataRetry(() =>
+        const { data } = await this.withPinataRetry<any>(() =>
           this.pinata.gateways.public.get(`${cid}`),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;

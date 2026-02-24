@@ -645,7 +645,7 @@ export class DiamondP2PRepository implements IP2PRepository {
       try {
         // Some wallet-backed providers intermittently fail eth_call for this selector.
         // Retry with provider-only runner to avoid signer call path issues.
-        const readDiamond = diamond.connect(this.context.getProvider());
+        const readDiamond = diamond.connect(this.context.getProvider()) as any;
         const onchainOfferIds: string[] =
           await readDiamond.getUserP2POffers(userAddress);
         const indexerOfferIds = await fetchByCreatorFromIndexer();
