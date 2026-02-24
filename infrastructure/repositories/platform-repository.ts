@@ -25,6 +25,64 @@ export class PlatformRepository implements IPlatformRepository {
   pinata: PinataSDK;
   private graphEndpoint = NEXT_PUBLIC_INDEXER_URL;
   private processedTokenIds = new Set<string>();
+  private assetByTokenIdCache = new Map<string, Asset | null>();
+  private inFlightAssetByTokenId = new Map<string, Promise<Asset | null>>();
+
+  private isPinataRateLimitError(error: unknown): boolean {
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : JSON.stringify(error);
+    return (
+      message.includes('429') ||
+      message.toLowerCase().includes('too many requests')
+    );
+  }
+
+  private async withPinataRetry<T>(
+    fn: () => Promise<T>,
+    maxAttempts = 3,
+  ): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        if (!this.isPinataRateLimitError(error) || attempt === maxAttempts) {
+          throw error;
+        }
+        const backoffMs = 300 * Math.pow(2, attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
+    }
+    throw lastError;
+  }
+
+  private async mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T, index: number) => Promise<R>,
+  ): Promise<R[]> {
+    if (items.length === 0) return [];
+    const results: R[] = new Array(items.length);
+    let nextIndex = 0;
+
+    const workers = Array.from({
+      length: Math.min(concurrency, items.length),
+    }).map(async () => {
+      while (true) {
+        const current = nextIndex++;
+        if (current >= items.length) break;
+        results[current] = await mapper(items[current], current);
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
+  }
 
   constructor(_contractOrPinata: unknown, _pinata?: PinataSDK) {
     // Backward-compatible constructor:
@@ -65,7 +123,9 @@ export class PlatformRepository implements IPlatformRepository {
         try {
           const cid = await this.getAssetCID(event.token, event.token_id);
           if (cid) {
-            const { data } = await this.pinata.gateways.public.get(cid);
+            const { data } = await this.withPinataRetry(() =>
+              this.pinata.gateways.public.get(cid),
+            );
             const json = typeof data === 'string' ? JSON.parse(data) : data;
 
             // Extract asset class from IPFS metadata
@@ -131,27 +191,30 @@ export class PlatformRepository implements IPlatformRepository {
   ): Promise<string | null> {
     try {
       // Try with both token + tokenId first (most specific)
-      let list = await this.pinata.files.public
-        .list()
-        .keyvalues({ token: token, tokenId: tokenId })
-        .all();
+      let list = await this.withPinataRetry(() =>
+        this.pinata.files.public
+          .list()
+          .keyvalues({ token: token, tokenId: tokenId })
+          .all(),
+      );
       if (list && list.length > 0) return list[0].cid;
 
       // Fallback: query by tokenId only (upload scripts may not set 'token' keyvalue)
-      list = await this.pinata.files.public
-        .list()
-        .keyvalues({ tokenId: tokenId })
-        .all();
+      list = await this.withPinataRetry(() =>
+        this.pinata.files.public.list().keyvalues({ tokenId: tokenId }).all(),
+      );
       if (list && list.length > 0) return list[0].cid;
 
       // Fallback: try decimal conversion in case formats differ
       try {
         const tokenIdDecimal = BigInt(tokenId).toString(10);
         if (tokenIdDecimal !== tokenId) {
-          list = await this.pinata.files.public
-            .list()
-            .keyvalues({ tokenId: tokenIdDecimal })
-            .all();
+          list = await this.withPinataRetry(() =>
+            this.pinata.files.public
+              .list()
+              .keyvalues({ tokenId: tokenIdDecimal })
+              .all(),
+          );
           if (list && list.length > 0) return list[0].cid;
         }
       } catch {
@@ -282,67 +345,64 @@ export class PlatformRepository implements IPlatformRepository {
 
     if (!list || list.length === 0) return [];
 
-    const assets = await Promise.all(
-      list.map(async (item) => {
-        try {
-          const cid = item.cid;
-          console.log('returned cid', cid);
-          const { data } = await this.pinata.gateways.public.get(`${cid}`);
-          const json = typeof data === 'string' ? JSON.parse(data) : data;
-          console.log('returned output from ipfs', data);
-          const contractAsset = json.asset as {
-            id?: string | number | bigint;
-            name?: string;
-            attributes?:
-              | Array<{
-                  name?: string;
-                  values?: string[];
-                  description?: string;
-                }>
-              | { name?: string; values?: string[]; description?: string };
-          };
-
-          const attributesArray = Array.isArray(contractAsset?.attributes)
-            ? (contractAsset?.attributes as Array<{
+    const assets = await this.mapWithConcurrency(list, 3, async (item) => {
+      try {
+        const cid = item.cid;
+        const { data } = await this.withPinataRetry(() =>
+          this.pinata.gateways.public.get(`${cid}`),
+        );
+        const json = typeof data === 'string' ? JSON.parse(data) : data;
+        const contractAsset = json.asset as {
+          id?: string | number | bigint;
+          name?: string;
+          attributes?:
+            | Array<{
                 name?: string;
                 values?: string[];
                 description?: string;
-              }>)
-            : contractAsset?.attributes &&
-                typeof contractAsset.attributes === 'object'
-              ? [
-                  contractAsset.attributes as {
-                    name?: string;
-                    values?: string[];
-                    description?: string;
-                  },
-                ]
-              : [];
+              }>
+            | { name?: string; values?: string[]; description?: string };
+        };
 
-          const asset: Asset = {
-            assetClass: json.className ?? (json.class as string) ?? assetClass,
-            tokenId: String(
-              (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
-            ),
-            name: contractAsset?.name ?? 'Unknown Asset',
-            attributes: attributesArray
-              .map((attr) => ({
-                name: attr?.name ?? '',
-                values: Array.isArray(attr?.values)
-                  ? (attr?.values as string[])
-                  : [],
-                description: attr?.description ?? '',
-              }))
-              .filter((a) => typeof a.name === 'string' && a.name.length > 0),
-          };
-          console.log('returned class asset', asset);
-          return asset;
-        } catch (err) {
-          console.error(err);
-          return null;
-        }
-      }),
-    );
+        const attributesArray = Array.isArray(contractAsset?.attributes)
+          ? (contractAsset?.attributes as Array<{
+              name?: string;
+              values?: string[];
+              description?: string;
+            }>)
+          : contractAsset?.attributes &&
+              typeof contractAsset.attributes === 'object'
+            ? [
+                contractAsset.attributes as {
+                  name?: string;
+                  values?: string[];
+                  description?: string;
+                },
+              ]
+            : [];
+
+        const asset: Asset = {
+          assetClass: json.className ?? (json.class as string) ?? assetClass,
+          tokenId: String(
+            (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
+          ),
+          name: contractAsset?.name ?? 'Unknown Asset',
+          attributes: attributesArray
+            .map((attr) => ({
+              name: attr?.name ?? '',
+              values: Array.isArray(attr?.values)
+                ? (attr?.values as string[])
+                : [],
+              description: attr?.description ?? '',
+            }))
+            .filter((a) => typeof a.name === 'string' && a.name.length > 0),
+        };
+        return asset;
+      } catch (err) {
+        console.error(err);
+        return null;
+      }
+    });
     return assets.filter((a): a is Asset => a !== null);
   }
   /**
@@ -350,13 +410,14 @@ export class PlatformRepository implements IPlatformRepository {
    */
   async getAssetByOwnerAssetHash(hashHex: string): Promise<Asset | null> {
     try {
-      const list = await this.pinata.files.public
-        .list()
-        .keyvalues({ hash: hashHex })
-        .all();
+      const list = await this.withPinataRetry(() =>
+        this.pinata.files.public.list().keyvalues({ hash: hashHex }).all(),
+      );
       if (!list || list.length === 0) return null;
       const cid = list[0].cid;
-      const { data } = await this.pinata.gateways.public.get(`${cid}`);
+      const { data } = await this.withPinataRetry(() =>
+        this.pinata.gateways.public.get(`${cid}`),
+      );
       const json = typeof data === 'string' ? JSON.parse(data) : data;
       const contractAsset = json.asset as {
         id?: string | number | bigint;
@@ -414,87 +475,116 @@ export class PlatformRepository implements IPlatformRepository {
   async getAssetByTokenId(
     tokenId: string | number | bigint,
   ): Promise<Asset | null> {
-    try {
-      const tokenIdStr = String(tokenId);
-
-      // Build list of candidate formats to try
-      const candidates: string[] = [tokenIdStr];
+    const canonicalTokenId = (() => {
       try {
-        const asBigInt = BigInt(tokenId);
-        const decimal = asBigInt.toString(10);
-        const hex = '0x' + asBigInt.toString(16);
-        if (!candidates.includes(decimal)) candidates.push(decimal);
-        if (!candidates.includes(hex)) candidates.push(hex);
+        return BigInt(tokenId).toString(10);
       } catch {
-        // Not a valid BigInt, skip alternative formats
+        return String(tokenId);
       }
+    })();
+    if (this.assetByTokenIdCache.has(canonicalTokenId)) {
+      return this.assetByTokenIdCache.get(canonicalTokenId) ?? null;
+    }
+    const inFlight = this.inFlightAssetByTokenId.get(canonicalTokenId);
+    if (inFlight) return inFlight;
 
-      let list: any[] | null = null;
-      for (const candidate of candidates) {
-        list = await this.pinata.files.public
-          .list()
-          .keyvalues({ tokenId: candidate })
-          .all();
-        if (list && list.length > 0) break;
-      }
+    const lookupPromise = (async (): Promise<Asset | null> => {
+      try {
+        const tokenIdStr = String(tokenId);
 
-      if (!list || list.length === 0) {
-        console.warn(
-          '[PlatformRepository] getAssetByTokenId: no Pinata files found for any format:',
-          candidates,
+        // Build list of candidate formats to try
+        const candidates: string[] = [tokenIdStr];
+        try {
+          const asBigInt = BigInt(tokenId);
+          const decimal = asBigInt.toString(10);
+          const hex = '0x' + asBigInt.toString(16);
+          if (!candidates.includes(decimal)) candidates.push(decimal);
+          if (!candidates.includes(hex)) candidates.push(hex);
+        } catch {
+          // Not a valid BigInt, skip alternative formats
+        }
+
+        let list: any[] | null = null;
+        for (const candidate of candidates) {
+          list = await this.withPinataRetry(() =>
+            this.pinata.files.public
+              .list()
+              .keyvalues({ tokenId: candidate })
+              .all(),
+          );
+          if (list && list.length > 0) break;
+        }
+
+        if (!list || list.length === 0) {
+          console.warn(
+            '[PlatformRepository] getAssetByTokenId: no Pinata files found for any format:',
+            candidates,
+          );
+          this.assetByTokenIdCache.set(canonicalTokenId, null);
+          return null;
+        }
+        const cid = list[0].cid;
+        const { data } = await this.withPinataRetry(() =>
+          this.pinata.gateways.public.get(`${cid}`),
         );
-        return null;
-      }
-      const cid = list[0].cid;
-      const { data } = await this.pinata.gateways.public.get(`${cid}`);
-      const json = typeof data === 'string' ? JSON.parse(data) : data;
-      const contractAsset = json.asset as {
-        id?: string | number | bigint;
-        name?: string;
-        attributes?:
-          | Array<{ name?: string; values?: string[]; description?: string }>
-          | {
-              name?: string;
-              values?: string[];
-              description?: string;
-            };
-      };
-      const attributesArray = Array.isArray(contractAsset?.attributes)
-        ? (contractAsset?.attributes as Array<{
-            name?: string;
-            values?: string[];
-            description?: string;
-          }>)
-        : contractAsset?.attributes &&
-            typeof contractAsset.attributes === 'object'
-          ? [
-              contractAsset.attributes as {
+        const json = typeof data === 'string' ? JSON.parse(data) : data;
+        const contractAsset = json.asset as {
+          id?: string | number | bigint;
+          name?: string;
+          attributes?:
+            | Array<{ name?: string; values?: string[]; description?: string }>
+            | {
                 name?: string;
                 values?: string[];
                 description?: string;
-              },
-            ]
-          : [];
-      const asset: Asset = {
-        assetClass: json.className ?? (json.class as string) ?? 'Unknown',
-        tokenId: String(
-          (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
-        ),
-        name: contractAsset?.name ?? 'Unknown Asset',
-        attributes: attributesArray
-          .map((attr) => ({
-            name: attr?.name ?? '',
-            values: Array.isArray(attr?.values)
-              ? (attr?.values as string[])
-              : [],
-            description: attr?.description ?? '',
-          }))
-          .filter((a) => typeof a.name === 'string' && a.name.length > 0),
-      };
-      return asset;
-    } catch (e) {
-      console.error('[PlatformRepository] getAssetByTokenId failed', e);
-      return null;
+              };
+        };
+        const attributesArray = Array.isArray(contractAsset?.attributes)
+          ? (contractAsset?.attributes as Array<{
+              name?: string;
+              values?: string[];
+              description?: string;
+            }>)
+          : contractAsset?.attributes &&
+              typeof contractAsset.attributes === 'object'
+            ? [
+                contractAsset.attributes as {
+                  name?: string;
+                  values?: string[];
+                  description?: string;
+                },
+              ]
+            : [];
+        const asset: Asset = {
+          assetClass: json.className ?? (json.class as string) ?? 'Unknown',
+          tokenId: String(
+            (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
+          ),
+          name: contractAsset?.name ?? 'Unknown Asset',
+          attributes: attributesArray
+            .map((attr) => ({
+              name: attr?.name ?? '',
+              values: Array.isArray(attr?.values)
+                ? (attr?.values as string[])
+                : [],
+              description: attr?.description ?? '',
+            }))
+            .filter((a) => typeof a.name === 'string' && a.name.length > 0),
+        };
+        this.assetByTokenIdCache.set(canonicalTokenId, asset);
+        return asset;
+      } catch (e) {
+        console.error('[PlatformRepository] getAssetByTokenId failed', e);
+        this.assetByTokenIdCache.set(canonicalTokenId, null);
+        return null;
+      }
+    })();
+
+    this.inFlightAssetByTokenId.set(canonicalTokenId, lookupPromise);
+    try {
+      return await lookupPromise;
+    } finally {
+      this.inFlightAssetByTokenId.delete(canonicalTokenId);
     }
   }
 }

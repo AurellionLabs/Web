@@ -120,11 +120,73 @@ export class DiamondNodeRepository implements NodeRepository {
   private context: DiamondContext;
   private graphQLEndpoint: string;
   private pinata: PinataSDK | null = null;
+  private metadataCache = new Map<
+    string,
+    { name: string; class: string; fileHash: string }
+  >();
+  private inFlightMetadata = new Map<
+    string,
+    Promise<{ name: string; class: string; fileHash: string }>
+  >();
 
   constructor(context: DiamondContext, pinata?: PinataSDK) {
     this.context = context;
     this.graphQLEndpoint = NEXT_PUBLIC_INDEXER_URL;
     this.pinata = pinata || null;
+  }
+
+  private isPinataRateLimitError(error: unknown): boolean {
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : JSON.stringify(error);
+    return (
+      message.includes('429') ||
+      message.toLowerCase().includes('too many requests')
+    );
+  }
+
+  private async withPinataRetry<T>(
+    fn: () => Promise<T>,
+    maxAttempts = 3,
+  ): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        if (!this.isPinataRateLimitError(error) || attempt === maxAttempts) {
+          throw error;
+        }
+        const backoffMs = 300 * Math.pow(2, attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
+    }
+    throw lastError;
+  }
+
+  private async mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T, index: number) => Promise<R>,
+  ): Promise<R[]> {
+    if (items.length === 0) return [];
+    const results: R[] = new Array(items.length);
+    let nextIndex = 0;
+    const workers = Array.from({
+      length: Math.min(concurrency, items.length),
+    }).map(async () => {
+      while (true) {
+        const current = nextIndex++;
+        if (current >= items.length) break;
+        results[current] = await mapper(items[current], current);
+      }
+    });
+    await Promise.all(workers);
+    return results;
   }
 
   /**
@@ -133,74 +195,95 @@ export class DiamondNodeRepository implements NodeRepository {
   private async fetchAssetMetadata(
     tokenId: string,
   ): Promise<{ name: string; class: string; fileHash: string }> {
-    if (!this.pinata) {
-      console.warn(
-        '[DiamondNodeRepository] Pinata not available for metadata fetch',
-      );
-      return { name: '', class: '', fileHash: '' };
-    }
+    const cached = this.metadataCache.get(tokenId);
+    if (cached) return cached;
+    const inFlight = this.inFlightMetadata.get(tokenId);
+    if (inFlight) return inFlight;
 
-    try {
-      console.log(
-        '[DiamondNodeRepository] Fetching IPFS metadata for tokenId:',
-        tokenId,
-      );
-      const list = await this.pinata.files.public
-        .list()
-        .keyvalues({ tokenId })
-        .all();
-
-      console.log(
-        '[DiamondNodeRepository] Pinata list result:',
-        list?.length,
-        'files found',
-      );
-
-      if (!list || list.length === 0) {
+    const lookupPromise = (async (): Promise<{
+      name: string;
+      class: string;
+      fileHash: string;
+    }> => {
+      if (!this.pinata) {
         console.warn(
-          '[DiamondNodeRepository] No IPFS files found for tokenId:',
-          tokenId,
+          '[DiamondNodeRepository] Pinata not available for metadata fetch',
         );
         return { name: '', class: '', fileHash: '' };
       }
 
-      const item = list[0];
-      const cid = item.cid;
+      try {
+        console.log(
+          '[DiamondNodeRepository] Fetching IPFS metadata for tokenId:',
+          tokenId,
+        );
+        const list = await this.withPinataRetry(() =>
+          this.pinata!.files.public.list().keyvalues({ tokenId }).all(),
+        );
 
-      console.log(
-        '[DiamondNodeRepository] Fetching IPFS content from CID:',
-        cid,
-      );
-      const { data } = await this.pinata.gateways.public.get(cid);
-      const json = typeof data === 'string' ? JSON.parse(data) : data;
+        console.log(
+          '[DiamondNodeRepository] Pinata list result:',
+          list?.length,
+          'files found',
+        );
 
-      console.log('[DiamondNodeRepository] IPFS metadata:', {
-        className: json.className,
-        class: json.class,
-        assetClass: json.assetClass,
-        'asset.assetClass': json.asset?.assetClass,
-        name: json.name || json.asset?.name,
-      });
+        if (!list || list.length === 0) {
+          console.warn(
+            '[DiamondNodeRepository] No IPFS files found for tokenId:',
+            tokenId,
+          );
+          return { name: '', class: '', fileHash: '' };
+        }
 
-      // Extract class from multiple possible fields
-      const assetClass =
-        (json.className as string) ||
-        (json.class as string) ||
-        (json.assetClass as string) ||
-        (json.asset?.assetClass as string) ||
-        '';
+        const item = list[0];
+        const cid = item.cid;
 
-      return {
-        name: (json.name as string) || (json.asset?.name as string) || '',
-        class: assetClass,
-        fileHash: cid,
-      };
-    } catch (error) {
-      console.error(
-        `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
-        error,
-      );
-      return { name: '', class: '', fileHash: '' };
+        console.log(
+          '[DiamondNodeRepository] Fetching IPFS content from CID:',
+          cid,
+        );
+        const { data } = await this.withPinataRetry(() =>
+          this.pinata!.gateways.public.get(cid),
+        );
+        const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+        console.log('[DiamondNodeRepository] IPFS metadata:', {
+          className: json.className,
+          class: json.class,
+          assetClass: json.assetClass,
+          'asset.assetClass': json.asset?.assetClass,
+          name: json.name || json.asset?.name,
+        });
+
+        // Extract class from multiple possible fields
+        const assetClass =
+          (json.className as string) ||
+          (json.class as string) ||
+          (json.assetClass as string) ||
+          (json.asset?.assetClass as string) ||
+          '';
+
+        const result = {
+          name: (json.name as string) || (json.asset?.name as string) || '',
+          class: assetClass,
+          fileHash: cid,
+        };
+        this.metadataCache.set(tokenId, result);
+        return result;
+      } catch (error) {
+        console.error(
+          `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
+          error,
+        );
+        return { name: '', class: '', fileHash: '' };
+      }
+    })();
+
+    this.inFlightMetadata.set(tokenId, lookupPromise);
+    try {
+      return await lookupPromise;
+    } finally {
+      this.inFlightMetadata.delete(tokenId);
     }
   }
 
@@ -336,8 +419,10 @@ export class DiamondNodeRepository implements NodeRepository {
       const diamond = this.context.getDiamond();
 
       // Step 4: Fetch IPFS metadata and actual ERC1155 balances for each asset
-      const assetsWithMetadata = await Promise.all(
-        node.assets.map(async (nodeAsset) => {
+      const assetsWithMetadata = await this.mapWithConcurrency(
+        node.assets,
+        3,
+        async (nodeAsset) => {
           // Find matching raw event for this asset on this node
           const rawEvent = allAssets.find(
             (e) =>
@@ -378,7 +463,7 @@ export class DiamondNodeRepository implements NodeRepository {
             price: nodeAsset.price.toString(),
             capacity: nodeAsset.capacity.toString(),
           };
-        }),
+        },
       );
 
       return assetsWithMetadata;
@@ -406,8 +491,10 @@ export class DiamondNodeRepository implements NodeRepository {
       const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
 
       // Fetch IPFS metadata for each asset and convert to TokenizedAsset objects
-      const assetsWithMetadata = await Promise.all(
-        allAssets.map(async (event) => {
+      const assetsWithMetadata = await this.mapWithConcurrency(
+        allAssets,
+        3,
+        async (event) => {
           const metadata = await this.fetchAssetMetadata(event.token_id);
           return {
             id: event.token_id,
@@ -421,7 +508,7 @@ export class DiamondNodeRepository implements NodeRepository {
             price: event.price,
             capacity: event.capacity,
           };
-        }),
+        },
       );
 
       return assetsWithMetadata;

@@ -604,8 +604,35 @@ export class DiamondP2PRepository implements IP2PRepository {
 
       return offers.filter((o): o is P2POffer => o !== null);
     } catch (error) {
-      console.error('[DiamondP2PRepository] Error getting user offers:', error);
-      return [];
+      console.warn(
+        '[DiamondP2PRepository] getUserP2POffers via signer failed, retrying via provider...',
+        error,
+      );
+
+      try {
+        // Some wallet-backed providers intermittently fail eth_call for this selector.
+        // Retry with provider-only runner to avoid signer call path issues.
+        const readDiamond = diamond.connect(this.context.getProvider());
+        const offerIds: string[] =
+          await readDiamond.getUserP2POffers(userAddress);
+        console.log(
+          '[DiamondP2PRepository] Provider fallback found',
+          offerIds.length,
+          'offers for user',
+          userAddress,
+        );
+
+        const offers = await Promise.all(
+          offerIds.map((id) => this.getOffer(id)),
+        );
+        return offers.filter((o): o is P2POffer => o !== null);
+      } catch (fallbackError) {
+        console.error(
+          '[DiamondP2PRepository] Error getting user offers (provider fallback failed):',
+          fallbackError,
+        );
+        return [];
+      }
     }
   }
 
