@@ -71,6 +71,15 @@ const formatAttributeName = (name: string): string => {
     .join(' ');
 };
 
+const getPrimaryAttributeValue = (
+  attribute?: { values?: string[] } | null,
+): string => {
+  if (!attribute || !Array.isArray(attribute.values)) return '';
+  return (
+    attribute.values.find((value) => value && value.trim().length > 0) || ''
+  );
+};
+
 /**
  * Compute tokenId from asset definition - matches contract's keccak256 computation
  * This ensures tokenId is consistent between tokenization and offer creation
@@ -186,9 +195,8 @@ export default function CreateP2POfferPage() {
       (asset.attributes || []).forEach((attribute) => {
         if (!attribute?.name) return;
         const values = optionsByName.get(attribute.name) || new Set<string>();
-        (attribute.values || []).forEach((value) => {
-          if (value) values.add(value);
-        });
+        const primaryValue = getPrimaryAttributeValue(attribute);
+        if (primaryValue) values.add(primaryValue);
         optionsByName.set(attribute.name, values);
       });
     });
@@ -210,8 +218,8 @@ export default function CreateP2POfferPage() {
         (asset.attributes || []).some(
           (attribute) =>
             attribute.name === filterName &&
-            Array.isArray(attribute.values) &&
-            attribute.values.includes(filterValue),
+            getPrimaryAttributeValue(attribute).toLowerCase() ===
+              filterValue.toLowerCase(),
         ),
       );
     });
@@ -840,11 +848,8 @@ export default function CreateP2POfferPage() {
                                 ? ` • ${asset.attributes
                                     .slice(0, 2)
                                     .map((attr: any) => {
-                                      const attrValue = Array.isArray(
-                                        attr?.values,
-                                      )
-                                        ? attr.values[0]
-                                        : '';
+                                      const attrValue =
+                                        getPrimaryAttributeValue(attr);
                                       return `${formatAttributeName(attr?.name || '')}: ${attrValue || '-'}`;
                                     })
                                     .join(' • ')}`
