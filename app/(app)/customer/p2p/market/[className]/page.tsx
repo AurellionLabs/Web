@@ -431,10 +431,42 @@ export default function P2PMarketOffersPage() {
     });
   }, [offers, isTokenInClass, filterType]);
 
+  const hasKnownClass = useCallback(
+    (tokenId: string): boolean => {
+      if (tokenIdToClass.has(tokenId)) return true;
+      try {
+        const normalized = BigInt(tokenId).toString(10);
+        if (tokenIdToClass.has(normalized)) return true;
+      } catch {
+        /* ignore */
+      }
+      return assetMetadataMap.has(tokenId);
+    },
+    [tokenIdToClass, assetMetadataMap],
+  );
+
   // Filter my offers by class
   const filteredMyOffers = useMemo(() => {
-    return myOffers.filter((offer) => isTokenInClass(offer.tokenId));
-  }, [myOffers, isTokenInClass]);
+    return myOffers.filter((offer) => {
+      // Hide terminal offers in "My Offers"
+      if (
+        offer.status === P2POfferStatus.EXPIRED ||
+        offer.status === P2POfferStatus.SETTLED ||
+        offer.status === P2POfferStatus.CANCELLED
+      ) {
+        return false;
+      }
+
+      // Normal case: class is resolvable and matches current market
+      if (isTokenInClass(offer.tokenId)) return true;
+
+      // During metadata/indexer lag or Pinata throttling, keep unresolved class
+      // offers visible so newly created offers don't disappear from this tab.
+      if (!hasKnownClass(offer.tokenId)) return true;
+
+      return false;
+    });
+  }, [myOffers, isTokenInClass, hasKnownClass]);
 
   // Check if user is the creator of an offer
   const isMyOffer = (offer: P2POffer) => {

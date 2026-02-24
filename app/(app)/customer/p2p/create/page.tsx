@@ -80,33 +80,29 @@ const getPrimaryAttributeValue = (
   );
 };
 
-/**
- * Compute tokenId from asset definition - matches contract's keccak256 computation
- * This ensures tokenId is consistent between tokenization and offer creation
- */
-function computeTokenId(
+const computeDeterministicTokenId = (
   name: string,
   assetClass: string,
   attributes: Record<string, string>,
-): string {
+): string => {
   const abiCoder = ethers.AbiCoder.defaultAbiCoder();
-
-  const attributeArray = Object.entries(attributes).map(([name, value]) => ({
-    name,
-    values: [value],
-    description: '',
-  }));
+  const sortedAttributes = Object.entries(attributes)
+    .filter(([, value]) => value && value.trim().length > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([attrName, value]) => ({
+      name: attrName,
+      values: [value],
+      description: '',
+    }));
 
   const encodedAsset = abiCoder.encode(
     [
       'tuple(string name,string assetClass,tuple(string name,string[] values,string description)[] attributes)',
     ],
-    [{ name, assetClass, attributes: attributeArray }],
+    [{ name, assetClass, attributes: sortedAttributes }],
   );
-
-  const tokenId = BigInt(ethers.keccak256(encodedAsset));
-  return tokenId.toString();
-}
+  return BigInt(ethers.keccak256(encodedAsset)).toString();
+};
 
 /**
  * P2P Offer Creation Wizard
@@ -387,29 +383,25 @@ export default function CreateP2POfferPage() {
           : Math.floor(Date.now() / 1000) +
             parseInt(formData.expiryHours) * 3600;
 
-      // Compute tokenId on-chain style for buy offers to ensure consistency with tokenization
-      const isBuyOffer = formData.offerType === 'buy';
-      const computedTokenId =
-        isBuyOffer && selectedAsset
-          ? computeTokenId(
-              selectedAsset.name,
-              selectedAsset.assetClass || formData.assetClass,
+      const selectedTokenId = formData.tokenId;
+      const tokenIdToSubmit =
+        formData.offerType === 'buy' &&
+        !selectedAsset &&
+        selectedBuyFilters.length > 0
+          ? computeDeterministicTokenId(
+              classAssets[0]?.name || `AU${formData.assetClass.toUpperCase()}`,
+              formData.assetClass,
               formData.selectedAttributes,
             )
-          : formData.tokenId;
+          : selectedTokenId;
 
-      console.log(
-        '[P2P Create] Creating offer with:',
-        isBuyOffer ? 'computed tokenId' : 'IPFS tokenId',
-        {
-          computedTokenId,
-          ipfsTokenId: formData.tokenId,
-          attributes: formData.selectedAttributes,
-        },
-      );
+      console.log('[P2P Create] Creating offer with selected tokenId:', {
+        tokenId: tokenIdToSubmit,
+        attributes: formData.selectedAttributes,
+      });
       await p2pService.createOffer({
         token: NEXT_PUBLIC_DIAMOND_ADDRESS,
-        tokenId: computedTokenId,
+        tokenId: tokenIdToSubmit,
         quantity: BigInt(formData.quantity),
         price: parseUnits(formData.price, 18),
         isSellOffer: formData.offerType === 'sell',
@@ -437,7 +429,15 @@ export default function CreateP2POfferPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [p2pService, connected, formData, router]);
+  }, [
+    p2pService,
+    connected,
+    formData,
+    router,
+    selectedAsset,
+    selectedBuyFilters,
+    classAssets,
+  ]);
 
   const handlePlaceSelect = () => {
     if (!autocomplete) return;
@@ -819,8 +819,32 @@ export default function CreateP2POfferPage() {
                         <p>Select an asset class first</p>
                       </div>
                     ) : filteredBuyAssets.length === 0 ? (
-                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
-                        <p>No assets match those attribute filters</p>
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40 space-y-3">
+                        <p>No tokenized assets match those attribute filters</p>
+                        {selectedBuyFilters.length > 0 && (
+                          <TrapButton
+                            variant="gold"
+                            size="sm"
+                            className="w-full"
+                            onClick={() =>
+                              updateFormData({
+                                tokenId: computeDeterministicTokenId(
+                                  classAssets[0]?.name ||
+                                    `AU${formData.assetClass.toUpperCase()}`,
+                                  formData.assetClass,
+                                  formData.selectedAttributes,
+                                ),
+                              })
+                            }
+                          >
+                            Create Buy Offer For This New Combination
+                          </TrapButton>
+                        )}
+                        {formData.tokenId && (
+                          <p className="font-mono text-xs text-gold/70 tracking-[0.08em] break-all">
+                            Deterministic Token ID: {formData.tokenId}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <select
