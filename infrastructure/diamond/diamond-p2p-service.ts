@@ -18,7 +18,13 @@ import {
 import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
+import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import {
+  GET_P2P_OFFERS_BY_CREATOR,
+  type P2POffersByCreatorResponse,
+} from '@/infrastructure/shared/graph-queries';
 
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
@@ -557,6 +563,7 @@ export class DiamondP2PService implements IP2PService {
  */
 export class DiamondP2PRepository implements IP2PRepository {
   private context: DiamondContext;
+  private graphQLEndpoint = NEXT_PUBLIC_INDEXER_URL;
 
   constructor(context: DiamondContext) {
     this.context = context;
@@ -591,8 +598,34 @@ export class DiamondP2PRepository implements IP2PRepository {
   async getUserOffers(userAddress: string): Promise<P2POffer[]> {
     const diamond = this.context.getDiamond();
 
+    const fetchByCreatorFromIndexer = async (): Promise<string[]> => {
+      try {
+        const response = await graphqlRequest<P2POffersByCreatorResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_BY_CREATOR,
+          { creator: userAddress.toLowerCase(), limit: 500 },
+        );
+        return (
+          response.diamondP2POfferCreatedEventss?.items?.map(
+            (event) => event.order_id,
+          ) || []
+        );
+      } catch (indexerError) {
+        console.warn(
+          '[DiamondP2PRepository] Indexer creator fallback failed:',
+          indexerError,
+        );
+        return [];
+      }
+    };
+
     try {
-      const offerIds: string[] = await diamond.getUserP2POffers(userAddress);
+      const onchainOfferIds: string[] =
+        await diamond.getUserP2POffers(userAddress);
+      const indexerOfferIds = await fetchByCreatorFromIndexer();
+      const offerIds = Array.from(
+        new Set([...onchainOfferIds, ...indexerOfferIds]),
+      );
       console.log(
         '[DiamondP2PRepository] Found',
         offerIds.length,
@@ -613,8 +646,12 @@ export class DiamondP2PRepository implements IP2PRepository {
         // Some wallet-backed providers intermittently fail eth_call for this selector.
         // Retry with provider-only runner to avoid signer call path issues.
         const readDiamond = diamond.connect(this.context.getProvider());
-        const offerIds: string[] =
+        const onchainOfferIds: string[] =
           await readDiamond.getUserP2POffers(userAddress);
+        const indexerOfferIds = await fetchByCreatorFromIndexer();
+        const offerIds = Array.from(
+          new Set([...onchainOfferIds, ...indexerOfferIds]),
+        );
         console.log(
           '[DiamondP2PRepository] Provider fallback found',
           offerIds.length,
