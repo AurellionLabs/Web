@@ -26,3 +26,7 @@ Aurellion Labs is a Web3 dApp (Next.js 14 + Hardhat) for tokenized real-world as
 - **Service unit tests (`test:service:unit`) fail on Node.js 22** due to `chai-as-promised` ESM/CJS incompatibility. This is a pre-existing issue. Hardhat tests (`test:hardhat`) work fine (33 passing, 3 pre-existing failures).
 - **Dashboard routes require Privy authentication** — the landing page and dashboard routes (`/customer/dashboard`, `/node/dashboard`, `/driver/dashboard`) show a loading animation until a wallet is connected via Privy. Set `NEXT_PUBLIC_PRIVY_APP_ID` env var for auth to work.
 - **Husky pre-commit hook** runs `lint-staged` which applies `prettier` formatting to staged files.
+- **Three user roles** — The app has Customer, Node Operator, and Driver roles selectable via dropdown in the header. Each role has its own dashboard and navigation (e.g., Customer: Dashboard/Yield/Trading/P2P/Faucet; Node: Overview/Explorer; Driver: Dashboard).
+- **Active development branch is `dev`** — The `dev` branch has significantly more features (Diamond pattern contracts, E2E test mode, CLOB trading, faucet) compared to `main`.
+- **Contracts are deployed on Base Sepolia** (chain ID 84532) and Arbitrum. Contract addresses are in `chain-constants.ts`. The faucet mints AURA test tokens on Base Sepolia.
+- **Google login is the easiest auth method for testing** — Privy Google OAuth works without needing a wallet extension. Privy creates an embedded wallet automatically for social-login users.
