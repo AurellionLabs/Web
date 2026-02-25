@@ -338,17 +338,39 @@ export class DiamondP2PService implements IP2PService {
 
       // 3. Accept the offer
       const acceptTx = await diamond.acceptP2POffer(offerId);
-      await acceptTx.wait();
+      const acceptReceipt = await acceptTx.wait();
+
+      if (!acceptReceipt.status) {
+        throw new Error('acceptP2POffer transaction failed on-chain');
+      }
+
       console.log(
         '[DiamondP2PService] Offer accepted, resolving journey parties...',
       );
 
-      // Resolve sender/receiver from the accepted on-chain order.
-      // Sender must be the seller/node side, not a UI-provided placeholder.
+      // Wait for block propagation - the contract state needs time to update after tx
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       const acceptedOrder = await diamond.getAuSysOrder(offerId);
+
+      // Validate order was accepted - if not, use accepting wallet as buyer (fallback)
+      const orderBuyer = acceptedOrder.buyer;
+      const isBuyerSet = orderBuyer && orderBuyer !== ethers.ZeroAddress;
+
+      let buyerAddress: string;
+      if (!isBuyerSet || acceptedOrder.currentStatus === 0n) {
+        console.warn(
+          '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as buyer',
+        );
+        buyerAddress = await this.context.getSignerAddress();
+      } else {
+        buyerAddress = orderBuyer;
+      }
+
+      // Resolve sender/receiver from the accepted on-chain order.
       const senderAddress = String(acceptedOrder.seller || '');
       const receiverAddress = isZeroAddress(delivery.receiverAddress)
-        ? String(acceptedOrder.buyer || '')
+        ? buyerAddress
         : delivery.receiverAddress;
 
       if (isZeroAddress(senderAddress)) {

@@ -466,7 +466,10 @@ export class DiamondNodeRepository implements NodeRepository {
         },
       );
 
-      return assetsWithMetadata;
+      const aggregatedAssets =
+        this.aggregateAssetsByTokenId(assetsWithMetadata);
+
+      return aggregatedAssets;
     } catch (error) {
       console.error(
         '[DiamondNodeRepository] Error getting node assets:',
@@ -792,5 +795,33 @@ export class DiamondNodeRepository implements NodeRepository {
       );
       return [];
     }
+  }
+
+  /**
+   * Aggregates assets by tokenId to combine quantities from multiple tokenizations
+   * of the same asset. When a user tokenizes the same underlying asset multiple
+   * times, the indexer stores each tokenization as a separate event. This method
+   * consolidates them into a single entry with summed amounts.
+   */
+  private aggregateAssetsByTokenId(assets: TokenizedAsset[]): TokenizedAsset[] {
+    const aggregated = new Map<string, TokenizedAsset>();
+
+    for (const asset of assets) {
+      const existing = aggregated.get(asset.id);
+
+      if (existing) {
+        const existingAmount = BigInt(existing.amount || '0');
+        const newAmount = BigInt(asset.amount || '0');
+        const existingCapacity = BigInt(existing.capacity || '0');
+        const newCapacity = BigInt(asset.capacity || '0');
+
+        existing.amount = (existingAmount + newAmount).toString();
+        existing.capacity = (existingCapacity + newCapacity).toString();
+      } else {
+        aggregated.set(asset.id, { ...asset });
+      }
+    }
+
+    return Array.from(aggregated.values());
   }
 }
