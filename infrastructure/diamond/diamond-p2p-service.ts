@@ -305,6 +305,8 @@ export class DiamondP2PService implements IP2PService {
     delivery: P2PDeliveryDetails,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
+    const isZeroAddress = (addr?: string | null) =>
+      !addr || addr.toLowerCase() === ethers.ZeroAddress.toLowerCase();
 
     console.log('[DiamondP2PService] acceptOfferWithDelivery:', offerId);
 
@@ -337,13 +339,34 @@ export class DiamondP2PService implements IP2PService {
       // 3. Accept the offer
       const acceptTx = await diamond.acceptP2POffer(offerId);
       await acceptTx.wait();
-      console.log('[DiamondP2PService] Offer accepted, creating journey...');
+      console.log(
+        '[DiamondP2PService] Offer accepted, resolving journey parties...',
+      );
+
+      // Resolve sender/receiver from the accepted on-chain order.
+      // Sender must be the seller/node side, not a UI-provided placeholder.
+      const acceptedOrder = await diamond.getAuSysOrder(offerId);
+      const senderAddress = String(acceptedOrder.seller || '');
+      const receiverAddress = isZeroAddress(delivery.receiverAddress)
+        ? String(acceptedOrder.buyer || '')
+        : delivery.receiverAddress;
+
+      if (isZeroAddress(senderAddress)) {
+        throw new Error(
+          'Cannot create journey: seller/node sender is unresolved after offer acceptance.',
+        );
+      }
+      if (isZeroAddress(receiverAddress)) {
+        throw new Error(
+          'Cannot create journey: receiver address is unresolved after offer acceptance.',
+        );
+      }
 
       // 4. Create the delivery journey
       const journeyTx = await diamond.createOrderJourney(
         offerId,
-        delivery.senderNodeAddress,
-        delivery.receiverAddress,
+        senderAddress,
+        receiverAddress,
         delivery.parcelData,
         delivery.bountyWei,
         delivery.etaTimestamp,

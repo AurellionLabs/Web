@@ -558,11 +558,35 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(null);
         // Use the Diamond contract (has createOrderJourney), not the Ausys contract
         const diamond = repoContext.getDiamondContext().getDiamond();
+        const isZeroAddress = (addr?: string | null) =>
+          !addr ||
+          addr.toLowerCase() === '0x0000000000000000000000000000000000000000';
+
+        // Resolve canonical participants from on-chain order state.
+        // Event-derived order views can contain zero placeholders.
+        const onchainOrder = await diamond.getAuSysOrder(orderId);
+        const senderAddress = isZeroAddress(delivery.senderNodeAddress)
+          ? String(onchainOrder.seller || '')
+          : delivery.senderNodeAddress;
+        const receiverAddress = isZeroAddress(delivery.receiverAddress)
+          ? String(onchainOrder.buyer || '')
+          : delivery.receiverAddress;
+
+        if (isZeroAddress(senderAddress)) {
+          throw new Error(
+            'Cannot create delivery journey: seller/node sender address is unresolved.',
+          );
+        }
+        if (isZeroAddress(receiverAddress)) {
+          throw new Error(
+            'Cannot create delivery journey: receiver address is unresolved.',
+          );
+        }
 
         const journeyTx = await diamond.createOrderJourney(
           orderId,
-          delivery.senderNodeAddress,
-          delivery.receiverAddress,
+          senderAddress,
+          receiverAddress,
           delivery.parcelData,
           delivery.bountyWei,
           delivery.etaTimestamp,
