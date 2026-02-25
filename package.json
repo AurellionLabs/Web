@@ -107,6 +107,8 @@
     "chai-as-promised": "^8.0.1",
     "cypress": "^14.3.2",
     "dotenv": "^16.4.7",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.16",
     "ethers": "^6.13.5",
     "hardhat": "^2.22.17",
     "hardhat-gas-reporter": "^1.0.10",
