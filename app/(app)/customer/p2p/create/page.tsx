@@ -80,6 +80,18 @@ const getPrimaryAttributeValue = (
   );
 };
 
+const normalizeTokenId = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+  try {
+    // Canonicalize to decimal so hex/decimal forms dedupe to one ID.
+    return BigInt(raw).toString(10);
+  } catch {
+    return raw;
+  }
+};
+
 const computeDeterministicTokenId = (
   name: string,
   assetClass: string,
@@ -223,7 +235,7 @@ export default function CreateP2POfferPage() {
     // Avoid duplicate options when metadata has repeated entries for same tokenId
     const seenTokenIds = new Set<string>();
     return byAttributes.filter((asset) => {
-      const tokenId = String(
+      const tokenId = normalizeTokenId(
         (asset as any)?.tokenId ?? (asset as any)?.tokenID,
       );
       if (!tokenId || seenTokenIds.has(tokenId)) return false;
@@ -255,8 +267,8 @@ export default function CreateP2POfferPage() {
     if (isSellFlow) return;
     if (formData.tokenId) {
       const asset = classAssets.find((a: any) => {
-        const idStr = String(a?.tokenId ?? a?.tokenID ?? '');
-        return idStr === formData.tokenId;
+        const idStr = normalizeTokenId(a?.tokenId ?? a?.tokenID ?? '');
+        return idStr === normalizeTokenId(formData.tokenId);
       });
       setSelectedAsset(asset || null);
     } else {
@@ -848,10 +860,10 @@ export default function CreateP2POfferPage() {
                       </div>
                     ) : (
                       <select
-                        value={formData.tokenId}
+                        value={normalizeTokenId(formData.tokenId)}
                         onChange={(e) =>
                           updateFormData({
-                            tokenId: e.target.value,
+                            tokenId: normalizeTokenId(e.target.value),
                           })
                         }
                         className="w-full bg-background/80 border border-border/40 rounded-none px-4 py-3 font-mono text-foreground focus:outline-none focus:border-gold/50"
@@ -863,10 +875,14 @@ export default function CreateP2POfferPage() {
                         <option value="">Select an asset</option>
                         {filteredBuyAssets.map((asset: any) => (
                           <option
-                            key={String(asset?.tokenId ?? asset?.tokenID)}
-                            value={String(asset?.tokenId ?? asset?.tokenID)}
+                            key={normalizeTokenId(
+                              asset?.tokenId ?? asset?.tokenID,
+                            )}
+                            value={normalizeTokenId(
+                              asset?.tokenId ?? asset?.tokenID,
+                            )}
                           >
-                            {`${asset.name} • #${String(asset?.tokenId ?? asset?.tokenID).slice(0, 6)}…${String(asset?.tokenId ?? asset?.tokenID).slice(-4)}${
+                            {`${asset.name} • #${normalizeTokenId(asset?.tokenId ?? asset?.tokenID).slice(0, 6)}…${normalizeTokenId(asset?.tokenId ?? asset?.tokenID).slice(-4)}${
                               Array.isArray(asset.attributes) &&
                               asset.attributes.length > 0
                                 ? ` • ${asset.attributes
