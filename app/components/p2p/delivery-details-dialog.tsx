@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPin, Truck, Package } from 'lucide-react';
-import { GlowButton } from '@/app/components/ui/glow-button';
+import { TrapButton } from '@/app/components/eva/eva-components';
 import { cn } from '@/lib/utils';
 import { P2POffer } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
@@ -35,6 +35,10 @@ export interface DeliveryDetailsDialogProps {
   onConfirm: (details: DeliveryFormData) => Promise<void>;
   /** Resolved asset name for display */
   assetName?: string;
+  /** Optional pre-filled delivery address */
+  initialDeliveryAddress?: string;
+  /** If true, delivery address is fixed and not editable */
+  lockDeliveryAddress?: boolean;
 }
 
 // =============================================================================
@@ -47,8 +51,12 @@ export function DeliveryDetailsDialog({
   onOpenChange,
   onConfirm,
   assetName,
+  initialDeliveryAddress,
+  lockDeliveryAddress = false,
 }: DeliveryDetailsDialogProps) {
-  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState(
+    initialDeliveryAddress || '',
+  );
   const [deliveryCoords, setDeliveryCoords] = useState<{
     lat: number;
     lng: number;
@@ -63,6 +71,11 @@ export function DeliveryDetailsDialog({
   });
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setDeliveryAddress(initialDeliveryAddress || '');
+  }, [open, initialDeliveryAddress]);
 
   // Use the first node as sender, or fall back to the seller address
   const senderNode =
@@ -175,13 +188,23 @@ export function DeliveryDetailsDialog({
             </div>
           </div>
 
-          {/* Delivery address - Google Places Autocomplete */}
+          {/* Delivery address */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-amber-400" />
               Delivery Address
             </label>
-            {mapsLoaded ? (
+            {lockDeliveryAddress ? (
+              <div
+                className={cn(
+                  'w-full px-4 py-3 rounded-lg text-sm',
+                  'bg-neutral-900 border border-neutral-800',
+                  'text-white',
+                )}
+              >
+                {deliveryAddress || 'No delivery address set'}
+              </div>
+            ) : mapsLoaded ? (
               <Autocomplete
                 onLoad={(autocompleteInstance) => {
                   setAutocomplete(autocompleteInstance);
@@ -218,7 +241,9 @@ export function DeliveryDetailsDialog({
               />
             )}
             <p className="text-xs text-neutral-500">
-              This is where your goods will be delivered
+              {lockDeliveryAddress
+                ? 'Delivery destination already set on the buy offer'
+                : 'This is where your goods will be delivered'}
             </p>
           </div>
 
@@ -245,16 +270,16 @@ export function DeliveryDetailsDialog({
           >
             Cancel
           </button>
-          <GlowButton
-            variant="primary"
+          <TrapButton
+            variant="gold"
             className="flex-1 min-w-0"
             onClick={handleConfirm}
             disabled={!deliveryAddress.trim() || isSubmitting}
-            loading={isSubmitting}
-            aria-label="Accept & Schedule Delivery"
           >
-            Accept &amp; Schedule Delivery
-          </GlowButton>
+            <span className="inline-flex items-center justify-center gap-2">
+              {isSubmitting ? 'Scheduling...' : 'Accept & Schedule Delivery'}
+            </span>
+          </TrapButton>
         </div>
       </div>
     </div>

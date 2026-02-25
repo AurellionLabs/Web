@@ -589,9 +589,11 @@ export default function NodeDashboardPage() {
     if (!assets || assets.length === 0) {
       return (
         <tr>
+          <td />
           <td colSpan={5} className="p-4 text-center text-muted-foreground">
             No assets found
           </td>
+          <td />
         </tr>
       );
     }
@@ -603,6 +605,7 @@ export default function NodeDashboardPage() {
       return (
         <React.Fragment key={asset.id}>
           <tr className="border-b border-glass-border hover:bg-glass-hover transition-colors">
+            <td />
             <td className="p-4 font-mono text-sm text-foreground">
               {truncateId(asset.id)}
             </td>
@@ -614,9 +617,11 @@ export default function NodeDashboardPage() {
             <td className="p-4 font-mono text-muted-foreground text-sm">
               Set via trading
             </td>
+            <td />
           </tr>
           {/* Attributes row */}
           <tr className="border-b border-glass-border">
+            <td />
             <td colSpan={5} className="px-4 pb-4 pt-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {loadingAttributes ? (
@@ -644,6 +649,7 @@ export default function NodeDashboardPage() {
                 )}
               </div>
             </td>
+            <td />
           </tr>
         </React.Fragment>
       );

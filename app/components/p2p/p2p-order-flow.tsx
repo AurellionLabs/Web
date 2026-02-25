@@ -11,6 +11,7 @@ import {
   PackageCheck,
 } from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
+import { TrapButton } from '@/app/components/eva/eva-components';
 import { cn } from '@/lib/utils';
 import { OrderWithAsset, P2POrderDetail } from '@/app/types/shared';
 import { OrderStatus } from '@/domain/orders/order';
@@ -583,16 +584,19 @@ export function P2POrderFlow({
 
       {/* Action buttons */}
       {showScheduleButton && (
-        <GlowButton
+        <TrapButton
+          variant="gold"
           onClick={() => onScheduleDelivery!(order.id)}
-          loading={isActionLoading}
           disabled={isActionLoading}
-          variant="primary"
-          size="sm"
-          leftIcon={<Truck className="w-4 h-4" />}
+          className="inline-flex items-center gap-2"
         >
+          {isActionLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Truck className="w-4 h-4" />
+          )}
           Schedule Delivery
-        </GlowButton>
+        </TrapButton>
       )}
 
       {showPickupButton && (

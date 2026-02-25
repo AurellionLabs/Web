@@ -1037,6 +1037,8 @@ export default function CustomerDashboard() {
               }}
               onConfirm={handleConfirmScheduleDelivery}
               assetName={stuckOrder.asset?.name}
+              initialDeliveryAddress={stuckOrder.locationData?.endName || ''}
+              lockDeliveryAddress={Boolean(stuckOrder.locationData?.endName)}
             />
           );
         })()}
