@@ -198,6 +198,63 @@ describe('User Bug u6: Asset deduplication', () => {
   });
 });
 
+describe('aggregateAssetsByTokenId: amount uses max (not sum) for balanceOf dedup', () => {
+  type Asset = { id: string; amount: string; capacity: string };
+
+  function aggregateAssetsByTokenId(assets: Asset[]): Asset[] {
+    const aggregated = new Map<string, Asset>();
+    for (const asset of assets) {
+      const existing = aggregated.get(asset.id);
+      if (existing) {
+        const existingAmount = BigInt(existing.amount || '0');
+        const newAmount = BigInt(asset.amount || '0');
+        existing.amount =
+          newAmount > existingAmount
+            ? newAmount.toString()
+            : existingAmount.toString();
+        const existingCapacity = BigInt(existing.capacity || '0');
+        const newCapacity = BigInt(asset.capacity || '0');
+        existing.capacity = (existingCapacity + newCapacity).toString();
+      } else {
+        aggregated.set(asset.id, { ...asset });
+      }
+    }
+    return Array.from(aggregated.values());
+  }
+
+  it('should NOT double the amount when same tokenId appears twice', () => {
+    // balanceOf returns 97 for both registrations of the same tokenId
+    const assets: Asset[] = [
+      { id: '42', amount: '97', capacity: '100' },
+      { id: '42', amount: '97', capacity: '100' },
+    ];
+    const result = aggregateAssetsByTokenId(assets);
+    expect(result).toHaveLength(1);
+    expect(result[0].amount).toBe('97'); // max(97,97) = 97, NOT 97+97=194
+    expect(result[0].capacity).toBe('200'); // capacity correctly sums
+  });
+
+  it('should take the higher amount when balanceOf results differ (stale cache)', () => {
+    const assets: Asset[] = [
+      { id: '42', amount: '90', capacity: '100' },
+      { id: '42', amount: '97', capacity: '100' },
+    ];
+    const result = aggregateAssetsByTokenId(assets);
+    expect(result[0].amount).toBe('97'); // max(90,97) = 97
+  });
+
+  it('should not aggregate different tokenIds', () => {
+    const assets: Asset[] = [
+      { id: '1', amount: '50', capacity: '100' },
+      { id: '2', amount: '30', capacity: '200' },
+    ];
+    const result = aggregateAssetsByTokenId(assets);
+    expect(result).toHaveLength(2);
+    expect(result[0].amount).toBe('50');
+    expect(result[1].amount).toBe('30');
+  });
+});
+
 describe('Bug 6: acceptOfferWithDelivery partial failure messaging', () => {
   it('should distinguish partial success from full failure', () => {
     const partialError = new Error(

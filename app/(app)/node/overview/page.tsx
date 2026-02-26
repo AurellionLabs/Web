@@ -272,7 +272,7 @@ export default function NodeOverviewPage() {
                       <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border/20">
                         <div>
                           <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/40">
-                            Assets
+                            Asset Types
                           </p>
                           <p className="font-mono text-lg font-bold text-gold tabular-nums">
                             {assetCount}
@@ -280,7 +280,7 @@ export default function NodeOverviewPage() {
                         </div>
                         <div>
                           <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/40">
-                            Capacity
+                            Max Capacity
                           </p>
                           <p className="font-mono text-lg font-bold text-gold tabular-nums">
                             {totalCapacity} units

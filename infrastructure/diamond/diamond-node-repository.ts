@@ -826,12 +826,21 @@ export class DiamondNodeRepository implements NodeRepository {
       const existing = aggregated.get(asset.id);
 
       if (existing) {
+        // `amount` comes from balanceOf(owner, tokenId) which is a GLOBAL
+        // per-owner balance — it returns the same value regardless of how
+        // many times the tokenId is registered. Taking the max ensures we
+        // don't multiply the real balance by the number of registrations.
         const existingAmount = BigInt(existing.amount || '0');
         const newAmount = BigInt(asset.amount || '0');
+        existing.amount =
+          newAmount > existingAmount
+            ? newAmount.toString()
+            : existingAmount.toString();
+
+        // Capacity is an on-chain per-registration limit. Sum is correct
+        // here since each registration adds capacity.
         const existingCapacity = BigInt(existing.capacity || '0');
         const newCapacity = BigInt(asset.capacity || '0');
-
-        existing.amount = (existingAmount + newAmount).toString();
         existing.capacity = (existingCapacity + newCapacity).toString();
       } else {
         aggregated.set(asset.id, { ...asset });
