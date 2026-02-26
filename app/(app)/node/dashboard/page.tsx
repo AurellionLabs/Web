@@ -596,7 +596,7 @@ export default function NodeDashboardPage() {
       return (
         <tr>
           <td />
-          <td colSpan={5} className="p-4 text-center text-muted-foreground">
+          <td colSpan={6} className="p-4 text-center text-muted-foreground">
             No assets found
           </td>
           <td />
@@ -627,7 +627,10 @@ export default function NodeDashboardPage() {
             <td className="p-4 text-foreground">{asset.name}</td>
             <td className="p-4 capitalize text-foreground">{asset.class}</td>
             <td className="p-4 font-mono text-foreground">
-              {Number(asset.amount ?? '0')}
+              {Number(asset.amount ?? '0').toLocaleString()}
+            </td>
+            <td className="p-4 font-mono text-foreground/50">
+              {Number(asset.capacity ?? '0').toLocaleString()}
             </td>
             <td className="p-4 font-mono text-muted-foreground text-sm">
               Set via trading
@@ -637,7 +640,7 @@ export default function NodeDashboardPage() {
           {/* Attributes row */}
           <tr className="border-b border-glass-border">
             <td />
-            <td colSpan={5} className="px-4 pb-4 pt-2">
+            <td colSpan={6} className="px-4 pb-4 pt-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {loadingAttributes ? (
                   <div className="flex items-center gap-2">
@@ -1182,7 +1185,16 @@ export default function NodeDashboardPage() {
           sysId="AST.DTL"
           accent="crimson"
         >
-          <ScanTable headers={['ID', 'Asset', 'Class', 'Quantity', 'Trading']}>
+          <ScanTable
+            headers={[
+              'ID',
+              'Asset',
+              'Class',
+              'Quantity',
+              'Capacity',
+              'Trading',
+            ]}
+          >
             {renderAssetDetailsRows()}
           </ScanTable>
         </EvaPanel>

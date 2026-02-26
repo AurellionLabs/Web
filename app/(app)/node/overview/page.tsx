@@ -190,17 +190,13 @@ export default function NodeOverviewPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {nodes.map((node) => {
               const isActive = node.status === 'Active';
-              // Use supportedAssets and capacity arrays from the on-chain
-              // node data for consistency with the dashboard.
-              const capacityArr = (node as any)?.capacity ?? [];
-              const totalCapacity = capacityArr.reduce(
-                (sum: number, c: any) => sum + Number(c ?? 0),
+              // Sum capacity from each registered asset (NodeAsset.capacity)
+              const nodeAssets = node.assets ?? [];
+              const totalCapacity = nodeAssets.reduce(
+                (sum: number, a) => sum + Number(a.capacity ?? 0),
                 0,
               );
-              const assetCount =
-                (node as any)?.supportedAssets?.length ??
-                (node as any)?.assets?.length ??
-                0;
+              const assetCount = nodeAssets.length;
 
               return (
                 <div
