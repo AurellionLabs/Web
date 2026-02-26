@@ -348,10 +348,19 @@ export class DiamondP2PService implements IP2PService {
         '[DiamondP2PService] Offer accepted, resolving journey parties...',
       );
 
-      // Wait for block propagation - the contract state needs time to update after tx
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Poll for order state update (more efficient than fixed wait)
+      const maxAttempts = 4;
+      const intervalMs = 500;
+      let acceptedOrder = await diamond.getAuSysOrder(offerId);
 
-      const acceptedOrder = await diamond.getAuSysOrder(offerId);
+      for (
+        let attempt = 1;
+        attempt <= maxAttempts && acceptedOrder.currentStatus === 0n;
+        attempt++
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        acceptedOrder = await diamond.getAuSysOrder(offerId);
+      }
 
       // Validate order was accepted - if not, use accepting wallet as buyer (fallback)
       const orderBuyer = acceptedOrder.buyer;
