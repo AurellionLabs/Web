@@ -183,3 +183,25 @@ Pure dumb indexer - only stores raw blockchain events. Business logic in fronten
 
 - **NEVER push PRD files** (`prd.json`, `progress.txt`) to remote
 - **NEVER commit ralph/ directory contents** except docs updates
+
+## Cursor Cloud specific instructions
+
+### Environment Setup
+
+- Package manager: `bun` (installed at `~/.bun/bin/bun`). The `.npmrc` has `legacy-peer-deps=true`.
+- After `bun install`, run `bun run contract:compile` to generate `typechain-types/` needed by the frontend.
+- ESLint 8 + `eslint-config-next@14` are required (not ESLint 9). The `.eslintrc.json` extends `next/core-web-vitals`.
+- Dev server: `npm run dev` (Next.js on port 3000 by default).
+
+### Testing
+
+- `npm run lint` — ESLint via Next.js. Pre-existing warnings about React hooks deps and 2 `react/no-unescaped-entities` errors.
+- `npm run test` — Vitest suite. `npm run test:hardhat` — Hardhat contract tests (33 passing, 3 pre-existing failures in `OrderRepository` ABI mismatch).
+- `npm run test:service:unit` — Has a pre-existing ESM/CJS incompatibility with `chai-as-promised@8` under `ts-node`.
+
+### P2P Trading (manual testing)
+
+- The app uses MetaMask for wallet connection. When switching MetaMask accounts, you **must do a hard page refresh (F5)** for the DApp to properly update its wallet signer. Without this, the old signer persists and contract calls fail with misleading errors (e.g. "You cannot accept your own offer").
+- The quote token for P2P trades is **AURA** (not USDC). Mint test AURA at `/customer/faucet`.
+- Google Maps Places autocomplete is used for delivery addresses in the P2P flow. Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+- The app runs on **Base Sepolia** testnet (chain ID 84532).
