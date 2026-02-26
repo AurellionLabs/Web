@@ -394,19 +394,40 @@ export class DiamondP2PService implements IP2PService {
       }
 
       // 4. Create the delivery journey
-      const journeyTx = await diamond.createOrderJourney(
-        offerId,
-        senderAddress,
-        receiverAddress,
-        delivery.parcelData,
-        delivery.bountyWei,
-        delivery.etaTimestamp,
-        delivery.tokenQuantity,
-        delivery.assetId,
-      );
-      await journeyTx.wait();
-      console.log('[DiamondP2PService] Journey created successfully');
+      try {
+        const journeyTx = await diamond.createOrderJourney(
+          offerId,
+          senderAddress,
+          receiverAddress,
+          delivery.parcelData,
+          delivery.bountyWei,
+          delivery.etaTimestamp,
+          delivery.tokenQuantity,
+          delivery.assetId,
+        );
+        await journeyTx.wait();
+        console.log('[DiamondP2PService] Journey created successfully');
+      } catch (journeyError) {
+        // Offer was accepted but journey creation failed. The order is now
+        // in PROCESSING state without a journey. The UI shows a "Schedule
+        // Delivery" fallback button for this case.
+        console.error(
+          '[DiamondP2PService] Offer accepted but journey creation failed:',
+          journeyError,
+        );
+        const decoded = decodeP2PError(journeyError);
+        const wrapped = new Error(
+          `Offer accepted successfully, but delivery scheduling failed: ${decoded}. ` +
+            `You can schedule delivery later from the order details.`,
+        );
+        (wrapped as any).originalError = journeyError;
+        (wrapped as any).partialSuccess = true;
+        throw wrapped;
+      }
     } catch (error) {
+      // Check if this is the partial-success case (already wrapped above)
+      if ((error as any)?.partialSuccess) throw error;
+
       console.error(
         '[DiamondP2PService] acceptOfferWithDelivery error:',
         error,

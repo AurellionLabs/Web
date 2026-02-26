@@ -492,7 +492,13 @@ export default function NodeDashboardPage() {
   const getAssetsSummaryByClass = () => {
     const summary: Record<string, { quantity: number }> = {};
 
+    // Deduplicate assets by token ID to avoid double-counting
+    const seenTokenIds = new Set<string>();
     assets.forEach((asset) => {
+      const tokenId = String(asset.id || asset.tokenId || '');
+      if (seenTokenIds.has(tokenId)) return;
+      seenTokenIds.add(tokenId);
+
       const assetClass = asset.class || 'Unknown';
       const quantity = Number(asset.amount) || 0;
 
@@ -598,7 +604,16 @@ export default function NodeDashboardPage() {
       );
     }
 
-    return assets.map((asset) => {
+    // Deduplicate assets by token ID before rendering
+    const seenIds = new Set<string>();
+    const uniqueAssets = assets.filter((asset) => {
+      const id = String(asset.id);
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+    return uniqueAssets.map((asset) => {
       const attributes = assetAttributesData[asset.id] || [];
       const hasAttributes = attributes.length > 0;
 

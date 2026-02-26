@@ -664,10 +664,26 @@ export class DiamondNodeRepository implements NodeRepository {
 
       for (const order of p2pOrders) {
         const oid = order.id.toLowerCase();
-        if (!seenIds.has(oid)) {
-          seenIds.add(oid);
-          allOrders.push(order);
-        }
+        if (seenIds.has(oid)) continue;
+
+        // For P2P orders, only include if the specific node is referenced
+        // in the order's nodes array or seller field. This prevents the
+        // same P2P order from appearing under every node owned by the
+        // same wallet.
+        const orderNodes = (order.nodes || []).map((n) => n.toLowerCase());
+        const isLinkedToThisNode =
+          orderNodes.includes(hash) || order.seller?.toLowerCase() === hash;
+        // If the order has no node references (common for P2P), fall back
+        // to showing it only on the first node to avoid duplicates.
+        const hasNoNodeRef =
+          orderNodes.length === 0 ||
+          orderNodes.every(
+            (n) => n === ethers.ZeroAddress.toLowerCase() || n === '',
+          );
+        if (!isLinkedToThisNode && !hasNoNodeRef) continue;
+
+        seenIds.add(oid);
+        allOrders.push(order);
       }
 
       allOrders.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));

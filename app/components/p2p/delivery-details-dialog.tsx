@@ -185,6 +185,10 @@ export function DeliveryDetailsDialog({
                   ${formatPrice(offer.txFee)}
                 </p>
               </div>
+              <div>
+                <span className="text-neutral-500">Delivery Bounty</span>
+                <p className="font-medium text-neutral-300">$0.50</p>
+              </div>
             </div>
           </div>
 

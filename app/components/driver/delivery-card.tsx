@@ -100,8 +100,10 @@ export const DeliveryCard: React.FC<DeliveryCardProps> = ({
                 Pickup
               </span>
             </div>
-            <p className="font-mono text-sm text-foreground/80 leading-relaxed">
-              {delivery.parcelData.startName}
+            <p
+              className={`font-mono text-sm leading-relaxed ${delivery.parcelData.startName ? 'text-foreground/80' : 'text-amber-400 italic'}`}
+            >
+              {delivery.parcelData.startName || 'Location not set'}
             </p>
           </div>
 
