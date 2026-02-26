@@ -18,6 +18,11 @@ export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
   '0xb3090aBF81918FF50e921b166126aD6AB9a03944';
 export const NEXT_PUBLIC_CLOB_ADDRESS =
   '0xDd33fF6AE3E20E59D1AC20336358F024a2861304';
+
+// CLOB V2 Diamond - separate Diamond for CLOB trading (placeLimitOrder, matching, etc.)
+// Deployed: 2026-01-07 (see deployments/clob-v2-baseSepolia-*.json)
+export const NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS =
+  '0x2516CAdb7b3d4E94094bC4580C271B8559902e3f';
 export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
   '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
 

@@ -18,6 +18,7 @@ import {
   TimeInForce,
 } from '@/domain/clob/clob';
 import {
+  NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
@@ -92,7 +93,7 @@ export class CLOBV2Service implements ICLOBService {
   private repositoryContext: RepositoryContext;
 
   constructor() {
-    this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
+    this.diamondAddress = NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS;
     this.quoteTokenAddress =
       NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS ||
       '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
