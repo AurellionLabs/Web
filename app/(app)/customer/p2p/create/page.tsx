@@ -334,13 +334,21 @@ export default function CreateP2POfferPage() {
         // For buy flow, attribute filters are optional; token selection is required.
         return true;
       }
-      case 'details':
-        return (
-          formData.quantity !== '' &&
-          parseFloat(formData.quantity) > 0 &&
-          formData.price !== '' &&
-          parseFloat(formData.price) > 0
-        );
+      case 'details': {
+        const qty = parseFloat(formData.quantity);
+        const price = parseFloat(formData.price);
+        if (!formData.quantity || !formData.price) return false;
+        if (isNaN(qty) || qty < 1 || !Number.isInteger(qty)) return false;
+        if (isNaN(price) || price <= 0) return false;
+        if (isSellFlow && formData.tokenId) {
+          const asset = sellableAssets.find(
+            (a) => a.tokenId === formData.tokenId,
+          );
+          const available = parseInt(String(asset?.balance ?? '0'), 10);
+          if (qty > available) return false;
+        }
+        return true;
+      }
       case 'logistics':
         if (formData.offerType === 'buy') {
           const hasDestination =
@@ -946,16 +954,41 @@ export default function CreateP2POfferPage() {
                     }
                     className="bg-background/80 border-border/40 font-mono rounded-none"
                   />
-                  {isSellFlow && formData.tokenId && (
-                    <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.08em]">
-                      Available balance:{' '}
-                      <span className="text-gold font-bold">
-                        {sellableAssets.find(
-                          (a) => a.tokenId === formData.tokenId,
-                        )?.balance ?? '0'}
-                      </span>
-                    </p>
-                  )}
+                  {isSellFlow &&
+                    formData.tokenId &&
+                    (() => {
+                      const available = parseInt(
+                        String(
+                          sellableAssets.find(
+                            (a) => a.tokenId === formData.tokenId,
+                          )?.balance ?? '0',
+                        ),
+                        10,
+                      );
+                      const qty = parseInt(formData.quantity || '0', 10);
+                      const exceeds = qty > available;
+                      return (
+                        <p
+                          className={`font-mono text-xs mt-1 tracking-[0.08em] ${exceeds ? 'text-red-400' : 'text-foreground/30'}`}
+                        >
+                          Available balance:{' '}
+                          <span
+                            className={
+                              exceeds
+                                ? 'text-red-400 font-bold'
+                                : 'text-gold font-bold'
+                            }
+                          >
+                            {available}
+                          </span>
+                          {exceeds && (
+                            <span className="text-red-400 ml-2">
+                              — Exceeds available balance
+                            </span>
+                          )}
+                        </p>
+                      );
+                    })()}
                 </div>
 
                 <EvaScanLine variant="gold" />

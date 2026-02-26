@@ -536,7 +536,7 @@ export default function CustomerDashboard() {
             />
             <HexStatCard
               label="Total Spent"
-              value={`$${(totalSpent / 1000000).toFixed(2)}`}
+              value={`$${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               color="gold"
               powerLevel={6}
             />

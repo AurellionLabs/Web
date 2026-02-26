@@ -461,17 +461,28 @@ export function P2POrderFlow({
     currentStep === 0 &&
     onScheduleDelivery &&
     order.currentStatus !== OrderStatus.SETTLED;
+
+  // Only allow pickup signing if driver has already signed (i.e., a driver has
+  // accepted the journey and confirmed pickup). Without this guard the sender
+  // could sign before any driver is assigned.
   const showPickupButton =
     currentStep === 1 &&
     onSignPickup &&
     !pickupSigned &&
     !senderPickupSigned &&
+    driverPickupSigned &&
     order.currentStatus !== OrderStatus.SETTLED;
+
+  // Only allow delivery signing when the journey is actually in transit
+  // (journeyStatus === 1). This prevents signing before the driver has
+  // completed pickup and the journey has transitioned.
+  const journeyIsInTransit = (order.journeyStatus ?? null) === 1;
   const showSignButton =
     currentStep === 2 &&
     onSignDelivery &&
     !buyerSigned &&
     !waitingForDriver &&
+    journeyIsInTransit &&
     order.currentStatus !== OrderStatus.SETTLED;
   // HandOff is always auto-attempted after signing — no manual button needed
 
