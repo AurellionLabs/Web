@@ -30,3 +30,14 @@ Aurellion Labs is a Web3 dApp (Next.js 14 + Hardhat) for tokenized real-world as
 - **Active development branch is `dev`** — The `dev` branch has significantly more features (Diamond pattern contracts, E2E test mode, CLOB trading, faucet) compared to `main`.
 - **Contracts are deployed on Base Sepolia** (chain ID 84532) and Arbitrum. Contract addresses are in `chain-constants.ts`. The faucet mints AURA test tokens on Base Sepolia.
 - **Google login is the easiest auth method for testing** — Privy Google OAuth works without needing a wallet extension. Privy creates an embedded wallet automatically for social-login users.
+
+### CLOB Testing with cast
+
+- **Install Foundry** (`curl -L https://foundry.paradigm.xyz | bash && foundryup`) to get the `cast` CLI for direct smart contract calls on Base Sepolia.
+- **Two Diamond contracts on `dev` branch:**
+  - Main Diamond (`NEXT_PUBLIC_DIAMOND_ADDRESS` in `chain-constants.ts`): Handles ERC1155 assets (mint, transfer), nodes, staking.
+  - CLOB V2 Diamond (`0x2516CAdb7b3d4E94094bC4580C271B8559902e3f`, from `deployments/clob-v2-baseSepolia-*.json`): Handles all CLOB trading (placeLimitOrder, cancelOrder, matching).
+- **CLOB initialization required**: Call `initializeCLOBV2(25, 10, 1000, 300, 3600)` as owner to set rate limits and fees before any orders work. Without this, all orders fail with `RateLimitExceeded`.
+- **Gas limit for CLOB orders must be >= 1M** — sell orders use ~810k gas, buy orders with matching use ~490k gas.
+- **Use `SEP_PRIVATE_KEY` (deployer)** for admin operations (minting assets, initializing CLOB). Create fresh wallets via `cast wallet new` for buyer/driver roles.
+- **Multi-wallet CLOB test flow**: (1) Mint ERC1155 via Main Diamond `mintBatch`, (2) Approve CLOB Diamond for ERC1155 + AURA, (3) Place sell order on CLOB Diamond, (4) Fund buyer with ETH + AURA, (5) Buyer approves + places buy order → auto-matches.
