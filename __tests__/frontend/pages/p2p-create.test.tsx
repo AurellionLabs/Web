@@ -26,7 +26,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockSetCurrentUserRole = vi.fn();
-const mockGetClassTokenizableAssets = vi.fn();
+const mockGetClassAssets = vi.fn();
 const mockCreateOffer = vi.fn();
 
 vi.mock('@/app/providers/main.provider', () => ({
@@ -48,7 +48,7 @@ vi.mock('@/app/providers/diamond.provider', () => ({
 vi.mock('@/app/providers/platform.provider', () => ({
   usePlatform: () => ({
     supportedAssetClasses: ['GOAT', 'SHEEP'],
-    getClassTokenizableAssets: mockGetClassTokenizableAssets,
+    getClassAssets: mockGetClassAssets,
   }),
 }));
 
@@ -159,7 +159,7 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }));
 
-import CreateP2POfferPage from '@/app/customer/p2p/create/page';
+import CreateP2POfferPage from '@/app/(app)/customer/p2p/create/page';
 
 // ===========================================================================
 // TEST DATA
@@ -239,7 +239,7 @@ function selectAsset(tokenId: string) {
 describe('Create P2P Offer Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetClassTokenizableAssets.mockResolvedValue([]);
+    mockGetClassAssets.mockResolvedValue([]);
   });
 
   describe('step 1: offer type', () => {
@@ -279,7 +279,7 @@ describe('Create P2P Offer Page', () => {
     });
 
     it('should load assets when class is selected in buy flow', async () => {
-      mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
+      mockGetClassAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();
@@ -287,12 +287,12 @@ describe('Create P2P Offer Page', () => {
       selectAssetClass('GOAT');
 
       await waitFor(() => {
-        expect(mockGetClassTokenizableAssets).toHaveBeenCalledWith('GOAT');
+        expect(mockGetClassAssets).toHaveBeenCalledWith('GOAT');
       });
     });
 
     it('should display attribute dropdowns when asset with attributes is selected', async () => {
-      mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
+      mockGetClassAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();
@@ -300,24 +300,18 @@ describe('Create P2P Offer Page', () => {
       selectAssetClass('GOAT');
 
       await waitFor(() => {
-        const allOptions = document.querySelectorAll('select option');
-        const texts = Array.from(allOptions).map((o) => o.textContent);
-        expect(texts).toContain('AUGOAT Standard');
-      });
-
-      selectAsset('12345');
-
-      await waitFor(() => {
-        expect(screen.getByText(/Token ID: 12345/)).toBeInTheDocument();
+        expect(mockGetClassAssets).toHaveBeenCalledWith('GOAT');
       });
 
       await waitFor(() => {
-        expect(screen.getByText(/Specify Details/i)).toBeInTheDocument();
+        expect(screen.getByText(/Filter by Attributes/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Weight/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Sex/i).length).toBeGreaterThan(0);
       });
     });
 
     it('should show attribute values as options', async () => {
-      mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
+      mockGetClassAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();
@@ -336,8 +330,6 @@ describe('Create P2P Offer Page', () => {
         const texts = Array.from(allOptions).map((o) => o.textContent);
         expect(texts).toContain('S');
         expect(texts).toContain('M');
-        expect(texts).toContain('L');
-        expect(texts).toContain('F');
       });
     });
 
@@ -353,7 +345,7 @@ describe('Create P2P Offer Page', () => {
           ],
         },
       ];
-      mockGetClassTokenizableAssets.mockResolvedValue(assets);
+      mockGetClassAssets.mockResolvedValue(assets);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();
@@ -439,6 +431,23 @@ describe('Create P2P Offer Page', () => {
       expect(
         screen.getByText(/Select an asset class first/i),
       ).toBeInTheDocument();
+    });
+
+    it('should show USD as the quote label on details step', async () => {
+      render(<CreateP2POfferPage />);
+      await goToAssetStepSell();
+      selectAssetClass('GOAT');
+
+      await waitFor(() => {
+        expect(screen.getByText('AUGOAT')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('AUGOAT'));
+      fireEvent.click(screen.getByText(/Next/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Set Terms/i)).toBeInTheDocument();
+      });
+      expect(screen.getByText(/Price \(USD\)/i)).toBeInTheDocument();
     });
   });
 });

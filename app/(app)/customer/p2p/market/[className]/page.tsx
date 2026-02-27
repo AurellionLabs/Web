@@ -421,15 +421,14 @@ export default function P2PMarketOffersPage() {
 
   // Filter offers: by market class + by type
   const filteredOffers = useMemo(() => {
-    const nowSec = Math.floor(Date.now() / 1000);
     return offers.filter((offer) => {
-      // Hide terminal or locally-expired offers from the market grid
-      const isLocallyExpired = offer.expiresAt > 0 && offer.expiresAt <= nowSec;
+      // Hide terminal offers from the market grid.
+      // Expiry is authoritative from on-chain/indexer status to avoid client
+      // clock skew causing inconsistent visibility.
       if (
         offer.status === P2POfferStatus.EXPIRED ||
         offer.status === P2POfferStatus.SETTLED ||
-        offer.status === P2POfferStatus.CANCELLED ||
-        isLocallyExpired
+        offer.status === P2POfferStatus.CANCELLED
       ) {
         return false;
       }
@@ -459,16 +458,12 @@ export default function P2PMarketOffersPage() {
 
   // Filter my offers by class
   const filteredMyOffers = useMemo(() => {
-    const nowSec = Math.floor(Date.now() / 1000);
     return myOffers.filter((offer) => {
-      const isLocallyExpired = offer.expiresAt > 0 && offer.expiresAt <= nowSec;
-
       // Hide terminal offers in "My Offers"
       if (
         offer.status === P2POfferStatus.EXPIRED ||
         offer.status === P2POfferStatus.SETTLED ||
-        offer.status === P2POfferStatus.CANCELLED ||
-        isLocallyExpired
+        offer.status === P2POfferStatus.CANCELLED
       ) {
         return false;
       }

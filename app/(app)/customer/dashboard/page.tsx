@@ -859,6 +859,7 @@ export default function CustomerDashboard() {
                                 {/* Sign for Delivery — available when order is PROCESSING and has journeys */}
                                 {order.journeyIds &&
                                   order.journeyIds.length > 0 &&
+                                  order.journeyStatus === 1 &&
                                   order.currentStatus ===
                                     OrderStatus.PROCESSING && (
                                     <DropdownMenuItem
