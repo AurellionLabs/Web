@@ -495,7 +495,7 @@ export default function NodeDashboardPage() {
     // Deduplicate assets by token ID to avoid double-counting
     const seenTokenIds = new Set<string>();
     assets.forEach((asset) => {
-      const tokenId = String(asset.id || asset.tokenId || '');
+      const tokenId = String(asset.id || '');
       if (seenTokenIds.has(tokenId)) return;
       seenTokenIds.add(tokenId);
 
