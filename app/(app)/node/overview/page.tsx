@@ -18,7 +18,6 @@ import {
 } from '@/app/components/eva/eva-components';
 import {
   PulsingHexNetwork,
-  AnimatedCounterCards,
   SpinningReticle,
 } from '@/app/components/eva/eva-animations';
 import {
@@ -152,16 +151,25 @@ export default function NodeOverviewPage() {
 
         <EvaScanLine variant="mixed" />
 
-        {/* Stats Overview — Animated Counter Cards */}
+        {/* Stats Overview — Static cards to avoid transient mismatches */}
         <EvaSectionMarker section="SYSTEM STATUS" label="Node Statistics" />
-
-        <AnimatedCounterCards
-          items={[
-            { label: 'Total Nodes', target: totalNodes },
-            { label: 'Active Nodes', target: activeNodes },
-            { label: 'Total Assets', target: totalAssets },
-          ]}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <EvaPanel label="Total Nodes" accent="gold">
+            <p className="font-mono text-4xl font-bold text-gold tabular-nums">
+              {totalNodes}
+            </p>
+          </EvaPanel>
+          <EvaPanel label="Active Nodes" accent="emerald">
+            <p className="font-mono text-4xl font-bold text-emerald-400 tabular-nums">
+              {activeNodes}
+            </p>
+          </EvaPanel>
+          <EvaPanel label="Total Assets" accent="crimson">
+            <p className="font-mono text-4xl font-bold text-crimson tabular-nums">
+              {totalAssets}
+            </p>
+          </EvaPanel>
+        </div>
 
         <EvaScanLine variant="gold" />
 
