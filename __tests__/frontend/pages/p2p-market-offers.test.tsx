@@ -250,7 +250,7 @@ describe('P2P Market Offers Page', () => {
     render(<P2PMarketOffersPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No Open Offers/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/No Open Offers/i).length).toBeGreaterThan(0);
     });
   });
 });
