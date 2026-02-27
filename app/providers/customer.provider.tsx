@@ -311,6 +311,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(null);
         const ausys = await getAlignedAusysContract();
 
+        // Guard against premature signing before the journey enters transit.
+        const journey = await ausys.getJourney(journeyId as any);
+        if (Number(journey.currentStatus) !== 1) {
+          throw new Error(
+            'You can sign for delivery only after pickup is complete and the journey is in transit.',
+          );
+        }
+
         // 1. Sign for delivery (receiver confirms delivery receipt)
         const signTx = await ausys.packageSign(journeyId as any);
         await signTx.wait();
@@ -410,6 +418,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // NOTE: Do NOT set isLoading — same reason as signP2PDelivery
         setError(null);
         const ausys = await getAlignedAusysContract();
+
+        const journey = await ausys.getJourney(journeyId as any);
+        if (Number(journey.currentStatus) === 0) {
+          // Pending pickup — not ready for handoff.
+          return 'driver_not_signed';
+        }
 
         const handOffTx = await ausys.handOff(journeyId as any);
         await handOffTx.wait();
@@ -583,11 +597,61 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           );
         }
 
+        const parcelData = {
+          ...delivery.parcelData,
+          startLocation: {
+            lat: String(delivery.parcelData?.startLocation?.lat || '').trim(),
+            lng: String(delivery.parcelData?.startLocation?.lng || '').trim(),
+          },
+          endLocation: {
+            lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
+            lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
+          },
+          startName: String(delivery.parcelData?.startName || '').trim(),
+          endName: String(delivery.parcelData?.endName || '').trim(),
+        };
+
+        // If pickup coordinates are missing, derive them from the sender's
+        // first registered node to avoid creating journeys with no pickup point.
+        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
+          try {
+            const senderNodes = await diamond.getOwnerNodes(senderAddress);
+            const senderNodeHash = senderNodes?.[0];
+            if (senderNodeHash) {
+              const senderNode = await diamond.getNode(senderNodeHash);
+              parcelData.startLocation.lat = String(senderNode?.lat || '').trim();
+              parcelData.startLocation.lng = String(senderNode?.lng || '').trim();
+              if (!parcelData.startName) {
+                parcelData.startName = String(senderNode?.addressName || '').trim();
+              }
+            }
+          } catch (resolveErr) {
+            console.warn(
+              '[CustomerProvider] Failed to resolve pickup location from sender node:',
+              resolveErr,
+            );
+          }
+        }
+
+        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup location. Ask the seller/node to provide pickup coordinates.',
+          );
+        }
+        if (!parcelData.startName) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup address label.',
+          );
+        }
+        if (!parcelData.endName) {
+          throw new Error('Cannot schedule delivery without a destination address.');
+        }
+
         const journeyTx = await diamond.createOrderJourney(
           orderId,
           senderAddress,
           receiverAddress,
-          delivery.parcelData,
+          parcelData,
           delivery.bountyWei,
           delivery.etaTimestamp,
           delivery.tokenQuantity,

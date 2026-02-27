@@ -312,6 +312,83 @@ export default function CreateP2POfferPage() {
     setError(null);
   };
 
+  /**
+   * Quantity must be a positive integer. Keep invalid user input out of state
+   * so the "Next" button reflects validation immediately.
+   */
+  const handleQuantityChange = (rawValue: string) => {
+    const value = rawValue.trim();
+    if (value === '') {
+      updateFormData({ quantity: '' });
+      return;
+    }
+    if (!/^\d+$/.test(value)) {
+      updateFormData({ quantity: '' });
+      return;
+    }
+    updateFormData({ quantity: value });
+  };
+
+  /**
+   * Price accepts non-negative decimal input in the field, while step gating
+   * still enforces strictly greater than zero before proceeding.
+   */
+  const handlePriceChange = (rawValue: string) => {
+    const value = rawValue.trim();
+    if (value === '') {
+      updateFormData({ price: '' });
+      return;
+    }
+    if (!/^\d*\.?\d*$/.test(value)) {
+      updateFormData({ price: '' });
+      return;
+    }
+    updateFormData({ price: value });
+  };
+
+  const validateDetailsStep = useCallback((): {
+    valid: boolean;
+    reason?: string;
+  } => {
+    const qtyText = formData.quantity.trim();
+    const priceText = formData.price.trim();
+
+    if (!qtyText || !priceText) {
+      return { valid: false, reason: 'Quantity and price are required.' };
+    }
+
+    // Quantity must be an integer >= 1.
+    if (!/^\d+$/.test(qtyText)) {
+      return { valid: false, reason: 'Quantity must be a whole number.' };
+    }
+    const qty = Number(qtyText);
+    if (!Number.isSafeInteger(qty) || qty < 1) {
+      return { valid: false, reason: 'Quantity must be at least 1.' };
+    }
+
+    // Price must be a positive decimal.
+    if (!/^\d*\.?\d+$/.test(priceText)) {
+      return { valid: false, reason: 'Price must be a valid number.' };
+    }
+    const price = Number(priceText);
+    if (!Number.isFinite(price) || price <= 0) {
+      return { valid: false, reason: 'Price must be greater than zero.' };
+    }
+
+    if (isSellFlow && formData.tokenId) {
+      const asset = sellableAssets.find((a) => a.tokenId === formData.tokenId);
+      const available = parseInt(String(asset?.balance ?? '0'), 10);
+      if (qty > available) {
+        return {
+          valid: false,
+          reason: 'Quantity exceeds your available sell balance.',
+        };
+      }
+    }
+
+    return { valid: true };
+  }, [formData.quantity, formData.price, formData.tokenId, isSellFlow, sellableAssets]);
+
   // Step navigation
   const steps: Step[] = [
     'type',
@@ -335,19 +412,7 @@ export default function CreateP2POfferPage() {
         return true;
       }
       case 'details': {
-        const qty = parseFloat(formData.quantity);
-        const price = parseFloat(formData.price);
-        if (!formData.quantity || !formData.price) return false;
-        if (isNaN(qty) || qty < 1 || !Number.isInteger(qty)) return false;
-        if (isNaN(price) || price <= 0) return false;
-        if (isSellFlow && formData.tokenId) {
-          const asset = sellableAssets.find(
-            (a) => a.tokenId === formData.tokenId,
-          );
-          const available = parseInt(String(asset?.balance ?? '0'), 10);
-          if (qty > available) return false;
-        }
-        return true;
+        return validateDetailsStep().valid;
       }
       case 'logistics':
         if (formData.offerType === 'buy') {
@@ -392,6 +457,14 @@ export default function CreateP2POfferPage() {
   // Submit offer
   const handleSubmit = useCallback(async () => {
     if (!p2pService || !connected) return;
+
+    // Guard submit path even if the user reaches review via stale UI state.
+    const detailsValidation = validateDetailsStep();
+    if (!detailsValidation.valid) {
+      setCurrentStep('details');
+      setError(detailsValidation.reason || 'Invalid quantity or price.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -457,6 +530,7 @@ export default function CreateP2POfferPage() {
     selectedAsset,
     selectedBuyFilters,
     classAssets,
+    validateDetailsStep,
   ]);
 
   const handlePlaceSelect = () => {
@@ -941,9 +1015,7 @@ export default function CreateP2POfferPage() {
                     type="number"
                     placeholder="Enter quantity"
                     value={formData.quantity}
-                    onChange={(e) =>
-                      updateFormData({ quantity: e.target.value })
-                    }
+                    onChange={(e) => handleQuantityChange(e.target.value)}
                     min="1"
                     max={
                       isSellFlow
@@ -1001,7 +1073,7 @@ export default function CreateP2POfferPage() {
                     type="number"
                     placeholder="Enter total price"
                     value={formData.price}
-                    onChange={(e) => updateFormData({ price: e.target.value })}
+                    onChange={(e) => handlePriceChange(e.target.value)}
                     min="0"
                     step="0.01"
                     className="bg-background/80 border-border/40 font-mono rounded-none"

@@ -645,6 +645,11 @@ export class DiamondNodeRepository implements NodeRepository {
         journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
       );
 
+      // Keep no-node-reference P2P orders on only one dashboard
+      // (the first owned node) to prevent duplicates across nodes.
+      const ownedNodes = await this.getOwnedNodes(queryAddr);
+      const primaryOwnedNode = ownedNodes[0]?.toLowerCase();
+
       console.log(
         `[DiamondNodeRepository] Found ${clobOrders.length} CLOB + ${p2pOrders.length} P2P orders`,
       );
@@ -673,14 +678,19 @@ export class DiamondNodeRepository implements NodeRepository {
         const orderNodes = (order.nodes || []).map((n) => n.toLowerCase());
         const isLinkedToThisNode =
           orderNodes.includes(hash) || order.seller?.toLowerCase() === hash;
-        // If the order has no node references (common for P2P), fall back
-        // to showing it only on the first node to avoid duplicates.
+        // If the order has no node references (common for P2P), show it only
+        // on the primary owned node to avoid duplicates across dashboards.
         const hasNoNodeRef =
           orderNodes.length === 0 ||
           orderNodes.every(
             (n) => n === ethers.ZeroAddress.toLowerCase() || n === '',
           );
-        if (!isLinkedToThisNode && !hasNoNodeRef) continue;
+
+        if (hasNoNodeRef) {
+          if (!primaryOwnedNode || hash !== primaryOwnedNode) continue;
+        } else if (!isLinkedToThisNode) {
+          continue;
+        }
 
         seenIds.add(oid);
         allOrders.push(order);

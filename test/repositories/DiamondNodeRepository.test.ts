@@ -36,6 +36,8 @@ import { OrderStatus } from '@/domain/orders/order';
 // Node hash (bytes32) — what the node dashboard uses as selectedNodeAddress
 const NODE_HASH =
   '0xe5ffe58ff80d365691f9b7338a3010851dce6f023b6c55b0983279f6b4821600';
+const SECOND_NODE_HASH =
+  '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 // Wallet address — the owner of the node, used for P2P queries
 const WALLET_ADDRESS = '0xfde9344cabfa9504eead8a3e4e2096da1316bbaf';
@@ -212,6 +214,9 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockContext.getDiamond.mockReturnValue({
+      getOwnerNodes: vi.fn().mockResolvedValue([NODE_HASH, SECOND_NODE_HASH]),
+    });
     repository = new DiamondNodeRepository(mockContext);
   });
 
@@ -419,6 +424,58 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
 
     const uniqueIds = new Set(orders.map((o) => o.id.toLowerCase()));
     expect(uniqueIds.size).toBe(orders.length);
+  });
+
+  it('should show no-node-ref P2P orders only on primary owned node', async () => {
+    const p2pCreated = makeP2POfferCreatedEvent({
+      order_id: '0xNoNodeRefOrder',
+      seller: WALLET_ADDRESS,
+      nodes: [],
+    });
+
+    graphqlRequestMock
+      .mockResolvedValueOnce(EMPTY_UNIFIED)
+      .mockResolvedValueOnce(EMPTY_LOGISTICS)
+      .mockResolvedValueOnce({
+        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+      })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
+      .mockResolvedValueOnce({
+        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+      })
+      .mockResolvedValueOnce(EMPTY_STATUS)
+      .mockResolvedValueOnce(EMPTY_JOURNEYS)
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
+
+    const primaryOrders = await repository.getNodeOrders(
+      NODE_HASH,
+      WALLET_ADDRESS,
+    );
+
+    // Re-seed mocks for second call
+    graphqlRequestMock
+      .mockResolvedValueOnce(EMPTY_UNIFIED)
+      .mockResolvedValueOnce(EMPTY_LOGISTICS)
+      .mockResolvedValueOnce({
+        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+      })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
+      .mockResolvedValueOnce({
+        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+      })
+      .mockResolvedValueOnce(EMPTY_STATUS)
+      .mockResolvedValueOnce(EMPTY_JOURNEYS)
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
+
+    const secondNodeOrders = await repository.getNodeOrders(
+      SECOND_NODE_HASH,
+      WALLET_ADDRESS,
+    );
+
+    expect(primaryOrders.some((o) => o.id === '0xNoNodeRefOrder')).toBe(true);
+    expect(secondNodeOrders.some((o) => o.id === '0xNoNodeRefOrder')).toBe(
+      false,
+    );
   });
 
   it('should handle mixed CLOB + P2P results correctly', async () => {

@@ -419,17 +419,26 @@ export default function P2PMarketOffersPage() {
     [p2pService, loadOffers],
   );
 
+  const isTerminalOffer = useCallback((offer: P2POffer): boolean => {
+    if (
+      offer.status === P2POfferStatus.EXPIRED ||
+      offer.status === P2POfferStatus.SETTLED ||
+      offer.status === P2POfferStatus.CANCELLED
+    ) {
+      return true;
+    }
+
+    // Some offers remain "open" in status while their expiry has passed.
+    return (
+      offer.expiresAt > 0 && offer.expiresAt <= Math.floor(Date.now() / 1000)
+    );
+  }, []);
+
   // Filter offers: by market class + by type
   const filteredOffers = useMemo(() => {
     return offers.filter((offer) => {
       // Hide terminal offers from the market grid.
-      // Expiry is authoritative from on-chain/indexer status to avoid client
-      // clock skew causing inconsistent visibility.
-      if (
-        offer.status === P2POfferStatus.EXPIRED ||
-        offer.status === P2POfferStatus.SETTLED ||
-        offer.status === P2POfferStatus.CANCELLED
-      ) {
+      if (isTerminalOffer(offer)) {
         return false;
       }
 
@@ -440,7 +449,7 @@ export default function P2PMarketOffersPage() {
       if (filterType === 'sell') return offer.isSellerInitiated;
       return true;
     });
-  }, [offers, isTokenInClass, filterType]);
+  }, [offers, isTokenInClass, filterType, isTerminalOffer]);
 
   const hasKnownClass = useCallback(
     (tokenId: string): boolean => {
@@ -460,11 +469,7 @@ export default function P2PMarketOffersPage() {
   const filteredMyOffers = useMemo(() => {
     return myOffers.filter((offer) => {
       // Hide terminal offers in "My Offers"
-      if (
-        offer.status === P2POfferStatus.EXPIRED ||
-        offer.status === P2POfferStatus.SETTLED ||
-        offer.status === P2POfferStatus.CANCELLED
-      ) {
+      if (isTerminalOffer(offer)) {
         return false;
       }
 
@@ -477,7 +482,7 @@ export default function P2PMarketOffersPage() {
 
       return false;
     });
-  }, [myOffers, isTokenInClass, hasKnownClass]);
+  }, [myOffers, isTokenInClass, hasKnownClass, isTerminalOffer]);
 
   // Check if user is the creator of an offer
   const isMyOffer = (offer: P2POffer) => {

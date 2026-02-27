@@ -714,6 +714,20 @@ export default function NodeDashboardPage() {
         return 'signed';
       }
 
+      // Safety guard: in P2P flows the sender should only sign pickup after
+      // the driver has already signed pickup (driver accepted and acknowledged).
+      if (order.isP2P) {
+        const sigState = await getP2PSignatureState(order.id, journeyId);
+        if (!sigState.driverPickupSigned) {
+          toast({
+            title: 'Driver Signature Required',
+            description:
+              'The driver must sign pickup first before you can confirm pickup.',
+          });
+          return 'waiting_for_driver';
+        }
+      }
+
       await packageSign(journeyId);
 
       // Try to start journey (requires both driver + sender signatures)
@@ -1344,7 +1358,8 @@ export default function NodeDashboardPage() {
                                   Awaiting driver signature
                                 </span>
                               </div>
-                            ) : (order.currentStatus === OrderStatus.CREATED ||
+                            ) : !isP2P &&
+                                (order.currentStatus === OrderStatus.CREATED ||
                                 (order.currentStatus ===
                                   OrderStatus.PROCESSING &&
                                   order.journeyStatus === 0)) &&

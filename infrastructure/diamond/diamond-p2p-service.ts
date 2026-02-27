@@ -393,13 +393,64 @@ export class DiamondP2PService implements IP2PService {
         );
       }
 
+      const parcelData = {
+        ...delivery.parcelData,
+        startLocation: {
+          lat: String(delivery.parcelData?.startLocation?.lat || '').trim(),
+          lng: String(delivery.parcelData?.startLocation?.lng || '').trim(),
+        },
+        endLocation: {
+          lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
+          lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
+        },
+        startName: String(delivery.parcelData?.startName || '').trim(),
+        endName: String(delivery.parcelData?.endName || '').trim(),
+      };
+
+      // If pickup coordinates were not provided, derive from sender's first node.
+      if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
+        try {
+          const senderNodes = await diamond.getOwnerNodes(senderAddress);
+          const senderNodeHash = senderNodes?.[0];
+          if (senderNodeHash) {
+            const senderNode = await diamond.getNode(senderNodeHash);
+            parcelData.startLocation.lat = String(senderNode?.lat || '').trim();
+            parcelData.startLocation.lng = String(senderNode?.lng || '').trim();
+            if (!parcelData.startName) {
+              parcelData.startName = String(senderNode?.addressName || '').trim();
+            }
+          }
+        } catch (resolveErr) {
+          console.warn(
+            '[DiamondP2PService] Could not derive pickup location from sender node:',
+            resolveErr,
+          );
+        }
+      }
+
+      if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
+        throw new Error(
+          'Cannot create journey without a pickup location. Seller node coordinates are missing.',
+        );
+      }
+      if (!parcelData.startName) {
+        throw new Error(
+          'Cannot create journey without a pickup address label (startName).',
+        );
+      }
+      if (!parcelData.endName) {
+        throw new Error(
+          'Cannot create journey without a delivery destination address.',
+        );
+      }
+
       // 4. Create the delivery journey
       try {
         const journeyTx = await diamond.createOrderJourney(
           offerId,
           senderAddress,
           receiverAddress,
-          delivery.parcelData,
+          parcelData,
           delivery.bountyWei,
           delivery.etaTimestamp,
           delivery.tokenQuantity,
