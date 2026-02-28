@@ -611,16 +611,20 @@ export function P2POrderFlow({
       )}
 
       {showPickupButton && (
-        <GlowButton
-          onClick={handleSignPickup}
-          loading={isActionLoading}
-          disabled={isActionLoading}
-          variant="primary"
+        <TrapButton
+          variant="gold"
           size="sm"
-          leftIcon={<PackageCheck className="w-4 h-4" />}
+          onClick={handleSignPickup}
+          disabled={isActionLoading}
+          className="inline-flex items-center gap-2"
         >
+          {isActionLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <PackageCheck className="w-4 h-4" />
+          )}
           Sign for Pickup
-        </GlowButton>
+        </TrapButton>
       )}
 
       {/* Pickup signature status badges */}

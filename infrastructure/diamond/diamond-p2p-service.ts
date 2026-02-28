@@ -362,22 +362,44 @@ export class DiamondP2PService implements IP2PService {
         acceptedOrder = await diamond.getAuSysOrder(offerId);
       }
 
-      // Validate order was accepted - if not, use accepting wallet as buyer (fallback)
+      // Validate order was accepted - fallback to accepting wallet when RPC returns stale state
+      const signerAddress = await this.context.getSignerAddress();
       const orderBuyer = acceptedOrder.buyer;
+      const orderSeller = acceptedOrder.seller;
       const isBuyerSet = orderBuyer && orderBuyer !== ethers.ZeroAddress;
+      const isSellerSet = orderSeller && orderSeller !== ethers.ZeroAddress;
 
       let buyerAddress: string;
       if (!isBuyerSet || acceptedOrder.currentStatus === 0n) {
-        console.warn(
-          '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as buyer',
-        );
-        buyerAddress = await this.context.getSignerAddress();
+        // Sell offer: acceptor = buyer
+        if (acceptedOrder.isSellerInitiated) {
+          console.warn(
+            '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as buyer',
+          );
+          buyerAddress = signerAddress;
+        } else {
+          buyerAddress = orderBuyer || signerAddress;
+        }
       } else {
         buyerAddress = orderBuyer;
       }
 
-      // Resolve sender/receiver from the accepted on-chain order.
-      const senderAddress = String(acceptedOrder.seller || '');
+      // Resolve sender (seller) / receiver (buyer) from the accepted on-chain order.
+      // For buy offers: acceptor = seller; for sell offers: seller set at creation.
+      let senderAddress: string;
+      if (!isSellerSet || acceptedOrder.currentStatus === 0n) {
+        if (!acceptedOrder.isSellerInitiated) {
+          // Buy offer: acceptor is seller
+          console.warn(
+            '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as seller',
+          );
+          senderAddress = signerAddress;
+        } else {
+          senderAddress = String(orderSeller || '');
+        }
+      } else {
+        senderAddress = String(orderSeller);
+      }
       const receiverAddress = isZeroAddress(delivery.receiverAddress)
         ? buyerAddress
         : delivery.receiverAddress;

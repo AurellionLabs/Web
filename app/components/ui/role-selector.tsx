@@ -18,7 +18,7 @@ import { useNodesSafe } from '@/app/providers/nodes.provider';
 const roles = [
   {
     value: 'customer',
-    label: 'Customer',
+    label: 'Market',
   },
   {
     value: 'node',
@@ -26,7 +26,7 @@ const roles = [
   },
   {
     value: 'driver',
-    label: 'Driver',
+    label: 'Logistics',
   },
 ] as const;
 
