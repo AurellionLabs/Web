@@ -167,14 +167,19 @@ jobs:
 
             # Health check with rollback capability
             echo "Waiting for indexer to become healthy..."
-            TIMEOUT=60
+            TIMEOUT=90
             ELAPSED=0
             HEALTHY=false
 
             while [ $ELAPSED -lt $TIMEOUT ]; do
               if docker compose -f docker-compose.prod.yml ps indexer 2>/dev/null | grep -q "Up"; then
-                # Check container logs for successful startup
-                if docker compose -f docker-compose.prod.yml logs --tail=20 indexer 2>/dev/null | grep -qE "(Listening|Started|Ready|Indexed)"; then
+                # Check for build/runtime errors first
+                if docker compose -f docker-compose.prod.yml logs --tail=30 indexer 2>/dev/null | grep -qE "(ERROR|FATAL|Build failed|shutdown sequence)"; then
+                  echo "ERROR: Found errors in indexer logs"
+                  break
+                fi
+                # Use HTTP health check on Ponder port
+                if docker exec aurellion_indexer curl -sf http://localhost:42069/ > /dev/null 2>&1; then
                   HEALTHY=true
                   break
                 fi

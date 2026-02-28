@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-02-28T13:05:00.800Z
+// Generated at: 2026-02-28T13:27:27.116Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer

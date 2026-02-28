@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-02-28T13:05:00.799Z
+// Generated at: 2026-02-28T13:27:27.112Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -5857,6 +5857,19 @@ export const DiamondABI = [
       },
     ],
     name: 'setProtocolFeePercentage',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '_quoteToken',
+        type: 'address',
+      },
+    ],
+    name: 'setQuoteTokenAddress',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

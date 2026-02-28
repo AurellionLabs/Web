@@ -1,5 +1,5 @@
 // Auto-generated handler for ausys domain - Raw event storage only
-// Generated at: 2026-02-28T13:05:00.802Z
+// Generated at: 2026-02-28T13:27:27.121Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -17,8 +17,6 @@ import {
   diamondAuSysOrderStatusUpdatedEvents,
   diamondDriverAssignedEvents,
   diamondEmitSigEvents,
-  diamondFundsEscrowedEvents,
-  diamondFundsRefundedEvents,
   diamondJourneyCanceledEvents,
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
@@ -258,46 +256,6 @@ ponder.on('Diamond:EmitSig', async ({ event, context }) => {
     id: id,
     user: user,
     event_id: arg_id,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle FundsEscrowed event from AuSysFacet
- * Signature: FundsEscrowed(address,uint256)
- * Hash: 0x4fbba82c
- */
-ponder.on('Diamond:FundsEscrowed', async ({ event, context }) => {
-  const { from, amount } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
-  await context.db.insert(diamondFundsEscrowedEvents).values({
-    id: id,
-    from: from,
-    amount: amount,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle FundsRefunded event from AuSysFacet
- * Signature: FundsRefunded(address,uint256)
- * Hash: 0xbada1a1b
- */
-ponder.on('Diamond:FundsRefunded', async ({ event, context }) => {
-  const { to, amount } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
-  await context.db.insert(diamondFundsRefundedEvents).values({
-    id: id,
-    to: to,
-    amount: amount,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

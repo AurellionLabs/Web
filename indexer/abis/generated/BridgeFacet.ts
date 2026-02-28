@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-02-28T13:05:00.798Z
+// Generated at: 2026-02-28T13:27:27.109Z
 
 export const BridgeFacetABI = [
   {
@@ -757,6 +757,19 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'setProtocolFeePercentage',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '_quoteToken',
+        type: 'address',
+      },
+    ],
+    name: 'setQuoteTokenAddress',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

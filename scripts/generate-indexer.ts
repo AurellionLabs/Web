@@ -704,6 +704,7 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
   // Track events by name to avoid duplicates (Ponder matches by name only)
   // But if same name has different signatures, we need to use full signature
   const processedEventNames = new Map<string, EventInfo>(); // name -> first event
+  const processedSignatures = new Map<string, string>(); // signatureHash -> domain (first claim wins)
   const eventsByDomain = new Map<string, EventInfo[]>();
 
   for (const [facetName, config] of facets.entries()) {
@@ -711,6 +712,16 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
 
     for (const event of facet.events) {
       if (!shouldIndexEvent(event)) continue;
+
+      // Check if this exact signature was already claimed by another facet
+      const claimedDomain = processedSignatures.get(event.signatureHash);
+      if (claimedDomain && claimedDomain !== config.domain) {
+        console.log(
+          `  Skipping ${event.name} in ${facetName} (already in ${claimedDomain})`,
+        );
+        continue;
+      }
+
       // Check if we've seen this event name before
       const existing = processedEventNames.get(event.name);
 
@@ -722,6 +733,9 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
         // First time seeing this event name
         processedEventNames.set(event.name, event);
       }
+
+      // Claim this signature for this domain
+      processedSignatures.set(event.signatureHash, config.domain);
 
       // Skip common skip events
       if (skipEvents.has(event.name)) continue;

@@ -1,5 +1,5 @@
 // Auto-generated from NodesFacet.sol - DO NOT EDIT
-// Generated at: 2026-02-28T13:05:00.797Z
+// Generated at: 2026-02-28T13:27:27.107Z
 
 export const NodesFacetABI = [
   {
