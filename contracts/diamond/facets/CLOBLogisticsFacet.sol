@@ -3,18 +3,22 @@ pragma solidity ^0.8.28;
 
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
+import { OrderStatus } from '../libraries/OrderStatus.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import { MessageHashUtils } from '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
 
 /**
  * @title CLOBLogisticsFacet
  * @notice Driver management and physical delivery logistics for CLOB
- * @dev Implements IAuraCLOB driver/logistics functions
+ * @dev Implements IAuraCLOB driver/logistics functions with signature verification
  */
 contract CLOBLogisticsFacet is ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
 
     // ============================================================================
     // EVENTS
@@ -80,24 +84,30 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
     error NotAssignedDriver();
     error InvalidLocation();
     error AlreadySettled();
+    error InvalidSignature();
+    error SignatureExpired();
 
-    // ============================================================================
-    // LOGISTICS ORDER STATUS
-    // ============================================================================
-    
-    // Status: 0=Created, 1=Assigned, 2=PickedUp, 3=InTransit, 4=Delivered, 5=Settled, 6=Cancelled, 7=Disputed
-    uint8 constant STATUS_CREATED = 0;
-    uint8 constant STATUS_ASSIGNED = 1;
-    uint8 constant STATUS_PICKED_UP = 2;
-    uint8 constant STATUS_IN_TRANSIT = 3;
-    uint8 constant STATUS_DELIVERED = 4;
-    uint8 constant STATUS_SETTLED = 5;
-    uint8 constant STATUS_CANCELLED = 6;
-    uint8 constant STATUS_DISPUTED = 7;
+    bytes32 private constant PICKUP_TYPEHASH = keccak256(
+        "PickupConfirmation(bytes32 orderId,address driver,string lat,string lng,uint256 nonce,uint256 deadline)"
+    );
+    bytes32 private constant DELIVERY_TYPEHASH = keccak256(
+        "DeliveryConfirmation(bytes32 orderId,address driver,string lat,string lng,uint256 nonce,uint256 deadline)"
+    );
 
-    // ============================================================================
-    // MODIFIERS
-    // ============================================================================
+    mapping(bytes32 => uint256) private pickupNonces;
+    mapping(bytes32 => uint256) private deliveryNonces;
+
+    function _domainSeparator() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("AuraCLOB"),
+                keccak256("1"),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
 
     modifier onlyOwner() {
         LibDiamond.enforceIsContractOwner();
@@ -108,6 +118,56 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         if (s.clobLogisticsOrders[orderId].orderId == bytes32(0)) revert OrderNotFound();
         _;
+    }
+
+    function _verifyPickupSignature(
+        bytes32 orderId,
+        address driver,
+        string calldata lat,
+        string calldata lng,
+        uint256 deadline,
+        bytes calldata signature
+    ) internal view returns (address) {
+        if (block.timestamp > deadline) revert SignatureExpired();
+        
+        uint256 nonce = pickupNonces[orderId];
+        bytes32 structHash = keccak256(abi.encode(
+            PICKUP_TYPEHASH,
+            orderId,
+            driver,
+            keccak256(bytes(lat)),
+            keccak256(bytes(lng)),
+            nonce,
+            deadline
+        ));
+        
+        bytes32 digest = MessageHashUtils.toTypedDataHash(_domainSeparator(), structHash);
+        return digest.recover(signature);
+    }
+
+    function _verifyDeliverySignature(
+        bytes32 orderId,
+        address driver,
+        string calldata lat,
+        string calldata lng,
+        uint256 deadline,
+        bytes calldata signature
+    ) internal view returns (address) {
+        if (block.timestamp > deadline) revert SignatureExpired();
+        
+        uint256 nonce = deliveryNonces[orderId];
+        bytes32 structHash = keccak256(abi.encode(
+            DELIVERY_TYPEHASH,
+            orderId,
+            driver,
+            keccak256(bytes(lat)),
+            keccak256(bytes(lng)),
+            nonce,
+            deadline
+        ));
+        
+        bytes32 digest = MessageHashUtils.toTypedDataHash(_domainSeparator(), structHash);
+        return digest.recover(signature);
     }
 
     // ============================================================================
@@ -250,8 +310,12 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
 
         orderId = keccak256(abi.encodePacked(tradeId, buyer, seller, block.timestamp));
 
-        // Calculate driver bounty (2% of total price)
         uint256 driverBounty = (totalPrice * 200) / 10000;
+        uint256 totalEscrow = totalPrice + driverBounty;
+
+        address payToken = s.quoteTokenAddress;
+        require(payToken != address(0), 'Quote token not set');
+        IERC20(payToken).safeTransferFrom(buyer, address(this), totalEscrow);
 
         s.clobLogisticsOrders[orderId] = DiamondStorage.LogisticsOrder({
             orderId: orderId,
@@ -263,11 +327,11 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
             tokenId: tokenId,
             quantity: quantity,
             totalPrice: totalPrice,
-            escrowedAmount: totalPrice + driverBounty,
+            escrowedAmount: totalEscrow,
             driverBounty: driverBounty,
             pickupLocation: pickupLocation,
             deliveryLocation: deliveryLocation,
-            status: STATUS_CREATED,
+            status: OrderStatus.LOGISTICS_CREATED,
             assignedDriver: address(0),
             createdAt: block.timestamp,
             deliveredAt: 0
@@ -280,9 +344,6 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         return orderId;
     }
 
-    /**
-     * @notice Accept a delivery as a driver
-     */
     function acceptDelivery(
         bytes32 orderId,
         uint256 estimatedPickupTime,
@@ -291,51 +352,54 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.LogisticsOrder storage order = s.clobLogisticsOrders[orderId];
 
-        if (order.status != STATUS_CREATED) revert InvalidOrderStatus();
+        if (order.status != OrderStatus.LOGISTICS_CREATED) revert InvalidOrderStatus();
         if (s.clobDrivers[msg.sender].driver == address(0)) revert DriverNotRegistered();
         if (!s.clobDrivers[msg.sender].isActive) revert DriverNotRegistered();
         if (!s.clobDrivers[msg.sender].isAvailable) revert DriverNotAvailable();
 
         order.assignedDriver = msg.sender;
-        order.status = STATUS_ASSIGNED;
+        order.status = OrderStatus.LOGISTICS_ASSIGNED;
         
-        // Increment driver's total deliveries
         s.clobDrivers[msg.sender].totalDeliveries++;
 
         emit DeliveryAccepted(orderId, msg.sender, estimatedPickupTime, estimatedDeliveryTime);
     }
 
-    /**
-     * @notice Confirm pickup of package
-     * @param orderId The logistics order ID
-     * @param signature Seller's signature (for verification - currently unused)
-     * @param location Current pickup location
-     */
     function confirmPickup(
         bytes32 orderId,
-        bytes calldata signature,
+        uint256 deadline,
+        bytes calldata sellerSignature,
         DiamondStorage.Location calldata location
     ) external orderExists(orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.LogisticsOrder storage order = s.clobLogisticsOrders[orderId];
 
-        if (order.status != STATUS_ASSIGNED) revert InvalidOrderStatus();
-        if (order.assignedDriver != msg.sender) revert NotAssignedDriver();
-
-        // In production: verify signature from seller
-        // For now, we just update status
+        if (order.status != OrderStatus.LOGISTICS_ASSIGNED) revert InvalidOrderStatus();
         
-        order.status = STATUS_PICKED_UP;
+        bool isOwner = msg.sender == LibDiamond.contractOwner();
+        if (!isOwner && order.assignedDriver != msg.sender) revert NotAssignedDriver();
+
+        if (!isOwner) {
+            address signer = _verifyPickupSignature(
+                orderId,
+                msg.sender,
+                location.lat,
+                location.lng,
+                deadline,
+                sellerSignature
+            );
+            
+            if (signer != order.seller && signer != order.sellerNode) {
+                revert InvalidSignature();
+            }
+            pickupNonces[orderId]++;
+        }
+
+        order.status = OrderStatus.LOGISTICS_IN_TRANSIT;
 
         emit PickupConfirmed(orderId, msg.sender, location.lat, location.lng);
-        
-        // Immediately transition to in-transit
-        order.status = STATUS_IN_TRANSIT;
     }
 
-    /**
-     * @notice Update delivery location during transit
-     */
     function updateDeliveryLocation(
         bytes32 orderId,
         DiamondStorage.Location calldata location
@@ -343,51 +407,56 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.LogisticsOrder storage order = s.clobLogisticsOrders[orderId];
 
-        if (order.status != STATUS_IN_TRANSIT) revert InvalidOrderStatus();
+        if (order.status != OrderStatus.LOGISTICS_IN_TRANSIT) revert InvalidOrderStatus();
         if (order.assignedDriver != msg.sender) revert NotAssignedDriver();
 
-        // Update driver's location
         s.clobDrivers[msg.sender].currentLocation = location;
 
         emit DeliveryLocationUpdated(orderId, msg.sender, location.lat, location.lng);
     }
 
-    /**
-     * @notice Confirm delivery to buyer
-     * @param orderId The logistics order ID
-     * @param receiverSignature Buyer's signature (for verification - currently unused)
-     * @param location Delivery location
-     */
     function confirmDelivery(
         bytes32 orderId,
-        bytes calldata receiverSignature,
+        uint256 deadline,
+        bytes calldata buyerSignature,
         DiamondStorage.Location calldata location
     ) external orderExists(orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.LogisticsOrder storage order = s.clobLogisticsOrders[orderId];
 
-        if (order.status != STATUS_IN_TRANSIT) revert InvalidOrderStatus();
-        if (order.assignedDriver != msg.sender) revert NotAssignedDriver();
-
-        // In production: verify signature from buyer
+        if (order.status != OrderStatus.LOGISTICS_IN_TRANSIT) revert InvalidOrderStatus();
         
-        order.status = STATUS_DELIVERED;
+        bool isOwner = msg.sender == LibDiamond.contractOwner();
+        if (!isOwner && order.assignedDriver != msg.sender) revert NotAssignedDriver();
+
+        if (!isOwner) {
+            address signer = _verifyDeliverySignature(
+                orderId,
+                msg.sender,
+                location.lat,
+                location.lng,
+                deadline,
+                buyerSignature
+            );
+            
+            if (signer != order.buyer) {
+                revert InvalidSignature();
+            }
+            deliveryNonces[orderId]++;
+        }
+
+        order.status = OrderStatus.LOGISTICS_DELIVERED;
         order.deliveredAt = block.timestamp;
 
         emit DeliveryConfirmed(orderId, msg.sender, location.lat, location.lng);
     }
 
-    /**
-     * @notice Settle a delivered order - pay driver and seller
-     * @dev Can be called by buyer, seller, driver, or admin after delivery
-     */
     function settleLogisticsOrder(bytes32 orderId) external orderExists(orderId) nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.LogisticsOrder storage order = s.clobLogisticsOrders[orderId];
 
-        if (order.status != STATUS_DELIVERED) revert InvalidOrderStatus();
+        if (order.status != OrderStatus.LOGISTICS_DELIVERED) revert InvalidOrderStatus();
         
-        // Only participants can settle
         bool isParticipant = (
             msg.sender == order.buyer ||
             msg.sender == order.seller ||
@@ -396,9 +465,8 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         );
         if (!isParticipant) revert NotOrderParticipant();
 
-        order.status = STATUS_SETTLED;
+        order.status = OrderStatus.LOGISTICS_SETTLED;
 
-        // Pay driver bounty
         address payToken = s.quoteTokenAddress;
         if (payToken != address(0) && order.driverBounty > 0) {
             IERC20(payToken).safeTransfer(order.assignedDriver, order.driverBounty);
@@ -406,7 +474,6 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
             s.clobDrivers[order.assignedDriver].completedDeliveries++;
         }
 
-        // Pay seller (price minus any fees)
         if (payToken != address(0) && order.totalPrice > 0) {
             IERC20(payToken).safeTransfer(order.seller, order.totalPrice);
         }
@@ -414,17 +481,12 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         emit LogisticsOrderSettled(orderId, order.driverBounty);
     }
 
-    /**
-     * @notice Dispute an order
-     * @dev Freezes the order for admin resolution
-     */
     function disputeOrder(bytes32 orderId, string calldata reason) external orderExists(orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.LogisticsOrder storage order = s.clobLogisticsOrders[orderId];
 
-        if (order.status >= STATUS_SETTLED) revert AlreadySettled();
+        if (order.status >= OrderStatus.LOGISTICS_SETTLED) revert AlreadySettled();
         
-        // Only participants can dispute
         bool isParticipant = (
             msg.sender == order.buyer ||
             msg.sender == order.seller ||
@@ -432,29 +494,25 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         );
         if (!isParticipant) revert NotOrderParticipant();
 
-        order.status = STATUS_DISPUTED;
+        order.status = OrderStatus.LOGISTICS_DISPUTED;
 
         emit LogisticsOrderDisputed(orderId, reason);
     }
 
-    /**
-     * @notice Cancel an order (admin only, or buyer before driver assigned)
-     */
     function cancelLogisticsOrder(bytes32 orderId, string calldata reason) external orderExists(orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.LogisticsOrder storage order = s.clobLogisticsOrders[orderId];
 
         bool canCancel = (
             msg.sender == LibDiamond.contractOwner() ||
-            (msg.sender == order.buyer && order.status == STATUS_CREATED)
+            (msg.sender == order.buyer && order.status == OrderStatus.LOGISTICS_CREATED)
         );
         if (!canCancel) revert NotOrderParticipant();
         
-        if (order.status >= STATUS_SETTLED) revert AlreadySettled();
+        if (order.status >= OrderStatus.LOGISTICS_SETTLED) revert AlreadySettled();
 
-        order.status = STATUS_CANCELLED;
+        order.status = OrderStatus.LOGISTICS_CANCELLED;
 
-        // Refund escrowed amount to buyer
         address payToken = s.quoteTokenAddress;
         if (payToken != address(0) && order.escrowedAmount > 0) {
             IERC20(payToken).safeTransfer(order.buyer, order.escrowedAmount);

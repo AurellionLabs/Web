@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-02-19T22:28:44.402Z
+// Generated at: 2026-02-28T13:05:00.801Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -12,6 +12,8 @@ import {
   diamondBountyPaidEvents,
   diamondBridgeFeeRecipientUpdatedEvents,
   diamondBridgeOrderCancelledEvents,
+  diamondFundsEscrowedEvents,
+  diamondFundsRefundedEvents,
   diamondJourneyStatusUpdatedEvents,
   diamondLogisticsOrderCreatedEvents,
   diamondOrderSettledEvents,
@@ -80,6 +82,46 @@ ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
     id: id,
     unified_order_id: unifiedOrderId,
     previous_status: previousStatus,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle FundsEscrowed event from BridgeFacet
+ * Signature: FundsEscrowed(address,uint256)
+ * Hash: 0x4fbba82c
+ */
+ponder.on('Diamond:FundsEscrowed', async ({ event, context }) => {
+  const { buyer, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondFundsEscrowedEvents).values({
+    id: id,
+    buyer: buyer,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle FundsRefunded event from BridgeFacet
+ * Signature: FundsRefunded(address,uint256)
+ * Hash: 0xbada1a1b
+ */
+ponder.on('Diamond:FundsRefunded', async ({ event, context }) => {
+  const { recipient, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  await context.db.insert(diamondFundsRefundedEvents).values({
+    id: id,
+    recipient: recipient,
+    amount: amount,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

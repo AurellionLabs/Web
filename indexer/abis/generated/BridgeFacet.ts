@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-02-19T22:28:44.397Z
+// Generated at: 2026-02-28T13:05:00.798Z
 
 export const BridgeFacetABI = [
   {
@@ -10,6 +10,22 @@ export const BridgeFacetABI = [
   {
     inputs: [],
     name: 'NotInitializing',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ReentrancyGuardReentrantCall',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+    ],
+    name: 'SafeERC20FailedOperation',
     type: 'error',
   },
   {
@@ -67,6 +83,44 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'BridgeOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'FundsEscrowed',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'recipient',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'FundsRefunded',
     type: 'event',
   },
   {
@@ -781,6 +835,16 @@ export const BridgeFacetEvents = [
     name: 'BridgeOrderCancelled',
     signature: 'BridgeOrderCancelled(bytes32,uint8)',
     signatureHash: '0xfb630ff8',
+  },
+  {
+    name: 'FundsEscrowed',
+    signature: 'FundsEscrowed(address,uint256)',
+    signatureHash: '0x4fbba82c',
+  },
+  {
+    name: 'FundsRefunded',
+    signature: 'FundsRefunded(address,uint256)',
+    signatureHash: '0xbada1a1b',
   },
   {
     name: 'Initialized',

@@ -3,14 +3,21 @@ pragma solidity ^0.8.28;
 
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
+import { OrderStatus } from '../libraries/OrderStatus.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /**
  * @title BridgeFacet
  * @notice Business logic facet for order bridging between CLOB and AuSys
- * @dev Combines OrderBridge functionality with full logistics and settlement
+ * @dev Combines OrderBridge functionality with full logistics and settlement.
+ *      SECURITY: All fund transfers are handled within this facet with proper escrow.
  */
-contract BridgeFacet is Initializable {
+contract BridgeFacet is Initializable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     event UnifiedOrderCreated(
         bytes32 indexed unifiedOrderId,
         bytes32 indexed clobOrderId,
@@ -54,6 +61,8 @@ contract BridgeFacet is Initializable {
     );
     event BountyPaid(bytes32 indexed unifiedOrderId, uint256 amount);
     event BridgeFeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
+    event FundsEscrowed(address indexed buyer, uint256 amount);
+    event FundsRefunded(address indexed recipient, uint256 amount);
 
     uint256 public constant BOUNTY_PERCENTAGE = 200; // 2% (aligned with OrderBridge.sol)
     uint256 public constant PROTOCOL_FEE_PERCENTAGE = 25; // 0.25% (aligned with OrderBridge.sol)
@@ -70,16 +79,27 @@ contract BridgeFacet is Initializable {
         uint256 _price,
         uint256 _quantity,
         DiamondStorage.ParcelData calldata _deliveryData
-    ) external returns (bytes32 unifiedOrderId) {
+    ) external nonReentrant returns (bytes32 unifiedOrderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+
+        require(_sellerNode != address(0), 'Invalid seller node');
+        require(_price > 0, 'Invalid price');
+        require(_quantity > 0, 'Invalid quantity');
 
         unifiedOrderId = keccak256(
             abi.encodePacked(_clobOrderId, msg.sender, block.timestamp)
         );
 
-        uint256 bounty = (_price * _quantity * BOUNTY_PERCENTAGE) / 10000;
+        uint256 orderValue = _price * _quantity;
+        uint256 bounty = (orderValue * BOUNTY_PERCENTAGE) / 10000;
+        uint256 protocolFee = (orderValue * PROTOCOL_FEE_PERCENTAGE) / 10000;
+        uint256 totalEscrow = orderValue + bounty + protocolFee;
 
-        // Initialize the unified order
+        address payToken = s.quoteTokenAddress;
+        require(payToken != address(0), 'Quote token not set');
+
+        IERC20(payToken).safeTransferFrom(msg.sender, address(this), totalEscrow);
+
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[unifiedOrderId];
         order.clobOrderId = _clobOrderId;
         order.clobTradeId = bytes32(0);
@@ -92,19 +112,18 @@ contract BridgeFacet is Initializable {
         order.tokenQuantity = _quantity;
         order.price = _price;
         order.bounty = bounty;
-        order.status = 0;
-        order.logisticsStatus = 0;
+        order.escrowedAmount = totalEscrow;
+        order.status = OrderStatus.UNIFIED_PENDING_TRADE;
+        order.logisticsStatus = OrderStatus.JOURNEY_PENDING;
         order.createdAt = block.timestamp;
         order.matchedAt = 0;
         order.deliveredAt = 0;
         order.settledAt = 0;
         order.deliveryData = _deliveryData;
-        // journeyIds starts empty
 
         s.unifiedOrderIds.push(unifiedOrderId);
         s.totalUnifiedOrders++;
         
-        // Add to buyer lookup
         s.buyerUnifiedOrders[msg.sender].push(unifiedOrderId);
         s.clobOrderToUnifiedOrder[_clobOrderId] = unifiedOrderId;
 
@@ -119,6 +138,8 @@ contract BridgeFacet is Initializable {
             _price
         );
 
+        emit FundsEscrowed(msg.sender, totalEscrow);
+
         return unifiedOrderId;
     }
 
@@ -131,20 +152,20 @@ contract BridgeFacet is Initializable {
         uint256 _tokenId
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
+
         require(
-            s.unifiedOrders[_unifiedOrderId].buyer == msg.sender ||
-            LibDiamond.contractOwner() == msg.sender,
+            order.buyer == msg.sender || LibDiamond.contractOwner() == msg.sender,
             'Not authorized'
         );
-        require(s.unifiedOrders[_unifiedOrderId].status == 0, 'Order not in created status');
+        require(order.status == OrderStatus.UNIFIED_PENDING_TRADE, 'Order not in created status');
 
-        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
         order.clobTradeId = _clobTradeId;
         order.ausysOrderId = _ausysOrderId;
         order.seller = _seller;
         order.token = _token;
         order.tokenId = _tokenId;
-        order.status = 1;
+        order.status = OrderStatus.UNIFIED_TRADE_MATCHED;
         order.matchedAt = block.timestamp;
 
         emit TradeMatched(
@@ -159,12 +180,13 @@ contract BridgeFacet is Initializable {
 
     function createLogisticsOrder(bytes32 _unifiedOrderId) external returns (bytes32 journeyId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
+
         require(
-            s.unifiedOrders[_unifiedOrderId].seller == msg.sender ||
-            s.unifiedOrders[_unifiedOrderId].sellerNode == msg.sender,
+            order.seller == msg.sender || order.sellerNode == msg.sender,
             'Not seller or node'
         );
-        require(s.unifiedOrders[_unifiedOrderId].status == 1, 'Order not bridged');
+        require(order.status == OrderStatus.UNIFIED_TRADE_MATCHED, 'Order not bridged');
 
         journeyId = keccak256(
             abi.encodePacked(_unifiedOrderId, block.timestamp)
@@ -173,78 +195,120 @@ contract BridgeFacet is Initializable {
         s.journeys[journeyId] = DiamondStorage.Journey({
             unifiedOrderId: _unifiedOrderId,
             driver: address(0),
-            phase: 0,
+            phase: OrderStatus.JOURNEY_PENDING,
             createdAt: block.timestamp,
             updatedAt: block.timestamp
         });
 
+        order.journeyIds.push(journeyId);
         s.orderJourneys[_unifiedOrderId].push(journeyId);
         s.totalJourneys[_unifiedOrderId]++;
 
         emit LogisticsOrderCreated(
             _unifiedOrderId,
-            s.unifiedOrders[_unifiedOrderId].ausysOrderId,
-            s.orderJourneys[_unifiedOrderId],
-            s.unifiedOrders[_unifiedOrderId].bounty,
-            s.unifiedOrders[_unifiedOrderId].sellerNode
+            order.ausysOrderId,
+            order.journeyIds,
+            order.bounty,
+            order.sellerNode
         );
     }
 
     function updateJourneyStatus(bytes32 _journeyId, uint8 _phase) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(_phase <= 3, 'Invalid phase');
+        DiamondStorage.Journey storage journey = s.journeys[_journeyId];
+
+        require(_phase <= OrderStatus.JOURNEY_CANCELED, 'Invalid phase');
         require(
-            s.journeys[_journeyId].driver == msg.sender ||
-            LibDiamond.contractOwner() == msg.sender,
+            journey.driver == msg.sender || LibDiamond.contractOwner() == msg.sender,
             'Not driver or owner'
         );
 
-        DiamondStorage.Journey storage journey = s.journeys[_journeyId];
         bytes32 unifiedOrderId = journey.unifiedOrderId;
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[unifiedOrderId];
 
         journey.phase = _phase;
         journey.updatedAt = block.timestamp;
 
         emit JourneyStatusUpdated(unifiedOrderId, _journeyId, _phase);
 
-        s.unifiedOrders[unifiedOrderId].logisticsStatus = _phase;
+        order.logisticsStatus = _phase;
 
-        if (_phase == 3) {
-            s.unifiedOrders[unifiedOrderId].deliveredAt = block.timestamp;
+        if (_phase == OrderStatus.JOURNEY_DELIVERED) {
+            order.deliveredAt = block.timestamp;
         }
     }
 
-    function settleOrder(bytes32 _unifiedOrderId) external {
+    function settleOrder(bytes32 _unifiedOrderId) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(s.unifiedOrders[_unifiedOrderId].buyer == msg.sender, 'Not buyer');
-        require(s.unifiedOrders[_unifiedOrderId].logisticsStatus == 3, 'Order not delivered');
-        require(s.unifiedOrders[_unifiedOrderId].status == 1, 'Order not bridged');
-
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
+
+        require(order.buyer == msg.sender, 'Not buyer');
+        require(order.logisticsStatus == OrderStatus.JOURNEY_DELIVERED, 'Order not delivered');
+        require(order.status == OrderStatus.UNIFIED_TRADE_MATCHED, 'Order not bridged');
+        require(order.escrowedAmount > 0, 'No escrowed funds');
 
         uint256 orderValue = order.price * order.tokenQuantity;
         uint256 protocolFee = (orderValue * PROTOCOL_FEE_PERCENTAGE) / 10000;
         uint256 bounty = order.bounty;
         uint256 sellerAmount = orderValue - protocolFee - bounty;
 
-        order.status = 4;
+        order.status = OrderStatus.UNIFIED_SETTLED;
         order.settledAt = block.timestamp;
+
+        address payToken = s.quoteTokenAddress;
+        require(payToken != address(0), 'Quote token not set');
+
+        if (sellerAmount > 0 && order.seller != address(0)) {
+            IERC20(payToken).safeTransfer(order.seller, sellerAmount);
+        }
+
+        if (bounty > 0) {
+            address driver = s.journeys[order.journeyIds.length > 0 ? order.journeyIds[0] : bytes32(0)].driver;
+            if (driver != address(0)) {
+                IERC20(payToken).safeTransfer(driver, bounty);
+            }
+        }
+
+        if (protocolFee > 0 && feeRecipient != address(0)) {
+            IERC20(payToken).safeTransfer(feeRecipient, protocolFee);
+        }
+
+        if (order.token != address(0) && order.tokenQuantity > 0) {
+            IERC1155(order.token).safeTransferFrom(
+                address(this),
+                order.buyer,
+                order.tokenId,
+                order.tokenQuantity,
+                ''
+            );
+        }
 
         emit OrderSettled(_unifiedOrderId, order.seller, sellerAmount, address(0), bounty);
         emit BountyPaid(_unifiedOrderId, bounty);
     }
 
-    function cancelUnifiedOrder(bytes32 _unifiedOrderId) external {
+    function cancelUnifiedOrder(bytes32 _unifiedOrderId) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
+
         require(
-            s.unifiedOrders[_unifiedOrderId].buyer == msg.sender ||
-            LibDiamond.contractOwner() == msg.sender,
+            order.buyer == msg.sender || LibDiamond.contractOwner() == msg.sender,
             'Not authorized'
         );
-        require(s.unifiedOrders[_unifiedOrderId].status == 0, 'Can only cancel created orders');
+        require(order.status == OrderStatus.UNIFIED_PENDING_TRADE, 'Can only cancel pending orders');
 
-        uint8 previousStatus = s.unifiedOrders[_unifiedOrderId].status;
-        s.unifiedOrders[_unifiedOrderId].status = 5;
+        uint8 previousStatus = order.status;
+        order.status = OrderStatus.UNIFIED_CANCELLED;
+
+        uint256 refundAmount = order.escrowedAmount;
+        order.escrowedAmount = 0;
+
+        if (refundAmount > 0) {
+            address payToken = s.quoteTokenAddress;
+            require(payToken != address(0), 'Quote token not set');
+            IERC20(payToken).safeTransfer(order.buyer, refundAmount);
+            emit FundsRefunded(order.buyer, refundAmount);
+        }
 
         emit BridgeOrderCancelled(_unifiedOrderId, previousStatus);
     }
@@ -286,13 +350,7 @@ contract BridgeFacet is Initializable {
             order.tokenQuantity,
             order.price,
             order.bounty,
-            order.status == 0
-                ? 'Created'
-                : order.status == 1
-                ? 'Bridged'
-                : order.status == 4
-                ? 'Completed'
-                : 'Cancelled',
+            OrderStatus.unifiedStatusName(order.status),
             order.logisticsStatus,
             order.createdAt,
             order.matchedAt,
@@ -344,6 +402,7 @@ contract BridgeFacet is Initializable {
 
     function setFeeRecipient(address _newRecipient) external {
         LibDiamond.enforceIsContractOwner();
+        require(_newRecipient != address(0), 'Invalid recipient');
         address oldRecipient = feeRecipient;
         feeRecipient = _newRecipient;
         emit BridgeFeeRecipientUpdated(oldRecipient, _newRecipient);
@@ -373,5 +432,12 @@ contract BridgeFacet is Initializable {
         LibDiamond.enforceIsContractOwner();
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         s.ausysAddress = _ausys;
+    }
+
+    function setQuoteTokenAddress(address _quoteToken) external {
+        LibDiamond.enforceIsContractOwner();
+        require(_quoteToken != address(0), 'Invalid token');
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.quoteTokenAddress = _quoteToken;
     }
 }

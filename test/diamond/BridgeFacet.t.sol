@@ -43,20 +43,19 @@ contract BridgeFacetTest is DiamondTestBase {
         );
 
         vm.startPrank(user1);
-        payToken.approve(address(diamond), 1000 ether);
+        quoteToken.approve(address(diamond), 2000 ether);
 
         bytes32 orderId = bridge.createUnifiedOrder(
             clobOrderId,
-            nodeOperator,       // sellerNode
-            100 ether,          // price
-            10,                 // quantity
+            nodeOperator,
+            100 ether,
+            10,
             parcelData
         );
         vm.stopPrank();
 
         assertTrue(orderId != bytes32(0), 'Order ID should be set');
 
-        // Verify order was created by checking buyer orders
         bytes32[] memory buyerOrders = bridge.getBuyerOrders(user1);
         assertEq(buyerOrders.length, 1, 'User1 should have 1 order');
         assertEq(buyerOrders[0], orderId, 'Order ID should match');
@@ -68,7 +67,7 @@ contract BridgeFacetTest is DiamondTestBase {
         );
 
         vm.startPrank(user1);
-        payToken.approve(address(diamond), 10000 ether);
+        quoteToken.approve(address(diamond), 20000 ether);
 
         bytes32 orderId1 = bridge.createUnifiedOrder(
             keccak256('order-1'), nodeOperator, 100 ether, 10, parcelData
@@ -95,13 +94,12 @@ contract BridgeFacetTest is DiamondTestBase {
         );
 
         vm.startPrank(user1);
-        payToken.approve(address(diamond), 1000 ether);
+        quoteToken.approve(address(diamond), 2000 ether);
         bytes32 orderId = bridge.createUnifiedOrder(
             clobOrderId, nodeOperator, 100 ether, 10, parcelData
         );
         vm.stopPrank();
 
-        // The getUnifiedOrder returns multiple values
         (
             bytes32 returnedClobOrderId,
             ,  // clobTradeId
@@ -135,7 +133,7 @@ contract BridgeFacetTest is DiamondTestBase {
         );
 
         vm.startPrank(user1);
-        payToken.approve(address(diamond), 10000 ether);
+        quoteToken.approve(address(diamond), 20000 ether);
         bridge.createUnifiedOrder(keccak256('o1'), nodeOperator, 100 ether, 10, parcelData);
         bridge.createUnifiedOrder(keccak256('o2'), nodeOperator, 200 ether, 20, parcelData);
         vm.stopPrank();

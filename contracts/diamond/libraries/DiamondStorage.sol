@@ -523,13 +523,13 @@ library DiamondStorage {
         uint256 tokenQuantity;
         uint256 price;
         uint256 bounty;
+        uint256 escrowedAmount;
         uint8 status;
         uint8 logisticsStatus;
         uint256 createdAt;
         uint256 matchedAt;
         uint256 deliveredAt;
         uint256 settledAt;
-        // Added from OrderBridge.sol
         ParcelData deliveryData;
         bytes32[] journeyIds;
     }

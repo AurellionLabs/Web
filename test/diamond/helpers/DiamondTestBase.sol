@@ -149,10 +149,8 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _initializeFacets() internal {
-        // Set pay token for AuSys
         AuSysFacet(address(diamond)).setPayToken(address(payToken));
-        
-        // Register a test node
+        BridgeFacet(address(diamond)).setQuoteTokenAddress(address(quoteToken));
         testNodeHash = _registerTestNode(nodeOperator);
     }
 
@@ -304,7 +302,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getBridgeSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](8);
+        bytes4[] memory selectors = new bytes4[](9);
         selectors[0] = BridgeFacet.createUnifiedOrder.selector;
         selectors[1] = BridgeFacet.getUnifiedOrder.selector;
         selectors[2] = BridgeFacet.getBuyerOrders.selector;
@@ -313,6 +311,7 @@ abstract contract DiamondTestBase is Test {
         selectors[5] = BridgeFacet.setProtocolFeePercentage.selector;
         selectors[6] = BridgeFacet.updateClobAddress.selector;
         selectors[7] = BridgeFacet.updateAusysAddress.selector;
+        selectors[8] = BridgeFacet.setQuoteTokenAddress.selector;
         return selectors;
     }
 

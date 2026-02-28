@@ -4,9 +4,9 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-02-19T22:28:44.312Z
+ * Generated: 2026-02-28T13:05:00.727Z
  * Facets: NodesFacet, AuSysFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
- * Total items: 240
+ * Total items: 244
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2642,16 +2642,55 @@ export const DIAMOND_ABI: any[] = [
     type: 'function',
   },
   {
-    inputs: [
+    inputs: [],
+    name: 'MAX_DRIVER_JOURNEYS',
+    outputs: [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
     ],
-    name: 'acceptP2POffer',
-    outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_JOURNEYS_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_NODES_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_ORDERS',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -2661,13 +2700,8 @@ export const DIAMOND_ABI: any[] = [
         name: 'orderId',
         type: 'bytes32',
       },
-      {
-        internalType: 'uint256',
-        name: 'correctQuantity',
-        type: 'uint256',
-      },
     ],
-    name: 'adminFixOrderTokenQuantity',
+    name: 'acceptP2POffer',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -2699,6 +2733,24 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'cancelP2POffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'uint256',
+        name: 'correctQuantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'correctOrderTokenQuantity',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -5721,8 +5773,13 @@ export const DIAMOND_ABI: any[] = [
         type: 'bytes32',
       },
       {
+        internalType: 'uint256',
+        name: 'deadline',
+        type: 'uint256',
+      },
+      {
         internalType: 'bytes',
-        name: 'receiverSignature',
+        name: 'buyerSignature',
         type: 'bytes',
       },
       {
@@ -5756,8 +5813,13 @@ export const DIAMOND_ABI: any[] = [
         type: 'bytes32',
       },
       {
+        internalType: 'uint256',
+        name: 'deadline',
+        type: 'uint256',
+      },
+      {
         internalType: 'bytes',
-        name: 'signature',
+        name: 'sellerSignature',
         type: 'bytes',
       },
       {

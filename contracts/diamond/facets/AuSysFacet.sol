@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
+import { OrderStatus } from '../libraries/OrderStatus.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -15,6 +16,13 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  */
 contract AuSysFacet is ReentrancyGuard {
     using SafeERC20 for IERC20;
+
+    uint256 public constant MAX_ORDERS = 10000;
+    uint256 public constant MAX_JOURNEYS_PER_ORDER = 10;
+    uint256 public constant MAX_NODES_PER_ORDER = 20;
+    uint256 public constant MAX_DRIVER_JOURNEYS = 10;
+
+    error ArrayLimitExceeded();
 
     // ============================================================================
     // EVENTS (from AuSys.sol)
@@ -293,7 +301,7 @@ contract AuSysFacet is ReentrancyGuard {
         // P2P mode: one side can be address(0) initially (will be filled on accept)
         bool isP2POffer = order.isSellerInitiated 
             ? (order.buyer == address(0) || order.buyer == order.targetCounterparty)
-            : (order.seller == address(0) || order.seller == order.targetCounterparty);
+            : (order.seller == address(0)|| order.seller == order.targetCounterparty);
 
         // For non-P2P (direct orders), both parties must be set and different
         if (!isP2POffer) {
@@ -319,18 +327,19 @@ contract AuSysFacet is ReentrancyGuard {
         newOrder.buyer = order.buyer;
         newOrder.seller = order.seller;
         newOrder.locationData = order.locationData;
-        newOrder.currentStatus = 0; // Created/PendingAcceptance
+        newOrder.currentStatus = OrderStatus.AUSYS_CREATED;
         newOrder.contractualAgreement = order.contractualAgreement;
         // P2P fields
         newOrder.isSellerInitiated = order.isSellerInitiated;
         newOrder.targetCounterparty = order.targetCounterparty;
         newOrder.expiresAt = order.expiresAt;
         
-        // Copy nodes array
+        if (order.nodes.length > MAX_NODES_PER_ORDER) revert ArrayLimitExceeded();
         for (uint256 i = 0; i < order.nodes.length; i++) {
             newOrder.nodes.push(order.nodes[i]);
         }
 
+        if (s.ausysOrderIds.length >= MAX_ORDERS) revert ArrayLimitExceeded();
         s.ausysOrderIds.push(id);
 
         // Escrow based on who initiated
@@ -418,11 +427,10 @@ contract AuSysFacet is ReentrancyGuard {
         if (order.id == bytes32(0)) revert OfferNotFound();
         
         // Validate offer is still open (status 0)
-        if (order.currentStatus != 0) revert OfferNotOpen();
+        if (order.currentStatus != OrderStatus.AUSYS_CREATED) revert OfferNotOpen();
         
-        // Validate not expired
         if (order.expiresAt != 0 && block.timestamp > order.expiresAt) {
-            order.currentStatus = 4; // Mark as expired
+            order.currentStatus = OrderStatus.AUSYS_EXPIRED;
             revert OfferExpired();
         }
         
@@ -456,7 +464,7 @@ contract AuSysFacet is ReentrancyGuard {
         }
 
         // Update status to Processing
-        order.currentStatus = 1;
+        order.currentStatus = OrderStatus.AUSYS_PROCESSING;
         
         // Remove from open offers list
         _removeFromOpenOffers(s, orderId);
@@ -477,7 +485,7 @@ contract AuSysFacet is ReentrancyGuard {
         if (order.id == bytes32(0)) revert OfferNotFound();
         
         // Validate offer is still open (status 0)
-        if (order.currentStatus != 0) revert OfferNotOpen();
+        if (order.currentStatus != OrderStatus.AUSYS_CREATED) revert OfferNotOpen();
         
         // Only creator can cancel
         address creator = order.isSellerInitiated ? order.seller : order.buyer;
@@ -501,7 +509,7 @@ contract AuSysFacet is ReentrancyGuard {
         }
 
         // Update status to Canceled
-        order.currentStatus = 3;
+        order.currentStatus = OrderStatus.AUSYS_CANCELED;
         
         // Remove from open offers list
         _removeFromOpenOffers(s, orderId);
@@ -573,7 +581,7 @@ contract AuSysFacet is ReentrancyGuard {
         DiamondStorage.AuSysJourney storage journey = s.ausysJourneys[journeyId];
         journey.parcelData = _data;
         journey.journeyId = journeyId;
-        journey.currentStatus = 0; // Pending
+        journey.currentStatus = OrderStatus.JOURNEY_PENDING;
         journey.sender = sender;
         journey.receiver = receiver;
         journey.driver = address(0);
@@ -635,7 +643,7 @@ contract AuSysFacet is ReentrancyGuard {
         DiamondStorage.AuSysJourney storage journey = s.ausysJourneys[journeyId];
         journey.parcelData = _data;
         journey.journeyId = journeyId;
-        journey.currentStatus = 0; // Pending
+        journey.currentStatus = OrderStatus.JOURNEY_PENDING;
         journey.sender = sender;
         journey.receiver = receiver;
         journey.driver = address(0);
@@ -648,7 +656,7 @@ contract AuSysFacet is ReentrancyGuard {
         IERC20(s.payToken).safeTransferFrom(O.buyer, address(this), bounty);
         emit FundsEscrowed(O.buyer, bounty);
 
-        // Link journey to order
+        if (O.journeyIds.length >= MAX_JOURNEYS_PER_ORDER) revert ArrayLimitExceeded();
         O.journeyIds.push(journeyId);
         s.journeyToAusysOrderId[journeyId] = orderId;
 
@@ -705,8 +713,7 @@ contract AuSysFacet is ReentrancyGuard {
         );
         if (!callerAuthorized) revert InvalidCaller();
 
-        // Check driver max assignments (10 from AuSys.sol)
-        if (s.driverToJourneyIds[driver].length >= 10) revert DriverMaxAssignment();
+        if (s.driverToJourneyIds[driver].length >= MAX_DRIVER_JOURNEYS) revert DriverMaxAssignment();
 
         s.driverToJourneyIds[driver].push(journeyId);
         s.ausysJourneys[journeyId].driver = driver;
@@ -747,9 +754,9 @@ contract AuSysFacet is ReentrancyGuard {
             emit EmitSig(J.receiver, id);
         } else if (msg.sender == J.driver) {
             // Driver signs for current phase based on journey status
-            if (J.currentStatus == 0) { // Pending
+            if (J.currentStatus == OrderStatus.JOURNEY_PENDING) {
                 s.driverPickupSigned[J.driver][id] = true;
-            } else if (J.currentStatus == 1) { // InTransit
+            } else if (J.currentStatus == OrderStatus.JOURNEY_IN_TRANSIT) {
                 s.driverDeliverySigned[J.driver][id] = true;
             }
             emit EmitSig(J.driver, id);
@@ -768,9 +775,8 @@ contract AuSysFacet is ReentrancyGuard {
         if (!s.customerHandOff[J.sender][id]) revert SenderNotSigned();
 
         J.journeyStart = block.timestamp;
-        // Reset sender signature after pickup
         s.customerHandOff[J.sender][id] = false;
-        J.currentStatus = 1; // InTransit
+        J.currentStatus = OrderStatus.JOURNEY_IN_TRANSIT;
 
         emit AuSysJourneyStatusUpdated(
             id,
@@ -794,10 +800,10 @@ contract AuSysFacet is ReentrancyGuard {
         bytes32 orderId = s.journeyToAusysOrderId[id];
         if (orderId != bytes32(0)) {
             DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
-            if (O.currentStatus == 0) { // Created
-                O.currentStatus = 1; // Processing
-                emit AuSysOrderStatusUpdated(orderId, 1);
-            }
+        if (O.currentStatus == OrderStatus.AUSYS_CREATED) {
+            O.currentStatus = OrderStatus.AUSYS_PROCESSING;
+            emit AuSysOrderStatusUpdated(orderId, OrderStatus.AUSYS_PROCESSING);
+        }
 
             // Transfer tokens from seller to escrow if this is first journey
             // Skip if seller-initiated P2P (tokens already escrowed at offer creation)
@@ -827,17 +833,17 @@ contract AuSysFacet is ReentrancyGuard {
 
         if (orderId != bytes32(0)) {
             DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
-            if (O.currentStatus == 2) revert AlreadySettled(); // Settled
+        if (O.currentStatus == OrderStatus.AUSYS_SETTLED) revert AlreadySettled();
         }
 
         if (!s.driverDeliverySigned[J.driver][id]) revert DriverNotSigned();
         if (!s.customerHandOff[J.receiver][id]) revert ReceiverNotSigned();
 
-        J.currentStatus = 2; // Delivered
+        J.currentStatus = OrderStatus.JOURNEY_DELIVERED;
         J.journeyEnd = block.timestamp;
         emit AuSysJourneyStatusUpdated(
             id,
-            2, // Delivered
+            OrderStatus.JOURNEY_DELIVERED,
             J.sender,
             J.receiver,
             J.driver,
@@ -902,8 +908,8 @@ contract AuSysFacet is ReentrancyGuard {
         bytes32 orderId,
         DiamondStorage.AuSysOrder storage O
     ) internal {
-        O.currentStatus = 2; // Settled
-        emit AuSysOrderStatusUpdated(orderId, 2);
+        O.currentStatus = OrderStatus.AUSYS_SETTLED;
+        emit AuSysOrderStatusUpdated(orderId, OrderStatus.AUSYS_SETTLED);
 
         // Transfer tokens to buyer
         IERC1155(O.token).safeTransferFrom(
@@ -939,13 +945,13 @@ contract AuSysFacet is ReentrancyGuard {
     // ============================================================================
 
     /**
-     * @notice Admin function to correct a corrupted order tokenQuantity.
-     * @dev Needed to fix orders where createOrderJourney's O.tokenQuantity += tokenQuantity
-     *      accidentally doubled the stored quantity. Only callable by admin/owner.
-     * @param orderId The order to fix
+     * @notice Correct a corrupted order tokenQuantity (admin only)
+     * @dev Used to fix orders where quantity was accidentally doubled.
+     *      Emits OrderQuantityCorrected for audit trail.
+     * @param orderId The order to correct
      * @param correctQuantity The correct token quantity
      */
-    function adminFixOrderTokenQuantity(
+    function correctOrderTokenQuantity(
         bytes32 orderId,
         uint256 correctQuantity
     ) external adminOnly {
@@ -957,8 +963,7 @@ contract AuSysFacet is ReentrancyGuard {
         uint256 oldQuantity = O.tokenQuantity;
         O.tokenQuantity = correctQuantity;
 
-        emit AuSysOrderStatusUpdated(orderId, O.currentStatus); // re-emit to signal data change
-        // Custom event for auditing the correction
+        emit AuSysOrderStatusUpdated(orderId, O.currentStatus);
         emit OrderQuantityCorrected(orderId, oldQuantity, correctQuantity);
     }
 

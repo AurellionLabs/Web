@@ -5,13 +5,25 @@ import { Test, console2 } from 'forge-std/Test.sol';
 import { DiamondTestBase } from './helpers/DiamondTestBase.sol';
 import { CLOBLogisticsFacet } from 'contracts/diamond/facets/CLOBLogisticsFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
+import { OrderStatus } from 'contracts/diamond/libraries/OrderStatus.sol';
+import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import { MessageHashUtils } from '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
 
 /**
  * @title CLOBLogisticsFacetTest
  * @notice Tests for CLOBLogisticsFacet (driver and delivery management)
  */
 contract CLOBLogisticsFacetTest is DiamondTestBase {
+    using ECDSA for bytes32;
+
     CLOBLogisticsFacet public logistics;
+
+    bytes32 internal constant PICKUP_TYPEHASH = keccak256(
+        "PickupConfirmation(bytes32 orderId,address driver,string lat,string lng,uint256 nonce,uint256 deadline)"
+    );
+    bytes32 internal constant DELIVERY_TYPEHASH = keccak256(
+        "DeliveryConfirmation(bytes32 orderId,address driver,string lat,string lng,uint256 nonce,uint256 deadline)"
+    );
 
     // Events (matching actual contract)
     event DriverRegistered(address indexed driver);
@@ -42,6 +54,62 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
     function setUp() public override {
         super.setUp();
         logistics = CLOBLogisticsFacet(address(diamond));
+    }
+
+    function _domainSeparator() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("AuraCLOB"),
+                keccak256("1"),
+                block.chainid,
+                address(diamond)
+            )
+        );
+    }
+
+    function _signPickup(
+        bytes32 orderId,
+        address driver,
+        string memory lat,
+        string memory lng,
+        uint256 deadline,
+        uint256 signerPk
+    ) internal view returns (bytes memory) {
+        bytes32 structHash = keccak256(abi.encode(
+            PICKUP_TYPEHASH,
+            orderId,
+            driver,
+            keccak256(bytes(lat)),
+            keccak256(bytes(lng)),
+            uint256(0),
+            deadline
+        ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(_domainSeparator(), structHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _signDelivery(
+        bytes32 orderId,
+        address driver,
+        string memory lat,
+        string memory lng,
+        uint256 deadline,
+        uint256 signerPk
+    ) internal view returns (bytes memory) {
+        bytes32 structHash = keccak256(abi.encode(
+            DELIVERY_TYPEHASH,
+            orderId,
+            driver,
+            keccak256(bytes(lat)),
+            keccak256(bytes(lng)),
+            uint256(0),
+            deadline
+        ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(_domainSeparator(), structHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        return abi.encodePacked(r, s, v);
     }
 
     // ============================================================================
@@ -142,17 +210,17 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
         DiamondStorage.Location memory delivery = _createLocation('34.0522', '-118.2437');
 
         vm.startPrank(user1);
-        payToken.approve(address(diamond), 1000 ether);
+        quoteToken.approve(address(diamond), 200 ether);
 
         bytes32 orderId = logistics.createLogisticsOrder(
-            bytes32(0),         // tradeId
-            user1,              // buyer
-            user2,              // seller
-            nodeOperator,       // sellerNode
-            address(payToken),  // token
-            1,                  // tokenId
-            10,                 // quantity
-            100 ether,          // totalPrice
+            bytes32(0),
+            user1,
+            user2,
+            nodeOperator,
+            address(quoteToken),
+            1,
+            10,
+            100 ether,
             pickup,
             delivery
         );
@@ -164,9 +232,8 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
         assertEq(order.buyer, user1, 'Buyer should match');
         assertEq(order.seller, user2, 'Seller should match');
         assertEq(order.quantity, 10, 'Quantity should match');
-        // Bounty is calculated as 2% of total price
         assertEq(order.driverBounty, 2 ether, 'Bounty should be 2% of price');
-        assertEq(order.status, 0, 'Status should be Created (0)');
+        assertEq(order.status, OrderStatus.LOGISTICS_CREATED, 'Status should be Created');
     }
 
     // ============================================================================
@@ -200,12 +267,11 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
 
         DiamondStorage.Location memory location = _createLocation('40.7128', '-74.0060');
 
-        vm.prank(driver1);
-        logistics.confirmPickup(orderId, '', location);
+        vm.prank(owner);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', location);
 
         DiamondStorage.LogisticsOrder memory order = logistics.getLogisticsOrder(orderId);
-        // confirmPickup immediately transitions to InTransit (3)
-        assertEq(order.status, 3, 'Status should be InTransit (3)');
+        assertEq(order.status, OrderStatus.LOGISTICS_IN_TRANSIT, 'Status should be InTransit');
     }
 
     function test_confirmPickup_revertNotAssignedDriver() public {
@@ -216,46 +282,44 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
 
         DiamondStorage.Location memory location = _createLocation('40.7128', '-74.0060');
 
-        vm.prank(driver2); // Different driver
+        vm.prank(driver2);
         vm.expectRevert();
-        logistics.confirmPickup(orderId, '', location);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', location);
     }
 
     function test_confirmDelivery() public {
         bytes32 orderId = _createTestLogisticsOrder();
 
-        // Accept and pickup
-        vm.startPrank(driver1);
+        vm.prank(driver1);
         logistics.acceptDelivery(orderId, block.timestamp + 3600, block.timestamp + 7200);
 
         DiamondStorage.Location memory pickupLoc = _createLocation('40.7128', '-74.0060');
-        logistics.confirmPickup(orderId, '', pickupLoc);
+        vm.prank(owner);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', pickupLoc);
 
-        // Confirm delivery
         DiamondStorage.Location memory deliveryLoc = _createLocation('34.0522', '-118.2437');
-        logistics.confirmDelivery(orderId, '', deliveryLoc);
-        vm.stopPrank();
+        vm.prank(owner);
+        logistics.confirmDelivery(orderId, block.timestamp + 1 hours, '', deliveryLoc);
 
         DiamondStorage.LogisticsOrder memory order = logistics.getLogisticsOrder(orderId);
-        assertEq(order.status, 4, 'Status should be Delivered (4)');
+        assertEq(order.status, OrderStatus.LOGISTICS_DELIVERED, 'Status should be Delivered');
     }
 
     function test_settleLogisticsOrder() public {
         bytes32 orderId = _createTestLogisticsOrder();
 
-        // Complete full flow
-        vm.startPrank(driver1);
+        vm.prank(driver1);
         logistics.acceptDelivery(orderId, block.timestamp + 3600, block.timestamp + 7200);
-        logistics.confirmPickup(orderId, '', _createLocation('40', '-74'));
-        logistics.confirmDelivery(orderId, '', _createLocation('34', '-118'));
-        vm.stopPrank();
+        vm.prank(owner);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', _createLocation('40', '-74'));
+        vm.prank(owner);
+        logistics.confirmDelivery(orderId, block.timestamp + 1 hours, '', _createLocation('34', '-118'));
 
-        // Settle
         vm.prank(owner);
         logistics.settleLogisticsOrder(orderId);
 
         DiamondStorage.LogisticsOrder memory order = logistics.getLogisticsOrder(orderId);
-        assertEq(order.status, 5, 'Status should be Settled (5)');
+        assertEq(order.status, OrderStatus.LOGISTICS_SETTLED, 'Status should be Settled');
     }
 
     function test_settleLogisticsOrder_revertNotDelivered() public {
@@ -284,17 +348,17 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
         logistics.disputeOrder(orderId, 'Damaged goods');
 
         DiamondStorage.LogisticsOrder memory order = logistics.getLogisticsOrder(orderId);
-        assertEq(order.status, 7, 'Status should be Disputed (7)');
+        assertEq(order.status, OrderStatus.LOGISTICS_DISPUTED, 'Status should be Disputed');
     }
 
     function test_cancelLogisticsOrder() public {
         bytes32 orderId = _createTestLogisticsOrder();
 
-        vm.prank(user1); // Buyer cancels
+        vm.prank(user1);
         logistics.cancelLogisticsOrder(orderId, 'Changed my mind');
 
         DiamondStorage.LogisticsOrder memory order = logistics.getLogisticsOrder(orderId);
-        assertEq(order.status, 6, 'Status should be Cancelled (6)');
+        assertEq(order.status, OrderStatus.LOGISTICS_CANCELLED, 'Status should be Cancelled');
     }
 
     function test_cancelLogisticsOrder_revertAfterAccepted() public {
@@ -349,14 +413,14 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
         DiamondStorage.Location memory delivery = _createLocation('34.0522', '-118.2437');
 
         vm.startPrank(user1);
-        payToken.approve(address(diamond), 1000 ether);
+        quoteToken.approve(address(diamond), 200 ether);
 
         bytes32 orderId = logistics.createLogisticsOrder(
             bytes32(0),
             user1,
             user2,
             nodeOperator,
-            address(payToken),
+            address(quoteToken),
             1,
             10,
             100 ether,

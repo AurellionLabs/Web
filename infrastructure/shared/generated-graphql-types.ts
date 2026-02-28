@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-02-19T22:28:44.404Z
+// Generated at: 2026-02-28T13:05:00.803Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -88,6 +88,10 @@ export const TABLE_DIAMOND_BRIDGE_FEE_RECIPIENT_UPDATED_EVENTS =
   'diamondBridgeFeeRecipientUpdatedEventss' as const;
 export const TABLE_DIAMOND_BRIDGE_ORDER_CANCELLED_EVENTS =
   'diamondBridgeOrderCancelledEventss' as const;
+export const TABLE_DIAMOND_FUNDS_ESCROWED_EVENTS =
+  'diamondFundsEscrowedEventss' as const;
+export const TABLE_DIAMOND_FUNDS_REFUNDED_EVENTS =
+  'diamondFundsRefundedEventss' as const;
 export const TABLE_DIAMOND_JOURNEY_STATUS_UPDATED_EVENTS =
   'diamondJourneyStatusUpdatedEventss' as const;
 export const TABLE_DIAMOND_LOGISTICS_ORDER_CREATED_EVENTS =
@@ -161,10 +165,6 @@ export const TABLE_DIAMOND_AU_SYS_ORDER_STATUS_UPDATED_EVENTS =
 export const TABLE_DIAMOND_DRIVER_ASSIGNED_EVENTS =
   'diamondDriverAssignedEventss' as const;
 export const TABLE_DIAMOND_EMIT_SIG_EVENTS = 'diamondEmitSigEventss' as const;
-export const TABLE_DIAMOND_FUNDS_ESCROWED_EVENTS =
-  'diamondFundsEscrowedEventss' as const;
-export const TABLE_DIAMOND_FUNDS_REFUNDED_EVENTS =
-  'diamondFundsRefundedEventss' as const;
 export const TABLE_DIAMOND_JOURNEY_CANCELED_EVENTS =
   'diamondJourneyCanceledEventss' as const;
 export const TABLE_DIAMOND_JOURNEY_CREATED_EVENTS =
@@ -242,6 +242,8 @@ export const VALID_TABLE_NAMES = [
   'diamondBountyPaidEventss',
   'diamondBridgeFeeRecipientUpdatedEventss',
   'diamondBridgeOrderCancelledEventss',
+  'diamondFundsEscrowedEventss',
+  'diamondFundsRefundedEventss',
   'diamondJourneyStatusUpdatedEventss',
   'diamondLogisticsOrderCreatedEventss',
   'diamondOrderSettledEventss',
@@ -279,8 +281,6 @@ export const VALID_TABLE_NAMES = [
   'diamondAuSysOrderStatusUpdatedEventss',
   'diamondDriverAssignedEventss',
   'diamondEmitSigEventss',
-  'diamondFundsEscrowedEventss',
-  'diamondFundsRefundedEventss',
   'diamondJourneyCanceledEventss',
   'diamondJourneyCreatedEventss',
   'diamondNodeFeeDistributedEventss',
@@ -749,6 +749,24 @@ export interface diamondBridgeOrderCancelledEvent {
   transaction_hash: string;
 }
 
+export interface diamondFundsEscrowedEvent {
+  id: string;
+  buyer: string;
+  amount: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondFundsRefundedEvent {
+  id: string;
+  recipient: string;
+  amount: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
 export interface diamondJourneyStatusUpdatedEvent {
   id: string;
   unified_order_id: string;
@@ -1150,24 +1168,6 @@ export interface diamondEmitSigEvent {
   transaction_hash: string;
 }
 
-export interface diamondFundsEscrowedEvent {
-  id: string;
-  from: string;
-  amount: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondFundsRefundedEvent {
-  id: string;
-  to: string;
-  amount: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
 export interface diamondJourneyCanceledEvent {
   id: string;
   journey_id: string;
@@ -1547,6 +1547,14 @@ export interface diamondBridgeOrderCancelledEventsResponse {
   diamondBridgeOrderCancelledEventss: PonderItemsResponse<diamondBridgeOrderCancelledEvent>;
 }
 
+export interface diamondFundsEscrowedEventsResponse {
+  diamondFundsEscrowedEventss: PonderItemsResponse<diamondFundsEscrowedEvent>;
+}
+
+export interface diamondFundsRefundedEventsResponse {
+  diamondFundsRefundedEventss: PonderItemsResponse<diamondFundsRefundedEvent>;
+}
+
 export interface diamondJourneyStatusUpdatedEventsResponse {
   diamondJourneyStatusUpdatedEventss: PonderItemsResponse<diamondJourneyStatusUpdatedEvent>;
 }
@@ -1693,14 +1701,6 @@ export interface diamondDriverAssignedEventsResponse {
 
 export interface diamondEmitSigEventsResponse {
   diamondEmitSigEventss: PonderItemsResponse<diamondEmitSigEvent>;
-}
-
-export interface diamondFundsEscrowedEventsResponse {
-  diamondFundsEscrowedEventss: PonderItemsResponse<diamondFundsEscrowedEvent>;
-}
-
-export interface diamondFundsRefundedEventsResponse {
-  diamondFundsRefundedEventss: PonderItemsResponse<diamondFundsRefundedEvent>;
 }
 
 export interface diamondJourneyCanceledEventsResponse {
@@ -2221,6 +2221,24 @@ export const FIELDS_DIAMOND_BRIDGE_ORDER_CANCELLED_EVENTS = [
   'transaction_hash',
 ] as const;
 
+export const FIELDS_DIAMOND_FUNDS_ESCROWED_EVENTS = [
+  'id',
+  'buyer',
+  'amount',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_FUNDS_REFUNDED_EVENTS = [
+  'id',
+  'recipient',
+  'amount',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
 export const FIELDS_DIAMOND_JOURNEY_STATUS_UPDATED_EVENTS = [
   'id',
   'unified_order_id',
@@ -2622,24 +2640,6 @@ export const FIELDS_DIAMOND_EMIT_SIG_EVENTS = [
   'transaction_hash',
 ] as const;
 
-export const FIELDS_DIAMOND_FUNDS_ESCROWED_EVENTS = [
-  'id',
-  'from',
-  'amount',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_FUNDS_REFUNDED_EVENTS = [
-  'id',
-  'to',
-  'amount',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
 export const FIELDS_DIAMOND_JOURNEY_CANCELED_EVENTS = [
   'id',
   'journey_id',
@@ -2925,6 +2925,8 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     BountyPaid: 'diamondBountyPaidEventss',
     BridgeFeeRecipientUpdated: 'diamondBridgeFeeRecipientUpdatedEventss',
     BridgeOrderCancelled: 'diamondBridgeOrderCancelledEventss',
+    FundsEscrowed: 'diamondFundsEscrowedEventss',
+    FundsRefunded: 'diamondFundsRefundedEventss',
     JourneyStatusUpdated: 'diamondJourneyStatusUpdatedEventss',
     LogisticsOrderCreated: 'diamondLogisticsOrderCreatedEventss',
     OrderSettled: 'diamondOrderSettledEventss',
@@ -2962,8 +2964,6 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     AuSysOrderStatusUpdated: 'diamondAuSysOrderStatusUpdatedEventss',
     DriverAssigned: 'diamondDriverAssignedEventss',
     EmitSig: 'diamondEmitSigEventss',
-    FundsEscrowed: 'diamondFundsEscrowedEventss',
-    FundsRefunded: 'diamondFundsRefundedEventss',
     JourneyCanceled: 'diamondJourneyCanceledEventss',
     JourneyCreated: 'diamondJourneyCreatedEventss',
     NodeFeeDistributed: 'diamondNodeFeeDistributedEventss',

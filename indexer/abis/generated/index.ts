@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-02-19T22:28:44.398Z
+// Generated at: 2026-02-28T13:05:00.799Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -1304,6 +1304,44 @@ export const DiamondABI = [
       },
     ],
     name: 'BridgeOrderCancelled',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'FundsEscrowed',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'recipient',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'FundsRefunded',
     type: 'event',
   },
   {
@@ -2770,44 +2808,6 @@ export const DiamondABI = [
       },
     ],
     name: 'EmitSig',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'from',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'FundsEscrowed',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'to',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'FundsRefunded',
     type: 'event',
   },
   {
@@ -7613,16 +7613,55 @@ export const DiamondABI = [
     type: 'function',
   },
   {
-    inputs: [
+    inputs: [],
+    name: 'MAX_DRIVER_JOURNEYS',
+    outputs: [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
     ],
-    name: 'acceptP2POffer',
-    outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_JOURNEYS_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_NODES_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_ORDERS',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -7632,13 +7671,8 @@ export const DiamondABI = [
         name: 'orderId',
         type: 'bytes32',
       },
-      {
-        internalType: 'uint256',
-        name: 'correctQuantity',
-        type: 'uint256',
-      },
     ],
-    name: 'adminFixOrderTokenQuantity',
+    name: 'acceptP2POffer',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -7670,6 +7704,24 @@ export const DiamondABI = [
       },
     ],
     name: 'cancelP2POffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'uint256',
+        name: 'correctQuantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'correctOrderTokenQuantity',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -9382,6 +9434,16 @@ export const EventSignatureRegistry = {
     facet: 'BridgeFacet',
     signature: 'BridgeOrderCancelled(bytes32,uint8)',
   },
+  '0x4fbba82c': {
+    name: 'FundsEscrowed',
+    facet: 'BridgeFacet',
+    signature: 'FundsEscrowed(address,uint256)',
+  },
+  '0xbada1a1b': {
+    name: 'FundsRefunded',
+    facet: 'BridgeFacet',
+    signature: 'FundsRefunded(address,uint256)',
+  },
   '0xf7da2d1a': {
     name: 'JourneyStatusUpdated',
     facet: 'BridgeFacet',
@@ -9644,16 +9706,6 @@ export const EventSignatureRegistry = {
     name: 'EmitSig',
     facet: 'AuSysFacet',
     signature: 'EmitSig(address,bytes32)',
-  },
-  '0x4fbba82c': {
-    name: 'FundsEscrowed',
-    facet: 'AuSysFacet',
-    signature: 'FundsEscrowed(address,uint256)',
-  },
-  '0xbada1a1b': {
-    name: 'FundsRefunded',
-    facet: 'AuSysFacet',
-    signature: 'FundsRefunded(address,uint256)',
   },
   '0x08a09942': {
     name: 'JourneyCanceled',

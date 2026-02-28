@@ -1920,6 +1920,11 @@
     },
     {
       "inputs": [],
+      "name": "ArrayLimitExceeded",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "CannotAcceptOwnOffer",
       "type": "error"
     },
@@ -2774,16 +2779,55 @@
       "type": "function"
     },
     {
-      "inputs": [
+      "inputs": [],
+      "name": "MAX_DRIVER_JOURNEYS",
+      "outputs": [
         {
-          "internalType": "bytes32",
-          "name": "orderId",
-          "type": "bytes32"
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
-      "name": "acceptP2POffer",
-      "outputs": [],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_JOURNEYS_PER_ORDER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_NODES_PER_ORDER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_ORDERS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -2792,14 +2836,9 @@
           "internalType": "bytes32",
           "name": "orderId",
           "type": "bytes32"
-        },
-        {
-          "internalType": "uint256",
-          "name": "correctQuantity",
-          "type": "uint256"
         }
       ],
-      "name": "adminFixOrderTokenQuantity",
+      "name": "acceptP2POffer",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -2831,6 +2870,24 @@
         }
       ],
       "name": "cancelP2POffer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "orderId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "correctQuantity",
+          "type": "uint256"
+        }
+      ],
+      "name": "correctOrderTokenQuantity",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -6266,12 +6323,44 @@
     },
     {
       "inputs": [],
+      "name": "ECDSAInvalidSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "length",
+          "type": "uint256"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureLength",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureS",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InvalidLocation",
       "type": "error"
     },
     {
       "inputs": [],
       "name": "InvalidOrderStatus",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidSignature",
       "type": "error"
     },
     {
@@ -6303,6 +6392,11 @@
         }
       ],
       "name": "SafeERC20FailedOperation",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SignatureExpired",
       "type": "error"
     },
     {
@@ -6648,8 +6742,13 @@
           "type": "bytes32"
         },
         {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
           "internalType": "bytes",
-          "name": "receiverSignature",
+          "name": "buyerSignature",
           "type": "bytes"
         },
         {
@@ -6683,8 +6782,13 @@
           "type": "bytes32"
         },
         {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
           "internalType": "bytes",
-          "name": "signature",
+          "name": "sellerSignature",
           "type": "bytes"
         },
         {
@@ -7960,6 +8064,22 @@
       "type": "error"
     },
     {
+      "inputs": [],
+      "name": "ReentrancyGuardReentrantCall",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "SafeERC20FailedOperation",
+      "type": "error"
+    },
+    {
       "anonymous": false,
       "inputs": [
         {
@@ -8014,6 +8134,44 @@
         }
       ],
       "name": "BridgeOrderCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "buyer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FundsEscrowed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FundsRefunded",
       "type": "event"
     },
     {
@@ -10217,6 +10375,11 @@
     {
       "inputs": [],
       "name": "AssetAlreadyExists",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CannotRedeemOwnCustody",
       "type": "error"
     },
     {

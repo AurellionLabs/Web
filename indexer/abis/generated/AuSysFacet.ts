@@ -1,10 +1,15 @@
 // Auto-generated from AuSysFacet.sol - DO NOT EDIT
-// Generated at: 2026-02-19T22:28:44.398Z
+// Generated at: 2026-02-28T13:05:00.798Z
 
 export const AuSysFacetABI = [
   {
     inputs: [],
     name: 'AlreadySettled',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ArrayLimitExceeded',
     type: 'error',
   },
   {
@@ -863,16 +868,55 @@ export const AuSysFacetABI = [
     type: 'function',
   },
   {
-    inputs: [
+    inputs: [],
+    name: 'MAX_DRIVER_JOURNEYS',
+    outputs: [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
     ],
-    name: 'acceptP2POffer',
-    outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_JOURNEYS_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_NODES_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_ORDERS',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -882,13 +926,8 @@ export const AuSysFacetABI = [
         name: 'orderId',
         type: 'bytes32',
       },
-      {
-        internalType: 'uint256',
-        name: 'correctQuantity',
-        type: 'uint256',
-      },
     ],
-    name: 'adminFixOrderTokenQuantity',
+    name: 'acceptP2POffer',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -920,6 +959,24 @@ export const AuSysFacetABI = [
       },
     ],
     name: 'cancelP2POffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'uint256',
+        name: 'correctQuantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'correctOrderTokenQuantity',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

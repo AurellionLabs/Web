@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-02-19T22:28:44.400Z
+// Generated at: 2026-02-28T13:05:00.800Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -720,6 +720,36 @@ export const diamondBridgeOrderCancelledEvents = onchainTable(
   }),
 );
 
+export const diamondFundsEscrowedEvents = onchainTable(
+  'diamond_funds_escrowed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    buyer: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    buyerIdx: index().on(table.buyer),
+  }),
+);
+
+export const diamondFundsRefundedEvents = onchainTable(
+  'diamond_funds_refunded_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    recipient: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    recipientIdx: index().on(table.recipient),
+  }),
+);
+
 export const diamondJourneyStatusUpdatedEvents = onchainTable(
   'diamond_journey_status_updated_events',
   (t) => ({
@@ -1354,36 +1384,6 @@ export const diamondEmitSigEvents = onchainTable(
   }),
 );
 
-export const diamondFundsEscrowedEvents = onchainTable(
-  'diamond_funds_escrowed_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    from: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    fromIdx: index().on(table.from),
-  }),
-);
-
-export const diamondFundsRefundedEvents = onchainTable(
-  'diamond_funds_refunded_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    to: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    toIdx: index().on(table.to),
-  }),
-);
-
 export const diamondJourneyCanceledEvents = onchainTable(
   'diamond_journey_canceled_events',
   (t) => ({
@@ -1759,6 +1759,8 @@ export const tables = {
   diamondBountyPaidEvents,
   diamondBridgeFeeRecipientUpdatedEvents,
   diamondBridgeOrderCancelledEvents,
+  diamondFundsEscrowedEvents,
+  diamondFundsRefundedEvents,
   diamondJourneyStatusUpdatedEvents,
   diamondLogisticsOrderCreatedEvents,
   diamondOrderSettledEvents,
@@ -1796,8 +1798,6 @@ export const tables = {
   diamondAuSysOrderStatusUpdatedEvents,
   diamondDriverAssignedEvents,
   diamondEmitSigEvents,
-  diamondFundsEscrowedEvents,
-  diamondFundsRefundedEvents,
   diamondJourneyCanceledEvents,
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
