@@ -245,7 +245,7 @@ export default function P2PMarketOffersPage() {
         return next;
       });
     };
-    resolveMetadata().finally(() => {});
+    resolveMetadata();
     return () => {
       cancelled = true;
     };
