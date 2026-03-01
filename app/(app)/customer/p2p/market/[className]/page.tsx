@@ -438,7 +438,15 @@ export default function P2PMarketOffersPage() {
       }
 
       // Filter by class
-      if (!isTokenInClass(offer.tokenId)) return false;
+      const classResult = isTokenInClass(offer.tokenId);
+      console.log('[P2P Market] Filter check:', {
+        tid: offer.tokenId.slice(0, 15),
+        inClass: classResult,
+        status: offer.status,
+        expiresAt: offer.expiresAt,
+        isLocallyExpired,
+      });
+      if (!classResult) return false;
       // Filter by type
       if (filterType === 'buy') return !offer.isSellerInitiated;
       if (filterType === 'sell') return offer.isSellerInitiated;
