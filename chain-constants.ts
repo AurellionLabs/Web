@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-02-19T22:29:43.666Z
+// Deployed: 2026-03-01T14:57:09.348Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -35,7 +35,7 @@ export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
 export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
 
 export const NEXT_PUBLIC_AUSYS_FACET_ADDRESS =
-  '0xCA6e4044AA25400F593Efed0B11694f1a6f7c053';
+  '0xbA875188D8a538A7DcCdA91f3bD98c0d18b8E21f';
 
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)
@@ -71,7 +71,7 @@ export const NEXT_PUBLIC_ORDERS_FACET_ADDRESS =
 export const NEXT_PUBLIC_STAKING_FACET_ADDRESS =
   '0xa9E03bAB4dB2fAC44C6e4b7eB8e9D3bEfF26CcF5';
 export const NEXT_PUBLIC_BRIDGE_FACET_ADDRESS =
-  '0x83365e0d2fD97Bb0Ba5eCF8D52dF371F2a14315b';
+  '0xd568Db774956FbB6B4C39941745A67D338Aa3ec0';
 export const NEXT_PUBLIC_CLOB_FACET_ADDRESS =
   '0x76235E5138910F7033610530d6c01082F23C9d90';
 // OrderRouterFacet - SINGLE ENTRY POINT for all order operations (V2 storage)

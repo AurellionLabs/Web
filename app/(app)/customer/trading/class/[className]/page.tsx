@@ -7,7 +7,10 @@ import { cn } from '@/lib/utils';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { TokenizedAssetUI } from '@/app/providers/trade.provider';
 import { Asset } from '@/domain/shared';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+} from '@/chain-constants';
 
 // EVA Components
 import {
@@ -208,7 +211,7 @@ function ClassDetailPageContent() {
 
   // Fetch order book data for best bid/ask prices
   const { orderBook } = useOrderBook(tradeableAsset?.id || '', {
-    baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
+    baseToken: NEXT_PUBLIC_AURA_ASSET_ADDRESS,
     baseTokenId: tradeableAsset?.tokenId || '0',
     basePrice,
     levels: 10,
@@ -323,7 +326,7 @@ function ClassDetailPageContent() {
             : assetWithTokenId.tokenId || '0';
 
         const clobParams = {
-          baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
+          baseToken: NEXT_PUBLIC_AURA_ASSET_ADDRESS,
           baseTokenId: effectiveTokenId,
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,

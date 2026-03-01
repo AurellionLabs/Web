@@ -8815,6 +8815,19 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "_quoteToken",
+          "type": "address"
+        }
+      ],
+      "name": "setQuoteTokenAddress",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "bytes32",
           "name": "_unifiedOrderId",
           "type": "bytes32"

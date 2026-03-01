@@ -39,7 +39,10 @@ import { useWallet } from '@/hooks/useWallet';
 import { TokenizedAssetAttribute } from '@/domain/node';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+} from '@/chain-constants';
 import dynamic from 'next/dynamic';
 import { useUserAssets } from '@/hooks/useUserAssets';
 import { useOrderBook } from '@/hooks/useOrderBook';
@@ -237,7 +240,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
   // Fetch order book data for best bid/ask prices
   const { orderBook } = useOrderBook(asset?.id || '', {
-    baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
+    baseToken: NEXT_PUBLIC_AURA_ASSET_ADDRESS,
     baseTokenId: asset?.id || '0',
     basePrice,
     levels: 10,
@@ -383,7 +386,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
         // asset.id IS the tokenId from the indexer
         const tokenId = asset.id || '0';
         const clobParams: PlaceLimitOrderParams = {
-          baseToken: NEXT_PUBLIC_DIAMOND_ADDRESS,
+          baseToken: NEXT_PUBLIC_AURA_ASSET_ADDRESS,
           baseTokenId: tokenId,
           quoteToken: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
           price: priceInWei,
