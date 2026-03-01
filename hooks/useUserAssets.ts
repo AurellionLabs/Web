@@ -38,7 +38,7 @@ export function useUserAssets(filterClass?: string) {
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
-    getNodeTokenBalance,
+    balanceOf,
   } = useDiamond();
 
   const [assets, setAssets] = useState<AssetWithAttributes[]>([]);
@@ -115,17 +115,17 @@ export function useUserAssets(filterClass?: string) {
             nodeId,
           );
 
-          // For each asset, get its ACTUAL tradable balance from nodeTokenBalances
+          // For each asset, get wallet's ERC1155 balance (actual tokens in wallet)
           for (const asset of nodeAssets) {
             try {
-              // Query the real tradable balance (what the CLOB sell will use)
-              const actualBalance = await getNodeTokenBalance(nodeId, asset.id);
+              // Query wallet's actual ERC1155 balance (for P2P sell orders)
+              const actualBalance = await balanceOf(address, asset.id);
               console.log(
                 '[useUserAssets] Asset',
                 asset.id,
                 'capacity:',
                 asset.capacity,
-                'actualBalance:',
+                'walletBalance:',
                 actualBalance.toString(),
               );
 
@@ -215,7 +215,7 @@ export function useUserAssets(filterClass?: string) {
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
-    getNodeTokenBalance,
+    balanceOf,
   ]);
 
   // Fetch on mount and when dependencies change

@@ -89,6 +89,8 @@ interface DiamondContextType {
     amount: bigint,
   ) => Promise<void>;
   getNodeTokenBalance: (nodeHash: string, tokenId: string) => Promise<bigint>;
+  // Wallet ERC1155 balance (for P2P sell orders - queries actual tokens in wallet)
+  balanceOf: (account: string, tokenId: string) => Promise<bigint>;
   getNodeInventory: (
     nodeHash: string,
   ) => Promise<{ tokenIds: bigint[]; balances: bigint[] }>;
@@ -465,6 +467,24 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
+  // Get wallet's ERC1155 balance (actual tokens in wallet, not node internal balance)
+  const balanceOf = useCallback(
+    async (account: string, tokenId: string): Promise<bigint> => {
+      if (!diamondContext) {
+        return BigInt(0);
+      }
+      const diamond = diamondContext.getDiamond();
+      try {
+        const balance = await diamond.balanceOf(account, tokenId);
+        return BigInt(balance.toString());
+      } catch (err) {
+        console.error('[DiamondProvider] Error getting wallet balance:', err);
+        return BigInt(0);
+      }
+    },
+    [diamondContext],
+  );
+
   // Get full node inventory (all tokenIds and their balances)
   const getNodeInventory = useCallback(
     async (
@@ -674,6 +694,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     depositTokensToNode,
     withdrawTokensFromNode,
     getNodeTokenBalance,
+    balanceOf,
     getNodeInventory,
     approveClobForTokens,
     isClobApproved,

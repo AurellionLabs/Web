@@ -1365,7 +1365,8 @@ export default function NodeDashboardPage() {
                               </span>
                             ) : order.currentStatus ===
                                 OrderStatus.PROCESSING &&
-                              order.journeyStatus === 0 ? (
+                              (order.journeyStatus === 0 ||
+                                order.journeyStatus === null) ? (
                               <span className="text-sm text-amber-400 font-medium">
                                 Awaiting Pickup
                               </span>

@@ -79,14 +79,28 @@ type SortConfig = {
 /**
  * Get display label for OrderStatus
  */
-const getStatusLabel = (status: OrderStatus): string => {
+const getStatusLabel = (
+  status: OrderStatus,
+  journeyStatus?: number | null,
+): string => {
+  // When journey is in transit, show "In Transit"
+  if (status === OrderStatus.PROCESSING && journeyStatus === 1) {
+    return 'In Transit';
+  }
+  // When journey is pending/awaiting pickup
+  if (
+    status === OrderStatus.PROCESSING &&
+    (journeyStatus === 0 || journeyStatus === null)
+  ) {
+    return 'Awaiting Pickup';
+  }
   switch (status) {
     case OrderStatus.CREATED:
-      return 'Created';
+      return 'Pending';
     case OrderStatus.PROCESSING:
       return 'Processing';
     case OrderStatus.SETTLED:
-      return 'Settled';
+      return 'Completed';
     case OrderStatus.CANCELLED:
       return 'Cancelled';
     default:
@@ -197,8 +211,26 @@ export default function CustomerDashboard() {
     if (filters.asset !== 'all' && order.tokenId.toString() !== filters.asset) {
       return false;
     }
-    if (filters.status !== 'all' && order.currentStatus !== filters.status) {
-      return false;
+    if (filters.status !== 'all') {
+      if (filters.status === 'in_transit') {
+        // In Transit: PROCESSING status with journeyStatus === 1
+        if (
+          order.currentStatus !== OrderStatus.PROCESSING ||
+          order.journeyStatus !== 1
+        ) {
+          return false;
+        }
+      } else if (filters.status === 'awaiting_pickup') {
+        // Awaiting Pickup: PROCESSING status with journeyStatus === 0 or null
+        if (
+          order.currentStatus !== OrderStatus.PROCESSING ||
+          order.journeyStatus === 1
+        ) {
+          return false;
+        }
+      } else if (order.currentStatus !== filters.status) {
+        return false;
+      }
     }
     return true;
   });
@@ -745,16 +777,19 @@ export default function CustomerDashboard() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value={OrderStatus.CREATED}>
-                    {getStatusLabel(OrderStatus.CREATED)}
+                    {getStatusLabel(OrderStatus.CREATED, undefined)}
                   </SelectItem>
-                  <SelectItem value={OrderStatus.PROCESSING}>
-                    {getStatusLabel(OrderStatus.PROCESSING)}
+                  <SelectItem value="awaiting_pickup">
+                    {getStatusLabel(OrderStatus.PROCESSING, 0)}
+                  </SelectItem>
+                  <SelectItem value="in_transit">
+                    {getStatusLabel(OrderStatus.PROCESSING, 1)}
                   </SelectItem>
                   <SelectItem value={OrderStatus.SETTLED}>
-                    {getStatusLabel(OrderStatus.SETTLED)}
+                    {getStatusLabel(OrderStatus.SETTLED, undefined)}
                   </SelectItem>
                   <SelectItem value={OrderStatus.CANCELLED}>
-                    {getStatusLabel(OrderStatus.CANCELLED)}
+                    {getStatusLabel(OrderStatus.CANCELLED, undefined)}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -839,11 +874,19 @@ export default function CustomerDashboard() {
                             status={
                               order.currentStatus === OrderStatus.SETTLED
                                 ? 'completed'
-                                : order.currentStatus === OrderStatus.PROCESSING
-                                  ? 'processing'
-                                  : 'created'
+                                : order.currentStatus ===
+                                      OrderStatus.PROCESSING &&
+                                    order.journeyStatus === 1
+                                  ? 'active'
+                                  : order.currentStatus ===
+                                      OrderStatus.PROCESSING
+                                    ? 'processing'
+                                    : 'created'
                             }
-                            label={getStatusLabel(order.currentStatus)}
+                            label={getStatusLabel(
+                              order.currentStatus,
+                              order.journeyStatus,
+                            )}
                           />
                         </td>
                         <td className="px-4 py-4">

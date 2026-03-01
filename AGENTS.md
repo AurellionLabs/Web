@@ -5,14 +5,12 @@ Web3/DeFi platform with Next.js 14, Solidity 0.8.28 (Diamond Pattern), Ponder in
 ## Build Commands
 
 ```bash
-npm run dev              # Start Next.js dev server
+npm run dev              # Start Next.js dev server (port 3000)
 npm run build            # TypeScript check + Next.js build
 npm run build:full       # Compile contracts + extract ABIs + build
 npm run contract:update # Compile contracts + generate ABIs + typechain
-npm run contract:compile # Compile Solidity contracts only
-npm run contract:gen    # Generate TypeScript types from ABIs
-npm run contract:deploy # Deploy contracts to baseSepolia
-npm run contract:validate # Validate ABI consistency
+npm run contract:compile # Compile Solidity only
+npm run contract:deploy # Deploy to baseSepolia
 npm run typecheck        # TypeScript only (tsc --noEmit)
 npm run lint             # Next.js ESLint
 npm run format           # Prettier format all files
@@ -20,59 +18,24 @@ npm run format           # Prettier format all files
 
 ## Testing Commands
 
-### Single Test Execution
-
 ```bash
-# Vitest (unit/integration tests)
+# Single test execution
 npx vitest run test/infrastructure/services/OrderBridgeService.test.ts  # Service test
-npx vitest run test/repositories/CLOBRepository.test.ts                 # Repository test
 npx vitest run test/hooks/useUnifiedOrder.test.ts                       # Hook test
 npx vitest run -t "test name pattern"                                   # By pattern
-npx vitest run test/infrastructure/services/**/*.service.test.ts        # All service tests
-npx vitest run test/infrastructure/repositories/**/*.unit.test.ts      # All repo tests
+npx hardhat test test/OrderBridge.test.ts                              # Hardhat contract
+forge test --match-contract DiamondTest -vv                           # Forge Diamond
+npx playwright test path/to/test.spec.ts                               # Browser test
 
-# Hardhat (smart contract tests)
-npx hardhat test test/OrderBridge.test.ts                               # Single contract
-npx hardhat test test/OrderBridge.test.ts --grep "test name"            # By pattern
-
-# Forge (Diamond tests)
-forge test --match-contract ContractName -vv                           # Single contract
-forge test --match-test "testName" -vv                                 # Single test
-
-# Playwright (browser tests)
-npx playwright test path/to/test.spec.ts                               # Single file
-npx playwright test path/to/test.spec.ts --grep "test name"            # By pattern
-
-# E2E Tests
-npx vitest run --config e2e/vitest.config.ts                           # All E2E
-```
-
-### Full Test Suites
-
-```bash
+# Test suites
 npm run test             # All Vitest tests
 npm run test:unit        # Excludes deployment tests
-npm run test:coverage    # With coverage report
-npm run test:service     # Unit + integration tests
-npm run test:service:unit
-npm run test:service:integration
-npm run test:repo:unit
-npm run test:hooks
-npm run test:hardhat     # All Hardhat tests
+npm run test:coverage    # With coverage
+npm run test:hardhat     # Hardhat contract tests
 npm run test:diamond     # Forge Diamond tests
-npm run test:e2e         # Uses Hardhat chain
-npm run test:e2e:fast    # Fast mode
-npm run test:e2e:anvil   # With Anvil chain
-npm run test:browser     # All Playwright tests
-npm run test:browser:headed
-```
-
-### Additional Test Commands
-
-```bash
-npm run test:deployment      # Deployment verification tests
-npm run test:smoke           # Smoke tests
-npm run validate:queries     # GraphQL query validation
+npm run test:e2e         # E2E tests
+npm run test:browser     # Playwright tests
+npm run test:deployment  # Deployment verification
 ```
 
 ## Code Style
@@ -133,17 +96,10 @@ const { data, error } = useQuery({
 ### Component Patterns
 
 - Use `'use client'` directive for client components
-- Prefer function components with hooks over class components
+- Function components with hooks over class components
 - Extract reusable logic into custom hooks (`useX.ts`)
 - Use Radix UI primitives for accessible UI components
-- Colocate component styles with components using Tailwind CSS
-
-### Data Fetching
-
 - Use TanStack Query (React Query) for server state
-- Define query keys as arrays: `['entity', id, options]`
-- Prefer custom hooks that wrap useQuery/useMutation
-- Handle loading/error states explicitly in UI
 
 ### Solidity
 
@@ -151,21 +107,15 @@ const { data, error } = useQuery({
 - **Naming**: Contracts `PascalCase`, events/errors `PascalCase`, internal `_prefix`
 - **Documentation**: NatSpec required (`@title`, `@notice`, `@dev`, `@return`)
 - **Pattern**: Diamond proxy pattern with facets
-- **Testing**: Use Forge for Diamond facet tests
 
 ## Project Structure
 
 ```
-app/                  # Next.js App Router (pages/api, layouts, etc.)
+app/                  # Next.js App Router
 components/           # React components (UI primitives in components/ui/)
-contracts/            # Solidity contracts
-  diamond/           # Diamond facets
-  mocks/             # Mock contracts for testing
-hooks/               # React hooks (custom hooks)
-infrastructure/       # Services & repositories
-  services/          # Business logic services
-  repositories/      # Data access layer
-  shared/            # Shared utilities (event aggregators)
+contracts/            # Solidity contracts (diamond/ for facets, mocks/ for tests)
+hooks/                # React custom hooks
+infrastructure/       # Services & repositories (services/, repositories/, shared/)
 lib/                 # Utilities, formatters, helpers
 test/                 # Unit/integration tests
 e2e/tests/            # E2E tests (Vitest)
@@ -184,24 +134,22 @@ Pure dumb indexer - only stores raw blockchain events. Business logic in fronten
 - **NEVER push PRD files** (`prd.json`, `progress.txt`) to remote
 - **NEVER commit ralph/ directory contents** except docs updates
 
-## Cursor Cloud specific instructions
+## Environment (Cursor Cloud)
 
-### Environment Setup
+- Package manager: `bun` (`.npmrc` has `legacy-peer-deps=true`)
+- After `bun install`, run `bun run contract:compile` to generate `typechain-types/`
+- ESLint 8 + `eslint-config-next@14` (not ESLint 9)
+- Dev server: `npm run dev` (port 3000)
 
-- Package manager: `bun` (installed at `~/.bun/bin/bun`). The `.npmrc` has `legacy-peer-deps=true`.
-- After `bun install`, run `bun run contract:compile` to generate `typechain-types/` needed by the frontend.
-- ESLint 8 + `eslint-config-next@14` are required (not ESLint 9). The `.eslintrc.json` extends `next/core-web-vitals`.
-- Dev server: `npm run dev` (Next.js on port 3000 by default).
+## Pre-existing Issues
 
-### Testing
+- `npm run lint`: Pre-existing warnings about React hooks deps and 2 `react/no-unescaped-entities` errors
+- `npm run test:hardhat`: 33 passing, 3 pre-existing failures (ABI mismatch in `OrderRepository`)
+- `npm run test:service:unit`: ESM/CJS incompatibility with `chai-as-promised@8` under `ts-node`
 
-- `npm run lint` — ESLint via Next.js. Pre-existing warnings about React hooks deps and 2 `react/no-unescaped-entities` errors.
-- `npm run test` — Vitest suite. `npm run test:hardhat` — Hardhat contract tests (33 passing, 3 pre-existing failures in `OrderRepository` ABI mismatch).
-- `npm run test:service:unit` — Has a pre-existing ESM/CJS incompatibility with `chai-as-promised@8` under `ts-node`.
+## P2P Trading (Manual Testing)
 
-### P2P Trading (manual testing)
-
-- The app uses MetaMask for wallet connection. When switching MetaMask accounts, you **must do a hard page refresh (F5)** for the DApp to properly update its wallet signer. Without this, the old signer persists and contract calls fail with misleading errors (e.g. "You cannot accept your own offer").
-- The quote token for P2P trades is **AURA** (not USDC). Mint test AURA at `/customer/faucet`.
-- Google Maps Places autocomplete is used for delivery addresses in the P2P flow. Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
-- The app runs on **Base Sepolia** testnet (chain ID 84532).
+- When switching MetaMask accounts, **hard refresh (F5)** is required for DApp to update wallet signer
+- Quote token: **AURA** (not USDC). Mint at `/customer/faucet`
+- Google Maps Places autocomplete for delivery addresses (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` required)
+- Runs on **Base Sepolia** testnet (chain ID 84532)
