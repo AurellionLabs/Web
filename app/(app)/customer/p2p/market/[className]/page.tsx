@@ -9,6 +9,11 @@ import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import type { Asset } from '@/domain/shared';
 import {
+  buildTokenIdToClassMap,
+  isTokenInClass as isTokenInClassPure,
+  filterOffersForMarket,
+} from '@/domain/p2p/offer-filter';
+import {
   EvaPanel,
   TrapButton,
   EvaStatusBadge,
@@ -423,36 +428,16 @@ export default function P2PMarketOffersPage() {
   );
 
   // Filter offers: by market class + by type
+  // Uses pure function with direct data deps to avoid stale closure issues
   const filteredOffers = useMemo(() => {
-    const nowSec = Math.floor(Date.now() / 1000);
-    return offers.filter((offer) => {
-      // Hide terminal or locally-expired offers from the market grid
-      const isLocallyExpired = offer.expiresAt > 0 && offer.expiresAt <= nowSec;
-      if (
-        offer.status === P2POfferStatus.EXPIRED ||
-        offer.status === P2POfferStatus.SETTLED ||
-        offer.status === P2POfferStatus.CANCELLED ||
-        isLocallyExpired
-      ) {
-        return false;
-      }
-
-      // Filter by class
-      const classResult = isTokenInClass(offer.tokenId);
-      console.log('[P2P Market] Filter check:', {
-        tid: offer.tokenId.slice(0, 15),
-        inClass: classResult,
-        status: offer.status,
-        expiresAt: offer.expiresAt,
-        isLocallyExpired,
-      });
-      if (!classResult) return false;
-      // Filter by type
-      if (filterType === 'buy') return !offer.isSellerInitiated;
-      if (filterType === 'sell') return offer.isSellerInitiated;
-      return true;
-    });
-  }, [offers, isTokenInClass, filterType]);
+    return filterOffersForMarket(
+      offers,
+      className,
+      tokenIdToClass,
+      assetMetadataMap,
+      filterType,
+    );
+  }, [offers, className, tokenIdToClass, assetMetadataMap, filterType]);
 
   const hasKnownClass = useCallback(
     (tokenId: string): boolean => {
@@ -485,7 +470,15 @@ export default function P2PMarketOffersPage() {
       }
 
       // Normal case: class is resolvable and matches current market
-      if (isTokenInClass(offer.tokenId)) return true;
+      if (
+        isTokenInClassPure(
+          offer.tokenId,
+          className,
+          tokenIdToClass,
+          assetMetadataMap,
+        )
+      )
+        return true;
 
       // During metadata/indexer lag or Pinata throttling, keep unresolved class
       // offers visible so newly created offers don't disappear from this tab.
@@ -493,7 +486,7 @@ export default function P2PMarketOffersPage() {
 
       return false;
     });
-  }, [myOffers, isTokenInClass, hasKnownClass]);
+  }, [myOffers, className, tokenIdToClass, assetMetadataMap, hasKnownClass]);
 
   // Check if user is the creator of an offer
   const isMyOffer = (offer: P2POffer) => {
