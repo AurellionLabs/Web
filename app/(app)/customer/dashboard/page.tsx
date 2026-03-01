@@ -881,11 +881,12 @@ export default function CustomerDashboard() {
                                 <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {/* Sign for Delivery — available when order is PROCESSING and has journeys */}
+                                {/* Sign for Delivery — available when order is PROCESSING and journey is in transit */}
                                 {order.journeyIds &&
                                   order.journeyIds.length > 0 &&
                                   order.currentStatus ===
-                                    OrderStatus.PROCESSING && (
+                                    OrderStatus.PROCESSING &&
+                                  order.journeyStatus === 1 && (
                                     <DropdownMenuItem
                                       onClick={() => {
                                         if (isP2P) {
