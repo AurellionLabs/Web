@@ -72,7 +72,7 @@ export default function P2PMarketOffersPage() {
   const [assetMetadataMap, setAssetMetadataMap] = useState<Map<string, Asset>>(
     new Map(),
   );
-  const [metadataResolved, setMetadataResolved] = useState(false);
+
   const [filterType, setFilterType] = useState<'all' | 'buy' | 'sell'>('all');
   const [offers, setOffers] = useState<P2POffer[]>([]);
   const [myOffers, setMyOffers] = useState<P2POffer[]>([]);
@@ -172,7 +172,6 @@ export default function P2PMarketOffersPage() {
 
   // Resolve asset metadata for unique tokenIds
   useEffect(() => {
-    setMetadataResolved(false);
     const allOffers = [...offers, ...myOffers];
     const uniqueTokenIds = [
       ...new Set(allOffers.map((o) => o.tokenId).filter(Boolean)),
@@ -223,7 +222,6 @@ export default function P2PMarketOffersPage() {
 
     // Step 2: Pinata fallback
     if (stillUnresolved.length === 0) {
-      setMetadataResolved(true);
       return;
     }
     let cancelled = false;
@@ -242,9 +240,7 @@ export default function P2PMarketOffersPage() {
         return next;
       });
     };
-    resolveMetadata().finally(() => {
-      if (!cancelled) setMetadataResolved(true);
-    });
+    resolveMetadata().finally(() => {});
     return () => {
       cancelled = true;
     };
@@ -429,16 +425,6 @@ export default function P2PMarketOffersPage() {
   // Filter offers: by market class + by type
   const filteredOffers = useMemo(() => {
     const nowSec = Math.floor(Date.now() / 1000);
-    console.log('[P2P Market] Filtering offers:', {
-      total: offers.length,
-      metadataResolved,
-      tokenIdToClassSize: tokenIdToClass.size,
-      tokenIdToClassEntries: Array.from(tokenIdToClass.entries()).map(
-        ([k, v]) => ({ tid: k.slice(0, 15) + '...', class: v }),
-      ),
-      assetMetadataMapSize: assetMetadataMap.size,
-      className,
-    });
     return offers.filter((offer) => {
       // Hide terminal or locally-expired offers from the market grid
       const isLocallyExpired = offer.expiresAt > 0 && offer.expiresAt <= nowSec;
@@ -451,47 +437,14 @@ export default function P2PMarketOffersPage() {
         return false;
       }
 
-      // Filter by class: first check tokenIdToClass (from supportedAssets),
-      // then assetMetadataMap (from Pinata). If neither resolves the class,
-      // keep the offer visible while metadata is still loading.
-      const inClass = isTokenInClass(offer.tokenId);
-      if (!inClass) {
-        // If metadata hasnt resolved yet, keep the offer visible
-        if (!metadataResolved && !assetMetadataMap.has(offer.tokenId)) {
-          return true; // show while resolving
-        }
-        // Also keep offers visible if their tokenId has no known class at all
-        // (not in supportedAssets AND not in assetMetadataMap) — avoids hiding
-        // offers whose metadata simply failed to resolve from Pinata
-        if (
-          !tokenIdToClass.has(offer.tokenId) &&
-          !assetMetadataMap.has(offer.tokenId)
-        ) {
-          try {
-            const normalized = BigInt(offer.tokenId).toString(10);
-            if (!tokenIdToClass.has(normalized)) {
-              return true; // unknown class — show rather than hide
-            }
-          } catch {
-            return true;
-          }
-        }
-        return false;
-      }
+      // Filter by class
+      if (!isTokenInClass(offer.tokenId)) return false;
       // Filter by type
       if (filterType === 'buy') return !offer.isSellerInitiated;
       if (filterType === 'sell') return offer.isSellerInitiated;
       return true;
     });
-  }, [
-    offers,
-    isTokenInClass,
-    filterType,
-    metadataResolved,
-    assetMetadataMap,
-    tokenIdToClass,
-    className,
-  ]);
+  }, [offers, isTokenInClass, filterType]);
 
   const hasKnownClass = useCallback(
     (tokenId: string): boolean => {
