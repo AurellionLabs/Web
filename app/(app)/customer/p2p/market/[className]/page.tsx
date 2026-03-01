@@ -72,6 +72,7 @@ export default function P2PMarketOffersPage() {
   const [assetMetadataMap, setAssetMetadataMap] = useState<Map<string, Asset>>(
     new Map(),
   );
+  const [metadataResolved, setMetadataResolved] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'buy' | 'sell'>('all');
   const [offers, setOffers] = useState<P2POffer[]>([]);
   const [myOffers, setMyOffers] = useState<P2POffer[]>([]);
@@ -171,6 +172,7 @@ export default function P2PMarketOffersPage() {
 
   // Resolve asset metadata for unique tokenIds
   useEffect(() => {
+    setMetadataResolved(false);
     const allOffers = [...offers, ...myOffers];
     const uniqueTokenIds = [
       ...new Set(allOffers.map((o) => o.tokenId).filter(Boolean)),
@@ -220,7 +222,10 @@ export default function P2PMarketOffersPage() {
     }
 
     // Step 2: Pinata fallback
-    if (stillUnresolved.length === 0) return;
+    if (stillUnresolved.length === 0) {
+      setMetadataResolved(true);
+      return;
+    }
     let cancelled = false;
     const resolveMetadata = async () => {
       const results = await Promise.allSettled(
@@ -237,7 +242,9 @@ export default function P2PMarketOffersPage() {
         return next;
       });
     };
-    resolveMetadata();
+    resolveMetadata().finally(() => {
+      if (!cancelled) setMetadataResolved(true);
+    });
     return () => {
       cancelled = true;
     };
@@ -434,14 +441,20 @@ export default function P2PMarketOffersPage() {
         return false;
       }
 
-      // Filter by class
-      if (!isTokenInClass(offer.tokenId)) return false;
+      // Filter by class (show unresolved offers while metadata is loading)
+      if (!isTokenInClass(offer.tokenId)) {
+        // If metadata hasnt resolved yet, keep the offer visible
+        if (!metadataResolved && !assetMetadataMap.has(offer.tokenId)) {
+          return true; // show while resolving
+        }
+        return false;
+      }
       // Filter by type
       if (filterType === 'buy') return !offer.isSellerInitiated;
       if (filterType === 'sell') return offer.isSellerInitiated;
       return true;
     });
-  }, [offers, isTokenInClass, filterType]);
+  }, [offers, isTokenInClass, filterType, metadataResolved, assetMetadataMap]);
 
   const hasKnownClass = useCallback(
     (tokenId: string): boolean => {

@@ -26,6 +26,7 @@ function createMockContext(overrides: Record<string, any> = {}) {
       owner: overrides.nodeOwner ?? OWNER,
     }),
     getNodeAssets: vi.fn().mockResolvedValue(overrides.nodeAssets ?? []),
+    nodeMint: vi.fn().mockResolvedValue(mockTx),
     addSupportedAsset: vi.fn().mockResolvedValue(mockTx),
     updateSupportedAssets: vi.fn().mockResolvedValue(mockTx),
     ...overrides.diamond,
@@ -73,8 +74,8 @@ describe('DiamondNodeAssetService', () => {
       );
 
       // Should call nodeMint on AuraAsset
-      expect(context._auraAsset.nodeMint).toHaveBeenCalledTimes(1);
-      const mintArgs = context._auraAsset.nodeMint.mock.calls[0];
+      expect(context._diamond.nodeMint).toHaveBeenCalledTimes(1);
+      const mintArgs = context._diamond.nodeMint.mock.calls[0];
       expect(mintArgs[0]).toBe(OWNER); // Minted to node owner
       expect(mintArgs[1].name).toBe('AUGOAT');
       expect(mintArgs[1].assetClass).toBe('GOAT');
@@ -150,12 +151,11 @@ describe('DiamondNodeAssetService', () => {
 
     it('should provide helpful error for NodeManager misconfiguration', async () => {
       const context = createMockContext({
-        auraAsset: {
+        diamond: {
           nodeMint: vi.fn().mockRejectedValue({
             message: 'missing revert data',
             code: 'CALL_EXCEPTION',
           }),
-          getAddress: vi.fn().mockResolvedValue('0x1235'),
         },
       });
       const service = new DiamondNodeAssetService(context);
@@ -170,7 +170,7 @@ describe('DiamondNodeAssetService', () => {
           },
           100,
         ),
-      ).rejects.toThrow('NodeManager');
+      ).rejects.toThrow('Tokenization failed');
     });
   });
 

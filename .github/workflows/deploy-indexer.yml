@@ -162,6 +162,9 @@ jobs:
             docker compose -f docker-compose.prod.yml pull indexer
 
             # Start with fresh container
+            echo "Resetting database schema to avoid Ponder app hash conflicts..."
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d ponder_indexer -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;" 2>/dev/null || true
+
             echo "Starting new container..."
             docker compose -f docker-compose.prod.yml up -d indexer
 
