@@ -429,6 +429,16 @@ export default function P2PMarketOffersPage() {
   // Filter offers: by market class + by type
   const filteredOffers = useMemo(() => {
     const nowSec = Math.floor(Date.now() / 1000);
+    console.log('[P2P Market] Filtering offers:', {
+      total: offers.length,
+      metadataResolved,
+      tokenIdToClassSize: tokenIdToClass.size,
+      tokenIdToClassEntries: Array.from(tokenIdToClass.entries()).map(
+        ([k, v]) => ({ tid: k.slice(0, 15) + '...', class: v }),
+      ),
+      assetMetadataMapSize: assetMetadataMap.size,
+      className,
+    });
     return offers.filter((offer) => {
       // Hide terminal or locally-expired offers from the market grid
       const isLocallyExpired = offer.expiresAt > 0 && offer.expiresAt <= nowSec;
@@ -441,11 +451,30 @@ export default function P2PMarketOffersPage() {
         return false;
       }
 
-      // Filter by class (show unresolved offers while metadata is loading)
-      if (!isTokenInClass(offer.tokenId)) {
+      // Filter by class: first check tokenIdToClass (from supportedAssets),
+      // then assetMetadataMap (from Pinata). If neither resolves the class,
+      // keep the offer visible while metadata is still loading.
+      const inClass = isTokenInClass(offer.tokenId);
+      if (!inClass) {
         // If metadata hasnt resolved yet, keep the offer visible
         if (!metadataResolved && !assetMetadataMap.has(offer.tokenId)) {
           return true; // show while resolving
+        }
+        // Also keep offers visible if their tokenId has no known class at all
+        // (not in supportedAssets AND not in assetMetadataMap) — avoids hiding
+        // offers whose metadata simply failed to resolve from Pinata
+        if (
+          !tokenIdToClass.has(offer.tokenId) &&
+          !assetMetadataMap.has(offer.tokenId)
+        ) {
+          try {
+            const normalized = BigInt(offer.tokenId).toString(10);
+            if (!tokenIdToClass.has(normalized)) {
+              return true; // unknown class — show rather than hide
+            }
+          } catch {
+            return true;
+          }
         }
         return false;
       }
@@ -454,7 +483,15 @@ export default function P2PMarketOffersPage() {
       if (filterType === 'sell') return offer.isSellerInitiated;
       return true;
     });
-  }, [offers, isTokenInClass, filterType, metadataResolved, assetMetadataMap]);
+  }, [
+    offers,
+    isTokenInClass,
+    filterType,
+    metadataResolved,
+    assetMetadataMap,
+    tokenIdToClass,
+    className,
+  ]);
 
   const hasKnownClass = useCallback(
     (tokenId: string): boolean => {
