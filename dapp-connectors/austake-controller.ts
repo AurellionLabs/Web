@@ -31,7 +31,6 @@ const getAuStakeContract = async (): Promise<AuStake> => {
       NEXT_PUBLIC_AUSTAKE_ADDRESS,
       signer,
     );
-    console.log('AuStake contract fetched successfully.');
     return contract;
   } catch (error) {
     console.error('Error fetching AuStake contract:', error);

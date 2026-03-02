@@ -89,7 +89,6 @@ export class Wallet {
       // Handle error code 4902 (chain not added to MetaMask)
       if (error.code === 4902) {
         // Implement addNetwork logic here if needed
-        console.log('Chain not added to MetaMask');
       }
       console.error('Error switching network:', error);
       return false;
