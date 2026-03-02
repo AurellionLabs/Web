@@ -1,0 +1,570 @@
+{
+  "project": "Full Stack Type-Safe Data Pipeline",
+  "branchName": "feat/type-safe-data-pipeline",
+  "description": "Staff-engineer level TDD implementation ensuring the frontend receives and displays blockchain data correctly. Uses TypeScript as a feature for compile-time correctness. Creates robust type boundaries between indexer schema, GraphQL queries, repository layer, and UI components. Every boundary is tested with type-safe contracts.",
+  "userStories": [
+    {
+      "id": "T-001",
+      "title": "Create shared type definitions for indexer schema",
+      "description": "Define TypeScript types that mirror the Ponder schema exactly, serving as the source of truth.",
+      "acceptanceCriteria": [
+        "Create `indexer/src/types/schema.ts` with types for all aggregate tables (assets, orders, journeys)",
+        "Types use snake_case to match Ponder column names exactly",
+        "Export PonderAsset, PonderOrder, PonderJourney interfaces",
+        "Include JSDoc comments documenting each field's meaning and source event",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "parallel_group": 1
+    },
+    {
+      "id": "T-002",
+      "title": "Create shared type definitions for nodes aggregate",
+      "description": "Define TypeScript types for the nodes aggregate table.",
+      "acceptanceCriteria": [
+        "Add PonderNode type to `indexer/src/types/schema.ts`",
+        "Fields: id (hex), owner (hex), address_name (text), lat (text), lng (text), valid_node (boolean), status (text), block_number, block_timestamp, transaction_hash",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "parallel_group": 1
+    },
+    {
+      "id": "T-003",
+      "title": "Create shared type definitions for node_assets aggregate",
+      "description": "Define TypeScript types for the node_assets aggregate table.",
+      "acceptanceCriteria": [
+        "Add PonderNodeAsset type to `indexer/src/types/schema.ts`",
+        "Fields: id (text), node (hex), token (hex), token_id (bigint), price (bigint), capacity (bigint), block_number, block_timestamp, transaction_hash",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "parallel_group": 1
+    },
+    {
+      "id": "T-004",
+      "title": "Add nodes aggregate table to generator",
+      "description": "Add nodes table definition to generateEntityTables() in scripts/generate-indexer.ts.",
+      "acceptanceCriteria": [
+        "Add 'nodes' table with columns matching PonderNode type",
+        "Indexes on owner, valid_node, status",
+        "Run `npm run generate:indexer`",
+        "Verify `grep -q 'export const nodes' indexer/generated-schema.ts`",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "parallel_group": 2
+    },
+    {
+      "id": "T-005",
+      "title": "Add node_assets aggregate table to generator",
+      "description": "Add node_assets table definition to generateEntityTables() in scripts/generate-indexer.ts.",
+      "acceptanceCriteria": [
+        "Add 'node_assets' table with columns matching PonderNodeAsset type",
+        "Indexes on node, token, token_id",
+        "Run `npm run generate:indexer`",
+        "Verify `grep -q 'export const nodeAssets' indexer/generated-schema.ts`",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "parallel_group": 2
+    },
+    {
+      "id": "T-006",
+      "title": "Extend journeys table with missing frontend fields",
+      "description": "Add sender, receiver, driver, order_id, created_at fields to journeys table.",
+      "acceptanceCriteria": [
+        "Update generateEntityTables() journeys table",
+        "Add: sender (hex), receiver (hex), driver (hex), order_id (hex), start_name (text), end_name (text), created_at (bigint)",
+        "Add indexes on sender, receiver, driver, order_id",
+        "Run `npm run generate:indexer`",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "parallel_group": 2
+    },
+    {
+      "id": "T-007",
+      "title": "Extend orders table with missing frontend fields",
+      "description": "Add location fields, nodes array, created_at, updated_at to orders table.",
+      "acceptanceCriteria": [
+        "Update generateEntityTables() orders table",
+        "Add: start_location_lat (text), start_location_lng (text), end_location_lat (text), end_location_lng (text), start_name (text), end_name (text), nodes (text - JSON), created_at (bigint), updated_at (bigint)",
+        "Run `npm run generate:indexer`",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "parallel_group": 2
+    },
+    {
+      "id": "T-008",
+      "title": "Extend assets table with missing frontend fields",
+      "description": "Add account, amount fields to assets table.",
+      "acceptanceCriteria": [
+        "Update generateEntityTables() assets table",
+        "Add: account (hex), amount (bigint)",
+        "Add index on account",
+        "Run `npm run generate:indexer`",
+        "Run `cd indexer && npx tsc --noEmit` passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "parallel_group": 2
+    },
+    {
+      "id": "T-009",
+      "title": "Add nodes event mappings to EVENT_TO_AGGREGATE_MAPPING",
+      "description": "Map node registration and update events to nodes aggregate table.",
+      "acceptanceCriteria": [
+        "Add mapping for Diamond:NodeRegistered -> nodes insert",
+        "Add mapping for Diamond:NodeDeactivated -> nodes update (status)",
+        "Add mapping for Diamond:NodeUpdated -> nodes update",
+        "Add mapping for Diamond:UpdateLocation -> nodes update (lat, lng, address_name)",
+        "Add mapping for Diamond:UpdateStatus -> nodes update (status)",
+        "Run `npm run generate:indexer`"
+      ],
+      "priority": 3,
+      "passes": false,
+      "parallel_group": 3
+    },
+    {
+      "id": "T-010",
+      "title": "Add node_assets event mappings to EVENT_TO_AGGREGATE_MAPPING",
+      "description": "Map node asset events to node_assets aggregate table.",
+      "acceptanceCriteria": [
+        "Add mapping for Diamond:SupportedAssetAdded -> node_assets insert",
+        "Add mapping for Diamond:TokensDepositedToNode -> node_assets update (capacity increment)",
+        "Add mapping for Diamond:TokensWithdrawnFromNode -> node_assets update (capacity decrement)",
+        "Run `npm run generate:indexer`"
+      ],
+      "priority": 3,
+      "passes": false,
+      "parallel_group": 3
+    },
+    {
+      "id": "T-011",
+      "title": "Update journeys event mappings with extended fields",
+      "description": "Update LogisticsOrderCreated mapping to populate sender, receiver, order_id.",
+      "acceptanceCriteria": [
+        "Update Diamond:LogisticsOrderCreated mapping to include sender, receiver from event",
+        "Set order_id = unified_order_id",
+        "Set created_at = block_timestamp",
+        "Run `npm run generate:indexer`",
+        "Verify bridge.generated.ts includes extended fields"
+      ],
+      "priority": 3,
+      "passes": false,
+      "parallel_group": 3
+    },
+    {
+      "id": "T-012",
+      "title": "Create type-safe GraphQL response types",
+      "description": "Create TypeScript types for GraphQL responses that match Ponder's pluralized table names.",
+      "acceptanceCriteria": [
+        "Create `infrastructure/shared/indexer-types.ts`",
+        "Define AssetsGraphQLResponse, OrdersGraphQLResponse, JourneysGraphQLResponse",
+        "Define NodesGraphQLResponse, NodeAssetsGraphQLResponse",
+        "Types use camelCase field names (Ponder auto-converts snake_case to camelCase in GraphQL)",
+        "Include PageInfo type for pagination",
+        "Run `npm run typecheck` passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "parallel_group": 4
+    },
+    {
+      "id": "T-013",
+      "title": "Create type-safe domain mappers",
+      "description": "Create pure functions that convert GraphQL responses to domain types with full type safety.",
+      "acceptanceCriteria": [
+        "Create `infrastructure/shared/mappers.ts`",
+        "Function mapGraphQLAssetToDomain(raw: AssetGraphQLItem): Asset",
+        "Function mapGraphQLOrderToDomain(raw: OrderGraphQLItem): Order",
+        "Function mapGraphQLJourneyToDomain(raw: JourneyGraphQLItem): Journey",
+        "Function mapGraphQLNodeToDomain(raw: NodeGraphQLItem): Node",
+        "All functions have explicit return types, no 'any'",
+        "Run `npm run typecheck` passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "parallel_group": 4
+    },
+    {
+      "id": "T-014",
+      "title": "Create type-safe GraphQL query builder",
+      "description": "Create a typed query builder that ensures query field names match schema.",
+      "acceptanceCriteria": [
+        "Create `infrastructure/shared/query-builder.ts`",
+        "Function buildAssetsQuery(options: AssetsQueryOptions): string",
+        "Function buildOrdersQuery(options: OrdersQueryOptions): string",
+        "Options types enforce valid field names for where clauses",
+        "Run `npm run typecheck` passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "parallel_group": 4
+    },
+    {
+      "id": "T-015",
+      "title": "Write unit test for asset mapper",
+      "description": "TDD: Test that mapGraphQLAssetToDomain correctly transforms data.",
+      "acceptanceCriteria": [
+        "Create `test/unit/mappers/asset-mapper.test.ts`",
+        "Test converts snake_case GraphQL response to camelCase domain type",
+        "Test handles null/undefined optional fields gracefully",
+        "Test tokenId is converted from string to bigint correctly",
+        "Run `npm run test:vitest -- asset-mapper` passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "parallel_group": 5
+    },
+    {
+      "id": "T-016",
+      "title": "Write unit test for order mapper",
+      "description": "TDD: Test that mapGraphQLOrderToDomain correctly transforms data.",
+      "acceptanceCriteria": [
+        "Create `test/unit/mappers/order-mapper.test.ts`",
+        "Test converts status text to OrderStatus enum",
+        "Test location fields are mapped correctly",
+        "Test nodes JSON array is parsed",
+        "Run `npm run test:vitest -- order-mapper` passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "parallel_group": 5
+    },
+    {
+      "id": "T-017",
+      "title": "Write unit test for journey mapper",
+      "description": "TDD: Test that mapGraphQLJourneyToDomain correctly transforms data.",
+      "acceptanceCriteria": [
+        "Create `test/unit/mappers/journey-mapper.test.ts`",
+        "Test converts numeric status to JourneyStatus enum",
+        "Test bounty/eta are converted to bigint",
+        "Test parcelData is constructed from location fields",
+        "Run `npm run test:vitest -- journey-mapper` passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "parallel_group": 5
+    },
+    {
+      "id": "T-018",
+      "title": "Write unit test for node mapper",
+      "description": "TDD: Test that mapGraphQLNodeToDomain correctly transforms data.",
+      "acceptanceCriteria": [
+        "Create `test/unit/mappers/node-mapper.test.ts`",
+        "Test location object is constructed correctly",
+        "Test validNode boolean conversion",
+        "Test status string mapping",
+        "Run `npm run test:vitest -- node-mapper` passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "parallel_group": 5
+    },
+    {
+      "id": "T-019",
+      "title": "Update graph-queries.ts to use snake_case field names",
+      "description": "Update frontend GraphQL queries to match Ponder schema field names.",
+      "acceptanceCriteria": [
+        "Update `infrastructure/shared/graph-queries.ts`",
+        "Change all camelCase fields to snake_case (tokenId -> token_id, etc.)",
+        "Update GET_JOURNEYS_BY_SENDER, GET_ORDERS_BY_BUYER, GET_ALL_ASSETS queries",
+        "Verify queries match PonderAsset, PonderOrder, PonderJourney types",
+        "Run `npm run typecheck` passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "parallel_group": 6
+    },
+    {
+      "id": "T-020",
+      "title": "Update repositories to use type-safe mappers",
+      "description": "Update OrdersRepository to use new typed mappers.",
+      "acceptanceCriteria": [
+        "Update `infrastructure/repositories/orders-repository.ts`",
+        "Import and use mapGraphQLOrderToDomain for all order queries",
+        "Import and use mapGraphQLJourneyToDomain for all journey queries",
+        "Remove inline mapping logic",
+        "Run `npm run typecheck` passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "parallel_group": 6
+    },
+    {
+      "id": "T-021",
+      "title": "Update NodeRepository to use type-safe mappers",
+      "description": "Update NodeRepository to use new typed mappers.",
+      "acceptanceCriteria": [
+        "Update `infrastructure/repositories/node-repository.ts`",
+        "Import and use mapGraphQLNodeToDomain for all node queries",
+        "Import and use mapGraphQLAssetToDomain for asset queries",
+        "Remove inline mapping logic",
+        "Run `npm run typecheck` passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "parallel_group": 6
+    },
+    {
+      "id": "T-022",
+      "title": "Write smoke test for nodes GraphQL query",
+      "description": "Integration test that nodes aggregate table is queryable.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/nodes-query.test.ts`",
+        "Test queries `nodess(limit: 10)` against INDEXER_URL",
+        "Verify response has shape: { nodess: { items: [...] } }",
+        "Verify items have expected fields: id, owner, address_name, lat, lng, valid_node, status",
+        "Test handles empty results gracefully",
+        "Run `cd indexer && npm test -- --grep 'nodes-query'` passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "parallel_group": 7
+    },
+    {
+      "id": "T-023",
+      "title": "Write smoke test for node_assets GraphQL query",
+      "description": "Integration test that node_assets aggregate table is queryable.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/node-assets-query.test.ts`",
+        "Test queries `nodeAssetss(limit: 10)` against INDEXER_URL",
+        "Test queries with node filter: `nodeAssetss(where: { node: $address })`",
+        "Verify items have expected fields: id, node, token, token_id, price, capacity",
+        "Run `cd indexer && npm test -- --grep 'node-assets-query'` passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "parallel_group": 7
+    },
+    {
+      "id": "T-024",
+      "title": "Write smoke test for assets GraphQL query",
+      "description": "Integration test that assets aggregate table is queryable.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/assets-query.test.ts`",
+        "Test queries `assetss(limit: 10)` against INDEXER_URL",
+        "Verify response has shape: { assetss: { items: [...] } }",
+        "Verify items have fields: id, name, asset_class, class_name, hash, account",
+        "Run `cd indexer && npm test -- --grep 'assets-query'` passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "parallel_group": 7
+    },
+    {
+      "id": "T-025",
+      "title": "Write smoke test for orders GraphQL query",
+      "description": "Integration test that orders aggregate table is queryable.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/orders-query.test.ts`",
+        "Test queries `orderss(limit: 10)` against INDEXER_URL",
+        "Test queries with buyer filter: `orderss(where: { buyer: $address })`",
+        "Verify items have fields: id, buyer, seller, token, token_id, price, status",
+        "Run `cd indexer && npm test -- --grep 'orders-query'` passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "parallel_group": 7
+    },
+    {
+      "id": "T-026",
+      "title": "Write smoke test for journeys GraphQL query",
+      "description": "Integration test that journeys aggregate table is queryable.",
+      "acceptanceCriteria": [
+        "Create `indexer/test/smoke/journeys-query.test.ts`",
+        "Test queries `journeyss(limit: 10)` against INDEXER_URL",
+        "Test queries with sender filter: `journeyss(where: { sender: $address })`",
+        "Verify items have fields: id, sender, receiver, driver, status, bounty, order_id",
+        "Run `cd indexer && npm test -- --grep 'journeys-query'` passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "parallel_group": 7
+    },
+    {
+      "id": "T-027",
+      "title": "Write E2E test: Customer creates order, indexer reflects it",
+      "description": "End-to-end test that order creation on-chain appears in indexer.",
+      "acceptanceCriteria": [
+        "Create `e2e/tests/order-indexing.test.ts`",
+        "Test creates order via OrderService.createOrder()",
+        "Test waits for indexer to sync (poll with timeout)",
+        "Test queries orderss(where: { id: $orderId }) and verifies data matches",
+        "Verify buyer, seller, token, price, status fields are correct",
+        "Run `npm run test:e2e -- order-indexing` passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "parallel_group": 8
+    },
+    {
+      "id": "T-028",
+      "title": "Write E2E test: Driver accepts journey, indexer reflects status",
+      "description": "End-to-end test that journey status updates appear in indexer.",
+      "acceptanceCriteria": [
+        "Create `e2e/tests/journey-indexing.test.ts`",
+        "Test creates journey via OrderService.createOrderJourney()",
+        "Test updates status via DriverService.acceptDelivery()",
+        "Test waits for indexer to sync",
+        "Test queries journeyss(where: { id: $journeyId }) and verifies status=1 (Accepted)",
+        "Run `npm run test:e2e -- journey-indexing` passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "parallel_group": 8
+    },
+    {
+      "id": "T-029",
+      "title": "Write E2E test: Node registers, appears in indexer",
+      "description": "End-to-end test that node registration appears in indexer.",
+      "acceptanceCriteria": [
+        "Create `e2e/tests/node-indexing.test.ts`",
+        "Test registers node via NodeService (if available) or direct contract call",
+        "Test waits for indexer to sync",
+        "Test queries nodess(where: { owner: $address }) and verifies node appears",
+        "Verify owner, address_name, lat, lng, valid_node fields are correct",
+        "Run `npm run test:e2e -- node-indexing` passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "parallel_group": 8
+    },
+    {
+      "id": "T-030",
+      "title": "Write E2E test: Asset minted, appears in indexer",
+      "description": "End-to-end test that asset minting appears in indexer.",
+      "acceptanceCriteria": [
+        "Create `e2e/tests/asset-indexing.test.ts`",
+        "Test mints asset via AuraAsset contract or mock event",
+        "Test waits for indexer to sync",
+        "Test queries assetss(where: { id: $tokenId }) and verifies asset appears",
+        "Verify name, asset_class, class_name, hash fields are correct",
+        "Run `npm run test:e2e -- asset-indexing` passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "parallel_group": 8
+    },
+    {
+      "id": "T-031",
+      "title": "Write E2E test: CLOB order placed, status updates correctly",
+      "description": "End-to-end test that CLOB order lifecycle is tracked.",
+      "acceptanceCriteria": [
+        "Create `e2e/tests/clob-order-indexing.test.ts`",
+        "Test places limit order via CLOBService.placeLimitOrder()",
+        "Test waits for indexer to sync",
+        "Test queries orderss and verifies status='OPEN'",
+        "Test cancels order via CLOBService.cancelOrder()",
+        "Test verifies status='CANCELLED' in indexer",
+        "Run `npm run test:e2e -- clob-order-indexing` passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "parallel_group": 8
+    },
+    {
+      "id": "T-032",
+      "title": "Create React hook type tests",
+      "description": "TypeScript compile-time tests ensuring hooks return correct types.",
+      "acceptanceCriteria": [
+        "Create `test/types/hook-types.test-d.ts`",
+        "Use vitest's expectTypeOf to verify useOrderBook returns OrderBook type",
+        "Verify useUserHoldings returns Asset[] type",
+        "Verify useJourneys returns Journey[] type",
+        "Run `npm run test:vitest -- hook-types` passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "parallel_group": 9
+    },
+    {
+      "id": "T-033",
+      "title": "Create repository type tests",
+      "description": "TypeScript compile-time tests ensuring repositories match interfaces.",
+      "acceptanceCriteria": [
+        "Create `test/types/repository-types.test-d.ts`",
+        "Verify OrdersRepository implements IOrderRepository",
+        "Verify NodeRepository implements INodeRepository",
+        "Verify all method signatures match interface definitions",
+        "Run `npm run test:vitest -- repository-types` passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "parallel_group": 9
+    },
+    {
+      "id": "T-034",
+      "title": "Create boundary contract tests for indexer-to-frontend",
+      "description": "Tests that verify the contract between indexer schema and frontend expectations.",
+      "acceptanceCriteria": [
+        "Create `test/contracts/indexer-frontend-contract.test.ts`",
+        "Test that every field in GET_ALL_ASSETS query exists in PonderAsset type",
+        "Test that every field in GET_ORDERS_BY_BUYER query exists in PonderOrder type",
+        "Test that every field in GET_JOURNEYS_BY_SENDER query exists in PonderJourney type",
+        "Use schema introspection or type checking",
+        "Run `npm run test:vitest -- indexer-frontend-contract` passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "parallel_group": 9
+    },
+    {
+      "id": "T-035",
+      "title": "Regenerate all handlers and run full test suite",
+      "description": "Final regeneration and comprehensive test run.",
+      "acceptanceCriteria": [
+        "Run `npm run generate:indexer`",
+        "Run `cd indexer && npx tsc --noEmit` passes",
+        "Run `npm run typecheck` passes (frontend)",
+        "Run `npm run test:vitest` passes (unit tests)",
+        "Run `cd indexer && npm test -- --grep smoke` passes (smoke tests)",
+        "Document any failures in progress.txt"
+      ],
+      "priority": 10,
+      "passes": false,
+      "parallel_group": 10
+    },
+    {
+      "id": "T-036",
+      "title": "Run full E2E test suite against local chain",
+      "description": "Run all E2E tests to verify complete data flow.",
+      "acceptanceCriteria": [
+        "Start local Hardhat node: `npx hardhat node`",
+        "Deploy contracts: `npx hardhat run scripts/deploy.ts --network localhost`",
+        "Start local indexer: `cd indexer && npm run dev`",
+        "Run `npm run test:e2e` passes",
+        "All order, journey, node, asset indexing tests pass",
+        "Document results in progress.txt"
+      ],
+      "priority": 10,
+      "passes": false,
+      "parallel_group": 10
+    },
+    {
+      "id": "T-037",
+      "title": "Document type boundaries in AGENTS.md",
+      "description": "Add documentation about the type-safe data pipeline.",
+      "acceptanceCriteria": [
+        "Update `AGENTS.md` with section on Type Boundaries",
+        "Document: Indexer Schema Types -> GraphQL Response Types -> Domain Types -> UI Props",
+        "Document mapper function locations and naming conventions",
+        "Document how to add new aggregate tables with full type safety",
+        "Include example of adding a new entity end-to-end"
+      ],
+      "priority": 10,
+      "passes": false,
+      "parallel_group": 10
+    }
+  ]
+}

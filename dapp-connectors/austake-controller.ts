@@ -1,10 +1,15 @@
+/**
+ * @deprecated This controller uses legacy contract ABIs.
+ * The Diamond pattern is now in use - see infrastructure/services for new implementations.
+ * This file is kept for reference but should not be used in production.
+ */
 import {
   AddressLike,
   BytesLike,
   ContractTransactionReceipt,
   ContractTransaction,
 } from 'ethers';
-import { AuStake, AuStake__factory } from '@/typechain-types';
+import { AuStake__factory, type AuStake } from '@/lib/contracts';
 import {
   ethersProvider,
   signer,
@@ -26,7 +31,6 @@ const getAuStakeContract = async (): Promise<AuStake> => {
       NEXT_PUBLIC_AUSTAKE_ADDRESS,
       signer,
     );
-    console.log('AuStake contract fetched successfully.');
     return contract;
   } catch (error) {
     console.error('Error fetching AuStake contract:', error);

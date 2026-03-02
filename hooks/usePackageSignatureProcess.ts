@@ -65,9 +65,6 @@ export function usePackageSignatureProcess({
       // Step 1: Get contract and call packageSign
       // Assumes the stored contract in repoContext is connected to the correct signer (current user)
       const contract = repoContext.getAusysContract();
-      console.log(
-        `[usePackageSignatureProcess] Calling packageSign for job: ${jobIdBytes32}`,
-      );
 
       // IMPORTANT: This assumes the current connected user (via repoContext.signer)
       // is either the senderAddress or the driverAddress passed to this hook,
@@ -80,19 +77,12 @@ export function usePackageSignatureProcess({
         jobIdBytes32,
       );
       await tx.wait(); // Wait for transaction confirmation
-      console.log(
-        '[usePackageSignatureProcess] packageSign transaction confirmed.',
-      );
 
       // Step 2: Transaction successful, start listening
       setStatus('waiting');
-      console.log('[usePackageSignatureProcess] Starting listener...');
-      await repoContext.waitForSignaturesForJob(jobId); // Use the string jobId for the listener
+      await repoContext.listenForSignature(jobId, driverAddress); // Listen for driver's signature
 
       // Step 3: Listener resolved successfully
-      console.log(
-        '[usePackageSignatureProcess] Listener resolved successfully.',
-      );
       setStatus('complete');
       setError(null);
     } catch (err) {

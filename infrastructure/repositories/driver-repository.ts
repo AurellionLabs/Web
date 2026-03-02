@@ -2,45 +2,36 @@ import {
   type IDriverRepository,
   type Delivery,
   DeliveryStatus,
-  type ParcelData,
-  type Location,
 } from '@/domain/driver/driver';
-// Commenting out unused Node imports
-// import type {
-//   Node,
-//   NodeRepository,
-//   TokenizedAsset,
-//   AggregateAssetAmount,
-//   NodeLocation,
-//   AssetType,
-// } from '@/domain/node';
-// import { Order } from '@/domain/orders'; // Comment out Order import for now
+import { type ParcelData } from '@/domain/shared';
 
-import { BrowserProvider, ethers, type Signer } from 'ethers'; // Added Signer
-import {
-  LocationContract, // Use LocationContract type
-  LocationContract__factory, // Keep factory if needed elsewhere, maybe not here
-} from '@/typechain-types';
+import { BrowserProvider, ethers, type Signer } from 'ethers';
+import type { Ausys } from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
-// Commenting out unused constants
-// import { NEXT_PUBLIC_AURA_GOAT_ADDRESS } from '@/chain-constants';
+import { graphqlRequest } from './shared/graph';
+import {
+  GET_ALL_JOURNEYS_CREATED,
+  GET_JOURNEYS_BY_DRIVER,
+  extractPonderItems,
+  JourneyCreatedRawEvent,
+  DriverAssignedRawEvent,
+  AuSysJourneyStatusUpdatedRawEvent,
+  AllJourneysCreatedResponse,
+  JourneysByDriverResponse,
+} from './shared/graph-queries';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
 
 /**
  * Infrastructure implementation of the IDriverRepository interface
- * This implementation directly interacts with the Ausys (LocationContract) blockchain contracts
+ * Uses AuSysFacet verbose events for journey data
  */
-// Corrected class name to match export expectation potentially, and implements the right interface
 export class DriverRepository implements IDriverRepository {
-  private ausysContract: LocationContract;
-  private provider: BrowserProvider; // Keep if needed for specific provider calls
-  private signer: Signer; // Keep signer if needed
+  private ausysContract: Ausys;
+  private provider: BrowserProvider;
+  private signer: Signer;
+  private graphQLEndpoint = NEXT_PUBLIC_AUSYS_SUBGRAPH_URL;
 
-  // Constructor accepting the initialized Ausys contract
-  constructor(
-    ausysContract: LocationContract,
-    provider: BrowserProvider, // Keep provider/signer if potentially needed
-    signer: Signer,
-  ) {
+  constructor(ausysContract: Ausys, provider: BrowserProvider, signer: Signer) {
     if (!ausysContract) {
       throw new Error('DriverRepository: Ausys contract instance is required.');
     }
@@ -49,144 +40,169 @@ export class DriverRepository implements IDriverRepository {
     this.signer = signer;
   }
 
-  // --- Helper to map contract Journey status to domain DeliveryStatus ---
-  private mapContractStatusToDomain(
-    contractStatus: bigint | number,
+  /**
+   * Map contract status to domain DeliveryStatus
+   * Contract: 0=Pending, 1=InTransit, 2=Delivered, 3=Canceled
+   */
+  private mapStatusToDomain(
+    status: string | number,
+    driverAddress: string,
   ): DeliveryStatus {
-    // Mapping based on LocationContract enum (Pending, InProgress, Completed, Canceled)
-    // and DeliveryStatus enum (PENDING, ACCEPTED, PICKED_UP, COMPLETED, CANCELED)
-    const statusNum = Number(contractStatus);
+    const statusNum = Number(status);
     switch (statusNum) {
-      case 0: // Contract: Pending
+      case 0: // Pending
+        if (driverAddress && driverAddress !== ethers.ZeroAddress) {
+          return DeliveryStatus.ACCEPTED;
+        }
         return DeliveryStatus.PENDING;
-      case 1: // Contract: InProgress (Assuming this maps to Accepted/PickedUp - let's use ACCEPTED for now)
-        // TODO: Refine this mapping - how to differentiate ACCEPTED vs PICKED_UP?
-        // Does the contract have separate statuses or rely on other flags (e.g., handOn event)?
-        return DeliveryStatus.ACCEPTED;
-      case 2: // Contract: Completed
+      case 1: // InTransit
+        return DeliveryStatus.PICKED_UP;
+      case 2: // Delivered
         return DeliveryStatus.COMPLETED;
-      case 3: // Contract: Canceled
+      case 3: // Canceled
         return DeliveryStatus.CANCELED;
       default:
-        console.warn(`Unknown contract status received: ${statusNum}`);
-        return DeliveryStatus.PENDING; // Default fallback
+        return DeliveryStatus.PENDING;
     }
   }
 
-  // --- Helper to map contract Journey struct to domain Delivery model ---
-  private mapJourneyToDelivery(
-    journey: LocationContract.JourneyStructOutput, // Use the output struct type from TypeChain
+  /**
+   * Convert JourneyCreated event to Delivery domain model
+   */
+  private journeyCreatedToDelivery(
+    event: JourneyCreatedRawEvent,
+    statusEvent?: AuSysJourneyStatusUpdatedRawEvent,
   ): Delivery {
-    const parcelData: ParcelData = {
-      startLocation: {
-        lat: journey.parcelData.startLocation.lat,
-        lng: journey.parcelData.startLocation.lng,
-      },
-      endLocation: {
-        lat: journey.parcelData.endLocation.lat,
-        lng: journey.parcelData.endLocation.lng,
-      },
-      startName: journey.parcelData.startName,
-      endName: journey.parcelData.endName,
-    };
+    // Pay token is AURA (18 decimals) on testnet, USDC (6) in production
+    const bountyFormatted = event.bounty
+      ? ethers.formatUnits(event.bounty, 18)
+      : '0';
+
+    const driver = statusEvent?.driver || event.driver;
+    const status = statusEvent
+      ? this.mapStatusToDomain(statusEvent.new_status, driver)
+      : this.mapStatusToDomain(0, event.driver);
 
     return {
-      jobId: journey.journeyId,
-      customer: journey.sender, // Assuming sender is the customer placing the delivery
-      fee: Number(ethers.formatEther(journey.bounty)), // Convert bounty (BigInt wei) to number (Ether)
-      ETA: Number(journey.ETA), // Convert BigInt timestamp to number
-      deliveryETA: Number(journey.ETA), // Using ETA as deliveryETA, clarify if different field exists
-      currentStatus: this.mapContractStatusToDomain(journey.currentStatus),
-      parcelData: parcelData,
+      jobId: event.journey_id,
+      customer: event.sender,
+      fee: Number(bountyFormatted),
+      ETA: Number(event.e_t_a || '0'),
+      deliveryETA: Number(event.e_t_a || '0'),
+      currentStatus: status,
+      parcelData: {
+        startLocation: { lat: event.start_lat, lng: event.start_lng },
+        endLocation: { lat: event.end_lat, lng: event.end_lng },
+        startName: event.start_name,
+        endName: event.end_name,
+      },
     };
   }
 
-  // --- Implement IDriverRepository methods ---
+  /**
+   * Convert DriverAssigned event to Delivery domain model
+   */
+  private driverAssignedToDelivery(
+    event: DriverAssignedRawEvent,
+    statusEvent?: AuSysJourneyStatusUpdatedRawEvent,
+  ): Delivery {
+    // Pay token is AURA (18 decimals) on testnet, USDC (6) in production
+    const bountyFormatted = event.bounty
+      ? ethers.formatUnits(event.bounty, 18)
+      : '0';
 
+    const status = statusEvent
+      ? this.mapStatusToDomain(statusEvent.new_status, event.driver)
+      : DeliveryStatus.ACCEPTED; // Driver assigned = ACCEPTED
+
+    return {
+      jobId: event.journey_id,
+      customer: event.sender,
+      fee: Number(bountyFormatted),
+      ETA: Number(event.e_t_a || '0'),
+      deliveryETA: Number(event.e_t_a || '0'),
+      currentStatus: status,
+      parcelData: {
+        startLocation: { lat: event.start_lat, lng: event.start_lng },
+        endLocation: { lat: event.end_lat, lng: event.end_lng },
+        startName: event.start_name,
+        endName: event.end_name,
+      },
+    };
+  }
+
+  /**
+   * Get available deliveries (journeys with no driver assigned)
+   */
   async getAvailableDeliveries(): Promise<Delivery[]> {
-    console.log('[DriverRepository] Getting available deliveries...');
-    const availableDeliveries: Delivery[] = [];
-    let index = 1;
-    const MAX_ITERATIONS = 1000; // Safety break for loop
-
     try {
-      while (index < MAX_ITERATIONS) {
-        let journeyId: string;
-        try {
-          // Use numberToJourneyID mapping like in ausys-controller#fetchAllJourneyIds
-          journeyId = await this.ausysContract.numberToJourneyID(index);
-          // Check for zero address or empty bytes32 indicating end of list
-          if (
-            !journeyId ||
-            journeyId === ethers.ZeroHash ||
-            journeyId === ethers.ZeroAddress
-          ) {
-            console.log(
-              `[DriverRepository] End of journey list reached at index ${index}.`,
-            );
-            break;
-          }
-        } catch (error: any) {
-          // Error fetching ID likely means end of list
-          console.log(
-            `[DriverRepository] Error fetching journey ID at index ${index} (likely end):`,
-            error.message,
-          );
-          break;
-        }
-
-        try {
-          const journey = await this.ausysContract.getjourney(journeyId);
-
-          console.log(
-            `[DriverRepository] Processing Journey ID: ${journeyId}`,
-            {
-              status: Number(journey.currentStatus),
-              driver: journey.driver,
-              isPending: Number(journey.currentStatus) === 0,
-              isDriverZero: journey.driver === ethers.ZeroAddress,
-            },
-          );
-
-          // Filter for available: Pending status and no driver assigned
-          if (
-            Number(journey.currentStatus) === 0 && // Status.Pending
-            journey.driver === ethers.ZeroAddress
-          ) {
-            availableDeliveries.push(this.mapJourneyToDelivery(journey));
-          }
-        } catch (journeyError: any) {
-          // Log error fetching specific journey but continue iteration
-          console.error(
-            `[DriverRepository] Failed to fetch journey details for ID ${journeyId}:`,
-            journeyError.message,
-          );
-        }
-        index++;
-      }
-      if (index >= MAX_ITERATIONS) {
-        console.warn(
-          '[DriverRepository] Reached MAX_ITERATIONS limit while fetching available deliveries.',
-        );
-      }
-      console.log(
-        `[DriverRepository] Found ${availableDeliveries.length} available deliveries.`,
+      // Use ALL_JOURNEYS query which includes status updates + driver assignments
+      const response = await graphqlRequest<AllJourneysCreatedResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_JOURNEYS_CREATED,
+        { limit: 200 },
       );
-      return availableDeliveries;
+
+      const journeys = extractPonderItems(
+        response.journeys || { items: [] },
+      ) as JourneyCreatedRawEvent[];
+
+      const statusEvents = extractPonderItems(
+        response.statusUpdates || { items: [] },
+      ) as AuSysJourneyStatusUpdatedRawEvent[];
+
+      const driverAssignments = extractPonderItems(
+        response.driverAssignments || { items: [] },
+      );
+
+      // Build set of journey IDs that have been claimed (driver assigned or status > 0)
+      const claimedJourneyIds = new Set<string>();
+
+      // Any status update means the journey has progressed past Pending
+      statusEvents.forEach((s) => {
+        claimedJourneyIds.add(s.journey_id);
+      });
+
+      // Check driver field in status events
+      statusEvents.forEach((s) => {
+        if (s.driver && s.driver !== ethers.ZeroAddress) {
+          claimedJourneyIds.add(s.journey_id);
+        }
+      });
+
+      // DriverAssigned events — the key filter: a driver was assigned to this journey
+      driverAssignments.forEach((da) => {
+        claimedJourneyIds.add(da.journey_id);
+      });
+
+      // Deduplicate journeys by journey_id (keep latest)
+      const journeyMap = new Map<string, JourneyCreatedRawEvent>();
+      journeys.forEach((j) => {
+        if (!journeyMap.has(j.journey_id)) {
+          journeyMap.set(j.journey_id, j);
+        }
+      });
+
+      // Filter to only journeys that haven't been claimed
+      const availableJourneys = Array.from(journeyMap.values()).filter(
+        (j) => !claimedJourneyIds.has(j.journey_id),
+      );
+
+      const deliveries = availableJourneys.map((j) =>
+        this.journeyCreatedToDelivery(j),
+      );
+
+      return deliveries;
     } catch (error) {
       handleContractError(error, 'get available deliveries');
-      throw error; // Rethrow after handling
+      return [];
     }
   }
 
+  /**
+   * Get deliveries assigned to a specific driver
+   */
   async getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]> {
-    console.log(
-      `[DriverRepository] Getting deliveries for driver: ${driverWalletAddress}`,
-    );
-    const myDeliveries: Delivery[] = [];
-    let index = 1;
-    const MAX_ITERATIONS = 1000; // Safety break
-
     if (!driverWalletAddress) {
       console.error(
         '[DriverRepository] driverWalletAddress is required for getMyDeliveries',
@@ -195,59 +211,59 @@ export class DriverRepository implements IDriverRepository {
     }
 
     try {
-      while (index < MAX_ITERATIONS) {
-        let journeyId: string;
-        try {
-          journeyId = await this.ausysContract.numberToJourneyID(index);
-          if (
-            !journeyId ||
-            journeyId === ethers.ZeroHash ||
-            journeyId === ethers.ZeroAddress
-          ) {
-            console.log(
-              `[DriverRepository] End of journey list reached at index ${index}.`,
-            );
-            break;
-          }
-        } catch (error: any) {
-          console.log(
-            `[DriverRepository] Error fetching journey ID at index ${index} (likely end):`,
-            error.message,
-          );
-          break;
-        }
-
-        try {
-          const journey = await this.ausysContract.getjourney(journeyId);
-          // Filter: Check if the driver address matches
-          if (
-            journey.driver.toLowerCase() === driverWalletAddress.toLowerCase()
-          ) {
-            myDeliveries.push(this.mapJourneyToDelivery(journey));
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[DriverRepository] Failed to fetch journey details for ID ${journeyId}:`,
-            journeyError.message,
-          );
-        }
-        index++;
-      }
-      if (index >= MAX_ITERATIONS) {
-        console.warn(
-          '[DriverRepository] Reached MAX_ITERATIONS limit while fetching driver deliveries.',
-        );
-      }
-      console.log(
-        `[DriverRepository] Found ${myDeliveries.length} deliveries for driver ${driverWalletAddress}.`,
+      const response = await graphqlRequest<JourneysByDriverResponse>(
+        this.graphQLEndpoint,
+        GET_JOURNEYS_BY_DRIVER,
+        { driverAddress: driverWalletAddress.toLowerCase() },
       );
-      return myDeliveries;
+
+      const assignedEvents = extractPonderItems(
+        response.assigned || { items: [] },
+      ) as DriverAssignedRawEvent[];
+
+      const statusEvents = extractPonderItems(
+        response.statusUpdates || { items: [] },
+      ) as AuSysJourneyStatusUpdatedRawEvent[];
+
+      // Create lookup for latest status per journey
+      const statusMap = new Map<string, AuSysJourneyStatusUpdatedRawEvent>();
+      statusEvents.forEach((s) => {
+        const existing = statusMap.get(s.journey_id);
+        if (
+          !existing ||
+          BigInt(s.block_timestamp) > BigInt(existing.block_timestamp)
+        ) {
+          statusMap.set(s.journey_id, s);
+        }
+      });
+
+      // Deduplicate by journey_id — keep the latest event per journey
+      const uniqueAssignments = new Map<string, DriverAssignedRawEvent>();
+      assignedEvents.forEach((event) => {
+        const existing = uniqueAssignments.get(event.journey_id);
+        if (
+          !existing ||
+          BigInt(event.block_timestamp) > BigInt(existing.block_timestamp)
+        ) {
+          uniqueAssignments.set(event.journey_id, event);
+        }
+      });
+
+      // Convert to deliveries
+      const deliveries = Array.from(uniqueAssignments.values()).map(
+        (assigned) => {
+          const latestStatus = statusMap.get(assigned.journey_id);
+          return this.driverAssignedToDelivery(assigned, latestStatus);
+        },
+      );
+
+      return deliveries;
     } catch (error) {
       handleContractError(
         error,
         `get deliveries for driver ${driverWalletAddress}`,
       );
-      throw error; // Rethrow after handling
+      return [];
     }
   }
-} // End of class DriverRepository
+}

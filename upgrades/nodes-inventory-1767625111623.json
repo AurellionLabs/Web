@@ -1,0 +1,19 @@
+{
+  "diamond": "0x2516CAdb7b3d4E94094bC4580C271B8559902e3f",
+  "nodesFacet": "0x66587Da956aeBd9e85dd76b489969b17Ed7b7c09",
+  "erc1155ReceiverFacet": "0xc633B31068729CFF175dcBBee6A7B81EFbc4f2f8",
+  "nodesSelectorsAdded": [
+    "0x0a063811",
+    "0x250b58d4",
+    "0x86f99af0",
+    "0xa3cb5b6e",
+    "0x4794010e",
+    "0x2159e90e",
+    "0x653a5887",
+    "0xe02b8288",
+    "0x294cc9d5"
+  ],
+  "erc1155SelectorsAdded": ["0xf23a6e61", "0xbc197c81", "0x01ffc9a7"],
+  "timestamp": "2026-01-05T14:58:31.623Z",
+  "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF"
+}

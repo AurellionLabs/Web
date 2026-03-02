@@ -1,0 +1,14 @@
+{
+  "diamond": "0x2516CAdb7b3d4E94094bC4580C271B8559902e3f",
+  "nodesFacet": {
+    "address": "0x2E0ba41d538a20D1d63952189Ce47bA144dd8797",
+    "newSelectors": ["0xbcd542d1"]
+  },
+  "clob": {
+    "address": "0x6Bd37f795099849242Ea45696C89270Df4aA9aE2",
+    "quoteToken": "0x2c9678042D52B97D27f2bD2947F7111d93F3dD0D",
+    "feeRecipient": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF"
+  },
+  "timestamp": "2026-01-06T15:16:07.045Z",
+  "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF"
+}

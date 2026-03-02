@@ -1,0 +1,14 @@
+{
+  "diamond": "0x2516CAdb7b3d4E94094bC4580C271B8559902e3f",
+  "facet": "NodesFacet",
+  "newFacetAddress": "0xBc361D68F795c14423Cd565a154dbf7b72e35b05",
+  "selectorsAdded": [
+    "0xf7502631",
+    "0x89a1153c",
+    "0x40ed3118",
+    "0xe1ed5db1",
+    "0xcb24a4b4"
+  ],
+  "timestamp": "2026-01-05T14:48:20.503Z",
+  "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF"
+}

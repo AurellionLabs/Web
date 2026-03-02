@@ -1,16 +1,16 @@
-import { colors } from '@/lib/constants/colors';
 import { Button } from './button';
 import { ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { TokenizedAsset } from '@/app/providers/trade.provider';
+import { TokenizedAssetUI } from '@/app/providers/trade.provider';
+import { formatTokenAmount } from '@/lib/formatters';
 
 type SortConfig = {
-  key: 'quantity' | 'pricePerUnit' | 'totalValue' | null;
+  key: 'name' | 'class' | 'amount' | 'price' | 'totalValue' | null;
   direction: 'asc' | 'desc';
 };
 
 interface TokenizedAssetTableProps {
-  assets: TokenizedAsset[];
+  assets: TokenizedAssetUI[];
   onSort: (key: SortConfig['key']) => void;
   sortConfig: SortConfig;
 }
@@ -22,13 +22,6 @@ export function TokenizedAssetTable({
 }: TokenizedAssetTableProps) {
   const router = useRouter();
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
-  };
-
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800">
       <div className="overflow-x-auto">
@@ -36,12 +29,31 @@ export function TokenizedAssetTable({
           <thead>
             <tr className="text-sm text-gray-400 border-b border-gray-800">
               <th className="h-12 px-4 text-left">Node</th>
-              <th className="h-12 px-4 text-left">Asset Class</th>
+              <th className="h-12 px-4 text-left">
+                Asset Name
+                <Button
+                  variant="ghost"
+                  onClick={() => onSort('name')}
+                  className="h-8 px-2"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </Button>
+              </th>
+              <th className="h-12 px-4 text-left">
+                Asset Class
+                <Button
+                  variant="ghost"
+                  onClick={() => onSort('class')}
+                  className="h-8 px-2"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </Button>
+              </th>
               <th className="h-12 px-4 text-left">
                 Quantity
                 <Button
                   variant="ghost"
-                  onClick={() => onSort('quantity')}
+                  onClick={() => onSort('amount')}
                   className="h-8 px-2"
                 >
                   <ArrowUpDown className="h-4 w-4" />
@@ -51,7 +63,7 @@ export function TokenizedAssetTable({
                 Price per Unit
                 <Button
                   variant="ghost"
-                  onClick={() => onSort('pricePerUnit')}
+                  onClick={() => onSort('price')}
                   className="h-8 px-2"
                 >
                   <ArrowUpDown className="h-4 w-4" />
@@ -72,25 +84,32 @@ export function TokenizedAssetTable({
           <tbody>
             {assets.map((asset) => (
               <tr
-                key={asset.nodeId}
-                onClick={() => router.push(`/customer/trading/${asset.nodeId}`)}
+                key={asset.nodeAddress}
+                onClick={() => router.push(`/customer/trading/${asset.id}`)}
                 className="border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition-colors"
               >
                 <td className="py-4 px-4">
                   <div>
-                    <div className="font-medium">{asset.nodeName}</div>
-                    <div className="text-sm text-gray-400">{asset.nodeId}</div>
+                    <div className="font-medium">
+                      {asset.nodeLocation.addressName}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {asset.nodeAddress}
+                    </div>
                   </div>
                 </td>
                 <td className="py-4 px-4">
-                  <span className="capitalize">{asset.assetClass}</span>
-                </td>
-                <td className="py-4 px-4">{asset.quantity}</td>
-                <td className="py-4 px-4">
-                  {formatCurrency(asset.pricePerUnit)}
+                  <span className="font-medium">{asset.name}</span>
                 </td>
                 <td className="py-4 px-4">
-                  {formatCurrency(asset.totalValue)}
+                  <span className="capitalize">{asset.class}</span>
+                </td>
+                <td className="py-4 px-4">{parseInt(asset.capacity)}</td>
+                <td className="py-4 px-4">
+                  ${formatTokenAmount(asset.price, 0, 2)}
+                </td>
+                <td className="py-4 px-4">
+                  ${formatTokenAmount(String(asset.totalValue), 0, 2)}
                 </td>
               </tr>
             ))}

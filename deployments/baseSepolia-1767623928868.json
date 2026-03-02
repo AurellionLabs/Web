@@ -1,0 +1,12 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "deployer": "0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF",
+  "contracts": {
+    "AurumNodeManager": {
+      "address": "0x6482Bf07f158D6ca7E6431c95d660a5D21eE505c",
+      "blockNumber": 35927819
+    }
+  },
+  "timestamp": "2026-01-05T14:38:48.868Z"
+}

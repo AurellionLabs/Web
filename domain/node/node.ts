@@ -1,28 +1,36 @@
 /**
- * Node Management Domain Interfaces
+ * Node Management Domain Interfaces - REFACTORED
  *
- * This file contains the domain interfaces for the node management system.
- * These interfaces define the core domain models and their relationships.
+ * This file contains the updated domain interfaces that align with the
+ * refactored smart contracts (Asset struct instead of separate arrays)
  */
 
-import { LocationContract } from '@/typechain-types';
+import { Asset } from '@/domain/shared';
+import { Order } from '@/domain/orders/order';
+/**
+ * Asset as stored on a node - matches contract Asset struct
+ */
+export interface NodeAsset {
+  token: string; // Contract address of the token
+  tokenId: string; // Token ID (converted from BigInt to string for domain)
+  price: bigint; // Price in wei (kept as BigInt for precision)
+  capacity: number; // Available capacity (converted from BigInt to number)
+}
 
 /**
- * Core node entity
+ * Core node entity - SIMPLIFIED STRUCTURE
  */
 export interface Node {
   address: string;
   location: NodeLocation;
-  validNode: string; // bytes1
+  validNode: boolean; // Changed from string to boolean (contract now uses bool)
   owner: string;
-  supportedAssets: number[];
+  assets: NodeAsset[]; // SIMPLIFIED: Single assets array instead of separate arrays
   status: 'Active' | 'Inactive';
-  capacity: number[];
-  assetPrices: number[];
 }
 
 /**
- * Location data for a node
+ * Location data for a node (unchanged)
  */
 export interface NodeLocation {
   addressName: string;
@@ -33,22 +41,7 @@ export interface NodeLocation {
 }
 
 /**
- * Asset types supported by nodes
- */
-export enum AssetType {
-  GOAT = 1,
-  SHEEP = 2,
-  COW = 3,
-  CHICKEN = 4,
-  DUCK = 5,
-}
-
-/**
- * Order status types
- */
-
-/**
- * Resource data
+ * Resource data (unchanged)
  */
 export interface AggregateAssetAmount {
   id: number;
@@ -56,12 +49,14 @@ export interface AggregateAssetAmount {
 }
 
 /**
- * Tokenized asset representation
+ * Tokenized asset representation (updated for new structure)
  */
 export interface TokenizedAsset {
-  id: number;
+  id: string;
   amount: string;
   name: string;
+  class: string;
+  fileHash: string;
   status: string;
   nodeAddress: string;
   nodeLocation: NodeLocation;
@@ -69,26 +64,40 @@ export interface TokenizedAsset {
   capacity: string;
 }
 
-/**
- * Order information
- */
+export interface TokenizedAssetAttribute {
+  name: string;
+  value: string;
+  description: string;
+}
 
 /**
- * Node repository interface
+ * Supporting document attached to a node
+ * Used for certifications, audits, licenses, etc.
+ */
+export interface SupportingDocument {
+  url: string;
+  title: string;
+  description: string;
+  documentType: string;
+  isFrozen: boolean; // Auto-detected: true if IPFS/Arweave URL
+  isRemoved: boolean;
+  addedAt: number; // Unix timestamp
+  removedAt?: number; // Unix timestamp, undefined if not removed
+  addedBy: string; // Address that added the document
+  removedBy?: string; // Address that removed, undefined if not removed
+}
+
+/**
+ * Node repository interface - UPDATED for new structure
  */
 export interface NodeRepository {
   getNode(nodeAddress: string): Promise<Node | null>;
   getOwnedNodes(ownerAddress: string): Promise<string[]>;
-  registerNode(nodeData: Node): Promise<string>;
-  updateNodeStatus(
-    nodeAddress: string,
-    status: 'Active' | 'Inactive',
-  ): Promise<void>;
   checkIfNodeExists(ownerAddress: string): Promise<boolean>;
   getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'>;
   getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]>;
   getAllNodeAssets(): Promise<TokenizedAsset[]>;
-  getNodeOrders(nodeAddress: string): Promise<LocationContract.OrderStruct[]>;
+  getNodeOrders(nodeHash: string, ownerAddress?: string): Promise<Order[]>;
   loadAvailableAssets(): Promise<AggregateAssetAmount[]>;
   getAssetBalance(
     ownerAddress: string,
@@ -96,48 +105,115 @@ export interface NodeRepository {
     assetName: string,
     attributes: string[],
   ): Promise<number>;
+  getAssetAttributes(fileHash: string): Promise<TokenizedAssetAttribute[]>;
+  getSupportingDocuments(nodeHash: string): Promise<SupportingDocument[]>;
 }
 
 /**
- * Node asset service interface
+ * Node asset service interface - UPDATED for new Asset struct
+ *
+ * Note: mintAsset no longer takes a price parameter. Price is set
+ * exclusively when placing sell orders on the CLOB.
  */
 export interface INodeAssetService {
-  mintAsset(
-    nodeAddress: string,
-    assetId: number,
-    amount: number,
-  ): Promise<void>;
+  mintAsset(nodeAddress: string, asset: Asset, amount: number): Promise<void>;
+
+  // Updated to work with NodeAsset instead of separate arrays
   updateAssetCapacity(
     nodeAddress: string,
-    assetId: number,
+    assetToken: string,
+    assetTokenId: string,
     newCapacity: number,
-    supportedAssets: number[],
-    capacities: number[],
-    assetPrices: number[],
   ): Promise<void>;
+
   updateAssetPrice(
     nodeAddress: string,
-    assetId: number,
-    newPrice: number,
-    supportedAssets: number[],
-    assetPrices: number[],
+    assetToken: string,
+    assetTokenId: string,
+    newPrice: bigint,
   ): Promise<void>;
+
+  // Updated to work with NodeAsset array
   updateSupportedAssets(
     nodeAddress: string,
-    quantities: number[],
-    assets: number[],
-    prices: number[],
+    assets: NodeAsset[],
   ): Promise<void>;
 }
 
 /**
- * Node handoff service interface
+ * Node service interface for document management
  */
+export interface INodeService {
+  registerNode(nodeData: Node): Promise<string>;
+  updateNodeStatus(
+    nodeHash: string,
+    status: 'Active' | 'Inactive',
+  ): Promise<void>;
+  updateNodeLocation(
+    nodeHash: string,
+    addressName: string,
+    lat: string,
+    lng: string,
+  ): Promise<void>;
+  addSupportingDocument(
+    nodeHash: string,
+    url: string,
+    title: string,
+    description: string,
+    documentType: string,
+  ): Promise<boolean>; // Returns isFrozen
+  removeSupportingDocument(nodeHash: string, url: string): Promise<void>;
+}
 
 /**
- * Order repository interface
+ * Helper type for contract interactions
  */
-export interface OrderRepository {
-  customerMakeOrder(orderData: LocationContract.OrderStruct): Promise<void>;
-  getOrders(): Promise<LocationContract.OrderStruct[]>;
+export interface ContractAssetStruct {
+  token: string;
+  tokenId: bigint;
+  price: bigint;
+  capacity: bigint;
 }
+
+/**
+ * Conversion utilities
+ */
+export const NodeAssetConverters = {
+  /**
+   * Convert domain NodeAsset to contract Asset struct
+   */
+  toContractStruct(nodeAsset: NodeAsset): ContractAssetStruct {
+    return {
+      token: nodeAsset.token,
+      tokenId: BigInt(nodeAsset.tokenId),
+      price: nodeAsset.price,
+      capacity: BigInt(nodeAsset.capacity),
+    };
+  },
+
+  /**
+   * Convert contract Asset struct to domain NodeAsset
+   */
+  fromContractStruct(contractAsset: ContractAssetStruct): NodeAsset {
+    return {
+      token: contractAsset.token,
+      tokenId: contractAsset.tokenId.toString(),
+      price: contractAsset.price,
+      capacity: Number(contractAsset.capacity),
+    };
+  },
+
+  /**
+   * Convert domain status to contract bytes1
+   */
+  statusToBytes1(status: 'Active' | 'Inactive'): string {
+    return status === 'Active' ? '0x01' : '0x00';
+  },
+
+  /**
+   * Convert contract bytes1 to domain status
+   */
+  bytes1ToStatus(bytes1: string): 'Active' | 'Inactive' {
+    return bytes1 === '0x01' ? 'Active' : 'Inactive';
+  },
+};

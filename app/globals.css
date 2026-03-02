@@ -2,85 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
+/* ============================================
+   AURELLION PROTOCOL — NERV × GREEK PHILOSOPHY
+   Evangelion technical UI + Classical aesthetics
+   Non-rectangular. Aggressive shapes. Philosophy.
+   ============================================ */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    /* === Surface Colors (Obsidian base) === */
+    --surface-base: 0 0% 5%;
+    --surface-elevated: 0 0% 8%;
+    --surface-overlay: 0 0% 11%;
+
+    /* === EVA Color System === */
+    --gold: 43 65% 62%;
+    --gold-light: 43 50% 75%;
+    --gold-dark: 43 50% 40%;
+    --crimson: 0 70% 38%;
+    --crimson-dark: 0 55% 22%;
+    --obsidian: 0 0% 5%;
+    --marble: 40 20% 92%;
+
+    /* === Primary Accent Scale (Gold) === */
+    --accent-50: 48 100% 96%;
+    --accent-100: 48 96% 89%;
+    --accent-200: 48 97% 77%;
+    --accent-300: 46 97% 65%;
+    --accent-400: 43 96% 56%;
+    --accent-500: 38 92% 50%;
+    --accent-600: 32 95% 44%;
+    --accent-700: 26 90% 37%;
+    --accent-800: 23 83% 31%;
+    --accent-900: 22 78% 26%;
+
+    /* === Secondary Accent Scale (Red/Crimson) === */
+    --red-50: 0 86% 97%;
+    --red-100: 0 93% 94%;
+    --red-200: 0 96% 89%;
+    --red-300: 0 94% 82%;
+    --red-400: 0 91% 71%;
+    --red-500: 0 84% 60%;
+    --red-600: 0 72% 51%;
+    --red-700: 0 74% 42%;
+    --red-800: 0 70% 35%;
+    --red-900: 0 63% 31%;
+
+    /* === Trading Colors === */
+    --trading-buy: 142 71% 45%;
+    --trading-sell: 0 84% 60%;
+    --trading-buy-muted: 142 71% 45% / 0.15;
+    --trading-sell-muted: 0 84% 60% / 0.15;
+
+    /* === Glass Morphism === */
+    --glass-bg: 0 0% 100% / 0.03;
+    --glass-border: 0 0% 100% / 0.08;
+    --glass-hover: 0 0% 100% / 0.06;
+
+    /* === Semantic Tokens (EVA-aligned) === */
+    --background: var(--obsidian);
+    --foreground: 40 15% 88%;
+    --card: 0 0% 8%;
+    --card-foreground: 40 15% 88%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 40 15% 88%;
+    --primary: 43 60% 62%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 60% 30%;
+    --secondary-foreground: 40 15% 92%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 40 8% 55%;
+    --accent: 0 65% 35%;
+    --accent-foreground: 40 15% 92%;
+    --destructive: 0 84% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 43 18% 22%;
+    --input: 0 0% 14%;
+    --ring: 43 60% 62%;
+
+    /* === Chart Colors === */
+    --chart-1: 43 60% 62%;
+    --chart-2: 0 60% 35%;
+    --chart-3: 43 30% 45%;
+    --chart-4: 0 40% 25%;
+    --chart-5: 43 40% 72%;
+
+    /* === Layout === */
+    --radius: 0.125rem;
+    --header-height: 64px;
+
+    /* === Sidebar === */
+    --sidebar-background: var(--surface-elevated);
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: var(--accent-500);
+    --sidebar-primary-foreground: 0 0% 2%;
+    --sidebar-accent: var(--accent-500) / 0.1;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--accent-500);
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: var(--obsidian);
+    --foreground: 40 15% 88%;
   }
 }
 
@@ -88,7 +112,1096 @@ body {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  html {
+    scroll-behavior: smooth;
   }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      var(--font-sans),
+      'Plus Jakarta Sans',
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+
+  /* Serif for headings — the Greek philosophy voice */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif), 'Playfair Display', 'Georgia', serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 0.9;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-mono), 'Space Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.8125rem;
+  }
+
+  /* Angular scrollbar — no border-radius */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(0 0% 7%);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(43 56% 56% / 0.2);
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(43 56% 56% / 0.4);
+  }
+
+  /* Selection — gold tinted */
+  ::selection {
+    background: hsl(43 56% 56% / 0.2);
+    color: hsl(43 30% 90%);
+  }
+}
+
+/* ============================================
+   EVA BACKGROUND PATTERNS
+   ============================================ */
+
+/* Horizontal CRT scan lines — Evangelion monitor feel */
+.eva-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(139, 26, 26, 0.015) 2px,
+    rgba(139, 26, 26, 0.015) 4px
+  );
+  pointer-events: none;
+}
+
+/* Technical grid overlay — NERV control room */
+.eva-grid {
+  background-image: linear-gradient(
+      rgba(197, 165, 90, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(197, 165, 90, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Hexagonal dot pattern — AT Field texture */
+.eva-hex-pattern {
+  background-image: radial-gradient(
+    circle,
+    rgba(197, 165, 90, 0.04) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* Diagonal hazard stripes — Eva warning tape */
+.eva-hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    rgba(139, 26, 26, 0.08) 4px,
+    rgba(139, 26, 26, 0.08) 8px
+  );
+}
+
+/* ============================================
+   EVA ANIMATIONS
+   ============================================ */
+
+/* Ticker / Marquee scroll */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-ticker {
+  animation: ticker 60s linear infinite;
+}
+
+@keyframes ticker-fast {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-ticker-fast {
+  animation: ticker-fast 25s linear infinite;
+}
+
+/* EVA pulse — status indicator breathing */
+@keyframes eva-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.animate-eva-pulse {
+  animation: eva-pulse 3s ease-in-out infinite;
+}
+
+/* Fade in up — entrance animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+.animate-fade-in-up-delay {
+  animation: fade-in-up 0.8s ease-out 0.2s forwards;
+  opacity: 0;
+}
+.animate-fade-in-up-delay-2 {
+  animation: fade-in-up 0.8s ease-out 0.4s forwards;
+  opacity: 0;
+}
+
+/* Spin keyframe for reticle animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* General keyframes */
+@keyframes flash-green {
+  0% {
+    background-color: hsl(var(--trading-buy) / 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes flash-red {
+  0% {
+    background-color: hsl(var(--trading-sell) / 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes pulse-status {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(1.2);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Mono trading font */
+  .font-mono-trading {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* === Gradient Text === */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--accent-300)) 0%,
+      hsl(var(--red-400)) 50%,
+      hsl(var(--accent-500)) 100%
+    );
+  }
+
+  .gradient-text-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      #fcd34d 0%,
+      #f59e0b 50%,
+      #d97706 100%
+    );
+  }
+
+  .gradient-text-red-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      #fbbf24 0%,
+      #ef4444 50%,
+      #f59e0b 100%
+    );
+  }
+
+  /* === Glass Morphism === */
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border));
+  }
+
+  .glass-hover {
+    @apply glass transition-all duration-300;
+  }
+
+  .glass-hover:hover {
+    background: hsl(var(--glass-hover));
+    border-color: hsl(var(--accent-500) / 0.3);
+  }
+
+  .glass-card {
+    @apply glass p-6;
+  }
+
+  /* === Glow Effects === */
+  .glow-accent {
+    box-shadow:
+      0 0 20px hsl(var(--accent-500) / 0.4),
+      0 0 40px hsl(var(--accent-500) / 0.2);
+  }
+
+  .glow-accent-sm {
+    box-shadow:
+      0 0 10px hsl(var(--accent-500) / 0.3),
+      0 0 20px hsl(var(--accent-500) / 0.15);
+  }
+
+  .glow-accent-lg {
+    box-shadow:
+      0 0 40px hsl(var(--accent-500) / 0.5),
+      0 0 80px hsl(var(--accent-500) / 0.25);
+  }
+
+  .glow-red {
+    box-shadow:
+      0 0 20px hsl(var(--red-500) / 0.4),
+      0 0 40px hsl(var(--red-500) / 0.2);
+  }
+
+  .glow-buy {
+    box-shadow:
+      0 0 20px hsl(var(--trading-buy) / 0.3),
+      0 0 40px hsl(var(--trading-buy) / 0.1);
+  }
+
+  .glow-sell {
+    box-shadow:
+      0 0 20px hsl(var(--trading-sell) / 0.3),
+      0 0 40px hsl(var(--trading-sell) / 0.1);
+  }
+
+  .text-glow-accent {
+    text-shadow: 0 0 20px hsl(var(--accent-500) / 0.5);
+  }
+
+  .text-glow-red {
+    text-shadow: 0 0 20px hsl(var(--red-500) / 0.5);
+  }
+
+  /* === EVA Color Utilities === */
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+  .text-crimson {
+    color: hsl(var(--crimson));
+  }
+  .bg-gold {
+    background-color: hsl(var(--gold));
+  }
+  .bg-crimson {
+    background-color: hsl(var(--crimson));
+  }
+  .border-gold {
+    border-color: hsl(var(--gold));
+  }
+  .border-crimson {
+    border-color: hsl(var(--crimson));
+  }
+
+  /* === Background Gradients === */
+  .bg-gradient-radial {
+    background: radial-gradient(
+      ellipse at center,
+      hsl(var(--accent-900) / 0.3) 0%,
+      transparent 70%
+    );
+  }
+
+  .bg-gradient-mesh {
+    background: radial-gradient(
+        at 40% 20%,
+        hsl(var(--red-900) / 0.3) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 80% 0%,
+        hsl(var(--accent-800) / 0.3) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 0% 50%,
+        hsl(var(--red-800) / 0.15) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 80% 50%,
+        hsl(var(--accent-700) / 0.2) 0px,
+        transparent 50%
+      ),
+      radial-gradient(
+        at 0% 100%,
+        hsl(var(--accent-900) / 0.3) 0px,
+        transparent 50%
+      ),
+      hsl(var(--surface-base));
+  }
+
+  .bg-grid-pattern {
+    background-image: linear-gradient(
+        hsl(var(--glass-border)) 1px,
+        transparent 1px
+      ),
+      linear-gradient(90deg, hsl(var(--glass-border)) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* === Surface Styles === */
+  .surface-base {
+    background: hsl(var(--surface-base));
+  }
+  .surface-elevated {
+    background: hsl(var(--surface-elevated));
+  }
+  .surface-overlay {
+    background: hsl(var(--surface-overlay));
+  }
+
+  /* === Trading Specific === */
+  .price-up {
+    @apply text-green-500;
+  }
+  .price-down {
+    @apply text-red-500;
+  }
+  .price-flash-up {
+    animation: flash-green 0.5s ease-out;
+  }
+  .price-flash-down {
+    animation: flash-red 0.5s ease-out;
+  }
+  .orderbook-bid-depth {
+    background: linear-gradient(
+      to left,
+      hsl(var(--trading-buy) / var(--depth-opacity, 0.15)) 0%,
+      transparent 100%
+    );
+  }
+  .orderbook-ask-depth {
+    background: linear-gradient(
+      to right,
+      hsl(var(--trading-sell) / var(--depth-opacity, 0.15)) 0%,
+      transparent 100%
+    );
+  }
+
+  /* === Border Utilities === */
+  .border-glow {
+    border: 1px solid hsl(var(--accent-500) / 0.3);
+  }
+  .border-glass {
+    border: 1px solid hsl(var(--glass-border));
+  }
+
+  /* === Focus States === */
+  .focus-glow:focus {
+    @apply outline-none ring-2 ring-offset-2;
+    ring-color: hsl(var(--accent-500));
+    ring-offset-color: hsl(var(--surface-base));
+  }
+
+  /* === Status Indicators === */
+  .status-live {
+    @apply relative;
+  }
+  .status-live::before {
+    content: '';
+    @apply absolute -left-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    animation: pulse-status 2s ease-in-out infinite;
+  }
+
+  /* === Hover Effects === */
+  .hover-lift {
+    @apply transition-transform duration-300;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+  .hover-glow {
+    @apply transition-shadow duration-300;
+  }
+  .hover-glow:hover {
+    @apply glow-accent-sm;
+  }
+}
+
+@layer components {
+  /* === Button Variants === */
+  .btn-glow {
+    @apply relative overflow-hidden;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--red-600)) 0%,
+      hsl(var(--accent-500)) 100%
+    );
+  }
+  .btn-glow::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--red-500)) 0%,
+      hsl(var(--accent-400)) 100%
+    );
+  }
+  .btn-glow:hover::before {
+    @apply opacity-100;
+  }
+  .btn-glow:hover {
+    @apply glow-accent;
+  }
+
+  /* === Card Variants === */
+  .card-trading {
+    @apply glass border-glass;
+  }
+  .card-elevated {
+    @apply surface-elevated border border-glass;
+  }
+
+  /* === Table Styles === */
+  .table-trading {
+    @apply w-full font-mono-trading text-sm;
+  }
+  .table-trading th {
+    @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider;
+  }
+  .table-trading td {
+    @apply px-4 py-3 border-t border-glass;
+  }
+  .table-trading tr:hover {
+    @apply bg-white/[0.02];
+  }
+
+  /* === Input Styles === */
+  .input-trading {
+    @apply w-full px-4 py-3 font-mono-trading;
+    @apply surface-elevated border border-glass;
+    @apply focus:outline-none focus:border-accent-500/50 focus:glow-accent-sm;
+    @apply transition-all duration-200;
+  }
+
+  /* === Tab Styles === */
+  .tabs-trading {
+    @apply flex gap-1 p-1 surface-elevated;
+  }
+  .tab-trading {
+    @apply px-4 py-2 text-sm font-medium transition-all duration-200;
+    @apply text-muted-foreground hover:text-foreground;
+    font-family: var(--font-mono), monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.75rem;
+  }
+  .tab-trading[data-state='active'],
+  .tab-trading.active {
+    @apply text-amber-400;
+    background: hsl(var(--gold) / 0.08);
+  }
+}
+
+/* === Animation Utilities === */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background-size: 200% 100%;
+}
+.animate-gradient {
+  animation: gradient-shift 8s ease infinite;
+  background-size: 200% 200%;
+}
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+/* Staggered animation delays */
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+.stagger-4 {
+  animation-delay: 0.4s;
+}
+.stagger-5 {
+  animation-delay: 0.5s;
+}
+
+/* ============================================
+   AURELLION DOCS — MARKDOWN CONTENT STYLES
+   NERV × Greek Philosophy — EVA aesthetic
+   ============================================ */
+
+/* ── TYPOGRAPHY ── */
+.doc-content {
+  @apply text-foreground/75 leading-7 text-sm;
+}
+
+.doc-content h1 {
+  font-family: var(--font-serif), 'Playfair Display', serif;
+  @apply text-3xl md:text-4xl text-foreground mt-10 mb-4;
+  background-image: linear-gradient(
+    135deg,
+    hsl(var(--accent-300)) 0%,
+    hsl(var(--red-400)) 60%,
+    hsl(var(--accent-500)) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+}
+
+.doc-content h2 {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  @apply text-xs font-bold tracking-[0.18em] uppercase text-gold/80 mt-10 mb-4;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(43 18% 18%);
+  position: relative;
+}
+.doc-content h2::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 2.5rem;
+  height: 2px;
+  background: hsl(var(--gold));
+}
+
+.doc-content h3 {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  @apply text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/60 mt-7 mb-3;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.doc-content h3::before {
+  content: '▶';
+  color: hsl(var(--crimson));
+  font-size: 7px;
+  opacity: 0.6;
+}
+
+.doc-content h4 {
+  font-family: var(--font-mono), monospace;
+  @apply text-[10px] tracking-[0.12em] uppercase text-foreground/40 mt-5 mb-2;
+}
+
+.doc-content p {
+  @apply mb-4 text-foreground/65 leading-7;
+}
+
+.doc-content strong {
+  @apply text-foreground/90 font-semibold;
+}
+
+.doc-content em {
+  @apply text-foreground/60 italic;
+}
+
+/* ── LINKS ── */
+.doc-content a {
+  @apply text-gold/80 underline underline-offset-2 decoration-gold/30 transition-all duration-200;
+}
+.doc-content a:hover {
+  @apply text-gold decoration-gold/60;
+  text-shadow: 0 0 12px hsl(var(--gold) / 0.25);
+}
+
+/* ── LISTS ── */
+.doc-content ul {
+  @apply mb-4 space-y-1.5;
+  padding-left: 0;
+  list-style: none;
+}
+.doc-content ul li {
+  @apply relative pl-4 text-foreground/65;
+}
+.doc-content ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 6px;
+  height: 6px;
+  border: 1px solid hsl(var(--gold) / 0.4);
+  transform: rotate(45deg);
+}
+.doc-content ul ul li::before {
+  border-color: hsl(var(--crimson) / 0.35);
+  width: 4px;
+  height: 4px;
+}
+
+.doc-content ol {
+  @apply mb-4 space-y-1.5;
+  counter-reset: doc-counter;
+  padding-left: 0;
+  list-style: none;
+}
+.doc-content ol li {
+  @apply relative pl-8 text-foreground/65;
+  counter-increment: doc-counter;
+}
+.doc-content ol li::before {
+  content: counter(doc-counter, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.625rem;
+  color: hsl(var(--crimson) / 0.6);
+  letter-spacing: 0.05em;
+  top: 0.15em;
+}
+
+/* ── INLINE CODE ── */
+.doc-content code:not(pre code) {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.8em;
+  padding: 0.15em 0.45em;
+  border: 1px solid hsl(43 18% 22%);
+  color: hsl(var(--accent-300));
+  background: hsl(0 0% 8%);
+}
+
+/* ── CODE BLOCKS ── */
+.doc-content pre {
+  @apply mb-6 overflow-x-auto;
+  background: hsl(0 0% 5%) !important;
+  border: 1px solid hsl(43 18% 18%);
+  border-left: 3px solid hsl(var(--gold) / 0.4);
+  padding: 1.25rem 1.5rem;
+  position: relative;
+}
+.doc-content pre::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid hsl(var(--crimson) / 0.4);
+  border-right: 1px solid hsl(var(--crimson) / 0.4);
+}
+.doc-content pre code {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  color: hsl(0 0% 72%) !important;
+}
+
+/* Highlight.js — custom EVA colour overrides */
+.hljs-comment,
+.hljs-quote {
+  color: hsl(43 15% 38%) !important;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag {
+  color: hsl(0 65% 60%) !important;
+}
+.hljs-string,
+.hljs-attr {
+  color: hsl(43 70% 65%) !important;
+}
+.hljs-number,
+.hljs-literal {
+  color: hsl(200 60% 65%) !important;
+}
+.hljs-built_in,
+.hljs-type {
+  color: hsl(43 50% 55%) !important;
+}
+.hljs-function,
+.hljs-title {
+  color: hsl(43 65% 70%) !important;
+}
+.hljs-params {
+  color: hsl(0 0% 60%) !important;
+}
+.hljs-variable {
+  color: hsl(0 0% 70%) !important;
+}
+.hljs-meta {
+  color: hsl(200 50% 55%) !important;
+}
+.hljs-deletion {
+  color: hsl(0 70% 55%) !important;
+  background: hsl(0 70% 55% / 0.1) !important;
+}
+.hljs-addition {
+  color: hsl(142 50% 55%) !important;
+  background: hsl(142 50% 55% / 0.1) !important;
+}
+
+/* ── TABLES ── */
+.doc-table-wrap {
+  @apply mb-6 overflow-x-auto;
+  border: 1px solid hsl(43 18% 18%);
+}
+
+.doc-table {
+  @apply w-full border-collapse;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.75rem;
+}
+
+.doc-table thead tr {
+  background: hsl(0 0% 7%);
+  border-bottom: 2px solid hsl(43 18% 20%);
+}
+
+.doc-table thead th {
+  @apply px-4 py-2.5 text-left;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: hsl(var(--gold) / 0.7);
+  font-weight: 700;
+  border-right: 1px solid hsl(43 18% 14%);
+  white-space: nowrap;
+}
+.doc-table thead th:last-child {
+  border-right: none;
+}
+
+.doc-table tbody tr {
+  border-bottom: 1px solid hsl(43 18% 12%);
+  transition: background 0.15s;
+}
+.doc-table tbody tr:hover {
+  background: hsl(0 0% 100% / 0.02);
+}
+.doc-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.doc-table tbody td {
+  @apply px-4 py-2.5 text-foreground/55 align-top;
+  border-right: 1px solid hsl(43 18% 10%);
+  line-height: 1.5;
+}
+.doc-table tbody td:last-child {
+  border-right: none;
+}
+.doc-table tbody td:first-child {
+  color: hsl(var(--gold) / 0.6);
+}
+
+/* ── BLOCKQUOTES ── */
+.doc-content blockquote {
+  @apply mb-5;
+  border-left: 3px solid hsl(var(--crimson) / 0.4);
+  background: hsl(0 0% 7%);
+  padding: 1rem 1.25rem;
+  position: relative;
+}
+.doc-content blockquote::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid hsl(var(--crimson) / 0.3);
+  border-left: 1px solid hsl(var(--crimson) / 0.3);
+}
+.doc-content blockquote p {
+  @apply mb-0 text-foreground/50 italic text-sm;
+}
+
+/* ── CALLOUTS ── */
+.doc-callout {
+  @apply mb-5 p-4;
+  border: 1px solid;
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 12px) 0,
+    100% 12px,
+    100% 100%,
+    12px 100%,
+    0 calc(100% - 12px)
+  );
+}
+.doc-callout::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.doc-callout-note,
+.doc-callout-info {
+  border-color: hsl(200 50% 30%);
+  background: hsl(200 50% 10% / 0.4);
+}
+.doc-callout-note::before,
+.doc-callout-info::before {
+  border-top: 1px solid hsl(200 50% 40%);
+  border-right: 1px solid hsl(200 50% 40%);
+}
+.doc-callout-tip,
+.doc-callout-success {
+  border-color: hsl(142 40% 25%);
+  background: hsl(142 40% 8% / 0.4);
+}
+.doc-callout-warning,
+.doc-callout-caution,
+.doc-callout-important {
+  border-color: hsl(43 50% 30%);
+  background: hsl(43 50% 8% / 0.4);
+}
+.doc-callout-warning::before,
+.doc-callout-caution::before {
+  border-top: 1px solid hsl(43 60% 45%);
+  border-right: 1px solid hsl(43 60% 45%);
+}
+.doc-callout-danger {
+  border-color: hsl(0 50% 30%);
+  background: hsl(0 50% 8% / 0.4);
+}
+.doc-callout-danger::before {
+  border-top: 1px solid hsl(0 60% 45%);
+  border-right: 1px solid hsl(0 60% 45%);
+}
+
+.doc-callout-title {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+.doc-callout-note .doc-callout-title,
+.doc-callout-info .doc-callout-title {
+  color: hsl(200 60% 60%);
+}
+.doc-callout-tip .doc-callout-title,
+.doc-callout-success .doc-callout-title {
+  color: hsl(142 60% 50%);
+}
+.doc-callout-warning .doc-callout-title,
+.doc-callout-caution .doc-callout-title {
+  color: hsl(43 70% 55%);
+}
+.doc-callout-danger .doc-callout-title {
+  color: hsl(0 70% 55%);
+}
+.doc-callout-important .doc-callout-title {
+  color: hsl(43 70% 55%);
+}
+.doc-callout p {
+  @apply mb-0 text-xs;
+}
+
+/* ── HR ── */
+.doc-content hr {
+  @apply my-8;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    hsl(43 18% 20%),
+    transparent
+  );
+  position: relative;
+}
+.doc-content hr::after {
+  content: '◇';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: hsl(var(--gold) / 0.3);
+  background: hsl(var(--background));
+  padding: 0 0.5rem;
+}
+
+/* ── ASCII DIAGRAMS (pre without lang) ── */
+.doc-content pre:has(code.language-plaintext) {
+  border-left-color: hsl(var(--crimson) / 0.3);
+}
+.doc-content pre:has(code.language-plaintext) code {
+  color: hsl(0 0% 55%) !important;
+  font-size: 0.72rem;
+}
+
+/* ── FIRST PARAGRAPH LEAD ── */
+.doc-content > p:first-of-type {
+  @apply text-base text-foreground/70;
+}
+
+/* ── MERMAID DIAGRAM STYLES ── */
+pre.mermaid-diagram {
+  @apply mb-6;
+  background: hsl(0 0% 6%) !important;
+  border: 1px solid hsl(43 18% 18%);
+  border-left: 3px solid hsl(var(--crimson) / 0.4);
+  padding: 1.25rem;
+  overflow-x: auto;
+  position: relative;
+  max-width: 100%;
+}
+pre.mermaid-diagram::after {
+  content: 'DIAGRAM';
+  position: absolute;
+  top: 0.4rem;
+  right: 0.75rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: hsl(var(--gold) / 0.2);
+}
+pre.mermaid-diagram.mermaid-rendered {
+  border-left-color: hsl(var(--gold) / 0.4);
+}
+pre.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+/* Override mermaid's white backgrounds */
+pre.mermaid-diagram svg [fill='white'],
+pre.mermaid-diagram svg [fill='#ffffff'],
+pre.mermaid-diagram svg [fill='#fff'] {
+  fill: hsl(0 0% 8%);
+}
+.mermaid-error {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  color: hsl(0 60% 50%);
+  padding: 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+/* mermaid.run() injects SVG directly inside pre — override its inline styles */
+pre.mermaid-diagram svg {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: auto !important;
+  background: transparent !important;
+  display: block;
+  font-size: 11px !important;
+}
+pre.mermaid-diagram > div {
+  overflow-x: auto;
 }

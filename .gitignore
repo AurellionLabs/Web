@@ -1,11 +1,49 @@
 node_modules/
+
+# Hardhat artifacts
 artifacts/
 cache/
 typechain-types/
+
+# Foundry artifacts
+out/
+lib/
+!lib/docs.ts
+!lib/docs-nav.ts
+!lib/contracts/
+
+# Next.js
 .next/
 .swc/
+.vercel
+
+# Environment files
+.env
+.env*.local
 .*.env
-.env
-artifacts/build-info/
-cache/*
-.env
+
+# Ponder generated files
+indexer/generated/
+indexer/.ponder/
+indexer/ponder-env.d.ts
+indexer/logs/
+indexer/ponder.config.generated.ts
+# NOTE: indexer/abis/generated/ files ARE committed for Docker builds
+# NOTE: handlers/*.generated.ts files ARE committed, do not ignore them!
+
+# Temp scripts
+get-docker.sh
+
+# Foundry
+foundry.tar.gz
+
+# Backup files
+*.backup
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Ralphy
+ralphy/

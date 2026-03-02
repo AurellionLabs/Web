@@ -1,49 +1,55 @@
+'use client';
+
 import { PoolRow } from './pool-row';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
-import { OperationData } from '@/dapp-connectors/staking-controller';
+import { Pool } from '@/domain/pool';
+import { EvaPanel } from '@/app/components/eva/eva-components';
 
-interface OperationTableProps {
-  operations: OperationData[];
+interface PoolTableProps {
+  pools: Pool[];
 }
 
-export function PoolTable({ operations }: OperationTableProps) {
+export function PoolTable({ pools }: PoolTableProps) {
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800">
+    <EvaPanel label="Liquidity Pools" noPadding>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-sm text-gray-400 border-b border-gray-800">
-              <th className="py-3 px-4 text-left">#</th>
-              <th className="py-3 px-4 text-left">Pool</th>
-              <th className="py-3 px-4 text-right">TVL</th>
-              <th className="py-3 px-4 text-right">APR</th>
-              <th className="py-3 px-4 text-right">Volume 24H</th>
+            <tr className="border-b border-border/20">
+              <th className="py-3 px-4 text-left font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                #
+              </th>
+              <th className="py-3 px-4 text-left font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                Pool
+              </th>
+              <th className="py-3 px-4 text-right font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                TVL
+              </th>
+              <th className="py-3 px-4 text-right font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                APR
+              </th>
+              <th className="py-3 px-4 text-right font-mono text-[10px] tracking-[0.2em] uppercase font-bold text-gold/50">
+                Collateral
+              </th>
             </tr>
           </thead>
-          <tbody>
-            <>
-              {console.log('this is what we are mapping', operations)}
-              {operations.map((operation, index) => (
-                <PoolRow
-                  key={operation.id}
-                  index={index + 1}
-                  operation={operation}
-                />
-              ))}
-            </>
+          <tbody className="divide-y divide-border/10">
+            {pools.map((pool, index) => (
+              <PoolRow key={pool.id} index={index + 1} pool={pool} />
+            ))}
           </tbody>
         </table>
       </div>
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-border/20">
         <Link
           href="/customer/pools/explore"
-          className="text-amber-500 hover:text-amber-400 flex items-center gap-1 text-sm"
+          className="text-gold hover:text-gold/80 flex items-center gap-1 font-mono text-xs tracking-[0.12em] uppercase font-bold transition-colors"
         >
           Explore more pools
           <ArrowUpRight className="w-4 h-4" />
         </Link>
       </div>
-    </div>
+    </EvaPanel>
   );
 }

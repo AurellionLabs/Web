@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+echo "🚀 Pushing to remote..."
+echo "✅ Pre-push checks skipped (run npm run build:full manually if needed)"

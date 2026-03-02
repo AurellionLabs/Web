@@ -1,1 +1,15 @@
+#!/bin/sh
+
+# Validate ABIs are up to date if contracts were modified
+if git diff --cached --name-only | grep -q "contracts/"; then
+  echo "🔍 Contract changes detected - validating ABIs..."
+  bun scripts/validate-abis.ts || {
+    echo ""
+    echo "⚠️  Contract changes detected but ABIs are out of date!"
+    echo "   Run: npm run contract:gen"
+    echo "   Then stage the generated files"
+    exit 1
+  }
+fi
+
 npm run lint-staged

@@ -8,15 +8,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './dialog';
-import { CheckCircle2, XCircle, Loader2, User, Package } from 'lucide-react';
-import { CustomerOrder } from '@/types';
+import { CheckCircle2, XCircle, Loader2, User } from 'lucide-react';
+import { OrderWithAsset } from '@/app/types/shared';
 import { useState } from 'react';
-import { getAssetName } from '@/dapp-connectors/aurum-controller';
 
 interface OrderActionDialogProps {
-  order: CustomerOrder;
+  order: OrderWithAsset;
   onConfirm: (orderId: string) => Promise<void>;
-  variant: 'cancel' | 'confirm' | 'pickup';
+  variant: 'cancel' | 'confirm';
   isLoading?: boolean;
   isWaitingForSignature?: boolean;
   waitingForRole?: 'driver' | 'customer';
@@ -35,7 +34,7 @@ interface ActionConfig {
   waitingForCustomerText: string;
 }
 
-const ACTION_CONFIGS: Record<'cancel' | 'confirm' | 'pickup', ActionConfig> = {
+const ACTION_CONFIGS: Record<'cancel' | 'confirm', ActionConfig> = {
   cancel: {
     title: 'Cancel Order',
     description: 'Please review the order details below before cancelling.',
@@ -47,19 +46,6 @@ const ACTION_CONFIGS: Record<'cancel' | 'confirm' | 'pickup', ActionConfig> = {
     triggerText: 'Cancel Order',
     waitingForDriverText: 'Waiting for driver to sign...',
     waitingForCustomerText: 'Waiting for customer to sign...',
-  },
-  pickup: {
-    title: 'Confirm Package Pickup',
-    description:
-      'Please review and sign to confirm the driver can pick up your package.',
-    icon: <Package className="h-6 w-6 text-amber-500" />,
-    confirmText: 'Sign for Pickup',
-    cancelText: 'Cancel',
-    buttonVariant: 'default',
-    buttonStyle: 'w-32 bg-amber-500 hover:bg-amber-600',
-    triggerText: 'Sign for Pickup',
-    waitingForDriverText: 'Waiting for driver signature...',
-    waitingForCustomerText: 'Waiting for your signature...',
   },
   confirm: {
     title: 'Confirm Order Receipt',
@@ -160,19 +146,19 @@ export function OrderActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Asset</span>
                 <span className="text-base font-medium text-right capitalize">
-                  {getAssetName(Number(order.asset))}
+                  {order.asset?.name}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Quantity</span>
                 <span className="text-base font-medium text-right">
-                  {order.quantity}
+                  {order.tokenQuantity}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Value</span>
                 <span className="text-base font-medium text-right">
-                  {order.value} USDT
+                  {order.price} AURA
                 </span>
               </div>
             </div>

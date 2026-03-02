@@ -1,15 +1,16 @@
+import { useState, useEffect } from 'react';
 import { ethers, BrowserProvider } from 'ethers';
 import { useWallet } from '@/hooks/useWallet';
 import { handleContractError } from '@/utils/error-handler';
 import {
   AurumNodeManager__factory,
-  AurumNodeManager,
-  AuraGoat__factory,
-  AuraGoat,
-} from '@/typechain-types';
+  AuraGoatRed__factory,
+  type AurumNodeManager,
+  type AuraGoatRed,
+} from '@/lib/contracts';
 import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
-  NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '@/chain-constants';
 
 /**
@@ -20,7 +21,7 @@ export class ContractContext {
   private provider: BrowserProvider | null = null;
   private signer: ethers.VoidSigner | null = null;
   private aurumNodeManager: AurumNodeManager | null = null;
-  private auraGoat: AuraGoat | null = null;
+  private auraGoat: AuraGoatRed | null = null;
   private isInitialized = false;
 
   private constructor() {}
@@ -41,8 +42,8 @@ export class ContractContext {
       NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
       this.signer,
     );
-    this.auraGoat = AuraGoat__factory.connect(
-      NEXT_PUBLIC_AURA_GOAT_ADDRESS,
+    this.auraGoat = AuraGoatRed__factory.connect(
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
       this.signer,
     );
     // Add connection logic for AURUM_NODE if needed
@@ -54,20 +55,22 @@ export class ContractContext {
     return this.aurumNodeManager;
   }
 
-  public getAuraGoatContract(): AuraGoat | null {
+  public getAuraGoatContract(): AuraGoatRed | null {
     return this.auraGoat;
   }
 }
 
 export function useContractContext() {
-  const { provider } = useWallet();
+  const wallet = useWallet();
   const [contractContext] = useState(() => ContractContext.getInstance());
 
   useEffect(() => {
+    // Provider comes from wallet context if available
+    const provider = (wallet as any)?.provider;
     if (provider) {
       contractContext.initialize(provider);
     }
-  }, [provider]);
+  }, [wallet, contractContext]);
 
   return contractContext;
 }

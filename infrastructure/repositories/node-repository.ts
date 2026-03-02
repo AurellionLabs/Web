@@ -1,396 +1,690 @@
-import type {
+import {
   Node,
   NodeRepository,
   TokenizedAsset,
   AggregateAssetAmount,
-  NodeLocation,
-  AssetType,
+  NodeAsset,
+  ContractAssetStruct,
+  NodeAssetConverters,
 } from '@/domain/node';
 import { BrowserProvider, ethers } from 'ethers';
 import {
-  AurumNode,
   AurumNode__factory,
-  AurumNodeManager,
   AurumNodeManager__factory,
-  AuraGoat__factory,
-  AuraGoat,
-} from '@/typechain-types';
+  AuraAsset__factory,
+  type AurumNode,
+  type AurumNodeManager,
+  type AuraAsset,
+} from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
+import { PinataSDK } from 'pinata';
+import { hashToAssets, tokenIdToAssets } from './shared/ipfs';
+import { AssetIpfsRecord } from '@/domain/platform';
+import { GraphQLClient } from 'graphql-request';
+import {
+  NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+  NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+} from '@/chain-constants';
+import {
+  GET_NODE_ASSETS_AURUM,
+  GET_ALL_NODE_ASSETS_AURUM,
+  GET_USER_BALANCES_AURA,
+  GET_ASSETS_BY_HASHES,
+  GET_ASSETS_BY_TOKEN_IDS,
+  NodeAssetsAurumResponse,
+  UserBalancesAuraResponse,
+  AssetsAuraResponse,
+  UserBalanceAura,
+  AssetAura,
+  NodeAssetAurum,
+  extractPonderNodeAssets,
+} from './shared/graph-queries';
+import { graphqlRequest } from './shared/graph';
+import {
+  GET_LOGISTICS_ORDER_CREATED_EVENTS,
+  GET_ALL_UNIFIED_ORDER_EVENTS,
+  GET_NODE_BY_ADDRESS,
+  GET_ALL_NODE_EVENTS,
+  GET_P2P_OFFERS_BY_CREATOR,
+  GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+  GET_AUSYS_ORDER_STATUS_UPDATES,
+  GET_JOURNEYS_BY_SENDER_ADDRESS,
+  GET_JOURNEY_STATUS_UPDATES_ALL,
+} from '../shared/graph-queries';
+import type {
+  P2POffersByCreatorResponse,
+  P2POffersAcceptedByUserResponse,
+  P2POfferDetailsResponse,
+  AuSysOrderStatusUpdatesResponse,
+  JourneysBySenderResponse,
+  JourneyStatusUpdatesAllResponse,
+} from '../shared/graph-queries';
+import {
+  aggregateUnifiedOrders,
+  aggregateP2POrdersForUser,
+  aggregateNodes,
+  NodeEventSources,
+} from '../shared/event-aggregators';
+import {
+  AggregatedUnifiedOrder,
+  LogisticsOrderCreatedEvent,
+  UnifiedOrderCreatedEvent,
+  NodeRegisteredEvent,
+  NodeDeactivatedEvent,
+  UpdateLocationEvent,
+  UpdateStatusEvent,
+  SupportedAssetAddedEvent,
+} from '../shared/indexer-types';
+import { Order, OrderStatus } from '@/domain/orders/order';
+
+interface GraphQLResponse<T> {
+  items: T[];
+  pageInfo?: {
+    hasNextPage: boolean;
+    endCursor?: string;
+  };
+}
+
+interface LogisticsEventsResponse {
+  diamondLogisticsOrderCreatedEventss: GraphQLResponse<LogisticsOrderCreatedEvent>;
+}
+
+interface UnifiedOrderEventsResponse {
+  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
+}
+
+interface NodeEventsResponse {
+  registered: GraphQLResponse<NodeRegisteredEvent>;
+  deactivated: GraphQLResponse<NodeDeactivatedEvent>;
+  locations: GraphQLResponse<UpdateLocationEvent>;
+  statuses: GraphQLResponse<UpdateStatusEvent>;
+  assets: GraphQLResponse<SupportedAssetAddedEvent>;
+}
+
+interface AllNodesEventsResponse {
+  registered: GraphQLResponse<NodeRegisteredEvent>;
+  deactivated: GraphQLResponse<NodeDeactivatedEvent>;
+  locations: GraphQLResponse<UpdateLocationEvent>;
+  statuses: GraphQLResponse<UpdateStatusEvent>;
+}
+
+function aggregatedUnifiedOrderToDomain(
+  order: AggregatedUnifiedOrder,
+  _logistics?: LogisticsOrderCreatedEvent,
+): Order {
+  return {
+    id: order.unifiedOrderId,
+    token: order.token,
+    tokenId: order.tokenId,
+    tokenQuantity: order.quantity,
+    price: order.price,
+    txFee: '0',
+    buyer: order.buyer,
+    seller: order.seller,
+    journeyIds: order.journeyIds,
+    nodes: [],
+    locationData: undefined,
+    currentStatus: mapOrderStatus(order.status),
+    contractualAgreement: '',
+  };
+}
+
+function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
+  switch (status) {
+    case 'settled':
+      return OrderStatus.SETTLED;
+    case 'cancelled':
+      return OrderStatus.CANCELLED;
+    case 'matched':
+    case 'created':
+      return OrderStatus.CREATED;
+    default:
+      return OrderStatus.CREATED;
+  }
+}
 
 /**
- * Infrastructure implementation of the NodeRepository interface
- * This implementation directly interacts with the Aurum blockchain contracts
+ * Infrastructure implementation of the NodeRepository interface - REFACTORED
+ * This implementation correctly handles the new Asset struct format from contracts
  */
 export class BlockchainNodeRepository implements NodeRepository {
   private aurumContract: AurumNodeManager;
   private provider: BrowserProvider;
   private signer: ethers.Signer;
-  private auraGoatAddress: string;
-  private auraGoatContractInstance: AuraGoat | null = null;
+  private auraAsset: string;
+  private auraAssetContractInstance: AuraAsset | null = null;
+  private graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
+  pinata: PinataSDK;
 
   constructor(
     aurumContract: AurumNodeManager,
     provider: BrowserProvider,
     signer: ethers.Signer,
-    auraGoatAddress: string,
+    auraAsset: string,
+    _pinata: PinataSDK,
+    graphQlClient?: GraphQLClient,
   ) {
     this.aurumContract = aurumContract;
     this.provider = provider;
     this.signer = signer;
-    this.auraGoatAddress = auraGoatAddress;
+    this.auraAsset = auraAsset;
+    this.pinata = _pinata;
   }
 
-  private async getAuraGoatContract(): Promise<AuraGoat> {
-    if (this.auraGoatContractInstance) {
-      return this.auraGoatContractInstance;
+  private async getAuraAssetContract(): Promise<AuraAsset> {
+    if (!this.auraAssetContractInstance) {
+      this.auraAssetContractInstance = AuraAsset__factory.connect(
+        this.auraAsset,
+        this.signer,
+      );
     }
-
-    const contract = AuraGoat__factory.connect(
-      this.auraGoatAddress,
-      this.signer,
-    );
-
-    this.auraGoatContractInstance = contract;
-    return contract;
+    return this.auraAssetContractInstance;
   }
 
-  private async getAurumNodeContract(address: string): Promise<AurumNode> {
-    return AurumNode__factory.connect(address, this.signer);
+  /**
+   * Get an AurumNode contract instance for a specific node address
+   * This allows calling node-specific functions like nodeSign, nodeHandOn, nodeHandOff
+   */
+  async getNodeContract(nodeAddress: string): Promise<AurumNode> {
+    return AurumNode__factory.connect(nodeAddress, this.signer);
   }
 
+  /**
+   * Approve Ausys to transfer this node's ERC1155 tokens
+   * This must be called before the node can participate in handOn (journey start)
+   */
+  async approveAusysForTokens(nodeAddress: string): Promise<void> {
+    const nodeContract = await this.getNodeContract(nodeAddress);
+    const tx = await nodeContract.approveAusysForTokens();
+    await tx.wait();
+  }
+
+  /**
+   * DEPRECATED: CLOB approval is no longer needed since CLOBFacet is internal to Diamond
+   * Kept for backward compatibility - always succeeds immediately
+   */
+  async approveClobForTokens(
+    nodeAddress: string,
+    clobAddress: string,
+  ): Promise<void> {
+    // No-op: CLOB is now internal to Diamond via CLOBFacet
+  }
+
+  /**
+   * DEPRECATED: CLOB is always "approved" since it's internal to Diamond
+   */
+  async isClobApproved(
+    nodeAddress: string,
+    clobAddress: string,
+  ): Promise<boolean> {
+    // CLOBFacet is internal to Diamond, always "approved"
+    return true;
+  }
+
+  /**
+   * Get node data from raw events
+   */
   async getNode(nodeAddress: string): Promise<Node | null> {
     try {
-      const nodeData = await this.aurumContract.getNode(nodeAddress);
+      const nodeAddr = nodeAddress.toLowerCase();
 
-      if (nodeData.owner === ethers.ZeroAddress) {
-        throw new Error('Node not found');
-      }
-
-      const location: NodeLocation = {
-        addressName: nodeData.location.addressName,
-        location: {
-          lat: nodeData.location.location.lat,
-          lng: nodeData.location.location.lng,
-        },
-      };
-
-      return {
-        address: nodeAddress,
-        location,
-        validNode: nodeData.validNode,
-        owner: nodeData.owner,
-        supportedAssets: nodeData.supportedAssets.map((n) => Number(n)),
-        status: this.convertContractStatusToDomain(nodeData.status),
-        capacity: nodeData.capacity.map((n) => Number(n)),
-        assetPrices: nodeData.assetPrices.map((n) => Number(n)),
-      };
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Node not found') {
-        throw error;
-      }
-      handleContractError(error, 'get node');
-      throw error;
-    }
-  }
-
-  async getOwnedNodes(ownerAddress: string): Promise<string[]> {
-    console.log(
-      `[NodeRepository] getOwnedNodes called for owner: ${ownerAddress}`,
-    );
-    try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      console.log(`[NodeRepository] Node count from contract: ${nodeCount}`);
-      const ownedNodes: string[] = [];
-
-      for (let i = 0; i < nodeCount; i++) {
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        const node = await contract.getNode(nodeAddress);
-        console.log(
-          `[NodeRepository] Checking node index ${i}: address=${nodeAddress}, owner=${node.owner}`,
-        );
-        if (node.owner.toLowerCase() === ownerAddress.toLowerCase()) {
-          console.log(
-            `[NodeRepository] Match found! Adding node: ${nodeAddress}`,
-          );
-          ownedNodes.push(nodeAddress);
-        }
-      }
-
-      console.log(`[NodeRepository] Returning owned nodes:`, ownedNodes);
-      return ownedNodes;
-    } catch (error) {
-      handleContractError(error, 'get owned nodes');
-      throw error;
-    }
-  }
-
-  async registerNode(nodeData: Node): Promise<string> {
-    try {
-      const contract = await this.aurumContract;
-      const nodeStruct: AurumNodeManager.NodeStruct = {
-        location: {
-          addressName: nodeData.location.addressName,
-          location: {
-            lat: nodeData.location.location.lat,
-            lng: nodeData.location.location.lng,
-          },
-        },
-        validNode: nodeData.validNode as ethers.BytesLike,
-        owner: nodeData.owner,
-        supportedAssets: nodeData.supportedAssets.map((n) => BigInt(n)),
-        status: (nodeData.status === 'Active'
-          ? '0x01'
-          : '0x00') as ethers.BytesLike,
-        capacity: nodeData.capacity.map((n) => BigInt(n)),
-        assetPrices: nodeData.assetPrices.map((n) => BigInt(n)),
-      };
-
-      console.log('Calling contract.registerNode with struct:', nodeStruct);
-
-      const tx = await contract.registerNode(nodeStruct);
-      console.log('Transaction sent, waiting for receipt...');
-      const receipt = await tx.wait();
-      console.log('Transaction receipt received');
-
-      if (!receipt) {
-        throw new Error('Transaction failed: No receipt received.');
-      }
-      if (receipt.status === 0) {
-        console.error('Transaction reverted. Receipt:', receipt);
-        throw new Error(
-          `Node registration transaction failed (reverted). Hash: ${receipt.hash}`,
-        );
-      }
-
-      const eventFragment = contract.interface.getEvent('NodeRegistered');
-      if (!eventFragment) {
-        throw new Error(
-          'NodeRegistered event fragment not found in contract ABI.',
-        );
-      }
-
-      let newNodeAddress: string | undefined;
-      for (const log of receipt.logs) {
-        try {
-          const parsedLog = contract.interface.parseLog(
-            log as unknown as { topics: string[]; data: string },
-          );
-          if (parsedLog && parsedLog.name === 'NodeRegistered') {
-            newNodeAddress = parsedLog.args.nodeAddress;
-            console.log(
-              `NodeRegistered event found. New node address: ${newNodeAddress}`,
-            );
-            break;
-          }
-        } catch (e) {
-          // Ignore logs that don't match the NodeRegistered signature
-        }
-      }
-
-      if (!newNodeAddress) {
-        console.error('RECEIPT LOGS:', JSON.stringify(receipt.logs, null, 2));
-        throw new Error(
-          "NodeRegistered event not found or couldn't be parsed in transaction logs.",
-        );
-      }
-
-      return newNodeAddress;
-    } catch (error) {
-      console.error('Detailed error in registerNode:', error);
-      if (
-        !(error instanceof Error && error.message.startsWith('Contract error'))
-      ) {
-        handleContractError(error, 'register node');
-      }
-      throw error;
-    }
-  }
-
-  async updateNodeStatus(
-    nodeAddress: string,
-    status: 'Active' | 'Inactive',
-  ): Promise<void> {
-    try {
-      const contract = await this.aurumContract;
-      const statusBytes = (
-        status === 'Active' ? '0x01' : '0x00'
-      ) as ethers.BytesLike;
-      await contract.updateStatus(statusBytes, nodeAddress);
-    } catch (error) {
-      handleContractError(error, 'update node status');
-      throw error;
-    }
-  }
-
-  async checkIfNodeExists(address: string): Promise<boolean> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      return node.owner !== ethers.ZeroAddress;
-    } catch (error) {
-      handleContractError(error, 'check if node exists');
-      throw error;
-    }
-  }
-
-  async getNodeStatus(address: string): Promise<'Active' | 'Inactive'> {
-    try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      return this.convertContractStatusToDomain(node.status);
-    } catch (error) {
-      handleContractError(error, 'get node status');
-      throw error;
-    }
-  }
-
-  async getNodeAssets(address: string): Promise<TokenizedAsset[]> {
-    try {
-      const managerContract = await this.aurumContract;
-      const goatContract = await this.getAuraGoatContract();
-      const node = await managerContract.getNode(address); // Get node registration data
-
-      if (node.owner === ethers.ZeroAddress) {
-        throw new Error('Node not found');
-      }
-
-      // Create an array of promises for all balance checks
-      const balancePromises = node.supportedAssets.map(
-        async (assetIdBigInt) => {
-          const assetId = Number(assetIdBigInt);
-          // Use lookupHash consistent with minting and getAssetBalance
-          const assetNameForHash = this.getAssetName(assetId); // Get canonical name
-          const attributesForHash: string[] = []; // Assume empty attributes
-
-          try {
-            const tokenId = await goatContract.lookupHash(
-              assetNameForHash,
-              attributesForHash,
-            );
-            const balance = await goatContract.balanceOf(address, tokenId);
-            return {
-              id: assetId,
-              balance: balance,
-            };
-          } catch (error) {
-            // Handle errors fetching individual balances/lookupHash gracefully
-            console.warn(
-              `Error processing balance for node ${address}, asset ${assetId} (name ${assetNameForHash}): ${error instanceof Error ? error.message : error}`,
-            );
-            return { id: assetId, balance: BigInt(0) }; // Return 0 balance on error
-          }
-        },
+      const response = await graphqlRequest<NodeEventsResponse>(
+        this.graphQLEndpoint,
+        GET_NODE_BY_ADDRESS,
+        { nodeAddress: nodeAddr },
       );
 
-      // Wait for all balance checks to complete
-      const balances = await Promise.all(balancePromises);
+      const sources: NodeEventSources = {
+        registered: response.registered?.items || [],
+        deactivated: response.deactivated?.items || [],
+        locationUpdates: response.locations?.items || [],
+        statusUpdates: response.statuses?.items || [],
+        assetsAdded: response.assets?.items || [],
+      };
 
-      // Create a map for quick balance lookup
-      const balanceMap = new Map<number, bigint>();
-      balances.forEach((item) => balanceMap.set(item.id, item.balance));
+      const nodes = aggregateNodes(sources);
+      return nodes.find((n) => n.address.toLowerCase() === nodeAddr) || null;
+    } catch (error) {
+      handleContractError(error, `get node ${nodeAddress}`);
+      return null;
+    }
+  }
 
-      // Map node data and fetched balances to TokenizedAsset
-      return node.supportedAssets.map((assetIdBigInt, index) => {
-        const assetId = Number(assetIdBigInt);
-        const currentBalance = balanceMap.get(assetId) ?? BigInt(0); // Get balance from map, default to 0
+  /**
+   * Get all nodes owned by an address using raw events
+   */
+  async getOwnedNodes(ownerAddress: string): Promise<string[]> {
+    try {
+      const response = await graphqlRequest<AllNodesEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_NODE_EVENTS,
+        { limit: 1000 },
+      );
+
+      const sources: NodeEventSources = {
+        registered: response.registered?.items || [],
+        deactivated: response.deactivated?.items || [],
+        locationUpdates: response.locations?.items || [],
+        statusUpdates: response.statuses?.items || [],
+        assetsAdded: [],
+      };
+
+      const nodes = aggregateNodes(sources);
+      return nodes
+        .filter((n) => n.owner.toLowerCase() === ownerAddress.toLowerCase())
+        .map((n) => n.address);
+    } catch (error) {
+      handleContractError(error, `get owned nodes for ${ownerAddress}`);
+      return [];
+    }
+  }
+
+  /**
+   * REFACTORED: Correctly constructs contract Node struct with Asset[]
+   */
+  // Write operation moved to NodeService
+
+  // Write operation moved to NodeService
+
+  async checkIfNodeExists(ownerAddress: string): Promise<boolean> {
+    try {
+      const ownedNodes = await this.getOwnedNodes(ownerAddress);
+      return ownedNodes.length > 0;
+    } catch (error) {
+      handleContractError(error, `check if node exists for ${ownerAddress}`);
+      return false;
+    }
+  }
+
+  async getNodeStatus(nodeAddress: string): Promise<'Active' | 'Inactive'> {
+    try {
+      const node = await this.getNode(nodeAddress);
+      return node?.status || 'Inactive';
+    } catch (error) {
+      handleContractError(error, `get node status for ${nodeAddress}`);
+      return 'Inactive';
+    }
+  }
+
+  /**
+   * Gets node assets by combining data from both Aurum and AuraAsset subgraphs
+   */
+  async getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]> {
+    try {
+      // Step 1: Get node pricing/capacity from Ponder indexer
+      const aurumResponse = await graphqlRequest<{
+        diamondSupportedAssetAddedEventss: { items: NodeAssetAurum[] };
+      }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_NODE_ASSETS_AURUM, {
+        nodeAddress: nodeAddress.toLowerCase(),
+      });
+
+      const nodeAssetsData = extractPonderNodeAssets(aurumResponse);
+      if (nodeAssetsData.length === 0) {
+        return [];
+      }
+
+      // Step 2: Get user balances from transfer events
+      let auraBalanceResponse: UserBalancesAuraResponse = {
+        transfersIn: { items: [] },
+        transfersOut: { items: [] },
+      };
+      try {
+        auraBalanceResponse = await graphqlRequest(
+          NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+          GET_USER_BALANCES_AURA,
+          { userAddress: nodeAddress.toLowerCase() },
+        );
+      } catch (error) {
+        console.warn('[NodeRepository] Failed to get user balances:', error);
+        return [];
+      }
+
+      // Step 3: In the pure dumb indexer, asset metadata is fetched from IPFS directly
+      // The assetss table no longer exists, so we work with available data
+      const tokenIds = nodeAssetsData.map((asset) => asset.token_id);
+
+      // Step 4: Calculate balances from transfer events
+      const balanceMap =
+        this.calculateBalancesFromTransfers(auraBalanceResponse);
+
+      // Step 5: Get node location data
+      const node = await this.getNode(nodeAddress);
+
+      // Step 6: Combine all data (without metadata from assetss table)
+      return nodeAssetsData.map((nodeAsset) => {
+        // Find balance for this token
+        const balance = balanceMap.get(nodeAsset.token_id) || '0';
 
         return {
-          id: assetId,
-          amount: currentBalance.toString(), // Use actual balance
-          name: this.getAssetName(assetId),
-          // Consider using actual node status?
-          status: this.convertContractStatusToDomain(node.status),
-          nodeAddress: address,
-          nodeLocation: node.location,
-          price: node.assetPrices[index].toString(), // From registration data
-          capacity: node.capacity[index].toString(), // Keep capacity from registration data
+          id: nodeAsset.token_id,
+          amount: balance,
+          name: 'Unknown', // Would need IPFS metadata
+          class: 'Unknown', // Would need IPFS metadata
+          fileHash: '', // Would need IPFS metadata
+          status: Number(balance) > 0 ? 'Available' : 'Unavailable',
+          nodeAddress,
+          nodeLocation: node?.location || {
+            addressName: '',
+            location: { lat: '0', lng: '0' },
+          },
+          price: nodeAsset.price,
+          capacity: nodeAsset.capacity,
         };
       });
     } catch (error) {
-      // If it's already the "Node not found" error, just rethrow it
-      if (error instanceof Error && error.message === 'Node not found') {
-        throw error;
-      }
-      console.error(`Error in getNodeAssets for address ${address}:`, error);
-      handleContractError(error, 'get node assets');
-      throw error;
+      console.error('Error fetching node assets from Graph:', error);
+      return [];
     }
+  }
+
+  /**
+   * Calculate token balances from transfer in/out events
+   * Returns a map of tokenId -> balance
+   */
+  private calculateBalancesFromTransfers(
+    response: UserBalancesAuraResponse,
+  ): Map<string, string> {
+    const balanceMap = new Map<string, bigint>();
+
+    // Add transfers in
+    for (const transfer of response.transfersIn?.items || []) {
+      const tokenId = transfer.event_id; // event_id is the token ID
+      const current = balanceMap.get(tokenId) || BigInt(0);
+      balanceMap.set(tokenId, current + BigInt(transfer.value));
+    }
+
+    // Subtract transfers out
+    for (const transfer of response.transfersOut?.items || []) {
+      const tokenId = transfer.event_id;
+      const current = balanceMap.get(tokenId) || BigInt(0);
+      balanceMap.set(tokenId, current - BigInt(transfer.value));
+    }
+
+    // Convert to string map
+    const result = new Map<string, string>();
+    for (const [tokenId, balance] of balanceMap) {
+      result.set(tokenId, balance.toString());
+    }
+    return result;
   }
 
   async getAllNodeAssets(): Promise<TokenizedAsset[]> {
     try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      const allAssets: TokenizedAsset[] = [];
+      // Page through Ponder nodeAssets using cursor-based pagination
+      const PAGE_SIZE = 500;
+      let allNodeAssets: NodeAssetAurum[] = [];
+      let after: string | undefined = undefined;
+      let hasNextPage = true;
 
-      for (let i = 0; i < nodeCount; i++) {
-        // Add a small delay to avoid hitting RPC rate limits
-        await sleep(150); // Delay for 150 milliseconds (adjust as needed)
+      // Fetch pages until no more pages available
+      // Cap iterations to avoid runaway loops (e.g., 10k assets)
+      const MAX_ITERATIONS = 50;
+      let iterations = 0;
 
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        // Wrap getNodeAssets in a try-catch to handle potential errors for a single node
+      while (hasNextPage && iterations < MAX_ITERATIONS) {
+        type PageResponse = {
+          diamondSupportedAssetAddedEventss: {
+            items: NodeAssetAurum[];
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          };
+        };
+        const pageResp: PageResponse = await graphqlRequest<PageResponse>(
+          NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+          GET_ALL_NODE_ASSETS_AURUM,
+          {
+            limit: PAGE_SIZE,
+            after: after,
+          },
+        );
+        const pageItems = extractPonderNodeAssets(pageResp);
+        allNodeAssets = allNodeAssets.concat(pageItems);
+        hasNextPage =
+          pageResp.diamondSupportedAssetAddedEventss?.pageInfo?.hasNextPage ||
+          false;
+        after =
+          pageResp.diamondSupportedAssetAddedEventss?.pageInfo?.endCursor ||
+          undefined;
+        iterations++;
 
-        // without stopping the entire process, unless the error is critical.
+        if (pageItems.length < PAGE_SIZE) break;
+      }
+
+      if (allNodeAssets.length === 0) return [];
+
+      // In the pure dumb indexer, asset metadata is fetched from IPFS directly
+      // The assetss table no longer exists, so we work without metadata
+
+      const metadataMap = new Map<string, AssetAura>(); // Empty in pure dumb pattern
+
+      // Fetch per-node ERC1155 balances and node locations
+      // Note: node_hash is the node address in the event data
+      const nodeSet = new Set<string>();
+      allNodeAssets.forEach((a) => nodeSet.add(a.node_hash));
+
+      const nodeLocationMap = new Map<string, Node['location']>();
+      const nodeBalanceMap = new Map<string, Map<string, string>>(); // node -> (tokenId -> balance)
+      // Fetch each node via existing getNode, but do it sequentially to avoid rate limits
+      for (const nodeAddr of nodeSet) {
+        const node = await this.getNode(nodeAddr);
+        if (node) nodeLocationMap.set(nodeAddr, node.location);
+
         try {
-          const nodeAssets = await this.getNodeAssets(nodeAddress);
-          allAssets.push(...nodeAssets);
-        } catch (error) {
-          console.error(
-            `Error in getAllNodeAssets for node ${nodeAddress}:`,
-            error,
+          const balancesResp: UserBalancesAuraResponse = await graphqlRequest(
+            NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+            GET_USER_BALANCES_AURA,
+            { userAddress: nodeAddr.toLowerCase() },
           );
-          // If the error is not critical, continue with the next node
+          // Calculate balances from transfer events
+          const balances = this.calculateBalancesFromTransfers(balancesResp);
+          nodeBalanceMap.set(nodeAddr, balances);
+        } catch (e) {
+          console.warn(
+            '[NodeRepository] Failed to fetch balances for node',
+            nodeAddr,
+            e,
+          );
         }
       }
 
-      return allAssets;
+      // Build TokenizedAsset list
+      const results: TokenizedAsset[] = allNodeAssets.map((na) => {
+        const meta = metadataMap.get(na.token_id);
+        const nodeLocation = nodeLocationMap.get(na.node_hash) || {
+          addressName: '',
+          location: { lat: '0', lng: '0' },
+        };
+        const balancesForNode = nodeBalanceMap.get(na.node_hash);
+        const balanceForToken = balancesForNode?.get(na.token_id) || '0';
+        return {
+          id: na.token_id,
+          amount: balanceForToken,
+          name: meta?.name || 'Unknown',
+          class: meta?.asset_class || 'Unknown',
+          fileHash: meta?.hash || '',
+          status: Number(balanceForToken) > 0 ? 'Available' : 'Unavailable',
+          nodeAddress: na.node_hash,
+          nodeLocation,
+          price: na.price,
+          capacity: na.capacity,
+        };
+      });
+
+      return results;
     } catch (error) {
       handleContractError(error, 'get all node assets');
-      throw error;
+      return [];
     }
   }
 
-  async getNodeOrders(address: string): Promise<any[]> {
-    console.log(
-      `[NodeRepository] Getting orders for node ywannngngnngng: ${address}`,
-    );
+  /**
+   * Get orders for a node. Supports two identification methods:
+   * - nodeHash: the bytes32 node hash (used to match logistics events)
+   * - ownerAddress: the wallet address that owns the node (used for P2P/CLOB queries)
+   * If only nodeHash is provided, CLOB orders are matched via logistics `node` field.
+   * If ownerAddress is also provided, P2P orders by wallet are included too.
+   */
+  async getNodeOrders(
+    nodeHash: string,
+    ownerAddress?: string,
+  ): Promise<Order[]> {
+    const hash = nodeHash.toLowerCase();
+    const owner = ownerAddress?.toLowerCase();
+
     try {
-      const contract = await this.aurumContract;
-      const node = await contract.getNode(address);
-      // TODO: Implement actual logic to fetch orders related to the node
-      // This might involve interacting with AuSys contract or another mechanism
-      return []; // Currently returns an empty array
+      // 1. Fetch ALL unified orders + logistics (filter by node hash client-side)
+      const [allOrdersResp, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_UNIFIED_ORDER_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      // Filter logistics events to find orders linked to this node (by node hash)
+      const logisticsItems =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [];
+      const nodeLogistics = logisticsItems.filter(
+        (l) => l.node?.toLowerCase() === hash,
+      );
+      const nodeOrderIds = new Set(
+        nodeLogistics.map((l) => l.unified_order_id.toLowerCase()),
+      );
+
+      // Aggregate all orders, then filter to only those linked to this node
+      const allAggregated = aggregateUnifiedOrders({
+        created: allOrdersResp.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics: logisticsItems,
+        journeyUpdates: [],
+        settled: [],
+      });
+
+      // CLOB orders: linked via logistics node field, OR seller matches owner wallet
+      const clobOrders = allAggregated.filter((order) => {
+        const oid = order.unifiedOrderId.toLowerCase();
+        if (nodeOrderIds.has(oid)) return true;
+        if (owner && order.seller.toLowerCase() === owner) return true;
+        return false;
+      });
+
+      // 2. Fetch P2P orders where the node OWNER is creator or acceptor
+      //    (P2P offers use wallet addresses, not node hashes)
+      const queryAddr = owner || hash;
+      const [
+        p2pCreatedResp,
+        p2pAcceptedResp,
+        allP2PCreatedResp,
+        statusResp,
+        journeysResp,
+        journeyStatusResp,
+      ] = await Promise.all([
+        graphqlRequest<P2POffersByCreatorResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_BY_CREATOR,
+          { creator: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<P2POffersAcceptedByUserResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_ACCEPTED_BY_USER,
+          { acceptor: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<P2POfferDetailsResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AuSysOrderStatusUpdatesResponse>(
+          this.graphQLEndpoint,
+          GET_AUSYS_ORDER_STATUS_UPDATES,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneysBySenderResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEYS_BY_SENDER_ADDRESS,
+          { sender: queryAddr, limit: 500 },
+        ),
+        graphqlRequest<JourneyStatusUpdatesAllResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATES_ALL,
+          { limit: 500 },
+        ),
+      ]);
+
+      const p2pOrders = aggregateP2POrdersForUser(
+        p2pCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        p2pAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
+        allP2PCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
+        queryAddr,
+        journeysResp.diamondJourneyCreatedEventss?.items || [],
+        journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
+      );
+
+      // 3. Merge CLOB + P2P orders, deduplicating by ID
+      const seenIds = new Set<string>();
+      const allOrders: Order[] = [];
+
+      for (const order of clobOrders) {
+        const oid = order.unifiedOrderId.toLowerCase();
+        if (!seenIds.has(oid)) {
+          seenIds.add(oid);
+          allOrders.push(aggregatedUnifiedOrderToDomain(order));
+        }
+      }
+
+      for (const order of p2pOrders) {
+        const oid = order.id.toLowerCase();
+        if (!seenIds.has(oid)) {
+          seenIds.add(oid);
+          allOrders.push(order);
+        }
+      }
+
+      return allOrders;
     } catch (error) {
-      handleContractError(error, 'get node orders');
-      throw error;
+      handleContractError(error, `get orders for node ${nodeHash}`);
+      return [];
     }
   }
 
   async loadAvailableAssets(): Promise<AggregateAssetAmount[]> {
     try {
-      const contract = await this.aurumContract;
-      const nodeCount = await contract.nodeIdCounter();
-      const assetMap = new Map<number, number>();
+      const response = await graphqlRequest<AllNodesEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_NODE_EVENTS,
+        { limit: 1000 },
+      );
 
-      for (let i = 0; i < nodeCount; i++) {
-        const nodeAddress = await contract.nodeList(BigInt(i));
-        const node = await contract.getNode(nodeAddress);
+      const sources: NodeEventSources = {
+        registered: response.registered?.items || [],
+        deactivated: response.deactivated?.items || [],
+        locationUpdates: response.locations?.items || [],
+        statusUpdates: response.statuses?.items || [],
+        assetsAdded: [],
+      };
 
-        node.supportedAssets.forEach((assetId, index) => {
-          const id = Number(assetId);
-          const amount = Number(node.capacity[index]);
-          assetMap.set(id, (assetMap.get(id) || 0) + amount);
-        });
+      const nodes = aggregateNodes(sources);
+
+      const assetAmounts: { [key: string]: number } = {};
+      for (const node of nodes) {
+        for (const asset of node.assets) {
+          const key = `${asset.token}-${asset.tokenId}`;
+          assetAmounts[key] = (assetAmounts[key] || 0) + asset.capacity;
+        }
       }
 
-      return Array.from(assetMap.entries()).map(([id, amount]) => ({
-        id,
+      return Object.entries(assetAmounts).map(([, amount], index) => ({
+        id: index + 1,
         amount,
       }));
     } catch (error) {
       handleContractError(error, 'load available assets');
-      throw error;
+      return [];
     }
   }
 
@@ -401,55 +695,61 @@ export class BlockchainNodeRepository implements NodeRepository {
     attributes: string[],
   ): Promise<number> {
     try {
-      const goatContract = await this.getAuraGoatContract();
-      // Use lookupHash to match the contract's ID generation
-      const tokenId = await goatContract.lookupHash(assetName, attributes);
-
-      // Call balanceOf with the correct tokenId
-      const balance = await goatContract.balanceOf(ownerAddress, tokenId);
-      console.log(
-        `[NodeRepository] Balance check for owner ${ownerAddress}, asset ${assetId} (tokenId ${tokenId}): ${balance}`,
+      const balancesResp: UserBalancesAuraResponse = await graphqlRequest(
+        NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+        GET_USER_BALANCES_AURA,
+        { userAddress: ownerAddress.toLowerCase() },
       );
+      // Calculate balances from transfer events
+      const balances = this.calculateBalancesFromTransfers(balancesResp);
+      const balance = balances.get(String(assetId)) || '0';
       return Number(balance);
-    } catch (error: any) {
-      if (
-        error.code === 'BAD_DATA' ||
-        (error.info?.error?.code === 'CALL_EXCEPTION' &&
-          error.info?.error?.reason?.includes('ERC1155: invalid token ID')) ||
-        (error.message &&
-          error.message.includes('could not decode result data'))
-      ) {
-        console.warn(
-          `[NodeRepository] Handled error fetching balance for owner ${ownerAddress}, asset ${assetId} (likely non-existent). Returning 0. Error: ${error.message}`,
-        );
-        return 0;
-      }
-      handleContractError(
-        error,
-        `get asset balance for ${ownerAddress}, asset ${assetId}`,
-      );
-      throw error;
+    } catch (error) {
+      handleContractError(error, `get asset balance for ${ownerAddress}`);
+      return 0;
     }
   }
 
-  private convertContractStatusToDomain(status: string): 'Inactive' | 'Active' {
-    console.log('status', status);
-    return status === '0x01' ? 'Active' : 'Inactive';
+  async getAssetAttributes(fileHash: string): Promise<any[]> {
+    try {
+      // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails
+      let records: AssetIpfsRecord[] = [];
+      if (fileHash && fileHash.length > 0) {
+        records = await hashToAssets(fileHash, this.pinata);
+      }
+      if ((!records || records.length === 0) && /^(\d+)$/.test(fileHash)) {
+        records = await tokenIdToAssets(fileHash, this.pinata);
+      }
+
+      if (!records || records.length === 0) {
+        return [];
+      }
+
+      // Map the first matching record's attributes into TokenizedAssetAttribute[] shape
+      const first = records[0];
+      const attrs = first.asset?.attributes || [];
+      return attrs.map((a) => ({
+        name: a.name,
+        value: a.values && a.values.length > 0 ? a.values[0] : '',
+        description: a.description || '',
+      }));
+    } catch (error) {
+      handleContractError(error, `get asset attributes for ${fileHash}`);
+      return [];
+    }
   }
 
-  private getAssetName(id: number): string {
-    const assetNames: { [key: number]: string } = {
-      1: 'GOAT',
-      2: 'SHEEP',
-      3: 'COW',
-      4: 'CHICKEN',
-      5: 'DUCK',
-    };
-    return assetNames[id] || 'UNKNOWN';
+  /**
+   * Get supporting documents for a node
+   * Note: This legacy repository does not support supporting documents.
+   * Use DiamondNodeRepository for full supporting document functionality.
+   */
+  async getSupportingDocuments(
+    _nodeHash: string,
+  ): Promise<import('@/domain/node').SupportingDocument[]> {
+    console.warn(
+      '[BlockchainNodeRepository] getSupportingDocuments not supported in legacy repository. Use DiamondNodeRepository.',
+    );
+    return [];
   }
-}
-
-// Helper function for delay
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

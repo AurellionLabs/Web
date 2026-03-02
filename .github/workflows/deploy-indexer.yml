@@ -1,0 +1,216 @@
+name: Deploy Indexer
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'indexer/**'
+      - 'contracts/**/*.sol'
+      - 'scripts/generate-indexer.ts'
+      - 'scripts/deploy.config.ts'
+      - 'chain-constants.ts'
+      - 'types/global.d.ts'
+      - 'package.json'
+      - 'bun-*.lockb'
+      - '.github/workflows/deploy-indexer.yml'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        default: 'dev'
+        type: choice
+        options:
+          - main
+          - dev
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/indexer
+
+concurrency:
+  group: deploy-indexer-${{ github.event.inputs.branch || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      actions: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Delete GitHub Actions cache
+        run: |
+          echo "Deleting GitHub Actions cache..."
+          gh cache delete --all || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Reset Docker Buildx
+        run: |
+          docker buildx rm default || true
+          docker buildx create --name default --driver docker-container --use || true
+          docker buildx inspect --bootstrap || true
+
+      - name: Clear Hardhat cache
+        run: |
+          echo "Clearing Hardhat cache to force fresh compiler download..."
+          rm -rf ~/.cache/hardhat || true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.branch }},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./indexer/Dockerfile
+          push: true
+          pull: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CACHE_BUST=${{ github.sha }}
+          cache-from: ''
+          cache-to: ''
+          no-cache: true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          DEPLOY_BRANCH: ${{ github.event.inputs.branch || github.ref_name }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
+          envs: GHCR_TOKEN,GITHUB_ACTOR,DEPLOY_BRANCH
+          script_stop: true
+          script: |
+            set -e
+
+            cd /srv/Web
+
+            # Use the correct branch (supports both push and workflow_dispatch)
+            BRANCH="$DEPLOY_BRANCH"
+            export IMAGE_TAG="$BRANCH"
+
+            echo "Deploying branch: $BRANCH"
+
+            # Reset any local changes (generated files may have changed)
+            git reset --hard HEAD
+            git clean -fd
+
+            # Pull latest code (for chain-constants.ts and other config)
+            git fetch origin
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
+
+            cd /srv/Web/indexer
+
+            # Login to GHCR
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+            # Save current image digest for potential rollback
+            PREVIOUS_IMAGE=$(docker inspect aurellion_indexer --format='{{.Image}}' 2>/dev/null || echo "")
+            echo "Previous image: $PREVIOUS_IMAGE"
+
+            # Stop existing container gracefully to prevent port conflicts
+            echo "Stopping existing container..."
+            docker compose -f docker-compose.prod.yml stop indexer || true
+
+            # Pull latest Docker image from GHCR
+            echo "Pulling new image..."
+            docker compose -f docker-compose.prod.yml pull indexer
+
+            # Start with fresh container
+            echo "Resetting database schema to avoid Ponder app hash conflicts..."
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d ponder_indexer -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;" 2>/dev/null || true
+
+            echo "Starting new container..."
+            docker compose -f docker-compose.prod.yml up -d indexer
+
+            # Health check with rollback capability
+            echo "Waiting for indexer to become healthy..."
+            TIMEOUT=90
+            ELAPSED=0
+            HEALTHY=false
+
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              if docker compose -f docker-compose.prod.yml ps indexer 2>/dev/null | grep -q "Up"; then
+                # Check for build/runtime errors first
+                if docker compose -f docker-compose.prod.yml logs --tail=30 indexer 2>/dev/null | grep -qE "(ERROR|FATAL|Build failed|shutdown sequence)"; then
+                  echo "ERROR: Found errors in indexer logs"
+                  break
+                fi
+                # Use HTTP health check on Ponder port
+                if docker exec aurellion_indexer curl -sf http://localhost:42069/ > /dev/null 2>&1; then
+                  HEALTHY=true
+                  break
+                fi
+              fi
+              sleep 5
+              ELAPSED=$((ELAPSED + 5))
+              echo "Waiting... ($ELAPSED/$TIMEOUT seconds)"
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "ERROR: Deployment failed - container not healthy"
+              echo "Container logs:"
+              docker compose -f docker-compose.prod.yml logs --tail=50 indexer || true
+
+              if [ -n "$PREVIOUS_IMAGE" ] && [ "$PREVIOUS_IMAGE" != "" ]; then
+                echo "Attempting rollback to previous image..."
+                docker compose -f docker-compose.prod.yml stop indexer || true
+
+                # Tag the previous image and restart
+                docker tag "$PREVIOUS_IMAGE" "ghcr.io/aurellionlabs/web/indexer:$BRANCH" || true
+                docker compose -f docker-compose.prod.yml up -d indexer || true
+
+                echo "Rollback attempted. Check container status manually."
+              fi
+              exit 1
+            fi
+
+            echo "Deployment successful! Container is healthy."
+
+            # Clean up unused images
+            docker image prune -f

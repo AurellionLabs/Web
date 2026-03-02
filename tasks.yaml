@@ -1,0 +1,141 @@
+# =============================================================================
+# Generative Indexer: Add Aggregate Tables to Generator
+# =============================================================================
+#
+# This PRD updates scripts/generate-indexer.ts to automatically generate
+# aggregate tables (assets, orders, journeys) so that running
+# `npm run generate:indexer` produces a complete, query-ready schema.
+#
+# Run commands:
+#   Sequential:  ./ralphy.sh --yaml tasks.yaml --opencode
+#   Parallel:    ./ralphy.sh --yaml tasks.yaml --opencode --parallel --max-parallel 4
+#   With PRs:    ./ralphy.sh --yaml tasks.yaml --opencode --parallel --create-pr
+#
+# =============================================================================
+
+tasks:
+  # =========================================================================
+  # GROUP 1: Define Aggregate Table Configuration
+  # These define the AGGREGATE_TABLES config in generate-indexer.ts
+  # =========================================================================
+  - title: 'US-001: Add AGGREGATE_TABLES config to scripts/generate-indexer.ts'
+    description: |
+      Place after FACETS_TO_INDEX (around line 58). Define 'assets' table config with columns:
+      id (text PK), hash (hex), token_id (bigint indexed), name (text), asset_class (text),
+      class_name (text), account (hex indexed), created_at (bigint), updated_at (bigint),
+      block_number (bigint), transaction_hash (hex). Add compositeIndex on (asset_class, class_name).
+    completed: true
+    parallel_group: 1
+  - title: "US-002: Add 'orders' table to AGGREGATE_TABLES config"
+    description: |
+      Columns: id (text PK), buyer (hex indexed), seller (hex indexed), token (hex),
+      token_id (bigint), token_quantity (bigint), requested_token_quantity (bigint),
+      price (bigint), tx_fee (bigint), current_status (integer indexed),
+      start_location_lat (text), start_location_lng (text), end_location_lat (text),
+      end_location_lng (text), start_name (text), end_name (text), nodes (text),
+      created_at (bigint), updated_at (bigint), block_number (bigint), transaction_hash (hex).
+      Status enum: 0=Created,1=Matched,2=InTransit,3=Delivered,4=Completed,5=Cancelled.
+    completed: true
+    parallel_group: 1
+  - title: "US-003: Add 'journeys' table to AGGREGATE_TABLES config"
+    description: |
+      Columns: id (text PK), sender (hex indexed), receiver (hex indexed), driver (hex indexed),
+      current_status (integer indexed), bounty (bigint), journey_start (bigint),
+      journey_end (bigint), eta (bigint), start/end_location_lat/lng (text),
+      start/end_name (text), order_id (hex indexed), created_at (bigint), updated_at (bigint),
+      block_number (bigint), transaction_hash (hex). Add compositeIndex on (current_status, created_at).
+      Status enum: 0=Available,1=Accepted,2=PickedUp,3=InTransit,4=Delivered,5=Completed,6=Cancelled.
+    completed: true
+    parallel_group: 1
+  # =========================================================================
+  # GROUP 2: Implement Aggregate Table Generation
+  # These implement the generateAggregateTables() function
+  # =========================================================================
+  - title: 'US-004: Implement generateAggregateTables() function'
+    description: |
+      Add after generateEventTable() (around line 440). Function reads AGGREGATE_TABLES config
+      and returns SchemaTable[] array. Map types: text->t.text(), hex->t.hex(), bigint->t.bigint(),
+      integer->t.integer(). Handle primaryKey, indexed columns, and compositeIndexes.
+      All columns use snake_case. Replace empty generateEntityTables() body.
+      Verify: npm run generate:indexer && grep -q "export const assets" indexer/generated-schema.ts
+    completed: true
+    parallel_group: 2
+  - title: 'US-005: Verify aggregate tables in generated-schema.ts'
+    description: |
+      Run: npm run generate:indexer. Check indexer/generated-schema.ts contains table definitions
+      for 'assets', 'orders', 'journeys'. Verify each uses onchainTable() with proper columns.
+      Check tables are exported in 'tables' object. Verify: cd indexer && npx tsc --noEmit
+    completed: true
+    parallel_group: 2
+  # =========================================================================
+  # GROUP 3: Define Event-to-Aggregate Mapping
+  # These define how events map to aggregate table updates
+  # =========================================================================
+  - title: 'US-006: Add EVENT_TO_AGGREGATE_MAPPING for orders'
+    description: |
+      Add after AGGREGATE_TABLES config. Define order mappings:
+      UnifiedOrderCreated -> orders insert (id=unified_order_id, buyer, seller, token, token_id,
+      token_quantity=quantity, price, current_status=0)
+      OrderSettled -> orders update (current_status=4)
+      BridgeOrderCancelled -> orders update (current_status=5)
+    completed: true
+    parallel_group: 3
+  - title: 'US-007: Add journey event mappings to EVENT_TO_AGGREGATE_MAPPING'
+    description: |
+      Add mappings:
+      LogisticsOrderCreated -> journeys insert (id=journey_ids, bounty, order_id=unified_order_id,
+      current_status=0)
+      JourneyStatusUpdated -> journeys update (id=journey_id, current_status=phase)
+    completed: true
+    parallel_group: 3
+  - title: 'US-008: Add asset event mappings to EVENT_TO_AGGREGATE_MAPPING'
+    description: |
+      Add mapping for AuraAsset TransferSingle (mint case where from=0x0):
+      -> assets upsert (id=computed from token+tokenId, token_id=id, account=to,
+      name/asset_class/class_name as empty strings as placeholders)
+    completed: true
+    parallel_group: 3
+  # =========================================================================
+  # GROUP 4: Generate Aggregate Handlers
+  # These implement handler generation for aggregate tables
+  # =========================================================================
+  - title: 'US-009: Implement generateAggregateHandlers() function'
+    description: |
+      Add after generateHandlers() function. Reads EVENT_TO_AGGREGATE_MAPPING.
+      For each mapping, generate handler that: 1) Inserts to raw event table, 2) Upserts to
+      aggregate table using context.db.<table>.upsert({ id, create:{...}, update:{...} }).
+      Generate output to: indexer/src/handlers/aggregates.generated.ts
+    completed: true
+    parallel_group: 4
+  - title: 'US-010: Update handler index to include aggregates.generated'
+    description: |
+      Modify index file generation to import aggregates.generated.
+      indexer/src/handlers/index.ts should include: import './aggregates.generated';
+      Verify: npm run generate:indexer && grep -q "aggregates.generated" indexer/src/handlers/index.ts
+      Then verify: cd indexer && npx tsc --noEmit
+    completed: true
+    parallel_group: 4
+  # =========================================================================
+  # GROUP 5: Smoke Tests and Validation
+  # =========================================================================
+  - title: 'US-011: Create aggregates-query smoke test'
+    description: |
+      Create indexer/test/smoke/aggregates-query.test.ts. Test:
+      1) assetss(limit:10) - verify { assetss: { items: [...] } }
+      2) orderss(limit:10) and orderss(where:{buyer:addr})
+      3) journeyss(limit:10) and journeyss(where:{current_status:0})
+      Skip if indexer unreachable. Verify field names match AGGREGATE_TABLES (snake_case).
+      Run: cd indexer && npm test -- --grep aggregates-query
+    completed: true
+    parallel_group: 5
+  - title: 'US-012: Run full generation and validation pipeline'
+    description: |
+      Steps:
+      1) npm run generate:indexer
+      2) Verify schema: grep -E "assets|orders|journeys" indexer/generated-schema.ts
+      3) Type check: cd indexer && npx tsc --noEmit
+      4) Run smoke tests: cd indexer && npm test -- --grep smoke
+      5) Verify NO GRAPHQL_VALIDATION_FAILED errors
+      6) Update indexer/README.md and AGENTS.md documenting the new generative behavior
+    completed: true
+    parallel_group: 5

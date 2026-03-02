@@ -1,188 +1,148 @@
-'use client'; // Required for hooks like useRef and useScroll
+'use client';
 
-import React, { useRef } from 'react'; // Import useRef
-import { Box, Truck, FileCheck, TrendingUp, Database } from 'lucide-react'; // Removed MapPin for now
-import { motion, useScroll, useTransform } from 'framer-motion'; // Import hooks
+import React from 'react';
+import { motion } from 'framer-motion';
+import { FileCheck, Shield, Building, Globe, Sparkles } from 'lucide-react';
+import { GlassCard } from '../ui/glass-card';
 
-const HowItWorksSection = () => {
-  // Placeholder data for steps
-  const steps = [
-    {
-      title: '1. Tokenize Assets',
-      description:
-        'Nodes tokenize real-world assets, creating verifiable digital twins (ERC1155) on the blockchain.',
-      icon: Database,
-    },
-    {
-      title: '2. Order via Marketplace',
-      description:
-        'Customers browse and order verified assets directly through the platform.',
-      icon: Box,
-    },
-    {
-      title: '3. Track Logistics (AuSys)',
-      description:
-        'AuSys manages transparent, on-chain logistics, tracking Journeys from sender to receiver.',
-      icon: Truck,
-    },
-    {
-      title: '4. Confirm Delivery',
-      description:
-        'Secure handoffs and confirmations trigger automated driver payments (Aura token).',
-      icon: FileCheck,
-    },
-    {
-      title: '5. Stake & Earn (AuStake)',
-      description:
-        'AuStake allows users to earn returns by staking and funding real-world asset operations.',
-      icon: TrendingUp,
-    },
-  ];
+/**
+ * Step data for the how it works section
+ */
+const steps = [
+  {
+    number: '01',
+    title: 'Asset Intake',
+    description:
+      'Gather audited documentation, valuations, and legal wrappers so every asset enters our system with a verified provenance trail.',
+    icon: FileCheck,
+  },
+  {
+    number: '02',
+    title: 'Compliance Tokenization',
+    description:
+      'We mint regulated security tokens with embedded AML/KYC rules, investor caps, and custody controls.',
+    icon: Shield,
+  },
+  {
+    number: '03',
+    title: 'Fractional Pooling',
+    description:
+      'Assets are sliced into fractional ownership units that aggregate into diversified pools for broader access.',
+    icon: Building,
+  },
+  {
+    number: '04',
+    title: 'Global Market Access',
+    description:
+      'Tokens list on compliant liquidity venues with settlement rails that bridge fiat and crypto.',
+    icon: Globe,
+  },
+  {
+    number: '05',
+    title: 'Long-Term Stewardship',
+    description:
+      'Continuous reporting, insurance, and governance ensure the underlying asset performs and retains value.',
+    icon: Sparkles,
+  },
+];
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.3, // Stagger the animation of children
-      },
-    },
-  };
+/**
+ * StepCard - Individual step card component
+ */
+interface StepCardProps {
+  step: (typeof steps)[0];
+  index: number;
+  isLast: boolean;
+}
 
-  const itemVariants = (isEven: boolean) => ({
-    hidden: { opacity: 0, x: isEven ? 50 : -50 }, // Slide in from sides
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: { duration: 0.6, ease: 'easeOut' },
-    },
-  });
-
-  // Ref for the section to track scroll progress
-  const sectionRef = useRef<HTMLElement>(null);
-  // useScroll hook to get scrollYProgress within the referenced section
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start center', 'end center'], // Animate between center entering/leaving viewport
-  });
-
-  // Transform scrollYProgress (0 to 1) to pathLength (0 to 1)
-  // We can add easing here if desired, e.g., using value => easeInOut(value)
-  const pathLengthProgress = useTransform(scrollYProgress, (value) => value);
+const StepCard: React.FC<StepCardProps> = ({ step, index, isLast }) => {
+  const Icon = step.icon;
 
   return (
-    <section
-      ref={sectionRef}
-      className="py-16 md:py-24 bg-black text-white overflow-x-hidden"
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-50px' }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      className="relative"
     >
-      <div className="container mx-auto px-4 max-w-6xl text-center">
-        <motion.h2
-          initial={{ opacity: 0, y: -20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.6 }}
-          className="text-3xl md:text-4xl font-bold mb-4"
-        >
-          How Aurellion Works
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-lg text-gray-300 mb-12 md:mb-20 max-w-3xl mx-auto"
-        >
-          Follow the seamless flow of assets and value through the Aurellion
-          ecosystem, from physical tokenization to final delivery and financial
-          opportunities.
-        </motion.p>
+      {/* Connector line */}
+      {!isLast && (
+        <div className="hidden md:block absolute top-1/2 left-full w-full h-px bg-gradient-to-r from-accent/30 to-transparent -translate-y-1/2 z-0" />
+      )}
 
-        <div className="relative md:mt-24">
-          {' '}
-          {/* Added margin top for spacing */}
-          {/* SVG Container for the line - positioned absolutely to span the height of the step container */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-px hidden md:flex justify-center h-[calc(100%+4rem)] -translate-y-8">
-            {' '}
-            {/* Extend slightly above/below */}
-            <svg
-              width="2"
-              height="100%"
-              viewBox="0 0 2 100"
-              preserveAspectRatio="none"
-              className="overflow-visible"
-            >
-              {/* Static background line (optional, if needed) */}
-              <path
-                d="M 1 0 V 100" // Vertical path from top to bottom
-                stroke="rgba(245, 158, 11, 0.15)" // Faint Amber background
-                strokeWidth="2"
-                fill="none"
-              />
-              {/* Animated foreground line */}
-              <motion.path
-                d="M 1 0 V 100" // Vertical path from top to bottom
-                stroke="#F59E0B" // Amber 500 color
-                strokeWidth="2"
-                fill="none"
-                style={{ pathLength: pathLengthProgress }} // Animate pathLength
-              />
-            </svg>
-          </div>
-          {/* Container for steps with staggered animation */}
-          <motion.div
-            className="space-y-12 md:space-y-0 md:grid md:grid-cols-1 md:gap-y-20" // Increased gap
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.1 }}
-          >
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isEven = index % 2 === 0;
-              // Adjust positioning slightly for better visual alignment with the line center
-              const alignmentClass = isEven
-                ? 'md:text-right md:pr-12'
-                : 'md:text-left md:pl-12';
-              const dotPositionClass = isEven
-                ? 'md:right-[-0.8rem]'
-                : 'md:left-[-0.8rem]';
-              const cardAlignment = isEven ? 'md:ml-auto' : 'md:mr-auto';
-
-              return (
-                <motion.div
-                  key={index}
-                  className={`relative md:w-1/2 ${cardAlignment}`}
-                  custom={isEven}
-                  variants={itemVariants(isEven)}
-                >
-                  {/* Add persistent glow to the dot using shadow */}
-                  <div
-                    className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-800 border-2 border-amber-500 
-                                 shadow-lg shadow-amber-500/50 hidden md:block ${dotPositionClass}`}
-                  ></div>
-
-                  {/* Styled Step Card */}
-                  <div
-                    className={`p-6 bg-gray-800/80 rounded-lg shadow-lg backdrop-blur-sm border border-gray-700 ${alignmentClass}`}
-                  >
-                    <Icon
-                      className={`h-10 w-10 mb-3 ${isEven ? 'md:ml-auto' : 'md:mr-0'} text-amber-400`}
-                    />
-                    <h3 className="text-xl font-semibold mb-2 text-gray-100">
-                      {step.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm">{step.description}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+      <GlassCard hover className="relative z-10 h-full">
+        {/* Step number */}
+        <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center">
+          <span className="text-sm font-mono font-bold text-accent">
+            {step.number}
+          </span>
         </div>
 
-        {/* <p className="mt-16 text-gray-500 text-sm">
-          * Visual representation simplified. Actual implementation involves complex smart contract interactions.
-        </p> */}
+        {/* Icon */}
+        <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
+          <Icon className="w-6 h-6 text-accent" />
+        </div>
+
+        {/* Content */}
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          {step.title}
+        </h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {step.description}
+        </p>
+      </GlassCard>
+    </motion.div>
+  );
+};
+
+/**
+ * HowItWorksSection - Step-by-step flow explanation
+ *
+ * Features:
+ * - Numbered step cards
+ * - Animated connector lines
+ * - Scroll-triggered animations
+ * - Clean iconography
+ */
+const HowItWorksSection: React.FC = () => {
+  return (
+    <section className="py-24 md:py-32 relative overflow-hidden">
+      {/* Background accent */}
+      <div className="absolute top-1/2 left-0 w-1/2 h-64 bg-accent/5 blur-3xl -translate-y-1/2" />
+
+      <div className="container mx-auto px-4 max-w-6xl relative z-10">
+        {/* Section header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <span className="inline-block px-4 py-1.5 rounded-full bg-accent/10 text-accent text-sm font-medium mb-4">
+            How it works
+          </span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-4">
+            Tokenization Workflow
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Every asset is vetted, tokenized with legal guardrails, and routed
+            to liquidity so issuers and investors collaborate with confidence.
+          </p>
+        </motion.div>
+
+        {/* Steps grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          {steps.map((step, index) => (
+            <StepCard
+              key={step.number}
+              step={step}
+              index={index}
+              isLast={index === steps.length - 1}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

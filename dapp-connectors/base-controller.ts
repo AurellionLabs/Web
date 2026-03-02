@@ -1,5 +1,4 @@
 import { BrowserProvider, JsonRpcSigner } from 'ethers';
-import { toast } from 'sonner';
 import { SUPPORTED_CHAINS } from '@/config/network';
 
 let provider: BrowserProvider | null = null;
@@ -13,10 +12,10 @@ let initializationPromise: Promise<{
   signer: JsonRpcSigner;
 }> | null = null;
 
-export const setProvider = (newProvider: BrowserProvider) => {
+export const setProvider = (newProvider: BrowserProvider | null) => {
   provider = newProvider;
 };
-export const setSigner = (newSigner: JsonRpcSigner) => {
+export const setSigner = (newSigner: JsonRpcSigner | null) => {
   signer = newSigner;
 };
 export const setWalletAddress = (address: string) => {
@@ -44,7 +43,7 @@ export const initializeProvider = async (): Promise<{
         throw new Error('Please install MetaMask');
       }
 
-      provider = new BrowserProvider(window.ethereum);
+      provider = new BrowserProvider(window.ethereum as any);
       signer = await provider.getSigner();
 
       if (!provider || !signer) throw new Error('Failed to initialize wallet');

@@ -1,0 +1,19 @@
+{
+  "diamond": "0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58",
+  "facets": {
+    "diamondCut": "0x00A8dc79e9D061bA29C46a041389ADf246b021aA",
+    "diamondLoupe": "0x9D950F6B7363314a0c304C90997FAbcd281225FE",
+    "ownership": "0xa5F85fBC22369A9c5FCaF72ce15FC2fE0e2DeF5c",
+    "erc1155Receiver": "0xf67afE54c7F2E1d898Ee87a7783432026Fe26d43",
+    "nodes": "0xf26E7C1146c3CC3bD4cD53007D0b17727CDf7518",
+    "assets": "0xf70063c7C12C790247fE89F963b85c35568F48f0",
+    "orders": "0x22A9B8F70AdF0bE73ee4c7b237E617B053B65a6d",
+    "staking": "0xa9E03bAB4dB2fAC44C6e4b7eB8e9D3bEfF26CcF5",
+    "bridge": "0x9889C9Dc7b78eDad79073ac80bfaF975F7db9025",
+    "clob": "0x4266D981D864106F872e449FfeBCBE4e3F462a7b",
+    "orderRouter": "0x549Adb2a4d24607DCa383700C43e2c01dbaa060f"
+  },
+  "timestamp": "2026-01-08T23:45:00.000Z",
+  "deployBlock": 36030424,
+  "notes": "Fresh Diamond V2 deployment with clean storage - fixes ARRAY_RANGE_ERROR from V1/V2 storage conflicts"
+}

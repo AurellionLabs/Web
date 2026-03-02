@@ -1,462 +1,749 @@
 import {
   type IOrderRepository,
-  // type OrderStatus, // Keep commented if not used for mapping
-  type Asset, // Import Asset type
-  type Attribute, // Import Attribute type
+  Order,
+  OrderStatus,
 } from '@/domain/orders/order';
-import {
-  LocationContract,
-  // LocationContract__factory, // Likely not needed in implementation
-} from '@/typechain-types';
+import { Ausys__factory, type Ausys } from '@/lib/contracts';
 import {
   type BrowserProvider,
   type Signer,
   ethers,
   type BytesLike,
-  // type ContractTransactionReceipt, // Not needed in repo
-  // type AddressLike, // Already inferred for addresses
+  Provider,
 } from 'ethers';
-import { handleContractError } from '@/utils/error-handler'; // Adjust path if necessary
+import { handleContractError } from '@/utils/error-handler';
+import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
+import { Journey, JourneyStatus, ParcelData, Location } from '@/domain/shared';
+import { graphqlRequest } from './shared/graph';
+import {
+  GET_UNIFIED_ORDER_BY_BUYER,
+  GET_UNIFIED_ORDER_BY_SELLER,
+  GET_LOGISTICS_ORDER_CREATED_EVENTS,
+  GET_JOURNEY_STATUS_BY_JOURNEY,
+  GET_ALL_UNIFIED_ORDER_EVENTS,
+  GET_JOURNEY_STATUS_UPDATED_EVENTS,
+  GET_P2P_OFFERS_BY_CREATOR,
+  GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+  GET_AUSYS_ORDER_STATUS_UPDATES,
+  GET_JOURNEYS_BY_ORDER,
+  GET_JOURNEY_STATUS_UPDATES_ALL,
+} from '../shared/graph-queries';
+import type {
+  P2POffersByCreatorResponse,
+  P2POffersAcceptedByUserResponse,
+  P2POfferDetailsResponse,
+  AuSysOrderStatusUpdatesResponse,
+  JourneysByOrderResponse,
+  JourneyStatusUpdatesAllResponse,
+} from '../shared/graph-queries';
+import {
+  aggregateUnifiedOrders,
+  aggregateJourneys,
+  aggregateP2POrdersForUser,
+} from '../shared/event-aggregators';
+import {
+  AggregatedUnifiedOrder,
+  AggregatedJourney,
+  UnifiedOrderCreatedEvent,
+  LogisticsOrderCreatedEvent,
+  JourneyStatusUpdatedEvent,
+} from '../shared/indexer-types';
+import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+
+interface GraphQLResponse<T> {
+  items: T[];
+  pageInfo?: {
+    hasNextPage: boolean;
+    endCursor?: string;
+  };
+}
+
+interface JourneyEventsResponse {
+  diamondJourneyStatusUpdatedEventss: GraphQLResponse<JourneyStatusUpdatedEvent>;
+}
+
+interface LogisticsEventsResponse {
+  diamondLogisticsOrderCreatedEventss: GraphQLResponse<LogisticsOrderCreatedEvent>;
+}
+
+interface UnifiedOrderEventsResponse {
+  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
+}
+
+function buildLocation(lat?: string, lng?: string): Location | undefined {
+  if (!lat || !lng || lat === '' || lng === '') return undefined;
+  return { lat, lng };
+}
+
+function buildParcelData(
+  _journey: AggregatedJourney,
+  _logistics?: LogisticsOrderCreatedEvent,
+): ParcelData {
+  return {
+    startLocation: { lat: '', lng: '' },
+    endLocation: { lat: '', lng: '' },
+    startName: '',
+    endName: '',
+  };
+}
+
+function phaseToJourneyStatus(phase: string | number): JourneyStatus {
+  const phaseNum = typeof phase === 'string' ? parseInt(phase, 10) : phase;
+  switch (phaseNum) {
+    case 0:
+      return JourneyStatus.PENDING;
+    case 1:
+      return JourneyStatus.IN_TRANSIT;
+    case 2:
+      return JourneyStatus.DELIVERED;
+    case 3:
+      return JourneyStatus.CANCELLED;
+    default:
+      return JourneyStatus.PENDING;
+  }
+}
+
+function aggregatedUnifiedOrderToDomain(
+  order: AggregatedUnifiedOrder,
+  _logistics?: LogisticsOrderCreatedEvent,
+  _journey?: AggregatedJourney,
+): Order {
+  return {
+    id: order.unifiedOrderId,
+    token: order.token,
+    tokenId: order.tokenId,
+    tokenQuantity: order.quantity,
+    price: order.price,
+    txFee: '0',
+    buyer: order.buyer,
+    seller: order.seller,
+    journeyIds: order.journeyIds,
+    nodes: _logistics ? [_logistics.node] : [],
+    locationData: undefined,
+    currentStatus: mapOrderStatus(order.status),
+    contractualAgreement: '',
+  };
+}
+
+function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
+  switch (status) {
+    case 'settled':
+      return OrderStatus.SETTLED;
+    case 'cancelled':
+      return OrderStatus.CANCELLED;
+    case 'matched':
+      return OrderStatus.PROCESSING;
+    case 'created':
+      return OrderStatus.CREATED;
+    default:
+      return OrderStatus.CREATED;
+  }
+}
+
+function aggregatedJourneyToDomain(
+  journey: AggregatedJourney,
+  _logistics?: LogisticsOrderCreatedEvent,
+): Journey {
+  return {
+    journeyId: journey.journeyId,
+    currentStatus: phaseToJourneyStatus(journey.phase),
+    sender: '',
+    receiver: '',
+    driver: '',
+    bounty: BigInt(journey.bounty || '0'),
+    journeyStart: BigInt(journey.createdAt),
+    journeyEnd: BigInt(journey.updatedAt),
+    ETA: BigInt(journey.updatedAt),
+    parcelData: {
+      startLocation: { lat: '', lng: '' },
+      endLocation: { lat: '', lng: '' },
+      startName: '',
+      endName: '',
+    },
+  };
+}
 
 /**
- * Infrastructure implementation of the IOrderRepository interface.
- * Interacts with the LocationContract (AuSys) blockchain contract.
+ * Infrastructure implementation of the IOrderRepository interface
+ * Uses Ponder indexer with raw event tables and aggregation
  */
 export class OrderRepository implements IOrderRepository {
-  private contract: LocationContract;
-  private provider: BrowserProvider;
+  private readContract: Ausys;
+  private writeContract: Ausys;
+  private userProvider: BrowserProvider;
+  private readProvider: Provider;
   private signer: Signer;
+  private contractAddress: string;
+  private isInitialized = false;
+  private graphQLEndpoint = NEXT_PUBLIC_AUSYS_SUBGRAPH_URL;
 
-  constructor(
-    contract: LocationContract,
-    provider: BrowserProvider,
-    signer: Signer,
-  ) {
+  constructor(contract: Ausys, userProvider: BrowserProvider, signer: Signer) {
     if (!contract) {
-      throw new Error(
-        'OrderRepository: LocationContract instance is required.',
-      );
+      throw new Error('OrderRepository: Ausys instance is required.');
     }
-    this.contract = contract;
-    this.provider = provider;
+    this.writeContract = contract;
+    this.userProvider = userProvider;
     this.signer = signer;
+    this.contractAddress = contract.target as string;
+
+    this.readProvider = userProvider;
+    this.readContract = contract;
+
+    this.initializeReadProvider();
   }
 
-  /**
-   * Helper to get the wallet address from the current signer.
-   */
-  private async _getWalletAddress(): Promise<string> {
+  private async initializeReadProvider(): Promise<void> {
     try {
-      return await this.signer.getAddress();
-    } catch (error) {
-      console.error('Error getting wallet address from signer:', error);
-      throw new Error('Could not get wallet address. Is the wallet connected?');
-    }
-  }
-
-  // --- IOrderRepository Implementation ---
-
-  async getNodeOrders(
-    address: string,
-  ): Promise<LocationContract.OrderStructOutput[]> {
-    console.log(`[OrderRepository] Getting orders for node: ${address}`);
-    const orders: LocationContract.OrderStructOutput[] = [];
-    try {
-      let index = 0;
-      const MAX_NODE_ORDERS = 100; // Safety limit
-      while (index < MAX_NODE_ORDERS) {
-        let orderId: BytesLike;
-        try {
-          // Use the explicit getter instead of direct mapping access
-          orderId = await this.contract.getNodeOrderIdByIndex(address, index);
-          console.log(`[OrderRepository] Order ID>>: ${orderId}`);
-          if (!orderId || orderId === ethers.ZeroHash) {
-            console.log(
-              `[OrderRepository] End of order list for node ${address} at index ${index}`,
-            );
-            break; // Assume end of list if ZeroHash
-          }
-        } catch (error: any) {
-          console.log(
-            `[OrderRepository] Error fetching order ID for node ${address} at index ${index} (likely end):`,
-            error.message,
-          );
-          break; // Assume end of list on error
-        }
-
-        try {
-          const order = await this.contract.getOrder(orderId);
-          console.log('[OrderRepository] Order>>>>>:', order);
-          // Ensure order has a valid ID before adding
-          if (order && order.id !== ethers.ZeroHash) {
-            orders.push(order);
-          } else {
-            // console.warn(`[OrderRepository] Node ${address} linked to invalid order ID ${orderId} at index ${index}`);
-          }
-        } catch (orderError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch order details for ID ${orderId} linked to node ${address}:`,
-            orderError.message,
-          );
-          // Decide whether to continue or break on single order fetch failure
-        }
-        index++;
-      }
-      // if (index >= MAX_NODE_ORDERS) {
-      //     console.warn(`[OrderRepository] Reached MAX_NODE_ORDERS limit for node ${address}.`);
-      // }
-    } catch (error) {
-      handleContractError(error, `get orders for node ${address}`);
-      throw error; // Re-throw after handling
-    }
-    console.log(
-      `[OrderRepository] Found ${orders.length} orders for node ${address}.`,
-    );
-    return orders;
-  }
-
-  async getCustomerJourneys(
-    address?: string,
-  ): Promise<LocationContract.JourneyStructOutput[]> {
-    const customerAddress = address ?? (await this._getWalletAddress());
-    console.log(
-      `[OrderRepository] Getting journeys for customer: ${customerAddress}`,
-    );
-    const journeys: LocationContract.JourneyStructOutput[] = [];
-    try {
-      const journeyCount =
-        await this.contract.numberOfJourneysCreatedForCustomer(customerAddress);
-      // console.log(`[OrderRepository] Customer ${customerAddress} has ${journeyCount} journeys.`);
-
-      for (let i = 0; i < journeyCount; i++) {
-        let journeyId: BytesLike;
-        try {
-          journeyId = await this.contract.customerToJourneyId(
-            customerAddress,
-            i,
-          );
-          if (!journeyId || journeyId === ethers.ZeroHash) {
-            // console.warn(`[OrderRepository] Found zero hash journey ID for customer ${customerAddress} at index ${i}`);
-            continue; // Skip this one
-          }
-        } catch (idError: any) {
-          console.error(
-            `[OrderRepository] Error fetching journey ID for customer ${customerAddress} at index ${i}:`,
-            idError.message,
-          );
-          continue; // Skip if ID fetch fails
-        }
-
-        try {
-          const journey = await this.contract.journeyIdToJourney(journeyId);
-          // Basic validation
-          if (journey && journey.journeyId !== ethers.ZeroHash) {
-            journeys.push(journey);
-          } else {
-            // console.warn(`[OrderRepository] Invalid journey data returned for ID ${journeyId} (customer ${customerAddress})`);
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch journey details for ID ${journeyId} (customer ${customerAddress}):`,
-            journeyError.message,
-          );
-          // Decide whether to continue or break
-        }
-      }
-    } catch (error) {
-      handleContractError(
-        error,
-        `get journeys for customer ${customerAddress}`,
+      const chainId = await RpcProviderFactory.getChainId(
+        this.userProvider as any,
       );
-      throw error;
-    }
-    // console.log(`[OrderRepository] Found ${journeys.length} journeys for customer ${customerAddress}.`);
-    return journeys;
-  }
-
-  async getReceiverJourneys(
-    address?: string,
-  ): Promise<LocationContract.JourneyStructOutput[]> {
-    const receiverAddress = address ?? (await this._getWalletAddress());
-    console.log(
-      `[OrderRepository] Getting journeys for receiver: ${receiverAddress}`,
-    );
-    const journeys: LocationContract.JourneyStructOutput[] = [];
-    try {
-      const journeyCount =
-        await this.contract.numberOfJourneysCreatedForReceiver(receiverAddress);
-      // console.log(`[OrderRepository] Receiver ${receiverAddress} has ${journeyCount} journeys.`);
-
-      for (let i = 0; i < journeyCount; i++) {
-        let journeyId: BytesLike;
-        try {
-          journeyId = await this.contract.receiverToJourneyId(
-            receiverAddress,
-            i,
-          );
-          if (!journeyId || journeyId === ethers.ZeroHash) {
-            // console.warn(`[OrderRepository] Found zero hash journey ID for receiver ${receiverAddress} at index ${i}`);
-            continue;
-          }
-        } catch (idError: any) {
-          console.error(
-            `[OrderRepository] Error fetching journey ID for receiver ${receiverAddress} at index ${i}:`,
-            idError.message,
-          );
-          continue;
-        }
-
-        try {
-          const journey = await this.contract.journeyIdToJourney(journeyId);
-          if (journey && journey.journeyId !== ethers.ZeroHash) {
-            journeys.push(journey);
-          } else {
-            // console.warn(`[OrderRepository] Invalid journey data returned for ID ${journeyId} (receiver ${receiverAddress})`);
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch journey details for ID ${journeyId} (receiver ${receiverAddress}):`,
-            journeyError.message,
-          );
-        }
-      }
-    } catch (error) {
-      handleContractError(
-        error,
-        `get journeys for receiver ${receiverAddress}`,
+      const rpcProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
+      this.readProvider = rpcProvider;
+      this.readContract = Ausys__factory.connect(
+        this.contractAddress,
+        rpcProvider,
       );
-      throw error;
-    }
-    // console.log(`[OrderRepository] Found ${journeys.length} journeys for receiver ${receiverAddress}.`);
-    return journeys;
-  }
-
-  async fetchAllJourneys(): Promise<LocationContract.JourneyStructOutput[]> {
-    console.log(`[OrderRepository] Fetching all journeys...`);
-    const allJourneys: LocationContract.JourneyStructOutput[] = [];
-    try {
-      let index = 1;
-      const MAX_JOURNEYS = 1000; // Safety break
-      while (index < MAX_JOURNEYS) {
-        let journeyId: BytesLike;
-        try {
-          // Assuming numberToJourneyID mapping exists and holds the counter
-          journeyId = await this.contract.numberToJourneyID(index);
-          console.log(
-            `[OrderRepository] fetchAllJourneys loop index ${index}, raw journeyId:`,
-            journeyId,
-          );
-          if (!journeyId || journeyId === ethers.ZeroHash) {
-            console.log(
-              `[OrderRepository] End of global journey list reached at index ${index}.`,
-            );
-            break;
-          }
-        } catch (error: any) {
-          console.log(
-            `[OrderRepository] Error fetching journey ID at global index ${index} (likely end):`,
-            error.message,
-          );
-          break;
-        }
-
-        try {
-          const journey = await this.contract.journeyIdToJourney(journeyId);
-          console.log(
-            `[OrderRepository] fetchAllJourneys loop index ${index}, fetched journey sender:`,
-            journey.sender,
-          );
-          // Add validation similar to ausys-controller if needed
-          if (
-            journey &&
-            journey.journeyId !== ethers.ZeroHash &&
-            journey.parcelData?.startLocation &&
-            journey.parcelData?.endLocation
-          ) {
-            allJourneys.push(journey);
-          } else {
-            console.warn(
-              `[OrderRepository] Skipping invalid or incomplete journey data for ID ${journeyId} at global index ${index}`,
-            );
-          }
-        } catch (journeyError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch journey details for ID ${journeyId} at global index ${index}:`,
-            journeyError.message,
-          );
-        }
-        index++;
-      }
-      // if (index >= MAX_JOURNEYS) {
-      //      console.warn(`[OrderRepository] Reached MAX_JOURNEYS limit while fetching all journeys.`);
-      // }
+      this.isInitialized = true;
     } catch (error) {
-      handleContractError(error, `fetch all journeys`);
-      throw error;
+      console.warn(
+        '[OrderRepository] Failed to initialize dedicated RPC provider, using user provider:',
+        error,
+      );
+      this.isInitialized = true;
     }
-    console.log(
-      `[OrderRepository] Found ${allJourneys.length} total journeys.`,
-    );
-    return allJourneys;
   }
 
-  async getJourneyById(
-    journeyId: BytesLike,
-  ): Promise<LocationContract.JourneyStructOutput> {
-    // console.log(`[OrderRepository] Getting journey by ID: ${journeyId}`);
+  private async waitForInitialization(): Promise<void> {
+    while (!this.isInitialized) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  async getNodeOrders(address: string): Promise<Order[]> {
     try {
-      // The contract has getjourney(bytes32) and journeyIdToJourney(bytes32 => Journey)
-      // Use the mapping directly as it's simpler
-      const journey = await this.contract.journeyIdToJourney(journeyId);
-      if (!journey || journey.journeyId === ethers.ZeroHash) {
-        // Match error message used in tests
-        throw new Error(
-          `Journey with ID ${journeyId} not found or is invalid.`,
+      const nodeAddress = address.toLowerCase();
+
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_UNIFIED_ORDER_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
+      });
+
+      const nodeOrders = orders.filter((order) =>
+        order.journeyIds.some((jid) => jid.toLowerCase() === nodeAddress),
+      );
+
+      const logisticsByOrder = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.unified_order_id.toLowerCase(), l],
+        ) || [],
+      );
+
+      return nodeOrders.map((order) => {
+        const logistics = logisticsByOrder.get(
+          order.unifiedOrderId.toLowerCase(),
         );
-      }
-      return journey;
+        return aggregatedUnifiedOrderToDomain(order, logistics);
+      });
     } catch (error) {
-      // Re-throw specific not found error, handle others
-      if (
-        error instanceof Error &&
-        error.message.includes('not found or is invalid')
-      ) {
-        throw error;
+      console.error('[OrderRepository] Error fetching node orders:', error);
+      return [];
+    }
+  }
+
+  async getCustomerJourneys(address?: string): Promise<Journey[]> {
+    try {
+      if (!address) {
+        address = await this.signer.getAddress();
       }
-      handleContractError(error, `get journey by ID ${journeyId}`);
-      throw error; // Ensure other errors are thrown after handling
+      const senderAddress = address.toLowerCase();
+
+      const [logisticsResponse, journeyResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const journeys = aggregateJourneys(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyResponse.diamondJourneyStatusUpdatedEventss?.items || [],
+      );
+
+      const logisticsByJourney = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.journey_ids.toLowerCase(), l],
+        ) || [],
+      );
+
+      return journeys.map((journey) => {
+        const logistics = logisticsByJourney.get(
+          journey.journeyId.toLowerCase(),
+        );
+        return aggregatedJourneyToDomain(journey, logistics);
+      });
+    } catch (error) {
+      console.error(
+        '[OrderRepository] Error fetching customer journeys:',
+        error,
+      );
+      return [];
+    }
+  }
+
+  async getReceiverJourneys(address?: string): Promise<Journey[]> {
+    try {
+      if (!address) {
+        address = await this.signer.getAddress();
+      }
+      const receiverAddress = address.toLowerCase();
+
+      const [logisticsResponse, journeyResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const journeys = aggregateJourneys(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyResponse.diamondJourneyStatusUpdatedEventss?.items || [],
+      );
+
+      const logisticsByJourney = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.journey_ids.toLowerCase(), l],
+        ) || [],
+      );
+
+      return journeys.map((journey) => {
+        const logistics = logisticsByJourney.get(
+          journey.journeyId.toLowerCase(),
+        );
+        return aggregatedJourneyToDomain(journey, logistics);
+      });
+    } catch (error) {
+      console.error(
+        '[OrderRepository] Error fetching receiver journeys:',
+        error,
+      );
+      return [];
+    }
+  }
+
+  async fetchAllJourneys(): Promise<Journey[]> {
+    try {
+      const [logisticsResponse, journeyResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 1000 },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATED_EVENTS,
+          { limit: 1000 },
+        ),
+      ]);
+
+      const journeys = aggregateJourneys(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyResponse.diamondJourneyStatusUpdatedEventss?.items || [],
+      );
+
+      const logisticsByJourney = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.journey_ids.toLowerCase(), l],
+        ) || [],
+      );
+
+      return journeys.map((journey) => {
+        const logistics = logisticsByJourney.get(
+          journey.journeyId.toLowerCase(),
+        );
+        return aggregatedJourneyToDomain(journey, logistics);
+      });
+    } catch (error) {
+      console.error('[OrderRepository] Error fetching all journeys:', error);
+      return [];
+    }
+  }
+
+  async getJourneyById(journeyId: BytesLike): Promise<Journey> {
+    try {
+      const journeyIdStr = journeyId.toString();
+
+      const [logisticsResponse, journeyStatusResponse] = await Promise.all([
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetLogisticsByJourneyId($journeyId: String!) {
+            diamondLogisticsOrderCreatedEventss(where: { journeyIds: $journeyId }, limit: 1) {
+              items {
+                id
+                unifiedOrderId
+                ausysOrderId
+                journeyIds
+                bounty
+                node
+                blockTimestamp
+                transactionHash
+              }
+            }
+          }`,
+          { journeyId: journeyIdStr },
+        ),
+        graphqlRequest<JourneyEventsResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_BY_JOURNEY,
+          { journeyId: journeyIdStr },
+        ),
+      ]);
+
+      const logistics =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items[0];
+      const journeyStatus =
+        journeyStatusResponse.diamondJourneyStatusUpdatedEventss?.items[0];
+
+      if (!logistics) {
+        throw new Error(`Journey ${journeyId} not found`);
+      }
+
+      const aggregatedJourney: AggregatedJourney = {
+        journeyId: logistics.journey_ids,
+        unifiedOrderId: logistics.unified_order_id,
+        ausysOrderId: logistics.ausys_order_id,
+        bounty: logistics.bounty,
+        node: logistics.node,
+        phase: journeyStatus?.phase || '0',
+        createdAt: logistics.block_timestamp,
+        updatedAt: journeyStatus?.block_timestamp || logistics.block_timestamp,
+      };
+
+      return aggregatedJourneyToDomain(aggregatedJourney, logistics);
+    } catch (error) {
+      console.error('[OrderRepository] Error fetching journey by ID:', error);
+      await this.waitForInitialization();
+      const contractJourney = await this.readContract.getJourney(journeyId);
+
+      return {
+        parcelData: contractJourney.parcelData,
+        journeyId: contractJourney.journeyId,
+        currentStatus: phaseToJourneyStatus(contractJourney.currentStatus),
+        sender: contractJourney.sender,
+        receiver: contractJourney.receiver,
+        driver: contractJourney.driver,
+        journeyStart: contractJourney.journeyStart,
+        journeyEnd: contractJourney.journeyEnd,
+        bounty: contractJourney.bounty,
+        ETA: contractJourney.ETA,
+      };
     }
   }
 
   async getOrderIdByJourneyId(journeyId: BytesLike): Promise<BytesLike> {
-    // console.log(`[OrderRepository] Getting order ID for journey ID: ${journeyId}`);
     try {
-      const orderId = await this.contract.journeyToOrderId(journeyId);
-      // Contract returns bytes32, which might be ZeroHash if not linked
-      return orderId;
+      await this.waitForInitialization();
+      return await this.readContract.journeyToOrderId(journeyId);
     } catch (error) {
       handleContractError(error, `get order ID for journey ${journeyId}`);
       throw error;
     }
   }
 
-  async getCustomerOrders(
-    address?: string,
-  ): Promise<LocationContract.OrderStructOutput[]> {
-    const customerAddress = address ?? (await this._getWalletAddress());
-    console.log(
-      `[OrderRepository] Getting orders for customer: ${customerAddress}`,
-    );
-    const orders: LocationContract.OrderStructOutput[] = [];
+  async getBuyerOrders(address: string): Promise<Order[]> {
     try {
-      let index = 0;
-      const MAX_ORDERS = 1000; // Safety limit
-      while (index < MAX_ORDERS) {
-        let orderId: BytesLike;
-        try {
-          // Read from public orderIds array getter
-          orderId = await this.contract.orderIds(index);
-          if (!orderId || orderId === ethers.ZeroHash) {
-            // console.log(`[OrderRepository] Found zero hash order ID at global index ${index}, assuming end.`);
-            break; // Assume end
-          }
-        } catch (error: any) {
-          // console.log(`[OrderRepository] Error fetching order ID at global index ${index} (likely end):`, error.message);
-          break; // Assume end on error
-        }
+      const buyerAddress = address.toLowerCase();
 
-        try {
-          const order = await this.contract.getOrder(orderId);
-          // Filter by customer
-          if (
-            order &&
-            order.id !== ethers.ZeroHash &&
-            order.customer.toLowerCase() === customerAddress.toLowerCase()
-          ) {
-            orders.push(order);
-          }
-          // else: either invalid order or belongs to another customer
-        } catch (orderError: any) {
-          console.error(
-            `[OrderRepository] Failed to fetch order details for ID ${orderId} at global index ${index}:`,
-            orderError.message,
-          );
-          // Continue checking other orders
-        }
-        index++;
-      }
-      //  if (index >= MAX_ORDERS) {
-      //      console.warn(`[OrderRepository] Reached MAX_ORDERS limit while fetching orders for customer ${customerAddress}.`);
-      // }
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_UNIFIED_ORDER_BY_BUYER,
+          { buyer: buyerAddress, limit: 100 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
+      });
+
+      const logisticsByOrder = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.unified_order_id.toLowerCase(), l],
+        ) || [],
+      );
+
+      return orders.map((order) => {
+        const logistics = logisticsByOrder.get(
+          order.unifiedOrderId.toLowerCase(),
+        );
+        return aggregatedUnifiedOrderToDomain(order, logistics);
+      });
     } catch (error) {
-      handleContractError(error, `get orders for customer ${customerAddress}`);
-      throw error;
+      console.error('[OrderRepository] Error fetching buyer orders:', error);
+      return [];
     }
-    console.log(
-      `[OrderRepository] Found ${orders.length} orders for customer ${customerAddress}.`,
-    );
-    return orders;
   }
 
-  async getOrderById(
-    orderId: BytesLike,
-  ): Promise<LocationContract.OrderStructOutput> {
-    // console.log(`[OrderRepository] Getting order by ID: ${orderId}`);
+  async getSellerOrders(address: string): Promise<Order[]> {
     try {
-      const order = await this.contract.getOrder(orderId);
-      if (!order || order.id === ethers.ZeroHash) {
-        // Match error message used in tests
-        throw new Error(`Order with ID ${orderId} not found or is invalid.`);
-      }
-      return order;
+      const sellerAddress = address.toLowerCase();
+
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          GET_UNIFIED_ORDER_BY_SELLER,
+          { seller: sellerAddress, limit: 100 },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          GET_LOGISTICS_ORDER_CREATED_EVENTS,
+          { limit: 500 },
+        ),
+      ]);
+
+      const orders = aggregateUnifiedOrders({
+        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        logistics:
+          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
+        journeyUpdates: [],
+        settled: [],
+      });
+
+      const logisticsByOrder = new Map(
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
+          (l) => [l.unified_order_id.toLowerCase(), l],
+        ) || [],
+      );
+
+      return orders.map((order) => {
+        const logistics = logisticsByOrder.get(
+          order.unifiedOrderId.toLowerCase(),
+        );
+        return aggregatedUnifiedOrderToDomain(order, logistics);
+      });
     } catch (error) {
-      // Re-throw specific not found error, handle others
-      if (
-        error instanceof Error &&
-        error.message.includes('not found or is invalid')
-      ) {
-        throw error;
-      }
-      handleContractError(error, `get order by ID ${orderId}`);
-      throw error; // Ensure other errors are thrown after handling
+      console.error('[OrderRepository] Error fetching seller orders:', error);
+      return [];
     }
+  }
+
+  async getOrderById(orderId: BytesLike): Promise<Order> {
+    try {
+      const orderIdStr = orderId.toString();
+
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetOrderById($orderId: String!) {
+            diamondUnifiedOrderCreatedEventss(where: { unifiedOrderId: $orderId }, limit: 1) {
+              items {
+                id
+                unifiedOrderId
+                clobOrderId
+                buyer
+                seller
+                token
+                tokenId
+                quantity
+                price
+                blockNumber
+                blockTimestamp
+                transactionHash
+              }
+            }
+          }`,
+          { orderId: orderIdStr },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetLogisticsByOrderId($orderId: String!) {
+            diamondLogisticsOrderCreatedEventss(where: { unifiedOrderId: $orderId }, limit: 1) {
+              items {
+                id
+                unifiedOrderId
+                ausysOrderId
+                journeyIds
+                bounty
+                node
+                blockTimestamp
+              }
+            }
+          }`,
+          { orderId: orderIdStr },
+        ),
+      ]);
+
+      const order = orderResponse.diamondUnifiedOrderCreatedEventss?.items[0];
+      const logistics =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items[0];
+
+      if (!order) {
+        throw new Error(`Order ${orderId} not found`);
+      }
+
+      const aggregatedOrders = aggregateUnifiedOrders({
+        created: [order],
+        logistics: logistics ? [logistics] : [],
+        journeyUpdates: [],
+        settled: [],
+      });
+
+      const aggregatedOrder = aggregatedOrders[0];
+      if (!aggregatedOrder) {
+        throw new Error(`Failed to aggregate order ${orderId}`);
+      }
+
+      return aggregatedUnifiedOrderToDomain(aggregatedOrder, logistics);
+    } catch (error) {
+      console.error('[OrderRepository] Error fetching order by ID:', error);
+      await this.waitForInitialization();
+      const contractOrder = await this.readContract.getOrder(orderId);
+
+      return {
+        id: contractOrder.id,
+        token: contractOrder.token,
+        tokenId: String(contractOrder.tokenId),
+        tokenQuantity: String(contractOrder.tokenQuantity),
+        // Keep raw wei value — formatted at display layer
+        price: contractOrder.price.toString(),
+        txFee: contractOrder.txFee.toString(),
+        buyer: contractOrder.buyer,
+        seller: contractOrder.seller,
+        journeyIds: contractOrder.journeyIds,
+        nodes: contractOrder.nodes,
+        locationData: contractOrder.locationData,
+        currentStatus: mapOrderStatus(
+          contractOrder.currentStatus === 3n
+            ? 'cancelled'
+            : contractOrder.currentStatus === 2n
+              ? 'settled'
+              : contractOrder.currentStatus === 1n
+                ? 'matched' // maps to OrderStatus.PROCESSING
+                : 'created',
+        ),
+        contractualAgreement: '',
+      };
+    }
+  }
+
+  async getAssetAttributes(
+    assetName: string,
+  ): Promise<{ assetName: string; attributes: any[] }> {
+    console.warn(
+      'getAssetAttributes: LocationContract does not store asset attribute data',
+    );
+    return {
+      assetName,
+      attributes: [],
+    };
+  }
+
+  async getCustomerOrders(address: string): Promise<Order[]> {
+    console.warn('getCustomerOrders is deprecated, use getBuyerOrders instead');
+    return this.getBuyerOrders(address);
   }
 
   /**
-   * Retrieves supported attributes and their value for a specific hash
-   * @param assetName the name of the asset to be retrieved
-   * @returns a an assets attributes and its values
+   * Get all P2P orders involving a user (created or accepted).
+   * Queries the indexer for P2P events and aggregates them into Order objects.
    */
-  async getAssetAttributes(assetName: string): Promise<Asset> {
-    console.log(`[OrderRepository] Getting attributes for asset: ${assetName}`);
+  async getP2POrdersForUser(address: string): Promise<Order[]> {
     try {
-      // Assuming the contract has a method to get attributes by name.
-      // The actual contract method name might differ (e.g., getAsset, assetNameToData, etc.)
-      // We also need to map the contract's return type to the Asset/Attribute structure.
-      // This is a placeholder structure.
+      const userAddress = address.toLowerCase();
 
-      // Placeholder: Use keccak256 like in NodeRepository to potentially get an ID if needed
-      const attributesForHash: string[] = []; // Assuming empty attributes for now
-      const tokenId = ethers.solidityPackedKeccak256(
-        ['string', 'string[]'],
-        [assetName, attributesForHash],
+      // Fetch all relevant P2P events + journey data in parallel
+      const [
+        createdResp,
+        acceptedResp,
+        allCreatedResp,
+        statusResp,
+        journeysResp,
+        journeyStatusResp,
+      ] = await Promise.all([
+        graphqlRequest<P2POffersByCreatorResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_BY_CREATOR,
+          { creator: userAddress, limit: 100 },
+        ),
+        graphqlRequest<P2POffersAcceptedByUserResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFERS_ACCEPTED_BY_USER,
+          { acceptor: userAddress, limit: 100 },
+        ),
+        graphqlRequest<P2POfferDetailsResponse>(
+          this.graphQLEndpoint,
+          GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AuSysOrderStatusUpdatesResponse>(
+          this.graphQLEndpoint,
+          GET_AUSYS_ORDER_STATUS_UPDATES,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneysByOrderResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEYS_BY_ORDER,
+          { limit: 500 },
+        ),
+        graphqlRequest<JourneyStatusUpdatesAllResponse>(
+          this.graphQLEndpoint,
+          GET_JOURNEY_STATUS_UPDATES_ALL,
+          { limit: 500 },
+        ),
+      ]);
+
+      return aggregateP2POrdersForUser(
+        createdResp.diamondP2POfferCreatedEventss?.items || [],
+        acceptedResp.diamondP2POfferAcceptedEventss?.items || [],
+        allCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
+        userAddress,
+        journeysResp.diamondJourneyCreatedEventss?.items || [],
+        journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
       );
-      console.log(
-        `[OrderRepository] Calculated tokenId for ${assetName}: ${tokenId}`,
-      );
-
-      // Placeholder: Return empty attributes as LocationContract doesn't seem to hold this data
-      const attributes: Attribute[] = [];
-
-      return {
-        assetName: assetName,
-        attributes: attributes,
-      };
     } catch (error) {
-      handleContractError(error, `get attributes for asset ${assetName}`);
-      throw error;
+      console.error(
+        '[OrderRepository] Error fetching P2P orders for user:',
+        error,
+      );
+      return [];
     }
   }
-
-  // --- End Implementation ---
 }

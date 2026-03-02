@@ -1,0 +1,21 @@
+# Ralph Progress Log
+Started: 2026-01-18
+
+## Summary
+Consolidated EVENT_TO_AGGREGATE_MAPPING from all agent worktrees into generate-indexer.ts
+
+## Completed Work
+- US-006: Orders event mappings (OrderPlacedWithTokens, RouterOrderPlaced, CLOBOrderFilled, AusysOrderFilled, CLOBOrderCancelled, MatchingOrderCancelled, RouterOrderCancelled, OrderExpired)
+- US-007: Journeys event mappings (JourneyStatusUpdated, LogisticsOrderCreated)
+- US-008: Assets event mappings (AuraAsset:MintedAsset) - Note: AuraAsset artifact not present, handler won't be generated until contract is compiled
+- Core generator logic: Added EVENT_TO_AGGREGATE_MAPPING interface and generate aggregate inserts/updates in handler stubs
+
+## Changes
+- scripts/generate-indexer.ts: Added EVENT_TO_AGGREGATE_MAPPING constant with 12 event mappings
+- Modified generateHandlerStub() to import aggregate tables and generate upsert logic
+- Regenerated handlers: clob.generated.ts now includes aggregate updates for orders
+
+## Pending
+- US-009, US-010: Smoke tests for GraphQL queries
+- US-011: Frontend query audit
+- US-012: Full smoke test suite

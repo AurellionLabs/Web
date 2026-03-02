@@ -18,8 +18,9 @@ import {
   Loader2,
   User,
 } from 'lucide-react';
-import { Delivery } from '@/app/providers/driver.provider';
 import { useState } from 'react';
+import { Delivery } from '@/domain/driver/driver';
+import { formatTokenAmount, formatAddress } from '@/lib/formatters';
 
 interface DeliveryActionDialogProps {
   delivery: Delivery;
@@ -51,7 +52,7 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     icon: <CheckCircle2 className="h-6 w-6 text-amber-500" />,
     confirmText: 'Accept Delivery',
     cancelText: 'Cancel',
-    buttonStyle: 'bg-amber-500 hover:bg-amber-600',
+    buttonStyle: 'bg-amber-500 hover:bg-amber-600 text-white',
     triggerText: 'Accept Delivery',
     confirmationMessage:
       'By accepting this delivery, you commit to picking up and delivering the parcel according to the specified locations and timeline.',
@@ -66,7 +67,7 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     icon: <Package className="h-6 w-6 text-blue-500" />,
     confirmText: 'Confirm Pickup',
     cancelText: 'Cancel',
-    buttonStyle: 'bg-blue-500 hover:bg-blue-600',
+    buttonStyle: 'bg-blue-500 hover:bg-blue-600 text-white',
     triggerText: 'Confirm Pickup',
     confirmationMessage:
       'By confirming pickup, you acknowledge that you have received the parcel and will deliver it to the specified destination.',
@@ -81,7 +82,7 @@ const ACTION_CONFIGS: Record<'accept' | 'pickup' | 'complete', ActionConfig> = {
     icon: <Truck className="h-6 w-6 text-green-500" />,
     confirmText: 'Confirm Delivery',
     cancelText: 'Cancel',
-    buttonStyle: 'bg-green-500 hover:bg-green-600',
+    buttonStyle: 'bg-green-500 hover:bg-green-600 text-white',
     triggerText: 'Confirm Delivery',
     confirmationMessage:
       'By confirming delivery, you certify that you have successfully delivered the parcel to the specified destination.',
@@ -166,13 +167,13 @@ export function DeliveryActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Job ID</span>
                 <span className="text-base font-medium text-right">
-                  {delivery.jobId}
+                  {formatAddress(delivery.jobId)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Customer</span>
                 <span className="text-base font-medium text-right">
-                  {delivery.customer}
+                  {formatAddress(delivery.customer)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -180,13 +181,34 @@ export function DeliveryActionDialog({
                 <span
                   className={`text-base font-medium text-right ${config.accentColor}`}
                 >
-                  ${delivery.fee.toFixed(2)}
+                  ${formatTokenAmount(delivery.fee, 0, 2)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">ETA</span>
                 <span className="text-base font-medium text-right">
-                  {delivery.ETA} mins
+                  {delivery.ETA > 946684800
+                    ? (() => {
+                        const diff =
+                          delivery.ETA - Math.floor(Date.now() / 1000);
+                        if (diff <= 0) return 'Overdue';
+                        const h = Math.floor(diff / 3600);
+                        const m = Math.floor((diff % 3600) / 60);
+                        if (h > 48)
+                          return (
+                            new Date(delivery.ETA * 1000).toLocaleDateString(
+                              'en-GB',
+                              { day: 'numeric', month: 'short' },
+                            ) +
+                            ' ' +
+                            new Date(delivery.ETA * 1000).toLocaleTimeString(
+                              'en-GB',
+                              { hour: '2-digit', minute: '2-digit' },
+                            )
+                          );
+                        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                      })()
+                    : `${delivery.ETA} mins`}
                 </span>
               </div>
               <div className="border-t border-gray-800 pt-4">

@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, dev]
+  pull_request:
+    branches: [main, develop, dev]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run linter
+        run: CI=true bun run lint || true
+
+      - name: TypeScript type check
+        run: bun run typecheck
+
+      - name: Compile contracts
+        run: bunx --bun hardhat compile
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardhat-artifacts
+          path: artifacts/
+          retention-days: 1
+
+      - name: Generate ABIs
+        run: bun scripts/gen-all.ts
+
+      - name: Validate ABIs are up to date
+        run: bun scripts/validate-abis.ts
+
+      - name: Run Vitest tests
+        run: bunx vitest run
+
+      - name: Run Hardhat tests
+        run: bunx --bun hardhat test
+
+  indexer-tests:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hardhat-artifacts
+          path: artifacts/
+
+      - name: Install indexer dependencies
+        run: cd indexer && bun install --frozen-lockfile
+
+      - name: Run indexer tests
+        run: cd indexer && bun run test
+
+  build-indexer:
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, indexer-tests]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./indexer/Dockerfile
+          push: false
+          tags: indexer:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

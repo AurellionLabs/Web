@@ -24,22 +24,69 @@ export type BigNumberString = string;
  * Represents the core Pool entity.
  */
 export interface Pool {
-  id: string; // Unique identifier from the smart contract (operation ID)
+  id: string;
   name: string;
   description: string;
-  assetName: string; // Name of the underlying asset (e.g., "Real Estate Fund X", "Goat")
-  tokenAddress: Address; // The address of the token used for staking/funding
-  providerAddress: Address; // The address that created and manages the pool
-  fundingGoal: BigNumberString; // The target amount for the pool in the specified token
-  totalValueLocked: BigNumberString; // The current amount funded/staked in the pool
-  startDate: number; // Unix timestamp (in seconds) when the pool operation began or will begin
-  durationDays: number; // The intended duration of the pool operation in days
-  /**
-   * Reward rate, potentially stored in basis points (e.g., 500 for 5.00%).
-   * The exact interpretation (permille, basis points, etc.) depends on the contract implementation.
-   */
+  assetName: string;
+  tokenAddress: Address;
+  providerAddress: Address;
+  fundingGoal: BigNumberString;
+  totalValueLocked: BigNumberString;
+  startDate: number;
+  durationDays: number;
   rewardRate: number;
+  assetPrice: BigNumberString;
+  minSalePrice?: BigNumberString;
+  collateralAmount?: BigNumberString;
+  collateralToken?: Address;
   status: PoolStatus;
+  supportingDocuments?: SupportingDocument[];
+  insurance?: InsuranceInfo;
+  custodyProofs?: CustodyProof[];
+  tokenizationProof?: TokenizationProof;
+}
+
+/**
+ * Represents a supporting document that will be uploaded to IPFS.
+ */
+export interface SupportingDocument {
+  name: string; // Original filename
+  type: string; // MIME type (e.g., "application/pdf", "image/jpeg")
+  size: number; // File size in bytes
+  ipfsHash?: string; // IPFS hash after upload (optional during creation)
+  file?: File; // The actual file object (for upload, not persisted)
+}
+
+/**
+ * Represents insurance information for a pool.
+ * Document URI can be IPFS (ipfs://Qm...) or HTTPS URL to hosted PDF.
+ */
+export interface InsuranceInfo {
+  isInsured: boolean;
+  documentUri?: string; // URI to insurance document (ipfs://... or https://...)
+  coverageAmount?: BigNumberString; // Coverage amount in wei
+  expiryDate?: number; // Unix timestamp
+}
+
+/**
+ * Represents a custody proof for tracking physical asset custody.
+ * Document URI can be IPFS (ipfs://Qm...) or HTTPS URL to hosted PDF.
+ */
+export interface CustodyProof {
+  documentUri: string; // URI to custody proof document (ipfs://... or https://...)
+  timestamp: number; // When proof was submitted
+  submitter: Address; // Who submitted the proof
+  proofType: string; // Type of proof (e.g., "CUSTODY_CERTIFICATE", "DELIVERY_RECEIPT")
+}
+
+/**
+ * Represents a tokenization proof for asset tokenization documentation.
+ * Document URI can be IPFS (ipfs://Qm...) or HTTPS URL to hosted PDF.
+ */
+export interface TokenizationProof {
+  documentUri: string; // URI to tokenization document (ipfs://... or https://...)
+  timestamp: number; // When proof was submitted
+  submitter: Address; // Who submitted the proof
 }
 
 /**
@@ -50,11 +97,22 @@ export interface PoolCreationData {
   description: string;
   assetName: string;
   tokenAddress: Address;
-  // providerAddress might be implicit (msg.sender in contract)
   fundingGoal: BigNumberString;
   durationDays: number;
-  rewardRate: number;
-  assetPrice: BigNumberString; // Price of the underlying asset at creation
+  rewardRate: BigNumberString;
+  assetPrice: BigNumberString;
+  minSalePrice: BigNumberString;
+  collateralAmount: BigNumberString;
+  operatorFeeBps?: number;
+  processingDays?: number;
+  supportingDocuments?: SupportingDocument[];
+  // Insurance information (optional)
+  isInsured?: boolean;
+  insuranceDocUri?: string; // URI to insurance document (ipfs://... or https://...)
+  insuranceCoverageAmount?: BigNumberString;
+  insuranceExpiryDate?: number;
+  // Tokenization proof (optional)
+  tokenizationDocUri?: string; // URI to tokenization document (ipfs://... or https://...)
 }
 
 /**
@@ -78,9 +136,9 @@ export interface PoolDynamicData {
   volume24h?: BigNumberString; // Trading or staking volume in the last 24 hours
   volumeChangePercentage?: string; // e.g., "+5.2%" or "-1.0%"
   apy?: number; // Calculated Annual Percentage Yield (if applicable)
-  tvlFormatted: string; // Total Value Locked, formatted as currency string
-  fundingGoalFormatted: string; // Funding Goal, formatted as currency string
-  rewardFormatted: string; // Reward Rate, formatted as percentage string
+  tvl: string; // Total Value Locked, formatted as currency string
+  fundingGoal: string; // Funding Goal, formatted as currency string
+  reward: number; // Reward Rate as a number (APY percentage, e.g. 4.5 for 4.5%)
 }
 
 /**
@@ -107,15 +165,7 @@ export interface IPoolRepository {
    * @param id The unique ID of the pool (operation ID from the contract).
    * @returns A Promise resolving to the Pool object or null if not found.
    */
-  getPoolById(id: string): Promise<Pool | null>;
-
-  /**
-   * Retrieves a list of all Pool IDs.
-   * Corresponds to functions like `getOperationList`.
-   * Often more efficient than fetching all pool data if only IDs are needed.
-   * @returns A Promise resolving to an array of pool IDs (strings).
-   */
-  getAllPoolIds(): Promise<string[]>;
+  getPoolById(id: string): Promise<Pool>;
 
   /**
    * Retrieves the history of staking events for a specific pool.
@@ -128,10 +178,10 @@ export interface IPoolRepository {
   /**
    * Retrieves pools associated with a specific staker address.
    * Useful for "My Positions" views.
-   * @param stakerAddress The address of the staker.
+   * @param investorAddress The address of the investor.
    * @returns A Promise resolving to an array of Pools the user has staked in.
    */
-  findPoolsByStaker(stakerAddress: Address): Promise<Pool[]>;
+  findPoolsByInvestor(investorAddress: Address): Promise<Pool[]>;
 
   /**
    * Retrieves pools managed by a specific provider address.
@@ -141,14 +191,6 @@ export interface IPoolRepository {
    */
   findPoolsByProvider(providerAddress: Address): Promise<Pool[]>;
 
-  /**
-   * Retrieves the number of decimals for a given ERC20 token.
-   * Corresponds to functions like `getDecimal`. Used for formatting values.
-   * @param tokenAddress The address of the ERC20 token contract.
-   * @returns A Promise resolving to the number of decimals.
-   */
-  getTokenDecimals(tokenAddress: Address): Promise<number>;
-
   // Note: getAllPools() might be redundant if the common pattern is getAllPoolIds() -> getPoolById() loop.
   // Keep it for now, but could be removed if unused.
   /**
@@ -156,56 +198,6 @@ export interface IPoolRepository {
    * @returns A Promise resolving to an array of Pool objects.
    */
   getAllPools(): Promise<Pool[]>;
-}
-
-/**
- * Defines the contract for business logic operations related to Pools.
- * Implementations will orchestrate interactions with repositories, smart contracts,
- * and potentially other services.
- */
-export interface IPoolService {
-  /**
-   * Creates a new Pool via the smart contract.
-   * Corresponds to functions like `createOperation`.
-   * @param data Data required to create the pool.
-   * @param creatorAddress The address initiating the creation (often msg.sender).
-   * @returns A Promise resolving to the new Pool's ID or transaction hash upon successful initiation.
-   */
-  createPool(
-    data: PoolCreationData,
-    creatorAddress: Address,
-  ): Promise<{ poolId: string; transactionHash: string } | string>; // Return ID or txHash
-
-  /**
-   * Performs a staking action on a specific pool via the smart contract.
-   * @param poolId The ID of the pool to stake in.
-   * @param amount The amount of tokens to stake (as a string for BigNumber).
-   * @param stakerAddress The address performing the stake.
-   * @returns A Promise resolving to the transaction hash upon successful initiation.
-   */
-  stake(
-    poolId: string,
-    amount: BigNumberString,
-    stakerAddress: Address,
-  ): Promise<string>; // Return txHash
-
-  /**
-   * Initiates the reward claim process for a completed pool (for stakers) via the smart contract.
-   * Corresponds to functions like `triggerReward`.
-   * @param poolId The ID of the pool.
-   * @param claimantAddress The address claiming the reward.
-   * @returns A Promise resolving to the transaction hash upon successful initiation.
-   */
-  claimReward(poolId: string, claimantAddress: Address): Promise<string>; // Return txHash
-
-  /**
-   * Initiates the reward unlocking process for a completed pool (for the provider) via the smart contract.
-   * Corresponds to functions like `unlockReward`.
-   * @param poolId The ID of the pool.
-   * @param providerAddress The address of the provider unlocking the reward.
-   * @returns A Promise resolving to the transaction hash upon successful initiation.
-   */
-  unlockReward(poolId: string, providerAddress: Address): Promise<string>; // Return txHash
 
   /**
    * Retrieves a single pool by ID, including calculated dynamic data for display.
@@ -264,4 +256,81 @@ export interface IPoolService {
     pool: Pool,
     stakeHistory?: StakeEvent[],
   ): Promise<PoolDynamicData>;
+}
+
+/**
+ * Defines the contract for business logic operations related to Pools.
+ * Implementations will orchestrate interactions with repositories, smart contracts,
+ * and potentially other services.
+ */
+export interface IPoolService {
+  /**
+   * Creates a new Pool via the smart contract.
+   * Corresponds to functions like `createOperation`.
+   * @param data Data required to create the pool.
+   * @param creatorAddress The address initiating the creation (often msg.sender).
+   * @returns A Promise resolving to the new Pool's ID or transaction hash upon successful initiation.
+   */
+  createPool(
+    data: PoolCreationData,
+    creatorAddress: Address,
+  ): Promise<{ poolId: string; transactionHash: string }>; // Return ID or txHash
+
+  /**
+   * Closes a pool via the smart contract. Can only be called by the pool provider.
+   * @param poolId The ID of the pool to close.
+   * @param providerAddress The address of the provider closing the pool.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  closePool(poolId: string, providerAddress: Address): Promise<string>; // Return txHash
+
+  /**
+   * Performs a staking action on a specific pool via the smart contract.
+   * @param poolId The ID of the pool to stake in.
+   * @param amount The amount of tokens to stake (as a string for BigNumber).
+   * @param investorAddress The address performing the stake.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  stake(
+    poolId: string,
+    amount: BigNumberString,
+    investorAddress: Address,
+  ): Promise<string>; // Return txHash
+
+  /**
+   * Initiates the reward claim process for a completed pool (for stakers) via the smart contract.
+   * Corresponds to functions like `triggerReward`.
+   * @param poolId The ID of the pool.
+   * @param aimantA The address claiming the reward.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  claimReward(poolId: string, address: Address): Promise<string>; // Return txHash
+
+  /**
+   * Initiates the reward unlocking process for a completed pool (for the provider) via the smart contract.
+   * Corresponds to functions like `unlockReward`.
+   * @param poolId The ID of the pool.
+   * @param providerAddress The address of the provider unlocking the reward.
+   * @returns A Promise resolving to the transaction hash upon successful initiation.
+   */
+  unlockReward(poolId: string, providerAddress: Address): Promise<string>; // Return txHash
+
+  getPoolCapacity(poolId: string): Promise<{
+    targetAmount: string;
+    stakedAmount: string;
+    remainingCapacity: string;
+    fundingDeadline: number;
+    status: number;
+    isFunding: boolean;
+  }>;
+
+  validateStakeAmount(
+    poolId: string,
+    amount: BigNumberString,
+  ): Promise<{
+    isValid: boolean;
+    error?: string;
+    remainingCapacity?: string;
+    userBalance?: string;
+  }>;
 }

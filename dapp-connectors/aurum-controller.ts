@@ -1,3 +1,8 @@
+/**
+ * @deprecated This controller uses legacy contract ABIs.
+ * The Diamond pattern is now in use - see infrastructure/services for new implementations.
+ * This file is kept for reference but should not be used in production.
+ */
 import {
   AddressLike,
   BigNumberish,
@@ -5,11 +10,11 @@ import {
   ContractTransactionReceipt,
 } from 'ethers';
 import {
-  AurumNode,
   AurumNode__factory,
-  AurumNodeManager,
   AurumNodeManager__factory,
-} from '@/typechain-types';
+  type AurumNode,
+  type AurumNodeManager,
+} from '@/lib/contracts';
 import {
   ethersProvider,
   signer,
@@ -21,7 +26,7 @@ import {
   NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
 } from '@/chain-constants';
 import { ethers } from 'ethers';
-import { AuraGoat__factory } from '@/typechain-types';
+import { AuraAsset__factory } from '@/lib/contracts';
 
 export type ResourceData = {
   id: bigint;
@@ -40,7 +45,6 @@ const getAurumContract = async (): Promise<AurumNodeManager> => {
       NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS,
       signer,
     );
-    console.log('AurumNodeManager contract fetched successfully.');
     return contract;
   } catch (error) {
     console.error('Error fetching AurumNodeManager contract:', error);
@@ -54,7 +58,6 @@ const getAurumNodeContract = async (address: string): Promise<AurumNode> => {
   }
   try {
     const contract = AurumNode__factory.connect(address, signer);
-    console.log('AurumNode contract fetched successfully.');
     return contract;
   } catch (error) {
     console.error('Error fetching AurumNode contract:', error);
@@ -77,7 +80,6 @@ export const loadAvailableAssets = async (): Promise<ResourceData[]> => {
     }
   } catch (err: any) {
     if (err?.message?.includes('out of bounds')) {
-      console.log('End of asset list reached.');
     } else {
       console.error('Error loading available assets:', err);
       throw err;
@@ -95,7 +97,6 @@ export const getAllNodeAssets = async (): Promise<TokenizedAsset[]> => {
     // Try to get nodes one by one until we hit an error
     while (true) {
       try {
-        console.log(`Fetching node at index ${count}`);
         const nodeAddress = await contract.nodeList(count);
 
         // Check if we got a valid address
@@ -103,7 +104,6 @@ export const getAllNodeAssets = async (): Promise<TokenizedAsset[]> => {
           !nodeAddress ||
           nodeAddress === '0x0000000000000000000000000000000000000000'
         ) {
-          console.log('Reached end of node list (empty address)');
           break;
         }
 
@@ -137,12 +137,10 @@ export const getAllNodeAssets = async (): Promise<TokenizedAsset[]> => {
         count++;
       } catch (nodeError) {
         // This is expected when we reach the end of the list
-        console.log(`Reached end of node list at index ${count}`);
         break;
       }
     }
 
-    console.log(`Total assets found: ${assetList.length}`);
     return assetList;
   } catch (err) {
     // This would be an unexpected error in the outer function
@@ -170,7 +168,6 @@ export interface NodeStruct {
 }
 
 export const registerNode = async (nodeData: AurumNodeManager.NodeStruct) => {
-  console.log('Node Data:', nodeData);
   const contract = await getAurumContract();
   try {
     const formattedNodeData = {
@@ -181,10 +178,6 @@ export const registerNode = async (nodeData: AurumNodeManager.NodeStruct) => {
 
     const tx = await contract.registerNode(formattedNodeData);
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    console.log(
-      'Node registered successfully. Transaction hash:',
-      receipt.hash,
-    );
     return receipt;
   } catch (error) {
     console.error('Error registering node:', error);
@@ -224,10 +217,6 @@ export const updateNodeStatus = async (node: string, status: BytesLike) => {
     const tx = await contract.updateStatus(status, node);
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
     if (receipt) {
-      console.log('Transaction completed', {
-        transactionHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-      });
     }
     return receipt;
   } catch (error) {
@@ -449,14 +438,9 @@ export const getNodeAssets = async (
 };
 
 export function getAssetName(id: number): string {
-  const assetNames: { [key: number]: string } = {
-    1: 'Goat',
-    2: 'Sheep',
-    3: 'Cow',
-    4: 'Chicken',
-    5: 'Duck',
-  };
-  return assetNames[id] || `Asset ${id}`;
+  return (
+    supportedAssetNameToId.find(([assetId]) => assetId === id)?.[1] || 'Unknown'
+  );
 }
 
 export const checkIfNodeExists = async (
@@ -489,7 +473,6 @@ export const updateSupportedAssets = async (
       prices,
     );
     const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    console.log('Assets updated successfully. Transaction hash:', receipt.hash);
     return receipt;
   } catch (error) {
     console.error('Error updating supported assets:', error);
@@ -556,17 +539,16 @@ export const nodeMintAsset = async (
     const auraGoat = await getAuraGoatContract(NEXT_PUBLIC_AURA_GOAT_ADDRESS);
     const tokenId = assetId * 10; // Match the weight we used in addItem
     const balance = await auraGoat.balanceOf(nodeAddress, tokenId);
-    console.log('Node balance after mint:', balance);
   } catch (error) {
     console.error('Error minting asset:', error);
     throw error;
   }
 };
 
-// Add this function to get AuraGoat contract
+// Add this function to get AuraAsset contract
 const getAuraGoatContract = async (address: string) => {
   if (!signer) throw new Error('Wallet not connected');
-  return AuraGoat__factory.connect(address, signer);
+  return AuraAsset__factory.connect(address, signer);
 };
 
 export const getTokenizedAmount = async (

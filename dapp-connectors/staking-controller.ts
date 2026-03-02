@@ -1,3 +1,8 @@
+/**
+ * @deprecated This controller uses legacy contract ABIs.
+ * The Diamond pattern is now in use - see infrastructure/services for new implementations.
+ * This file is kept for reference but should not be used in production.
+ */
 import {
   AddressLike,
   BigNumberish,
@@ -8,19 +13,16 @@ import {
   Signer,
   ethers,
 } from 'ethers';
-import {
-  Aura,
-  Aura__factory,
-  AuraGoat,
-  AuraGoat__factory,
-  AuStake,
-} from '@/typechain-types';
-import { AuStake__factory } from '@/typechain-types';
+import { AuStake__factory, AuraGoatRed__factory } from '@/lib/contracts';
+import type { AuStake } from '@/lib/contracts';
+// Legacy aliases
+const Aura__factory = AuraGoatRed__factory;
+const AuraGoat__factory = AuraGoatRed__factory;
+type Aura = any;
+type AuraGoat = any;
+type StakedEvent = any;
+type UnstakedEvent = any;
 import { Wallet } from './wallet-helper';
-import {
-  StakedEvent,
-  UnstakedEvent,
-} from '@/typechain-types/contracts/AuStake';
 import { formatEthereumValue } from './ethereum-utils';
 import {
   NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
@@ -79,8 +81,6 @@ export const setWalletProvider = async () => {
         const address = await newSigner.getAddress();
         setWalletAddress(address);
         try {
-          console.log(await getEtherBalance());
-          console.log('success');
           return { success: true, provider: provider, address: address };
         } catch (e) {
           throw new Error(`connection not established ${e}`);
@@ -108,7 +108,6 @@ const getAuStakeContract = async (): Promise<AuStake> =>
         }
       } else {
         console.error('ethersProvider is undefined');
-        console.log('restablishing connection');
         await setWalletProvider();
       }
 
@@ -140,7 +139,6 @@ const getAuraContract = async (): Promise<Aura> =>
         }
       } else {
         console.error('ethersProvider is undefined');
-        console.log('restablishing connection');
         await setWalletProvider();
       }
 
@@ -243,9 +241,6 @@ export const requestTokenAllowance = async (
     const contract = await getAuraContract();
 
     // Make sure we have the correct addresses
-    console.log('Token address:', token);
-    console.log('Spender address:', NEXT_PUBLIC_AUSTAKE_ADDRESS);
-    console.log('Wallet address:', getWalletAddress());
 
     // Check allowance with proper parameters
     const allowance = await contract.allowance(
@@ -257,9 +252,7 @@ export const requestTokenAllowance = async (
       // Approve exact amount needed
       const tx = await contract.approve(NEXT_PUBLIC_AUSTAKE_ADDRESS, amount);
       await tx.wait();
-      console.log('Allowance approved for amount:', amount.toString());
     } else {
-      console.log('Sufficient allowance exists:', allowance.toString());
     }
   } catch (error) {
     console.error('Allowance error:', error);
