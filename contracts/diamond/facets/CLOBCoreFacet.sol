@@ -265,9 +265,10 @@ contract CLOBCoreFacet is ReentrancyGuard {
             }
         }
         
-        // Generate order ID
+        // Generate order ID — deterministic (no block.timestamp) so simulation and
+        // broadcast produce the same ID, enabling return-value capture across tx boundaries.
         uint256 nonce = s.orderNonce++;
-        orderId = keccak256(abi.encodePacked(p.maker, marketId, nonce, block.timestamp));
+        orderId = keccak256(abi.encodePacked(p.maker, marketId, nonce));
         
         // Create packed order
         s.packedOrders[orderId] = DiamondStorage.PackedOrder({
