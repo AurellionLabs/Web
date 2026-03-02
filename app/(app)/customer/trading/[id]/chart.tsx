@@ -13,6 +13,7 @@ import {
   ChartOptions,
   Scale,
   Tick,
+  TooltipItem,
 } from 'chart.js';
 
 ChartJS.register(
@@ -45,8 +46,8 @@ export default function Chart({ priceData, timeRange = '1D' }: ChartProps) {
         mode: 'index' as const,
         intersect: false,
         callbacks: {
-          label: (context: any) => {
-            return `Price: $${context.parsed.y.toFixed(2)}`;
+          label: (context: TooltipItem<'line'>) => {
+            return `Price: $${(context.parsed.y ?? 0).toFixed(2)}`;
           },
         },
       },

@@ -9,8 +9,9 @@ import {
   Title,
   Tooltip,
   Filler,
+  TooltipItem,
 } from 'chart.js';
-import { GroupedStakes } from '@/domain/shared/grouped-stakes';
+import { GroupedStakes } from '@/domain/pool';
 
 ChartJS.register(
   CategoryScale,
@@ -38,8 +39,8 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
         mode: 'index' as const,
         intersect: false,
         callbacks: {
-          label: (context: any) => {
-            const value = context.parsed.y;
+          label: (context: TooltipItem<'line'>) => {
+            const value = context.parsed.y ?? 0;
             if (value >= 1000000) {
               return `Volume: ${(value / 1000000).toFixed(2)}M tokens`;
             } else if (value >= 1000) {
@@ -65,7 +66,7 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
           color: 'rgba(255, 255, 255, 0.1)',
         },
         ticks: {
-          callback: function (value: any) {
+          callback: function (value: number | string) {
             const numValue = Number(value);
             if (numValue === 0) return '0';
 
@@ -100,25 +101,34 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
       return { labels: [], values: [] };
     }
 
+    const toNumericMap = (
+      raw: { [k: string]: string } | undefined,
+    ): { [key: string]: number } => {
+      if (!raw) return {};
+      return Object.fromEntries(
+        Object.entries(raw).map(([k, v]) => [k, Number(v)]),
+      );
+    };
+
     let dataPoints: { [key: string]: number } = {};
     switch (timeRange) {
       case '1H':
-        dataPoints = groupedStakes.hourly || {};
+        dataPoints = toNumericMap(groupedStakes.hourly);
         break;
       case '1D':
-        dataPoints = groupedStakes.daily || {};
+        dataPoints = toNumericMap(groupedStakes.daily);
         break;
       case '1W':
-        dataPoints = groupedStakes.weekly || {};
+        dataPoints = toNumericMap(groupedStakes.weekly);
         break;
       case '1M':
-        dataPoints = groupedStakes.monthly || {};
+        dataPoints = toNumericMap(groupedStakes.monthly);
         break;
       case '1Y':
-        dataPoints = groupedStakes.yearly || {};
+        dataPoints = toNumericMap(groupedStakes.yearly);
         break;
       default:
-        dataPoints = groupedStakes.daily || {};
+        dataPoints = toNumericMap(groupedStakes.daily);
     }
 
     // Sort keys by converting strings to dates first for proper chronological ordering

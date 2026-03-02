@@ -490,8 +490,12 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       try {
         const [tokenIds, balances] = await diamond.getNodeInventory(nodeHash);
         return {
-          tokenIds: tokenIds.map((t: any) => BigInt(t.toString())),
-          balances: balances.map((b: any) => BigInt(b.toString())),
+          tokenIds: tokenIds.map((t: { toString(): string }) =>
+            BigInt(t.toString()),
+          ),
+          balances: balances.map((b: { toString(): string }) =>
+            BigInt(b.toString()),
+          ),
         };
       } catch (err) {
         console.error('[DiamondProvider] Error getting node inventory:', err);

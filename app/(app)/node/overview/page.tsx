@@ -29,6 +29,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Node, NodeAsset } from '@/domain/node/node';
 
 type NodeOverview = {
   address: string;
@@ -85,10 +86,10 @@ export default function NodeOverviewPage() {
     });
   }, [nodes]);
 
-  const getUniqueNodeAssets = (node: any) => {
+  const getUniqueNodeAssets = (node: Node) => {
     const rawAssets = Array.isArray(node?.assets) ? node.assets : [];
     const seenAssetIds = new Set<string>();
-    return rawAssets.filter((asset: any) => {
+    return rawAssets.filter((asset: NodeAsset) => {
       const token = String(asset?.token || '').toLowerCase();
       const tokenId = String(asset?.tokenId || '');
       const key = `${token}:${tokenId}`;

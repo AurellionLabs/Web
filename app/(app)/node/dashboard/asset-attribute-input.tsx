@@ -21,13 +21,15 @@ const formatAttributeName = (name?: string | null): string => {
     .join(' ');
 };
 
+type AttributeValue = string | number | boolean;
+
 type Props = {
   asset: Asset;
-  attributeValues: Record<string, any>;
+  attributeValues: Record<string, AttributeValue>;
   onAttributeChange: (
     assetId: string,
     attributeName: string,
-    value: any,
+    value: AttributeValue,
   ) => void;
 };
 
@@ -57,9 +59,7 @@ const AssetAttributeInput: React.FC<Props> = ({
                 value={currentValue?.toString() ?? ''}
                 onValueChange={(value) =>
                   onAttributeChange(
-                    String(
-                      (asset as any)?.tokenId ?? (asset as any)?.tokenID ?? '',
-                    ),
+                    String(asset.tokenId ?? ''),
                     attribute.name,
                     value,
                   )
@@ -82,13 +82,13 @@ const AssetAttributeInput: React.FC<Props> = ({
               <Input
                 type="text"
                 value={
-                  currentValue === 0 || currentValue === '' ? '' : currentValue
+                  currentValue === 0 || currentValue === ''
+                    ? ''
+                    : String(currentValue)
                 }
                 onChange={(e) =>
                   onAttributeChange(
-                    String(
-                      (asset as any)?.tokenId ?? (asset as any)?.tokenID ?? '',
-                    ),
+                    String(asset.tokenId ?? ''),
                     attribute.name,
                     e.target.value,
                   )

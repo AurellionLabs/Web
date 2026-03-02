@@ -71,6 +71,8 @@ import { MapView } from '@/app/components/ui/map-view';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
 import type { Asset } from '@/domain/shared';
+
+type AttributeValue = string | number | boolean;
 import { Order, OrderStatus } from '@/domain/orders';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -151,7 +153,7 @@ export default function NodeDashboardPage() {
   const assets = nodeAssets;
   const [capacityError, setCapacityError] = useState<string | null>(null);
   const [assetAttributes, setAssetAttributes] = useState<
-    Record<string, Record<string, any>>
+    Record<string, Record<string, AttributeValue>>
   >({});
   const [assetAttributesData, setAssetAttributesData] = useState<
     Record<string, TokenizedAssetAttribute[]>
@@ -579,7 +581,7 @@ export default function NodeDashboardPage() {
   const handleAssetAttributeChange = (
     assetId: string,
     attributeName: string,
-    value: any,
+    value: AttributeValue,
   ) => {
     const currentAttributes = assetAttributes[assetId] || {};
     setAssetAttributes({

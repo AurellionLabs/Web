@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Asset } from '@/domain/shared';
+
+type AttributeValue = string | number | boolean;
 import { Input } from '@/app/components/ui/input';
 import { FormLabel } from '@/app/components/ui/form';
 import AssetAttributeInput from './asset-attribute-input';
@@ -19,11 +21,11 @@ type Props = {
   onAssetClassChange: (value: string) => void;
   onAssetIdChange: (value: string) => void;
   onQuantityChange: (value: string) => void;
-  assetAttributes: Record<string, Record<string, any>>;
+  assetAttributes: Record<string, Record<string, AttributeValue>>;
   onAssetAttributeChange: (
     assetId: string,
     attributeName: string,
-    value: any,
+    value: AttributeValue,
   ) => void;
   onSelectedAssetChange?: (asset: Asset | null) => void;
 };
@@ -70,7 +72,7 @@ const AssetSelectionForm: React.FC<Props> = ({
   // Update selected asset when assetId changes
   useEffect(() => {
     if (selectedAssetId) {
-      const asset = classAssets.find((a: any) => {
+      const asset = classAssets.find((a: Asset) => {
         const idStr = String(a?.tokenId ?? a?.tokenID ?? '');
         return idStr === selectedAssetId;
       });
@@ -127,7 +129,7 @@ const AssetSelectionForm: React.FC<Props> = ({
               <SelectValue placeholder="Select an asset" />
             </SelectTrigger>
             <SelectContent>
-              {classAssets.map((asset: any) => (
+              {classAssets.map((asset: Asset) => (
                 <SelectItem
                   key={String(asset?.tokenId ?? asset?.tokenID)}
                   value={String(asset?.tokenId ?? asset?.tokenID)}
@@ -171,11 +173,7 @@ const AssetSelectionForm: React.FC<Props> = ({
             asset={selectedAsset}
             attributeValues={
               assetAttributes[
-                String(
-                  (selectedAsset as any)?.tokenId ??
-                    (selectedAsset as any)?.tokenID ??
-                    '',
-                )
+                String(selectedAsset?.tokenId ?? selectedAsset?.tokenID ?? '')
               ] || {}
             }
             onAttributeChange={onAssetAttributeChange}

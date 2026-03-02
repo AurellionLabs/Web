@@ -8,7 +8,7 @@ import { useDiamond } from '@/app/providers/diamond.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
-import type { Asset } from '@/domain/shared';
+import type { Asset, AssetAttribute } from '@/domain/shared';
 import {
   EvaPanel,
   TrapButton,
@@ -235,9 +235,7 @@ export default function CreateP2POfferPage() {
     // Avoid duplicate options when metadata has repeated entries for same tokenId
     const seenTokenIds = new Set<string>();
     return byAttributes.filter((asset) => {
-      const tokenId = normalizeTokenId(
-        (asset as any)?.tokenId ?? (asset as any)?.tokenID,
-      );
+      const tokenId = normalizeTokenId(asset?.tokenId ?? asset?.tokenID);
       if (!tokenId || seenTokenIds.has(tokenId)) return false;
       seenTokenIds.add(tokenId);
       return true;
@@ -266,7 +264,7 @@ export default function CreateP2POfferPage() {
   useEffect(() => {
     if (isSellFlow) return;
     if (formData.tokenId) {
-      const asset = classAssets.find((a: any) => {
+      const asset = classAssets.find((a: Asset) => {
         const idStr = normalizeTokenId(a?.tokenId ?? a?.tokenID ?? '');
         return idStr === normalizeTokenId(formData.tokenId);
       });
@@ -961,7 +959,7 @@ export default function CreateP2POfferPage() {
                         }}
                       >
                         <option value="">Select an asset</option>
-                        {filteredBuyAssets.map((asset: any) => (
+                        {filteredBuyAssets.map((asset: Asset) => (
                           <option
                             key={normalizeTokenId(
                               asset?.tokenId ?? asset?.tokenID,
@@ -975,7 +973,7 @@ export default function CreateP2POfferPage() {
                               asset.attributes.length > 0
                                 ? ` • ${asset.attributes
                                     .slice(0, 2)
-                                    .map((attr: any) => {
+                                    .map((attr: AssetAttribute) => {
                                       const attrValue =
                                         getPrimaryAttributeValue(attr);
                                       return `${formatAttributeName(attr?.name || '')}: ${attrValue || '-'}`;

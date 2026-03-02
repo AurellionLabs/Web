@@ -16,6 +16,7 @@ import {
   StakeEvent,
   Address,
   BigNumberString,
+  GroupedStakes,
 } from '@/domain/pool';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
@@ -80,7 +81,7 @@ type PoolContextType = {
   getGroupedStakeHistory: (
     poolId: string,
     interval: '1H' | '1D' | '1W' | '1M' | '1Y',
-  ) => Promise<any>;
+  ) => Promise<GroupedStakes>;
 
   // Utility
   refreshPools: () => Promise<void>;

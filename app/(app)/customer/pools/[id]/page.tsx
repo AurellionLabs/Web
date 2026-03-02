@@ -29,7 +29,12 @@ import { ATFieldGauge } from '@/app/components/eva/eva-animations';
 import { TransactionTable } from '@/app/components/ui/transaction-table';
 import dynamic from 'next/dynamic';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
-import { Pool, PoolDynamicData, PoolStatus } from '@/domain/pool';
+import {
+  Pool,
+  PoolDynamicData,
+  PoolStatus,
+  GroupedStakes,
+} from '@/domain/pool';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/hooks/useWallet';
 import { formatTokenAmount } from '@/lib/formatters';
@@ -58,7 +63,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     null,
   );
   const [isClaimingReward, setIsClaimingReward] = useState(false);
-  const [groupedStake, setGroupedStake] = useState<any>();
+  const [groupedStake, setGroupedStake] = useState<GroupedStakes | undefined>();
   const [dailyPercentageChange, setDailyPercentageChange] = useState('0');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
