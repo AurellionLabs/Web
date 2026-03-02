@@ -1,5 +1,5 @@
 // Auto-generated from CLOBFacetV2.sol - DO NOT EDIT
-// Generated at: 2026-03-01T14:56:42.079Z
+// Generated at: 2026-03-02T03:43:53.202Z
 
 export const CLOBFacetV2ABI = [
   {

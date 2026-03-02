@@ -1,5 +1,5 @@
 // Auto-generated handler for ausys domain - Raw event storage only
-// Generated at: 2026-03-01T14:56:42.093Z
+// Generated at: 2026-03-02T03:43:53.210Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -101,7 +101,7 @@ ponder.on('Diamond:AuSysJourneyStatusUpdated', async ({ event, context }) => {
   await context.db.insert(diamondAuSysJourneyStatusUpdatedEvents).values({
     id: id,
     journey_id: journeyId,
-    new_status: newStatus,
+    new_status: BigInt(newStatus),
     sender: sender,
     receiver: receiver,
     driver: driver,
@@ -152,8 +152,10 @@ ponder.on('Diamond:AuSysOrderCreated', async ({ event, context }) => {
     token_quantity: tokenQuantity,
     price: price,
     tx_fee: txFee,
-    current_status: currentStatus,
-    nodes: nodes,
+    current_status: BigInt(currentStatus),
+    nodes: JSON.stringify(Array.from(nodes), (_, v) =>
+      typeof v === 'bigint' ? v.toString() : v,
+    ),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
@@ -192,7 +194,7 @@ ponder.on('Diamond:AuSysOrderStatusUpdated', async ({ event, context }) => {
   await context.db.insert(diamondAuSysOrderStatusUpdatedEvents).values({
     id: id,
     order_id: orderId,
-    new_status: newStatus,
+    new_status: BigInt(newStatus),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

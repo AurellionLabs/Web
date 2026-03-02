@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-03-01T14:56:42.084Z
+// Generated at: 2026-03-02T03:43:53.206Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -82,7 +82,7 @@ export const diamondNodeCapacityUpdatedEvents = onchainTable(
   (t) => ({
     id: t.text().primaryKey(),
     node_hash: t.hex().notNull(),
-    quantities: t.bigint().notNull(),
+    quantities: t.text().notNull(),
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),
@@ -773,7 +773,7 @@ export const diamondLogisticsOrderCreatedEvents = onchainTable(
     id: t.text().primaryKey(),
     unified_order_id: t.hex().notNull(),
     ausys_order_id: t.hex().notNull(),
-    journey_ids: t.hex().notNull(),
+    journey_ids: t.text().notNull(),
     bounty: t.bigint().notNull(),
     node: t.hex().notNull(),
     block_number: t.bigint().notNull(),
@@ -1670,8 +1670,8 @@ export const diamondTransferBatchEvents = onchainTable(
     operator: t.hex().notNull(),
     from: t.hex().notNull(),
     to: t.hex().notNull(),
-    ids: t.bigint().notNull(),
-    values: t.bigint().notNull(),
+    ids: t.text().notNull(),
+    values: t.text().notNull(),
     block_number: t.bigint().notNull(),
     block_timestamp: t.bigint().notNull(),
     transaction_hash: t.hex().notNull(),

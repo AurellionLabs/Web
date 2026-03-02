@@ -1,5 +1,5 @@
 // Auto-generated handler for assets domain - Raw event storage only
-// Generated at: 2026-03-01T14:56:42.094Z
+// Generated at: 2026-03-02T03:43:53.210Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -64,7 +64,9 @@ ponder.on('Diamond:AssetAttributeAdded', async ({ event, context }) => {
     hash: hash,
     attribute_index: attributeIndex,
     name: name,
-    values: values,
+    values: JSON.stringify(Array.from(values), (_, v) =>
+      typeof v === 'bigint' ? v.toString() : v,
+    ),
     description: description,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
@@ -194,8 +196,12 @@ ponder.on('Diamond:TransferBatch', async ({ event, context }) => {
     operator: operator,
     from: from,
     to: to,
-    ids: ids,
-    values: values,
+    ids: JSON.stringify(Array.from(ids), (_, v) =>
+      typeof v === 'bigint' ? v.toString() : v,
+    ),
+    values: JSON.stringify(Array.from(values), (_, v) =>
+      typeof v === 'bigint' ? v.toString() : v,
+    ),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

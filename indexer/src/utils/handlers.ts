@@ -4,7 +4,7 @@
  * Provides common functions used across all event handlers.
  */
 
-import type { Context } from 'ponder';
+// Context type was removed in Ponder 0.16 — no import needed
 
 /**
  * Generate a unique event ID from transaction hash and log index
@@ -139,7 +139,7 @@ export async function retryWithBackoff<T>(
  * Uses onConflictDoUpdate for idempotent updates
  */
 export async function upsertEntity<T extends { id: string }>(
-  db: Context['db'],
+  db: any,
   table: {
     insert: (values: T) => any;
     update: (where: { id: string }, set: Partial<T>) => any;
@@ -159,7 +159,7 @@ export async function upsertEntity<T extends { id: string }>(
  * Get or create an entity
  */
 export async function getOrCreate<T extends { id: string }>(
-  db: Context['db'],
+  db: any,
   table: { find: (where: { id: string }) => any; insert: (values: T) => any },
   entity: T,
 ): Promise<T> {

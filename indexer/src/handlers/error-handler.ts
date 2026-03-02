@@ -6,7 +6,12 @@
  */
 
 import { ponder } from 'ponder:registry';
-import { trackEventHandled, logMissingHandler } from './validation';
+
+// Stub validation helpers (validation.ts no longer exports these)
+const trackEventHandled = (_eventName: string): void => {};
+const logMissingHandler = (eventName: string): void => {
+  console.warn(`[validation] Missing handler for: ${eventName}`);
+};
 
 /**
  * Wrap an event handler to add error handling and validation

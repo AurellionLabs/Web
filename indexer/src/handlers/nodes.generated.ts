@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-03-01T14:56:42.086Z
+// Generated at: 2026-03-02T03:43:53.208Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -42,10 +42,6 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Handle ClobApprovalGranted event from NodesFacet
  * Signature: ClobApprovalGranted(bytes32,address)
  * Hash: 0xd5126df4
- *
- * @deprecated CLOBFacet is now internal to Diamond — ensureClobApproval() is a no-op.
- * This event will never be emitted. Table diamond_clob_approval_granted_events will remain empty.
- * Kept for schema/handler consistency; safe to remove in a future cleanup.
  */
 ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
@@ -133,7 +129,9 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
   await context.db.insert(diamondNodeCapacityUpdatedEvents).values({
     id: id,
     node_hash: nodeHash,
-    quantities: quantities,
+    quantities: JSON.stringify(Array.from(quantities), (_, v) =>
+      typeof v === 'bigint' ? v.toString() : v,
+    ),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

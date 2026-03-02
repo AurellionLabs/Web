@@ -152,6 +152,8 @@ function solidityTypeToTsType(type: string): string {
 }
 
 function solidityTypeToPonderType(type: string): string {
+  // Arrays are serialized as JSON text — must check before scalar matchers
+  if (type.endsWith('[]')) return 't.text()';
   if (type.startsWith('uint') || type.startsWith('int')) return 't.bigint()';
   if (type === 'address') return 't.hex()';
   if (type === 'bool') return 't.boolean()';
@@ -653,6 +655,19 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
           let colName = camelToSnake(i.name);
           if (reservedColumns.has(colName)) {
             colName = `event_${colName}`;
+          }
+          // Arrays are serialized as JSON text (schema uses t.text() for arrays)
+          if (i.type.endsWith('[]')) {
+            const serialized = `JSON.stringify(Array.from(${varName}), (_, v) => typeof v === 'bigint' ? v.toString() : v)`;
+            return `    ${colName}: ${serialized},`;
+          }
+          // Small uints (uint8/uint16/uint32) are decoded as number by viem but schema is bigint
+          const smallUintMatch = i.type.match(/^u?int(\d+)$/);
+          if (smallUintMatch) {
+            const bits = parseInt(smallUintMatch[1], 10);
+            if (bits <= 48) {
+              return `    ${colName}: BigInt(${varName}),`;
+            }
           }
           return `    ${colName}: ${varName},`;
         })

@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-03-01T14:56:42.092Z
+// Generated at: 2026-03-02T03:43:53.209Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -81,7 +81,7 @@ ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
   await context.db.insert(diamondBridgeOrderCancelledEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
-    previous_status: previousStatus,
+    previous_status: BigInt(previousStatus),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
@@ -142,7 +142,7 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
     id: id,
     unified_order_id: unifiedOrderId,
     journey_id: journeyId,
-    phase: phase,
+    phase: BigInt(phase),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
@@ -163,7 +163,9 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
     id: id,
     unified_order_id: unifiedOrderId,
     ausys_order_id: ausysOrderId,
-    journey_ids: journeyIds,
+    journey_ids: JSON.stringify(Array.from(journeyIds), (_, v) =>
+      typeof v === 'bigint' ? v.toString() : v,
+    ),
     bounty: bounty,
     node: node,
     block_number: event.block.number,
