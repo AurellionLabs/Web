@@ -12,7 +12,36 @@ import {
   AuStake__factory,
   type AuStake as AuStakeContract,
 } from '@/lib/contracts';
-import type { AuStake as AuStakeNS } from '@/typechain-types/contracts/AuStake';
+// Inlined from typechain-types (gitignored) to keep CI type-safe
+type AuStakeOperationStructOutput = [
+  id: string,
+  name: string,
+  description: string,
+  token: string,
+  provider: string,
+  deadline: bigint,
+  startDate: bigint,
+  rwaName: string,
+  reward: bigint,
+  tokenTvl: bigint,
+  operationStatus: bigint,
+  fundingGoal: bigint,
+  assetPrice: bigint,
+] & {
+  id: string;
+  name: string;
+  description: string;
+  token: string;
+  provider: string;
+  deadline: bigint;
+  startDate: bigint;
+  rwaName: string;
+  reward: bigint;
+  tokenTvl: bigint;
+  operationStatus: bigint;
+  fundingGoal: bigint;
+  assetPrice: bigint;
+};
 import {
   BigNumberish,
   BytesLike,
@@ -699,7 +728,7 @@ export class PoolRepository implements IPoolRepository {
   }
 
   private mapContractOperationToPool(
-    operation: AuStakeNS.OperationStructOutput,
+    operation: AuStakeOperationStructOutput,
   ): Pool {
     const currentTime = Math.floor(Date.now() / 1000);
     const deadline = Number(operation.deadline);

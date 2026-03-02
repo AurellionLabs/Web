@@ -3,8 +3,60 @@ import type {
   Order as DomainOrder,
 } from '@/domain/orders/order';
 import type { Ausys } from '@/lib/contracts';
-import type { LocationContract } from '@/typechain-types/contracts/AuSys.sol';
-import type { AuSysFacet } from '@/typechain-types/contracts/diamond/facets/AuSysFacet';
+// Inlined from typechain-types (gitignored) to keep CI type-safe
+// eslint-disable-line
+declare namespace LocationContract {
+  type LocationStruct = { lat: string; lng: string };
+  type ParcelDataStruct = {
+    startLocation: LocationStruct;
+    endLocation: LocationStruct;
+    startName: string;
+    endName: string;
+  };
+  type OrderStruct = {
+    id: import('ethers').BytesLike;
+    token: import('ethers').AddressLike;
+    tokenId: import('ethers').BigNumberish;
+    tokenQuantity: import('ethers').BigNumberish;
+    requestedTokenQuantity: import('ethers').BigNumberish;
+    price: import('ethers').BigNumberish;
+    txFee: import('ethers').BigNumberish;
+    customer: import('ethers').AddressLike;
+    journeyIds: import('ethers').BytesLike[];
+    nodes: import('ethers').AddressLike[];
+    locationData: ParcelDataStruct;
+    currentStatus: import('ethers').BigNumberish;
+    contracatualAgreement: import('ethers').BytesLike;
+  };
+}
+import type {
+  BaseContract,
+  ContractRunner,
+  Interface,
+  ContractTransactionResponse,
+} from 'ethers';
+// AuSysFacet: typechain-types are gitignored; use interface matching actual contract surface
+interface AuSysFacet extends BaseContract {
+  getAddress(): Promise<string>;
+  connect(runner: ContractRunner): AuSysFacet;
+  getJourney(
+    journeyId: BytesLike,
+  ): Promise<{
+    receiver: string;
+    driver: string;
+    senderNodeAddress: string;
+    deliveryStatus: bigint;
+  }>;
+  packageHandOn(journeyId: BytesLike): Promise<ContractTransactionResponse>;
+  packageSign(journeyId: BytesLike): Promise<ContractTransactionResponse>;
+  createOrder(
+    order: LocationContract.OrderStruct,
+  ): Promise<ContractTransactionResponse>;
+  acceptOrder(orderId: BytesLike): Promise<ContractTransactionResponse>;
+  cancelOrder(orderId: BytesLike): Promise<ContractTransactionResponse>;
+  interface: Interface;
+  [key: string]: unknown;
+}
 import {
   BytesLike,
   ContractTransactionReceipt,
