@@ -1,14 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ethers } from 'ethers';
 import { useNodes } from '@/app/providers/nodes.provider';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
-
-const ERC1155_ABI = [
-  'function balanceOf(address account, uint256 id) view returns (uint256)',
-  'function balanceOfBatch(address[] accounts, uint256[] ids) view returns (uint256[])',
-];
+import { getSettlementService } from '@/infrastructure/services/settlement-service';
 
 export interface CustodyEntry {
   nodeAddress: string;
@@ -25,8 +19,9 @@ export interface AssetCustodyResult {
 }
 
 /**
- * For a given tokenId + wallet address, returns how much is held
+ * For a given tokenId + wallet balance, returns how much is held
  * in-wallet vs custodied across each of the user's nodes.
+ * All contract calls delegated to SettlementService.
  */
 export function useAssetCustody(
   tokenId: string | undefined,
@@ -34,13 +29,23 @@ export function useAssetCustody(
   walletBalance: bigint,
 ): AssetCustodyResult {
   const { nodes } = useNodes();
-  const [nodeCustody, setNodeCustody] = useState<CustodyEntry[]>([]);
+  const [result, setResult] = useState<
+    Omit<AssetCustodyResult, 'isLoading' | 'error'>
+  >({
+    inWallet: walletBalance,
+    nodes: [],
+    totalBalance: walletBalance,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCustody = useCallback(async () => {
     if (!tokenId || !walletAddress || nodes.length === 0) {
-      setNodeCustody([]);
+      setResult({
+        inWallet: walletBalance,
+        nodes: [],
+        totalBalance: walletBalance,
+      });
       return;
     }
 
@@ -48,65 +53,29 @@ export function useAssetCustody(
     setError(null);
 
     try {
-      // Use the injected wallet provider client-side — avoids needing a public RPC URL
-      const provider =
-        typeof window !== 'undefined' && (window as any).ethereum
-          ? new ethers.BrowserProvider((window as any).ethereum)
-          : new ethers.JsonRpcProvider(
-              process.env.NEXT_PUBLIC_RPC_URL_84532 ?? '',
-            );
-      const contract = new ethers.Contract(
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
-        ERC1155_ABI,
-        provider,
+      const service = getSettlementService();
+      const breakdown = await service.getCustodyBreakdown(
+        tokenId,
+        walletBalance,
+        nodes.map((n) => ({
+          address: n.address,
+          location: n.location?.addressName || n.address,
+        })),
       );
-
-      const tokenIdBigInt = BigInt(tokenId);
-      const nodeAddresses = nodes.map((n) => n.address);
-      const ids = nodeAddresses.map(() => tokenIdBigInt);
-
-      let balances: bigint[];
-      try {
-        balances = await contract.balanceOfBatch(nodeAddresses, ids);
-      } catch {
-        // fallback to individual calls
-        balances = await Promise.all(
-          nodeAddresses.map((addr) => contract.balanceOf(addr, tokenIdBigInt)),
-        );
-      }
-
-      const entries: CustodyEntry[] = [];
-      for (let i = 0; i < nodes.length; i++) {
-        if (balances[i] > 0n) {
-          entries.push({
-            nodeAddress: nodes[i].address,
-            nodeLocation: nodes[i].location?.addressName || nodes[i].address,
-            amount: balances[i],
-          });
-        }
-      }
-
-      setNodeCustody(entries);
+      setResult(breakdown);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch custody');
     } finally {
       setIsLoading(false);
     }
-  }, [tokenId, walletAddress, nodes]);
+  }, [tokenId, walletAddress, walletBalance, nodes]);
 
   useEffect(() => {
     fetchCustody();
   }, [fetchCustody]);
 
-  // inWallet = walletBalance - sum of all node balances (tokens held at node addresses)
-  const totalNodeCustody = nodeCustody.reduce((sum, e) => sum + e.amount, 0n);
-  const inWallet =
-    walletBalance > totalNodeCustody ? walletBalance - totalNodeCustody : 0n;
-
   return {
-    inWallet,
-    nodes: nodeCustody,
-    totalBalance: walletBalance,
+    ...result,
     isLoading,
     error,
   };
