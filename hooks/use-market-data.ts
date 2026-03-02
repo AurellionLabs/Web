@@ -1,3 +1,8 @@
+/**
+ * @file Hooks for fetching market-level data including stats and trades.
+ * @description Provides market statistics, recent trades, and multi-market support.
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -18,6 +23,27 @@ export interface UseMarketDataReturn {
   refresh: () => Promise<void>;
 }
 
+/**
+ * Fetches market statistics and recent trades for a given market.
+ *
+ * @param baseToken - Base token contract address
+ * @param baseTokenId - Base token ID
+ * @param options - Configuration options
+ * @param options.updateInterval - Polling interval in ms (default 10000)
+ * @param options.autoRefresh - Whether to auto-refresh (default true)
+ * @returns Market stats, recent trades, loading state, error, and refresh function
+ *
+ * @example
+ * const { stats, trades, isLoading } = useMarketData(
+ *   NEXT_PUBLIC_DIAMOND_ADDRESS,
+ *   '1'
+ * );
+ *
+ * if (stats) {
+ *   console.log(`24h Volume: ${stats.volume24h}`);
+ *   console.log(`Last price: ${stats.lastPrice}`);
+ * }
+ */
 export function useMarketData(
   baseToken?: string,
   baseTokenId?: string,
@@ -72,6 +98,21 @@ export function useMarketData(
   return { stats, trades, isLoading, error, refresh };
 }
 
+/**
+ * Fetches market statistics for multiple markets concurrently.
+ *
+ * @param markets - Array of market configurations (baseToken + baseTokenId)
+ * @param options - Configuration options
+ * @param options.updateInterval - Polling interval in ms (default 30000)
+ * @param options.autoRefresh - Whether to auto-refresh (default true)
+ * @returns Map of market key to stats, loading state, error, and refresh function
+ *
+ * @example
+ * const { allStats, isLoading } = useMultipleMarkets([
+ *   { baseToken: diamondAddress, baseTokenId: '1' },
+ *   { baseToken: diamondAddress, baseTokenId: '2' }
+ * ]);
+ */
 export function useMultipleMarkets(
   markets: Array<{ baseToken: string; baseTokenId: string }>,
   options: UseMarketDataOptions = {},

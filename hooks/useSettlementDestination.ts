@@ -1,3 +1,8 @@
+/**
+ * @file Hook for managing token settlement destination selection.
+ * @description Handles pending token settlements and destination selection (node wallet or burn).
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -32,6 +37,24 @@ export interface UseSettlementDestinationReturn {
   refetch: () => Promise<void>;
 }
 
+/**
+ * Manages token settlement destination selection for pending orders.
+ *
+ * After a trade executes, buyers must select whether to:
+ * - Receive tokens at a node (custody)
+ * - Burn tokens (destroy)
+ *
+ * @returns Pending orders, loading state, error, and selection functions
+ *
+ * @example
+ * const { pendingOrders, selectDestination, isLoading } = useSettlementDestination();
+ *
+ * // User selects to receive at a node
+ * await selectDestination(orderId, nodeId, false);
+ *
+ * // Or burn tokens
+ * await selectDestination(orderId, null, true);
+ */
 export function useSettlementDestination(): UseSettlementDestinationReturn {
   const { address, isConnected } = useWallet();
   const [state, setState] = useState<SettlementState>({ status: 'idle' });

@@ -1,3 +1,8 @@
+/**
+ * @file Hook for fetching and managing CLOB order book data.
+ * @description Provides real-time bid/ask levels with automatic polling.
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -5,6 +10,9 @@ import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-reposito
 import { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } from '@/chain-constants';
 import type { OrderBookData } from '@/infrastructure/repositories/clob-repository';
 
+/**
+ * A single price level in the order book.
+ */
 export interface OrderLevel {
   price: number;
   quantity: number;
@@ -66,6 +74,30 @@ const toOrderLevels = (
   return levels;
 };
 
+/**
+ * Fetches and manages the order book for a given asset.
+ *
+ * @param assetId - The asset identifier to fetch order book for
+ * @param options - Configuration options
+ * @param options.levels - Number of price levels to fetch (default 10)
+ * @param options.updateInterval - Polling interval in ms (default 5000)
+ * @param options.baseToken - Base token address
+ * @param options.baseTokenId - Base token ID
+ * @param options.basePrice - Fallback price if order book is empty
+ * @returns Order book data, loading state, error, and refresh function
+ *
+ * @example
+ * const { orderBook, isLoading, error, refresh } = useOrderBook('1', {
+ *   levels: 10,
+ *   updateInterval: 5000
+ * });
+ *
+ * if (orderBook) {
+ *   console.log(`Spread: ${orderBook.spreadPercent.toFixed(2)}%`);
+ *   console.log('Bids:', orderBook.bids);
+ *   console.log('Asks:', orderBook.asks);
+ * }
+ */
 export function useOrderBook(
   assetId: string,
   options: UseOrderBookOptions = {},
@@ -148,6 +180,17 @@ export function useOrderBook(
   return { orderBook, isLoading, error, refresh };
 }
 
+/**
+ * Calculates statistical summaries from order book data.
+ *
+ * @param orderBook - The order book data to analyze
+ * @returns Volume and price statistics
+ *
+ * @example
+ * const stats = useOrderBookStats(orderBook);
+ * console.log(`Total bid volume: ${stats.totalBidVolume}`);
+ * console.log(`Bid/Ask ratio: ${stats.bidAskRatio.toFixed(2)}`);
+ */
 export function useOrderBookStats(orderBook: ExtendedOrderBookData | null) {
   return useMemo(() => {
     if (!orderBook)

@@ -1,3 +1,8 @@
+/**
+ * @file Hooks for fetching real-time asset price data from the CLOB order book.
+ * @description Provides price, bid, ask, spread data with automatic polling.
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -7,6 +12,9 @@ import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
 
+/**
+ * Price data for a single asset.
+ */
 interface AssetPriceData {
   price: number;
   bestBid: number;
@@ -16,6 +24,9 @@ interface AssetPriceData {
   lastUpdate: number;
 }
 
+/**
+ * Return value for useAssetPrice hook.
+ */
 interface UseAssetPriceReturn {
   priceData: AssetPriceData | null;
   isLoading: boolean;
@@ -23,9 +34,28 @@ interface UseAssetPriceReturn {
   refetch: () => Promise<void>;
 }
 
+/**
+ * Converts a wei-scale value to a human-readable number.
+ */
 const toNum = (v: string | number | null | undefined) =>
   v ? parseFloat(String(v)) / 1e18 : 0;
 
+/**
+ * Fetches real-time price data for a single asset from the CLOB.
+ *
+ * @param tokenId - The base token ID to fetch price for
+ * @param baseToken - The base token contract address (defaults to Diamond)
+ * @param pollInterval - How often to refresh in milliseconds (default 10000)
+ * @returns Price data, loading state, error, and refetch function
+ *
+ * @example
+ * const { priceData, isLoading, error } = useAssetPrice('1');
+ *
+ * if (priceData) {
+ *   console.log(`Current price: $${priceData.price.toFixed(2)}`);
+ *   console.log(`Spread: ${priceData.spreadPercent.toFixed(2)}%`);
+ * }
+ */
 export function useAssetPrice(
   tokenId: string,
   baseToken: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
@@ -78,20 +108,52 @@ export function useAssetPrice(
   useEffect(() => {
     fetchPrice();
     if (pollInterval > 0) {
-      intervalRef.current = setInterval(fetchPrice, pollInterval);
+      // Only poll when page is visible to save bandwidth and reduce RPC load
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchPrice();
+        }
+      };
+
+      intervalRef.current = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchPrice();
+        }
+      }, pollInterval);
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      };
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
   }, [fetchPrice, pollInterval]);
 
   return { priceData, isLoading, error, refetch: fetchPrice };
 }
 
+/**
+ * Fetches price data for multiple assets concurrently.
+ *
+ * @param tokenIds - Array of base token IDs to fetch prices for
+ * @param baseToken - The base token contract address (defaults to Diamond)
+ * @returns Map of tokenId to price data, loading state, error, and refetch function
+ *
+ * @example
+ * const { prices, isLoading } = useAssetPrices(['1', '2', '3']);
+ *
+ * prices.forEach((data, tokenId) => {
+ *   console.log(`Token ${tokenId}: $${data.price}`);
+ * });
+ */
 export function useAssetPrices(
   tokenIds: string[],
   baseToken: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
 ): {
+  /** Map of tokenId to price data */
   prices: Map<string, AssetPriceData>;
   isLoading: boolean;
   error: string | null;
