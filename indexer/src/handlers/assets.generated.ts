@@ -1,5 +1,5 @@
 // Auto-generated handler for assets domain - Raw event storage only
-// Generated at: 2026-03-02T05:05:48.552Z
+// Generated at: 2026-03-02T06:06:41.564Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer
@@ -19,7 +19,6 @@ import {
   diamondTransferBatchEvents,
   diamondTransferSingleEvents,
   diamondURIEvents,
-  assets,
 } from 'ponder:schema';
 
 // Utility functions
@@ -127,7 +126,7 @@ ponder.on('Diamond:MintedAsset', async ({ event, context }) => {
   const { account, hash, tokenId, name, assetClass, className } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Raw event storage
+  // Pure Dumb Indexer: Insert raw event only, no aggregates
   await context.db.insert(diamondMintedAssetEvents).values({
     id: id,
     account: account,
@@ -140,29 +139,6 @@ ponder.on('Diamond:MintedAsset', async ({ event, context }) => {
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
-
-  // Aggregate: upsert asset record
-  await context.db
-    .insert(assets)
-    .values({
-      id: hash,
-      hash: hash,
-      token_id: tokenId,
-      name: name,
-      asset_class: assetClass,
-      class_name: className,
-      account: account,
-      created_at: BigInt(event.block.timestamp),
-      updated_at: BigInt(event.block.timestamp),
-      block_number: event.block.number,
-      transaction_hash: event.transaction.hash,
-    })
-    .onConflictDoUpdate({
-      account: account,
-      updated_at: BigInt(event.block.timestamp),
-      block_number: event.block.number,
-      transaction_hash: event.transaction.hash,
-    });
 });
 
 /**

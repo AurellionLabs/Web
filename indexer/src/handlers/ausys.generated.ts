@@ -1,5 +1,5 @@
 // Auto-generated handler for ausys domain - Raw event storage only
-// Generated at: 2026-03-02T05:05:48.552Z
+// Generated at: 2026-03-02T06:06:41.564Z
 //
 // Pure Dumb Indexer: Store raw events only, NO aggregate tables
 // All aggregation happens in frontend repository layer

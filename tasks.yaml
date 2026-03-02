@@ -78,7 +78,7 @@ tasks:
       token_quantity=quantity, price, current_status=0)
       OrderSettled -> orders update (current_status=4)
       BridgeOrderCancelled -> orders update (current_status=5)
-    completed: false
+    completed: true
     parallel_group: 3
   - title: 'US-007: Add journey event mappings to EVENT_TO_AGGREGATE_MAPPING'
     description: |
@@ -86,14 +86,14 @@ tasks:
       LogisticsOrderCreated -> journeys insert (id=journey_ids, bounty, order_id=unified_order_id,
       current_status=0)
       JourneyStatusUpdated -> journeys update (id=journey_id, current_status=phase)
-    completed: false
+    completed: true
     parallel_group: 3
   - title: 'US-008: Add asset event mappings to EVENT_TO_AGGREGATE_MAPPING'
     description: |
       Add mapping for AuraAsset TransferSingle (mint case where from=0x0):
       -> assets upsert (id=computed from token+tokenId, token_id=id, account=to,
       name/asset_class/class_name as empty strings as placeholders)
-    completed: false
+    completed: true
     parallel_group: 3
   # =========================================================================
   # GROUP 4: Generate Aggregate Handlers
@@ -105,7 +105,7 @@ tasks:
       For each mapping, generate handler that: 1) Inserts to raw event table, 2) Upserts to
       aggregate table using context.db.<table>.upsert({ id, create:{...}, update:{...} }).
       Generate output to: indexer/src/handlers/aggregates.generated.ts
-    completed: false
+    completed: true
     parallel_group: 4
   - title: 'US-010: Update handler index to include aggregates.generated'
     description: |
@@ -113,7 +113,7 @@ tasks:
       indexer/src/handlers/index.ts should include: import './aggregates.generated';
       Verify: npm run generate:indexer && grep -q "aggregates.generated" indexer/src/handlers/index.ts
       Then verify: cd indexer && npx tsc --noEmit
-    completed: false
+    completed: true
     parallel_group: 4
   # =========================================================================
   # GROUP 5: Smoke Tests and Validation
@@ -126,7 +126,7 @@ tasks:
       3) journeyss(limit:10) and journeyss(where:{current_status:0})
       Skip if indexer unreachable. Verify field names match AGGREGATE_TABLES (snake_case).
       Run: cd indexer && npm test -- --grep aggregates-query
-    completed: false
+    completed: true
     parallel_group: 5
   - title: 'US-012: Run full generation and validation pipeline'
     description: |
@@ -137,5 +137,5 @@ tasks:
       4) Run smoke tests: cd indexer && npm test -- --grep smoke
       5) Verify NO GRAPHQL_VALIDATION_FAILED errors
       6) Update indexer/README.md and AGENTS.md documenting the new generative behavior
-    completed: false
+    completed: true
     parallel_group: 5
