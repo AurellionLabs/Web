@@ -113,7 +113,7 @@ contract CLOBAdminFacet is ReentrancyGuard {
     // ============================================================================
     
     modifier onlyOwner() {
-        LibDiamond.enforceIsContractOwner();
+        if (msg.sender != LibDiamond.contractOwner()) revert NotOwner();
         _;
     }
     
