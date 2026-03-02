@@ -153,7 +153,11 @@ marked.use({
     },
 
     code(token: Tokens.Code): string {
-      const lang = token.lang ?? '';
+      const lang = (token.lang ?? '').trim().toLowerCase();
+      // Mermaid diagrams — rendered client-side by MermaidRenderer
+      if (lang === 'mermaid') {
+        return `<pre class="mermaid-diagram" data-graph="${encodeURIComponent(token.text)}"></pre>`;
+      }
       const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
       const highlighted =
         language === 'plaintext'

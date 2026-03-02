@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getDocBySlug, getAllSlugs } from '@/lib/docs';
 import { NAV_STRUCTURE, type NavItem } from '@/lib/docs-nav';
 import { DocsTOC } from '../components/DocsTOC';
+import { DocContent } from '../components/DocContent';
 import {
   GreekKeyStrip,
   EvaSystemReadout,

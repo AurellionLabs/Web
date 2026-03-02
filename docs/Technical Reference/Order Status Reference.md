@@ -59,12 +59,23 @@ Defined in `OrderStatus.sol`. Stored in `UnifiedOrder.status`.
 
 **Transitions:**
 
-```
-PENDING_TRADE ──bridgeTradeToLogistics()──▶ TRADE_MATCHED
-TRADE_MATCHED ──createLogisticsOrder()───▶ IN_LOGISTICS
-IN_LOGISTICS  ──settleOrder() (auto)──────▶ SETTLED
-PENDING_TRADE ──cancelBridgeOrder()───────▶ CANCELLED
-TRADE_MATCHED ──cancelBridgeOrder()───────▶ CANCELLED
+```mermaid
+graph LR
+    A["0: ACTIVE<br/>Order placed, escrowed"]
+    M["1: MATCHED<br/>Trade executed"]
+    L["2: LOGISTICS_CREATED<br/>Unified order raised"]
+    T["3: IN_TRANSIT<br/>Driver assigned"]
+    D["4: DELIVERED<br/>GPS proof confirmed"]
+    S["5: SETTLED<br/>Tokens + AURA transferred"]
+    C["6: CANCELLED"]
+
+    A -->|"match"| M --> L --> T --> D --> S
+    A -->|"cancel/expire"| C
+
+    style A fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
+    style M fill:#0a0a0a,stroke:#8b1a1a,color:#c06060
+    style S fill:#080808,stroke:#2d6a2d,color:#5a9a5a
+    style C fill:#080808,stroke:#8b1a1a,color:#c06060
 ```
 
 ---

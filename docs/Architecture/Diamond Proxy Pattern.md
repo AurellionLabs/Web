@@ -1,134 +1,118 @@
 ---
-tags: [architecture, diamond, eip-2535, smart-contracts]
+tags: [architecture, diamond, eip-2535, proxy, facets, upgrades]
 ---
 
-# Diamond Proxy Pattern (EIP-2535)
+# Diamond Proxy Pattern
 
-[[🏠 Home]] > [[Architecture/System Overview]] > Diamond Proxy Pattern
+[[🏠 Home]] > Architecture > Diamond Proxy Pattern
 
-Aurellion's smart contract system is built on **EIP-2535 Diamonds**, a proxy pattern that allows a single Ethereum address to expose an unlimited number of functions by delegating to multiple implementation contracts called **facets**.
+Aurellion's smart contract system implements **EIP-2535 Diamond Standard** — a single proxy address that delegates calls to modular, upgradeable implementation contracts called _facets_.
 
 ---
 
 ## Why Diamond?
 
-Traditional upgradeable proxies (UUPS, Transparent) have a 24KB contract size limit and support only one implementation at a time. Diamonds solve both problems:
-
-| Problem            | Traditional Proxy        | Diamond (EIP-2535)                 |
-| ------------------ | ------------------------ | ---------------------------------- |
-| Size limit         | 24KB hard cap            | Unlimited (spread across facets)   |
-| Upgradeability     | Replace entire logic     | Surgical per-function upgrades     |
-| Storage collisions | Risk with naive patterns | Solved by AppStorage at fixed slot |
-| Introspection      | None                     | DiamondLoupeFacet                  |
+| Problem                               | Diamond Solution                          |
+| ------------------------------------- | ----------------------------------------- |
+| Contract size limit (24 KB)           | Logic split across unlimited facets       |
+| Upgrade requires new address          | One address forever, swap facets          |
+| Separate contracts need separate ABIs | One ABI, one address                      |
+| Storage conflicts on upgrade          | Shared `AppStorage` struct, no collisions |
 
 ---
 
-## How It Works
+## How a Call Routes
 
-```
-User / Frontend
-      │
-      │  call: nodeMint(...)
-      ▼
-┌─────────────────────────────┐
-│         Diamond.sol         │  ← Single address, permanent
-│   fallback() {              │
-│     selectorToFacetAddress  │  ← Lookup table: bytes4 → address
-│     delegatecall(facet)     │  ← Execute in Diamond's storage context
-│   }                         │
-└─────────────────────────────┘
-      │
-      │  delegatecall
-      ▼
-┌─────────────────────────────┐
-│       AssetsFacet.sol       │  ← Logic lives here
-│   nodeMint(account, asset)  │  ← Reads/writes Diamond's storage
-└─────────────────────────────┘
+```mermaid
+graph TD
+    U["User / Frontend<br/>calls nodeMint()"]
+    D["Diamond.sol<br/>fallback()"]
+    LT["Selector Lookup Table<br/>bytes4 → facet address"]
+    AF["AssetsFacet.sol<br/>implementation"]
+    ST["AppStorage<br/>Diamond's own storage"]
+
+    U -->|"bytes4: 0xabcd1234"| D
+    D -->|"lookup"| LT
+    LT -->|"facet address"| D
+    D -->|"delegatecall"| AF
+    AF -->|"read/write"| ST
+
+    style D fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
+    style ST fill:#080808,stroke:#4a3a1a,color:#7a6a3a
+    style LT fill:#0a0a0a,stroke:#8b1a1a,color:#c06060
 ```
 
-Every function call hits the Diamond's `fallback()`. The fallback reads `msg.sig` (the 4-byte function selector), looks it up in `selectorToFacetAndPosition`, and `delegatecall`s to the appropriate facet. Because `delegatecall` runs the facet's code in the Diamond's storage context, all facets share one unified state.
+> **Key insight:** `delegatecall` means the facet's code runs in the Diamond's storage context. The facet address is just bytecode — state lives in the Diamond forever.
 
 ---
 
-## Aurellion's Facets
+## DiamondCut: Adding / Replacing Facets
 
-| Facet                                                           | File                       | Selectors                                  |
-| --------------------------------------------------------------- | -------------------------- | ------------------------------------------ |
-| [[Smart Contracts/Facets/AssetsFacet\|AssetsFacet]]             | `AssetsFacet.sol`          | ERC-1155, nodeMint, custody                |
-| [[Smart Contracts/Facets/CLOBCoreFacet\|CLOBCoreFacet]]         | `CLOBCoreFacet.sol`        | placeLimitOrder, cancelOrder               |
-| [[Smart Contracts/Facets/CLOBMatchingFacet\|CLOBMatchingFacet]] | `CLOBMatchingFacet.sol`    | matchOrder, executeMatch                   |
-| [[Smart Contracts/Facets/OrderRouterFacet\|OrderRouterFacet]]   | `OrderRouterFacet.sol`     | placeOrder, placeMarketOrder, cancelOrder  |
-| [[Smart Contracts/Facets/NodesFacet\|NodesFacet]]               | `NodesFacet.sol`           | registerNode, addSupportedAsset            |
-| [[Smart Contracts/Facets/AuSysFacet\|AuSysFacet]]               | `AuSysFacet.sol`           | createOrder, createJourney, packageSign    |
-| [[Smart Contracts/Facets/BridgeFacet\|BridgeFacet]]             | `BridgeFacet.sol`          | createUnifiedOrder, bridgeTradeToLogistics |
-| [[Smart Contracts/Facets/RWYStakingFacet\|RWYStakingFacet]]     | `RWYStakingFacet.sol`      | createOpportunity, stakeToOpportunity      |
-| CLOBFacet (deprecated)                                          | `CLOBFacet.sol`            | Legacy view functions                      |
-| CLOBFacetV2                                                     | `CLOBFacetV2.sol`          | Intermediate V2 logic                      |
-| CLOBAdminFacet                                                  | `CLOBAdminFacet.sol`       | Admin controls, fee config                 |
-| CLOBLogisticsFacet                                              | `CLOBLogisticsFacet.sol`   | Logistics-specific CLOB ops                |
-| CLOBMEVFacet                                                    | `CLOBMEVFacet.sol`         | MEV protection, commit-reveal              |
-| CLOBViewFacet                                                   | `CLOBViewFacet.sol`        | Read-only order book queries               |
-| OrderEventFacet                                                 | `OrderEventFacet.sol`      | Order event emission                       |
-| OrderMatchingFacet                                              | `OrderMatchingFacet.sol`   | Internal matching utilities                |
-| OrdersFacet                                                     | `OrdersFacet.sol`          | Order CRUD operations                      |
-| OperatorFacet                                                   | `OperatorFacet.sol`        | Operator registration & staking            |
-| ERC1155ReceiverFacet                                            | `ERC1155ReceiverFacet.sol` | Receive ERC-1155 tokens                    |
-| DiamondCutFacet                                                 | `DiamondCutFacet.sol`      | Add/replace/remove facets                  |
-| DiamondLoupeFacet                                               | `DiamondLoupeFacet.sol`    | Introspect facets                          |
-| OwnershipFacet                                                  | `OwnershipFacet.sol`       | Transfer contract ownership                |
+```mermaid
+graph LR
+    OWNER["Owner / Admin"]
+    DCFACET["DiamondCutFacet"]
+    DIAMOND["Diamond Storage<br/>facetAddresses[]<br/>selectorToFacetAndPosition"]
+
+    OWNER -->|"diamondCut(facets, init, calldata)"| DCFACET
+    DCFACET -->|"Add / Replace / Remove"| DIAMOND
+
+    style DIAMOND fill:#080808,stroke:#c5a55a,color:#7a6a3a
+    style DCFACET fill:#0a0a0a,stroke:#8b1a1a,color:#c06060
+```
+
+Three operations:
+
+| Action    | Effect                                        |
+| --------- | --------------------------------------------- |
+| `Add`     | Register new selectors → new facet address    |
+| `Replace` | Point existing selectors → new implementation |
+| `Remove`  | Delete selectors (function disabled)          |
 
 ---
 
-## Storage Pattern
+## Deployed Facets
 
-All facets share a single `AppStorage` struct accessed via a deterministic storage slot:
+| #   | Facet                | Address       | Block    |
+| --- | -------------------- | ------------- | -------- |
+| 1   | DiamondCutFacet      | `0xf20eBBF5…` | 37798347 |
+| 2   | DiamondLoupeFacet    | `0x63a67381…` | 37798349 |
+| 3   | OwnershipFacet       | `0x03fc08c2…` | 37798351 |
+| 4   | ERC1155ReceiverFacet | `0xFDb90E10…` | 37798353 |
+| 5   | RWYStakingFacet      | `0xa695B719…` | 37798363 |
+| 6   | OperatorFacet        | `0x37e5d45e…` | 37798365 |
+| 7   | BridgeFacet          | `0x83365e0d…` | 37798367 |
+| 8   | CLOBFacet (view)     | `0x76235E51…` | 37798370 |
+| 9   | OrderRouterFacet     | `0x2bd1D7DC…` | 37798373 |
+| 10  | AssetsFacet          | `0x73755152…` | 37798436 |
+| 11  | NodesFacet           | `0xc23eB03C…` | 37798451 |
+| 12  | AuSysFacet           | `0xCA6e4044…` | 37885943 |
+| 13  | CLOBLogisticsFacet   | `0x66fD1A58…` | 38304361 |
+
+---
+
+## Storage Layout
+
+All facets share a single `AppStorage` struct accessed via a fixed storage slot:
 
 ```solidity
-bytes32 constant APP_STORAGE_POSITION = keccak256('diamond.app.storage');
+// DiamondStorage.sol
+bytes32 constant APP_STORAGE_POSITION =
+    keccak256("aurellion.app.storage");
 
 function appStorage() internal pure returns (AppStorage storage s) {
-    bytes32 position = APP_STORAGE_POSITION;
-    assembly { s.slot := position }
+    bytes32 pos = APP_STORAGE_POSITION;
+    assembly { s.slot := pos }
 }
 ```
 
-This prevents storage collisions between facets. A second storage slot (`RWY_STORAGE_POSITION`) isolates RWY-specific state in `RWYStorage`, reducing the AppStorage struct size.
-
-See [[Smart Contracts/Libraries/DiamondStorage]] for the complete storage layout.
-
----
-
-## Upgrading Facets
-
-Upgrades go through `DiamondCutFacet.diamondCut()`, which accepts an array of `FacetCut` structs:
-
-```solidity
-struct FacetCut {
-    address facetAddress;   // New facet implementation
-    FacetCutAction action;  // Add | Replace | Remove
-    bytes4[] functionSelectors;  // Which selectors to update
-}
-```
-
-Only the contract owner can call `diamondCut`. This allows:
-
-- **Adding** new functionality (new selectors → new facet)
-- **Replacing** existing logic (existing selectors → new facet address)
-- **Removing** deprecated functions (selectors → address(0))
-
----
-
-## Security Model
-
-- `LibDiamond.enforceIsContractOwner()` guards all privileged operations
-- `ReentrancyGuard` is used in BridgeFacet, CLOBCoreFacet, CLOBMatchingFacet, OrderRouterFacet, AuSysFacet
-- RBAC roles (`ADMIN_ROLE`, `DRIVER_ROLE`, `DISPATCHER_ROLE`) are stored in AppStorage and checked per-call
-- Circuit breakers in the CLOB pause trading if price moves exceed thresholds
+This prevents storage collisions between facets. See [[Smart Contracts/Libraries/DiamondStorage]] for the full struct layout.
 
 ---
 
 ## Related Pages
 
-- [[Smart Contracts/Libraries/DiamondStorage]]
-- [[Smart Contracts/Overview]]
 - [[Architecture/System Overview]]
+- [[Smart Contracts/Overview]]
+- [[Smart Contracts/Libraries/DiamondStorage]]
+- [[Technical Reference/Upgrading Facets]]

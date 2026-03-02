@@ -1148,3 +1148,46 @@
 .doc-content > p:first-of-type {
   @apply text-base text-foreground/70;
 }
+
+/* ── MERMAID DIAGRAM STYLES ── */
+pre.mermaid-diagram {
+  @apply mb-6;
+  background: hsl(0 0% 6%) !important;
+  border: 1px solid hsl(43 18% 18%);
+  border-left: 3px solid hsl(var(--crimson) / 0.4);
+  padding: 1.5rem;
+  overflow-x: auto;
+  position: relative;
+}
+pre.mermaid-diagram::after {
+  content: 'DIAGRAM';
+  position: absolute;
+  top: 0.4rem;
+  right: 0.75rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: hsl(var(--gold) / 0.2);
+}
+pre.mermaid-diagram.mermaid-rendered {
+  border-left-color: hsl(var(--gold) / 0.4);
+}
+pre.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+/* Override mermaid's white backgrounds */
+pre.mermaid-diagram svg [fill='white'],
+pre.mermaid-diagram svg [fill='#ffffff'],
+pre.mermaid-diagram svg [fill='#fff'] {
+  fill: hsl(0 0% 8%);
+}
+.mermaid-error {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  color: hsl(0 60% 50%);
+  padding: 0.5rem;
+  letter-spacing: 0.1em;
+}

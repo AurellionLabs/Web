@@ -1,105 +1,122 @@
 ---
-tags: [architecture, overview]
+tags: [architecture, overview, diamond, system]
 ---
 
 # System Overview
 
 [[🏠 Home]] > Architecture > System Overview
 
-Aurellion is a full-stack decentralised application built across four primary layers: **smart contracts**, an **event indexer**, a **TypeScript domain/repository layer**, and a **Next.js frontend**. Each layer has a single, clear responsibility and communicates with adjacent layers through well-defined interfaces.
+Aurellion is a **four-layer protocol** for tokenising and trading real-world assets on Base. Each layer has a clear responsibility and communicates with adjacent layers through well-defined interfaces.
 
 ---
 
-## Stack Layers
+## Four-Layer Stack
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     Next.js Frontend (App Router)                 │
-│  Customer UI  │  Node Operator UI  │  Driver UI  │  Pool UI      │
-└───────────────────────────┬──────────────────────────────────────┘
-                            │ React Context / Hooks
-┌───────────────────────────▼──────────────────────────────────────┐
-│             Domain + Repository Layer (TypeScript)                │
-│  OrderRepository  NodeRepository  CLOBRepository  RWYRepository  │
-└───────────────────────────┬──────────────────────────────────────┘
-              ┌─────────────┴─────────────┐
-              │                           │
-┌─────────────▼──────────────┐ ┌──────────▼────────────────────────┐
-│   Ponder Indexer (GraphQL) │ │   Blockchain (Base / Base Sepolia)│
-│  Event → Aggregate tables  │ │   Diamond Proxy (EIP-2535)        │
-│  REST + GraphQL API        │ │   21 Facets  │  DiamondStorage     │
-└────────────────────────────┘ └────────────────────────────────────┘
+```mermaid
+graph TD
+    F["<b>Frontend Layer</b><br/>Next.js 14 · Privy · ethers.js<br/>Customer UI · Node UI · Driver UI"]
+    I["<b>Infrastructure Layer</b><br/>Ponder Indexer · PostgreSQL<br/>Repository Pattern · Services"]
+    C["<b>Smart Contract Layer</b><br/>Diamond Proxy EIP-2535<br/>22 Facets · AppStorage"]
+    B["<b>Base Blockchain</b><br/>Base Sepolia · 2s blocks<br/>Chain ID 84532"]
+
+    F -->|"GraphQL queries"| I
+    F -->|"ethers.js calls"| C
+    I -->|"Event stream"| C
+    C -->|"State + events"| B
+
+    style F fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
+    style I fill:#0a0a0a,stroke:#8b1a1a,color:#c5a55a
+    style C fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
+    style B fill:#080808,stroke:#4a3a1a,color:#7a6a3a
 ```
 
 ---
 
 ## Component Responsibilities
 
-### Smart Contracts (Solidity)
+### Frontend Layer
 
-The on-chain truth layer. A single **Diamond proxy** (EIP-2535) at one address hosts **21 facets**, each responsible for a domain slice:
+| Component               | Purpose                                    |
+| ----------------------- | ------------------------------------------ |
+| Next.js App Router      | SSR/SSG, routing, page rendering           |
+| Privy                   | Wallet connection, embedded wallets, auth  |
+| ethers.js               | Contract interaction, transaction signing  |
+| React Context Providers | Global state — nodes, orders, pools, trade |
+| graphql-request         | Queries to Ponder indexer                  |
 
-| Facet                                                           | Domain                                       |
-| --------------------------------------------------------------- | -------------------------------------------- |
-| [[Smart Contracts/Facets/AssetsFacet\|AssetsFacet]]             | ERC-1155 tokenisation of physical assets     |
-| [[Smart Contracts/Facets/CLOBCoreFacet\|CLOBCoreFacet]]         | Order book management, order placement       |
-| [[Smart Contracts/Facets/CLOBMatchingFacet\|CLOBMatchingFacet]] | Price-time priority matching engine          |
-| [[Smart Contracts/Facets/OrderRouterFacet\|OrderRouterFacet]]   | Unified entry point for all order operations |
-| [[Smart Contracts/Facets/NodesFacet\|NodesFacet]]               | Node registry, capacity, asset support       |
-| [[Smart Contracts/Facets/AuSysFacet\|AuSysFacet]]               | Logistics orchestration, journey management  |
-| [[Smart Contracts/Facets/BridgeFacet\|BridgeFacet]]             | Bridges CLOB trades to physical logistics    |
-| [[Smart Contracts/Facets/RWYStakingFacet\|RWYStakingFacet]]     | Real World Yield staking opportunities       |
-| DiamondCutFacet                                                 | Facet upgrades                               |
-| DiamondLoupeFacet                                               | Facet introspection                          |
-| OwnershipFacet                                                  | Contract ownership                           |
+### Infrastructure Layer
 
-All state lives in a single **AppStorage** struct accessed via a fixed storage slot, preventing storage collisions across upgrades. See [[Smart Contracts/Libraries/DiamondStorage]].
+| Component          | Purpose                                         |
+| ------------------ | ----------------------------------------------- |
+| Ponder Indexer     | Streams events from Base → stores in PostgreSQL |
+| PostgreSQL 16      | Persistent event store, queried via GraphQL     |
+| Repository Pattern | Aggregates raw events into domain state         |
+| Services Layer     | Business logic: routing, pricing, matching      |
 
-### Ponder Indexer
+### Smart Contract Layer
 
-A TypeScript indexer that listens to all Diamond events and writes normalised data to a PostgreSQL database. Exposes a **GraphQL + REST API** that the frontend queries instead of hitting the chain directly.
+All contracts operate through a single **Diamond proxy** at `0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7`. Facets are stateless — all state lives in `AppStorage` inside the Diamond.
 
-- Zero RPC calls for reads on the hot path
-- Events define the schema — adding a facet automatically extends the indexer
-- See [[Indexer/Ponder Setup]] and [[Indexer/Schema and Queries]]
+```mermaid
+graph LR
+    USER["User / Frontend"]
+    DIAMOND["Diamond Proxy<br/>0x8ed9…66A7"]
+    AF["AssetsFacet"]
+    NF["NodesFacet"]
+    CF["CLOBCore + Router"]
+    BF["BridgeFacet"]
+    RF["RWYStakingFacet"]
+    STORE["AppStorage<br/>Single shared state"]
 
-### Domain + Repository Layer
+    USER --> DIAMOND
+    DIAMOND --> AF
+    DIAMOND --> NF
+    DIAMOND --> CF
+    DIAMOND --> BF
+    DIAMOND --> RF
+    AF & NF & CF & BF & RF --> STORE
 
-A clean separation between business logic (domain) and data access (repositories). Each domain area has its own folder under `/domain/` with TypeScript types, and a matching `/infrastructure/repositories/` file that translates between on-chain data and domain types.
-
-- `OrderRepository` — fetch and manipulate orders/journeys
-- `NodeRepository` — query the node network
-- `CLOBRepository` — real-time order book data
-- `RWYRepository` — staking opportunities
-- `PoolRepository` — AMM pool data
-
-### Next.js Frontend
-
-A React/Next.js application with three distinct user roles, each with their own sub-application:
-
-| Role          | Base Route   | Purpose                                     |
-| ------------- | ------------ | ------------------------------------------- |
-| Customer      | `/customer/` | Browse assets, trade on CLOB, manage stakes |
-| Node Operator | `/node/`     | Register nodes, mint assets, manage orders  |
-| Driver        | `/driver/`   | View assigned journeys, manage deliveries   |
-
-Wallet connection is handled by **Privy** with embedded wallet support. State is distributed across React context providers. See [[Frontend/Providers]].
+    style DIAMOND fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
+    style STORE fill:#080808,stroke:#4a3a1a,color:#7a6a3a
+    style USER fill:#0a0a0a,stroke:#8b1a1a,color:#c06060
+```
 
 ---
 
-## Network
+## Inter-Layer Data Flow
 
-Aurellion currently operates on **Base Sepolia** (testnet) with the Diamond deployed at a single proxy address. The system is designed to be chain-agnostic via configuration in `chain-constants.ts`.
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant IDX as Ponder Indexer
+    participant SC as Smart Contracts
+    participant BC as Base Chain
+
+    Note over SC,BC: Contract deployed at block 37798377
+
+    FE->>SC: nodeMint() — ethers.js
+    SC->>BC: Transaction + MintedAsset event
+    BC-->>IDX: Event stream (WebSocket)
+    IDX->>IDX: Store in mintedAssetEvents table
+    FE->>IDX: GraphQL: mintedAssetEventss(limit:10)
+    IDX-->>FE: Typed event data
+```
 
 ---
 
-## Key Design Principles
+## Deployment Environment
 
-1. **Single proxy address** — users and integrators never need to know which facet handles a function
-2. **Events as source of truth** — the indexer derives all state from emitted events; on-chain state is the ground truth
-3. **Domain isolation** — each facet manages its own domain; cross-domain calls go through well-defined interfaces
-4. **Role-based access** — ADMIN_ROLE, DRIVER_ROLE, DISPATCHER_ROLE enforced at the contract level
-5. **Gas efficiency** — `PackedOrder` uses 3 storage slots instead of 10; Red-Black Trees for O(log n) order book operations
+| Property        | Value                                        |
+| --------------- | -------------------------------------------- |
+| Network         | Base Sepolia (testnet)                       |
+| Chain ID        | `84532`                                      |
+| Block time      | ~2 seconds                                   |
+| Diamond address | `0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7` |
+| Deploy block    | `37798377`                                   |
+| Indexer         | `https://indexer.aurellionlabs.com/graphql`  |
+| Frontend        | Next.js 14 / App Router                      |
+| Indexer runtime | Docker (Bun + PostgreSQL 16)                 |
+| Package manager | Bun 1.2.8                                    |
 
 ---
 
@@ -107,4 +124,5 @@ Aurellion currently operates on **Base Sepolia** (testnet) with the Diamond depl
 
 - [[Architecture/Diamond Proxy Pattern]]
 - [[Architecture/Data Flow]]
+- [[Architecture/Indexer Architecture]]
 - [[Smart Contracts/Overview]]

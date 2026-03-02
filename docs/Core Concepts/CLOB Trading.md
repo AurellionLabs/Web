@@ -68,13 +68,24 @@ Markets are created automatically when the first order is placed for a token pai
 
 The V2 CLOB uses three-slot **PackedOrders** for gas efficiency and **Red-Black Trees** for O(log n) price operations:
 
-```
-Bid Side (buyers)          Ask Side (sellers)
-Price  Volume  FIFO        Price  Volume  FIFO
-─────  ──────  ────        ─────  ──────  ────
-100    5,000   [A→B→C]     105    3,000   [D→E]
- 98    2,000   [F]         108    1,500   [G→H→I]
- 95    8,000   [J→K]       115    4,000   [L]
+```mermaid
+graph LR
+    subgraph BID["BID SIDE  (buyers — highest first)"]
+        B1["100 AURA · 5,000 qty · [A→B→C]"]
+        B2["98 AURA  · 2,000 qty · [F]"]
+        B3["95 AURA  · 8,000 qty · [J→K]"]
+    end
+    subgraph ASK["ASK SIDE  (sellers — lowest first)"]
+        A1["105 AURA · 3,000 qty · [D→E]"]
+        A2["108 AURA · 1,500 qty · [G→H→I]"]
+        A3["115 AURA · 4,000 qty · [L]"]
+    end
+    SPREAD["SPREAD: 5 AURA<br/>Best bid 100 / Best ask 105"]
+    BID --- SPREAD --- ASK
+
+    style BID fill:#080808,stroke:#2d6a2d
+    style ASK fill:#080808,stroke:#8b1a1a
+    style SPREAD fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
 ```
 
 - Red-Black Tree: O(log n) insertion, deletion, best-price lookup
