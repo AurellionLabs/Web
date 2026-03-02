@@ -22,7 +22,6 @@ import {
 } from '@/app/components/eva/eva-components';
 
 import type {
-  PlaceLimitOrderParams,
   CLOBTrade,
   OrderBookData,
   MarketStats,
@@ -30,7 +29,12 @@ import type {
 import { clobRepository } from '@/infrastructure/repositories/clob-repository';
 import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
 import { clobV2Service } from '@/infrastructure/services/clob-v2-service';
-import { CircuitBreaker } from '@/domain/clob/clob';
+import {
+  CircuitBreaker,
+  TimeInForce,
+  type PlaceLimitOrderParams,
+  type PlaceMarketOrderParams,
+} from '@/domain/clob/clob';
 import { calculateMarketId } from '@/hooks/useCLOBV2';
 import {
   priceHistoryService,
@@ -408,11 +412,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
       }
 
       try {
-        // Import the order bridge service dynamically
-        const { orderBridgeService } = await import(
-          '@/infrastructure/services/order-bridge-service'
-        );
-
         // Convert price to proper format (wei)
         // Price in wei = price * 10^18
         const priceInWei = BigInt(Math.round(order.price * 1e18));
@@ -431,6 +430,7 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           price: priceInWei,
           amount: quantity,
           isBuy: order.side === 'buy',
+          timeInForce: TimeInForce.GTC,
         };
 
         // For LIMIT SELL orders: use Diamond's placeSellOrderFromNode
@@ -658,37 +658,36 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           }
         }
 
-        // For BUY LIMIT orders: use regular CLOB flow (buyer pays from wallet)
+        // For BUY LIMIT orders: use CLOB V2 flow with auto-matching
         if (order.type === 'limit') {
-          const result = await orderBridgeService.placeLimitOrderAndBridge(
-            clobParams,
-            false, // Don't bridge immediately - wait for match
-          );
+          const result = await clobV2Service.placeLimitOrder(clobParams);
 
           if (!result.success) {
-            console.error('[TradingPage] CLOB order failed:', result.error);
+            console.error(
+              '[TradingPage] CLOB V2 limit order failed:',
+              result.error,
+            );
             return false;
           }
 
           return true;
         } else {
-          // Market order - use the contract's placeMarketOrder which:
-          // 1. Gets best price from order book
-          // 2. Creates an IOC (Immediate Or Cancel) order
-          // 3. Matches immediately against existing orders
-          // 4. Cancels any unfilled portion
-
-          const result = await orderBridgeService.placeMarketOrder({
+          // Market order — IOC limit order via CLOB V2 (auto-matches on submit)
+          const marketParams: PlaceMarketOrderParams = {
             baseToken: clobParams.baseToken,
             baseTokenId: clobParams.baseTokenId,
             quoteToken: clobParams.quoteToken,
             amount: clobParams.amount,
             isBuy: clobParams.isBuy,
             maxSlippageBps: 1000, // 10% slippage
-          });
+          };
+          const result = await clobV2Service.placeMarketOrder(marketParams);
 
           if (!result.success) {
-            console.error('[TradingPage] Market order failed:', result.error);
+            console.error(
+              '[TradingPage] CLOB V2 market order failed:',
+              result.error,
+            );
             return false;
           }
 
