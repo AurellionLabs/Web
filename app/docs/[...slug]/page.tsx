@@ -51,32 +51,28 @@ export default async function DocPage({
   const prev = idx > 0 ? flat[idx - 1] : null;
   const next = idx < flat.length - 1 ? flat[idx + 1] : null;
 
-  // Breadcrumb
   const breadcrumbs = [
     { label: 'Docs', href: '/docs' },
-    ...slug.slice(0, -1).map((part, i) => ({
+    ...slug.slice(0, -1).map((part: string, i: number) => ({
       label: part
         .split('-')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' '),
       href: '/docs/' + slug.slice(0, i + 1).join('/'),
     })),
   ];
 
-  // Section number from flat index for EvaSectionMarker
   const sectionNum = String(idx + 1).padStart(2, '0');
 
   return (
     <div className="flex">
-      {/* ── CONTENT COLUMN ── */}
       <article className="relative flex-1 min-w-0 px-6 md:px-10 xl:px-12 py-8 max-w-4xl">
-        {/* Ambient system readout — top right, same pattern as rest of site */}
         <EvaSystemReadout
           lines={[`DOC:${sectionNum}`, `SLUG:OK`, `HASH::VALID`]}
           position="right"
         />
 
-        {/* ── BREADCRUMB ── */}
+        {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 mb-5 flex-wrap">
           {breadcrumbs.map((crumb, i) => (
             <span key={crumb.href} className="flex items-center gap-1.5">
@@ -97,18 +93,16 @@ export default async function DocPage({
           </span>
         </nav>
 
-        {/* ── SECTION MARKER ── */}
         <EvaSectionMarker
           section={sectionNum}
           label={doc.title}
           variant={idx % 2 === 0 ? 'gold' : 'crimson'}
         />
 
-        {/* Tags */}
         {doc.tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-6">
             <Tag size={10} className="text-foreground/20" />
-            {doc.tags.map((tag) => (
+            {doc.tags.map((tag: string) => (
               <span
                 key={tag}
                 className="font-mono text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 border text-foreground/30"
@@ -120,13 +114,12 @@ export default async function DocPage({
           </div>
         )}
 
-        {/* ── MARKDOWN BODY ── */}
         <div
           className="doc-content"
           dangerouslySetInnerHTML={{ __html: doc.html }}
         />
 
-        {/* ── PREV / NEXT ── */}
+        {/* Prev / Next */}
         <div
           className="grid grid-cols-2 gap-3 mt-16 pt-6 border-t"
           style={{ borderColor: 'hsl(43 18% 14%)' }}
@@ -181,7 +174,6 @@ export default async function DocPage({
         </div>
       </article>
 
-      {/* ── TOC COLUMN ── */}
       <DocsTOC headings={doc.headings} />
     </div>
   );
