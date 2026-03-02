@@ -714,6 +714,20 @@ export default function NodeDashboardPage() {
         return 'signed';
       }
 
+      // Safety guard: in P2P flows the sender should only sign pickup after
+      // the driver has already signed pickup (driver accepted and acknowledged).
+      if (order.isP2P) {
+        const sigState = await getP2PSignatureState(order.id, journeyId);
+        if (!sigState.driverPickupSigned) {
+          toast({
+            title: 'Driver Signature Required',
+            description:
+              'The driver must sign pickup first before you can confirm pickup.',
+          });
+          return 'waiting_for_driver';
+        }
+      }
+
       await packageSign(journeyId);
 
       // Try to start journey (requires both driver + sender signatures)
@@ -725,6 +739,7 @@ export default function NodeDashboardPage() {
         });
 
         // Wait for indexer to catch up, then refresh
+        console.log('[NodeDashboard] Journey started. Waiting for indexer...');
         await new Promise((r) => setTimeout(r, 3000));
         await refreshOrders();
         setTimeout(() => refreshOrders(), 5000);
@@ -1343,7 +1358,8 @@ export default function NodeDashboardPage() {
                                   Awaiting driver signature
                                 </span>
                               </div>
-                            ) : (order.currentStatus === OrderStatus.CREATED ||
+                            ) : !isP2P &&
+                              (order.currentStatus === OrderStatus.CREATED ||
                                 (order.currentStatus ===
                                   OrderStatus.PROCESSING &&
                                   order.journeyStatus === 0)) &&
@@ -1364,8 +1380,7 @@ export default function NodeDashboardPage() {
                               </span>
                             ) : order.currentStatus ===
                                 OrderStatus.PROCESSING &&
-                              (order.journeyStatus === 0 ||
-                                order.journeyStatus === null) ? (
+                              order.journeyStatus === 0 ? (
                               <span className="text-sm text-amber-400 font-medium">
                                 Awaiting Pickup
                               </span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useNodes } from '@/app/providers/nodes.provider';
@@ -18,7 +18,6 @@ import {
 } from '@/app/components/eva/eva-components';
 import {
   PulsingHexNetwork,
-  AnimatedCounterCards,
   SpinningReticle,
 } from '@/app/components/eva/eva-animations';
 import {
@@ -76,10 +75,35 @@ export default function NodeOverviewPage() {
     );
   }
 
-  const totalNodes = nodes?.length || 0;
-  const activeNodes = nodes?.filter((n) => n.status === 'Active').length || 0;
-  const totalAssets =
-    nodes?.reduce((sum, n) => sum + ((n as any)?.assets?.length ?? 0), 0) || 0;
+  const uniqueNodes = useMemo(() => {
+    const seen = new Set<string>();
+    return (nodes || []).filter((node) => {
+      const key = (node.address || '').toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [nodes]);
+
+  const getUniqueNodeAssets = (node: any) => {
+    const rawAssets = Array.isArray(node?.assets) ? node.assets : [];
+    const seenAssetIds = new Set<string>();
+    return rawAssets.filter((asset: any) => {
+      const token = String(asset?.token || '').toLowerCase();
+      const tokenId = String(asset?.tokenId || '');
+      const key = `${token}:${tokenId}`;
+      if (!tokenId || seenAssetIds.has(key)) return false;
+      seenAssetIds.add(key);
+      return true;
+    });
+  };
+
+  const totalNodes = uniqueNodes.length;
+  const activeNodes = uniqueNodes.filter((n) => n.status === 'Active').length;
+  const totalAssets = uniqueNodes.reduce(
+    (sum, n) => sum + getUniqueNodeAssets(n).length,
+    0,
+  );
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -127,16 +151,25 @@ export default function NodeOverviewPage() {
 
         <EvaScanLine variant="mixed" />
 
-        {/* Stats Overview — Animated Counter Cards */}
+        {/* Stats Overview — Static cards to avoid transient mismatches */}
         <EvaSectionMarker section="SYSTEM STATUS" label="Node Statistics" />
-
-        <AnimatedCounterCards
-          items={[
-            { label: 'Total Nodes', target: totalNodes },
-            { label: 'Active Nodes', target: activeNodes },
-            { label: 'Total Assets', target: totalAssets },
-          ]}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <EvaPanel label="Total Nodes" accent="gold">
+            <p className="font-mono text-4xl font-bold text-gold tabular-nums">
+              {totalNodes}
+            </p>
+          </EvaPanel>
+          <EvaPanel label="Active Nodes" accent="gold">
+            <p className="font-mono text-4xl font-bold text-emerald-400 tabular-nums">
+              {activeNodes}
+            </p>
+          </EvaPanel>
+          <EvaPanel label="Total Assets" accent="crimson">
+            <p className="font-mono text-4xl font-bold text-crimson tabular-nums">
+              {totalAssets}
+            </p>
+          </EvaPanel>
+        </div>
 
         <EvaScanLine variant="gold" />
 
@@ -186,14 +219,15 @@ export default function NodeOverviewPage() {
           label="Management Console"
         />
 
-        {nodes && nodes.length > 0 ? (
+        {uniqueNodes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {nodes.map((node) => {
+            {uniqueNodes.map((node) => {
               const isActive = node.status === 'Active';
-              // Sum capacity from each registered asset (NodeAsset.capacity)
-              const nodeAssets = node.assets ?? [];
+              // Sum capacity from deduped assets to match dashboard semantics.
+              const nodeAssets = getUniqueNodeAssets(node);
               const totalCapacity = nodeAssets.reduce(
-                (sum: number, a) => sum + Number(a.capacity ?? 0),
+                (sum: number, a: { capacity?: string | number }) =>
+                  sum + Number(a.capacity ?? 0),
                 0,
               );
               const assetCount = nodeAssets.length;

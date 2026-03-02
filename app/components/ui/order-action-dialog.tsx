@@ -158,7 +158,7 @@ export function OrderActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">Value</span>
                 <span className="text-base font-medium text-right">
-                  {order.price} USDT
+                  {order.price} AURA
                 </span>
               </div>
             </div>

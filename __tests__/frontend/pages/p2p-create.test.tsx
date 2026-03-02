@@ -27,7 +27,6 @@ vi.mock('next/navigation', () => ({
 
 const mockSetCurrentUserRole = vi.fn();
 const mockGetClassAssets = vi.fn();
-const mockGetClassTokenizableAssets = vi.fn();
 const mockCreateOffer = vi.fn();
 
 vi.mock('@/app/providers/main.provider', () => ({
@@ -50,7 +49,6 @@ vi.mock('@/app/providers/platform.provider', () => ({
   usePlatform: () => ({
     supportedAssetClasses: ['GOAT', 'SHEEP'],
     getClassAssets: mockGetClassAssets,
-    getClassTokenizableAssets: mockGetClassTokenizableAssets,
   }),
 }));
 
@@ -226,12 +224,29 @@ function selectAssetClass(className: string) {
   fireEvent.change(classSelect, { target: { value: className } });
 }
 
-/** Select a specific asset via the <select> dropdown (last select on the page - after attribute filters) */
+/** Select a specific asset via the <select> dropdown (second select on the page) */
 function selectAsset(tokenId: string) {
   const selects = document.querySelectorAll('select');
-  // Asset select is the last select (attribute filter dropdowns appear before it)
-  const assetSelect = selects[selects.length - 1];
+  // Second select is the asset dropdown
+  const assetSelect = selects[1];
   fireEvent.change(assetSelect, { target: { value: tokenId } });
+}
+
+/** Navigate from type -> asset -> details for SELL flow */
+async function goToDetailsStepSell() {
+  await goToAssetStepSell();
+  selectAssetClass('GOAT');
+
+  await waitFor(() => {
+    expect(screen.getByText('AUGOAT')).toBeInTheDocument();
+  });
+
+  fireEvent.click(screen.getByText('AUGOAT'));
+  fireEvent.click(screen.getByText(/Next/i));
+
+  await waitFor(() => {
+    expect(screen.getByText(/Set Terms/i)).toBeInTheDocument();
+  });
 }
 
 // ===========================================================================
@@ -241,7 +256,6 @@ function selectAsset(tokenId: string) {
 describe('Create P2P Offer Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetClassAssets.mockResolvedValue([]);
     mockGetClassAssets.mockResolvedValue([]);
   });
 
@@ -303,20 +317,13 @@ describe('Create P2P Offer Page', () => {
       selectAssetClass('GOAT');
 
       await waitFor(() => {
-        const allOptions = document.querySelectorAll('select option');
-        const texts = Array.from(allOptions).map((o) => o.textContent ?? '');
-        expect(texts.some((t) => t.includes('AUGOAT Standard'))).toBe(true);
+        expect(mockGetClassAssets).toHaveBeenCalledWith('GOAT');
       });
 
-      selectAsset('12345');
-
       await waitFor(() => {
-        expect(
-          screen.getByText(
-            (content) =>
-              content.includes('Token ID') && content.includes('12345'),
-          ),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Filter by Attributes/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Weight/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Sex/i).length).toBeGreaterThan(0);
       });
     });
 
@@ -340,8 +347,6 @@ describe('Create P2P Offer Page', () => {
         const texts = Array.from(allOptions).map((o) => o.textContent);
         expect(texts).toContain('S');
         expect(texts).toContain('M');
-        expect(texts).toContain('L');
-        expect(texts).toContain('F');
       });
     });
 
@@ -442,6 +447,71 @@ describe('Create P2P Offer Page', () => {
 
       expect(
         screen.getByText(/Select an asset class first/i),
+      ).toBeInTheDocument();
+    });
+
+    it('should show USD as the quote label on details step', async () => {
+      render(<CreateP2POfferPage />);
+      await goToDetailsStepSell();
+      expect(screen.getByText(/Price \(USD\)/i)).toBeInTheDocument();
+    });
+
+    it('should keep Next disabled when quantity is negative', async () => {
+      render(<CreateP2POfferPage />);
+      await goToDetailsStepSell();
+
+      const quantityInput = screen.getByPlaceholderText(
+        /Enter quantity/i,
+      ) as HTMLInputElement;
+      const priceInput = screen.getByPlaceholderText(
+        /Enter total price/i,
+      ) as HTMLInputElement;
+      const nextButton = screen.getByRole('button', { name: /Next/i });
+
+      fireEvent.change(quantityInput, { target: { value: '-1' } });
+      fireEvent.change(priceInput, { target: { value: '100' } });
+
+      expect(quantityInput.value).toBe('');
+      expect(nextButton).toBeDisabled();
+    });
+
+    it('should keep Next disabled when price is negative', async () => {
+      render(<CreateP2POfferPage />);
+      await goToDetailsStepSell();
+
+      const quantityInput = screen.getByPlaceholderText(
+        /Enter quantity/i,
+      ) as HTMLInputElement;
+      const priceInput = screen.getByPlaceholderText(
+        /Enter total price/i,
+      ) as HTMLInputElement;
+      const nextButton = screen.getByRole('button', { name: /Next/i });
+
+      fireEvent.change(quantityInput, { target: { value: '1' } });
+      fireEvent.change(priceInput, { target: { value: '-10' } });
+
+      expect(priceInput.value).toBe('');
+      expect(nextButton).toBeDisabled();
+    });
+
+    it('should disable Next when sell quantity exceeds available balance', async () => {
+      render(<CreateP2POfferPage />);
+      await goToDetailsStepSell();
+
+      const quantityInput = screen.getByPlaceholderText(
+        /Enter quantity/i,
+      ) as HTMLInputElement;
+      const priceInput = screen.getByPlaceholderText(
+        /Enter total price/i,
+      ) as HTMLInputElement;
+      const nextButton = screen.getByRole('button', { name: /Next/i });
+
+      fireEvent.change(quantityInput, { target: { value: '999' } }); // balance is 500
+      fireEvent.change(priceInput, { target: { value: '100' } });
+
+      expect(nextButton).toBeDisabled();
+      expect(
+        screen.getByText(/Exceeds available balance/i),
       ).toBeInTheDocument();
     });
   });

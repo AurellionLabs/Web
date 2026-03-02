@@ -235,4 +235,22 @@ describe('P2P Market Offers Page', () => {
       expect(screen.getByText(/All Offers/i)).toBeInTheDocument();
     });
   });
+
+  it('should hide offers whose expiresAt is already in the past', async () => {
+    const expiredOpenOffer = {
+      ...GOAT_OFFERS[0],
+      id: '0xExpiredByTime',
+      status: P2POfferStatus.CREATED, // still marked open
+      expiresAt: Math.floor(Date.now() / 1000) - 3600,
+    };
+
+    mockGetOpenOffers.mockResolvedValue([expiredOpenOffer]);
+    mockGetUserOffers.mockResolvedValue([expiredOpenOffer]);
+
+    render(<P2PMarketOffersPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/No Open Offers/i).length).toBeGreaterThan(0);
+    });
+  });
 });
