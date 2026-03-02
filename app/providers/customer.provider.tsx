@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 // ServiceContext not used; we call contract directly via RepositoryContext
+import { DiamondP2PService } from '@/infrastructure/diamond/diamond-p2p-service';
 import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
 import { Order, OrderStatus } from '@/domain/orders/order';
@@ -181,26 +182,35 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
   }, [orderRepository, address, getAssetByTokenId]);
 
-  const cancelOrder = useCallback(async (orderId: string) => {
-    try {
-      setIsLoading(true);
-      // TODO: Replace with actual blockchain call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+  const cancelOrder = useCallback(
+    async (orderId: string) => {
+      try {
+        setIsLoading(true);
+        const diamondContext = repoContext.getDiamondContext();
+        const p2pService = new DiamondP2PService(diamondContext);
+        await p2pService.cancelOffer(orderId);
 
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId
-            ? { ...order, currentStatus: OrderStatus.CANCELLED }
-            : order,
-        ),
-      );
-    } catch (err) {
-      console.error('Error cancelling order:', err);
-      throw new Error('Failed to cancel order');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        // Optimistically update local state; refreshOrders will sync from chain
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, currentStatus: OrderStatus.CANCELLED }
+              : order,
+          ),
+        );
+
+        // Give indexer a beat to catch up, then re-sync
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await loadCustomerOrders();
+      } catch (err) {
+        console.error('[CustomerProvider] Error cancelling order:', err);
+        throw handleContractError(err, 'cancelOrder');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [repoContext, loadCustomerOrders],
+  );
 
   const confirmReceipt = useCallback(
     async (orderId: string) => {

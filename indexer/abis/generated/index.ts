@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-03-02T06:37:34.855Z
+// Generated at: 2026-03-02T06:49:40.885Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -16,11 +16,8 @@ export {
 } from './OrderRouterFacet';
 export { BridgeFacetABI, BridgeFacetEvents } from './BridgeFacet';
 export { RWYStakingFacetABI, RWYStakingFacetEvents } from './RWYStakingFacet';
-export { OperatorFacetABI, OperatorFacetEvents } from './OperatorFacet';
 export { CLOBAdminFacetABI, CLOBAdminFacetEvents } from './CLOBAdminFacet';
 export { CLOBMEVFacetABI, CLOBMEVFacetEvents } from './CLOBMEVFacet';
-export { DiamondCutFacetABI, DiamondCutFacetEvents } from './DiamondCutFacet';
-export { OwnershipFacetABI, OwnershipFacetEvents } from './OwnershipFacet';
 export { AuSysFacetABI, AuSysFacetEvents } from './AuSysFacet';
 export { AssetsFacetABI, AssetsFacetEvents } from './AssetsFacet';
 
@@ -1984,119 +1981,6 @@ export const DiamondABI = [
     inputs: [
       {
         indexed: true,
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'OperatorApproved',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'oldReputation',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'newReputation',
-        type: 'uint256',
-      },
-    ],
-    name: 'OperatorReputationUpdated',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'OperatorRevoked',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'opportunityId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'collateralToken',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'collateralTokenId',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'OperatorSlashed',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'successfulOps',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'totalValueProcessed',
-        type: 'uint256',
-      },
-    ],
-    name: 'OperatorStatsUpdated',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
         internalType: 'bytes32',
         name: 'marketId',
         type: 'bytes32',
@@ -2478,67 +2362,6 @@ export const DiamondABI = [
       },
     ],
     name: 'OrderRevealed',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        components: [
-          {
-            internalType: 'address',
-            name: 'facetAddress',
-            type: 'address',
-          },
-          {
-            internalType: 'enum IDiamondCut.FacetCutAction',
-            name: 'action',
-            type: 'uint8',
-          },
-          {
-            internalType: 'bytes4[]',
-            name: 'functionSelectors',
-            type: 'bytes4[]',
-          },
-        ],
-        indexed: false,
-        internalType: 'struct IDiamondCut.FacetCut[]',
-        name: '_diamondCut',
-        type: 'tuple[]',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: '_init',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes',
-        name: '_calldata',
-        type: 'bytes',
-      },
-    ],
-    name: 'DiamondCut',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'previousOwner',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'newOwner',
-        type: 'address',
-      },
-    ],
-    name: 'OwnershipTransferred',
     type: 'event',
   },
   {
@@ -6956,178 +6779,6 @@ export const DiamondABI = [
   {
     inputs: [
       {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'approveOperator',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'getOperatorReputation',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'getOperatorStats',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: 'approved',
-        type: 'bool',
-      },
-      {
-        internalType: 'uint256',
-        name: 'reputation',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'successfulOps',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'totalValueProcessed',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'getOperatorSuccessfulOps',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'getOperatorTotalValueProcessed',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'isApprovedOperator',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-    ],
-    name: 'revokeOperator',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'operator',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: 'newReputation',
-        type: 'uint256',
-      },
-    ],
-    name: 'setOperatorReputation',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'opportunityId',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'slashOperator',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
         internalType: 'bytes32',
         name: 'actionId',
         type: 'bytes32',
@@ -7676,86 +7327,6 @@ export const DiamondABI = [
         type: 'bytes32',
       },
     ],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        components: [
-          {
-            internalType: 'address',
-            name: 'facetAddress',
-            type: 'address',
-          },
-          {
-            internalType: 'enum IDiamondCut.FacetCutAction',
-            name: 'action',
-            type: 'uint8',
-          },
-          {
-            internalType: 'bytes4[]',
-            name: 'functionSelectors',
-            type: 'bytes4[]',
-          },
-        ],
-        internalType: 'struct IDiamondCut.FacetCut[]',
-        name: '_diamondCut',
-        type: 'tuple[]',
-      },
-      {
-        internalType: 'address',
-        name: '_init',
-        type: 'address',
-      },
-      {
-        internalType: 'bytes',
-        name: '_calldata',
-        type: 'bytes',
-      },
-    ],
-    name: 'diamondCut',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'acceptOwnership',
-    outputs: [],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'owner',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'renounceOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '_newOwner',
-        type: 'address',
-      },
-    ],
-    name: 'transferOwnership',
-    outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
@@ -9743,31 +9314,6 @@ export const EventSignatureRegistry = {
     facet: 'RWYStakingFacet',
     signature: 'TokenizationProofSubmitted(bytes32,string,address,uint256)',
   },
-  '0xf338da91': {
-    name: 'OperatorApproved',
-    facet: 'OperatorFacet',
-    signature: 'OperatorApproved(address)',
-  },
-  '0x8320ad02': {
-    name: 'OperatorReputationUpdated',
-    facet: 'OperatorFacet',
-    signature: 'OperatorReputationUpdated(address,uint256,uint256)',
-  },
-  '0xa5f3b762': {
-    name: 'OperatorRevoked',
-    facet: 'OperatorFacet',
-    signature: 'OperatorRevoked(address)',
-  },
-  '0x90e68b2e': {
-    name: 'OperatorSlashed',
-    facet: 'OperatorFacet',
-    signature: 'OperatorSlashed(bytes32,address,address,uint256,uint256)',
-  },
-  '0xd6d54f61': {
-    name: 'OperatorStatsUpdated',
-    facet: 'OperatorFacet',
-    signature: 'OperatorStatsUpdated(address,uint256,uint256)',
-  },
   '0x58807e46': {
     name: 'CircuitBreakerConfigured',
     facet: 'CLOBAdminFacet',
@@ -9849,16 +9395,6 @@ export const EventSignatureRegistry = {
     name: 'OrderRevealed',
     facet: 'CLOBMEVFacet',
     signature: 'OrderRevealed(bytes32,bytes32,address)',
-  },
-  '0xe785b7d4': {
-    name: 'DiamondCut',
-    facet: 'DiamondCutFacet',
-    signature: 'DiamondCut(tuple[],address,bytes)',
-  },
-  '0x8be0079c': {
-    name: 'OwnershipTransferred',
-    facet: 'OwnershipFacet',
-    signature: 'OwnershipTransferred(address,address)',
   },
   '0xd66a521a': {
     name: 'AuSysAdminRevoked',

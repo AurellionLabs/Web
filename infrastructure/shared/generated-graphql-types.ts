@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-03-02T06:37:34.862Z
+// Generated at: 2026-03-02T06:49:40.891Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -66,22 +66,8 @@ export const TABLE_DIAMOND_ORDER_EXPIRED_EVENTS =
   'diamondOrderExpiredEventss' as const;
 export const TABLE_DIAMOND_ORDER_PLACED_WITH_TOKENS_EVENTS =
   'diamondOrderPlacedWithTokensEventss' as const;
-export const TABLE_DIAMOND_AUSYS_ORDER_FILLED_EVENTS =
-  'diamondAusysOrderFilledEventss' as const;
-export const TABLE_DIAMOND_MATCHING_ORDER_CANCELLED_EVENTS =
-  'diamondMatchingOrderCancelledEventss' as const;
-export const TABLE_DIAMOND_TRADE_EXECUTED_EVENTS =
-  'diamondTradeExecutedEventss' as const;
-export const TABLE_DIAMOND_ORDER_ROUTED_EVENTS =
-  'diamondOrderRoutedEventss' as const;
-export const TABLE_DIAMOND_ROUTER_ORDER_CANCELLED_EVENTS =
-  'diamondRouterOrderCancelledEventss' as const;
-export const TABLE_DIAMOND_ROUTER_ORDER_CREATED_EVENTS =
-  'diamondRouterOrderCreatedEventss' as const;
 export const TABLE_DIAMOND_ROUTER_ORDER_PLACED_EVENTS =
   'diamondRouterOrderPlacedEventss' as const;
-export const TABLE_DIAMOND_ROUTER_TRADE_EXECUTED_EVENTS =
-  'diamondRouterTradeExecutedEventss' as const;
 export const TABLE_DIAMOND_BOUNTY_PAID_EVENTS =
   'diamondBountyPaidEventss' as const;
 export const TABLE_DIAMOND_BRIDGE_FEE_RECIPIENT_UPDATED_EVENTS =
@@ -136,30 +122,12 @@ export const TABLE_DIAMOND_SALE_PROCEEDS_RECORDED_EVENTS =
   'diamondSaleProceedsRecordedEventss' as const;
 export const TABLE_DIAMOND_TOKENIZATION_PROOF_SUBMITTED_EVENTS =
   'diamondTokenizationProofSubmittedEventss' as const;
-export const TABLE_DIAMOND_OPERATOR_APPROVED_EVENTS =
-  'diamondOperatorApprovedEventss' as const;
-export const TABLE_DIAMOND_OPERATOR_REPUTATION_UPDATED_EVENTS =
-  'diamondOperatorReputationUpdatedEventss' as const;
-export const TABLE_DIAMOND_OPERATOR_REVOKED_EVENTS =
-  'diamondOperatorRevokedEventss' as const;
-export const TABLE_DIAMOND_OPERATOR_SLASHED_EVENTS =
-  'diamondOperatorSlashedEventss' as const;
-export const TABLE_DIAMOND_OPERATOR_STATS_UPDATED_EVENTS =
-  'diamondOperatorStatsUpdatedEventss' as const;
 export const TABLE_DIAMOND_CIRCUIT_BREAKER_CONFIGURED_EVENTS =
   'diamondCircuitBreakerConfiguredEventss' as const;
 export const TABLE_DIAMOND_CIRCUIT_BREAKER_RESET_EVENTS =
   'diamondCircuitBreakerResetEventss' as const;
 export const TABLE_DIAMOND_CIRCUIT_BREAKER_TRIPPED_EVENTS =
   'diamondCircuitBreakerTrippedEventss' as const;
-export const TABLE_DIAMOND_EMERGENCY_ACTION_CANCELLED_EVENTS =
-  'diamondEmergencyActionCancelledEventss' as const;
-export const TABLE_DIAMOND_EMERGENCY_ACTION_EXECUTED_EVENTS =
-  'diamondEmergencyActionExecutedEventss' as const;
-export const TABLE_DIAMOND_EMERGENCY_ACTION_INITIATED_EVENTS =
-  'diamondEmergencyActionInitiatedEventss' as const;
-export const TABLE_DIAMOND_EMERGENCY_WITHDRAWAL_EVENTS =
-  'diamondEmergencyWithdrawalEventss' as const;
 export const TABLE_DIAMOND_FEE_RECIPIENT_UPDATED_EVENTS =
   'diamondFeeRecipientUpdatedEventss' as const;
 export const TABLE_DIAMOND_FEES_UPDATED_EVENTS =
@@ -178,10 +146,6 @@ export const TABLE_DIAMOND_ORDER_COMMITTED_EVENTS =
   'diamondOrderCommittedEventss' as const;
 export const TABLE_DIAMOND_ORDER_REVEALED_EVENTS =
   'diamondOrderRevealedEventss' as const;
-export const TABLE_DIAMOND_DIAMOND_CUT_EVENTS =
-  'diamondDiamondCutEventss' as const;
-export const TABLE_DIAMOND_OWNERSHIP_TRANSFERRED_EVENTS =
-  'diamondOwnershipTransferredEventss' as const;
 export const TABLE_DIAMOND_AU_SYS_ADMIN_REVOKED_EVENTS =
   'diamondAuSysAdminRevokedEventss' as const;
 export const TABLE_DIAMOND_AU_SYS_ADMIN_SET_EVENTS =
@@ -263,14 +227,7 @@ export const VALID_TABLE_NAMES = [
   'diamondOrderCreatedEventss',
   'diamondOrderExpiredEventss',
   'diamondOrderPlacedWithTokensEventss',
-  'diamondAusysOrderFilledEventss',
-  'diamondMatchingOrderCancelledEventss',
-  'diamondTradeExecutedEventss',
-  'diamondOrderRoutedEventss',
-  'diamondRouterOrderCancelledEventss',
-  'diamondRouterOrderCreatedEventss',
   'diamondRouterOrderPlacedEventss',
-  'diamondRouterTradeExecutedEventss',
   'diamondBountyPaidEventss',
   'diamondBridgeFeeRecipientUpdatedEventss',
   'diamondBridgeOrderCancelledEventss',
@@ -298,18 +255,9 @@ export const VALID_TABLE_NAMES = [
   'diamondProfitDistributedEventss',
   'diamondSaleProceedsRecordedEventss',
   'diamondTokenizationProofSubmittedEventss',
-  'diamondOperatorApprovedEventss',
-  'diamondOperatorReputationUpdatedEventss',
-  'diamondOperatorRevokedEventss',
-  'diamondOperatorSlashedEventss',
-  'diamondOperatorStatsUpdatedEventss',
   'diamondCircuitBreakerConfiguredEventss',
   'diamondCircuitBreakerResetEventss',
   'diamondCircuitBreakerTrippedEventss',
-  'diamondEmergencyActionCancelledEventss',
-  'diamondEmergencyActionExecutedEventss',
-  'diamondEmergencyActionInitiatedEventss',
-  'diamondEmergencyWithdrawalEventss',
   'diamondFeeRecipientUpdatedEventss',
   'diamondFeesUpdatedEventss',
   'diamondGlobalPauseEventss',
@@ -319,8 +267,6 @@ export const VALID_TABLE_NAMES = [
   'diamondRateLimitsUpdatedEventss',
   'diamondOrderCommittedEventss',
   'diamondOrderRevealedEventss',
-  'diamondDiamondCutEventss',
-  'diamondOwnershipTransferredEventss',
   'diamondAuSysAdminRevokedEventss',
   'diamondAuSysAdminSetEventss',
   'diamondAuSysJourneyStatusUpdatedEventss',
@@ -665,82 +611,6 @@ export interface diamondOrderPlacedWithTokensEvent {
   transaction_hash: string;
 }
 
-export interface diamondAusysOrderFilledEvent {
-  id: string;
-  order_id: string;
-  trade_id: string;
-  fill_amount: string;
-  fill_price: string;
-  remaining_amount: string;
-  cumulative_filled: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondMatchingOrderCancelledEvent {
-  id: string;
-  order_id: string;
-  maker: string;
-  remaining_amount: string;
-  reason: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondTradeExecutedEvent {
-  id: string;
-  trade_id: string;
-  taker_order_id: string;
-  maker_order_id: string;
-  price: string;
-  amount: string;
-  quote_amount: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondOrderRoutedEvent {
-  id: string;
-  order_id: string;
-  maker: string;
-  order_source: string;
-  is_buy: boolean;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondRouterOrderCancelledEvent {
-  id: string;
-  order_id: string;
-  maker: string;
-  remaining_amount: string;
-  reason: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondRouterOrderCreatedEvent {
-  id: string;
-  order_id: string;
-  market_id: string;
-  maker: string;
-  price: string;
-  amount: string;
-  is_buy: boolean;
-  order_type: string;
-  time_in_force: string;
-  expiry: string;
-  nonce: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
 export interface diamondRouterOrderPlacedEvent {
   id: string;
   order_id: string;
@@ -752,19 +622,6 @@ export interface diamondRouterOrderPlacedEvent {
   amount: string;
   is_buy: boolean;
   order_type: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondRouterTradeExecutedEvent {
-  id: string;
-  trade_id: string;
-  taker_order_id: string;
-  maker_order_id: string;
-  price: string;
-  amount: string;
-  quote_amount: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1049,54 +906,6 @@ export interface diamondTokenizationProofSubmittedEvent {
   transaction_hash: string;
 }
 
-export interface diamondOperatorApprovedEvent {
-  id: string;
-  operator: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondOperatorReputationUpdatedEvent {
-  id: string;
-  operator: string;
-  old_reputation: string;
-  new_reputation: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondOperatorRevokedEvent {
-  id: string;
-  operator: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondOperatorSlashedEvent {
-  id: string;
-  opportunity_id: string;
-  operator: string;
-  collateral_token: string;
-  collateral_token_id: string;
-  amount: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondOperatorStatsUpdatedEvent {
-  id: string;
-  operator: string;
-  successful_ops: string;
-  total_value_processed: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
 export interface diamondCircuitBreakerConfiguredEvent {
   id: string;
   market_id: string;
@@ -1124,51 +933,6 @@ export interface diamondCircuitBreakerTrippedEvent {
   previous_price: string;
   change_percent: string;
   cooldown_until: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondEmergencyActionCancelledEvent {
-  id: string;
-  action_id: string;
-  canceller: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondEmergencyActionExecutedEvent {
-  id: string;
-  action_id: string;
-  executor: string;
-  token: string;
-  recipient: string;
-  amount: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondEmergencyActionInitiatedEvent {
-  id: string;
-  action_id: string;
-  initiator: string;
-  token: string;
-  recipient: string;
-  amount: string;
-  execute_after: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondEmergencyWithdrawalEvent {
-  id: string;
-  user: string;
-  order_id: string;
-  token: string;
-  amount: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1250,25 +1014,6 @@ export interface diamondOrderRevealedEvent {
   commitment_id: string;
   order_id: string;
   maker: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondDiamondCutEvent {
-  id: string;
-  diamond_cut: string[];
-  init: string;
-  calldata: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondOwnershipTransferredEvent {
-  id: string;
-  previous_owner: string;
-  new_owner: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1709,36 +1454,8 @@ export interface diamondOrderPlacedWithTokensEventsResponse {
   diamondOrderPlacedWithTokensEventss: PonderItemsResponse<diamondOrderPlacedWithTokensEvent>;
 }
 
-export interface diamondAusysOrderFilledEventsResponse {
-  diamondAusysOrderFilledEventss: PonderItemsResponse<diamondAusysOrderFilledEvent>;
-}
-
-export interface diamondMatchingOrderCancelledEventsResponse {
-  diamondMatchingOrderCancelledEventss: PonderItemsResponse<diamondMatchingOrderCancelledEvent>;
-}
-
-export interface diamondTradeExecutedEventsResponse {
-  diamondTradeExecutedEventss: PonderItemsResponse<diamondTradeExecutedEvent>;
-}
-
-export interface diamondOrderRoutedEventsResponse {
-  diamondOrderRoutedEventss: PonderItemsResponse<diamondOrderRoutedEvent>;
-}
-
-export interface diamondRouterOrderCancelledEventsResponse {
-  diamondRouterOrderCancelledEventss: PonderItemsResponse<diamondRouterOrderCancelledEvent>;
-}
-
-export interface diamondRouterOrderCreatedEventsResponse {
-  diamondRouterOrderCreatedEventss: PonderItemsResponse<diamondRouterOrderCreatedEvent>;
-}
-
 export interface diamondRouterOrderPlacedEventsResponse {
   diamondRouterOrderPlacedEventss: PonderItemsResponse<diamondRouterOrderPlacedEvent>;
-}
-
-export interface diamondRouterTradeExecutedEventsResponse {
-  diamondRouterTradeExecutedEventss: PonderItemsResponse<diamondRouterTradeExecutedEvent>;
 }
 
 export interface diamondBountyPaidEventsResponse {
@@ -1849,26 +1566,6 @@ export interface diamondTokenizationProofSubmittedEventsResponse {
   diamondTokenizationProofSubmittedEventss: PonderItemsResponse<diamondTokenizationProofSubmittedEvent>;
 }
 
-export interface diamondOperatorApprovedEventsResponse {
-  diamondOperatorApprovedEventss: PonderItemsResponse<diamondOperatorApprovedEvent>;
-}
-
-export interface diamondOperatorReputationUpdatedEventsResponse {
-  diamondOperatorReputationUpdatedEventss: PonderItemsResponse<diamondOperatorReputationUpdatedEvent>;
-}
-
-export interface diamondOperatorRevokedEventsResponse {
-  diamondOperatorRevokedEventss: PonderItemsResponse<diamondOperatorRevokedEvent>;
-}
-
-export interface diamondOperatorSlashedEventsResponse {
-  diamondOperatorSlashedEventss: PonderItemsResponse<diamondOperatorSlashedEvent>;
-}
-
-export interface diamondOperatorStatsUpdatedEventsResponse {
-  diamondOperatorStatsUpdatedEventss: PonderItemsResponse<diamondOperatorStatsUpdatedEvent>;
-}
-
 export interface diamondCircuitBreakerConfiguredEventsResponse {
   diamondCircuitBreakerConfiguredEventss: PonderItemsResponse<diamondCircuitBreakerConfiguredEvent>;
 }
@@ -1879,22 +1576,6 @@ export interface diamondCircuitBreakerResetEventsResponse {
 
 export interface diamondCircuitBreakerTrippedEventsResponse {
   diamondCircuitBreakerTrippedEventss: PonderItemsResponse<diamondCircuitBreakerTrippedEvent>;
-}
-
-export interface diamondEmergencyActionCancelledEventsResponse {
-  diamondEmergencyActionCancelledEventss: PonderItemsResponse<diamondEmergencyActionCancelledEvent>;
-}
-
-export interface diamondEmergencyActionExecutedEventsResponse {
-  diamondEmergencyActionExecutedEventss: PonderItemsResponse<diamondEmergencyActionExecutedEvent>;
-}
-
-export interface diamondEmergencyActionInitiatedEventsResponse {
-  diamondEmergencyActionInitiatedEventss: PonderItemsResponse<diamondEmergencyActionInitiatedEvent>;
-}
-
-export interface diamondEmergencyWithdrawalEventsResponse {
-  diamondEmergencyWithdrawalEventss: PonderItemsResponse<diamondEmergencyWithdrawalEvent>;
 }
 
 export interface diamondFeeRecipientUpdatedEventsResponse {
@@ -1931,14 +1612,6 @@ export interface diamondOrderCommittedEventsResponse {
 
 export interface diamondOrderRevealedEventsResponse {
   diamondOrderRevealedEventss: PonderItemsResponse<diamondOrderRevealedEvent>;
-}
-
-export interface diamondDiamondCutEventsResponse {
-  diamondDiamondCutEventss: PonderItemsResponse<diamondDiamondCutEvent>;
-}
-
-export interface diamondOwnershipTransferredEventsResponse {
-  diamondOwnershipTransferredEventss: PonderItemsResponse<diamondOwnershipTransferredEvent>;
 }
 
 export interface diamondAuSysAdminRevokedEventsResponse {
@@ -2359,82 +2032,6 @@ export const FIELDS_DIAMOND_ORDER_PLACED_WITH_TOKENS_EVENTS = [
   'transaction_hash',
 ] as const;
 
-export const FIELDS_DIAMOND_AUSYS_ORDER_FILLED_EVENTS = [
-  'id',
-  'order_id',
-  'trade_id',
-  'fill_amount',
-  'fill_price',
-  'remaining_amount',
-  'cumulative_filled',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_MATCHING_ORDER_CANCELLED_EVENTS = [
-  'id',
-  'order_id',
-  'maker',
-  'remaining_amount',
-  'reason',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_TRADE_EXECUTED_EVENTS = [
-  'id',
-  'trade_id',
-  'taker_order_id',
-  'maker_order_id',
-  'price',
-  'amount',
-  'quote_amount',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_ORDER_ROUTED_EVENTS = [
-  'id',
-  'order_id',
-  'maker',
-  'order_source',
-  'is_buy',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_ROUTER_ORDER_CANCELLED_EVENTS = [
-  'id',
-  'order_id',
-  'maker',
-  'remaining_amount',
-  'reason',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_ROUTER_ORDER_CREATED_EVENTS = [
-  'id',
-  'order_id',
-  'market_id',
-  'maker',
-  'price',
-  'amount',
-  'is_buy',
-  'order_type',
-  'time_in_force',
-  'expiry',
-  'nonce',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
 export const FIELDS_DIAMOND_ROUTER_ORDER_PLACED_EVENTS = [
   'id',
   'order_id',
@@ -2446,19 +2043,6 @@ export const FIELDS_DIAMOND_ROUTER_ORDER_PLACED_EVENTS = [
   'amount',
   'is_buy',
   'order_type',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_ROUTER_TRADE_EXECUTED_EVENTS = [
-  'id',
-  'trade_id',
-  'taker_order_id',
-  'maker_order_id',
-  'price',
-  'amount',
-  'quote_amount',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2743,54 +2327,6 @@ export const FIELDS_DIAMOND_TOKENIZATION_PROOF_SUBMITTED_EVENTS = [
   'transaction_hash',
 ] as const;
 
-export const FIELDS_DIAMOND_OPERATOR_APPROVED_EVENTS = [
-  'id',
-  'operator',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_OPERATOR_REPUTATION_UPDATED_EVENTS = [
-  'id',
-  'operator',
-  'old_reputation',
-  'new_reputation',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_OPERATOR_REVOKED_EVENTS = [
-  'id',
-  'operator',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_OPERATOR_SLASHED_EVENTS = [
-  'id',
-  'opportunity_id',
-  'operator',
-  'collateral_token',
-  'collateral_token_id',
-  'amount',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_OPERATOR_STATS_UPDATED_EVENTS = [
-  'id',
-  'operator',
-  'successful_ops',
-  'total_value_processed',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
 export const FIELDS_DIAMOND_CIRCUIT_BREAKER_CONFIGURED_EVENTS = [
   'id',
   'market_id',
@@ -2818,51 +2354,6 @@ export const FIELDS_DIAMOND_CIRCUIT_BREAKER_TRIPPED_EVENTS = [
   'previous_price',
   'change_percent',
   'cooldown_until',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_EMERGENCY_ACTION_CANCELLED_EVENTS = [
-  'id',
-  'action_id',
-  'canceller',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_EMERGENCY_ACTION_EXECUTED_EVENTS = [
-  'id',
-  'action_id',
-  'executor',
-  'token',
-  'recipient',
-  'amount',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_EMERGENCY_ACTION_INITIATED_EVENTS = [
-  'id',
-  'action_id',
-  'initiator',
-  'token',
-  'recipient',
-  'amount',
-  'execute_after',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_EMERGENCY_WITHDRAWAL_EVENTS = [
-  'id',
-  'user',
-  'order_id',
-  'token',
-  'amount',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2944,25 +2435,6 @@ export const FIELDS_DIAMOND_ORDER_REVEALED_EVENTS = [
   'commitment_id',
   'order_id',
   'maker',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_DIAMOND_CUT_EVENTS = [
-  'id',
-  'diamond_cut',
-  'init',
-  'calldata',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_OWNERSHIP_TRANSFERRED_EVENTS = [
-  'id',
-  'previous_owner',
-  'new_owner',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -3342,14 +2814,7 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     OrderCreated: 'diamondOrderCreatedEventss',
     OrderExpired: 'diamondOrderExpiredEventss',
     OrderPlacedWithTokens: 'diamondOrderPlacedWithTokensEventss',
-    AusysOrderFilled: 'diamondAusysOrderFilledEventss',
-    MatchingOrderCancelled: 'diamondMatchingOrderCancelledEventss',
-    TradeExecuted: 'diamondTradeExecutedEventss',
-    OrderRouted: 'diamondOrderRoutedEventss',
-    RouterOrderCancelled: 'diamondRouterOrderCancelledEventss',
-    RouterOrderCreated: 'diamondRouterOrderCreatedEventss',
     RouterOrderPlaced: 'diamondRouterOrderPlacedEventss',
-    RouterTradeExecuted: 'diamondRouterTradeExecutedEventss',
     BountyPaid: 'diamondBountyPaidEventss',
     BridgeFeeRecipientUpdated: 'diamondBridgeFeeRecipientUpdatedEventss',
     BridgeOrderCancelled: 'diamondBridgeOrderCancelledEventss',
@@ -3377,18 +2842,9 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     ProfitDistributed: 'diamondProfitDistributedEventss',
     SaleProceedsRecorded: 'diamondSaleProceedsRecordedEventss',
     TokenizationProofSubmitted: 'diamondTokenizationProofSubmittedEventss',
-    OperatorApproved: 'diamondOperatorApprovedEventss',
-    OperatorReputationUpdated: 'diamondOperatorReputationUpdatedEventss',
-    OperatorRevoked: 'diamondOperatorRevokedEventss',
-    OperatorSlashed: 'diamondOperatorSlashedEventss',
-    OperatorStatsUpdated: 'diamondOperatorStatsUpdatedEventss',
     CircuitBreakerConfigured: 'diamondCircuitBreakerConfiguredEventss',
     CircuitBreakerReset: 'diamondCircuitBreakerResetEventss',
     CircuitBreakerTripped: 'diamondCircuitBreakerTrippedEventss',
-    EmergencyActionCancelled: 'diamondEmergencyActionCancelledEventss',
-    EmergencyActionExecuted: 'diamondEmergencyActionExecutedEventss',
-    EmergencyActionInitiated: 'diamondEmergencyActionInitiatedEventss',
-    EmergencyWithdrawal: 'diamondEmergencyWithdrawalEventss',
     FeeRecipientUpdated: 'diamondFeeRecipientUpdatedEventss',
     FeesUpdated: 'diamondFeesUpdatedEventss',
     GlobalPause: 'diamondGlobalPauseEventss',
@@ -3398,8 +2854,6 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     RateLimitsUpdated: 'diamondRateLimitsUpdatedEventss',
     OrderCommitted: 'diamondOrderCommittedEventss',
     OrderRevealed: 'diamondOrderRevealedEventss',
-    DiamondCut: 'diamondDiamondCutEventss',
-    OwnershipTransferred: 'diamondOwnershipTransferredEventss',
     AuSysAdminRevoked: 'diamondAuSysAdminRevokedEventss',
     AuSysAdminSet: 'diamondAuSysAdminSetEventss',
     AuSysJourneyStatusUpdated: 'diamondAuSysJourneyStatusUpdatedEventss',

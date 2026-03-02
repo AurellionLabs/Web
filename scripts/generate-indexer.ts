@@ -42,11 +42,11 @@ const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
   OrderRouterFacet: { domain: 'clob', priority: 4 },
   BridgeFacet: { domain: 'bridge', priority: 5 },
   RWYStakingFacet: { domain: 'rwy-staking', priority: 6 },
-  OperatorFacet: { domain: 'operators', priority: 7 },
+  // OperatorFacet removed: operator events are not queried by any frontend repository.
+  // Re-add when operator reputation/stats UI is built.
   CLOBAdminFacet: { domain: 'clob-admin', priority: 8 },
   CLOBMEVFacet: { domain: 'clob-mev', priority: 13 },
-  DiamondCutFacet: { domain: 'diamond', priority: 9 },
-  OwnershipFacet: { domain: 'diamond', priority: 10 },
+  // DiamondCutFacet / OwnershipFacet removed: governance-only events, not queried by frontend.
   AuSysFacet: { domain: 'ausys', priority: 11 },
   AssetsFacet: { domain: 'assets', priority: 12 },
 };
@@ -67,8 +67,26 @@ const EXTERNAL_CONTRACTS: Record<
 // Ponder currently enforces a maximum of 100 schema tables.
 // Exclude low-value admin domains to keep the generated schema within limit.
 const EXCLUDED_INDEXER_DOMAINS = new Set<string>();
-// Note: clob-admin was previously excluded but CircuitBreaker events are now indexed.
-// clob-mev OrderCommitted/OrderRevealed events are now indexed.
+
+// Event-level exclusions: skip specific events that are not queried by any
+// frontend repository. Add event names here (without 'Diamond:' prefix) to
+// prevent generating tables + handlers for them. Re-enable when needed.
+const EXCLUDED_EVENTS = new Set<string>([
+  // Legacy OrderMatchingFacet events superseded by CLOBFacetV2 / OrderRouterFacet:
+  'AusysOrderFilled', // diamondAusysOrderFilledEvents — not queried
+  'MatchingOrderCancelled', // diamondMatchingOrderCancelledEvents — not queried
+  'TradeExecuted', // diamondTradeExecutedEvents (old matching engine) — not queried
+  'OrderRouted', // diamondOrderRoutedEvents — not queried
+  // OrderRouterFacet events not queried (RouterOrderPlaced IS queried, keep it):
+  'RouterOrderCancelled', // diamondRouterOrderCancelledEvents — not queried
+  'RouterOrderCreated', // diamondRouterOrderCreatedEvents — not queried
+  'RouterTradeExecuted', // diamondRouterTradeExecutedEvents — not queried
+  // Emergency governance events — not queried in frontend
+  'EmergencyActionCancelled',
+  'EmergencyActionExecuted',
+  'EmergencyActionInitiated',
+  'EmergencyWithdrawal',
+]);
 
 // ============================================================================
 // AGGREGATE TABLE CONFIGURATION (US-001, US-002, US-003)
@@ -354,7 +372,9 @@ interface FacetInfo {
 }
 
 function shouldIndexEvent(event: EventInfo): boolean {
-  return !EXCLUDED_INDEXER_DOMAINS.has(event.domain);
+  if (EXCLUDED_INDEXER_DOMAINS.has(event.domain)) return false;
+  if (EXCLUDED_EVENTS.has(event.name)) return false;
+  return true;
 }
 
 // ============================================================================

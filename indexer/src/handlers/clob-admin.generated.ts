@@ -1,5 +1,5 @@
 // Auto-generated handler for clob-admin domain
-// Generated at: 2026-03-02T06:37:34.860Z
+// Generated at: 2026-03-02T06:49:40.889Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
@@ -12,10 +12,6 @@ import {
   diamondCircuitBreakerConfiguredEvents,
   diamondCircuitBreakerResetEvents,
   diamondCircuitBreakerTrippedEvents,
-  diamondEmergencyActionCancelledEvents,
-  diamondEmergencyActionExecutedEvents,
-  diamondEmergencyActionInitiatedEvents,
-  diamondEmergencyWithdrawalEvents,
   diamondFeeRecipientUpdatedEvents,
   diamondFeesUpdatedEvents,
   diamondGlobalPauseEvents,
@@ -98,96 +94,6 @@ ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
     previous_price: previousPrice,
     change_percent: changePercent,
     cooldown_until: cooldownUntil,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle EmergencyActionCancelled event from CLOBAdminFacet
- * Signature: EmergencyActionCancelled(bytes32,address)
- * Hash: 0x248b189e
- */
-ponder.on('Diamond:EmergencyActionCancelled', async ({ event, context }) => {
-  const { actionId, canceller } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondEmergencyActionCancelledEvents).values({
-    id: id,
-    action_id: actionId,
-    canceller: canceller,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle EmergencyActionExecuted event from CLOBAdminFacet
- * Signature: EmergencyActionExecuted(bytes32,address,address,address,uint256)
- * Hash: 0x4579d7c5
- */
-ponder.on('Diamond:EmergencyActionExecuted', async ({ event, context }) => {
-  const { actionId, executor, token, recipient, amount } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondEmergencyActionExecutedEvents).values({
-    id: id,
-    action_id: actionId,
-    executor: executor,
-    token: token,
-    recipient: recipient,
-    amount: amount,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle EmergencyActionInitiated event from CLOBAdminFacet
- * Signature: EmergencyActionInitiated(bytes32,address,address,address,uint256,uint256)
- * Hash: 0xca04aa1e
- */
-ponder.on('Diamond:EmergencyActionInitiated', async ({ event, context }) => {
-  const { actionId, initiator, token, recipient, amount, executeAfter } =
-    event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondEmergencyActionInitiatedEvents).values({
-    id: id,
-    action_id: actionId,
-    initiator: initiator,
-    token: token,
-    recipient: recipient,
-    amount: amount,
-    execute_after: executeAfter,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle EmergencyWithdrawal event from CLOBAdminFacet
- * Signature: EmergencyWithdrawal(address,bytes32,address,uint256)
- * Hash: 0xc0f6eecd
- */
-ponder.on('Diamond:EmergencyWithdrawal', async ({ event, context }) => {
-  const { user, orderId, token, amount } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondEmergencyWithdrawalEvents).values({
-    id: id,
-    user: user,
-    order_id: orderId,
-    token: token,
-    amount: amount,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
