@@ -335,7 +335,11 @@ export function AssetDetailDrawer({
               variant="gold"
               size="lg"
               className="w-full"
-              disabled={custody.nodes.length > 0 && !selectedNode}
+              disabled={
+                custody.isLoading ||
+                custody.nodes.length === 0 ||
+                (custody.nodes.length > 0 && !selectedNode)
+              }
               onClick={() => setIsRedemptionOpen(true)}
             >
               <span className="flex items-center justify-center gap-2">
@@ -345,6 +349,11 @@ export function AssetDetailDrawer({
                   : 'Redeem for Delivery'}
               </span>
             </TrapButton>
+            {custody.nodes.length === 0 && !custody.isLoading && (
+              <p className="font-mono text-[10px] text-center text-foreground/30 mt-2 tracking-wide">
+                Tokens must be in node custody to redeem for delivery
+              </p>
+            )}
             {custody.nodes.length > 0 && !selectedNode && (
               <p className="font-mono text-[10px] text-center text-foreground/30 mt-2 tracking-wide">
                 Select a custody node above to redeem
