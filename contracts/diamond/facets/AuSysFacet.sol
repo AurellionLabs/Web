@@ -8,6 +8,7 @@ import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 
 /**
  * @title AuSysFacet
@@ -16,6 +17,7 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  */
 contract AuSysFacet is ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
 
     uint256 public constant MAX_ORDERS = 10000;
     uint256 public constant MAX_JOURNEYS_PER_ORDER = 10;
@@ -166,6 +168,11 @@ contract AuSysFacet is ReentrancyGuard {
     error NoPendingDestination();
     error NotNodeOwner();
     error NodeRequired();
+    // Signature / replay-protection errors
+    error InvalidSignature();
+    error NonceAlreadyUsed();
+    error SignatureExpired();
+    error TrustedSignerNotSet();
 
     // ============================================================================
     // CONSTANTS (RBAC roles from AuSys.sol)
@@ -319,7 +326,7 @@ contract AuSysFacet is ReentrancyGuard {
             if (order.buyer == order.seller) revert InvalidAddress();
         }
 
-        bytes32 id = _getHashedOrderId(s);
+        bytes32 id = _getHashedOrderId(s, msg.sender);
         
         // Calculate tx fee (2% from AuSys.sol)
         uint256 txFee = (order.price * 2) / 100;
@@ -424,44 +431,85 @@ contract AuSysFacet is ReentrancyGuard {
 
     /**
      * @notice Accept a P2P offer
-     * @dev Counterparty escrows their side and order moves to Processing
-     * @param orderId The order/offer to accept
+     * @dev FIX 2+3: EIP-712 ECDSA signature verification with nonce replay protection.
+     *      CEI pattern: all checks first, nonce consumed before external calls.
+     *      Counterparty escrows their side and order moves to Processing.
+     * @param orderId   The order/offer to accept
+     * @param nonce     Unique per-caller nonce (must not have been used before)
+     * @param deadline  Unix timestamp after which the signature is invalid
+     * @param signature Off-chain EIP-712 signature from trustedP2PSigner
      */
-    function acceptP2POffer(bytes32 orderId) external nonReentrant {
+    function acceptP2POffer(
+        bytes32 orderId,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
 
+        // ── CHECKS ───────────────────────────────────────────────────────────
         // Validate offer exists
         if (order.id == bytes32(0)) revert OfferNotFound();
-        
-        // Validate offer is still open (status 0)
+
+        // Validate offer is still open
         if (order.currentStatus != OrderStatus.AUSYS_CREATED) revert OfferNotOpen();
-        
+
         if (order.expiresAt != 0 && block.timestamp > order.expiresAt) {
             order.currentStatus = OrderStatus.AUSYS_EXPIRED;
             revert OfferExpired();
         }
-        
+
         // Validate caller is allowed counterparty
         if (order.targetCounterparty != address(0) && msg.sender != order.targetCounterparty) {
             revert NotTargetCounterparty();
         }
-        
+
         // Cannot accept own offer
         address creator = order.isSellerInitiated ? order.seller : order.buyer;
         if (msg.sender == creator) revert CannotAcceptOwnOffer();
 
+        // ── SIGNATURE VERIFICATION (after all business checks) ────────────
+        if (s.trustedP2PSigner == address(0)) revert TrustedSignerNotSet();
+
+        bytes32 structHash = keccak256(abi.encode(
+            keccak256("AcceptOffer(bytes32 orderId,address acceptor,uint256 nonce,uint256 deadline)"),
+            orderId,
+            msg.sender,
+            nonce,
+            deadline
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
+        address recovered = ECDSA.recover(digest, signature);
+
+        if (recovered != s.trustedP2PSigner) revert InvalidSignature();
+        if (s.ausysUsedNonces[msg.sender][nonce]) revert NonceAlreadyUsed();
+        if (block.timestamp > deadline) revert SignatureExpired();
+
+        // ── EFFECTS ──────────────────────────────────────────────────────────
+        // Consume nonce before any external calls (CEI)
+        s.ausysUsedNonces[msg.sender][nonce] = true;
+
+        // Update status to Processing
+        order.currentStatus = OrderStatus.AUSYS_PROCESSING;
+
+        // Remove from open offers list
+        _removeFromOpenOffers(s, orderId);
+
         if (order.isSellerInitiated) {
-            // Seller created offer - buyer (msg.sender) accepts
-            // Set buyer and escrow payment
+            // Seller created offer — buyer (msg.sender) accepts
             order.buyer = msg.sender;
+        } else {
+            // Buyer created offer — seller (msg.sender) accepts
+            order.seller = msg.sender;
+        }
+
+        // ── INTERACTIONS ─────────────────────────────────────────────────────
+        if (order.isSellerInitiated) {
             uint256 totalPayment = order.price + order.txFee;
             IERC20(s.payToken).safeTransferFrom(msg.sender, address(this), totalPayment);
             emit FundsEscrowed(msg.sender, totalPayment);
         } else {
-            // Buyer created offer - seller (msg.sender) accepts
-            // Set seller and escrow tokens
-            order.seller = msg.sender;
             IERC1155(order.token).safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -470,12 +518,6 @@ contract AuSysFacet is ReentrancyGuard {
                 ''
             );
         }
-
-        // Update status to Processing
-        order.currentStatus = OrderStatus.AUSYS_PROCESSING;
-        
-        // Remove from open offers list
-        _removeFromOpenOffers(s, orderId);
 
         emit P2POfferAccepted(orderId, msg.sender, order.isSellerInitiated);
         emit AuSysOrderStatusUpdated(orderId, 1);
@@ -524,6 +566,38 @@ contract AuSysFacet is ReentrancyGuard {
 
         emit P2POfferCanceled(orderId, creator);
         emit AuSysOrderStatusUpdated(orderId, 3);
+    }
+
+    // ============================================================================
+    // TRUSTED SIGNER & EIP-712
+    // ============================================================================
+
+    /**
+     * @notice Set the trusted off-chain signer for P2P offer acceptance (admin only)
+     * @param signer The address whose EIP-712 signatures are accepted in acceptP2POffer
+     */
+    function setTrustedP2PSigner(address signer) external adminOnly {
+        if (signer == address(0)) revert InvalidAddress();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.trustedP2PSigner = signer;
+    }
+
+    /**
+     * @notice Return the EIP-712 domain separator for this contract
+     */
+    function domainSeparator() external view returns (bytes32) {
+        return _domainSeparator();
+    }
+
+    /// @dev EIP-712 domain separator bound to chainId + address(this)
+    function _domainSeparator() internal view returns (bytes32) {
+        return keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256("Aurellion"),
+            keccak256("1"),
+            block.chainid,
+            address(this)
+        ));
     }
 
     /**
@@ -889,8 +963,9 @@ contract AuSysFacet is ReentrancyGuard {
         return keccak256(abi.encode(++s.ausysJourneyIdCounter));
     }
 
-    function _getHashedOrderId(DiamondStorage.AppStorage storage s) internal returns (bytes32) {
-        return keccak256(abi.encode(++s.ausysOrderIdCounter));
+    /// @dev FIX 4: prevrandao + creator + timestamp added for order ID entropy
+    function _getHashedOrderId(DiamondStorage.AppStorage storage s, address creator) internal returns (bytes32) {
+        return keccak256(abi.encodePacked(++s.ausysOrderIdCounter, block.prevrandao, creator, block.timestamp));
     }
 
     function _isValidNode(DiamondStorage.AppStorage storage s, address nodeOwner) internal view returns (bool) {
