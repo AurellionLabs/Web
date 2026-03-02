@@ -457,7 +457,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         if (isBuy) {
             // Refund quote tokens
             uint256 refundAmount = CLOBLib.calculateQuoteAmount(price, remaining);
-            IERC20(OrderUtilsLib.stringToAddress(market.quoteToken)).transfer(maker, refundAmount);
+            IERC20(OrderUtilsLib.stringToAddress(market.quoteToken)).safeTransfer(maker, refundAmount);
         } else {
             // Refund base tokens
             IERC1155(OrderUtilsLib.stringToAddress(market.baseToken)).safeTransferFrom(
