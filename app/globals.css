@@ -1191,3 +1191,20 @@ pre.mermaid-diagram svg [fill='#fff'] {
   padding: 0.5rem;
   letter-spacing: 0.1em;
 }
+
+/* mermaid.run() injects SVG directly inside pre — override its inline styles */
+pre.mermaid-diagram > svg {
+  max-width: 100% !important;
+  height: auto !important;
+  background: transparent !important;
+  display: block;
+  margin: 0 auto;
+}
+/* mermaid wraps output in a div sometimes */
+pre.mermaid-diagram > div > svg {
+  max-width: 100% !important;
+  height: auto !important;
+  background: transparent !important;
+  display: block;
+  margin: 0 auto;
+}

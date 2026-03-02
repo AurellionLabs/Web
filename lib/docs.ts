@@ -154,9 +154,13 @@ marked.use({
 
     code(token: Tokens.Code): string {
       const lang = (token.lang ?? '').trim().toLowerCase();
-      // Mermaid diagrams — rendered client-side by MermaidRenderer
+      // Mermaid diagrams — mermaid.run() reads textContent directly
       if (lang === 'mermaid') {
-        return `<pre class="mermaid-diagram" data-graph="${encodeURIComponent(token.text)}"></pre>`;
+        const escaped = token.text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        return `<pre class="mermaid-diagram">${escaped}</pre>`;
       }
       const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
       const highlighted =

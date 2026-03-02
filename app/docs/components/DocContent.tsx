@@ -2,59 +2,53 @@
 
 import { useEffect, useRef } from 'react';
 
-// EVA/NERV mermaid theme — dark obsidian + gold/crimson
 const EVA_THEME_VARS = {
-  // Base
-  background: 'hsl(0 0% 5%)',
-  mainBkg: 'hsl(0 0% 8%)',
-  nodeBorder: 'hsl(43 40% 32%)',
-  clusterBkg: 'hsl(0 0% 7%)',
-  clusterBorder: 'hsl(43 25% 22%)',
-  defaultLinkColor: 'hsl(43 30% 40%)',
-  titleColor: 'hsl(43 65% 68%)',
-  edgeLabelBackground: 'hsl(0 0% 7%)',
-  // Nodes
-  primaryColor: 'hsl(0 0% 9%)',
-  primaryBorderColor: 'hsl(43 50% 38%)',
-  primaryTextColor: 'hsl(43 65% 72%)',
-  secondaryColor: 'hsl(0 0% 8%)',
-  secondaryBorderColor: 'hsl(0 50% 30%)',
-  secondaryTextColor: 'hsl(0 0% 70%)',
-  tertiaryColor: 'hsl(0 0% 7%)',
-  tertiaryBorderColor: 'hsl(200 40% 28%)',
-  tertiaryTextColor: 'hsl(200 50% 65%)',
-  // Text
-  lineColor: 'hsl(43 25% 38%)',
-  fontFamily: '"Space Mono", monospace',
+  background: '#0d0d0d',
+  mainBkg: '#141414',
+  nodeBorder: '#7a5f28',
+  clusterBkg: '#111111',
+  clusterBorder: '#3a2e12',
+  defaultLinkColor: '#6b5420',
+  titleColor: '#c5a55a',
+  edgeLabelBackground: '#111111',
+  primaryColor: '#141414',
+  primaryBorderColor: '#8a6a30',
+  primaryTextColor: '#c5a55a',
+  secondaryColor: '#111111',
+  secondaryBorderColor: '#6b1a1a',
+  secondaryTextColor: '#b07070',
+  tertiaryColor: '#0f0f0f',
+  tertiaryBorderColor: '#2a4a6a',
+  tertiaryTextColor: '#5a8aaa',
+  lineColor: '#5a4820',
+  fontFamily: '"Space Mono", "Courier New", monospace',
   fontSize: '12px',
-  // Sequence
-  actorBkg: 'hsl(0 0% 9%)',
-  actorBorder: 'hsl(0 60% 30%)',
-  actorTextColor: 'hsl(0 0% 75%)',
-  actorLineColor: 'hsl(43 25% 30%)',
-  signalColor: 'hsl(43 50% 55%)',
-  signalTextColor: 'hsl(43 65% 72%)',
-  labelBoxBkgColor: 'hsl(0 0% 7%)',
-  labelBoxBorderColor: 'hsl(43 25% 25%)',
-  labelTextColor: 'hsl(0 0% 65%)',
-  activationBkgColor: 'hsl(0 0% 11%)',
-  activationBorderColor: 'hsl(0 50% 30%)',
-  // Git graph
-  git0: 'hsl(43 65% 55%)',
-  git1: 'hsl(0 65% 45%)',
-  git2: 'hsl(200 55% 50%)',
-  git3: 'hsl(142 45% 45%)',
-  gitBranchLabel0: 'hsl(0 0% 10%)',
-  gitInv0: 'hsl(0 0% 10%)',
+  // Sequence diagram
+  actorBkg: '#141414',
+  actorBorder: '#6b1a1a',
+  actorTextColor: '#c0c0c0',
+  actorLineColor: '#4a3810',
+  signalColor: '#a08840',
+  signalTextColor: '#c5a55a',
+  labelBoxBkgColor: '#111111',
+  labelBoxBorderColor: '#3a2e12',
+  labelTextColor: '#909090',
+  activationBkgColor: '#1a1a1a',
+  activationBorderColor: '#6b1a1a',
+  loopTextColor: '#c5a55a',
+  noteBkgColor: '#111111',
+  noteBorderColor: '#3a2e12',
+  noteTextColor: '#909090',
 };
 
 export function DocContent({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!ref.current) return;
+    const container = ref.current;
+    if (!container) return;
 
-    const nodes = ref.current.querySelectorAll<HTMLElement>(
+    const nodes = container.querySelectorAll<HTMLElement>(
       'pre.mermaid-diagram',
     );
     if (nodes.length === 0) return;
@@ -62,42 +56,32 @@ export function DocContent({ html }: { html: string }) {
     import('mermaid').then(({ default: mermaid }) => {
       mermaid.initialize({
         startOnLoad: false,
+        securityLevel: 'loose',
         theme: 'base',
         themeVariables: EVA_THEME_VARS,
-        fontFamily: '"Space Mono", monospace',
+        fontFamily: '"Space Mono", "Courier New", monospace',
         flowchart: {
           curve: 'cardinal',
-          padding: 16,
+          padding: 20,
           htmlLabels: true,
           useMaxWidth: true,
         },
         sequence: {
-          showSequenceNumbers: false,
           actorMargin: 60,
-          boxTextMargin: 8,
-          noteMargin: 10,
-          messageMargin: 45,
+          messageMargin: 40,
           useMaxWidth: true,
+          boxTextMargin: 6,
         },
-        er: { useMaxWidth: true },
-        gantt: { useMaxWidth: true },
       });
 
-      nodes.forEach(async (node) => {
-        const encoded = node.getAttribute('data-graph');
-        if (!encoded) return;
-        const graphDef = decodeURIComponent(encoded);
-        const id = `mermaid-${Math.random().toString(36).slice(2)}`;
-        try {
-          const { svg } = await mermaid.render(id, graphDef);
-          node.innerHTML = svg;
-          node.classList.add('mermaid-rendered');
-        } catch (err) {
-          // On error show a styled fallback
-          node.innerHTML = `<div class="mermaid-error">Diagram parse error</div>`;
+      mermaid
+        .run({
+          nodes: Array.from(nodes),
+          suppressErrors: false,
+        })
+        .catch((err) => {
           console.warn('Mermaid render error:', err);
-        }
-      });
+        });
     });
   }, [html]);
 
