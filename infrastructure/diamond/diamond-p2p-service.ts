@@ -121,15 +121,6 @@ export class DiamondP2PService implements IP2PService {
     const diamond = this.context.getDiamond();
     const signerAddress = await this.context.getSignerAddress();
 
-    console.log('[DiamondP2PService] Creating P2P offer:', {
-      token: input.token,
-      tokenId: input.tokenId,
-      quantity: input.quantity.toString(),
-      price: input.price.toString(),
-      isSellOffer: input.isSellOffer,
-      targetCounterparty: input.targetCounterparty || 'open',
-    });
-
     // Build the AuSysOrder struct for createAuSysOrder
     // For P2P: one party is the creator, the other is address(0) or targetCounterparty
     const buyDestination = input.deliveryDestination;
@@ -174,31 +165,18 @@ export class DiamondP2PService implements IP2PService {
 
       if (input.isSellOffer) {
         // Sell offer: seller escrows ERC1155 tokens → needs ERC1155 approval
-        console.log(
-          '[DiamondP2PService] Sell offer — ensuring ERC1155 approval for',
-          input.token,
-        );
         await this.ensureERC1155Approval(input.token);
-        console.log(
-          '[DiamondP2PService] ERC1155 approval complete, proceeding to create order...',
-        );
       } else {
         // Buy offer: buyer escrows ERC20 (price + txFee) → needs ERC20 approval
         // Contract calculates txFee = (price * 2) / 100
         const txFee = (input.price * BigInt(2)) / BigInt(100);
         const totalCost = input.price + txFee;
-        console.log(
-          '[DiamondP2PService] Buy offer — ensuring ERC20 approval for',
-          totalCost.toString(),
-        );
         await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       }
 
       const tx = await diamond.createAuSysOrder(order);
-      console.log('[DiamondP2PService] Transaction sent:', tx.hash);
 
       const receipt = await tx.wait();
-      console.log('[DiamondP2PService] Transaction confirmed:', receipt.hash);
 
       // Extract order ID from P2POfferCreated or AuSysOrderCreated event
       const p2pEvent = receipt.logs.find((log: ethers.Log) => {
@@ -222,7 +200,6 @@ export class DiamondP2PService implements IP2PService {
           data: p2pEvent.data,
         });
         const orderId = parsed?.args?.[0] || parsed?.args?.orderId;
-        console.log('[DiamondP2PService] Created offer ID:', orderId);
         return orderId;
       }
 
@@ -248,8 +225,6 @@ export class DiamondP2PService implements IP2PService {
   async acceptOffer(offerId: string): Promise<void> {
     const diamond = this.context.getDiamond();
 
-    console.log('[DiamondP2PService] Accepting P2P offer:', offerId);
-
     try {
       // Fetch the offer to determine approval needs
       const order = await diamond.getAuSysOrder(offerId);
@@ -259,25 +234,15 @@ export class DiamondP2PService implements IP2PService {
         const payTokenAddress = await this.getConfiguredPayTokenAddress();
         const totalCost =
           BigInt(order.price.toString()) + BigInt(order.txFee.toString());
-        console.log(
-          '[DiamondP2PService] Accepting sell offer — ensuring ERC20 approval for',
-          totalCost.toString(),
-        );
         await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       } else {
         // Buy offer: acceptor is SELLER → needs ERC1155 approval to escrow tokens
-        console.log(
-          '[DiamondP2PService] Accepting buy offer — ensuring ERC1155 approval for',
-          order.token,
-        );
         await this.ensureERC1155Approval(order.token);
       }
 
       const tx = await diamond.acceptP2POffer(offerId);
-      console.log('[DiamondP2PService] Transaction sent:', tx.hash);
 
       const receipt = await tx.wait();
-      console.log('[DiamondP2PService] Offer accepted:', receipt.hash);
     } catch (error) {
       console.error('[DiamondP2PService] Error accepting offer:', error);
       // Re-throw with decoded message for the UI
@@ -310,8 +275,6 @@ export class DiamondP2PService implements IP2PService {
     const isZeroAddress = (addr?: string | null) =>
       !addr || addr.toLowerCase() === ethers.ZeroAddress.toLowerCase();
 
-    console.log('[DiamondP2PService] acceptOfferWithDelivery:', offerId);
-
     try {
       // 1. Fetch offer to determine approval needs
       const order = await diamond.getAuSysOrder(offerId);
@@ -324,17 +287,9 @@ export class DiamondP2PService implements IP2PService {
           BigInt(order.price.toString()) +
           BigInt(order.txFee.toString()) +
           delivery.bountyWei;
-        console.log(
-          '[DiamondP2PService] Accepting sell offer with delivery — ERC20 approval for',
-          totalCost.toString(),
-        );
         await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       } else {
         // Buy offer: acceptor is SELLER → ERC1155 approval to escrow tokens
-        console.log(
-          '[DiamondP2PService] Accepting buy offer with delivery — ERC1155 approval for',
-          order.token,
-        );
         await this.ensureERC1155Approval(order.token);
       }
 
@@ -345,10 +300,6 @@ export class DiamondP2PService implements IP2PService {
       if (!acceptReceipt.status) {
         throw new Error('acceptP2POffer transaction failed on-chain');
       }
-
-      console.log(
-        '[DiamondP2PService] Offer accepted, resolving journey parties...',
-      );
 
       // Poll for order state update (more efficient than fixed wait)
       const maxAttempts = 4;
@@ -430,7 +381,6 @@ export class DiamondP2PService implements IP2PService {
           delivery.assetId,
         );
         await journeyTx.wait();
-        console.log('[DiamondP2PService] Journey created successfully');
       } catch (journeyError) {
         // Offer was accepted but journey creation failed. The order is now
         // in PROCESSING state without a journey. The UI shows a "Schedule
@@ -483,32 +433,18 @@ export class DiamondP2PService implements IP2PService {
       ? (this.context as any).getQuoteTokenContract()
       : new ethers.Contract(quoteTokenAddress, ERC20_ABI, signer);
 
-    console.log('[DiamondP2PService] Checking quote token allowance...', {
-      signerAddress,
-      diamondAddress: NEXT_PUBLIC_DIAMOND_ADDRESS,
-      quoteTokenAddress,
-      requiredAmount: amount.toString(),
-    });
-
     const currentAllowance = await quoteToken.allowance(
       signerAddress,
       NEXT_PUBLIC_DIAMOND_ADDRESS,
     );
 
     if (BigInt(currentAllowance.toString()) < amount) {
-      console.log(
-        '[DiamondP2PService] Insufficient allowance, approving unlimited amount...',
-      );
       const tx = await quoteToken.approve(
         NEXT_PUBLIC_DIAMOND_ADDRESS,
         ethers.MaxUint256,
       );
       await tx.wait();
-      console.log('[DiamondP2PService] Quote token approved.');
     } else {
-      console.log(
-        '[DiamondP2PService] Sufficient allowance, no approval needed.',
-      );
     }
   }
 
@@ -563,35 +499,15 @@ export class DiamondP2PService implements IP2PService {
         ? (this.context as any).getERC1155Contract(tokenAddress)
         : new ethers.Contract(tokenAddress, ERC1155_ABI, signer);
 
-    console.log('[DiamondP2PService] Checking ERC1155 approval...', {
-      tokenAddress,
-      signerAddress,
-      diamondAddress,
-      isDiamondToken,
-      erc1155Address: erc1155.target,
-    });
-
     try {
       const isApproved = await erc1155.isApprovedForAll(
         signerAddress,
         diamondAddress,
       );
 
-      console.log(
-        '[DiamondP2PService] ERC1155 isApprovedForAll result:',
-        isApproved,
-      );
-
       if (!isApproved) {
-        console.log(
-          '[DiamondP2PService] ERC1155 not approved, requesting setApprovalForAll...',
-        );
         const tx = await erc1155.setApprovalForAll(diamondAddress, true);
         const receipt = await tx.wait();
-        console.log(
-          '[DiamondP2PService] ERC1155 approval granted, tx:',
-          receipt?.hash,
-        );
 
         // Verify the approval took effect; retry with short delay to handle RPC propagation
         let verified = false;
@@ -605,7 +521,6 @@ export class DiamondP2PService implements IP2PService {
           );
           if (verified) break;
         }
-        console.log('[DiamondP2PService] ERC1155 approval verified:', verified);
         if (!verified) {
           console.error(
             '[DiamondP2PService] Approval failed - token:',
@@ -620,9 +535,6 @@ export class DiamondP2PService implements IP2PService {
           );
         }
       } else {
-        console.log(
-          '[DiamondP2PService] ERC1155 already approved, no action needed.',
-        );
       }
     } catch (error) {
       console.error('[DiamondP2PService] ERC1155 approval error:', error);
@@ -639,14 +551,10 @@ export class DiamondP2PService implements IP2PService {
   async cancelOffer(offerId: string): Promise<void> {
     const diamond = this.context.getDiamond();
 
-    console.log('[DiamondP2PService] Canceling P2P offer:', offerId);
-
     try {
       const tx = await diamond.cancelP2POffer(offerId);
-      console.log('[DiamondP2PService] Transaction sent:', tx.hash);
 
       const receipt = await tx.wait();
-      console.log('[DiamondP2PService] Offer canceled:', receipt.hash);
     } catch (error) {
       console.error('[DiamondP2PService] Error canceling offer:', error);
       const decoded = decodeP2PError(error);
@@ -676,11 +584,6 @@ export class DiamondP2PRepository implements IP2PRepository {
 
     try {
       const offerIds: string[] = await diamond.getOpenP2POffers();
-      console.log(
-        '[DiamondP2PRepository] Found',
-        offerIds.length,
-        'open offers',
-      );
 
       const offers = await Promise.all(offerIds.map((id) => this.getOffer(id)));
       const validOffers = offers.filter((o): o is P2POffer => o !== null);
@@ -768,12 +671,6 @@ export class DiamondP2PRepository implements IP2PRepository {
       const offerIds = Array.from(
         new Set([...onchainOfferIds, ...indexerOfferIds]),
       );
-      console.log(
-        '[DiamondP2PRepository] Found',
-        offerIds.length,
-        'offers for user',
-        userAddress,
-      );
 
       const offers = await Promise.all(offerIds.map((id) => this.getOffer(id)));
 
@@ -793,12 +690,6 @@ export class DiamondP2PRepository implements IP2PRepository {
         const indexerOfferIds = await fetchByCreatorFromIndexer();
         const offerIds = Array.from(
           new Set([...onchainOfferIds, ...indexerOfferIds]),
-        );
-        console.log(
-          '[DiamondP2PRepository] Provider fallback found',
-          offerIds.length,
-          'offers for user',
-          userAddress,
         );
 
         const offers = await Promise.all(

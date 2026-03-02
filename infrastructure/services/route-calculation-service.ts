@@ -129,13 +129,6 @@ export class RouteCalculationService {
     destinationLng: number,
     confirmationLevel: number,
   ): Promise<CalculatedRoute> {
-    console.log('[RouteCalculationService] Calculating route:', {
-      originNodeAddress,
-      destinationLat,
-      destinationLng,
-      confirmationLevel,
-    });
-
     // Step 1: Get origin node location
     const originNode = await this.getNodeLocation(originNodeAddress);
     if (!originNode) {
@@ -151,9 +144,6 @@ export class RouteCalculationService {
 
     // Step 2: Fetch all active nodes
     const allNodes = await this.fetchAllNodes();
-    console.log(
-      `[RouteCalculationService] Found ${allNodes.length} active nodes`,
-    );
 
     if (allNodes.length === 0 || confirmationLevel <= 1) {
       // Direct route - just origin node
@@ -223,10 +213,6 @@ export class RouteCalculationService {
       }
     }
 
-    console.log(
-      `[RouteCalculationService] ${nodesOnRoute.length} nodes on route (within ${MAX_DEVIATION * 100}% deviation)`,
-    );
-
     if (nodesOnRoute.length === 0) {
       // No intermediate nodes available, return direct route
       return {
@@ -279,12 +265,6 @@ export class RouteCalculationService {
       destinationLat,
       destinationLng,
     );
-
-    console.log('[RouteCalculationService] Final route:', {
-      nodes: route,
-      totalDistance: `${totalDistance.toFixed(2)} km`,
-      nodeCount: route.length,
-    });
 
     return {
       nodes: route,

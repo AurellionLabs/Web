@@ -12,25 +12,12 @@ export async function graphqlRequest<T = any>(
     Authorization: `Bearer ${apiKey}`,
   };
   try {
-    console.log('GraphQL Request:', {
-      endpoint: graphqlEndpoint,
-      query: query.substring(0, 100) + '...', // Log first 100 chars of query
-      variables,
-      hasApiKey: !!apiKey,
-    });
-
     const response = await request<T>(
       graphqlEndpoint,
       query,
       variables,
       headers,
     );
-
-    console.log('GraphQL Response:', {
-      hasResponse: !!response,
-      responseKeys: response ? Object.keys(response) : 'null/undefined',
-      responseType: typeof response,
-    });
 
     return response;
   } catch (e) {

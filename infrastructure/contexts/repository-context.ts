@@ -58,22 +58,14 @@ export class RepositoryContext {
     this.signer = signer;
 
     try {
-      console.log(
-        '[RepositoryContext] Initializing with Diamond infrastructure...',
-      );
-
       // Initialize Diamond context
       this.diamondContext = new DiamondContext();
       await this.diamondContext.initialize(provider);
-      console.log('[RepositoryContext] Diamond context initialized');
 
       // Create Diamond-based NodeRepository with Pinata for IPFS metadata
       this.nodeRepository = new DiamondNodeRepository(
         this.diamondContext,
         pinata,
-      );
-      console.log(
-        '[RepositoryContext] DiamondNodeRepository created with Pinata',
       );
 
       // Create OrderRepository with GraphQL integration
@@ -93,10 +85,6 @@ export class RepositoryContext {
       this.poolRepository = new PoolRepository(provider, signer);
 
       this.platformRepository = new PlatformRepository(pinata);
-
-      console.log(
-        '[RepositoryContext] Successfully created Diamond-based repositories',
-      );
     } catch (error) {
       console.error(
         '[RepositoryContext] Failed to create repositories:',
@@ -212,7 +200,6 @@ export class RepositoryContext {
       return; // No change
     }
 
-    console.log(`[RepositoryContext] Updating signer: ${oldAddr} → ${newAddr}`);
     this.signer = newSigner;
 
     // Reconnect the ausys contract with the new signer

@@ -36,10 +36,6 @@ export class DiamondContext {
 
     this.initialized = true;
     this.readOnly = false;
-    console.log(
-      '[DiamondContext] Initialized with Diamond:',
-      NEXT_PUBLIC_DIAMOND_ADDRESS,
-    );
   }
 
   /**
@@ -58,10 +54,6 @@ export class DiamondContext {
 
     this.initialized = true;
     this.readOnly = true;
-    console.log(
-      '[DiamondContext] Initialized in READ-ONLY mode with Diamond:',
-      NEXT_PUBLIC_DIAMOND_ADDRESS,
-    );
   }
 
   /**

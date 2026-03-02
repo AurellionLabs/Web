@@ -58,10 +58,6 @@ export class ServiceContext {
       console.warn('[ServiceContext] Unable to initialize PoolService yet:', e);
       this.poolService = null;
     }
-
-    console.log(
-      '[ServiceContext] Successfully initialized Order and Pool services',
-    );
   }
 
   /**

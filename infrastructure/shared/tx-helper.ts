@@ -62,9 +62,6 @@ async function estimateGasWithBackoff(
       }
 
       const delay = baseDelayMs * Math.pow(2, attempt - 1);
-      console.log(
-        `Gas estimation rate limited, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`,
-      );
       await new Promise((r) => setTimeout(r, delay));
     }
   }
@@ -85,14 +82,9 @@ export async function sendContractTxWithReadEstimation(
   const to = await contract.getAddress();
   const iface = contract.interface;
 
-  console.log(`[tx-helper] Preparing transaction: ${method} to ${to}`);
-
   let data: string;
   try {
     data = iface.encodeFunctionData(method, args as any);
-    console.log(
-      `[tx-helper] Encoded function data: ${data.substring(0, 100)}...`,
-    );
   } catch (error) {
     console.error(
       `[tx-helper] Failed to encode function data for ${method}:`,
@@ -138,27 +130,19 @@ export async function sendContractTxWithReadEstimation(
   const fromAddress =
     options.from ?? (await (runner as Signer).getAddress?.()) ?? undefined;
 
-  console.log(
-    `[tx-helper] Estimating gas for ${method} from ${fromAddress}...`,
-  );
   const est = await estimateGasWithBackoff(
     readProvider,
     { to, from: fromAddress, data, value: options.value },
     options,
   );
-  console.log(`[tx-helper] Gas estimated: ${est.toString()}`);
 
   const headroom =
     options.gasHeadroomRatio && options.gasHeadroomRatio > 1
       ? options.gasHeadroomRatio
       : 1.2;
   const gasLimit = (est * BigInt(Math.floor(headroom * 100))) / 100n;
-  console.log(
-    `[tx-helper] Gas limit with ${headroom}x headroom: ${gasLimit.toString()}`,
-  );
 
   // Check wallet responsiveness before sending transaction
-  console.log(`[tx-helper] Checking wallet connection...`);
   try {
     const walletCheck = await Promise.race([
       (runner as Signer).getAddress(),
@@ -169,15 +153,12 @@ export async function sendContractTxWithReadEstimation(
         ),
       ),
     ]);
-    console.log(`[tx-helper] Wallet connected: ${walletCheck}`);
   } catch (error: any) {
     console.error('[tx-helper] Wallet connection check failed:', error);
     throw new Error(
       'Wallet is not responding. Please ensure your wallet is unlocked and connected, then try again.',
     );
   }
-
-  console.log(`[tx-helper] Sending transaction to wallet...`);
 
   // Add timeout for wallet interaction (60 seconds should be enough for user to approve)
   const WALLET_TX_TIMEOUT = 60000;
@@ -201,10 +182,6 @@ export async function sendContractTxWithReadEstimation(
         ),
       ),
     ])) as ethers.ContractTransactionResponse;
-
-    console.log(
-      `[tx-helper] Transaction sent, hash: ${tx.hash}, waiting for confirmation...`,
-    );
   } catch (error: any) {
     // Check for wallet-specific errors
     if (
@@ -242,9 +219,6 @@ export async function sendContractTxWithReadEstimation(
   try {
     // Wait with 1 confirmation and a longer polling interval to reduce RPC calls
     receipt = await tx.wait(1);
-    console.log(
-      `[tx-helper] Transaction confirmed in block ${receipt?.blockNumber}`,
-    );
   } catch (error: any) {
     // If tx.wait fails due to rate limiting, try using provider.waitForTransaction
     // which gives us more control over polling
@@ -263,9 +237,6 @@ export async function sendContractTxWithReadEstimation(
         maxRetries: 10,
         baseDelayMs: 2000,
       });
-      console.log(
-        `[tx-helper] Transaction confirmed in block ${receipt.blockNumber}`,
-      );
     } else {
       throw error;
     }

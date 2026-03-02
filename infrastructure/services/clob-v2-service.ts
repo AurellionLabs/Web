@@ -109,8 +109,6 @@ export class CLOBV2Service implements ICLOBService {
     params: PlaceLimitOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
-      console.log('[CLOBV2Service] Placing limit order:', params);
-
       const contract = await this.getCLOBContract();
 
       // Handle token approvals
@@ -138,8 +136,6 @@ export class CLOBV2Service implements ICLOBService {
       const receipt = await tx.wait();
       const orderId = this.extractOrderIdFromReceipt(receipt);
 
-      console.log('[CLOBV2Service] Order placed:', orderId);
-
       return {
         success: true,
         orderId,
@@ -158,8 +154,6 @@ export class CLOBV2Service implements ICLOBService {
     params: PlaceMarketOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
-      console.log('[CLOBV2Service] Placing market order:', params);
-
       // Market orders are placed as IOC limit orders with slippage
       // The matching engine will fill what it can immediately
       const limitParams: PlaceLimitOrderParams = {
@@ -223,11 +217,6 @@ export class CLOBV2Service implements ICLOBService {
     params: PlaceLimitOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
-      console.log('[CLOBV2Service] Placing node sell order:', {
-        nodeHash,
-        ...params,
-      });
-
       const contract = await this.getCLOBContract();
       const signerAddress = await this.repositoryContext.getSignerAddress();
 
@@ -268,8 +257,6 @@ export class CLOBV2Service implements ICLOBService {
 
   async cancelOrder(orderId: string): Promise<OrderCancellationResult> {
     try {
-      console.log('[CLOBV2Service] Cancelling order:', orderId);
-
       const contract = await this.getCLOBContract();
       const tx = await contract.cancelOrder(orderId);
       const receipt = await tx.wait();
@@ -289,8 +276,6 @@ export class CLOBV2Service implements ICLOBService {
 
   async cancelOrders(orderIds: string[]): Promise<OrderCancellationResult[]> {
     try {
-      console.log('[CLOBV2Service] Cancelling orders:', orderIds);
-
       const contract = await this.getCLOBContract();
       const tx = await contract.cancelOrders(orderIds);
       const receipt = await tx.wait();
@@ -316,8 +301,6 @@ export class CLOBV2Service implements ICLOBService {
     params: CommitOrderParams,
   ): Promise<{ commitmentId: string }> {
     try {
-      console.log('[CLOBV2Service] Committing order:', params);
-
       const contract = await this.getCLOBContract();
 
       // Create commitment hash
@@ -353,8 +336,6 @@ export class CLOBV2Service implements ICLOBService {
 
   async revealOrder(params: RevealOrderParams): Promise<OrderPlacementResult> {
     try {
-      console.log('[CLOBV2Service] Revealing order:', params);
-
       const contract = await this.getCLOBContract();
 
       // Handle token approvals
@@ -514,7 +495,6 @@ export class CLOBV2Service implements ICLOBService {
     );
 
     if (allowance < amount) {
-      console.log('[CLOBV2Service] Approving quote token...');
       const tx = await quoteToken.approve(this.diamondAddress, amount);
       await tx.wait();
     }
@@ -535,7 +515,6 @@ export class CLOBV2Service implements ICLOBService {
     );
 
     if (!isApproved) {
-      console.log('[CLOBV2Service] Approving base token...');
       const tx = await token.setApprovalForAll(this.diamondAddress, true);
       await tx.wait();
     }

@@ -33,11 +33,7 @@ export class OrderService implements IOrderService {
     this.currentSigner = initialSigner;
     initialSigner
       .getAddress()
-      .then((addr) => {
-        console.log(
-          `[OrderService] Initialized with contract at ${contractInstance.target} and signer ${addr}`,
-        );
-      })
+      .then((addr) => {})
       .catch((err) => {
         console.error(
           '[OrderService] Failed to get initial signer address during initialization:',
@@ -56,7 +52,6 @@ export class OrderService implements IOrderService {
     }
     this.currentSigner = newSigner;
     const addr = await newSigner.getAddress();
-    console.log(`[OrderService] Signer updated to: ${addr}`);
   }
 
   /**
@@ -92,15 +87,8 @@ export class OrderService implements IOrderService {
         contractAddress,
       );
 
-      console.log(
-        `[OrderService] Current allowance: ${currentAllowance.toString()}, Required: ${amount.toString()}`,
-      );
-
       // Approve unlimited once if insufficient allowance
       if (BigInt(currentAllowance.toString()) < BigInt(amount.toString())) {
-        console.log(
-          `[OrderService] Insufficient allowance. Approving unlimited (MaxUint256). Requested: ${amount.toString()}`,
-        );
         const approveTx = await tokenContract.approve(
           contractAddress,
           ethers.MaxUint256,
@@ -109,11 +97,7 @@ export class OrderService implements IOrderService {
         if (!approveReceipt || approveReceipt.status !== 1) {
           throw new Error('Token approval transaction failed');
         }
-        console.log(
-          `[OrderService] Token approval successful, tx: ${approveReceipt.hash}`,
-        );
       } else {
-        console.log(`[OrderService] Sufficient allowance exists`);
       }
     } catch (error) {
       console.error(
@@ -139,10 +123,6 @@ export class OrderService implements IOrderService {
   ): Promise<ContractTransactionReceipt> {
     const connectedSignerAddress = await this.getCurrentSignerAddress();
     const effectiveSender = senderWalletAddress ?? connectedSignerAddress;
-
-    console.log(
-      `[OrderService] Creating job from ${effectiveSender} to ${recipientWalletAddress}`,
-    );
 
     if (bounty === undefined || eta === undefined) {
       throw new Error(
@@ -179,9 +159,6 @@ export class OrderService implements IOrderService {
       if (!receipt) {
         throw new Error('Job creation transaction failed to return a receipt.');
       }
-      console.log(
-        `[OrderService] Job created successfully, tx: ${receipt.hash}`,
-      );
       return receipt;
     } catch (error) {
       handleContractError(error, 'job creation service');
@@ -196,9 +173,6 @@ export class OrderService implements IOrderService {
     journeyId: string,
   ): Promise<ContractTransactionReceipt> {
     const signerAddress = await this.getCurrentSignerAddress();
-    console.log(
-      `[OrderService] Signer ${signerAddress} attempting to sign for package on journey: ${journeyId}`,
-    );
     try {
       const contractWithSigner = this.contract.connect(this.currentSigner);
 
@@ -228,9 +202,6 @@ export class OrderService implements IOrderService {
           'Customer sign package transaction failed to return a receipt.',
         );
       }
-      console.log(
-        `[OrderService] Customer package sign successful, tx: ${receipt.hash}`,
-      );
       return receipt;
     } catch (error) {
       handleContractError(error, 'customer sign package service');
@@ -245,9 +216,6 @@ export class OrderService implements IOrderService {
    */
   async createOrder(orderData: DomainOrder): Promise<string> {
     const signerAddress = await this.getCurrentSignerAddress();
-    console.log(
-      `[OrderService] Signer ${signerAddress} creating order for buyer: ${orderData.buyer}`,
-    );
 
     // Normalize addresses for comparison
     const normalizedCustomerAddress = ethers.getAddress(
@@ -309,16 +277,6 @@ export class OrderService implements IOrderService {
       };
 
       // DEBUG: Log the contract order before sending
-      console.log('[OrderService] Contract order being sent:', {
-        id: contractOrder.id,
-        token: contractOrder.token,
-        tokenId: contractOrder.tokenId,
-        tokenQuantity: contractOrder.tokenQuantity,
-        price: contractOrder.price,
-        buyer: contractOrder.buyer,
-        seller: contractOrder.seller,
-        nodes: contractOrder.nodes,
-      });
 
       // Call the contract's orderCreation with mapped struct
       const { receipt } = await sendContractTxWithReadEstimation(
@@ -338,16 +296,8 @@ export class OrderService implements IOrderService {
           `Order creation transaction failed. Hash: ${receipt.hash}`,
         );
       }
-      console.log(
-        '[OrderService] Order created successfully, tx: ',
-        receipt.hash,
-      );
 
       // Parse event to get orderId
-      console.log(
-        '[OrderService] Raw receipt logs:',
-        JSON.stringify(receipt.logs, null, 2),
-      );
       let createdOrderId: string = String(ethers.ZeroHash);
       const eventFragment = this.contract.interface.getEvent('OrderCreated');
       if (receipt.logs && eventFragment) {
@@ -358,9 +308,6 @@ export class OrderService implements IOrderService {
             );
             if (parsedLog && parsedLog.name === 'OrderCreated') {
               createdOrderId = String(parsedLog.args.orderId);
-              console.log(
-                `[OrderService] Found OrderCreated event, orderId: ${createdOrderId}`,
-              );
               break;
             }
           } catch (e) {
@@ -418,17 +365,6 @@ export class OrderService implements IOrderService {
     tokenQuantity: bigint,
     assetId: bigint,
   ): Promise<string> {
-    console.log(
-      `[OrderService] Creating journey for order ${orderId} from ${senderNodeAddress} to ${receiverAddress}`,
-    );
-    console.log('[OrderService] Journey parameters:', {
-      orderId: orderId.toString(),
-      bountyWei: bountyWei.toString(),
-      bountyType: typeof bountyWei,
-      etaTimestamp: etaTimestamp.toString(),
-      tokenQuantity: tokenQuantity.toString(),
-      assetId: assetId.toString(),
-    });
     try {
       const contract = this.contract.connect(this.currentSigner);
 
@@ -450,9 +386,6 @@ export class OrderService implements IOrderService {
         ],
         { from: await this.currentSigner.getAddress() },
       );
-      console.log(
-        `[OrderService] createOrderJourney tx confirmed. Status: ${receipt?.status}`,
-      );
 
       if (!receipt || receipt.status !== 1) {
         throw new Error(
@@ -471,9 +404,6 @@ export class OrderService implements IOrderService {
             );
             if (parsedLog && parsedLog.name === 'JourneyCreated') {
               journeyId = String(parsedLog.args.journeyId);
-              console.log(
-                `[OrderService] Found JourneyCreated event, journeyId: ${journeyId}`,
-              );
               break;
             }
           } catch (e) {

@@ -205,7 +205,6 @@ export class OrderRepository implements IOrderRepository {
         rpcProvider,
       );
       this.isInitialized = true;
-      console.log('[OrderRepository] Initialized with dedicated RPC provider');
     } catch (error) {
       console.warn(
         '[OrderRepository] Failed to initialize dedicated RPC provider, using user provider:',

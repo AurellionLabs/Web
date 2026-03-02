@@ -1,4 +1,3 @@
-// @ts-nocheck - File with outdated contract types
 import { IDriverService } from '@/domain/driver/driver';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import type { Ausys as LocationContract } from '@/lib/contracts';
@@ -33,9 +32,6 @@ export class DriverService implements IDriverService {
     const contract = this.getAusysContractOrThrow();
     const signer = this.context.getSigner();
     const driverAddress = await signer.getAddress();
-    console.log(
-      `[DriverService] Driver ${driverAddress} accepting delivery for journey ${journeyId}`,
-    );
     try {
       // Reference: ausys-controller.ts#assignDriverToJobId
       await sendContractTxWithReadEstimation(
@@ -43,9 +39,6 @@ export class DriverService implements IDriverService {
         'assignDriverToJourney',
         [driverAddress, journeyId],
         { from: driverAddress },
-      );
-      console.log(
-        `[DriverService] Journey ${journeyId} accepted successfully by ${driverAddress}`,
       );
     } catch (error) {
       handleContractError(error, `accept delivery for journey ${journeyId}`);
@@ -57,9 +50,6 @@ export class DriverService implements IDriverService {
     const contract = this.getAusysContractOrThrow();
     const signer = this.context.getSigner();
     const driverAddress = await signer.getAddress();
-    console.log(
-      `[DriverService] Driver ${driverAddress} confirming pickup for journey ${journeyId}`,
-    );
     try {
       // Reference: ausys-controller.ts#packageHandOn
       // Need to get the customer/sender address first
@@ -75,9 +65,6 @@ export class DriverService implements IDriverService {
         [journeyId],
         { from: driverAddress },
       );
-      console.log(
-        `[DriverService] Pickup confirmed successfully for journey ${journeyId}`,
-      );
     } catch (error) {
       handleContractError(error, `confirm pickup for journey ${journeyId}`);
       throw error;
@@ -88,9 +75,6 @@ export class DriverService implements IDriverService {
     const contract = this.getAusysContractOrThrow();
     const signer = this.context.getSigner();
     const driverAddress = await signer.getAddress();
-    console.log(
-      `[DriverService] Driver ${driverAddress} signing package for journey ${journeyId}`,
-    );
     try {
       // Reference: ausys-controller.ts#driverPackageSign
       // Need to get the sender address first
@@ -104,9 +88,6 @@ export class DriverService implements IDriverService {
         [journeyId],
         { from: driverAddress },
       );
-      console.log(
-        `[DriverService] Package signed successfully for journey ${journeyId} by driver ${driverAddress}`,
-      );
     } catch (error) {
       handleContractError(error, `package sign for journey ${journeyId}`);
       throw error;
@@ -119,9 +100,6 @@ export class DriverService implements IDriverService {
     const driverAddress = await signer.getAddress();
     // Default token address - adjust if a different default or lookup logic is needed
     const tokenAddress = ethers.ZeroAddress;
-    console.log(
-      `[DriverService] Driver ${driverAddress} completing delivery for journey ${journeyId}`,
-    );
     try {
       // Reference: ausys-controller.ts#packageHandOff
       // Need to get the receiver address first
@@ -134,9 +112,6 @@ export class DriverService implements IDriverService {
         'handOff',
         [journeyId],
         { from: driverAddress },
-      );
-      console.log(
-        `[DriverService] Delivery completed successfully for journey ${journeyId}`,
       );
     } catch (error) {
       handleContractError(error, `complete delivery for journey ${journeyId}`);

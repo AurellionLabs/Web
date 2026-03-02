@@ -209,9 +209,6 @@ export class BlockchainNodeRepository implements NodeRepository {
     clobAddress: string,
   ): Promise<void> {
     // No-op: CLOB is now internal to Diamond via CLOBFacet
-    console.log(
-      '[NodeRepository] CLOB approval not needed - CLOBFacet is internal to Diamond',
-    );
   }
 
   /**
@@ -346,9 +343,6 @@ export class BlockchainNodeRepository implements NodeRepository {
       // Step 3: In the pure dumb indexer, asset metadata is fetched from IPFS directly
       // The assetss table no longer exists, so we work with available data
       const tokenIds = nodeAssetsData.map((asset) => asset.token_id);
-      console.log(
-        '[NodeRepository] Asset metadata will be fetched from IPFS in pure dumb pattern',
-      );
 
       // Step 4: Calculate balances from transfer events
       const balanceMap =
@@ -460,9 +454,6 @@ export class BlockchainNodeRepository implements NodeRepository {
 
       // In the pure dumb indexer, asset metadata is fetched from IPFS directly
       // The assetss table no longer exists, so we work without metadata
-      console.log(
-        '[NodeRepository] Asset metadata will be fetched from IPFS in pure dumb pattern',
-      );
 
       const metadataMap = new Map<string, AssetAura>(); // Empty in pure dumb pattern
 

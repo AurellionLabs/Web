@@ -51,9 +51,6 @@ export class RepositoryFactory {
       this.readProviders.set(chainId, readProvider);
 
       this.isInitialized = true;
-      console.log(
-        `[RepositoryFactory] Initialized with dedicated RPC for chain ${chainId}`,
-      );
     } catch (error) {
       console.warn(
         '[RepositoryFactory] Failed to initialize read provider, repositories will use user provider:',

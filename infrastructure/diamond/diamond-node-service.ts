@@ -49,11 +49,6 @@ export class DiamondNodeService implements INodeService {
     const diamond = this.context.getDiamond();
     const signerAddress = await this.context.getSignerAddress();
 
-    console.log('[DiamondNodeService] Registering node:', {
-      owner: nodeData.owner,
-      location: nodeData.location.addressName,
-    });
-
     // Verify the signer is the owner
     if (signerAddress.toLowerCase() !== nodeData.owner.toLowerCase()) {
       throw new Error('Signer must be the node owner');
@@ -83,12 +78,7 @@ export class DiamondNodeService implements INodeService {
         nodeData.location.location.lng,
       );
 
-      console.log('[DiamondNodeService] Transaction sent:', tx.hash);
       const receipt = await tx.wait();
-      console.log(
-        '[DiamondNodeService] Transaction confirmed, block:',
-        receipt.blockNumber,
-      );
 
       // Extract nodeHash from NodeRegistered event
       const nodeRegisteredEvent = receipt.logs.find((log: any) => {
@@ -109,10 +99,6 @@ export class DiamondNodeService implements INodeService {
           data: nodeRegisteredEvent.data,
         });
         const nodeHash = parsed?.args?.nodeHash;
-        console.log(
-          '[DiamondNodeService] Node registered with hash:',
-          nodeHash,
-        );
         return nodeHash;
       }
 
@@ -134,16 +120,10 @@ export class DiamondNodeService implements INodeService {
   ): Promise<void> {
     const diamond = this.context.getDiamond();
 
-    console.log('[DiamondNodeService] Updating node status:', {
-      nodeHash,
-      status,
-    });
-
     try {
       const statusBytes = status === 'Active' ? '0x01' : '0x00';
       const tx = await diamond.updateNodeStatus(statusBytes, nodeHash);
       await tx.wait();
-      console.log('[DiamondNodeService] Node status updated');
     } catch (error) {
       console.error('[DiamondNodeService] Error updating node status:', error);
       throw error;
@@ -161,11 +141,6 @@ export class DiamondNodeService implements INodeService {
   ): Promise<void> {
     const diamond = this.context.getDiamond();
 
-    console.log('[DiamondNodeService] Updating node location:', {
-      nodeHash,
-      addressName,
-    });
-
     try {
       const tx = await diamond.updateNodeLocation(
         addressName,
@@ -174,7 +149,6 @@ export class DiamondNodeService implements INodeService {
         nodeHash,
       );
       await tx.wait();
-      console.log('[DiamondNodeService] Node location updated');
     } catch (error) {
       console.error(
         '[DiamondNodeService] Error updating node location:',
@@ -202,13 +176,6 @@ export class DiamondNodeService implements INodeService {
   ): Promise<boolean> {
     const diamond = this.context.getDiamond();
 
-    console.log('[DiamondNodeService] Adding supporting document to node:', {
-      nodeHash,
-      title,
-      documentType,
-      url,
-    });
-
     try {
       const tx = await diamond.addSupportingDocument(
         nodeHash,
@@ -218,12 +185,7 @@ export class DiamondNodeService implements INodeService {
         documentType,
       );
 
-      console.log('[DiamondNodeService] Transaction sent:', tx.hash);
       const receipt = await tx.wait();
-      console.log(
-        '[DiamondNodeService] Document added, block:',
-        receipt.blockNumber,
-      );
 
       // Extract isFrozen from SupportingDocumentAdded event
       const docAddedEvent = receipt.logs.find((log: any) => {
@@ -244,7 +206,6 @@ export class DiamondNodeService implements INodeService {
           data: docAddedEvent.data,
         });
         const isFrozen = parsed?.args?.isFrozen ?? false;
-        console.log('[DiamondNodeService] Document isFrozen:', isFrozen);
         return isFrozen;
       }
 
@@ -267,15 +228,9 @@ export class DiamondNodeService implements INodeService {
   async removeSupportingDocument(nodeHash: string, url: string): Promise<void> {
     const diamond = this.context.getDiamond();
 
-    console.log('[DiamondNodeService] Removing supporting document:', {
-      nodeHash,
-      url,
-    });
-
     try {
       const tx = await diamond.removeSupportingDocument(nodeHash, url);
       await tx.wait();
-      console.log('[DiamondNodeService] Document removed');
     } catch (error) {
       console.error(
         '[DiamondNodeService] Error removing supporting document:',

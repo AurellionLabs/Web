@@ -213,18 +213,8 @@ export class DiamondNodeRepository implements NodeRepository {
       }
 
       try {
-        console.log(
-          '[DiamondNodeRepository] Fetching IPFS metadata for tokenId:',
-          tokenId,
-        );
         const list = await this.withPinataRetry(() =>
           this.pinata!.files.public.list().keyvalues({ tokenId }).all(),
-        );
-
-        console.log(
-          '[DiamondNodeRepository] Pinata list result:',
-          list?.length,
-          'files found',
         );
 
         if (!list || list.length === 0) {
@@ -238,22 +228,10 @@ export class DiamondNodeRepository implements NodeRepository {
         const item = list[0];
         const cid = item.cid;
 
-        console.log(
-          '[DiamondNodeRepository] Fetching IPFS content from CID:',
-          cid,
-        );
         const { data } = await this.withPinataRetry<any>(() =>
           this.pinata!.gateways.public.get(cid),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;
-
-        console.log('[DiamondNodeRepository] IPFS metadata:', {
-          className: json.className,
-          class: json.class,
-          assetClass: json.assetClass,
-          'asset.assetClass': json.asset?.assetClass,
-          name: json.name || json.asset?.name,
-        });
 
         // Extract class from multiple possible fields
         const assetClass =
@@ -390,18 +368,8 @@ export class DiamondNodeRepository implements NodeRepository {
       const node = await this.getNode(nodeAddress);
 
       if (!node || !node.assets || node.assets.length === 0) {
-        console.log(
-          '[DiamondNodeRepository] No assets found in node inventory:',
-          nodeAddress,
-        );
         return [];
       }
-
-      console.log(
-        '[DiamondNodeRepository] Node has',
-        node.assets.length,
-        'assets in inventory',
-      );
 
       // Step 2: Query raw events to get asset details
       // In the pure dumb indexer, we query diamondSupportedAssetAddedEventss
@@ -533,11 +501,6 @@ export class DiamondNodeRepository implements NodeRepository {
     const hash = nodeHash.toLowerCase();
     const owner = ownerAddress?.toLowerCase();
 
-    console.log('[DiamondNodeRepository] getNodeOrders', {
-      nodeHash: hash,
-      ownerAddress: owner,
-    });
-
     try {
       // 1. Fetch CLOB orders + logistics data
       const [orderResponse, logisticsResponse] = await Promise.all([
@@ -645,10 +608,6 @@ export class DiamondNodeRepository implements NodeRepository {
         journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
       );
 
-      console.log(
-        `[DiamondNodeRepository] Found ${clobOrders.length} CLOB + ${p2pOrders.length} P2P orders`,
-      );
-
       // 3. Merge CLOB + P2P orders, deduplicating by ID
       const seenIds = new Set<string>();
       const allOrders: Order[] = [];
@@ -688,9 +647,6 @@ export class DiamondNodeRepository implements NodeRepository {
 
       allOrders.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
-      console.log(
-        `[DiamondNodeRepository] Returning ${allOrders.length} total orders (newest first)`,
-      );
       return allOrders;
     } catch (error) {
       console.error(
@@ -795,13 +751,6 @@ export class DiamondNodeRepository implements NodeRepository {
         addedBy: doc.addedBy,
         removedBy: doc.isRemoved ? doc.removedBy : undefined,
       }));
-
-      console.log(
-        '[DiamondNodeRepository] Fetched',
-        documents.length,
-        'supporting documents for node:',
-        nodeHash,
-      );
 
       return documents;
     } catch (error) {

@@ -87,15 +87,6 @@ export class RedemptionService {
     } = params;
 
     try {
-      console.log('[RedemptionService] Starting redemption request:', {
-        tokenId,
-        quantity: quantity.toString(),
-        deliveryAddress,
-        requestedOriginNode: params.originNode,
-        confirmationLevel,
-        destination: { lat: destinationLat, lng: destinationLng },
-      });
-
       const signer = this.repositoryContext.getSigner();
       const signerAddress = await signer.getAddress();
 
@@ -137,13 +128,7 @@ export class RedemptionService {
         );
       }
 
-      console.log(
-        '[RedemptionService] Token balance verified:',
-        balance.toString(),
-      );
-
       // Step 2: Calculate the delivery route through nodes
-      console.log('[RedemptionService] Calculating delivery route...');
       const route = await this.routeCalculationService.calculateRoute(
         originNode,
         destinationLat,
@@ -151,30 +136,17 @@ export class RedemptionService {
         confirmationLevel,
       );
 
-      console.log('[RedemptionService] Route calculated:', {
-        nodes: route.nodes,
-        totalDistance: `${route.totalDistance.toFixed(2)} km`,
-        estimatedDays: route.estimatedDays,
-      });
-
       // Step 3: Redeem the tokens (burns tokens and releases custody)
       // This calls the redeem() function which:
       // - Burns the caller's tokens
       // - Releases custody from the specified custodian (origin node)
       // - Emits CustodyReleased event (used to trigger physical delivery)
-      console.log(
-        '[RedemptionService] Redeeming tokens (burn + release custody)...',
-      );
       const redeemTx = await diamondAssetContract.redeem(
         tokenId,
         quantity,
         originNode,
       );
       const redeemReceipt = await redeemTx.wait();
-      console.log(
-        '[RedemptionService] Tokens redeemed, custody released. Tx:',
-        redeemReceipt.hash,
-      );
 
       // Step 4: Get origin node location for parcel data
       const originNodeLocation =
@@ -222,16 +194,12 @@ export class RedemptionService {
 
       // Step 6: Create the logistics order via OrderService
       const orderService = this.serviceContext.getOrderService();
-      console.log('[RedemptionService] Creating logistics order...');
       const orderId = await orderService.createOrder(order);
-      console.log('[RedemptionService] Order created:', orderId);
 
       // Step 7: Create journeys for each leg of the route
       // For now, create a single journey from origin to destination
       // In the future, this could create multiple journeys for each node hop
       if (route.nodes.length > 0) {
-        console.log('[RedemptionService] Creating initial journey...');
-
         // Calculate driver bounty (portion of the fee distributed across nodes)
         const bountyPerNode = totalFee / BigInt(route.nodes.length) / 5n; // 20% of fee per node
 
@@ -248,8 +216,6 @@ export class RedemptionService {
           quantity,
           BigInt(tokenId),
         );
-
-        console.log('[RedemptionService] Journey created:', journeyId);
 
         return {
           success: true,

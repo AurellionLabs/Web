@@ -136,7 +136,6 @@ export class DriverRepository implements IDriverRepository {
    * Get available deliveries (journeys with no driver assigned)
    */
   async getAvailableDeliveries(): Promise<Delivery[]> {
-    console.log('[DriverRepository] Getting available deliveries...');
     try {
       // Use ALL_JOURNEYS query which includes status updates + driver assignments
       const response = await graphqlRequest<AllJourneysCreatedResponse>(
@@ -194,9 +193,6 @@ export class DriverRepository implements IDriverRepository {
         this.journeyCreatedToDelivery(j),
       );
 
-      console.log(
-        `[DriverRepository] Found ${deliveries.length} available deliveries (filtered from ${journeys.length} total, ${claimedJourneyIds.size} claimed).`,
-      );
       return deliveries;
     } catch (error) {
       handleContractError(error, 'get available deliveries');
@@ -208,9 +204,6 @@ export class DriverRepository implements IDriverRepository {
    * Get deliveries assigned to a specific driver
    */
   async getMyDeliveries(driverWalletAddress: string): Promise<Delivery[]> {
-    console.log(
-      `[DriverRepository] Getting deliveries for driver: ${driverWalletAddress}`,
-    );
     if (!driverWalletAddress) {
       console.error(
         '[DriverRepository] driverWalletAddress is required for getMyDeliveries',
@@ -265,9 +258,6 @@ export class DriverRepository implements IDriverRepository {
         },
       );
 
-      console.log(
-        `[DriverRepository] Found ${deliveries.length} deliveries for driver.`,
-      );
       return deliveries;
     } catch (error) {
       handleContractError(

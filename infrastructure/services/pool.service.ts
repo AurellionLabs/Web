@@ -418,15 +418,6 @@ export class PoolService implements IPoolService {
       // In RWYStakingFacet, the reward calculation may differ
       const totalRewardsNeeded = opportunity.targetAmount;
 
-      console.log(
-        '[PoolService.unlockReward] Approving tokens for reward unlock:',
-        {
-          tokenAddress,
-          totalRewardsNeeded: totalRewardsNeeded.toString(),
-          poolId,
-        },
-      );
-
       // Handle ERC20 approval for the reward amount
       await this.handleTokenApproval(
         tokenAddress,
@@ -605,7 +596,6 @@ export class PoolService implements IPoolService {
         assetPriceUsd > 0 ? (Number(tvlWei) / 1e18) * assetPriceUsd : 0;
       const progress = (tvlInUsd * 10000) / parseFloat(pool.fundingGoal);
       fundingProgress = progress / 100;
-      console.log('funding goal is not zero', pool.fundingGoal);
     } else {
       console.error('funding goal is zero');
     }
@@ -735,17 +725,11 @@ export class PoolService implements IPoolService {
       );
 
       if (BigInt(currentAllowance.toString()) < BigInt(amount)) {
-        console.log(
-          '[PoolService.handleERC20ApprovalAndBalance] Approving tokens...',
-        );
         const approveTx = await erc20Contract.approve(
           contractAddress,
           ethers.MaxUint256, // Approve unlimited for convenience
         );
         await approveTx.wait();
-        console.log(
-          '[PoolService.handleERC20ApprovalAndBalance] Tokens approved',
-        );
       }
     } catch (error) {
       if (

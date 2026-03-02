@@ -232,8 +232,6 @@ export class PlatformRepository implements IPlatformRepository {
    * Uses SupportedClassAdded/Removed events from AssetsFacet
    */
   async getSupportedAssetClasses(): Promise<string[]> {
-    console.log('[PlatformRepository] getSupportedAssetClasses: Starting...');
-
     try {
       // Query SupportedClassAdded events from the indexer
       const addedResponse = await graphqlRequest<{
@@ -273,9 +271,6 @@ export class PlatformRepository implements IPlatformRepository {
         }
       }
 
-      console.log(
-        `[PlatformRepository] Found ${activeClasses.size} active asset classes from indexer`,
-      );
       return Array.from(activeClasses);
     } catch (err) {
       console.warn(
@@ -292,7 +287,6 @@ export class PlatformRepository implements IPlatformRepository {
    * Queries all supported assets and extracts unique class names from their metadata
    */
   private async getSupportedAssetClassesFromIPFS(): Promise<string[]> {
-    console.log('[PlatformRepository] getSupportedAssetClassesFromIPFS...');
     const classSet = new Set<string>();
 
     try {
@@ -303,9 +297,6 @@ export class PlatformRepository implements IPlatformRepository {
           classSet.add(asset.assetClass);
         }
       }
-      console.log(
-        `[PlatformRepository] Found ${classSet.size} unique asset classes from IPFS`,
-      );
     } catch (err) {
       console.warn(
         '[PlatformRepository] Failed to get asset classes from IPFS:',
@@ -332,16 +323,10 @@ export class PlatformRepository implements IPlatformRepository {
         .list()
         .keyvalues({ className: assetClass })
         .all();
-      console.log(
-        '[getClassAssets] files.list keyvalues(className=%s) count=%d',
-        assetClass,
-        list.length,
-      );
     } catch (e) {
       console.error('[getClassAssets] Pinata files.list failed', e);
       return [];
     }
-    console.log('looked for', assetClass);
 
     if (!list || list.length === 0) return [];
 

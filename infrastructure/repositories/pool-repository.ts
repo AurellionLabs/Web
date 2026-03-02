@@ -124,10 +124,6 @@ export class PoolRepository implements IPoolRepository {
       );
 
       this.isInitialized = true;
-
-      console.log(
-        `[PoolRepository] Initialized with dedicated RPC for chain ${chainId}`,
-      );
     } catch (error) {
       console.warn(
         '[PoolRepository] Failed to initialize read provider, using user provider:',
@@ -151,10 +147,6 @@ export class PoolRepository implements IPoolRepository {
   private getFromCache<T>(key: string): T | null {
     const cachedData = this.cache.get<T>(key);
     if (cachedData) {
-      console.log(
-        '[PoolRepository] Cache HIT for:',
-        key.substring(0, 50) + '...',
-      );
       return cachedData;
     }
     return null;
@@ -162,16 +154,11 @@ export class PoolRepository implements IPoolRepository {
 
   private setCache<T>(key: string, data: T): void {
     this.cache.set(key, data);
-    console.log(
-      '[PoolRepository] Cached response, total cache entries:',
-      this.cache.keys().length,
-    );
   }
 
   // Debug methods for cache management
   public clearCache(): void {
     this.cache.flushAll();
-    console.log('[PoolRepository] Cache cleared');
   }
 
   public getCacheStats(): { size: number; keys: string[] } {
@@ -193,26 +180,15 @@ export class PoolRepository implements IPoolRepository {
       return cached;
     }
 
-    console.log('[PoolRepository] Cache MISS, making GraphQL request...');
-
     // Rate limiting protection - ensure minimum interval between requests
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
     if (timeSinceLastRequest < this.minRequestInterval) {
       const waitTime = this.minRequestInterval - timeSinceLastRequest;
-      console.log(
-        `[PoolRepository] Rate limiting: waiting ${waitTime}ms before request`,
-      );
       await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
 
     const apiKey = process.env.NEXT_PUBLIC_THEGRAPH_API_KEY;
-    console.log('[PoolRepository] API Key Debug:', {
-      hasApiKey: !!apiKey,
-      keyLength: apiKey?.length || 0,
-      keyPrefix: apiKey?.substring(0, 10) + '...',
-      endpoint: this.graphqlEndpoint,
-    });
 
     const headers = {
       Authorization: `Bearer ${apiKey}`,
@@ -229,7 +205,6 @@ export class PoolRepository implements IPoolRepository {
 
       // Cache the successful result
       this.setCache<T>(cacheKey, result);
-      console.log('[PoolRepository] ✅ Successfully cached GraphQL response');
 
       return result;
     } catch (error) {
@@ -293,17 +268,10 @@ export class PoolRepository implements IPoolRepository {
           opportunity.id !== ethers.ZeroHash &&
           opportunity.operator !== ethers.ZeroAddress
         ) {
-          console.log(
-            `[PoolRepository.getPoolById] Found RWY opportunity on Diamond: ${id}`,
-          );
           return this.mapDiamondOpportunityToPool(opportunity);
         }
       } catch (diamondError: any) {
         // If Diamond call fails, fall back to legacy AuStake contract
-        console.log(
-          `[PoolRepository.getPoolById] Diamond lookup failed for ${id}, trying legacy AuStake:`,
-          diamondError?.message || diamondError,
-        );
       }
 
       // Fall back to legacy AuStake contract
@@ -437,7 +405,6 @@ export class PoolRepository implements IPoolRepository {
       const items = response.diamondOpportunityCreatedEventss?.items || [];
 
       if (items.length === 0) {
-        console.log('[PoolRepository] No opportunities found');
         return [];
       }
 
@@ -652,7 +619,6 @@ export class PoolRepository implements IPoolRepository {
           assetPriceUsd > 0 ? (Number(tvlWei) / 1e18) * assetPriceUsd : 0;
         const progress = (tvlInUsd * 10000) / parseFloat(pool.fundingGoal);
         fundingProgress = progress / 100;
-        console.log('funding goal is not zero', pool.fundingGoal);
       } else {
         console.error('warning funding goal is zero');
       }

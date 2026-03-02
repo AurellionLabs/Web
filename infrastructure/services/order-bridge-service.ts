@@ -141,11 +141,6 @@ export class OrderBridgeService {
     deliveryData?: DeliveryLocation,
   ): Promise<UnifiedOrderResult> {
     try {
-      console.log(
-        '[OrderBridgeService] Placing limit order with bridge:',
-        params,
-      );
-
       // Step 1: Place order on CLOB
       const orderResult = await clobRepository.placeLimitOrder(params);
 
@@ -155,11 +150,6 @@ export class OrderBridgeService {
           error: orderResult.error || 'Failed to place CLOB order',
         };
       }
-
-      console.log(
-        '[OrderBridgeService] CLOB order placed:',
-        orderResult.orderId,
-      );
 
       // Step 2: If bridging enabled, create unified order with Ausys logistics
       if (bridgeToLogistics && deliveryData) {
@@ -193,16 +183,10 @@ export class OrderBridgeService {
     params: PlaceMarketOrderParams,
   ): Promise<OrderPlacementResult> {
     try {
-      console.log('[OrderBridgeService] Placing market order:', params);
-
       // Market orders are executed immediately, so we bridge to logistics
       const result = await clobRepository.placeMarketOrder(params);
 
       if (result.success) {
-        console.log(
-          '[OrderBridgeService] Market order executed:',
-          result.orderId,
-        );
       }
 
       return result;
@@ -224,8 +208,6 @@ export class OrderBridgeService {
     params: CreateUnifiedOrderParams,
   ): Promise<UnifiedOrderResult> {
     try {
-      console.log('[OrderBridgeService] Creating unified order:', params);
-
       const signer = this.repositoryContext.getSigner();
       const signerAddress = await signer.getAddress();
 
@@ -259,10 +241,6 @@ export class OrderBridgeService {
       );
 
       const receipt = await tx.wait();
-      console.log(
-        '[OrderBridgeService] Unified order created, tx:',
-        receipt.hash,
-      );
 
       // Extract unified order ID from transaction
       const unifiedOrderId = this.extractUnifiedOrderId(receipt);
@@ -292,11 +270,6 @@ export class OrderBridgeService {
     unifiedOrderId: string,
   ): Promise<BridgeTradeResult> {
     try {
-      console.log(
-        '[OrderBridgeService] Bridging trade to logistics:',
-        unifiedOrderId,
-      );
-
       const signer = this.repositoryContext.getSigner();
 
       // Get OrderBridge contract
@@ -314,11 +287,6 @@ export class OrderBridgeService {
       // Bridge the trade
       const tx = await bridgeContract.bridgeTradeToLogistics(unifiedOrderId);
       const receipt = await tx.wait();
-
-      console.log(
-        '[OrderBridgeService] Trade bridged to logistics, tx:',
-        receipt.hash,
-      );
 
       // Get the updated unified order to get Ausys order ID
       const order = await bridgeContract.getUnifiedOrder(unifiedOrderId);
@@ -437,11 +405,6 @@ export class OrderBridgeService {
     unifiedOrderId: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log(
-        '[OrderBridgeService] Cancelling unified order:',
-        unifiedOrderId,
-      );
-
       const signer = this.repositoryContext.getSigner();
 
       const bridgeABI = [
@@ -457,7 +420,6 @@ export class OrderBridgeService {
       const tx = await bridgeContract.cancelUnifiedOrder(unifiedOrderId);
       await tx.wait();
 
-      console.log('[OrderBridgeService] Unified order cancelled');
       return { success: true };
     } catch (error) {
       console.error('[OrderBridgeService] Error cancelling order:', error);

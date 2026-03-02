@@ -47,15 +47,9 @@ export class DiamondNodeAssetService implements INodeAssetService {
 
       // Check if node exists (owner is not zero address)
       if (nodeData && nodeData.owner !== ethers.ZeroAddress) {
-        console.log(
-          '[DiamondNodeAssetService] Node exists in Diamond:',
-          nodeHash,
-        );
         return nodeHash;
       }
-    } catch (error) {
-      console.log('[DiamondNodeAssetService] Node not found in Diamond', error);
-    }
+    } catch (error) {}
 
     // Node doesn't exist in Diamond - user needs to register it properly
     console.error(
@@ -116,15 +110,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
     }
 
-    console.log('[DiamondNodeAssetService] Minting asset:', {
-      nodeHashOrAddress,
-      nodeHash,
-      nodeOwnerWallet,
-      assetName: asset.name,
-      assetClass: asset.assetClass,
-      amount,
-    });
-
     try {
       // Build contract asset struct for AuraAsset
       const contractAsset = {
@@ -147,28 +132,8 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
       const tokenId = BigInt(ethers.keccak256(encodedAsset));
 
-      console.log(
-        '[DiamondNodeAssetService] Computed tokenId:',
-        tokenId.toString(),
-      );
-
       // Step 1: Mint tokens to the node owner's wallet (they are the custodian)
       // The node owner holds the tokens directly and must approve Diamond for CLOB trading
-      console.log(
-        '[DiamondNodeAssetService] Calling Diamond nodeMint to node owner wallet...',
-      );
-      console.log(
-        '[DiamondNodeAssetService] Diamond contract address:',
-        diamondAddress,
-      );
-      console.log(
-        '[DiamondNodeAssetService] Node owner wallet (recipient):',
-        nodeOwnerWallet,
-      );
-      console.log(
-        '[DiamondNodeAssetService] contractAsset:',
-        JSON.stringify(contractAsset, null, 2),
-      );
       const mintTx = await diamond.nodeMint(
         nodeOwnerWallet, // Mint to node owner's wallet - they are the custodian
         contractAsset,
@@ -177,16 +142,11 @@ export class DiamondNodeAssetService implements INodeAssetService {
         '0x',
       );
       const mintReceipt = await mintTx.wait();
-      console.log(
-        '[DiamondNodeAssetService] Tokens minted to node owner wallet. tx:',
-        mintReceipt.hash,
-      );
 
       // Note: No need to call creditNodeTokens - tokens are in the owner's wallet
       // The node owner will need to approve Diamond for CLOB trading
 
       // Step 3: Add/update supported asset with capacity (price is 0, set via CLOB orders)
-      console.log('[DiamondNodeAssetService] Adding supported asset...');
       const addAssetTx = await diamond.addSupportedAsset(
         nodeHash,
         diamondAddress,
@@ -195,15 +155,9 @@ export class DiamondNodeAssetService implements INodeAssetService {
         amount,
       );
       await addAssetTx.wait();
-      console.log('[DiamondNodeAssetService] Supported asset added');
 
       // Step 4: Ensure CLOB is approved for trading
       await this.ensureClobApproval(nodeHash);
-
-      console.log(
-        '[DiamondNodeAssetService] Asset minting complete. Custodian:',
-        diamondAddress,
-      );
     } catch (error: any) {
       console.error('[DiamondNodeAssetService] Error minting asset:', error);
 
@@ -253,12 +207,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
     const diamond = this.context.getDiamond();
     const nodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
 
-    console.log('[DiamondNodeAssetService] Updating asset capacity:', {
-      nodeHash,
-      assetTokenId,
-      newCapacity,
-    });
-
     try {
       // Get current assets and update the specific one
       const currentAssets = await diamond.getNodeAssets(nodeHash);
@@ -289,8 +237,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
         capacities,
       );
       await tx.wait();
-
-      console.log('[DiamondNodeAssetService] Asset capacity updated');
     } catch (error) {
       console.error(
         '[DiamondNodeAssetService] Error updating capacity:',
@@ -311,12 +257,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
   ): Promise<void> {
     const diamond = this.context.getDiamond();
     const nodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
-
-    console.log('[DiamondNodeAssetService] Updating asset price:', {
-      nodeHash,
-      assetTokenId,
-      newPrice: newPrice.toString(),
-    });
 
     try {
       // Get current assets and update the specific one
@@ -348,8 +288,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
         capacities,
       );
       await tx.wait();
-
-      console.log('[DiamondNodeAssetService] Asset price updated');
     } catch (error) {
       console.error('[DiamondNodeAssetService] Error updating price:', error);
       throw error;
@@ -366,11 +304,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
     const diamond = this.context.getDiamond();
     const nodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
 
-    console.log('[DiamondNodeAssetService] Updating supported assets:', {
-      nodeHash,
-      assetCount: assets.length,
-    });
-
     try {
       const tokens = assets.map((a) => a.token);
       const tokenIds = assets.map((a) => BigInt(a.tokenId));
@@ -385,8 +318,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
         capacities,
       );
       await tx.wait();
-
-      console.log('[DiamondNodeAssetService] Supported assets updated');
     } catch (error) {
       console.error('[DiamondNodeAssetService] Error updating assets:', error);
       throw error;
@@ -400,8 +331,5 @@ export class DiamondNodeAssetService implements INodeAssetService {
   private async ensureClobApproval(nodeHash: string): Promise<void> {
     // No-op: CLOB is now internal to Diamond via CLOBFacet
     // Tokens are held by Diamond and CLOBFacet can access them directly
-    console.log(
-      '[DiamondNodeAssetService] CLOB approval not needed - CLOBFacet is internal to Diamond',
-    );
   }
 }
