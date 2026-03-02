@@ -115,10 +115,7 @@ export default async function DocPage({
           </div>
         )}
 
-        <div
-          className="doc-content"
-          dangerouslySetInnerHTML={{ __html: doc.html }}
-        />
+        <DocContent html={doc.html} />
 
         {/* Prev / Next */}
         <div
