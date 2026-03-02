@@ -1,4 +1,3 @@
-// @ts-nocheck - File with outdated contract types
 import { useState, useCallback } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { encodeBytes32String } from 'ethers';
@@ -81,7 +80,7 @@ export function usePackageSignatureProcess({
 
       // Step 2: Transaction successful, start listening
       setStatus('waiting');
-      await repoContext.waitForSignaturesForJob(jobId); // Use the string jobId for the listener
+      await repoContext.listenForSignature(jobId, driverAddress); // Listen for driver's signature
 
       // Step 3: Listener resolved successfully
       setStatus('complete');

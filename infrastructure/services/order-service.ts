@@ -1,9 +1,10 @@
-// @ts-nocheck - Uses typechain struct types that need migration
 import type {
   IOrderService,
   Order as DomainOrder,
 } from '@/domain/orders/order';
 import type { Ausys } from '@/lib/contracts';
+import type { LocationContract } from '@/typechain-types/contracts/AuSys.sol';
+import type { AuSysFacet } from '@/typechain-types/contracts/diamond/facets/AuSysFacet';
 import {
   BytesLike,
   ContractTransactionReceipt,
@@ -20,10 +21,10 @@ import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-hel
  * REFACTOR NOTE: Updated to use Ausys contract with proper domain-to-contract mapping
  */
 export class OrderService implements IOrderService {
-  private contract: Ausys;
+  private contract: AuSysFacet;
   private currentSigner: Signer;
 
-  constructor(contractInstance: Ausys, initialSigner: Signer) {
+  constructor(contractInstance: AuSysFacet, initialSigner: Signer) {
     if (!contractInstance || !initialSigner) {
       throw new Error(
         'OrderService requires a contract instance and an initial signer.',
@@ -115,7 +116,7 @@ export class OrderService implements IOrderService {
    * Requires bounty and ETA to be provided.
    */
   async jobCreation(
-    parcelData: Ausys.ParcelDataStruct,
+    parcelData: LocationContract.ParcelDataStruct,
     recipientWalletAddress: string,
     senderWalletAddress: string,
     bounty: BigNumberish,
@@ -247,7 +248,7 @@ export class OrderService implements IOrderService {
       if (!locationData) {
         throw new Error('Order location data is required');
       }
-      const parcelData: Ausys.ParcelDataStruct = {
+      const parcelData: LocationContract.ParcelDataStruct = {
         startLocation: {
           lat: locationData.startLocation.lat,
           lng: locationData.startLocation.lng,
@@ -260,20 +261,20 @@ export class OrderService implements IOrderService {
         endName: locationData.endName,
       };
 
-      const contractOrder: Ausys.OrderStruct = {
+      const contractOrder: LocationContract.OrderStruct = {
         id: ethers.ZeroHash,
         token: orderData.token,
         tokenId: orderData.tokenId,
         tokenQuantity: orderData.tokenQuantity,
+        requestedTokenQuantity: orderData.tokenQuantity,
         price: orderData.price,
         txFee: 0n,
-        buyer: normalizedCustomerAddress, // domain buyer -> contract buyer
-        seller: orderData.seller,
+        customer: normalizedCustomerAddress,
         journeyIds: [] as BytesLike[],
         nodes: orderData.nodes,
         locationData: parcelData,
         currentStatus: 0, // Pending
-        contractualAgreement: ethers.ZeroHash,
+        contracatualAgreement: ethers.ZeroHash,
       };
 
       // DEBUG: Log the contract order before sending
@@ -299,14 +300,15 @@ export class OrderService implements IOrderService {
 
       // Parse event to get orderId
       let createdOrderId: string = String(ethers.ZeroHash);
-      const eventFragment = this.contract.interface.getEvent('OrderCreated');
+      const eventFragment =
+        this.contract.interface.getEvent('AuSysOrderCreated');
       if (receipt.logs && eventFragment) {
         for (const log of receipt.logs) {
           try {
             const parsedLog = this.contract.interface.parseLog(
               log as unknown as { topics: string[]; data: string },
             );
-            if (parsedLog && parsedLog.name === 'OrderCreated') {
+            if (parsedLog && parsedLog.name === 'AuSysOrderCreated') {
               createdOrderId = String(parsedLog.args.orderId);
               break;
             }
@@ -359,7 +361,7 @@ export class OrderService implements IOrderService {
     orderId: BytesLike,
     senderNodeAddress: string,
     receiverAddress: string,
-    parcelData: Ausys.ParcelDataStruct,
+    parcelData: LocationContract.ParcelDataStruct,
     bountyWei: bigint,
     etaTimestamp: bigint,
     tokenQuantity: bigint,

@@ -1,4 +1,3 @@
-// @ts-nocheck - File with type issues that need deeper refactoring
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -408,7 +407,7 @@ export function useOrderProgressSteps(
   return useMemo(() => {
     if (!order) return [];
 
-    const steps: OrderStatus[] = [
+    const steps: UnifiedOrderStatus[] = [
       UnifiedOrderStatus.PENDING_TRADE,
       UnifiedOrderStatus.TRADE_MATCHED,
       UnifiedOrderStatus.LOGISTICS_CREATED,

@@ -138,7 +138,7 @@ export interface PoolDynamicData {
   apy?: number; // Calculated Annual Percentage Yield (if applicable)
   tvl: string; // Total Value Locked, formatted as currency string
   fundingGoal: string; // Funding Goal, formatted as currency string
-  reward: number; // Reward Rate, formatted as percentage string
+  reward: number; // Reward Rate as a number (APY percentage, e.g. 4.5 for 4.5%)
 }
 
 /**

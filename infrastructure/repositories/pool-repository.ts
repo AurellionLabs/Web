@@ -1,4 +1,3 @@
-// @ts-nocheck - File with type issues that need deeper refactoring
 import {
   IPoolRepository,
   Pool,
@@ -13,6 +12,7 @@ import {
   AuStake__factory,
   type AuStake as AuStakeContract,
 } from '@/lib/contracts';
+import type { AuStake as AuStakeNS } from '@/typechain-types/contracts/AuStake';
 import {
   BigNumberish,
   BytesLike,
@@ -678,20 +678,14 @@ export class PoolRepository implements IPoolRepository {
       // Calculate APY (simplified calculation)
       const apy = pool.rewardRate;
 
-      // Format reward rate as percentage string
-      const rewardFormatted = `${apy.toFixed(2)}%`;
-
-      // Format values
-
       return {
         progressPercentage: Math.min(100, fundingProgress),
         timeRemainingSeconds,
         volume24h,
         volumeChangePercentage,
-        rewardRate: pool.rewardRate,
         tvl: pool.totalValueLocked,
         fundingGoal: pool.fundingGoal,
-        reward: rewardFormatted,
+        reward: apy,
       };
     } catch (error) {
       console.error(
@@ -705,7 +699,7 @@ export class PoolRepository implements IPoolRepository {
   }
 
   private mapContractOperationToPool(
-    operation: AuStakeContract.OperationStructOutput,
+    operation: AuStakeNS.OperationStructOutput,
   ): Pool {
     const currentTime = Math.floor(Date.now() / 1000);
     const deadline = Number(operation.deadline);

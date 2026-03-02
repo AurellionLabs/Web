@@ -1,4 +1,3 @@
-// @ts-nocheck - Uses typechain struct types that need migration
 import {
   type IDriverRepository,
   type Delivery,
