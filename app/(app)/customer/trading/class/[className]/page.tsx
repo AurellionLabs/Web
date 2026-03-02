@@ -601,12 +601,17 @@ function ClassDetailPageContent() {
           }
         }
 
-        // For BUY LIMIT orders: use regular CLOB flow (buyer pays from wallet)
+        // For BUY LIMIT orders: use CLOB V2 flow with auto-matching
         if (order.type === 'limit') {
-          const result = await orderBridgeService.placeLimitOrderAndBridge(
-            clobParams,
-            false, // Don't bridge immediately - wait for match
+          const { clobV2Service } = await import(
+            '@/infrastructure/services/clob-v2-service'
           );
+          const { TimeInForce } = await import('@/domain/clob/clob');
+
+          const result = await clobV2Service.placeLimitOrder({
+            ...clobParams,
+            timeInForce: TimeInForce.GTC,
+          });
 
           if (!result.success) {
             console.error(
@@ -618,13 +623,18 @@ function ClassDetailPageContent() {
 
           return true;
         } else {
-          // Market order - executes immediately at best available price
-          // Use 10% slippage (1000 basis points) for market orders
-          const maxSlippageBps = 1000; // 10% slippage
+          // Market order — IOC limit order via CLOB V2 (auto-matches on submit)
+          const { clobV2Service } = await import(
+            '@/infrastructure/services/clob-v2-service'
+          );
 
-          const result = await orderBridgeService.placeMarketOrder({
-            ...clobParams,
-            maxSlippageBps,
+          const result = await clobV2Service.placeMarketOrder({
+            baseToken: clobParams.baseToken,
+            baseTokenId: clobParams.baseTokenId,
+            quoteToken: clobParams.quoteToken,
+            amount: clobParams.amount,
+            isBuy: clobParams.isBuy,
+            maxSlippageBps: 1000, // 10% slippage
           });
 
           if (!result.success) {
