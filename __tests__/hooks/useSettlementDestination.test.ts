@@ -16,6 +16,7 @@ vi.mock('@/infrastructure/contexts/repository-context', () => ({
   RepositoryContext: {
     getInstance: () => ({
       getProvider: () => ({}),
+      getSigner: () => ({}),
     }),
   },
 }));
