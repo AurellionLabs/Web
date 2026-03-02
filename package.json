@@ -115,7 +115,6 @@
     "lucide-react": "^0.454.0",
     "mapbox-gl": "^3.10.0",
     "marked": "^17.0.3",
-    "mermaid": "^11.12.3",
     "next": "14.2.16",
     "next-themes": "latest",
     "node-cache": "^5.1.2",

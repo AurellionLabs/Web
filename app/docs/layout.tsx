@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { DocsSidebar } from './components/DocsSidebar';
 
 export const metadata: Metadata = {
@@ -12,12 +13,17 @@ export default function DocsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // NOTE: Background, EVA grid, scanlines and ClientHeader all come from
-  // the root ClientLayout — we only add the sidebar + content area here.
   return (
-    <div className="flex min-h-[calc(100vh-83px)]">
-      <DocsSidebar />
-      <main className="flex-1 min-w-0">{children}</main>
-    </div>
+    <>
+      {/* Load mermaid from CDN — keeps it out of the webpack bundle entirely */}
+      <Script
+        src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"
+        strategy="lazyOnload"
+      />
+      <div className="flex min-h-[calc(100vh-83px)]">
+        <DocsSidebar />
+        <main className="flex-1 min-w-0">{children}</main>
+      </div>
+    </>
   );
 }

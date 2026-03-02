@@ -2,6 +2,16 @@
 
 import { useEffect, useRef } from 'react';
 
+// Load mermaid from CDN (next/script in layout handles the script tag)
+// We access it via window.mermaid after the script loads
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare global {
+  interface Window {
+    mermaid: any;
+  }
+}
+
 const EVA_THEME_VARS = {
   background: '#0d0d0d',
   mainBkg: '#141414',
@@ -40,6 +50,17 @@ const EVA_THEME_VARS = {
   noteTextColor: '#909090',
 };
 
+async function waitForMermaid(
+  maxMs = 10000,
+): Promise<typeof window.mermaid | null> {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    if (typeof window !== 'undefined' && window.mermaid) return window.mermaid;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return null;
+}
+
 export function DocContent({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -54,8 +75,9 @@ export function DocContent({ html }: { html: string }) {
 
     let cancelled = false;
 
-    import('mermaid').then(({ default: mermaid }) => {
-      if (cancelled) return;
+    (async () => {
+      const mermaid = await waitForMermaid();
+      if (cancelled || !mermaid) return;
 
       mermaid.initialize({
         startOnLoad: false,
@@ -67,20 +89,16 @@ export function DocContent({ html }: { html: string }) {
         sequence: { actorMargin: 60, messageMargin: 40, useMaxWidth: true },
       });
 
-      nodes.forEach(async (node, i) => {
-        if (cancelled) return;
-
-        // Read graph definition from textContent (browser decodes HTML entities)
+      for (let i = 0; i < nodes.length; i++) {
+        if (cancelled) break;
+        const node = nodes[i];
         const graphDef = node.textContent?.trim() ?? '';
-        if (!graphDef) return;
+        if (!graphDef) continue;
 
         const id = `mermaid-${Date.now()}-${i}`;
-
-        // mermaid.render() needs a real DOM element as render target
         const tmp = document.createElement('div');
-        tmp.id = `${id}-tmp`;
         tmp.style.cssText =
-          'position:absolute;top:-9999px;left:-9999px;visibility:hidden';
+          'position:absolute;top:-9999px;left:-9999px;visibility:hidden;';
         document.body.appendChild(tmp);
 
         try {
@@ -90,15 +108,12 @@ export function DocContent({ html }: { html: string }) {
             node.classList.add('mermaid-rendered');
           }
         } catch (err) {
-          console.warn('[Mermaid] render error on diagram', i, err);
-          if (!cancelled) {
-            node.innerHTML = `<div class="mermaid-error">⚠ Diagram error — check console</div>`;
-          }
+          console.warn('[Mermaid] diagram', i, err);
         } finally {
           tmp.remove();
         }
-      });
-    });
+      }
+    })();
 
     return () => {
       cancelled = true;
