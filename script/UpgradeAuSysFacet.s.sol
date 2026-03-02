@@ -87,10 +87,10 @@ contract UpgradeAuSysFacet is Script {
             functionSelectors: existingSelectors
         });
 
-        // Add new selectors
+        // Replace new selectors (already registered on a prior AuSysFacet at 0xC83a...)
         cuts[1] = IDiamondCut.FacetCut({
             facetAddress: address(newFacet),
-            action: IDiamondCut.FacetCutAction.Add,
+            action: IDiamondCut.FacetCutAction.Replace,
             functionSelectors: newSelectors
         });
 
