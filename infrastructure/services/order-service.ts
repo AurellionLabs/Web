@@ -39,9 +39,7 @@ import type {
 interface AuSysFacet extends BaseContract {
   getAddress(): Promise<string>;
   connect(runner: ContractRunner): AuSysFacet;
-  getJourney(
-    journeyId: BytesLike,
-  ): Promise<{
+  getJourney(journeyId: BytesLike): Promise<{
     receiver: string;
     driver: string;
     senderNodeAddress: string;
