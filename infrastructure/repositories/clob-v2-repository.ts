@@ -38,7 +38,7 @@ import { keccak256, encodePacked } from 'viem';
 // Field names use snake_case as stored in Ponder
 
 const GET_ORDER_BOOK_EVENTS = `
-  query GetOrderBookEvents($baseToken: String!, $baseTokenId: BigInt!, $limit: Int!) {
+  query GetOrderBookEvents($baseToken: String!, $baseTokenId: BigInt!) {
     # Get all placed orders for this market
     placedOrders: diamondOrderPlacedWithTokensEventss(
       where: { base_token: $baseToken, base_token_id: $baseTokenId }
