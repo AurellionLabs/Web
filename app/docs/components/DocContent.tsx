@@ -23,7 +23,6 @@ const EVA_THEME_VARS = {
   lineColor: '#5a4820',
   fontFamily: '"Space Mono", "Courier New", monospace',
   fontSize: '12px',
-  // Sequence diagram
   actorBkg: '#141414',
   actorBorder: '#6b1a1a',
   actorTextColor: '#c0c0c0',
@@ -48,41 +47,62 @@ export function DocContent({ html }: { html: string }) {
     const container = ref.current;
     if (!container) return;
 
-    const nodes = container.querySelectorAll<HTMLElement>(
-      'pre.mermaid-diagram',
+    const nodes = Array.from(
+      container.querySelectorAll<HTMLElement>('pre.mermaid-diagram'),
     );
     if (nodes.length === 0) return;
 
+    let cancelled = false;
+
     import('mermaid').then(({ default: mermaid }) => {
+      if (cancelled) return;
+
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: 'loose',
         theme: 'base',
         themeVariables: EVA_THEME_VARS,
         fontFamily: '"Space Mono", "Courier New", monospace',
-        flowchart: {
-          curve: 'cardinal',
-          padding: 20,
-          htmlLabels: true,
-          useMaxWidth: true,
-        },
-        sequence: {
-          actorMargin: 60,
-          messageMargin: 40,
-          useMaxWidth: true,
-          boxTextMargin: 6,
-        },
+        flowchart: { curve: 'cardinal', padding: 20, useMaxWidth: true },
+        sequence: { actorMargin: 60, messageMargin: 40, useMaxWidth: true },
       });
 
-      mermaid
-        .run({
-          nodes: Array.from(nodes),
-          suppressErrors: false,
-        })
-        .catch((err) => {
-          console.warn('Mermaid render error:', err);
-        });
+      nodes.forEach(async (node, i) => {
+        if (cancelled) return;
+
+        // Read graph definition from textContent (browser decodes HTML entities)
+        const graphDef = node.textContent?.trim() ?? '';
+        if (!graphDef) return;
+
+        const id = `mermaid-${Date.now()}-${i}`;
+
+        // mermaid.render() needs a real DOM element as render target
+        const tmp = document.createElement('div');
+        tmp.id = `${id}-tmp`;
+        tmp.style.cssText =
+          'position:absolute;top:-9999px;left:-9999px;visibility:hidden';
+        document.body.appendChild(tmp);
+
+        try {
+          const { svg } = await mermaid.render(id, graphDef, tmp);
+          if (!cancelled) {
+            node.innerHTML = svg;
+            node.classList.add('mermaid-rendered');
+          }
+        } catch (err) {
+          console.warn('[Mermaid] render error on diagram', i, err);
+          if (!cancelled) {
+            node.innerHTML = `<div class="mermaid-error">⚠ Diagram error — check console</div>`;
+          }
+        } finally {
+          tmp.remove();
+        }
+      });
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [html]);
 
   return (
