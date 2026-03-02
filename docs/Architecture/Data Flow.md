@@ -60,46 +60,58 @@ sequenceDiagram
 
 ## 3 — Unified Order (Bridge + Logistics) Flow
 
-```mermaid
-graph TD
-    A["Buyer places order<br/>BridgeFacet.createUnifiedOrder()"]
-    B["TRADE_MATCHED<br/>CLOBMatchingFacet fills the order"]
-    C["UNIFIED_LOGISTICS_CREATED<br/>AuSys / CLOBLogistics assigns route"]
-    D["UNIFIED_IN_TRANSIT<br/>Driver picks up, GPS proof submitted"]
-    E["UNIFIED_DELIVERED<br/>Delivery confirmed via EIP-712 sig"]
-    F["UNIFIED_SETTLED<br/>Buyer receives tokens, seller receives AURA"]
-
-    A --> B --> C --> D --> E --> F
-
-    style A fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
-    style B fill:#0a0a0a,stroke:#8b1a1a,color:#c06060
-    style C fill:#0a0a0a,stroke:#8b1a1a,color:#c06060
-    style D fill:#0a0a0a,stroke:#8b1a1a,color:#c06060
-    style E fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
-    style F fill:#080808,stroke:#2d6a2d,color:#5a9a5a
+```
+BridgeFacet.createUnifiedOrder()
+│
+│  Buyer submits order — AURA escrowed
+▼
+TRADE_MATCHED
+│
+│  CLOBMatchingFacet fills the order at resting price
+▼
+UNIFIED_LOGISTICS_CREATED
+│
+│  AuSys assigns route — nodes selected, driver dispatched
+▼
+UNIFIED_IN_TRANSIT
+│
+│  Driver picks up physical commodity — GPS proof submitted
+▼
+UNIFIED_DELIVERED
+│
+│  EIP-712 signed delivery confirmation verified on-chain
+▼
+UNIFIED_SETTLED
+   Buyer receives ERC-1155 tokens
+   Seller receives AURA (minus fees)
 ```
 
 ---
 
 ## 4 — RWY Staking Flow
 
-```mermaid
-graph TD
-    OP["Node Operator<br/>createOpportunity()"]
-    ST["Staker<br/>stakeOnOpportunity()"]
-    FN["FUNDED<br/>collateral + stake ≥ target"]
-    PR["Processing<br/>commodity in transit"]
-    PD["PROFIT_DISTRIBUTED<br/>yield paid to stakers"]
-    CN["CANCELLED<br/>underfunded → refund"]
-
-    OP --> FN
-    ST --> FN
-    FN -->|"Success"| PR --> PD
-    FN -->|"Underfunded"| CN
-
-    style FN fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
-    style PD fill:#080808,stroke:#2d6a2d,color:#5a9a5a
-    style CN fill:#080808,stroke:#8b1a1a,color:#c06060
+```
+createOpportunity()  +  stakeOnOpportunity()
+│                        │
+│  Operator puts up       │  Stakers add yield capital
+│  ≥20% collateral        │  up to promisedYieldBps cap
+└────────────────┬────────┘
+                 │
+                 ▼
+             FUNDED
+             collateral + stakes ≥ target amount
+             │                        │
+             │ Operator starts         │ Deadline passes
+             │ commodity journey       │ underfunded
+             ▼                        ▼
+         PROCESSING               CANCELLED
+         in transit               all funds refunded
+             │
+             ▼
+     PROFIT_DISTRIBUTED
+     ├── Operator receives commodity sale proceeds
+     ├── Stakers receive promisedYield (pro-rata)
+     └── Protocol takes 1% fee
 ```
 
 ---

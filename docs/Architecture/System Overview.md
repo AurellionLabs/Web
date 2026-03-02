@@ -12,22 +12,26 @@ Aurellion is a **four-layer protocol** for tokenising and trading real-world ass
 
 ## Four-Layer Stack
 
-```mermaid
-graph TD
-    F["<b>Frontend Layer</b><br/>Next.js 14 · Privy · ethers.js<br/>Customer UI · Node UI · Driver UI"]
-    I["<b>Infrastructure Layer</b><br/>Ponder Indexer · PostgreSQL<br/>Repository Pattern · Services"]
-    C["<b>Smart Contract Layer</b><br/>Diamond Proxy EIP-2535<br/>22 Facets · AppStorage"]
-    B["<b>Base Blockchain</b><br/>Base Sepolia · 2s blocks<br/>Chain ID 84532"]
-
-    F -->|"GraphQL queries"| I
-    F -->|"ethers.js calls"| C
-    I -->|"Event stream"| C
-    C -->|"State + events"| B
-
-    style F fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
-    style I fill:#0a0a0a,stroke:#8b1a1a,color:#c5a55a
-    style C fill:#0a0a0a,stroke:#c5a55a,color:#c5a55a
-    style B fill:#080808,stroke:#4a3a1a,color:#7a6a3a
+```
+┌─────────────────────────────────────────┐
+│           FRONTEND LAYER                │
+│  Next.js 14 · Privy · ethers.js         │
+│  Customer UI · Node UI · Driver UI      │
+└──────────────┬──────────────────────────┘
+               │ GraphQL queries          │ ethers.js calls
+               ▼                          ▼
+┌──────────────────────────┐   ┌──────────────────────────┐
+│   INFRASTRUCTURE LAYER   │   │  SMART CONTRACT LAYER    │
+│  Ponder Indexer          │◄──│  Diamond Proxy EIP-2535  │
+│  PostgreSQL 16           │   │  13 Facets · AppStorage  │
+│  Repository + Services   │   └────────────┬─────────────┘
+└──────────────────────────┘                │ state + events
+                                            ▼
+                            ┌──────────────────────────────┐
+                            │       BASE BLOCKCHAIN        │
+                            │  Base Sepolia · Chain 84532  │
+                            │  ~2s block time              │
+                            └──────────────────────────────┘
 ```
 
 ---
