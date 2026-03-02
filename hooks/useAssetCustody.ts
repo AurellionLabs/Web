@@ -3,10 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { useNodes } from '@/app/providers/nodes.provider';
-import {
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_RPC_URL_84532,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 
 const ERC1155_ABI = [
   'function balanceOf(address account, uint256 id) view returns (uint256)',
@@ -51,7 +48,13 @@ export function useAssetCustody(
     setError(null);
 
     try {
-      const provider = new ethers.JsonRpcProvider(NEXT_PUBLIC_RPC_URL_84532);
+      // Use the injected wallet provider client-side — avoids needing a public RPC URL
+      const provider =
+        typeof window !== 'undefined' && (window as any).ethereum
+          ? new ethers.BrowserProvider((window as any).ethereum)
+          : new ethers.JsonRpcProvider(
+              process.env.NEXT_PUBLIC_RPC_URL_84532 ?? '',
+            );
       const contract = new ethers.Contract(
         NEXT_PUBLIC_DIAMOND_ADDRESS,
         ERC1155_ABI,
