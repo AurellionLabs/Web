@@ -40,7 +40,10 @@ import {
   Info,
 } from 'lucide-react';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
+import { useSettlementDestination } from '@/hooks/useSettlementDestination';
 import { AssetDetailDrawer } from '@/app/components/assets/AssetDetailDrawer';
+import { SettlementDestinationModal } from '@/app/components/settlement/SettlementDestinationModal';
+import { PendingSettlementBanner } from '@/app/components/settlement/PendingSettlementBanner';
 import { Input } from '@/app/components/ui/input';
 import {
   Select,
@@ -137,6 +140,14 @@ export default function CustomerDashboard() {
     error: holdingsError,
     refetch: refetchHoldings,
   } = useUserHoldings();
+
+  // Settlement destination
+  const { pendingOrders: pendingSettlements, refetch: refetchSettlements } =
+    useSettlementDestination();
+  const [selectedPendingOrder, setSelectedPendingOrder] = useState<
+    string | null
+  >(null);
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
 
   // Asset detail drawer state
   const [selectedHolding, setSelectedHolding] = useState<UserHolding | null>(
@@ -567,6 +578,17 @@ export default function CustomerDashboard() {
             <GreekKeyStrip color="gold" />
           </div>
         </div>
+
+        {/* ── Settlement Banner ── */}
+        <PendingSettlementBanner
+          count={pendingSettlements.length}
+          onAction={() => {
+            if (pendingSettlements.length > 0) {
+              setSelectedPendingOrder(pendingSettlements[0]);
+              setIsSettlementModalOpen(true);
+            }
+          }}
+        />
 
         {/* ── Chevron Data Stream divider ── */}
         <ChevronDataStream text="Order Activity Stream" speed="5s" />
@@ -1017,6 +1039,21 @@ export default function CustomerDashboard() {
           </div>
         </EvaPanel>
       </div>
+
+      {/* Settlement Destination Modal */}
+      {selectedPendingOrder && (
+        <SettlementDestinationModal
+          isOpen={isSettlementModalOpen}
+          orderId={selectedPendingOrder}
+          onClose={() => {
+            setIsSettlementModalOpen(false);
+            setSelectedPendingOrder(null);
+          }}
+          onSuccess={() => {
+            refetchSettlements();
+          }}
+        />
+      )}
 
       {/* Delivery Details Dialog for stuck P2P orders */}
       {scheduleDeliveryOrderId &&
