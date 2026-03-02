@@ -169,7 +169,7 @@ describe('DeliveryDetailsDialog', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Loading...')).toBeDefined();
+      expect(screen.getByText('Scheduling...')).toBeDefined();
     });
 
     // Resolve and finish
