@@ -22,6 +22,9 @@ import { OrderStatus } from '@/domain/orders/order';
 
 export interface P2POrderFlowProps {
   order: OrderWithAsset;
+  /** Called immediately when the order settles — used to show the
+   *  token destination modal (node vs burn) without waiting for navigation. */
+  onSettled?: (orderId: string) => void;
   /** Callback to sign for delivery (packageSign, then auto-attempts handOff).
    *  Returns 'settled', 'driver_not_signed', or 'signed'. */
   onSignDelivery?: (
@@ -175,6 +178,7 @@ function getStatusMessage(
 
 export function P2POrderFlow({
   order,
+  onSettled,
   onSignDelivery,
   onCompleteHandoff,
   onScheduleDelivery,
@@ -344,6 +348,7 @@ export function P2POrderFlow({
           if (result === 'settled') {
             setLocalSettled(true);
             setWaitingForDriver(false);
+            onSettled?.(order.id);
           } else {
             // Driver sig may not be on-chain yet — allow retry
             autoHandOffAttemptedRef.current = false;
@@ -408,6 +413,7 @@ export function P2POrderFlow({
         setDriverSigned(true);
         setWaitingForDriver(false);
         setLocalSettled(true);
+        onSettled?.(order.id);
       } else if (result === 'driver_not_signed') {
         // Driver hasn't signed yet — show waiting state
         setWaitingForDriver(true);

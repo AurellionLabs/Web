@@ -971,6 +971,10 @@ export default function CustomerDashboard() {
                           >
                             <P2POrderFlow
                               order={order}
+                              onSettled={(orderId) => {
+                                setSelectedPendingOrder(orderId);
+                                setIsSettlementModalOpen(true);
+                              }}
                               onSignDelivery={handleSignP2PDelivery}
                               onCompleteHandoff={handleCompleteP2PHandoff}
                               onScheduleDelivery={handleScheduleDelivery}
