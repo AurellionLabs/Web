@@ -418,6 +418,19 @@ export default function P2PMarketOffersPage() {
     [p2pService, loadOffers],
   );
 
+  const isTerminalOffer = useCallback((offer: P2POffer): boolean => {
+    if (
+      offer.status === P2POfferStatus.EXPIRED ||
+      offer.status === P2POfferStatus.SETTLED ||
+      offer.status === P2POfferStatus.CANCELLED
+    ) {
+      return true;
+    }
+    return (
+      offer.expiresAt > 0 && offer.expiresAt <= Math.floor(Date.now() / 1000)
+    );
+  }, []);
+
   // Filter offers: by market class + by type
   // Uses pure function with direct data deps to avoid stale closure issues
   const filteredOffers = useMemo(() => {
@@ -446,17 +459,9 @@ export default function P2PMarketOffersPage() {
 
   // Filter my offers by class
   const filteredMyOffers = useMemo(() => {
-    const nowSec = Math.floor(Date.now() / 1000);
     return myOffers.filter((offer) => {
-      const isLocallyExpired = offer.expiresAt > 0 && offer.expiresAt <= nowSec;
-
       // Hide terminal offers in "My Offers"
-      if (
-        offer.status === P2POfferStatus.EXPIRED ||
-        offer.status === P2POfferStatus.SETTLED ||
-        offer.status === P2POfferStatus.CANCELLED ||
-        isLocallyExpired
-      ) {
+      if (isTerminalOffer(offer)) {
         return false;
       }
 
@@ -477,7 +482,14 @@ export default function P2PMarketOffersPage() {
 
       return false;
     });
-  }, [myOffers, className, tokenIdToClass, assetMetadataMap, hasKnownClass]);
+  }, [
+    myOffers,
+    className,
+    tokenIdToClass,
+    assetMetadataMap,
+    hasKnownClass,
+    isTerminalOffer,
+  ]);
 
   // Check if user is the creator of an offer
   const isMyOffer = (offer: P2POffer) => {
