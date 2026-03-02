@@ -42,6 +42,10 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Handle ClobApprovalGranted event from NodesFacet
  * Signature: ClobApprovalGranted(bytes32,address)
  * Hash: 0xd5126df4
+ *
+ * @deprecated CLOBFacet is now internal to Diamond — ensureClobApproval() is a no-op.
+ * This event will never be emitted. Table diamond_clob_approval_granted_events will remain empty.
+ * Kept for schema/handler consistency; safe to remove in a future cleanup.
  */
 ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;

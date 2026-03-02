@@ -98,10 +98,21 @@ export default function P2PPage() {
     return map;
   }, [supportedAssets]);
 
-  // Compute per-class open offer counts
+  // Compute per-class open offer counts — mirror the same expiry filter used in market detail page
   const classOfferCounts = useMemo(() => {
+    const nowSec = Math.floor(Date.now() / 1000);
     const counts: Record<string, number> = {};
     for (const offer of openOffers) {
+      // Skip locally expired, settled, or cancelled offers (same logic as filterOffersForMarket)
+      const isLocallyExpired = offer.expiresAt > 0 && offer.expiresAt <= nowSec;
+      if (isLocallyExpired) continue;
+      if (
+        offer.status === 'expired' ||
+        offer.status === 'settled' ||
+        offer.status === 'cancelled'
+      )
+        continue;
+
       let offerClass = tokenIdToClass.get(offer.tokenId);
       if (!offerClass) {
         try {

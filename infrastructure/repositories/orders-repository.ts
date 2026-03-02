@@ -655,7 +655,9 @@ export class OrderRepository implements IOrderRepository {
             ? 'cancelled'
             : contractOrder.currentStatus === 2n
               ? 'settled'
-              : 'created',
+              : contractOrder.currentStatus === 1n
+                ? 'matched' // maps to OrderStatus.PROCESSING
+                : 'created',
         ),
         contractualAgreement: '',
       };

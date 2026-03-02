@@ -137,7 +137,28 @@ export function DeliveryActionDialog({
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-base text-gray-400">ETA</span>
                 <span className="text-base font-medium text-right">
-                  {delivery.ETA} mins
+                  {delivery.ETA > 946684800
+                    ? (() => {
+                        const diff =
+                          delivery.ETA - Math.floor(Date.now() / 1000);
+                        if (diff <= 0) return 'Overdue';
+                        const h = Math.floor(diff / 3600);
+                        const m = Math.floor((diff % 3600) / 60);
+                        if (h > 48)
+                          return (
+                            new Date(delivery.ETA * 1000).toLocaleDateString(
+                              'en-GB',
+                              { day: 'numeric', month: 'short' },
+                            ) +
+                            ' ' +
+                            new Date(delivery.ETA * 1000).toLocaleTimeString(
+                              'en-GB',
+                              { hour: '2-digit', minute: '2-digit' },
+                            )
+                          );
+                        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                      })()
+                    : `${delivery.ETA} mins`}
                 </span>
               </div>
               <div className="border-t border-gray-800 pt-4">
