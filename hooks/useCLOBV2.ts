@@ -474,9 +474,8 @@ export function useCLOBV2(options: UseCLOBV2Options) {
    */
   const fetchCircuitBreaker = useCallback(async () => {
     try {
-      // TODO: Replace with actual repository call
-      // const cb = await clobRepository.getCircuitBreaker(marketId);
-      // setCircuitBreaker(cb);
+      const cb = await clobV2Repository.getCircuitBreaker(marketId);
+      if (cb !== null) setCircuitBreaker(cb);
     } catch (err) {
       console.error('[useCLOBV2] Failed to fetch circuit breaker:', err);
     }
@@ -741,10 +740,8 @@ export function useUserCLOBOrders(
 
     try {
       setIsLoading(true);
-      // TODO: Replace with actual repository call
-      // const userOrders = await clobRepository.getUserOrders(userAddress);
-      // setOrders(userOrders.map(enhanceOrder));
-      setOrders([]);
+      const userOrders = await clobV2Repository.getUserOrders(userAddress);
+      setOrders(userOrders.map(enhanceOrder));
     } catch (err) {
       console.error('[useUserCLOBOrders] Failed to fetch orders:', err);
     } finally {

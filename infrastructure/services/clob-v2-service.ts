@@ -23,6 +23,7 @@ import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
 import { keccak256, encodePacked, toBytes } from 'viem';
 
 // =============================================================================
@@ -171,12 +172,40 @@ export class CLOBV2Service implements ICLOBService {
         timeInForce: TimeInForce.IOC,
       };
 
-      // TODO: Get current market price and apply slippage
-      // For now, use a high/low price based on direction
-      if (params.isBuy) {
-        limitParams.price = BigInt(2) ** BigInt(96) - 1n; // Max price for buys
-      } else {
-        limitParams.price = 1n; // Min price for sells
+      // Fetch best price from order book and apply slippage
+      try {
+        const orderBook = await clobV2Repository.getOrderBook(
+          params.baseToken,
+          params.baseTokenId,
+          params.quoteToken,
+        );
+        const slippageBps = params.maxSlippageBps ?? 1000; // default 10%
+        if (params.isBuy) {
+          const bestAsk = orderBook.asks[0];
+          if (bestAsk && BigInt(bestAsk.price) > 0n) {
+            // Pay up to bestAsk + slippage
+            limitParams.price =
+              (BigInt(bestAsk.price) * BigInt(10000 + slippageBps)) / 10000n;
+          } else {
+            limitParams.price = BigInt(2) ** BigInt(96) - 1n; // No asks: use max price
+          }
+        } else {
+          const bestBid = orderBook.bids[0];
+          if (bestBid && BigInt(bestBid.price) > 0n) {
+            // Accept down to bestBid - slippage
+            limitParams.price =
+              (BigInt(bestBid.price) * BigInt(10000 - slippageBps)) / 10000n;
+          } else {
+            limitParams.price = 1n; // No bids: use min price
+          }
+        }
+      } catch {
+        // Fallback to max/min if order book unavailable
+        if (params.isBuy) {
+          limitParams.price = BigInt(2) ** BigInt(96) - 1n;
+        } else {
+          limitParams.price = 1n;
+        }
       }
 
       return this.placeLimitOrder(limitParams);
