@@ -16,3 +16,9 @@ export * from './shared';
 
 // Deposit modal
 export { DepositForTradingModal } from './deposit-for-trading-modal';
+
+// Market status indicators
+export { CircuitBreakerIndicator } from './circuit-breaker-indicator';
+export type { CircuitBreakerIndicatorProps } from './circuit-breaker-indicator';
+export { MEVProtectionIndicator } from './mev-protection-indicator';
+export type { MEVProtectionIndicatorProps } from './mev-protection-indicator';

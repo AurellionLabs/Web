@@ -7,6 +7,8 @@ import { OrderBook } from '@/app/components/trading/order-book';
 import { TradePanel, OrderData } from '@/app/components/trading/trade-panel';
 import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
 import { UserOrders } from '@/app/components/trading/user-orders';
+import { CircuitBreakerIndicator } from '@/app/components/trading/circuit-breaker-indicator';
+import { MEVProtectionIndicator } from '@/app/components/trading/mev-protection-indicator';
 
 // EVA Components
 import {
@@ -26,6 +28,10 @@ import type {
   MarketStats,
 } from '@/infrastructure/repositories/clob-repository';
 import { clobRepository } from '@/infrastructure/repositories/clob-repository';
+import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
+import { clobV2Service } from '@/infrastructure/services/clob-v2-service';
+import { CircuitBreaker } from '@/domain/clob/clob';
+import { calculateMarketId } from '@/hooks/useCLOBV2';
 import {
   priceHistoryService,
   type TimePeriod as PriceTimePeriod,
@@ -227,6 +233,17 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   const [isLoadingTrades, setIsLoadingTrades] = useState(true);
   const [isLoadingChart, setIsLoadingChart] = useState(true);
 
+  // Circuit breaker + MEV protection state
+  const [circuitBreaker, setCircuitBreaker] = useState<CircuitBreaker | null>(
+    null,
+  );
+  const [mevMinRevealDelay, setMevMinRevealDelay] = useState<number | null>(
+    null,
+  );
+  const [requiresCommitReveal, setRequiresCommitReveal] = useState<
+    boolean | null
+  >(null);
+
   // Ref for auto-refresh interval
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -311,11 +328,34 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
     }
   }, [asset, getTokenId, selectedPeriod]);
 
+  // Fetch circuit breaker + MEV config (slower refresh, not critical path)
+  const fetchMarketProtection = useCallback(async () => {
+    if (!asset) return;
+    try {
+      const marketId = calculateMarketId(
+        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+        asset.id || '0',
+        NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+      );
+      const [cb, mevCfg] = await Promise.all([
+        clobV2Repository.getCircuitBreaker(marketId),
+        clobV2Service.getMEVConfig(),
+      ]);
+      if (cb) setCircuitBreaker(cb);
+      setMevMinRevealDelay(mevCfg.minRevealDelay);
+      // Treat commit-reveal as required when minRevealDelay > 0 (protection is configured)
+      setRequiresCommitReveal(mevCfg.minRevealDelay > 0);
+    } catch {
+      // Non-critical — silently ignore
+    }
+  }, [asset]);
+
   // Initial data fetch
   useEffect(() => {
     fetchTradingData();
     fetchPriceHistory();
-  }, [fetchTradingData, fetchPriceHistory]);
+    fetchMarketProtection();
+  }, [fetchTradingData, fetchPriceHistory, fetchMarketProtection]);
 
   // Auto-refresh trading data
   useEffect(() => {
@@ -758,6 +798,15 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                     {asset.name}
                   </h1>
                   <EvaStatusBadge status="active" label="LIVE" />
+                  <CircuitBreakerIndicator
+                    circuitBreaker={circuitBreaker}
+                    compact
+                  />
+                  <MEVProtectionIndicator
+                    requiresCommitReveal={requiresCommitReveal}
+                    minRevealDelay={mevMinRevealDelay ?? undefined}
+                    compact
+                  />
                 </div>
                 <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
                   {asset.class}
