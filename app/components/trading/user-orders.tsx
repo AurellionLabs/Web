@@ -1,8 +1,7 @@
 'use client';
 
 import { FC, useEffect, useState, useCallback, useMemo } from 'react';
-import { clobRepository } from '@/infrastructure/repositories/clob-repository';
-import type { CLOBOrder } from '@/infrastructure/repositories/clob-repository';
+
 import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
 import { useWallet } from '@/hooks/useWallet';
 import { useDiamond } from '@/app/providers/diamond.provider';
@@ -25,7 +24,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { TimeInForce } from '@/domain/clob/clob';
-import type { OrderStatus } from '@/infrastructure/repositories/clob-repository';
+import type { CLOBOrder, CLOBOrderStatus } from '@/domain/clob/clob';
 
 // =============================================================================
 // TYPES
@@ -97,7 +96,7 @@ function getTimeInForceLabel(tif: TimeInForce | string): string {
 /**
  * Get status color and icon
  */
-function getStatusInfo(status: OrderStatus): {
+function getStatusInfo(status: CLOBOrderStatus | string): {
   label: string;
   color: string;
   bgColor: string;
@@ -199,16 +198,9 @@ export const UserOrders: FC<UserOrdersProps> = ({
     }
 
     try {
-      const [v1Orders, v2Orders] = await Promise.all([
-        clobRepository.getUserOrders(address, maxOrders),
-        clobV2Repository
-          .getUserOrders(address, undefined, maxOrders)
-          .catch(() => []),
-      ]);
-      const userOrders: CLOBOrder[] = [
-        ...v1Orders,
-        ...(v2Orders as unknown as CLOBOrder[]),
-      ];
+      const userOrders: CLOBOrder[] = await clobV2Repository
+        .getUserOrders(address, undefined, maxOrders)
+        .catch(() => []);
 
       // Filter by base token if specified
       let filteredOrders = userOrders;
@@ -311,7 +303,10 @@ export const UserOrders: FC<UserOrdersProps> = ({
     const isExpanded = expandedOrderId === order.id;
     const isCancelling = cancellingOrderId === order.id;
     const canCancel = order.status === 'open' || order.status === 'partial';
-    const fillPercent = (order.filledAmount / order.amount) * 100;
+    const fillPercent =
+      (parseFloat(String(order.filledAmount)) /
+        parseFloat(String(order.amount))) *
+      100;
 
     // Determine time-in-force from order (default to GTC if not specified)
     const tif = (order as any).timeInForce || TimeInForce.GTC;
@@ -368,7 +363,7 @@ export const UserOrders: FC<UserOrdersProps> = ({
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="font-mono text-sm text-foreground">
-                {formatPrice(order.price)}
+                {formatPrice(parseFloat(String(order.price)))}
               </span>
               <span className="text-xs text-muted-foreground">×</span>
               <span className="font-mono text-sm text-foreground">
@@ -448,7 +443,10 @@ export const UserOrders: FC<UserOrdersProps> = ({
                   Total Value
                 </span>
                 <span className="font-mono text-foreground">
-                  {formatPrice(order.price * order.amount)}
+                  {formatPrice(
+                    parseFloat(String(order.price)) *
+                      parseFloat(String(order.amount)),
+                  )}
                 </span>
               </div>
               <div>
@@ -456,7 +454,10 @@ export const UserOrders: FC<UserOrdersProps> = ({
                   Filled Value
                 </span>
                 <span className="font-mono text-foreground">
-                  {formatPrice(order.price * order.filledAmount)}
+                  {formatPrice(
+                    parseFloat(String(order.price)) *
+                      parseFloat(String(order.filledAmount)),
+                  )}
                 </span>
               </div>
             </div>

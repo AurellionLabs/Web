@@ -1,7 +1,8 @@
 'use client';
 
-import { CLOBRepository, CLOBTrade } from '../repositories/clob-repository';
 import { clobV2Repository } from '../repositories/clob-v2-repository';
+import type { CLOBTrade } from '@/domain/clob/clob';
+import { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } from '@/chain-constants';
 
 /**
  * Time period for candlestick charts
@@ -67,12 +68,6 @@ const PERIOD_CANDLE_COUNTS: Record<TimePeriod, number> = {
  * - Handles empty data gracefully
  */
 export class PriceHistoryService {
-  private clobRepository: CLOBRepository;
-
-  constructor() {
-    this.clobRepository = new CLOBRepository();
-  }
-
   /**
    * Get candlestick data for a market
    *
@@ -92,16 +87,12 @@ export class PriceHistoryService {
       const candleCount = PERIOD_CANDLE_COUNTS[period];
       const timeRangeSeconds = intervalSeconds * candleCount;
 
-      // Fetch trades (limit based on expected density)
-      const [v1Trades, v2Trades] = await Promise.all([
-        this.clobRepository.getTrades(baseToken, baseTokenId, 500),
-        clobV2Repository
+      // Fetch trades from V2 CLOB
+      const trades: CLOBTrade[] = (
+        await clobV2Repository
           .getTrades(baseToken, baseTokenId, 500)
-          .catch(() => [] as CLOBTrade[]),
-      ]);
-      const trades: CLOBTrade[] = [...v1Trades, ...v2Trades].sort(
-        (a, b) => a.timestamp - b.timestamp,
-      );
+          .catch(() => [])
+      ).sort((a, b) => a.timestamp - b.timestamp);
 
       if (trades.length === 0) {
         return [];
@@ -143,7 +134,21 @@ export class PriceHistoryService {
     try {
       const [candles, stats] = await Promise.all([
         this.getCandlestickData(baseToken, baseTokenId, period),
-        this.clobRepository.getMarketStats(baseToken, baseTokenId),
+        clobV2Repository
+          .getMarketStats(
+            `${baseToken.toLowerCase()}-${baseTokenId}-${NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase()}`,
+          )
+          .catch(
+            () =>
+              ({
+                lastPrice: '0',
+                change24h: 0,
+                changePercent24h: 0,
+                high24h: 0,
+                low24h: 0,
+                volume24h: 0,
+              }) as any,
+          ),
       ]);
 
       return {

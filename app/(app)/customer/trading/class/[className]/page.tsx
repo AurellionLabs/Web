@@ -559,37 +559,26 @@ function ClassDetailPageContent() {
             return false;
           }
 
-          // Fetch best bid price for market sell — merge V1 and V2 order books
-          const { clobRepository } = await import(
-            '@/infrastructure/repositories/clob-repository'
-          );
+          // Fetch best bid price for market sell from V2 CLOB
           const { clobV2Repository } = await import(
             '@/infrastructure/repositories/clob-v2-repository'
           );
           const { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: quoteToken } = await import(
             '@/chain-constants'
           );
-          const [v1Book, v2Book] = await Promise.all([
-            clobRepository.getOrderBook(
-              NEXT_PUBLIC_DIAMOND_ADDRESS,
+          const v2Book = await clobV2Repository
+            .getOrderBook(
+              NEXT_PUBLIC_AURA_ASSET_ADDRESS,
               tokenId,
+              quoteToken,
               10,
-            ),
-            clobV2Repository
-              .getOrderBook(
-                NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-                tokenId,
-                quoteToken,
-                10,
-              )
-              .catch(() => ({ bids: [] })),
-          ]);
-          const allBids = [...(v1Book.bids || []), ...(v2Book.bids || [])].sort(
-            (a, b) => parseFloat(String(b.price)) - parseFloat(String(a.price)),
-          );
-          const orderBookData = { ...v1Book, bids: allBids };
+            )
+            .catch(() => ({ bids: [] as any[] }));
 
-          const bestBid = allBids[0] ? parseFloat(String(allBids[0].price)) : 0;
+          const bestBidRaw = v2Book.bids[0]?.price;
+          const bestBid = bestBidRaw
+            ? parseFloat(String(bestBidRaw)) / 1e18
+            : 0;
           let sellPrice: bigint;
 
           if (bestBid && bestBid > 0) {

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { CLOBRepository } from '@/infrastructure/repositories/clob-repository';
+import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
 import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_INDEXER_URL,
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
 
 interface AssetPriceData {
@@ -23,31 +23,9 @@ interface UseAssetPriceReturn {
   refetch: () => Promise<void>;
 }
 
-const DEFAULT_PRICE_DATA: AssetPriceData = {
-  price: 0,
-  bestBid: 0,
-  bestAsk: 0,
-  spread: 0,
-  spreadPercent: 0,
-  lastUpdate: 0,
-};
+const toNum = (v: string | number | null | undefined) =>
+  v ? parseFloat(String(v)) / 1e18 : 0;
 
-/**
- * Hook to fetch real-time price data from the CLOB orderbook
- *
- * @param tokenId - The token ID to fetch price for
- * @param baseToken - The base token address (defaults to Diamond ERC1155)
- * @param pollInterval - How often to refresh price data in ms (default: 10000)
- *
- * @example
- * ```tsx
- * const { priceData, isLoading, error } = useAssetPrice('12345');
- *
- * if (priceData) {
- *   console.log(`Current price: $${priceData.price.toFixed(2)}`);
- * }
- * ```
- */
 export function useAssetPrice(
   tokenId: string,
   baseToken: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
@@ -56,8 +34,6 @@ export function useAssetPrice(
   const [priceData, setPriceData] = useState<AssetPriceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const clobRepositoryRef = useRef(new CLOBRepository());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchPrice = useCallback(async () => {
@@ -68,21 +44,28 @@ export function useAssetPrice(
     }
 
     try {
-      const orderBook = await clobRepositoryRef.current.getOrderBook(
+      const book = await clobV2Repository.getOrderBook(
         baseToken,
         tokenId,
+        NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+        5,
       );
 
-      const newPriceData: AssetPriceData = {
-        price: orderBook.midPrice || 0,
-        bestBid: orderBook.bids[0]?.price || 0,
-        bestAsk: orderBook.asks[0]?.price || 0,
-        spread: orderBook.spread,
-        spreadPercent: orderBook.spreadPercent,
-        lastUpdate: orderBook.lastUpdate,
-      };
+      const bestBid = toNum(book.bestBid);
+      const bestAsk = toNum(book.bestAsk);
+      const midPrice =
+        bestBid && bestAsk ? (bestBid + bestAsk) / 2 : bestBid || bestAsk;
+      const spread = bestAsk - bestBid;
+      const spreadPercent = midPrice > 0 ? (spread / midPrice) * 100 : 0;
 
-      setPriceData(newPriceData);
+      setPriceData({
+        price: midPrice,
+        bestBid,
+        bestAsk,
+        spread,
+        spreadPercent,
+        lastUpdate: Date.now(),
+      });
       setError(null);
     } catch (err) {
       console.error('[useAssetPrice] Failed to fetch price:', err);
@@ -92,38 +75,19 @@ export function useAssetPrice(
     }
   }, [tokenId, baseToken]);
 
-  // Initial fetch and polling
   useEffect(() => {
     fetchPrice();
-
-    // Set up polling
     if (pollInterval > 0) {
       intervalRef.current = setInterval(fetchPrice, pollInterval);
     }
-
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchPrice, pollInterval]);
 
-  return {
-    priceData,
-    isLoading,
-    error,
-    refetch: fetchPrice,
-  };
+  return { priceData, isLoading, error, refetch: fetchPrice };
 }
 
-/**
- * Hook to fetch prices for multiple assets at once
- *
- * @param tokenIds - Array of token IDs to fetch prices for
- * @param baseToken - The base token address
- *
- * @returns Map of tokenId -> AssetPriceData
- */
 export function useAssetPrices(
   tokenIds: string[],
   baseToken: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
@@ -137,47 +101,47 @@ export function useAssetPrices(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const clobRepositoryRef = useRef(new CLOBRepository());
-
   const fetchPrices = useCallback(async () => {
     if (!tokenIds.length) {
       setPrices(new Map());
       setIsLoading(false);
       return;
     }
-
     setIsLoading(true);
 
     try {
       const newPrices = new Map<string, AssetPriceData>();
-
-      // Fetch prices in parallel
       const results = await Promise.allSettled(
         tokenIds.map(async (tokenId) => {
-          const orderBook = await clobRepositoryRef.current.getOrderBook(
+          const book = await clobV2Repository.getOrderBook(
             baseToken,
             tokenId,
+            NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+            5,
           );
+          const bestBid = toNum(book.bestBid);
+          const bestAsk = toNum(book.bestAsk);
+          const midPrice =
+            bestBid && bestAsk ? (bestBid + bestAsk) / 2 : bestBid || bestAsk;
+          const spread = bestAsk - bestBid;
+          const spreadPercent = midPrice > 0 ? (spread / midPrice) * 100 : 0;
           return {
             tokenId,
             priceData: {
-              price: orderBook.midPrice || 0,
-              bestBid: orderBook.bids[0]?.price || 0,
-              bestAsk: orderBook.asks[0]?.price || 0,
-              spread: orderBook.spread,
-              spreadPercent: orderBook.spreadPercent,
-              lastUpdate: orderBook.lastUpdate,
+              price: midPrice,
+              bestBid,
+              bestAsk,
+              spread,
+              spreadPercent,
+              lastUpdate: Date.now(),
             },
           };
         }),
       );
-
       for (const result of results) {
-        if (result.status === 'fulfilled') {
+        if (result.status === 'fulfilled')
           newPrices.set(result.value.tokenId, result.value.priceData);
-        }
       }
-
       setPrices(newPrices);
       setError(null);
     } catch (err) {
@@ -192,12 +156,7 @@ export function useAssetPrices(
     fetchPrices();
   }, [fetchPrices]);
 
-  return {
-    prices,
-    isLoading,
-    error,
-    refetch: fetchPrices,
-  };
+  return { prices, isLoading, error, refetch: fetchPrices };
 }
 
 export default useAssetPrice;
