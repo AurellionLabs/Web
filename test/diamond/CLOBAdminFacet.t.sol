@@ -282,6 +282,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
     function test_configureCircuitBreaker_setsParams() public {
         vm.prank(owner);
         // Warm up market by placing an order
+        vm.stopPrank();
         vm.prank(user1);
         clobCore.placeLimitOrder(
             address(baseERC1155), baseTokenId, address(quoteERC20),
