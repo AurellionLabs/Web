@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -22,8 +23,6 @@ import Link from 'next/link';
 interface SettlementDestinationModalProps {
   isOpen: boolean;
   orderId: string;
-  tokenId: string;
-  quantity: bigint;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -33,11 +32,10 @@ type DestinationChoice = 'node' | 'new-node' | 'burn';
 export function SettlementDestinationModal({
   isOpen,
   orderId,
-  tokenId,
-  quantity,
   onClose,
   onSuccess,
 }: SettlementDestinationModalProps) {
+  const router = useRouter();
   const { nodes } = useNodes();
   const { selectDestination } = useSettlementDestination();
 
@@ -86,11 +84,8 @@ export function SettlementDestinationModal({
         <EvaScanLine variant="mixed" />
 
         {/* Order info */}
-        <div className="flex items-center justify-between font-mono text-xs text-foreground/40">
+        <div className="font-mono text-xs text-foreground/40">
           <span>Order: {orderId.slice(0, 10)}...</span>
-          <span>
-            Token: {tokenId.slice(0, 8)}... x {quantity.toString()}
-          </span>
         </div>
 
         {/* Options */}
@@ -274,8 +269,8 @@ export function SettlementDestinationModal({
                     className="mt-0.5 accent-crimson"
                   />
                   <span className="font-mono text-xs text-crimson/80">
-                    I confirm I want to permanently burn {quantity.toString()}{' '}
-                    token(s). This action cannot be undone.
+                    I confirm I want to permanently burn the settled tokens.
+                    This action cannot be undone.
                   </span>
                 </label>
               </div>
@@ -302,18 +297,28 @@ export function SettlementDestinationModal({
           >
             Cancel
           </TrapButton>
-          <TrapButton
-            variant={choice === 'burn' ? 'crimson' : 'gold'}
-            size="sm"
-            onClick={handleSubmit}
-            disabled={!canSubmit || isSubmitting}
-          >
-            {isSubmitting
-              ? 'Confirming...'
-              : choice === 'burn'
-                ? 'Burn Tokens'
-                : 'Confirm Destination'}
-          </TrapButton>
+          {choice === 'new-node' ? (
+            <TrapButton
+              variant="gold"
+              size="sm"
+              onClick={() => router.push('/node/register')}
+            >
+              Go to Registration
+            </TrapButton>
+          ) : (
+            <TrapButton
+              variant={choice === 'burn' ? 'crimson' : 'gold'}
+              size="sm"
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
+            >
+              {isSubmitting
+                ? 'Confirming...'
+                : choice === 'burn'
+                  ? 'Burn Tokens'
+                  : 'Confirm Destination'}
+            </TrapButton>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

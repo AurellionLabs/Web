@@ -579,6 +579,17 @@ export default function CustomerDashboard() {
           </div>
         </div>
 
+        {/* ── Settlement Banner ── */}
+        <PendingSettlementBanner
+          count={pendingSettlements.length}
+          onAction={() => {
+            if (pendingSettlements.length > 0) {
+              setSelectedPendingOrder(pendingSettlements[0]);
+              setIsSettlementModalOpen(true);
+            }
+          }}
+        />
+
         {/* ── Chevron Data Stream divider ── */}
         <ChevronDataStream text="Order Activity Stream" speed="5s" />
 
@@ -1037,6 +1048,21 @@ export default function CustomerDashboard() {
           </div>
         </EvaPanel>
       </div>
+
+      {/* Settlement Destination Modal */}
+      {selectedPendingOrder && (
+        <SettlementDestinationModal
+          isOpen={isSettlementModalOpen}
+          orderId={selectedPendingOrder}
+          onClose={() => {
+            setIsSettlementModalOpen(false);
+            setSelectedPendingOrder(null);
+          }}
+          onSuccess={() => {
+            refetchSettlements();
+          }}
+        />
+      )}
 
       {/* Delivery Details Dialog for stuck P2P orders */}
       {scheduleDeliveryOrderId &&

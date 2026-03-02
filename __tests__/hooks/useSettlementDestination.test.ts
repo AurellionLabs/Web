@@ -44,11 +44,12 @@ describe('useSettlementDestination', () => {
     vi.clearAllMocks();
     mockGetPendingTokenDestinations.mockResolvedValue([]);
     mockSelectTokenDestination.mockResolvedValue({ wait: mockWait });
-    Object.defineProperty(globalThis, 'window', {
-      value: { ...globalThis.window, ethereum: {} },
+    Object.defineProperty(window, 'ethereum', {
+      value: {},
       writable: true,
+      configurable: true,
     });
-    vi.mocked(useWallet).mockReturnValue({
+    (useWallet as ReturnType<typeof vi.fn>).mockReturnValue({
       address: '0xBuyerAddress',
       isConnected: true,
     } as any);
@@ -94,7 +95,7 @@ describe('useSettlementDestination', () => {
   });
 
   it('should return empty array when wallet not connected', async () => {
-    vi.mocked(useWallet).mockReturnValue({
+    (useWallet as ReturnType<typeof vi.fn>).mockReturnValue({
       address: null,
       isConnected: false,
     } as any);
