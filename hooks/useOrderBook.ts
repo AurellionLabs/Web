@@ -173,8 +173,25 @@ export function useOrderBook(
 
   useEffect(() => {
     updateOrderBook();
-    const interval = setInterval(updateOrderBook, updateInterval);
-    return () => clearInterval(interval);
+
+    // Only poll when page is visible to save bandwidth and reduce RPC load
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        updateOrderBook();
+      }
+    };
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        updateOrderBook();
+      }
+    }, updateInterval);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [assetId, updateOrderBook, updateInterval]);
 
   return { orderBook, isLoading, error, refresh };

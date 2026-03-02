@@ -38,7 +38,7 @@ import { keccak256, encodePacked } from 'viem';
 // Field names use snake_case as stored in Ponder
 
 const GET_ORDER_BOOK_EVENTS = `
-  query GetOrderBookEvents($baseToken: String!, $baseTokenId: BigInt!) {
+  query GetOrderBookEvents($baseToken: String!, $baseTokenId: BigInt!, $eventLimit: Int!) {
     # Get all placed orders for this market
     placedOrders: diamondOrderPlacedWithTokensEventss(
       where: { base_token: $baseToken, base_token_id: $baseTokenId }
@@ -85,11 +85,12 @@ const GET_ORDER_BOOK_EVENTS = `
       }
     }
     
-    # Get cancelled order IDs
+    # Get cancelled order IDs - limited to reduce bandwidth and DB load
+    # Previously fetched 1000 events system-wide with no market filter
     cancelledOrders: diamondCLOBOrderCancelledEventss(
       orderBy: "block_timestamp"
       orderDirection: "desc"
-      limit: 1000
+      limit: $eventLimit
     ) {
       items {
         order_id
@@ -100,11 +101,12 @@ const GET_ORDER_BOOK_EVENTS = `
       }
     }
     
-    # Get filled amounts from trade events
+    # Get filled amounts from trade events - limited to reduce bandwidth
+    # Previously fetched 1000 events system-wide with no market filter
     filledOrders: diamondCLOBOrderFilledEventss(
       orderBy: "block_timestamp"
       orderDirection: "desc"
-      limit: 1000
+      limit: $eventLimit
     ) {
       items {
         order_id
@@ -444,6 +446,9 @@ export class CLOBV2Repository implements ICLOBRepository {
         baseToken: baseToken.toLowerCase(),
         baseTokenId,
         limit: levels,
+        // Reduced from hardcoded 1000 to 100 - 10x reduction in bandwidth and DB load
+        // The original query fetched all system-wide cancellations/fills with no market filter
+        eventLimit: 100,
       });
 
       // Combine direct and router placed orders
