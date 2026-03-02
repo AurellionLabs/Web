@@ -3,7 +3,10 @@ import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useWallet } from '@/hooks/useWallet';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+} from '@/chain-constants';
 import { Ausys__factory } from '@/lib/contracts';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
 import { usePrivy } from '@privy-io/react-auth';
@@ -47,11 +50,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         provider = new ethers.BrowserProvider(injectedEthereum);
         await provider.send('eth_requestAccounts', []);
       } else {
-        console.log('Is privy ready', isReady);
-        console.log('Is privy connected', isConnected);
-        console.log('Is privy authenticated', privy.authenticated);
         if (isReady && !privy.authenticated) {
-          console.log('calling connect');
           await connect();
           if (!privy.authenticated) {
             throw new Error('Authentication failed after connect attempt.');
@@ -59,14 +58,6 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         }
 
         const connectedWallet = privyWallets.wallets?.[0];
-        console.log(
-          '[RepositoryProvider] Checking wallets. Privy Auth State:',
-          privy.authenticated,
-        );
-        console.log(
-          '[RepositoryProvider] Privy Wallets State:',
-          JSON.stringify(privyWallets, null, 2),
-        );
 
         if (!connectedWallet && privy.authenticated) {
           await privy.logout();
@@ -105,16 +96,29 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
       });
 
+      // Verify the user is connected to the correct chain before initializing
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      if (chainId !== NEXT_PUBLIC_DEFAULT_CHAIN_ID) {
+        const chainNames: Record<number, string> = {
+          1: 'Ethereum Mainnet',
+          8453: 'Base Mainnet',
+          84532: 'Base Sepolia',
+        };
+        const expected =
+          chainNames[NEXT_PUBLIC_DEFAULT_CHAIN_ID] ??
+          `chain ${NEXT_PUBLIC_DEFAULT_CHAIN_ID}`;
+        const actual = chainNames[chainId] ?? `chain ${chainId}`;
+        throw new Error(
+          `Wrong network detected. Please switch your wallet to ${expected} (currently on ${actual}).`,
+        );
+      }
+
       const repoContext = RepositoryContext.getInstance();
       await repoContext.initialize(ausysContract, provider, signer, pinata);
-      console.log(
-        '[RepositoryProvider] RepositoryContext initialized with Diamond.',
-      );
 
       const serviceContext = ServiceContext.getInstance();
       serviceContext.initialize(repoContext);
-      console.log('[RepositoryProvider] ServiceContext initialized.');
-      // TODO: Add a check to see if the user is connected to the correct chain
       setIsInitialized(true);
       setError(null);
       setRetryCount(0);
@@ -237,7 +241,12 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
   }
 
   if (!isInitialized) {
-    if (error && retryCount >= MAX_E2E_INIT_RETRIES) {
+    // Show error UI for unrecoverable failures:
+    // - In E2E mode: after exhausting all retries
+    // - In normal mode: always (retries don't apply, error is likely user-actionable e.g. wrong network)
+    const showError =
+      error && (IS_E2E_TEST_MODE ? retryCount >= MAX_E2E_INIT_RETRIES : true);
+    if (showError) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
           <div className="max-w-xl text-center">
