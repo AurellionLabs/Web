@@ -567,28 +567,14 @@ contract CLOBCoreFacet is ReentrancyGuard {
         if (isBuy) {
             uint96 price = CLOBLib.unpackPrice(order.priceAmountFilled);
             uint256 refund = CLOBLib.calculateQuoteAmount(price, remaining);
-            address quoteToken = _stringToAddress(mkt.quoteToken);
+            address quoteToken = CLOBLib.stringToAddress(mkt.quoteToken);
             if (refund > 0) IERC20(quoteToken).transfer(maker, refund);
         } else {
-            address baseToken = _stringToAddress(mkt.baseToken);
+            address baseToken = CLOBLib.stringToAddress(mkt.baseToken);
             if (remaining > 0) IERC1155(baseToken).safeTransferFrom(address(this), maker, mkt.baseTokenId, remaining, "");
         }
 
         emit CLOBOrderCancelled(orderId, maker, remaining, reason);
-    }
-
-    function _stringToAddress(string memory _str) internal pure returns (address) {
-        bytes memory b = bytes(_str);
-        require(b.length == 42, "Invalid address string");
-        uint160 result = 0;
-        for (uint256 i = 2; i < 42; i++) {
-            result *= 16;
-            uint8 c = uint8(b[i]);
-            if (c >= 48 && c <= 57) result += c - 48;
-            else if (c >= 97 && c <= 102) result += c - 87;
-            else if (c >= 65 && c <= 70) result += c - 55;
-        }
-        return address(result);
     }
 
     // ERC1155 Receiver

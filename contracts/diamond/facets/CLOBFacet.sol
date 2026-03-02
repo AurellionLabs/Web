@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
+import { CLOBLib } from '../libraries/CLOBLib.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -486,7 +487,7 @@ contract CLOBFacet is Initializable {
         require(!s.pools[poolId].isActive, 'Pool already exists');
         require(_baseAmount > 0 && _quoteAmount > 0, 'Invalid amounts');
 
-        lpTokens = sqrt(_baseAmount * _quoteAmount);
+        lpTokens = CLOBLib.sqrt(_baseAmount * _quoteAmount);
 
         s.pools[poolId] = DiamondStorage.LiquidityPool({
             baseToken: _baseToken,
@@ -617,17 +618,6 @@ contract CLOBFacet is Initializable {
     function getTotalTrades() external view returns (uint256) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.totalTrades;
-    }
-
-    function sqrt(uint256 x) internal pure returns (uint256) {
-        if (x == 0) return 0;
-        uint256 z = (x + 1) / 2;
-        uint256 y = x;
-        while (z < y) {
-            y = z;
-            z = (x / z + z) / 2;
-        }
-        return y;
     }
 
     // ==========================================================================
@@ -867,7 +857,7 @@ contract CLOBFacet is Initializable {
         if (order.isBuy && remaining > 0) {
             // Parse market to get quote token
             DiamondStorage.Market storage market = s.markets[order.marketId];
-            address quoteToken = _stringToAddress(market.quoteToken);
+            address quoteToken = CLOBLib.stringToAddress(market.quoteToken);
             uint256 refundAmount = order.price * remaining;
             IERC20(quoteToken).transfer(msg.sender, refundAmount);
         }
@@ -891,8 +881,8 @@ contract CLOBFacet is Initializable {
         
         // Get market info for token transfers
         DiamondStorage.Market storage market = s.markets[_marketId];
-        address baseToken = _stringToAddress(market.baseToken);
-        address quoteToken = _stringToAddress(market.quoteToken);
+        address baseToken = CLOBLib.stringToAddress(market.baseToken);
+        address quoteToken = CLOBLib.stringToAddress(market.quoteToken);
         uint256 baseTokenId = market.baseTokenId;
         
         // Iterate through bid prices from highest to lowest
@@ -1132,7 +1122,7 @@ contract CLOBFacet is Initializable {
         // Skip if either order is already filled
         if (buyRemaining == 0 || sellRemaining == 0) return;
         
-        uint256 fillAmount = _min(buyRemaining, sellRemaining);
+        uint256 fillAmount = CLOBLib.min(buyRemaining, sellRemaining);
         uint256 quoteAmount = fillAmount * _fillPrice;
         
         // Transfer tokens
@@ -1174,10 +1164,6 @@ contract CLOBFacet is Initializable {
         emit OrderMatched(_buyOrderId, _sellOrderId, tradeId, fillAmount, _fillPrice, quoteAmount);
     }
 
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
-
     function _addPriceLevel(uint256[] storage prices, uint256 price) internal {
         // Check if price already exists
         for (uint256 i = 0; i < prices.length; i++) {
@@ -1208,25 +1194,6 @@ contract CLOBFacet is Initializable {
             str[3 + i * 2] = alphabet[uint8(data[i] & 0x0f)];
         }
         return string(str);
-    }
-
-    function _stringToAddress(string memory _str) internal pure returns (address) {
-        bytes memory b = bytes(_str);
-        require(b.length == 42, "Invalid address string");
-        
-        uint160 result = 0;
-        for (uint256 i = 2; i < 42; i++) {
-            result *= 16;
-            uint8 c = uint8(b[i]);
-            if (c >= 48 && c <= 57) {
-                result += c - 48;
-            } else if (c >= 97 && c <= 102) {
-                result += c - 87;
-            } else if (c >= 65 && c <= 70) {
-                result += c - 55;
-            }
-        }
-        return address(result);
     }
 
     // ==========================================================================
@@ -1317,9 +1284,9 @@ contract CLOBFacet is Initializable {
         
         return (
             order.maker,
-            _stringToAddress(market.baseToken),
+            CLOBLib.stringToAddress(market.baseToken),
             market.baseTokenId,
-            _stringToAddress(market.quoteToken),
+            CLOBLib.stringToAddress(market.quoteToken),
             order.price,
             order.amount,
             order.filledAmount,
