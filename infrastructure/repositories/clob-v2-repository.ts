@@ -264,6 +264,141 @@ const GET_USER_ORDER_EVENTS = `
   }
 `;
 
+const GET_ORDER_BY_ID_EVENTS = `
+  query GetOrderByIdEvents($orderId: Hex!) {
+    placedOrders: diamondOrderPlacedWithTokensEventss(
+      where: { order_id: $orderId }
+      limit: 1
+    ) {
+      items {
+        id
+        order_id
+        maker
+        base_token
+        base_token_id
+        quote_token
+        price
+        amount
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
+      }
+    }
+    routerPlacedOrders: diamondRouterOrderPlacedEventss(
+      where: { order_id: $orderId }
+      limit: 1
+    ) {
+      items {
+        id
+        order_id
+        maker
+        base_token
+        base_token_id
+        quote_token
+        price
+        amount
+        is_buy
+        order_type
+        block_timestamp
+        transaction_hash
+      }
+    }
+    cancellations: diamondCLOBOrderCancelledEventss(
+      where: { order_id: $orderId }
+      limit: 1
+    ) {
+      items {
+        order_id
+        remaining_amount
+        reason
+        block_timestamp
+      }
+    }
+    fills: diamondCLOBOrderFilledEventss(
+      where: { order_id: $orderId }
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: 1
+    ) {
+      items {
+        order_id
+        fill_amount
+        remaining_amount
+        cumulative_filled
+        block_timestamp
+      }
+    }
+  }
+`;
+
+const GET_TRADE_BY_ID_EVENTS = `
+  query GetTradeByIdEvents($tradeId: Hex!) {
+    trades: diamondCLOBTradeExecutedEventss(
+      where: { trade_id: $tradeId }
+      limit: 1
+    ) {
+      items {
+        id
+        trade_id
+        taker_order_id
+        maker_order_id
+        taker
+        maker
+        market_id
+        price
+        amount
+        quote_amount
+        taker_fee
+        maker_fee
+        timestamp
+        taker_is_buy
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+const GET_MARKETS_EVENTS = `
+  query GetMarketsEvents($limit: Int!) {
+    markets: diamondMarketCreatedEventss(
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      items {
+        id
+        market_id
+        base_token
+        base_token_id
+        quote_token
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+const GET_MARKET_BY_ID_EVENTS = `
+  query GetMarketByIdEvents($marketId: Hex!) {
+    markets: diamondMarketCreatedEventss(
+      where: { market_id: $marketId }
+      limit: 1
+    ) {
+      items {
+        id
+        market_id
+        base_token
+        base_token_id
+        quote_token
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
 // =============================================================================
 // REPOSITORY IMPLEMENTATION
 // =============================================================================
@@ -407,9 +542,18 @@ export class CLOBV2Repository implements ICLOBRepository {
     marketId: string,
   ): Promise<{ bestBid: PriceLevel | null; bestAsk: PriceLevel | null }> {
     try {
-      // Parse marketId to get baseToken, baseTokenId, quoteToken
-      // For now, return null as this requires additional query
-      return { bestBid: null, bestAsk: null };
+      const market = await this.getMarket(marketId);
+      if (!market) return { bestBid: null, bestAsk: null };
+      const orderBook = await this.getOrderBook(
+        market.baseToken,
+        market.baseTokenId,
+        market.quoteToken,
+        1,
+      );
+      return {
+        bestBid: orderBook.bids?.[0] ?? null,
+        bestAsk: orderBook.asks?.[0] ?? null,
+      };
     } catch (error) {
       console.error('[CLOBV2Repository] Failed to get best prices:', error);
       return { bestBid: null, bestAsk: null };
@@ -422,8 +566,22 @@ export class CLOBV2Repository implements ICLOBRepository {
     isBid: boolean,
     limit: number = 50,
   ): Promise<CLOBOrder[]> {
-    // TODO: Implement with specific price filter
-    return [];
+    // Fetch market to resolve base/quote tokens, then filter open orders by price
+    try {
+      const market = await this.getMarket(marketId);
+      if (!market) return [];
+      const openOrders = await this.getOpenOrders(
+        market.baseToken,
+        market.baseTokenId,
+        500,
+      );
+      return openOrders
+        .filter((o) => o.isBuy === isBid && o.price === price)
+        .slice(0, limit);
+    } catch (error) {
+      console.error('[CLOBV2Repository] Failed to get orders at price:', error);
+      return [];
+    }
   }
 
   // ============================================================================
@@ -431,8 +589,48 @@ export class CLOBV2Repository implements ICLOBRepository {
   // ============================================================================
 
   async getOrderById(orderId: string): Promise<CLOBOrder | null> {
-    // TODO: Implement with GET_ORDER_BY_ID_EVENTS query
-    return null;
+    try {
+      const response = await graphqlRequest<{
+        placedOrders: { items: any[] };
+        routerPlacedOrders: { items: any[] };
+        cancellations: { items: any[] };
+        fills: { items: any[] };
+      }>(this.graphQLEndpoint, GET_ORDER_BY_ID_EVENTS, {
+        orderId: orderId as `0x${string}`,
+      });
+
+      const raw =
+        response.placedOrders?.items?.[0] ||
+        response.routerPlacedOrders?.items?.[0];
+      if (!raw) return null;
+
+      const cancellation = response.cancellations?.items?.[0];
+      const latestFill = response.fills?.items?.[0];
+
+      const isCancelled = !!cancellation;
+      const filledAmount = latestFill?.cumulative_filled
+        ? BigInt(latestFill.cumulative_filled)
+        : BigInt(0);
+      const originalAmount = BigInt(raw.amount || '0');
+      const isFullyFilled =
+        filledAmount > BigInt(0) && filledAmount >= originalAmount;
+
+      let status = CLOBOrderStatus.OPEN;
+      if (isCancelled) status = CLOBOrderStatus.CANCELLED;
+      else if (isFullyFilled) status = CLOBOrderStatus.FILLED;
+      else if (filledAmount > BigInt(0)) status = CLOBOrderStatus.PARTIAL;
+
+      const mapped = this.mapOrderToDomain(raw);
+      mapped.status = status;
+      mapped.filledAmount = filledAmount.toString();
+      const remaining = BigInt(raw.amount || '0') - filledAmount;
+      mapped.remainingAmount =
+        remaining >= BigInt(0) ? remaining.toString() : '0';
+      return mapped;
+    } catch (error) {
+      console.error('[CLOBV2Repository] Failed to get order by id:', error);
+      return null;
+    }
   }
 
   async getOpenOrders(
@@ -541,8 +739,19 @@ export class CLOBV2Repository implements ICLOBRepository {
   // ============================================================================
 
   async getTradeById(tradeId: string): Promise<CLOBTrade | null> {
-    // TODO: Implement
-    return null;
+    try {
+      const response = await graphqlRequest<{
+        trades: { items: any[] };
+      }>(this.graphQLEndpoint, GET_TRADE_BY_ID_EVENTS, {
+        tradeId: tradeId as `0x${string}`,
+      });
+      const raw = response.trades?.items?.[0];
+      if (!raw) return null;
+      return this.mapTradeToDomain(raw);
+    } catch (error) {
+      console.error('[CLOBV2Repository] Failed to get trade by id:', error);
+      return null;
+    }
   }
 
   async getTrades(
@@ -606,13 +815,47 @@ export class CLOBV2Repository implements ICLOBRepository {
   // ============================================================================
 
   async getMarket(marketId: string): Promise<CLOBMarket | null> {
-    // TODO: Implement market query from events
-    return null;
+    try {
+      const response = await graphqlRequest<{
+        markets: { items: any[] };
+      }>(this.graphQLEndpoint, GET_MARKET_BY_ID_EVENTS, {
+        marketId: marketId as `0x${string}`,
+      });
+      const raw = response.markets?.items?.[0];
+      if (!raw) return null;
+      return this.mapMarketToDomain(raw);
+    } catch (error) {
+      console.error('[CLOBV2Repository] Failed to get market:', error);
+      return null;
+    }
   }
 
   async getAllMarkets(): Promise<CLOBMarket[]> {
-    // TODO: Implement markets query from poolCreatedEvents
-    return [];
+    try {
+      const response = await graphqlRequest<{
+        markets: { items: any[] };
+      }>(this.graphQLEndpoint, GET_MARKETS_EVENTS, { limit: 100 });
+      return (response.markets?.items || []).map((m: any) =>
+        this.mapMarketToDomain(m),
+      );
+    } catch (error) {
+      console.error('[CLOBV2Repository] Failed to get all markets:', error);
+      return [];
+    }
+  }
+
+  private mapMarketToDomain(raw: any): CLOBMarket {
+    return {
+      id: raw.market_id || raw.id,
+      baseToken: raw.base_token || '',
+      baseTokenId: raw.base_token_id?.toString() || '0',
+      quoteToken: raw.quote_token || '',
+      active: true,
+      createdAt: Number(raw.block_timestamp || 0) * 1000,
+      lastTradePrice: '0',
+      bidCount: 0,
+      askCount: 0,
+    };
   }
 
   async getMarketStats(marketId: string): Promise<MarketStats> {
@@ -734,7 +977,8 @@ export class CLOBV2Repository implements ICLOBRepository {
   // ============================================================================
 
   async getCircuitBreaker(marketId: string): Promise<CircuitBreaker | null> {
-    // TODO: Implement circuit breaker query
+    // CircuitBreakerConfigured/Tripped events are not currently indexed by the Ponder schema.
+    // When added to generated-schema.ts, query diamondCircuitBreakerConfiguredEventss here.
     return null;
   }
 
@@ -743,12 +987,14 @@ export class CLOBV2Repository implements ICLOBRepository {
   // ============================================================================
 
   async getCommitment(commitmentId: string): Promise<CommittedOrder | null> {
-    // TODO: Implement commitment query
+    // OrderCommitted events (CLOBMEVFacet) are not currently indexed by the Ponder schema.
+    // When added to generated-schema.ts, query diamondOrderCommittedEventss here.
     return null;
   }
 
   async getUserCommitments(userAddress: string): Promise<CommittedOrder[]> {
-    // TODO: Implement user commitments query
+    // OrderCommitted events (CLOBMEVFacet) are not currently indexed by the Ponder schema.
+    // When added to generated-schema.ts, query diamondOrderCommittedEventss by maker here.
     return [];
   }
 
@@ -868,20 +1114,6 @@ export class CLOBV2Repository implements ICLOBRepository {
       transactionHash: trade.transaction_hash || '',
       takerIsBuy: trade.taker_is_buy ?? true,
       marketId: trade.market_id || baseTokenId,
-    };
-  }
-
-  private mapMarketToDomain(market: any): CLOBMarket {
-    return {
-      id: market.id,
-      baseToken: market.baseToken,
-      baseTokenId: market.baseTokenId,
-      quoteToken: market.quoteToken,
-      active: true,
-      createdAt: Number(market.createdAt || 0) * 1000,
-      lastTradePrice: market.lastTradePrice || '0',
-      bidCount: 0,
-      askCount: 0,
     };
   }
 
