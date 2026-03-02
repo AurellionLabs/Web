@@ -1,10 +1,101 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-03-02T03:43:53.206Z
+// Generated at: 2026-03-02T05:05:48.547Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
 
 import { onchainTable, index } from 'ponder';
+
+export const assets = onchainTable(
+  'assets',
+  (t) => ({
+    id: t.text().primaryKey(),
+    hash: t.hex().notNull(),
+    token_id: t.bigint().notNull(),
+    name: t.text().notNull(),
+    asset_class: t.text().notNull(),
+    class_name: t.text().notNull(),
+    account: t.hex().notNull(),
+    created_at: t.bigint().notNull(),
+    updated_at: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    tokenIdIdx: index().on(table.token_id),
+    accountIdx: index().on(table.account),
+    assetClass_classNameIdx: index().on(table.asset_class, table.class_name),
+  }),
+);
+
+export const orders = onchainTable(
+  'orders',
+  (t) => ({
+    id: t.text().primaryKey(),
+    buyer: t.hex().notNull(),
+    seller: t.hex().notNull(),
+    token: t.hex().notNull(),
+    token_id: t.bigint().notNull(),
+    token_quantity: t.bigint().notNull(),
+    requested_token_quantity: t.bigint().notNull(),
+    price: t.bigint().notNull(),
+    tx_fee: t.bigint().notNull(),
+    current_status: t.integer().notNull(),
+    start_location_lat: t.text(),
+    start_location_lng: t.text(),
+    end_location_lat: t.text(),
+    end_location_lng: t.text(),
+    start_name: t.text(),
+    end_name: t.text(),
+    nodes: t.text(),
+    created_at: t.bigint().notNull(),
+    updated_at: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    buyerIdx: index().on(table.buyer),
+    sellerIdx: index().on(table.seller),
+    currentStatusIdx: index().on(table.current_status),
+  }),
+);
+
+export const journeys = onchainTable(
+  'journeys',
+  (t) => ({
+    id: t.text().primaryKey(),
+    sender: t.hex().notNull(),
+    receiver: t.hex().notNull(),
+    driver: t.hex(),
+    current_status: t.integer().notNull(),
+    bounty: t.bigint().notNull(),
+    journey_start: t.bigint(),
+    journey_end: t.bigint(),
+    eta: t.bigint(),
+    start_location_lat: t.text(),
+    start_location_lng: t.text(),
+    end_location_lat: t.text(),
+    end_location_lng: t.text(),
+    start_name: t.text(),
+    end_name: t.text(),
+    order_id: t.hex().notNull(),
+    created_at: t.bigint().notNull(),
+    updated_at: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    senderIdx: index().on(table.sender),
+    receiverIdx: index().on(table.receiver),
+    driverIdx: index().on(table.driver),
+    currentStatusIdx: index().on(table.current_status),
+    orderIdIdx: index().on(table.order_id),
+    currentStatus_createdAtIdx: index().on(
+      table.current_status,
+      table.created_at,
+    ),
+  }),
+);
 
 export const diamondClobApprovalGrantedEvents = onchainTable(
   'diamond_clob_approval_granted_events',
@@ -1720,6 +1811,9 @@ export const diamondURIEvents = onchainTable(
 
 // Export all tables
 export const tables = {
+  assets,
+  orders,
+  journeys,
   diamondClobApprovalGrantedEvents,
   diamondClobApprovalRevokedEvents,
   diamondInitializedEvents,

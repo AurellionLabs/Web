@@ -68,6 +68,242 @@ const EXTERNAL_CONTRACTS: Record<
 const EXCLUDED_INDEXER_DOMAINS = new Set(['clob-admin']);
 
 // ============================================================================
+// AGGREGATE TABLE CONFIGURATION (US-001, US-002, US-003)
+// ============================================================================
+
+interface AggregateColumn {
+  name: string;
+  ponderType: string; // e.g. 't.text()' or 't.bigint()'
+  notNull?: boolean;
+}
+
+interface AggregateTableDef {
+  columns: AggregateColumn[];
+  /** Single-column indexes (column names) */
+  indexes: string[];
+  /** Composite indexes — each entry is an array of column names */
+  compositeIndexes?: string[][];
+}
+
+const AGGREGATE_TABLES: Record<string, AggregateTableDef> = {
+  assets: {
+    columns: [
+      { name: 'id', ponderType: 't.text().primaryKey()', notNull: false },
+      { name: 'hash', ponderType: 't.hex()', notNull: true },
+      { name: 'token_id', ponderType: 't.bigint()', notNull: true },
+      { name: 'name', ponderType: 't.text()', notNull: true },
+      { name: 'asset_class', ponderType: 't.text()', notNull: true },
+      { name: 'class_name', ponderType: 't.text()', notNull: true },
+      { name: 'account', ponderType: 't.hex()', notNull: true },
+      { name: 'created_at', ponderType: 't.bigint()', notNull: true },
+      { name: 'updated_at', ponderType: 't.bigint()', notNull: true },
+      { name: 'block_number', ponderType: 't.bigint()', notNull: true },
+      { name: 'transaction_hash', ponderType: 't.hex()', notNull: true },
+    ],
+    indexes: ['token_id', 'account'],
+    compositeIndexes: [['asset_class', 'class_name']],
+  },
+  orders: {
+    columns: [
+      { name: 'id', ponderType: 't.text().primaryKey()', notNull: false },
+      { name: 'buyer', ponderType: 't.hex()', notNull: true },
+      { name: 'seller', ponderType: 't.hex()', notNull: true },
+      { name: 'token', ponderType: 't.hex()', notNull: true },
+      { name: 'token_id', ponderType: 't.bigint()', notNull: true },
+      { name: 'token_quantity', ponderType: 't.bigint()', notNull: true },
+      {
+        name: 'requested_token_quantity',
+        ponderType: 't.bigint()',
+        notNull: true,
+      },
+      { name: 'price', ponderType: 't.bigint()', notNull: true },
+      { name: 'tx_fee', ponderType: 't.bigint()', notNull: true },
+      { name: 'current_status', ponderType: 't.integer()', notNull: true },
+      { name: 'start_location_lat', ponderType: 't.text()', notNull: false },
+      { name: 'start_location_lng', ponderType: 't.text()', notNull: false },
+      { name: 'end_location_lat', ponderType: 't.text()', notNull: false },
+      { name: 'end_location_lng', ponderType: 't.text()', notNull: false },
+      { name: 'start_name', ponderType: 't.text()', notNull: false },
+      { name: 'end_name', ponderType: 't.text()', notNull: false },
+      { name: 'nodes', ponderType: 't.text()', notNull: false },
+      { name: 'created_at', ponderType: 't.bigint()', notNull: true },
+      { name: 'updated_at', ponderType: 't.bigint()', notNull: true },
+      { name: 'block_number', ponderType: 't.bigint()', notNull: true },
+      { name: 'transaction_hash', ponderType: 't.hex()', notNull: true },
+    ],
+    indexes: ['buyer', 'seller', 'current_status'],
+  },
+  journeys: {
+    columns: [
+      { name: 'id', ponderType: 't.text().primaryKey()', notNull: false },
+      { name: 'sender', ponderType: 't.hex()', notNull: true },
+      { name: 'receiver', ponderType: 't.hex()', notNull: true },
+      { name: 'driver', ponderType: 't.hex()', notNull: false },
+      { name: 'current_status', ponderType: 't.integer()', notNull: true },
+      { name: 'bounty', ponderType: 't.bigint()', notNull: true },
+      { name: 'journey_start', ponderType: 't.bigint()', notNull: false },
+      { name: 'journey_end', ponderType: 't.bigint()', notNull: false },
+      { name: 'eta', ponderType: 't.bigint()', notNull: false },
+      { name: 'start_location_lat', ponderType: 't.text()', notNull: false },
+      { name: 'start_location_lng', ponderType: 't.text()', notNull: false },
+      { name: 'end_location_lat', ponderType: 't.text()', notNull: false },
+      { name: 'end_location_lng', ponderType: 't.text()', notNull: false },
+      { name: 'start_name', ponderType: 't.text()', notNull: false },
+      { name: 'end_name', ponderType: 't.text()', notNull: false },
+      { name: 'order_id', ponderType: 't.hex()', notNull: true },
+      { name: 'created_at', ponderType: 't.bigint()', notNull: true },
+      { name: 'updated_at', ponderType: 't.bigint()', notNull: true },
+      { name: 'block_number', ponderType: 't.bigint()', notNull: true },
+      { name: 'transaction_hash', ponderType: 't.hex()', notNull: true },
+    ],
+    indexes: ['sender', 'receiver', 'driver', 'current_status', 'order_id'],
+    compositeIndexes: [['current_status', 'created_at']],
+  },
+};
+
+// ============================================================================
+// EVENT-TO-AGGREGATE MAPPING (US-006, US-007, US-008)
+// ============================================================================
+
+interface AggregateAction {
+  /** The aggregate table to write to */
+  table: string;
+  /**
+   * 'insert'  = db.insert().values().onConflictDoNothing()
+   * 'upsert'  = db.insert().values().onConflictDoUpdate() — must supply ALL notNull columns
+   * 'update'  = db.update().set().where(eq(table.id, <id column value>)) — partial update
+   */
+  action: 'insert' | 'upsert' | 'update';
+  /**
+   * Mapping from aggregate column name → event field name (or a literal JS expression).
+   * Entries beginning with '$' are treated as literal JS code (e.g. '$0' → 0).
+   * For 'update' action, the 'id' entry is used as the WHERE clause value.
+   */
+  mapping: Record<string, string>;
+  /** Optional guard expression evaluated in generated code (e.g. "from === '0x0000…'") */
+  guard?: string;
+}
+
+const EVENT_TO_AGGREGATE_MAPPING: Record<string, AggregateAction[]> = {
+  // US-006: UnifiedOrderCreated → orders insert
+  // ABI: UnifiedOrderCreated(bytes32 unifiedOrderId, bytes32 clobOrderId, address buyer,
+  //                          address seller, address token, uint256 tokenId,
+  //                          uint256 quantity, uint256 price)
+  UnifiedOrderCreated: [
+    {
+      table: 'orders',
+      action: 'insert',
+      mapping: {
+        id: 'unifiedOrderId',
+        buyer: 'buyer',
+        seller: 'seller',
+        token: 'token',
+        token_id: 'tokenId',
+        token_quantity: 'quantity',
+        requested_token_quantity: 'quantity',
+        price: 'price',
+        tx_fee: '$BigInt(0)',
+        current_status: '$0',
+        created_at: '$BigInt(event.block.timestamp)',
+        updated_at: '$BigInt(event.block.timestamp)',
+        block_number: '$event.block.number',
+        transaction_hash: '$event.transaction.hash',
+      },
+    },
+  ],
+  // US-006: OrderSettled → orders update current_status = 4
+  // ABI: OrderSettled(bytes32 unifiedOrderId, address seller, uint256 sellerAmount,
+  //                   address driver, uint256 driverAmount)
+  OrderSettled: [
+    {
+      table: 'orders',
+      action: 'update',
+      mapping: {
+        id: 'unifiedOrderId',
+        current_status: '$4',
+        updated_at: '$BigInt(event.block.timestamp)',
+        block_number: '$event.block.number',
+        transaction_hash: '$event.transaction.hash',
+      },
+    },
+  ],
+  // US-006: BridgeOrderCancelled → orders update current_status = 5
+  // ABI: BridgeOrderCancelled(bytes32 unifiedOrderId, uint8 previousStatus)
+  BridgeOrderCancelled: [
+    {
+      table: 'orders',
+      action: 'update',
+      mapping: {
+        id: 'unifiedOrderId',
+        current_status: '$5',
+        updated_at: '$BigInt(event.block.timestamp)',
+        block_number: '$event.block.number',
+        transaction_hash: '$event.transaction.hash',
+      },
+    },
+  ],
+  // US-007: LogisticsOrderCreated → journeys insert
+  // ABI: LogisticsOrderCreated(bytes32 unifiedOrderId, bytes32 ausysOrderId,
+  //                            bytes32[] journeyIds, uint256 bounty, address node)
+  LogisticsOrderCreated: [
+    {
+      table: 'journeys',
+      action: 'insert',
+      mapping: {
+        id: 'ausysOrderId',
+        sender: 'node',
+        receiver: 'node',
+        current_status: '$0',
+        bounty: 'bounty',
+        order_id: 'unifiedOrderId',
+        created_at: '$BigInt(event.block.timestamp)',
+        updated_at: '$BigInt(event.block.timestamp)',
+        block_number: '$event.block.number',
+        transaction_hash: '$event.transaction.hash',
+      },
+    },
+  ],
+  // US-007: JourneyStatusUpdated → journeys update (partial update on status)
+  // ABI: JourneyStatusUpdated(bytes32 unifiedOrderId, bytes32 journeyId, uint8 phase)
+  JourneyStatusUpdated: [
+    {
+      table: 'journeys',
+      action: 'update',
+      mapping: {
+        id: 'journeyId',
+        current_status: 'phase',
+        order_id: 'unifiedOrderId',
+        updated_at: '$BigInt(event.block.timestamp)',
+        block_number: '$event.block.number',
+        transaction_hash: '$event.transaction.hash',
+      },
+    },
+  ],
+  // US-008: MintedAsset → assets upsert (re-mint updates the record)
+  // ABI: MintedAsset(address account, bytes32 hash, uint256 tokenId, string name,
+  //                  string assetClass, string className)
+  MintedAsset: [
+    {
+      table: 'assets',
+      action: 'upsert',
+      mapping: {
+        id: 'hash',
+        hash: 'hash',
+        token_id: 'tokenId',
+        name: 'name',
+        asset_class: 'assetClass',
+        class_name: 'className',
+        account: 'account',
+        created_at: '$BigInt(event.block.timestamp)',
+        updated_at: '$BigInt(event.block.timestamp)',
+        block_number: '$event.block.number',
+        transaction_hash: '$event.transaction.hash',
+      },
+    },
+  ],
+};
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -405,6 +641,8 @@ interface SchemaTable {
     primaryKey?: boolean;
   }[];
   indexes: string[];
+  /** Composite indexes — each entry is an ordered array of column names */
+  compositeIndexes?: string[][];
 }
 
 function generateEventTable(
@@ -461,8 +699,36 @@ function generateEventTable(
   return { name: tableName, columns, indexes };
 }
 
-// NOTE: Aggregate tables removed - Pure Dumb Indexer pattern
-// All aggregation happens in the frontend repository layer
+// ============================================================================
+// AGGREGATE TABLE GENERATION (US-004)
+// ============================================================================
+
+function generateAggregateTables(): SchemaTable[] {
+  const tables: SchemaTable[] = [];
+
+  for (const [tableName, def] of Object.entries(AGGREGATE_TABLES)) {
+    const columns: SchemaTable['columns'] = def.columns.map((col) => {
+      // primaryKey columns already include .primaryKey() in the ponderType string
+      const isPK = col.ponderType.includes('.primaryKey()');
+      if (isPK) {
+        return { name: col.name, type: col.ponderType, primaryKey: true };
+      }
+      const typeStr = col.notNull
+        ? `${col.ponderType}.notNull()`
+        : col.ponderType;
+      return { name: col.name, type: typeStr };
+    });
+
+    tables.push({
+      name: tableName,
+      columns,
+      indexes: def.indexes,
+      compositeIndexes: def.compositeIndexes,
+    });
+  }
+
+  return tables;
+}
 
 function generateSchema(facets: Map<string, FacetInfo>): void {
   const eventTables: SchemaTable[] = [];
@@ -479,8 +745,9 @@ function generateSchema(facets: Map<string, FacetInfo>): void {
     }
   }
 
-  // Pure Dumb Indexer: Only event tables, no aggregate tables
-  const allTables = eventTables;
+  // Include aggregate tables alongside raw event tables
+  const aggregateTables = generateAggregateTables();
+  const allTables = [...aggregateTables, ...eventTables];
 
   // Generate schema file
   let schemaContent = `// Auto-generated Ponder Schema - DO NOT EDIT
@@ -494,13 +761,19 @@ import { onchainTable, index } from 'ponder';
 `;
 
   for (const table of allTables) {
+    // Build single-column index entries
+    const singleIdxLines = table.indexes.map(
+      (idx) => `    ${snakeToCamel(idx)}Idx: index().on(table.${idx}),`,
+    );
+    // Build composite index entries
+    const compositeIdxLines = (table.compositeIndexes ?? []).map((cols) => {
+      const idxName = `${cols.map(snakeToCamel).join('_')}Idx`;
+      return `    ${idxName}: index().on(${cols.map((c) => `table.${c}`).join(', ')}),`;
+    });
+    const allIdxLines = [...singleIdxLines, ...compositeIdxLines];
     const indexDefs =
-      table.indexes.length > 0
-        ? `,\n  (table) => ({\n${table.indexes
-            .map(
-              (idx) => `    ${snakeToCamel(idx)}Idx: index().on(table.${idx}),`,
-            )
-            .join('\n')}\n  })`
+      allIdxLines.length > 0
+        ? `,\n  (table) => ({\n${allIdxLines.join('\n')}\n  })`
         : '';
 
     schemaContent += `export const ${snakeToCamel(table.name)} = onchainTable(
@@ -540,7 +813,7 @@ export * from './generated-schema';
   );
 
   console.log(
-    `✓ Generated schema with ${eventTables.length} raw event tables (Pure Dumb Indexer)`,
+    `✓ Generated schema with ${aggregateTables.length} aggregate tables + ${eventTables.length} raw event tables`,
   );
 }
 
@@ -548,8 +821,178 @@ export * from './generated-schema';
 // HANDLER GENERATION
 // ============================================================================
 
-// NOTE: EVENT_TO_AGGREGATE_MAPPING removed - Pure Dumb Indexer pattern
-// All aggregation happens in the frontend repository layer
+// ============================================================================
+// AGGREGATE HANDLER GENERATION (US-009)
+// ============================================================================
+
+/**
+ * Generate the aggregates.generated.ts handler file.
+ * Each event listed in EVENT_TO_AGGREGATE_MAPPING gets a ponder.on() listener
+ * that writes to the appropriate aggregate table after the raw event insert.
+ * We need to know which domain handles each event so we can emit the right
+ * Ponder event key (Diamond:X vs ContractName:X).
+ */
+function generateAggregateHandlers(facets: Map<string, FacetInfo>): void {
+  // Build a lookup: eventName → { facet, domain, inputs }
+  const eventMeta = new Map<
+    string,
+    { facet: string; domain: string; inputs: AbiInput[] }
+  >();
+  for (const facet of facets.values()) {
+    for (const event of facet.events) {
+      if (!eventMeta.has(event.name)) {
+        eventMeta.set(event.name, {
+          facet: facet.name,
+          domain: facet.domain,
+          inputs: event.inputs,
+        });
+      }
+    }
+  }
+
+  // Collect aggregate table names needed as imports
+  const importedAggTables = new Set<string>();
+  for (const actions of Object.values(EVENT_TO_AGGREGATE_MAPPING)) {
+    for (const action of actions) {
+      importedAggTables.add(snakeToCamel(action.table));
+    }
+  }
+
+  let content = `// Auto-generated aggregate handlers - DO NOT EDIT
+// Generated at: ${new Date().toISOString()}
+//
+// These handlers upsert/insert into aggregate tables whenever relevant events fire.
+// Generated from EVENT_TO_AGGREGATE_MAPPING in scripts/generate-indexer.ts
+
+import { ponder } from "ponder:registry";
+import { ${Array.from(importedAggTables).join(', ')} } from "ponder:schema";
+
+`;
+
+  for (const [eventName, actions] of Object.entries(
+    EVENT_TO_AGGREGATE_MAPPING,
+  )) {
+    const meta = eventMeta.get(eventName);
+    if (!meta) {
+      console.warn(
+        `⚠️  EVENT_TO_AGGREGATE_MAPPING: event "${eventName}" not found in any facet — skipping`,
+      );
+      continue;
+    }
+
+    const isExternal = !!EXTERNAL_CONTRACTS[meta.facet];
+    const ponderKey = isExternal
+      ? `${meta.facet}:${eventName}`
+      : `Diamond:${eventName}`;
+
+    // Reserved handler names
+    const reserved = new Set(['id', 'event', 'context', 'eventId', 'value']);
+    const destructureParts: string[] = [];
+    const renamedInputs = new Map<string, string>();
+    for (const input of meta.inputs) {
+      if (reserved.has(input.name)) {
+        const renamed = `arg_${input.name}`;
+        destructureParts.push(`${input.name}: ${renamed}`);
+        renamedInputs.set(input.name, renamed);
+      } else {
+        destructureParts.push(input.name);
+        renamedInputs.set(input.name, input.name);
+      }
+    }
+    const destructure = destructureParts.join(', ');
+
+    content += `ponder.on('${ponderKey}', async ({ event, context }) => {
+  const { ${destructure} } = event.args;
+`;
+
+    for (const action of actions) {
+      const tableConst = snakeToCamel(action.table);
+      const tableDef = AGGREGATE_TABLES[action.table];
+
+      // Build the values object — only include columns present in mapping
+      const valueLines: string[] = [];
+      for (const [col, src] of Object.entries(action.mapping)) {
+        let val: string;
+        if (src.startsWith('$')) {
+          // Literal JS expression
+          val = src.slice(1);
+        } else {
+          // Event field reference — use renamed name if needed
+          val = renamedInputs.get(src) ?? src;
+          // Check if this field needs BigInt wrapping (small uint)
+          const inputMeta = meta.inputs.find((i) => i.name === src);
+          if (inputMeta) {
+            const smallUintMatch = inputMeta.type.match(/^u?int(\d+)$/);
+            if (smallUintMatch) {
+              const bits = parseInt(smallUintMatch[1], 10);
+              if (bits <= 48) {
+                val = `BigInt(${val})`;
+              }
+            }
+          }
+          // Check aggregate column type to see if we need integer cast
+          const colDef = tableDef?.columns.find((c) => c.name === col);
+          if (colDef?.ponderType === 't.integer()') {
+            val = `Number(${val})`;
+          }
+        }
+        valueLines.push(`    ${col}: ${val},`);
+      }
+
+      // Derive the id value expression for this action
+      const idEntry = Object.entries(action.mapping).find(
+        ([col]) => col === 'id',
+      );
+      const idValueExpr = idEntry
+        ? idEntry[1].startsWith('$')
+          ? idEntry[1].slice(1)
+          : (renamedInputs.get(idEntry[1]) ?? idEntry[1])
+        : 'undefined';
+
+      if (action.action === 'insert') {
+        content += `
+  await context.db.insert(${tableConst}).values({
+${valueLines.join('\n')}
+  }).onConflictDoNothing();
+`;
+      } else if (action.action === 'upsert') {
+        // Ponder upsert: insert or update using onConflictDoUpdate
+        // onConflictDoUpdate receives a partial object with just the fields to update
+        const updateLines = valueLines.filter(
+          (l) => !l.trim().startsWith('id:'),
+        );
+        content += `
+  await context.db
+    .insert(${tableConst})
+    .values({
+${valueLines.join('\n')}
+    })
+    .onConflictDoUpdate({
+${updateLines.join('\n')}
+    });
+`;
+      } else {
+        // action === 'update': partial row update using Ponder's db.update(table, key).set({})
+        const setLines = valueLines.filter((l) => !l.trim().startsWith('id:'));
+        content += `
+  await context.db
+    .update(${tableConst}, { id: ${idValueExpr} })
+    .set({
+${setLines.join('\n')}
+    });
+`;
+      }
+    }
+
+    content += `});\n\n`;
+  }
+
+  const outFile = path.join(GENERATED_HANDLERS_DIR, 'aggregates.generated.ts');
+  fs.writeFileSync(outFile, content);
+  console.log(
+    `✓ Generated aggregates.generated.ts with ${Object.keys(EVENT_TO_AGGREGATE_MAPPING).length} event mappings`,
+  );
+}
 
 function generateHandlerStub(domain: string, events: EventInfo[]): string {
   // Group events by facet for comments
@@ -784,14 +1227,18 @@ function generateHandlers(facets: Map<string, FacetInfo>): void {
     }
   }
 
-  // Generate index file
+  // Generate aggregate handlers (US-009)
+  generateAggregateHandlers(facets);
+
+  // Generate index file (US-010)
   const domains = Array.from(eventsByDomain.keys());
   const indexContent = `// Auto-generated handler index - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
 
 ${domains.map((d) => `import './${d}.generated';`).join('\n')}
+import './aggregates.generated';
 
-// Handler domains: ${domains.join(', ')}
+// Handler domains: ${domains.join(', ')}, aggregates
 `;
 
   fs.writeFileSync(path.join(GENERATED_HANDLERS_DIR, 'index.ts'), indexContent);

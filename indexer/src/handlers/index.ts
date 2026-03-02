@@ -1,5 +1,5 @@
 // Auto-generated handler index - DO NOT EDIT
-// Generated at: 2026-03-02T03:43:53.211Z
+// Generated at: 2026-03-02T05:05:48.553Z
 
 import './nodes.generated';
 import './clob.generated';
@@ -8,5 +8,6 @@ import './rwy-staking.generated';
 import './operators.generated';
 import './ausys.generated';
 import './assets.generated';
+import './aggregates.generated';
 
-// Handler domains: nodes, clob, bridge, rwy-staking, operators, ausys, assets
+// Handler domains: nodes, clob, bridge, rwy-staking, operators, ausys, assets, aggregates
