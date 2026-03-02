@@ -1,0 +1,5 @@
+CLOBCoreFacetTest:test_cancelOrder_openOrder_cancelled() (gas: 751351)
+CLOBCoreFacetTest:test_cancelOrder_revertNotMaker() (gas: 876578)
+CLOBCoreFacetTest:test_cancelOrder_revertOrderNotFound() (gas: 40351)
+CLOBCoreFacetTest:test_cancelOrder_sellOrder_locksTokensInEscrow() (gas: 758699)
+CLOBCoreFacetTest:test_cancelOrders_batchCancels() (gas: 989099)
