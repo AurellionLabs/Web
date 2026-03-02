@@ -46,11 +46,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { ethers } from 'ethers';
-import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
-import {
-  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-  NEXT_PUBLIC_DEFAULT_CHAIN_ID,
-} from '@/chain-constants';
+import { getSettlementService } from '@/infrastructure/services/settlement-service';
+import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
 
 export default function RWYOpportunityDetailPage() {
   const params = useParams();
@@ -71,19 +68,10 @@ export default function RWYOpportunityDetailPage() {
     let cancelled = false;
     const fetch = async () => {
       try {
-        const provider = RpcProviderFactory.getReadOnlyProvider(
-          NEXT_PUBLIC_DEFAULT_CHAIN_ID,
-        );
-        const erc1155 = new ethers.Contract(
-          NEXT_PUBLIC_AURA_ASSET_ADDRESS,
-          [
-            'function balanceOf(address account, uint256 id) view returns (uint256)',
-          ],
-          provider,
-        );
-        const balance: bigint = await erc1155.balanceOf(
+        const balance = await getSettlementService().getTokenBalance(
           walletAddress,
-          BigInt(tokenId),
+          tokenId,
+          NEXT_PUBLIC_AURA_ASSET_ADDRESS,
         );
         if (!cancelled) setUserBalance(balance.toString());
       } catch (err) {

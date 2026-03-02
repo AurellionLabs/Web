@@ -12,6 +12,11 @@ const ERC1155_ABI = [
   'function balanceOfBatch(address[] accounts, uint256[] ids) view returns (uint256[])',
 ];
 
+const ERC1155_APPROVAL_ABI = [
+  'function isApprovedForAll(address account, address operator) view returns (bool)',
+  'function setApprovalForAll(address operator, bool approved) external',
+];
+
 const ZERO_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000000';
 
@@ -34,9 +39,72 @@ export class SettlementService {
     this.repositoryContext = RepositoryContext.getInstance();
   }
 
+  // ---------------------------------------------------------------------------
+  // Token balance
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the ERC1155 balance of `account` for `tokenId`.
+   * Defaults to the main Diamond address; pass `tokenAddress` to query
+   * a different ERC1155 contract (e.g. AURA asset token).
+   */
+  async getTokenBalance(
+    account: string,
+    tokenId: string,
+    tokenAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
+  ): Promise<bigint> {
+    const provider = this.repositoryContext.getProvider();
+    const contract = new ethers.Contract(tokenAddress, ERC1155_ABI, provider);
+    return contract.balanceOf(account, BigInt(tokenId));
+  }
+
+  // ---------------------------------------------------------------------------
+  // ERC1155 approval
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Checks whether `operator` is approved to transfer all tokens on behalf of
+   * `owner` on the given token contract. Read-only — no wallet required.
+   */
+  async isApprovedForAll(
+    owner: string,
+    tokenAddress: string,
+    operator: string,
+  ): Promise<boolean> {
+    const provider = this.repositoryContext.getProvider();
+    const contract = new ethers.Contract(
+      tokenAddress,
+      ERC1155_APPROVAL_ABI,
+      provider,
+    );
+    return contract.isApprovedForAll(owner, operator);
+  }
+
+  /**
+   * Approves `operator` to transfer all tokens for the signer.
+   * Wallet interaction required.
+   */
+  async setApprovalForAll(
+    tokenAddress: string,
+    operator: string,
+  ): Promise<void> {
+    const signer = this.repositoryContext.getSigner();
+    const contract = new ethers.Contract(
+      tokenAddress,
+      ERC1155_APPROVAL_ABI,
+      signer,
+    );
+    const tx = await contract.setApprovalForAll(operator, true);
+    await tx.wait();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pending settlement
+  // ---------------------------------------------------------------------------
+
   /**
    * Returns all order IDs where the buyer has a pending token destination choice.
-   * Called on page load to detect offline settlements.
+   * Called on every page load to detect offline settlements.
    */
   async getPendingOrders(buyerAddress: string): Promise<string[]> {
     const provider = this.repositoryContext.getProvider();
@@ -53,7 +121,8 @@ export class SettlementService {
   }
 
   /**
-   * Selects where settled tokens should go — a node (custody) or burn (process commodity).
+   * Selects where settled tokens should go — a node (custody) or burn (redeem).
+   * Wallet interaction required.
    */
   async selectDestination(
     orderId: string,
@@ -79,6 +148,10 @@ export class SettlementService {
     );
     await tx.wait();
   }
+
+  // ---------------------------------------------------------------------------
+  // Custody breakdown
+  // ---------------------------------------------------------------------------
 
   /**
    * Returns how much of a given tokenId is held in-wallet vs custodied

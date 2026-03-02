@@ -44,6 +44,7 @@ import { DepositForTradingModal } from '@/app/components/trading/deposit-for-tra
 
 // Services
 import { priceHistoryService } from '@/infrastructure/services/price-history-service';
+import { getSettlementService } from '@/infrastructure/services/settlement-service';
 
 // Hooks
 import { useClassAssets } from '@/hooks/useClassAssets';
@@ -120,7 +121,7 @@ function ClassDetailPageContent() {
   const { setCurrentUserRole } = useMainProvider();
   const { getOwnedNodes, placeSellOrderFromNode, getNodeTokenBalance } =
     useDiamond();
-  const { address, connectedWallet } = useWallet();
+  const { address } = useWallet();
 
   // Deposit modal state
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -374,24 +375,10 @@ function ClassDetailPageContent() {
             // Get wallet balance for the modal
             let walletBalance = BigInt(0);
             try {
-              const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
-                '@/chain-constants'
-              );
-              const { ethers } = await import('ethers');
-
-              if (connectedWallet && address) {
-                const ethereumProvider =
-                  await connectedWallet.getEthereumProvider();
-                const provider = new ethers.BrowserProvider(ethereumProvider);
-                const auraAsset = new ethers.Contract(
-                  NEXT_PUBLIC_DIAMOND_ADDRESS,
-                  [
-                    'function balanceOf(address account, uint256 id) view returns (uint256)',
-                  ],
-                  provider,
-                );
-                walletBalance = BigInt(
-                  await auraAsset.balanceOf(address, tokenId),
+              if (address) {
+                walletBalance = await getSettlementService().getTokenBalance(
+                  address,
+                  tokenId,
                 );
               }
             } catch (err) {
@@ -439,24 +426,10 @@ function ClassDetailPageContent() {
               let walletBalance = BigInt(0);
               let nodeBalance = BigInt(0);
               try {
-                const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
-                  '@/chain-constants'
-                );
-                const { ethers } = await import('ethers');
-
-                if (connectedWallet && address) {
-                  const ethereumProvider =
-                    await connectedWallet.getEthereumProvider();
-                  const provider = new ethers.BrowserProvider(ethereumProvider);
-                  const auraAsset = new ethers.Contract(
-                    NEXT_PUBLIC_DIAMOND_ADDRESS,
-                    [
-                      'function balanceOf(address account, uint256 id) view returns (uint256)',
-                    ],
-                    provider,
-                  );
-                  walletBalance = BigInt(
-                    await auraAsset.balanceOf(address, tokenId),
+                if (address) {
+                  walletBalance = await getSettlementService().getTokenBalance(
+                    address,
+                    tokenId,
                   );
                 }
 
@@ -521,23 +494,10 @@ function ClassDetailPageContent() {
             // Show deposit modal
             let walletBalance = BigInt(0);
             try {
-              const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import(
-                '@/chain-constants'
-              );
-              const { ethers } = await import('ethers');
-              if (connectedWallet && address) {
-                const ethereumProvider =
-                  await connectedWallet.getEthereumProvider();
-                const provider = new ethers.BrowserProvider(ethereumProvider);
-                const auraAsset = new ethers.Contract(
-                  NEXT_PUBLIC_DIAMOND_ADDRESS,
-                  [
-                    'function balanceOf(address account, uint256 id) view returns (uint256)',
-                  ],
-                  provider,
-                );
-                walletBalance = BigInt(
-                  await auraAsset.balanceOf(address, tokenId),
+              if (address) {
+                walletBalance = await getSettlementService().getTokenBalance(
+                  address,
+                  tokenId,
                 );
               }
             } catch (err) {
@@ -666,7 +626,6 @@ function ClassDetailPageContent() {
       getOwnedNodes,
       placeSellOrderFromNode,
       getNodeTokenBalance,
-      connectedWallet,
       address,
     ],
   );
