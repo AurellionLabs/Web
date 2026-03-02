@@ -31,16 +31,16 @@ interface IDiamond {
         uint256 expiresAt;
     }
     struct AuSysJourney {
+        ParcelData parcelData;
         bytes32 journeyId;
+        uint8 currentStatus;
         address sender;
         address receiver;
         address driver;
-        uint8 currentStatus;
-        uint256 bounty;
-        uint256 ETA;
         uint256 journeyStart;
         uint256 journeyEnd;
-        ParcelData parcelData;
+        uint256 bounty;
+        uint256 ETA;
     }
 
     function createAuSysOrder(AuSysOrder memory order) external returns (bytes32);
@@ -73,12 +73,14 @@ contract P2PFullFlow is Script {
     address constant AURA      = 0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6;
     address constant CUSTOMER  = 0x16A1e17144f10091D6dA0eCA7F336Ccc76462e03;
     address constant NODE_ADDR = 0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF;
-    // Use CUSTOMER as driver for testing (avoids DriverMaxAssignment on test driver)
-    address constant DRIVER    = CUSTOMER; // same address, valid for test
+    // Use Anvil account[0] as a dedicated driver (distinct from buyer/seller)
+    // NOTE: DRIVER must NOT be the same address as sender or receiver — packageSign's
+    //       if-else checks sender/receiver BEFORE driver, so same-address tricks fail.
+    address constant DRIVER    = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
     uint256 constant CUSTOMER_KEY = 0x262998fbb3c68d8d9450c262aad1ccd4dc12ac12795255920e835eeaa3f775c8;
     uint256 constant NODE_KEY     = 0xb42a1167e6b34c529904cab724252b5f9aee8bab48c223742e5b806544a5c918;
-    uint256 constant DRIVER_KEY   = CUSTOMER_KEY; // driver=customer for this test
+    uint256 constant DRIVER_KEY   = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; // Anvil account[0]
 
     uint256 constant TOKEN_ID = 1;
     uint256 constant QTY      = 1;
@@ -226,13 +228,15 @@ contract P2PFullFlow is Script {
         console.log("\n=== FINAL STATE ===");
         IDiamond.AuSysOrder memory o = diamond.getAuSysOrder(orderId);
         IDiamond.AuSysJourney memory j = diamond.getJourney(journeyId);
-        console.log("Order status:  ", o.currentStatus);
-        console.log("Journey status:", j.currentStatus);
-        console.log("Customer tokenId=1:", diamond.balanceOf(CUSTOMER, TOKEN_ID));
-        console.log("Node tokenId=1:    ", diamond.balanceOf(NODE_ADDR, TOKEN_ID));
-        console.log("Customer AURA:     ", aura.balanceOf(CUSTOMER) / 1 ether);
-        console.log("Node AURA:         ", aura.balanceOf(NODE_ADDR) / 1 ether);
-        console.log("Driver AURA:       ", aura.balanceOf(DRIVER) / 1 ether);
+        // uint8 must be explicitly cast to uint256 for console.log(string, uint256)
+        console.log("Order status:  ", uint256(o.currentStatus));
+        console.log("Journey status:", uint256(j.currentStatus));
+        console.log("Customer ERC1155 balance:", diamond.balanceOf(CUSTOMER, TOKEN_ID));
+        console.log("Node ERC1155 balance:    ", diamond.balanceOf(NODE_ADDR, TOKEN_ID));
+        console.log("Customer AURA (raw):", aura.balanceOf(CUSTOMER));
+        console.log("Node AURA (raw):    ", aura.balanceOf(NODE_ADDR));
+        console.log("Driver AURA (raw):  ", aura.balanceOf(DRIVER));
+        console.log("=== COMPLETE ===");
     }
 
     function _extractJourneyId(VmSafe.Log[] memory logs) internal pure returns (bytes32) {
