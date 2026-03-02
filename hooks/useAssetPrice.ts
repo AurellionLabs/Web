@@ -78,11 +78,28 @@ export function useAssetPrice(
   useEffect(() => {
     fetchPrice();
     if (pollInterval > 0) {
-      intervalRef.current = setInterval(fetchPrice, pollInterval);
+      // Only poll when page is visible to save bandwidth and reduce RPC load
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchPrice();
+        }
+      };
+
+      intervalRef.current = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchPrice();
+        }
+      }, pollInterval);
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      };
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
   }, [fetchPrice, pollInterval]);
 
   return { priceData, isLoading, error, refetch: fetchPrice };
