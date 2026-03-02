@@ -19,6 +19,10 @@ import {
 import { Order } from '@/domain/orders';
 import { DiamondContext } from './diamond-context';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import {
+  hashToAssets,
+  tokenIdToAssets,
+} from '@/infrastructure/repositories/shared/ipfs';
 import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
 import {
   GET_LOGISTICS_ORDER_CREATED_EVENTS,
@@ -709,14 +713,47 @@ export class DiamondNodeRepository implements NodeRepository {
 
   /**
    * Get asset attributes from IPFS
+   * Uses Pinata to fetch asset metadata by file hash or token ID
    */
   async getAssetAttributes(
-    _fileHash: string,
+    fileHash: string,
   ): Promise<TokenizedAssetAttribute[]> {
-    // In the pure dumb indexer, asset attributes are stored on IPFS
-    // This method would need IPFS integration to fetch metadata
-    // For now, return empty array to avoid GraphQL errors
-    return [];
+    if (!this.pinata) {
+      console.warn(
+        '[DiamondNodeRepository] getAssetAttributes: Pinata not configured, returning empty array',
+      );
+      return [];
+    }
+
+    try {
+      // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails
+      let records: import('@/domain/platform').AssetIpfsRecord[] = [];
+      if (fileHash && fileHash.length > 0) {
+        records = await hashToAssets(fileHash, this.pinata);
+      }
+      if ((!records || records.length === 0) && /^(\d+)$/.test(fileHash)) {
+        records = await tokenIdToAssets(fileHash, this.pinata);
+      }
+
+      if (!records || records.length === 0) {
+        return [];
+      }
+
+      // Map the first matching record's attributes into TokenizedAssetAttribute[] shape
+      const first = records[0];
+      const attrs = first.asset?.attributes || [];
+      return attrs.map((a) => ({
+        name: a.name,
+        value: a.values && a.values.length > 0 ? a.values[0] : '',
+        description: a.description || '',
+      }));
+    } catch (error) {
+      console.error(
+        '[DiamondNodeRepository] Error getting asset attributes:',
+        error,
+      );
+      return [];
+    }
   }
 
   /**
