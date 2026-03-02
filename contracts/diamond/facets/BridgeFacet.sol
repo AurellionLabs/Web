@@ -9,6 +9,7 @@ import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 
 /**
  * @title BridgeFacet
@@ -18,6 +19,10 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  */
 contract BridgeFacet is Initializable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    
+    /// @dev EIP-191 signed data prefix for EOA signature verification
+    bytes32 constant EIP191_PREFIX = keccak256("\x19Ethereum Signed Message:\n32");
+    
     event UnifiedOrderCreated(
         bytes32 indexed unifiedOrderId,
         bytes32 indexed clobOrderId,
@@ -68,9 +73,11 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
     uint256 public constant PROTOCOL_FEE_PERCENTAGE = 25; // 0.25% (aligned with OrderBridge.sol)
 
     address public feeRecipient;
+    address public trustedSigner; // Signer for verifying bridgeTradeToLogistics calls
 
     function initialize() public initializer {
         feeRecipient = LibDiamond.contractOwner();
+        trustedSigner = LibDiamond.contractOwner();
     }
 
     function createUnifiedOrder(
@@ -149,7 +156,8 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         bytes32 _ausysOrderId,
         address _seller,
         address _token,
-        uint256 _tokenId
+        uint256 _tokenId,
+        bytes calldata _signature
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
@@ -159,6 +167,25 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
             'Not authorized'
         );
         require(order.status == OrderStatus.UNIFIED_PENDING_TRADE, 'Order not in created status');
+
+        // SIGNATURE VERIFICATION: Prevent arbitrary seller/token assignment
+        // This ensures the trade data comes from a trusted source (CLOB system)
+        if (trustedSigner != address(0)) {
+            bytes32 message = keccak256(
+                abi.encodePacked(
+                    _unifiedOrderId,
+                    _clobTradeId,
+                    _ausysOrderId,
+                    _seller,
+                    _token,
+                    _tokenId,
+                    msg.sender // Bind to the caller (buyer)
+                )
+            );
+            bytes32 ethSignedMessage = keccak256(abi.encodePacked(EIP191_PREFIX, message));
+            address signer = ECDSA.recover(ethSignedMessage, _signature);
+            require(signer == trustedSigner, 'Invalid signature');
+        }
 
         order.clobTradeId = _clobTradeId;
         order.ausysOrderId = _ausysOrderId;
@@ -218,13 +245,20 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         DiamondStorage.Journey storage journey = s.journeys[_journeyId];
 
         require(_phase <= OrderStatus.JOURNEY_CANCELED, 'Invalid phase');
-        require(
-            journey.driver == msg.sender || LibDiamond.contractOwner() == msg.sender,
-            'Not driver or owner'
-        );
 
+        // SECURITY: Validate journey belongs to caller to prevent unauthorized status updates
         bytes32 unifiedOrderId = journey.unifiedOrderId;
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[unifiedOrderId];
+        
+        // Verify the driver is assigned to this journey and it's their journey
+        bool isAssignedDriver = journey.driver == msg.sender;
+        bool isOrderSeller = order.seller == msg.sender;
+        bool isSellerNode = order.sellerNode == msg.sender;
+        
+        require(
+            isAssignedDriver || isOrderSeller || isSellerNode || LibDiamond.contractOwner() == msg.sender,
+            'Not authorized for this journey'
+        );
 
         journey.phase = _phase;
         journey.updatedAt = block.timestamp;
@@ -406,6 +440,13 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         address oldRecipient = feeRecipient;
         feeRecipient = _newRecipient;
         emit BridgeFeeRecipientUpdated(oldRecipient, _newRecipient);
+    }
+
+    function setTrustedSigner(address _newSigner) external {
+        LibDiamond.enforceIsContractOwner();
+        // Allow setting to address(0) to disable signature verification (not recommended for production)
+        emit BridgeFeeRecipientUpdated(trustedSigner, _newSigner);
+        trustedSigner = _newSigner;
     }
 
     function setBountyPercentage(uint256 _percentage) external {
