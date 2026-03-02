@@ -35,12 +35,12 @@ import {
   ChevronsRight,
   TrendingUp,
   Wallet,
-  Send,
   MoreHorizontal,
   PenLine,
+  Info,
 } from 'lucide-react';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
-import { RedemptionDialog } from '@/app/components/redemption/RedemptionDialog';
+import { AssetDetailDrawer } from '@/app/components/assets/AssetDetailDrawer';
 import { Input } from '@/app/components/ui/input';
 import {
   Select,
@@ -138,11 +138,11 @@ export default function CustomerDashboard() {
     refetch: refetchHoldings,
   } = useUserHoldings();
 
-  // Redemption dialog state
+  // Asset detail drawer state
   const [selectedHolding, setSelectedHolding] = useState<UserHolding | null>(
     null,
   );
-  const [isRedemptionOpen, setIsRedemptionOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -648,49 +648,42 @@ export default function CustomerDashboard() {
                     {/* Asset header */}
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <span className="font-mono text-sm font-bold text-foreground/90">
-                          {holding.name}
-                        </span>
-                        <span className="font-mono text-[10px] tracking-[0.15em] text-foreground/30 block mt-0.5 uppercase">
-                          {holding.assetClass}
-                        </span>
+                        <EvaStatusBadge
+                          status="active"
+                          label={holding.className}
+                        />
                       </div>
-                      <EvaStatusBadge
-                        status="active"
-                        label={holding.className}
-                      />
+                      <button
+                        onClick={() => {
+                          setSelectedHolding(holding);
+                          setIsDrawerOpen(true);
+                        }}
+                        className="p-1.5 rounded hover:bg-gold/10 transition-colors group/info"
+                        aria-label="View asset details"
+                      >
+                        <Info className="w-4 h-4 text-foreground/25 group-hover/info:text-gold transition-colors" />
+                      </button>
                     </div>
 
+                    {/* Asset name */}
+                    <p className="font-mono text-sm font-medium text-foreground/70 uppercase tracking-wider mb-1">
+                      {holding.name || holding.className}
+                    </p>
+
                     {/* Balance */}
-                    <div className="flex items-baseline gap-2 mb-3">
+                    <div className="flex items-baseline gap-2 mb-2">
                       <span className="font-mono text-3xl font-bold text-gold tabular-nums">
                         {holding.balance.toString()}
                       </span>
-                      <span className="font-mono text-xs text-foreground/30 uppercase tracking-wider">
+                      <span className="font-mono text-sm text-foreground/30 uppercase tracking-wider">
                         units
                       </span>
                     </div>
 
                     {/* Token ID */}
-                    <p className="font-mono text-[10px] text-foreground/20 mb-4 tabular-nums">
+                    <p className="font-mono text-[10px] text-foreground/20 tabular-nums">
                       Token: {holding.tokenId.slice(0, 12)}...
                     </p>
-
-                    {/* Redeem button */}
-                    <TrapButton
-                      variant="gold"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
-                        setSelectedHolding(holding);
-                        setIsRedemptionOpen(true);
-                      }}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Send className="w-3 h-3" />
-                        Redeem for Delivery
-                      </span>
-                    </TrapButton>
                   </div>
                 </div>
               ))}
@@ -698,26 +691,24 @@ export default function CustomerDashboard() {
           )}
         </EvaPanel>
 
-        {/* Redemption Dialog */}
-        {selectedHolding && (
-          <RedemptionDialog
-            isOpen={isRedemptionOpen}
-            onClose={() => {
-              setIsRedemptionOpen(false);
-              setSelectedHolding(null);
-            }}
-            holding={selectedHolding}
-            onSuccess={() => {
-              refetchHoldings();
-              refreshOrders();
-              toast({
-                title: 'Redemption Initiated',
-                description:
-                  'Your physical delivery has been scheduled. Track it in the orders section below.',
-              });
-            }}
-          />
-        )}
+        {/* Asset Detail Drawer */}
+        <AssetDetailDrawer
+          holding={selectedHolding}
+          isOpen={isDrawerOpen}
+          onClose={() => {
+            setIsDrawerOpen(false);
+            setSelectedHolding(null);
+          }}
+          onRedemptionSuccess={() => {
+            refetchHoldings();
+            refreshOrders();
+            toast({
+              title: 'Redemption Initiated',
+              description:
+                'Your physical delivery has been scheduled. Track it in the orders section below.',
+            });
+          }}
+        />
 
         <EvaSectionMarker section="SEC.02" label="Orders" variant="crimson" />
 
