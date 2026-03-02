@@ -143,7 +143,7 @@ contract OrderMatchingFacet {
             DiamondStorage.CLOBOrder storage v1Order = s.clobOrders[orders[j]];
             if (v1Order.status > 1) continue;
             
-            uint256 fillAmount = _min(remaining, v1Order.amount - v1Order.filledAmount);
+            uint256 fillAmount = CLOBLib.min(remaining, v1Order.amount - v1Order.filledAmount);
             if (fillAmount > 0) {
                 _executeV1Trade(s, v2OrderId, orders[j], ctx, price, fillAmount, v2Maker, v1Order.maker, v2IsBuy);
                 remaining -= fillAmount;
@@ -228,9 +228,9 @@ contract OrderMatchingFacet {
         if (remaining > 0) {
             DiamondStorage.Market storage market = s.markets[order.marketId];
             if (isBuy) {
-                IERC20(_stringToAddress(market.quoteToken)).transfer(maker, CLOBLib.calculateQuoteAmount(price, remaining));
+                IERC20(CLOBLib.stringToAddress(market.quoteToken)).transfer(maker, CLOBLib.calculateQuoteAmount(price, remaining));
             } else {
-                IERC1155(_stringToAddress(market.baseToken)).safeTransferFrom(address(this), maker, market.baseTokenId, remaining, "");
+                IERC1155(CLOBLib.stringToAddress(market.baseToken)).safeTransferFrom(address(this), maker, market.baseTokenId, remaining, "");
             }
         }
         emit MatchingOrderCancelled(orderId, maker, remaining, reason);
@@ -284,28 +284,13 @@ contract OrderMatchingFacet {
         return p;
     }
     
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) { return a < b ? a : b; }
-    
     function _getFillAmount(DiamondStorage.AppStorage storage s, bytes32 orderId, uint256 remaining) internal view returns (uint256) {
         (, uint96 amount, uint64 filled) = _unpack(s.packedOrders[orderId].priceAmountFilled);
-        return _min(remaining, amount - filled);
+        return CLOBLib.min(remaining, amount - filled);
     }
     
     function _executeTradeWithContext(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 sellOrderId, TradeContext memory ctx, uint256 price, uint256 amount) internal {
         _executeTrade(s, buyOrderId, sellOrderId, ctx.marketId, uint96(price), uint96(amount), ctx.baseToken, ctx.baseTokenId, ctx.quoteToken);
-    }
-    
-    function _stringToAddress(string memory _str) internal pure returns (address) {
-        bytes memory b = bytes(_str);
-        uint160 result = 0;
-        for (uint256 i = 2; i < 42; i++) {
-            result *= 16;
-            uint8 c = uint8(b[i]);
-            if (c >= 48 && c <= 57) result += c - 48;
-            else if (c >= 97 && c <= 102) result += c - 87;
-            else if (c >= 65 && c <= 70) result += c - 55;
-        }
-        return address(result);
     }
     
     function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {

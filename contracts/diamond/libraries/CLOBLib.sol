@@ -300,5 +300,31 @@ library CLOBLib {
         }
         return string(str);
     }
+    
+    /**
+     * @notice Convert hex string to address
+     * @dev Reverts if string is not valid hex address (42 chars starting with 0x)
+     */
+    function stringToAddress(string memory _str) internal pure returns (address) {
+        bytes memory b = bytes(_str);
+        require(b.length == 42, "Invalid address length");
+        require(b[0] == "0" && (b[1] == "x" || b[1] == "X"), "Invalid address prefix");
+        
+        uint160 result = 0;
+        for (uint256 i = 2; i < 42; i++) {
+            result *= 16;
+            uint8 c = uint8(b[i]);
+            if (c >= 48 && c <= 57) {
+                result += c - 48;
+            } else if (c >= 97 && c <= 102) {
+                result += c - 87;
+            } else if (c >= 65 && c <= 70) {
+                result += c - 55;
+            } else {
+                revert("Invalid hex char");
+            }
+        }
+        return address(result);
+    }
 }
 
