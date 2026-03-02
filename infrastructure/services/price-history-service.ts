@@ -1,6 +1,7 @@
 'use client';
 
 import { CLOBRepository, CLOBTrade } from '../repositories/clob-repository';
+import { clobV2Repository } from '../repositories/clob-v2-repository';
 
 /**
  * Time period for candlestick charts
@@ -92,11 +93,16 @@ export class PriceHistoryService {
       const timeRangeSeconds = intervalSeconds * candleCount;
 
       // Fetch trades (limit based on expected density)
-      const trades = await this.clobRepository.getTrades(
-        baseToken,
-        baseTokenId,
-        500, // Fetch up to 500 trades
-      );
+      const [v1Trades, v2Trades] = await Promise.all([
+        this.clobRepository.getTrades(baseToken, baseTokenId, 500),
+        clobV2Repository
+          .getTrades(baseToken, baseTokenId, 500)
+          .catch(() => [] as CLOBTrade[]),
+      ]);
+      const trades: CLOBTrade[] = [
+        ...v1Trades,
+        ...(v2Trades as unknown as CLOBTrade[]),
+      ].sort((a, b) => a.timestamp - b.timestamp);
 
       if (trades.length === 0) {
         return [];

@@ -184,6 +184,8 @@ const NumberInput: React.FC<NumberInputProps> = ({
         type="number"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onWheel={(e) => (e.target as HTMLInputElement).blur()}
+        min="0"
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
