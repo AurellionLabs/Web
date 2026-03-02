@@ -354,15 +354,14 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
   }, []);
 
   // Handle price click from order book
-  const handlePriceClick = useCallback((price: number, side: 'bid' | 'ask') => {
-    console.log(`Clicked ${side} at ${price}`);
-  }, []);
+  const handlePriceClick = useCallback(
+    (price: number, side: 'bid' | 'ask') => {},
+    [],
+  );
 
   // Handle order placement - connects TradePanel to CLOB with OrderBridge
   const handlePlaceOrder = useCallback(
     async (order: OrderData): Promise<boolean> => {
-      console.log('[TradingPage] Placing order via CLOB + OrderBridge:', order);
-
       if (!asset) {
         console.error('[TradingPage] No asset selected for order');
         return false;
@@ -394,15 +393,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           isBuy: order.side === 'buy',
         };
 
-        console.log('[TradingPage] Placing CLOB order:', clobParams);
-
         // For LIMIT SELL orders: use Diamond's placeSellOrderFromNode
         // This transfers tokens directly from Diamond to CLOB without going through user's wallet
         if (order.side === 'sell' && order.type === 'limit') {
-          console.log(
-            '[TradingPage] Limit sell order - placing directly from node inventory...',
-          );
-
           // Get user's owned nodes
           const ownedNodes = await getOwnedNodes();
           if (ownedNodes.length === 0) {
@@ -415,19 +408,9 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
-          console.log(
-            '[TradingPage] Node balance:',
-            nodeBalance.toString(),
-            'Required:',
-            quantity.toString(),
-          );
 
           // If insufficient balance, show deposit modal
           if (nodeBalance < quantity) {
-            console.log(
-              '[TradingPage] Insufficient node balance - showing deposit modal',
-            );
-
             // Get wallet balance for the modal
             let walletBalance = BigInt(0);
             try {
@@ -469,8 +452,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             return false; // Don't place order yet
           }
 
-          console.log('[TradingPage] Placing sell order from node:', nodeHash);
-
           try {
             // Place sell order directly from Diamond (tokens already deposited)
             const orderId = await placeSellOrderFromNode(
@@ -480,7 +461,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               priceInWei,
               quantity,
             );
-            console.log('[TradingPage] Sell order placed from node:', orderId);
             return true;
           } catch (sellError: any) {
             console.error(
@@ -550,10 +530,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
         // For MARKET SELL orders: use placeSellOrderFromNode with best bid price
         if (order.side === 'sell' && order.type === 'market') {
-          console.log(
-            '[TradingPage] Market sell order - checking node inventory...',
-          );
-
           // Get user's owned nodes
           const ownedNodes = await getOwnedNodes();
           if (ownedNodes.length === 0) {
@@ -565,17 +541,8 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
 
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
-          console.log(
-            '[TradingPage] Node balance:',
-            nodeBalance.toString(),
-            'Required:',
-            quantity.toString(),
-          );
 
           if (nodeBalance < quantity) {
-            console.log(
-              '[TradingPage] Insufficient node balance for market sell',
-            );
             // Show deposit modal
             let walletBalance = BigInt(0);
             try {
@@ -627,12 +594,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           if (bestBid && bestBid > 0) {
             // Use best bid price with 10% slippage (minimum acceptable)
             sellPrice = BigInt(Math.round(bestBid * 0.9 * 1e18));
-            console.log(
-              '[TradingPage] Market sell: using best bid',
-              bestBid,
-              'with 10% slippage, sellPrice:',
-              sellPrice.toString(),
-            );
           } else {
             // No bids - cannot execute market sell
             console.error('[TradingPage] No bids available for market sell');
@@ -646,10 +607,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
               clobParams.quoteToken,
               sellPrice,
               quantity,
-            );
-            console.log(
-              '[TradingPage] Market sell order placed from node:',
-              orderId,
             );
             return true;
           } catch (sellError: any) {
@@ -673,10 +630,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             return false;
           }
 
-          console.log(
-            '[TradingPage] CLOB order placed:',
-            result.unifiedOrderId,
-          );
           return true;
         } else {
           // Market order - use the contract's placeMarketOrder which:
@@ -684,8 +637,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
           // 2. Creates an IOC (Immediate Or Cancel) order
           // 3. Matches immediately against existing orders
           // 4. Cancels any unfilled portion
-
-          console.log('[TradingPage] Placing market order via contract...');
 
           const result = await orderBridgeService.placeMarketOrder({
             baseToken: clobParams.baseToken,
@@ -701,7 +652,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
             return false;
           }
 
-          console.log('[TradingPage] Market order executed:', result.orderId);
           return true;
         }
       } catch (error) {
@@ -1110,10 +1060,6 @@ const TradingPoolPage: FC<PageProps> = ({ params }) => {
                   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
                   pendingSellOrder.price,
                   pendingSellOrder.requiredAmount,
-                );
-                console.log(
-                  '[TradingPage] Sell order placed after deposit:',
-                  orderId,
                 );
               } catch (err) {
                 console.error(

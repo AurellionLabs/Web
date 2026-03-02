@@ -144,9 +144,6 @@ export default function DriverDashboard() {
 
             if (driverDeliverySigned && !receiverSigned) {
               newWaitingJobs.add(delivery.jobId);
-              console.log(
-                `[DriverDashboard] Restored waitingForCustomer for ${delivery.jobId}`,
-              );
             }
           } catch (err) {
             checkedDeliveryJobsRef.current.delete(delivery.jobId);

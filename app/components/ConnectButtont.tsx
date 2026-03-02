@@ -16,19 +16,15 @@ export default function ConnectButton() {
 
   const handleConnect = async () => {
     if (!ready) {
-      console.log('Privy is not ready yet');
       return;
     }
     if (!authenticated) {
       try {
-        console.log('Calling connectWallet (privy.login)...');
         await connectWallet();
-        console.log('connectWallet finished.');
       } catch (error) {
         console.error('Connection error:', error);
       }
     } else {
-      console.log('Already authenticated via Privy.');
     }
   };
 

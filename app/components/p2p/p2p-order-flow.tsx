@@ -268,7 +268,6 @@ export function P2POrderFlow({
     if (!needsPolling) return;
 
     const interval = setInterval(() => {
-      console.log('[P2POrderFlow] Polling signatures...');
       loadSignatures(true);
     }, 5000);
 
@@ -303,16 +302,10 @@ export function P2POrderFlow({
       order.currentStatus !== OrderStatus.SETTLED
     ) {
       autoHandOnAttemptedRef.current = true;
-      console.log(
-        '[P2POrderFlow] Both pickup sigs detected on-chain, auto-attempting startJourney...',
-      );
       // packageSign is idempotent, startJourney/handOn will succeed if both signed
       onSignPickup(order.id, journeyId)
         .then((result) => {
           if (result === 'started') {
-            console.log(
-              '[P2POrderFlow] Auto startJourney succeeded, journey now InTransit',
-            );
           }
         })
         .catch((err) => {
@@ -346,18 +339,13 @@ export function P2POrderFlow({
       !localSettled
     ) {
       autoHandOffAttemptedRef.current = true;
-      console.log(
-        '[P2POrderFlow] Both delivery sigs detected, auto-attempting handOff...',
-      );
       onCompleteHandoff(order.id, journeyId)
         .then((result) => {
           if (result === 'settled') {
-            console.log('[P2POrderFlow] Auto handOff succeeded, order settled');
             setLocalSettled(true);
             setWaitingForDriver(false);
           } else {
             // Driver sig may not be on-chain yet — allow retry
-            console.log('[P2POrderFlow] Auto handOff returned:', result);
             autoHandOffAttemptedRef.current = false;
           }
         })

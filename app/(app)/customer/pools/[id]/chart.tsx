@@ -145,7 +145,6 @@ export default function Chart({ groupedStakes, timeRange = '1D' }: ChartProps) {
         const convertedValue = rawValue / 1e18;
 
         // Debug logging to help identify the issue
-        console.log(`Raw value: ${rawValue}, Converted: ${convertedValue}`);
 
         // Convert from wei to token amount (divide by 10^18)
         return convertedValue;

@@ -12,7 +12,6 @@ export default function RemoveLiquidityForm({ poolId }: { poolId: string }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Remove liquidity logic here
-    console.log(`Removing ${percentage}% liquidity from pool ${poolId}`);
   };
 
   return (

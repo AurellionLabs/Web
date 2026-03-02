@@ -149,15 +149,6 @@ export default function P2PMarketOffersPage() {
 
     try {
       const openOffers = await p2pRepository.getOpenOffers();
-      console.log(
-        '[P2P Market] All offers with tokenIds:',
-        openOffers.map((o) => ({
-          id: o.id?.slice(0, 10) + '...',
-          tokenId: o.tokenId,
-          quantity: o.quantity.toString(),
-          isSellerInitiated: o.isSellerInitiated,
-        })),
-      );
       setOffers(openOffers);
 
       if (address) {

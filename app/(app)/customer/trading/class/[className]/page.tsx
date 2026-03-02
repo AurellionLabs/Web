@@ -300,8 +300,6 @@ function ClassDetailPageContent() {
       assetId: string;
       nodeHash?: string; // For sell orders - which node's inventory to use
     }): Promise<boolean> => {
-      console.log('[ClassTradingPage] Placing order:', order);
-
       if (!tradeableAsset) {
         console.error('[ClassTradingPage] No asset selected for order');
         return false;
@@ -342,15 +340,9 @@ function ClassDetailPageContent() {
           isBuy: order.side === 'buy',
         };
 
-        console.log('[ClassTradingPage] Placing CLOB order:', clobParams);
-
         // For SELL orders: use Diamond's placeSellOrderFromNode
         // Node must have deposited tokens first
         if (order.side === 'sell' && order.type === 'limit') {
-          console.log(
-            '[ClassTradingPage] Limit sell order - checking node inventory...',
-          );
-
           // Use the nodeHash from the selected asset (passed via order.nodeHash)
           // This ensures we check/use the correct node's inventory
           let nodeHash = order.nodeHash;
@@ -374,28 +366,11 @@ function ClassDetailPageContent() {
           // Use the effective token ID (from user's inventory for sell orders)
           const tokenId = effectiveTokenId;
 
-          console.log(
-            '[ClassTradingPage] Using nodeHash:',
-            nodeHash,
-            'tokenId:',
-            tokenId,
-          );
-
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
-          console.log(
-            '[ClassTradingPage] Node balance:',
-            nodeBalance.toString(),
-            'Required:',
-            quantity.toString(),
-          );
 
           // If insufficient balance, show deposit modal
           if (nodeBalance < quantity) {
-            console.log(
-              '[ClassTradingPage] Insufficient node balance - showing deposit modal',
-            );
-
             // Get wallet balance for the modal
             let walletBalance = BigInt(0);
             try {
@@ -440,11 +415,6 @@ function ClassDetailPageContent() {
             return false; // Don't place order yet
           }
 
-          console.log(
-            '[ClassTradingPage] Placing limit sell order from node:',
-            nodeHash,
-          );
-
           try {
             // Place sell order directly from Diamond (tokens already deposited)
             const orderId = await placeSellOrderFromNode(
@@ -453,10 +423,6 @@ function ClassDetailPageContent() {
               NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
               priceInWei,
               quantity,
-            );
-            console.log(
-              '[ClassTradingPage] Limit sell order placed from node:',
-              orderId,
             );
             return true;
           } catch (sellError: any) {
@@ -527,10 +493,6 @@ function ClassDetailPageContent() {
 
         // For MARKET SELL orders: use placeNodeMarketSellOrder with best bid price
         if (order.side === 'sell' && order.type === 'market') {
-          console.log(
-            '[ClassTradingPage] Market sell order - checking node inventory...',
-          );
-
           // Use the nodeHash from the order (passed via order.nodeHash)
           let nodeHash = order.nodeHash;
 
@@ -552,26 +514,10 @@ function ClassDetailPageContent() {
           // Use the effective token ID (from user's inventory for sell orders)
           const tokenId = effectiveTokenId;
 
-          console.log(
-            '[ClassTradingPage] Market sell using nodeHash:',
-            nodeHash,
-            'tokenId:',
-            tokenId,
-          );
-
           // Check node's deposited balance
           const nodeBalance = await getNodeTokenBalance(nodeHash, tokenId);
-          console.log(
-            '[ClassTradingPage] Node balance:',
-            nodeBalance.toString(),
-            'Required:',
-            quantity.toString(),
-          );
 
           if (nodeBalance < quantity) {
-            console.log(
-              '[ClassTradingPage] Insufficient node balance for market sell',
-            );
             // Show deposit modal
             let walletBalance = BigInt(0);
             try {
@@ -629,12 +575,6 @@ function ClassDetailPageContent() {
           if (bestBid && bestBid > 0) {
             // Use best bid price with 10% slippage (minimum acceptable)
             sellPrice = BigInt(Math.round(bestBid * 0.9 * 1e18));
-            console.log(
-              '[ClassTradingPage] Market sell: using best bid',
-              bestBid,
-              'with 10% slippage, sellPrice:',
-              sellPrice.toString(),
-            );
           } else {
             // No bids - cannot execute market sell
             console.error(
@@ -650,10 +590,6 @@ function ClassDetailPageContent() {
               NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
               sellPrice,
               quantity,
-            );
-            console.log(
-              '[ClassTradingPage] Market sell order placed from node:',
-              orderId,
             );
             return true;
           } catch (sellError: any) {
@@ -680,21 +616,11 @@ function ClassDetailPageContent() {
             return false;
           }
 
-          console.log(
-            '[ClassTradingPage] CLOB order placed:',
-            result.unifiedOrderId,
-          );
           return true;
         } else {
           // Market order - executes immediately at best available price
           // Use 10% slippage (1000 basis points) for market orders
           const maxSlippageBps = 1000; // 10% slippage
-
-          console.log(
-            '[ClassTradingPage] Placing market order with slippage:',
-            maxSlippageBps,
-            'bps',
-          );
 
           const result = await orderBridgeService.placeMarketOrder({
             ...clobParams,
@@ -709,10 +635,6 @@ function ClassDetailPageContent() {
             return false;
           }
 
-          console.log(
-            '[ClassTradingPage] Market order executed:',
-            result.orderId,
-          );
           return true;
         }
       } catch (error) {
@@ -1050,10 +972,6 @@ function ClassDetailPageContent() {
                   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
                   pendingSellOrder.price,
                   pendingSellOrder.requiredAmount,
-                );
-                console.log(
-                  '[ClassTradingPage] Sell order placed after deposit:',
-                  orderId,
                 );
               } catch (err) {
                 console.error(

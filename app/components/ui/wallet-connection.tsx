@@ -309,9 +309,6 @@ export function WalletConnection() {
       }
     } else {
       fundingChainIdForMoonpay = arbMainnet.id;
-      console.log(
-        '[WalletConnection] No connected wallet or chainId for MoonPay. Defaulting MoonPay config to Arbitrum.',
-      );
     }
 
     let currencyCode: MoonpayCurrencyCode | undefined = undefined;
