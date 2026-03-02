@@ -79,6 +79,77 @@ export function useWallet() {
     setChainId(parseChainId(currentWallet?.chainId));
   }, [privy.authenticated, privyWallets.wallets]);
 
+  // Handle external wallet account switches (e.g. OKX, MetaMask account change).
+  // Privy doesn't always propagate accountsChanged to its wallets array for
+  // external (injected) wallets, so we listen directly on window.ethereum and
+  // reconcile with the known Privy wallet list.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const win = window as Window & {
+      ethereum?: { on?: Function; removeListener?: Function };
+    };
+    if (!win.ethereum?.on) return;
+
+    const handleAccountsChanged = (accounts: string[]) => {
+      const newAddress = accounts[0]?.toLowerCase();
+      const currentAddress = connectedWallet?.address?.toLowerCase();
+
+      if (!newAddress) {
+        // External wallet disconnected all accounts
+        console.warn(
+          '[useWallet] accountsChanged: no accounts — wallet disconnected externally',
+        );
+        setConnectedWallet(null);
+        setIsConnected(false);
+        setAddress(null);
+        setChainId(null);
+        return;
+      }
+
+      if (newAddress === currentAddress) return; // no actual change
+
+      console.log(
+        '[useWallet] accountsChanged: external account switch detected',
+        newAddress,
+      );
+
+      // Check if Privy already knows about this address (multi-wallet scenario)
+      const matchingPrivyWallet = privyWallets.wallets?.find(
+        (w) => w.address?.toLowerCase() === newAddress,
+      );
+
+      if (matchingPrivyWallet) {
+        console.log(
+          '[useWallet] accountsChanged: matched existing Privy wallet',
+          matchingPrivyWallet.address,
+        );
+        setConnectedWallet(matchingPrivyWallet);
+        setIsConnected(true);
+        setAddress(matchingPrivyWallet.address);
+        setChainId(parseChainId(matchingPrivyWallet.chainId));
+      } else {
+        // Privy doesn't have a session for the newly active address.
+        // Keep the Privy wallet object as-is (it's the only valid signer we
+        // have), but surface the address mismatch so UI components can prompt
+        // the user to reconnect / re-authenticate.
+        console.warn(
+          '[useWallet] accountsChanged: switched to account unknown to Privy — session mismatch. Prompt reconnect.',
+          { privyAddress: currentAddress, browserAddress: newAddress },
+        );
+        // Mirror the browser address for display purposes only
+        setAddress(newAddress);
+        // isConnected stays true so the UI does not flash; the underlying signer
+        // is stale and any tx will fail at the provider level — the correct
+        // signal for the user to reconnect.
+      }
+    };
+
+    win.ethereum.on('accountsChanged', handleAccountsChanged);
+    return () => {
+      win.ethereum?.removeListener?.('accountsChanged', handleAccountsChanged);
+    };
+  }, [connectedWallet, privyWallets.wallets]);
+
   // Simplified connect/disconnect just call Privy's login/logout
   const connect = useCallback(async () => {
     setError(null);
