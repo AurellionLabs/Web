@@ -37,6 +37,7 @@ export function RoleSelector() {
   const router = useRouter();
   const nodesContext = useNodesSafe();
   const nodeStatus = nodesContext?.isRegisteredNode ?? false;
+  const comboboxId = React.useId();
 
   const checkNodeRegistration = async () => {
     try {
@@ -74,6 +75,7 @@ export function RoleSelector() {
         <button
           role="combobox"
           aria-expanded={open}
+          aria-controls={`${comboboxId}-list`}
           disabled={isNavigating}
           className="w-[140px] px-3 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-neutral-900/50 text-neutral-300 hover:bg-neutral-800 hover:text-white hover:border-neutral-600 transition-all duration-200 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -88,7 +90,7 @@ export function RoleSelector() {
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[140px] p-0 bg-neutral-900 border-neutral-800">
-        <Command className="bg-transparent">
+        <Command id={`${comboboxId}-list`} className="bg-transparent">
           <CommandInput
             placeholder="Search role..."
             className="border-neutral-800"

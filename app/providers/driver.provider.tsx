@@ -415,6 +415,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       refreshDeliveries();
     } else {
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverWalletAddress]);
 
   return (

@@ -132,6 +132,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
       setIsInitialized(false);
       throw err;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     connect,
     privy.authenticated,
@@ -182,6 +183,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
         clearTimeout(retryTimeout);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isReady,
     privy.ready,
@@ -229,6 +231,7 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentWalletAddress, isInitialized]);
 
   if (!IS_E2E_TEST_MODE && (!privy.ready || !privyWallets.ready)) {

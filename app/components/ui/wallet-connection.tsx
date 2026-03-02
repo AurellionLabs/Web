@@ -65,6 +65,7 @@ export function WalletConnection() {
     if (authenticated && wallets?.length > 0) {
       checkConnection();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     ready,
     authenticated,
@@ -89,6 +90,7 @@ export function WalletConnection() {
     if (authenticated && wallets?.length > 0) {
       checkConnection();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, wallets]);
 
   useEffect(() => {
