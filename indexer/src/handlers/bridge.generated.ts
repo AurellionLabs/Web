@@ -1,8 +1,8 @@
-// Auto-generated handler for bridge domain - Raw event storage only
-// Generated at: 2026-03-02T06:06:41.563Z
+// Auto-generated handler for bridge domain
+// Generated at: 2026-03-02T06:21:55.491Z
 //
-// Pure Dumb Indexer: Store raw events only, NO aggregate tables
-// All aggregation happens in frontend repository layer
+// Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
+// This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: BridgeFacet
 
 import { ponder } from 'ponder:registry';
@@ -19,6 +19,8 @@ import {
   diamondOrderSettledEvents,
   diamondTradeMatchedEvents,
   diamondUnifiedOrderCreatedEvents,
+  orders,
+  journeys,
 } from 'ponder:schema';
 
 // Utility functions
@@ -37,7 +39,7 @@ ponder.on('Diamond:BountyPaid', async ({ event, context }) => {
   const { unifiedOrderId, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondBountyPaidEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
@@ -57,7 +59,7 @@ ponder.on('Diamond:BridgeFeeRecipientUpdated', async ({ event, context }) => {
   const { oldRecipient, newRecipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondBridgeFeeRecipientUpdatedEvents).values({
     id: id,
     old_recipient: oldRecipient,
@@ -77,13 +79,21 @@ ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
   const { unifiedOrderId, previousStatus } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondBridgeOrderCancelledEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
     previous_status: BigInt(previousStatus),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+
+  // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
+  await context.db.update(orders, { id: unifiedOrderId }).set({
+    current_status: 5,
+    updated_at: BigInt(event.block.timestamp),
+    block_number: event.block.number,
     transaction_hash: event.transaction.hash,
   });
 });
@@ -97,7 +107,7 @@ ponder.on('Diamond:FundsEscrowed', async ({ event, context }) => {
   const { buyer, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondFundsEscrowedEvents).values({
     id: id,
     buyer: buyer,
@@ -117,7 +127,7 @@ ponder.on('Diamond:FundsRefunded', async ({ event, context }) => {
   const { recipient, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondFundsRefundedEvents).values({
     id: id,
     recipient: recipient,
@@ -137,7 +147,7 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
   const { unifiedOrderId, journeyId, phase } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondJourneyStatusUpdatedEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
@@ -145,6 +155,15 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
     phase: BigInt(phase),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+
+  // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
+  await context.db.update(journeys, { id: journeyId }).set({
+    current_status: Number(BigInt(phase)),
+    order_id: unifiedOrderId,
+    updated_at: BigInt(event.block.timestamp),
+    block_number: event.block.number,
     transaction_hash: event.transaction.hash,
   });
 });
@@ -158,7 +177,7 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
   const { unifiedOrderId, ausysOrderId, journeyIds, bounty, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondLogisticsOrderCreatedEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
@@ -172,6 +191,23 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
+
+  // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
+  await context.db
+    .insert(journeys)
+    .values({
+      id: ausysOrderId,
+      sender: node,
+      receiver: node,
+      current_status: 0,
+      bounty: bounty,
+      order_id: unifiedOrderId,
+      created_at: BigInt(event.block.timestamp),
+      updated_at: BigInt(event.block.timestamp),
+      block_number: event.block.number,
+      transaction_hash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
 /**
@@ -184,7 +220,7 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOrderSettledEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
@@ -194,6 +230,14 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
     driver_amount: driverAmount,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+
+  // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
+  await context.db.update(orders, { id: unifiedOrderId }).set({
+    current_status: 4,
+    updated_at: BigInt(event.block.timestamp),
+    block_number: event.block.number,
     transaction_hash: event.transaction.hash,
   });
 });
@@ -208,7 +252,7 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondTradeMatchedEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
@@ -241,7 +285,7 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondUnifiedOrderCreatedEvents).values({
     id: id,
     unified_order_id: unifiedOrderId,
@@ -256,4 +300,25 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
+
+  // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
+  await context.db
+    .insert(orders)
+    .values({
+      id: unifiedOrderId,
+      buyer: buyer,
+      seller: seller,
+      token: token,
+      token_id: tokenId,
+      token_quantity: quantity,
+      requested_token_quantity: quantity,
+      price: price,
+      tx_fee: BigInt(0),
+      current_status: 0,
+      created_at: BigInt(event.block.timestamp),
+      updated_at: BigInt(event.block.timestamp),
+      block_number: event.block.number,
+      transaction_hash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });

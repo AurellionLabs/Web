@@ -1,8 +1,8 @@
-// Auto-generated handler for clob domain - Raw event storage only
-// Generated at: 2026-03-02T06:06:41.562Z
+// Auto-generated handler for clob domain
+// Generated at: 2026-03-02T06:21:55.491Z
 //
-// Pure Dumb Indexer: Store raw events only, NO aggregate tables
-// All aggregation happens in frontend repository layer
+// Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
+// This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: CLOBFacetV2, OrderMatchingFacet, OrderRouterFacet
 
 import { ponder } from 'ponder:registry';
@@ -42,7 +42,7 @@ ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondCLOBOrderCancelledEvents).values({
     id: id,
     order_id: orderId,
@@ -71,7 +71,7 @@ ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondCLOBOrderFilledEvents).values({
     id: id,
     order_id: orderId,
@@ -109,7 +109,7 @@ ponder.on('Diamond:CLOBTradeExecuted', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondCLOBTradeExecutedEvents).values({
     id: id,
     trade_id: tradeId,
@@ -140,7 +140,7 @@ ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
   const { marketId, baseToken, baseTokenId, quoteToken } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondMarketCreatedEvents).values({
     id: id,
     market_id: marketId,
@@ -173,7 +173,7 @@ ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOrderCreatedEvents).values({
     id: id,
     order_id: orderId,
@@ -201,7 +201,7 @@ ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
   const { orderId, expiredAt } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOrderExpiredEvents).values({
     id: id,
     order_id: orderId,
@@ -231,7 +231,7 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOrderPlacedWithTokensEvents).values({
     id: id,
     order_id: orderId,
@@ -269,7 +269,7 @@ ponder.on('Diamond:AusysOrderFilled', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondAusysOrderFilledEvents).values({
     id: id,
     order_id: orderId,
@@ -293,7 +293,7 @@ ponder.on('Diamond:MatchingOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondMatchingOrderCancelledEvents).values({
     id: id,
     order_id: orderId,
@@ -316,7 +316,7 @@ ponder.on('Diamond:TradeExecuted', async ({ event, context }) => {
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondTradeExecutedEvents).values({
     id: id,
     trade_id: tradeId,
@@ -344,7 +344,7 @@ ponder.on('Diamond:OrderRouted', async ({ event, context }) => {
   const { orderId, maker, orderSource, isBuy } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOrderRoutedEvents).values({
     id: id,
     order_id: orderId,
@@ -366,7 +366,7 @@ ponder.on('Diamond:RouterOrderCancelled', async ({ event, context }) => {
   const { orderId, maker, remainingAmount, reason } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondRouterOrderCancelledEvents).values({
     id: id,
     order_id: orderId,
@@ -399,7 +399,7 @@ ponder.on('Diamond:RouterOrderCreated', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondRouterOrderCreatedEvents).values({
     id: id,
     order_id: orderId,
@@ -437,7 +437,7 @@ ponder.on('Diamond:RouterOrderPlaced', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondRouterOrderPlacedEvents).values({
     id: id,
     order_id: orderId,
@@ -465,7 +465,7 @@ ponder.on('Diamond:RouterTradeExecuted', async ({ event, context }) => {
     event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondRouterTradeExecutedEvents).values({
     id: id,
     trade_id: tradeId,

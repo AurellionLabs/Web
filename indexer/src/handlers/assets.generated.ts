@@ -1,8 +1,8 @@
-// Auto-generated handler for assets domain - Raw event storage only
-// Generated at: 2026-03-02T06:06:41.564Z
+// Auto-generated handler for assets domain
+// Generated at: 2026-03-02T06:21:55.492Z
 //
-// Pure Dumb Indexer: Store raw events only, NO aggregate tables
-// All aggregation happens in frontend repository layer
+// Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
+// This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: AssetsFacet
 
 import { ponder } from 'ponder:registry';
@@ -19,6 +19,7 @@ import {
   diamondTransferBatchEvents,
   diamondTransferSingleEvents,
   diamondURIEvents,
+  assets,
 } from 'ponder:schema';
 
 // Utility functions
@@ -37,7 +38,7 @@ ponder.on('Diamond:ApprovalForAll', async ({ event, context }) => {
   const { account, operator, approved } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondApprovalForAllEvents).values({
     id: id,
     account: account,
@@ -58,7 +59,7 @@ ponder.on('Diamond:AssetAttributeAdded', async ({ event, context }) => {
   const { hash, attributeIndex, name, values, description } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondAssetAttributeAddedEvents).values({
     id: id,
     hash: hash,
@@ -83,7 +84,7 @@ ponder.on('Diamond:CustodyEstablished', async ({ event, context }) => {
   const { tokenId, custodian, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondCustodyEstablishedEvents).values({
     id: id,
     token_id: tokenId,
@@ -104,7 +105,7 @@ ponder.on('Diamond:CustodyReleased', async ({ event, context }) => {
   const { tokenId, custodian, amount, redeemer } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondCustodyReleasedEvents).values({
     id: id,
     token_id: tokenId,
@@ -126,7 +127,7 @@ ponder.on('Diamond:MintedAsset', async ({ event, context }) => {
   const { account, hash, tokenId, name, assetClass, className } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondMintedAssetEvents).values({
     id: id,
     account: account,
@@ -139,6 +140,35 @@ ponder.on('Diamond:MintedAsset', async ({ event, context }) => {
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
+
+  // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
+  await context.db
+    .insert(assets)
+    .values({
+      id: hash,
+      hash: hash,
+      token_id: tokenId,
+      name: name,
+      asset_class: assetClass,
+      class_name: className,
+      account: account,
+      created_at: BigInt(event.block.timestamp),
+      updated_at: BigInt(event.block.timestamp),
+      block_number: event.block.number,
+      transaction_hash: event.transaction.hash,
+    })
+    .onConflictDoUpdate({
+      hash: hash,
+      token_id: tokenId,
+      name: name,
+      asset_class: assetClass,
+      class_name: className,
+      account: account,
+      created_at: BigInt(event.block.timestamp),
+      updated_at: BigInt(event.block.timestamp),
+      block_number: event.block.number,
+      transaction_hash: event.transaction.hash,
+    });
 });
 
 /**
@@ -150,7 +180,7 @@ ponder.on('Diamond:SupportedClassAdded', async ({ event, context }) => {
   const { classNameHash, className } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondSupportedClassAddedEvents).values({
     id: id,
     class_name_hash: classNameHash,
@@ -170,7 +200,7 @@ ponder.on('Diamond:SupportedClassRemoved', async ({ event, context }) => {
   const { classNameHash, className } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondSupportedClassRemovedEvents).values({
     id: id,
     class_name_hash: classNameHash,
@@ -190,7 +220,7 @@ ponder.on('Diamond:TransferBatch', async ({ event, context }) => {
   const { operator, from, to, ids, values } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondTransferBatchEvents).values({
     id: id,
     operator: operator,
@@ -217,7 +247,7 @@ ponder.on('Diamond:TransferSingle', async ({ event, context }) => {
   const { operator, from, to, id: arg_id, value: arg_value } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondTransferSingleEvents).values({
     id: id,
     operator: operator,
@@ -240,7 +270,7 @@ ponder.on('Diamond:URI', async ({ event, context }) => {
   const { value: arg_value, id: arg_id } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondURIEvents).values({
     id: id,
     value: arg_value,

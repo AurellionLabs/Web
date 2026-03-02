@@ -1,8 +1,8 @@
-// Auto-generated handler for operators domain - Raw event storage only
-// Generated at: 2026-03-02T06:06:41.563Z
+// Auto-generated handler for operators domain
+// Generated at: 2026-03-02T06:21:55.492Z
 //
-// Pure Dumb Indexer: Store raw events only, NO aggregate tables
-// All aggregation happens in frontend repository layer
+// Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
+// This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: OperatorFacet
 
 import { ponder } from 'ponder:registry';
@@ -32,7 +32,7 @@ ponder.on('Diamond:OperatorApproved', async ({ event, context }) => {
   const { operator } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOperatorApprovedEvents).values({
     id: id,
     operator: operator,
@@ -51,7 +51,7 @@ ponder.on('Diamond:OperatorReputationUpdated', async ({ event, context }) => {
   const { operator, oldReputation, newReputation } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOperatorReputationUpdatedEvents).values({
     id: id,
     operator: operator,
@@ -72,7 +72,7 @@ ponder.on('Diamond:OperatorRevoked', async ({ event, context }) => {
   const { operator } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOperatorRevokedEvents).values({
     id: id,
     operator: operator,
@@ -97,7 +97,7 @@ ponder.on('Diamond:OperatorSlashed', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOperatorSlashedEvents).values({
     id: id,
     opportunity_id: opportunityId,
@@ -120,7 +120,7 @@ ponder.on('Diamond:OperatorStatsUpdated', async ({ event, context }) => {
   const { operator, successfulOps, totalValueProcessed } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondOperatorStatsUpdatedEvents).values({
     id: id,
     operator: operator,

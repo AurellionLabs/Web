@@ -1,8 +1,8 @@
-// Auto-generated handler for nodes domain - Raw event storage only
-// Generated at: 2026-03-02T06:06:41.562Z
+// Auto-generated handler for nodes domain
+// Generated at: 2026-03-02T06:21:55.490Z
 //
-// Pure Dumb Indexer: Store raw events only, NO aggregate tables
-// All aggregation happens in frontend repository layer
+// Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
+// This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: NodesFacet
 
 import { ponder } from 'ponder:registry';
@@ -47,7 +47,7 @@ ponder.on('Diamond:ClobApprovalGranted', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondClobApprovalGrantedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -67,7 +67,7 @@ ponder.on('Diamond:ClobApprovalRevoked', async ({ event, context }) => {
   const { nodeHash, clobAddress } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondClobApprovalRevokedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -87,7 +87,7 @@ ponder.on('Diamond:NodeAdminRevoked', async ({ event, context }) => {
   const { admin } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondNodeAdminRevokedEvents).values({
     id: id,
     admin: admin,
@@ -106,7 +106,7 @@ ponder.on('Diamond:NodeAdminSet', async ({ event, context }) => {
   const { admin } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondNodeAdminSetEvents).values({
     id: id,
     admin: admin,
@@ -125,7 +125,7 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
   const { nodeHash, quantities } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondNodeCapacityUpdatedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -147,7 +147,7 @@ ponder.on('Diamond:NodeDeactivated', async ({ event, context }) => {
   const { nodeHash } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondNodeDeactivatedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -166,7 +166,7 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
   const { nodeHash, owner, nodeType } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondNodeRegisteredEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -187,7 +187,7 @@ ponder.on('Diamond:NodeSellOrderPlaced', async ({ event, context }) => {
   const { nodeHash, tokenId, quoteToken, price, amount, orderId } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondNodeSellOrderPlacedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -211,7 +211,7 @@ ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
   const { nodeHash, nodeType, capacity } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondNodeUpdatedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -232,7 +232,7 @@ ponder.on('Diamond:SupportedAssetAdded', async ({ event, context }) => {
   const { nodeHash, token, tokenId, price, capacity } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondSupportedAssetAddedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -255,7 +255,7 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
   const { nodeHash, count } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondSupportedAssetsUpdatedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -284,7 +284,7 @@ ponder.on('Diamond:SupportingDocumentAdded', async ({ event, context }) => {
   } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondSupportingDocumentAddedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -310,7 +310,7 @@ ponder.on('Diamond:SupportingDocumentRemoved', async ({ event, context }) => {
   const { nodeHash, url, timestamp, removedBy } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondSupportingDocumentRemovedEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -332,7 +332,7 @@ ponder.on('Diamond:TokensDepositedToNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, depositor } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondTokensDepositedToNodeEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -354,7 +354,7 @@ ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, minter } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondTokensMintedToNodeEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -378,7 +378,7 @@ ponder.on(
     const { fromNode, toNode, tokenId, amount } = event.args;
     const id = eventId(event.transaction.hash, event.log.logIndex);
 
-    // Pure Dumb Indexer: Insert raw event only, no aggregates
+    // Raw event insert
     await context.db.insert(diamondTokensTransferredBetweenNodesEvents).values({
       id: id,
       from_node: fromNode,
@@ -401,7 +401,7 @@ ponder.on('Diamond:TokensWithdrawnFromNode', async ({ event, context }) => {
   const { nodeHash, tokenId, amount, recipient } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondTokensWithdrawnFromNodeEvents).values({
     id: id,
     node_hash: nodeHash,
@@ -423,7 +423,7 @@ ponder.on('Diamond:UpdateLocation', async ({ event, context }) => {
   const { addressName, lat, lng, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondUpdateLocationEvents).values({
     id: id,
     address_name: addressName,
@@ -445,7 +445,7 @@ ponder.on('Diamond:UpdateOwner', async ({ event, context }) => {
   const { owner, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondUpdateOwnerEvents).values({
     id: id,
     owner: owner,
@@ -465,7 +465,7 @@ ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
   const { status, node } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(diamondUpdateStatusEvents).values({
     id: id,
     status: status,

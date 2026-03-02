@@ -832,165 +832,25 @@ export * from './generated-schema';
  * We need to know which domain handles each event so we can emit the right
  * Ponder event key (Diamond:X vs ContractName:X).
  */
-function generateAggregateHandlers(facets: Map<string, FacetInfo>): void {
-  // Build a lookup: eventName → { facet, domain, inputs }
-  const eventMeta = new Map<
-    string,
-    { facet: string; domain: string; inputs: AbiInput[] }
-  >();
-  for (const facet of facets.values()) {
-    for (const event of facet.events) {
-      if (!eventMeta.has(event.name)) {
-        eventMeta.set(event.name, {
-          facet: facet.name,
-          domain: facet.domain,
-          inputs: event.inputs,
-        });
-      }
-    }
-  }
-
-  // Collect aggregate table names needed as imports
-  const importedAggTables = new Set<string>();
-  for (const actions of Object.values(EVENT_TO_AGGREGATE_MAPPING)) {
-    for (const action of actions) {
-      importedAggTables.add(snakeToCamel(action.table));
-    }
-  }
-
-  let content = `// Auto-generated aggregate handlers - DO NOT EDIT
+function generateAggregateHandlers(_facets: Map<string, FacetInfo>): void {
+  // Aggregate writes are now inlined into domain handlers by generateHandlerStub().
+  // Ponder 0.16 only allows ONE ponder.on() per event name across ALL handler files.
+  // A separate aggregates.generated.ts with its own ponder.on() calls would create
+  // duplicate registrations → BuildError at startup.
+  //
+  // This function emits an empty stub so the import in index.ts doesn't break.
+  const content = `// Auto-generated aggregate handlers - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
 //
-// These handlers upsert/insert into aggregate tables whenever relevant events fire.
-// Generated from EVENT_TO_AGGREGATE_MAPPING in scripts/generate-indexer.ts
-
-import { ponder } from "ponder:registry";
-import { ${Array.from(importedAggTables).join(', ')} } from "ponder:schema";
-
+// ⚠️  Aggregate writes are INLINED into domain handler files (bridge.generated.ts, etc.)
+// to comply with Ponder 0.16 constraint: only one ponder.on() per event name is allowed.
+// This file is intentionally empty.
 `;
-
-  for (const [eventName, actions] of Object.entries(
-    EVENT_TO_AGGREGATE_MAPPING,
-  )) {
-    const meta = eventMeta.get(eventName);
-    if (!meta) {
-      console.warn(
-        `⚠️  EVENT_TO_AGGREGATE_MAPPING: event "${eventName}" not found in any facet — skipping`,
-      );
-      continue;
-    }
-
-    const isExternal = !!EXTERNAL_CONTRACTS[meta.facet];
-    const ponderKey = isExternal
-      ? `${meta.facet}:${eventName}`
-      : `Diamond:${eventName}`;
-
-    // Reserved handler names
-    const reserved = new Set(['id', 'event', 'context', 'eventId', 'value']);
-    const destructureParts: string[] = [];
-    const renamedInputs = new Map<string, string>();
-    for (const input of meta.inputs) {
-      if (reserved.has(input.name)) {
-        const renamed = `arg_${input.name}`;
-        destructureParts.push(`${input.name}: ${renamed}`);
-        renamedInputs.set(input.name, renamed);
-      } else {
-        destructureParts.push(input.name);
-        renamedInputs.set(input.name, input.name);
-      }
-    }
-    const destructure = destructureParts.join(', ');
-
-    content += `ponder.on('${ponderKey}', async ({ event, context }) => {
-  const { ${destructure} } = event.args;
-`;
-
-    for (const action of actions) {
-      const tableConst = snakeToCamel(action.table);
-      const tableDef = AGGREGATE_TABLES[action.table];
-
-      // Build the values object — only include columns present in mapping
-      const valueLines: string[] = [];
-      for (const [col, src] of Object.entries(action.mapping)) {
-        let val: string;
-        if (src.startsWith('$')) {
-          // Literal JS expression
-          val = src.slice(1);
-        } else {
-          // Event field reference — use renamed name if needed
-          val = renamedInputs.get(src) ?? src;
-          // Check if this field needs BigInt wrapping (small uint)
-          const inputMeta = meta.inputs.find((i) => i.name === src);
-          if (inputMeta) {
-            const smallUintMatch = inputMeta.type.match(/^u?int(\d+)$/);
-            if (smallUintMatch) {
-              const bits = parseInt(smallUintMatch[1], 10);
-              if (bits <= 48) {
-                val = `BigInt(${val})`;
-              }
-            }
-          }
-          // Check aggregate column type to see if we need integer cast
-          const colDef = tableDef?.columns.find((c) => c.name === col);
-          if (colDef?.ponderType === 't.integer()') {
-            val = `Number(${val})`;
-          }
-        }
-        valueLines.push(`    ${col}: ${val},`);
-      }
-
-      // Derive the id value expression for this action
-      const idEntry = Object.entries(action.mapping).find(
-        ([col]) => col === 'id',
-      );
-      const idValueExpr = idEntry
-        ? idEntry[1].startsWith('$')
-          ? idEntry[1].slice(1)
-          : (renamedInputs.get(idEntry[1]) ?? idEntry[1])
-        : 'undefined';
-
-      if (action.action === 'insert') {
-        content += `
-  await context.db.insert(${tableConst}).values({
-${valueLines.join('\n')}
-  }).onConflictDoNothing();
-`;
-      } else if (action.action === 'upsert') {
-        // Ponder upsert: insert or update using onConflictDoUpdate
-        // onConflictDoUpdate receives a partial object with just the fields to update
-        const updateLines = valueLines.filter(
-          (l) => !l.trim().startsWith('id:'),
-        );
-        content += `
-  await context.db
-    .insert(${tableConst})
-    .values({
-${valueLines.join('\n')}
-    })
-    .onConflictDoUpdate({
-${updateLines.join('\n')}
-    });
-`;
-      } else {
-        // action === 'update': partial row update using Ponder's db.update(table, key).set({})
-        const setLines = valueLines.filter((l) => !l.trim().startsWith('id:'));
-        content += `
-  await context.db
-    .update(${tableConst}, { id: ${idValueExpr} })
-    .set({
-${setLines.join('\n')}
-    });
-`;
-      }
-    }
-
-    content += `});\n\n`;
-  }
 
   const outFile = path.join(GENERATED_HANDLERS_DIR, 'aggregates.generated.ts');
   fs.writeFileSync(outFile, content);
   console.log(
-    `✓ Generated aggregates.generated.ts with ${Object.keys(EVENT_TO_AGGREGATE_MAPPING).length} event mappings`,
+    `✓ Generated aggregates.generated.ts (empty stub — aggregates inlined in domain handlers)`,
   );
 }
 
@@ -1005,11 +865,24 @@ function generateHandlerStub(domain: string, events: EventInfo[]): string {
     eventsByFacet.get(event.facet)!.push(event);
   }
 
-  let content = `// Auto-generated handler for ${domain} domain - Raw event storage only
+  // Determine which aggregate tables are needed for events in this domain
+  const aggTableImports = new Set<string>();
+  for (const event of events) {
+    const aggActions = EVENT_TO_AGGREGATE_MAPPING[event.name];
+    if (aggActions) {
+      for (const action of aggActions) {
+        aggTableImports.add(snakeToCamel(action.table));
+      }
+    }
+  }
+
+  const hasAggregates = aggTableImports.size > 0;
+
+  let content = `// Auto-generated handler for ${domain} domain
 // Generated at: ${new Date().toISOString()}
-// 
-// Pure Dumb Indexer: Store raw events only, NO aggregate tables
-// All aggregation happens in frontend repository layer
+//
+// Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
+// This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: ${Array.from(eventsByFacet.keys()).join(', ')}
 
 import { ponder } from "ponder:registry";
@@ -1017,12 +890,11 @@ import { ponder } from "ponder:registry";
 // Import event tables from generated schema
 `;
 
-  // Collect all table imports - Pure Dumb Indexer: only event tables, no aggregates
+  // Collect all table imports
   const tableImports: string[] = [];
 
   for (const [, facetEvents] of eventsByFacet) {
     for (const event of facetEvents) {
-      // Table names use contract prefix: {contract}_{event_name}_events
       const prefix = EXTERNAL_CONTRACTS[event.facet]
         ? event.facet.toLowerCase()
         : 'diamond';
@@ -1031,11 +903,17 @@ import { ponder } from "ponder:registry";
     }
   }
 
-  // Deduplicate imports
   const uniqueTableImports = Array.from(new Set(tableImports));
 
-  // Single import from generated schema
-  content += `import { ${uniqueTableImports.join(', ')} } from "ponder:schema";\n`;
+  if (hasAggregates) {
+    // Import both raw event tables and aggregate tables in one statement
+    const allImports = Array.from(
+      new Set([...uniqueTableImports, ...aggTableImports]),
+    );
+    content += `import { ${allImports.join(', ')} } from "ponder:schema";\n`;
+  } else {
+    content += `import { ${uniqueTableImports.join(', ')} } from "ponder:schema";\n`;
+  }
 
   content += `\n// Utility functions
 const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\`;
@@ -1052,8 +930,6 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
 `;
 
     for (const event of facetEvents) {
-      // Handle reserved names by renaming them in destructuring
-      // e.g., { id } becomes { id: arg_id }
       const destructureParts: string[] = [];
       const renamedInputs: Map<string, string> = new Map();
 
@@ -1070,20 +946,17 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
 
       const destructure = destructureParts.join(', ');
 
-      // Table names use contract prefix: {contract}_{event_name}_events
       const prefix = EXTERNAL_CONTRACTS[event.facet]
         ? event.facet.toLowerCase()
         : 'diamond';
       const tableName = `${prefix}_${camelToSnake(event.name)}_events`;
       const camelTable = snakeToCamel(tableName);
 
-      // Use contract name as prefix for Ponder event key
       const isExternalContract = !!EXTERNAL_CONTRACTS[event.facet];
       const eventKey = isExternalContract
         ? `${event.facet}:${event.name}`
         : `Diamond:${event.name}`;
 
-      // Reserved column names that need to be prefixed with 'event_' in the schema
       const reservedColumns = new Set([
         'id',
         'block_number',
@@ -1091,7 +964,6 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
         'transaction_hash',
       ]);
 
-      // Generate the values object with proper column names
       const valueAssignments = event.inputs
         .map((i) => {
           const varName = renamedInputs.get(i.name)!;
@@ -1099,12 +971,10 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
           if (reservedColumns.has(colName)) {
             colName = `event_${colName}`;
           }
-          // Arrays are serialized as JSON text (schema uses t.text() for arrays)
           if (i.type.endsWith('[]')) {
             const serialized = `JSON.stringify(Array.from(${varName}), (_, v) => typeof v === 'bigint' ? v.toString() : v)`;
             return `    ${colName}: ${serialized},`;
           }
-          // Small uints (uint8/uint16/uint32) are decoded as number by viem but schema is bigint
           const smallUintMatch = i.type.match(/^u?int(\d+)$/);
           if (smallUintMatch) {
             const bits = parseInt(smallUintMatch[1], 10);
@@ -1116,6 +986,82 @@ const eventId = (txHash: string, logIndex: number) => \`\${txHash}-\${logIndex}\
         })
         .join('\n');
 
+      // Build inline aggregate code for this event (if any)
+      const aggActions = EVENT_TO_AGGREGATE_MAPPING[event.name];
+      let inlineAggCode = '';
+      if (aggActions && aggActions.length > 0) {
+        inlineAggCode += `\n  // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)\n`;
+        for (const action of aggActions) {
+          const tableConst = snakeToCamel(action.table);
+          const tableDef = AGGREGATE_TABLES[action.table];
+
+          const valueLines: string[] = [];
+          for (const [col, src] of Object.entries(action.mapping)) {
+            let val: string;
+            if (src.startsWith('$')) {
+              val = src.slice(1);
+            } else {
+              val = renamedInputs.get(src) ?? src;
+              const inputMeta = event.inputs.find((i) => i.name === src);
+              if (inputMeta) {
+                const smallUintMatch = inputMeta.type.match(/^u?int(\d+)$/);
+                if (smallUintMatch) {
+                  const bits = parseInt(smallUintMatch[1], 10);
+                  if (bits <= 48) {
+                    val = `BigInt(${val})`;
+                  }
+                }
+              }
+              const colDef = tableDef?.columns.find((c) => c.name === col);
+              if (colDef?.ponderType === 't.integer()') {
+                val = `Number(${val})`;
+              }
+            }
+            valueLines.push(`    ${col}: ${val},`);
+          }
+
+          const idEntry = Object.entries(action.mapping).find(
+            ([col]) => col === 'id',
+          );
+          const idValueExpr = idEntry
+            ? idEntry[1].startsWith('$')
+              ? idEntry[1].slice(1)
+              : (renamedInputs.get(idEntry[1]) ?? idEntry[1])
+            : 'undefined';
+
+          if (action.action === 'insert') {
+            inlineAggCode += `  await context.db.insert(${tableConst}).values({
+${valueLines.join('\n')}
+  }).onConflictDoNothing();
+`;
+          } else if (action.action === 'upsert') {
+            const updateLines = valueLines.filter(
+              (l) => !l.trim().startsWith('id:'),
+            );
+            inlineAggCode += `  await context.db
+    .insert(${tableConst})
+    .values({
+${valueLines.join('\n')}
+    })
+    .onConflictDoUpdate({
+${updateLines.join('\n')}
+    });
+`;
+          } else {
+            // update
+            const setLines = valueLines.filter(
+              (l) => !l.trim().startsWith('id:'),
+            );
+            inlineAggCode += `  await context.db
+    .update(${tableConst}, { id: ${idValueExpr} })
+    .set({
+${setLines.join('\n')}
+    });
+`;
+          }
+        }
+      }
+
       content += `/**
  * Handle ${event.name} event from ${facetName}
  * Signature: ${event.signature}
@@ -1125,7 +1071,7 @@ ponder.on('${eventKey}', async ({ event, context }) => {
   const { ${destructure} } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
-  // Pure Dumb Indexer: Insert raw event only, no aggregates
+  // Raw event insert
   await context.db.insert(${camelTable}).values({
     id: id,
 ${valueAssignments}
@@ -1133,7 +1079,7 @@ ${valueAssignments}
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
-});
+${inlineAggCode}});
 
 `;
     }
