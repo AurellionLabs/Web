@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { CLOBLib } from '../libraries/CLOBLib.sol';
+import { OrderMatchingLib } from '../libraries/OrderMatchingLib.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -153,6 +154,13 @@ contract CLOBCoreFacet is ReentrancyGuard {
             expiry: expiry,
             skipTransfer: false
         }));
+
+        // Match the order against the existing book
+        bytes32 marketId = keccak256(abi.encodePacked(baseToken, baseTokenId, quoteToken));
+        OrderMatchingLib.matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
+
+        // Handle IOC/FOK time-in-force post-match
+        _handleTimeInForce(s, orderId, timeInForce, amount);
     }
     
     /**
@@ -168,6 +176,7 @@ contract CLOBCoreFacet is ReentrancyGuard {
         uint8 timeInForce,
         uint40 expiry
     ) external nonReentrant whenNotPaused returns (bytes32 orderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         orderId = _createOrder(CreateOrderParams({
             maker: nodeOwner,
             baseToken: baseToken,
@@ -180,6 +189,13 @@ contract CLOBCoreFacet is ReentrancyGuard {
             expiry: expiry,
             skipTransfer: true
         }));
+
+        // Match the order against the existing book
+        bytes32 marketId = keccak256(abi.encodePacked(baseToken, baseTokenId, quoteToken));
+        OrderMatchingLib.matchOrder(s, orderId, marketId, baseToken, baseTokenId, quoteToken);
+
+        // Handle IOC/FOK time-in-force post-match
+        _handleTimeInForce(s, orderId, timeInForce, amount);
     }
     
     // ============================================================================
@@ -501,6 +517,80 @@ contract CLOBCoreFacet is ReentrancyGuard {
         return string(str);
     }
     
+    /**
+     * @notice Handle time-in-force logic after matching
+     * @dev For GTC: no-op. For IOC: cancel unfilled. For FOK: revert if not filled.
+     */
+    function _handleTimeInForce(
+        DiamondStorage.AppStorage storage s,
+        bytes32 orderId,
+        uint8 timeInForce,
+        uint96 originalAmount
+    ) internal {
+        if (timeInForce == CLOBLib.TIF_GTC || timeInForce == CLOBLib.TIF_GTD) return; // stay in book
+
+        DiamondStorage.PackedOrder storage order = s.packedOrders[orderId];
+        uint96 remaining = CLOBLib.getRemainingAmount(order.priceAmountFilled);
+        uint64 filled = uint64(originalAmount) - uint64(remaining);
+
+        if (timeInForce == CLOBLib.TIF_IOC && remaining > 0) {
+            // Cancel unfilled portion and refund
+            _cancelAndRefund(s, orderId, order, remaining, 2);
+        } else if (timeInForce == CLOBLib.TIF_FOK && filled < originalAmount) {
+            revert("FOK order not fully filled");
+        }
+    }
+
+    /**
+     * @notice Cancel an order and refund remaining escrowed tokens
+     * @dev Reads token addresses from V1 markets mapping (string → address conversion)
+     */
+    function _cancelAndRefund(
+        DiamondStorage.AppStorage storage s,
+        bytes32 orderId,
+        DiamondStorage.PackedOrder storage order,
+        uint96 remaining,
+        uint8 reason
+    ) internal {
+        address maker = CLOBLib.unpackMaker(order.makerAndFlags);
+        bool isBuy = CLOBLib.unpackIsBuy(order.makerAndFlags);
+
+        // Update status
+        order.makerAndFlags = CLOBLib.updateStatus(order.makerAndFlags, CLOBLib.STATUS_CANCELLED);
+
+        // Remove from order book
+        _removeFromOrderBook(orderId);
+
+        // Refund tokens based on order side using market info
+        bytes32 marketId = order.marketId;
+        DiamondStorage.Market storage mkt = s.markets[marketId];
+        if (isBuy) {
+            uint96 price = CLOBLib.unpackPrice(order.priceAmountFilled);
+            uint256 refund = CLOBLib.calculateQuoteAmount(price, remaining);
+            address quoteToken = _stringToAddress(mkt.quoteToken);
+            if (refund > 0) IERC20(quoteToken).transfer(maker, refund);
+        } else {
+            address baseToken = _stringToAddress(mkt.baseToken);
+            if (remaining > 0) IERC1155(baseToken).safeTransferFrom(address(this), maker, mkt.baseTokenId, remaining, "");
+        }
+
+        emit CLOBOrderCancelled(orderId, maker, remaining, reason);
+    }
+
+    function _stringToAddress(string memory _str) internal pure returns (address) {
+        bytes memory b = bytes(_str);
+        require(b.length == 42, "Invalid address string");
+        uint160 result = 0;
+        for (uint256 i = 2; i < 42; i++) {
+            result *= 16;
+            uint8 c = uint8(b[i]);
+            if (c >= 48 && c <= 57) result += c - 48;
+            else if (c >= 97 && c <= 102) result += c - 87;
+            else if (c >= 65 && c <= 70) result += c - 55;
+        }
+        return address(result);
+    }
+
     // ERC1155 Receiver
     function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
         return this.onERC1155Received.selector;

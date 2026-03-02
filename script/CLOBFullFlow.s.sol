@@ -103,7 +103,8 @@ interface IOrderRouter {
         uint256 emergencyTimelock
     ) external;
 
-    function getOrder(bytes32 orderId) external view returns (
+    // V2 packed order view (CLOBViewFacet)
+    function getPackedOrder(bytes32 orderId) external view returns (
         address maker,
         bytes32 marketId,
         uint96 price,
@@ -287,7 +288,7 @@ contract CLOBFullFlow is Script {
         console.logBytes32(sellOrderId);
         vm.stopBroadcast();
 
-        (, , , uint96 sellAmt, uint64 sellFilled, , uint8 sellStatus, , ,) = clob.getOrder(sellOrderId);
+        (, , , uint96 sellAmt, uint64 sellFilled, , uint8 sellStatus, , ,) = clob.getPackedOrder(sellOrderId);
         console.log("Sell order status/amount/filled:", sellStatus, sellAmt, sellFilled);
         require(sellStatus == STATUS_OPEN, "Sell order must be OPEN before match");
 
@@ -327,8 +328,8 @@ contract CLOBFullFlow is Script {
 
         // ── STEP 7: Assert matching results ───────────────────────────────────
         console.log("\n=== STEP 7: Assert matching results ===");
-        (, , , , uint64 buyFilled, , uint8 buyStatus, , ,) = clob.getOrder(buyOrderId);
-        (, , , , uint64 sellFilledAfter, , uint8 sellStatusAfter, , ,) = clob.getOrder(sellOrderId);
+        (, , , , uint64 buyFilled, , uint8 buyStatus, , ,) = clob.getPackedOrder(buyOrderId);
+        (, , , , uint64 sellFilledAfter, , uint8 sellStatusAfter, , ,) = clob.getPackedOrder(sellOrderId);
 
         uint256 custTokenAfter = mainDiamond.balanceOf(CUSTOMER, mintedTokenId);
         uint256 custAuraAfter  = aura.balanceOf(CUSTOMER);
@@ -386,8 +387,8 @@ contract CLOBFullFlow is Script {
         );
         vm.stopBroadcast();
 
-        (, , , , uint64 buy2Filled, , uint8 buy2Status, , ,) = clob.getOrder(buyOrder2);
-        (, , , , uint64 sell2Filled, , uint8 sell2Status, , ,) = clob.getOrder(sellOrder2);
+        (, , , , uint64 buy2Filled, , uint8 buy2Status, , ,) = clob.getPackedOrder(buyOrder2);
+        (, , , , uint64 sell2Filled, , uint8 sell2Status, , ,) = clob.getPackedOrder(sellOrder2);
 
         console.log("Buy order 2 status:", buy2Status, "filled:", buy2Filled);
         console.log("Sell order 2 status:", sell2Status, "filled:", sell2Filled);
@@ -405,7 +406,7 @@ contract CLOBFullFlow is Script {
         console.log("Sell order 2 cancelled");
         vm.stopBroadcast();
 
-        (, , , , , , uint8 sell2Cancelled, , ,) = clob.getOrder(sellOrder2);
+        (, , , , , , uint8 sell2Cancelled, , ,) = clob.getPackedOrder(sellOrder2);
         uint256 nodeTokenPostCancel = mainDiamond.balanceOf(NODE_ADDR, mintedTokenId);
 
         console.log("Sell order 2 final status:", sell2Cancelled, "(3=CANCELLED)");
