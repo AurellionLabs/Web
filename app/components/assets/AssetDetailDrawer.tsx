@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useAccount } from 'wagmi';
 import {
   Sheet,
   SheetContent,
@@ -18,8 +19,9 @@ import {
   EvaSystemReadout,
 } from '@/app/components/eva/eva-components';
 import { UserHolding } from '@/hooks/useUserHoldings';
+import { useAssetCustody } from '@/hooks/useAssetCustody';
 import { RedemptionDialog } from '@/app/components/redemption/RedemptionDialog';
-import { Send, Copy, CheckCircle2 } from 'lucide-react';
+import { Send, Copy, CheckCircle2, Loader2, Warehouse } from 'lucide-react';
 
 interface AssetDetailDrawerProps {
   holding: UserHolding | null;
@@ -34,9 +36,16 @@ export function AssetDetailDrawer({
   onClose,
   onRedemptionSuccess,
 }: AssetDetailDrawerProps) {
+  const { address } = useAccount();
   const [isRedemptionOpen, setIsRedemptionOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const custody = useAssetCustody(
+    holding?.tokenId,
+    address,
+    holding?.balance ?? 0n,
+  );
 
   useEffect(() => {
     return () => {
@@ -193,6 +202,62 @@ export function AssetDetailDrawer({
               </div>
             </>
           )}
+
+          {/* Custody Breakdown */}
+          <EvaScanLine variant="mixed" />
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Warehouse className="w-3.5 h-3.5 text-foreground/40" />
+              <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-foreground/40 font-bold">
+                Custody Breakdown
+              </span>
+              {custody.isLoading && (
+                <Loader2 className="w-3 h-3 animate-spin text-foreground/30 ml-auto" />
+              )}
+            </div>
+
+            {custody.error ? (
+              <p className="font-mono text-xs text-red-400/70">
+                {custody.error}
+              </p>
+            ) : custody.isLoading ? (
+              <div className="space-y-0">
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-8 bg-foreground/5 rounded animate-pulse mb-1"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {/* In-wallet */}
+                <EvaDataRow
+                  label="In Wallet"
+                  value={`${custody.inWallet.toString()} units`}
+                  valueColor={custody.inWallet > 0n ? 'gold' : 'muted'}
+                />
+                {/* Per-node custody */}
+                {custody.nodes.map((entry) => (
+                  <EvaDataRow
+                    key={entry.nodeAddress}
+                    label={
+                      entry.nodeLocation.length > 22
+                        ? `${entry.nodeLocation.slice(0, 10)}...${entry.nodeLocation.slice(-8)}`
+                        : entry.nodeLocation
+                    }
+                    value={`${entry.amount.toString()} units`}
+                    valueColor="muted"
+                  />
+                ))}
+                {custody.nodes.length === 0 && custody.inWallet === 0n && (
+                  <p className="font-mono text-xs text-foreground/30">
+                    No custody data available
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Redeem button — pinned at bottom */}
           <div className="px-6 py-6 mt-auto border-t border-border/20">
