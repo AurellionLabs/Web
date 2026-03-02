@@ -268,6 +268,7 @@ contract OrderRouterFacet is ReentrancyGuard {
     
     /**
      * @notice Cancel multiple orders in one transaction
+     * @dev Optimized: cache makerAndFlags to avoid duplicate SLOAD in loop
      */
     function cancelOrders(bytes32[] calldata orderIds) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
@@ -275,10 +276,12 @@ contract OrderRouterFacet is ReentrancyGuard {
         for (uint256 i = 0; i < orderIds.length; i++) {
             DiamondStorage.PackedOrder storage order = s.packedOrders[orderIds[i]];
             
-            address maker = CLOBLib.unpackMaker(order.makerAndFlags);
+            // Cache packed value to avoid duplicate SLOAD
+            uint256 makerAndFlags = order.makerAndFlags;
+            address maker = CLOBLib.unpackMaker(makerAndFlags);
             if (maker != msg.sender) continue;
             
-            uint8 status = CLOBLib.unpackStatus(order.makerAndFlags);
+            uint8 status = CLOBLib.unpackStatus(makerAndFlags);
             if (status == CLOBLib.STATUS_OPEN || status == CLOBLib.STATUS_PARTIAL) {
                 _cancelOrder(s, orderIds[i], 0);
             }
