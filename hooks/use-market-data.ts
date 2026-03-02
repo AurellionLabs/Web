@@ -5,6 +5,8 @@ import {
   clobRepository,
   type MarketStats,
 } from '@/infrastructure/repositories/clob-repository';
+import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
+import { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } from '@/chain-constants';
 
 /**
  * Configuration options for the market data hook
@@ -79,14 +81,20 @@ export function useMarketData(
       setIsLoading(true);
       setError(null);
 
-      // Fetch data in parallel
-      const [statsData, tradesData] = await Promise.all([
+      // Fetch data from both V1 and V2 in parallel
+      const [statsData, v1Trades, v2Trades] = await Promise.all([
         clobRepository.getMarketStats(baseToken, baseTokenId),
         clobRepository.getTrades(baseToken, baseTokenId, 20),
+        clobV2Repository.getTrades(baseToken, baseTokenId, 20).catch(() => []),
       ]);
 
+      // Merge trades, sort by timestamp desc, take most recent 20
+      const mergedTrades = [...v1Trades, ...v2Trades]
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 20);
+
       setStats(statsData);
-      setTrades(tradesData);
+      setTrades(mergedTrades);
     } catch (err) {
       console.error('[useMarketData] Failed to fetch market data:', err);
       setError('Failed to fetch market data');

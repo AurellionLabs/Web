@@ -3,6 +3,7 @@
 import { FC, useEffect, useState, useCallback, useMemo } from 'react';
 import { clobRepository } from '@/infrastructure/repositories/clob-repository';
 import type { CLOBOrder } from '@/infrastructure/repositories/clob-repository';
+import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
 import { useWallet } from '@/hooks/useWallet';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import {
@@ -198,7 +199,16 @@ export const UserOrders: FC<UserOrdersProps> = ({
     }
 
     try {
-      const userOrders = await clobRepository.getUserOrders(address, maxOrders);
+      const [v1Orders, v2Orders] = await Promise.all([
+        clobRepository.getUserOrders(address, maxOrders),
+        clobV2Repository
+          .getUserOrders(address, undefined, maxOrders)
+          .catch(() => []),
+      ]);
+      const userOrders: CLOBOrder[] = [
+        ...v1Orders,
+        ...(v2Orders as unknown as CLOBOrder[]),
+      ];
 
       // Filter by base token if specified
       let filteredOrders = userOrders;
