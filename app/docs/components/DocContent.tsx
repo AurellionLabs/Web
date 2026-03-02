@@ -5,10 +5,9 @@ import { useEffect, useRef } from 'react';
 // Load mermaid from CDN (next/script in layout handles the script tag)
 // We access it via window.mermaid after the script loads
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
   interface Window {
-    mermaid: any;
+    mermaid: any; // eslint-disable-line
   }
 }
 

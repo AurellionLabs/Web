@@ -93,10 +93,8 @@ export const PriceChart: React.FC<PriceChartProps> = ({
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mainSeriesRef = useRef<ISeriesApi<any> | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const volumeSeriesRef = useRef<ISeriesApi<any> | null>(null);
+  const mainSeriesRef = useRef<ISeriesApi<any> | null>(null); // eslint-disable-line
+  const volumeSeriesRef = useRef<ISeriesApi<any> | null>(null); // eslint-disable-line
 
   const [internalPeriod, setInternalPeriod] = useState<TimePeriod>(timePeriod);
   const [internalMode, setInternalMode] = useState<ChartMode>(mode);
