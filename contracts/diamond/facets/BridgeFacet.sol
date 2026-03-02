@@ -9,33 +9,31 @@ import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import { MessageHashUtils } from '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
 
 /**
  * @title BridgeFacet
  * @notice Business logic facet for order bridging between CLOB and AuSys
  * @dev Combines OrderBridge functionality with full logistics and settlement.
  *      SECURITY: All fund transfers are handled within this facet with proper escrow.
- * 
+ *
  * @dev Security fixes applied:
- *      - Node validation on order creation
- *      - Signature verification for trade bridging
- *      - Proper bounty distribution across all journeys
- *      - Zero-address checks
- *      - Trade existence validation
+ *      - Real ECDSA signature verification for trade bridging
+ *      - O(1) node validation via nodeHash lookup
+ *      - Strict trade existence validation (no zero bytes32)
+ *      - Replay protection via usedSignatures mapping
  */
 contract BridgeFacet is Initializable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-    
+
     // ======= ERRORS =======
     error InvalidNode();
     error InvalidTrade();
     error InvalidSignature();
     error InvalidSeller();
-    error OrderAlreadySettled();
-    error NoEscrowedFunds();
-    error InsufficientBounty();
-    error NoValidJourneys();
-    using SafeERC20 for IERC20;
+    error SignatureAlreadyUsed();
+
     event UnifiedOrderCreated(
         bytes32 indexed unifiedOrderId,
         bytes32 indexed clobOrderId,
@@ -87,8 +85,8 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
     uint256 public constant PROTOCOL_FEE_PERCENTAGE = 25; // 0.25% (aligned with OrderBridge.sol)
 
     address public feeRecipient;
-    
-    // Signature nonce mapping to prevent replay
+
+    // Signature tracking to prevent replay attacks
     mapping(bytes32 => bool) public usedSignatures;
 
     function initialize() public initializer {
@@ -96,21 +94,21 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
     }
 
     /**
-     * @notice Validate that an address is a valid registered node
+     * @notice Validate that an address owns a specific valid, active node — O(1) lookup
      */
-    function _isValidNode(DiamondStorage.AppStorage storage s, address nodeAddress) internal view returns (bool) {
-        bytes32[] memory ownerNodes = s.ownerNodes[nodeAddress];
-        for (uint256 i = 0; i < ownerNodes.length; i++) {
-            if (s.nodes[ownerNodes[i]].active && s.nodes[ownerNodes[i]].validNode) {
-                return true;
-            }
-        }
-        return false;
+    function _isValidNode(
+        DiamondStorage.AppStorage storage s,
+        address nodeAddress,
+        bytes32 nodeHash
+    ) internal view returns (bool) {
+        DiamondStorage.Node storage node = s.nodes[nodeHash];
+        return node.owner == nodeAddress && node.active && node.validNode;
     }
 
     function createUnifiedOrder(
         bytes32 _clobOrderId,
         address _sellerNode,
+        bytes32 _sellerNodeHash,
         uint256 _price,
         uint256 _quantity,
         DiamondStorage.ParcelData calldata _deliveryData
@@ -120,9 +118,9 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         require(_sellerNode != address(0), 'Invalid seller node');
         require(_price > 0, 'Invalid price');
         require(_quantity > 0, 'Invalid quantity');
-        
-        // Validate that sellerNode is a registered valid node
-        require(_isValidNode(s, _sellerNode), 'InvalidNode');
+
+        // O(1) node validation: caller provides nodeHash, we verify ownership + validity
+        if (!_isValidNode(s, _sellerNode, _sellerNodeHash)) revert InvalidNode();
 
         unifiedOrderId = keccak256(
             abi.encodePacked(_clobOrderId, msg.sender, block.timestamp, s.totalUnifiedOrders)
@@ -161,7 +159,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
         s.unifiedOrderIds.push(unifiedOrderId);
         s.totalUnifiedOrders++;
-        
+
         s.buyerUnifiedOrders[msg.sender].push(unifiedOrderId);
         s.clobOrderToUnifiedOrder[_clobOrderId] = unifiedOrderId;
 
@@ -193,35 +191,44 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
 
+        // FIX 3: Verify the unified order actually exists in storage
+        require(order.buyer != address(0), 'Order does not exist');
+
         require(
             order.buyer == msg.sender || LibDiamond.contractOwner() == msg.sender,
             'Not authorized'
         );
         require(order.status == OrderStatus.UNIFIED_PENDING_TRADE, 'Order not in created status');
-        require(_seller != address(0), 'InvalidSeller');
-        
-        // Signature verification: prevent unauthorized trade bridging
-        // Signature must come from either:
-        // 1. The CLOB contract (verified via trade existence)
-        // 2. The AuSys contract (verified via order existence)
-        // 3. The seller themselves (explicit authorization)
-        bytes32 signatureHash = keccak256(
-            abi.encodePacked(_unifiedOrderId, _clobTradeId, _ausysOrderId, _seller, _token, _tokenId)
+
+        // FIX 3: Reject zero-value trade IDs
+        if (_clobTradeId == bytes32(0)) revert InvalidTrade();
+        if (_seller == address(0)) revert InvalidSeller();
+
+        // FIX 1: Real ECDSA signature verification
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                order.clobOrderId,
+                _seller,
+                _tokenId,
+                order.tokenQuantity,
+                block.chainid
+            )
         );
-        
-        // Check if signature is valid (either from CLOB, AuSys, or seller)
-        // Reuse check: prevent signature replay
-        require(!usedSignatures[signatureHash], 'InvalidSignature');
-        
-        // Verify the trade exists on CLOB (if clobAddress is set)
-        if (s.clobAddress != address(0)) {
-            // If CLOB address is set, verify the trade exists
-            // This is a read-only check - we trust the CLOB contract to have validated the trade
-            require(s.clobTradeToUnifiedOrder[_clobTradeId] == _unifiedOrderId || s.clobTradeToUnifiedOrder[_clobTradeId] == bytes32(0), 'InvalidTrade');
-        }
-        
-        // Mark signature as used
-        usedSignatures[signatureHash] = true;
+        bytes32 ethSignedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+
+        // Replay protection: prevent signature reuse
+        if (usedSignatures[ethSignedHash]) revert SignatureAlreadyUsed();
+
+        // Recover signer and verify it matches the seller
+        address signer = ECDSA.recover(ethSignedHash, _signature);
+        if (signer != _seller) revert InvalidSignature();
+
+        // Mark signature as used to prevent replay
+        usedSignatures[ethSignedHash] = true;
+
+        // FIX 3: Verify trade not already mapped to a different unified order
+        bytes32 existingMapping = s.clobTradeToUnifiedOrder[_clobTradeId];
+        if (existingMapping != bytes32(0) && existingMapping != _unifiedOrderId) revert InvalidTrade();
 
         order.clobTradeId = _clobTradeId;
         order.ausysOrderId = _ausysOrderId;
@@ -233,7 +240,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
         // Update reverse lookup
         s.clobTradeToUnifiedOrder[_clobTradeId] = _unifiedOrderId;
-        
+
         // Add to seller's orders
         s.sellerUnifiedOrders[_seller].push(_unifiedOrderId);
 
@@ -335,7 +342,6 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
         // Distribute bounty across all journeys with drivers
         if (bounty > 0 && order.journeyIds.length > 0) {
-            // Count valid drivers
             uint256 validDrivers = 0;
             for (uint256 i = 0; i < order.journeyIds.length; i++) {
                 DiamondStorage.Journey storage journey = s.journeys[order.journeyIds[i]];
@@ -343,7 +349,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
                     validDrivers++;
                 }
             }
-            
+
             if (validDrivers > 0) {
                 uint256 bountyPerDriver = bounty / validDrivers;
                 for (uint256 i = 0; i < order.journeyIds.length; i++) {
@@ -452,33 +458,21 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
     // ======= VIEW FUNCTIONS (from OrderBridge.sol) =======
 
-    /**
-     * @notice Get all unified orders for a buyer
-     */
     function getBuyerOrders(address buyer) external view returns (bytes32[] memory) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.buyerUnifiedOrders[buyer];
     }
 
-    /**
-     * @notice Get all unified orders for a seller
-     */
     function getSellerOrders(address seller) external view returns (bytes32[] memory) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.sellerUnifiedOrders[seller];
     }
 
-    /**
-     * @notice Get unified order ID from CLOB order ID
-     */
     function getUnifiedOrderFromClobOrder(bytes32 clobOrderId) external view returns (bytes32) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.clobOrderToUnifiedOrder[clobOrderId];
     }
 
-    /**
-     * @notice Get unified order ID from CLOB trade ID
-     */
     function getUnifiedOrderFromClobTrade(bytes32 clobTradeId) external view returns (bytes32) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.clobTradeToUnifiedOrder[clobTradeId];

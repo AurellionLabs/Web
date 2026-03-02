@@ -302,7 +302,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getBridgeSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](9);
+        bytes4[] memory selectors = new bytes4[](16);
         selectors[0] = BridgeFacet.createUnifiedOrder.selector;
         selectors[1] = BridgeFacet.getUnifiedOrder.selector;
         selectors[2] = BridgeFacet.getBuyerOrders.selector;
@@ -312,6 +312,13 @@ abstract contract DiamondTestBase is Test {
         selectors[6] = BridgeFacet.updateClobAddress.selector;
         selectors[7] = BridgeFacet.updateAusysAddress.selector;
         selectors[8] = BridgeFacet.setQuoteTokenAddress.selector;
+        selectors[9] = BridgeFacet.bridgeTradeToLogistics.selector;
+        selectors[10] = BridgeFacet.createLogisticsOrder.selector;
+        selectors[11] = BridgeFacet.updateJourneyStatus.selector;
+        selectors[12] = BridgeFacet.settleOrder.selector;
+        selectors[13] = BridgeFacet.cancelUnifiedOrder.selector;
+        selectors[14] = BridgeFacet.getTotalUnifiedOrders.selector;
+        selectors[15] = BridgeFacet.setFeeRecipient.selector;
         return selectors;
     }
 

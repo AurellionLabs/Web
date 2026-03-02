@@ -48,6 +48,7 @@ contract BridgeFacetTest is DiamondTestBase {
         bytes32 orderId = bridge.createUnifiedOrder(
             clobOrderId,
             nodeOperator,
+            testNodeHash,
             100 ether,
             10,
             parcelData
@@ -70,10 +71,10 @@ contract BridgeFacetTest is DiamondTestBase {
         quoteToken.approve(address(diamond), 20000 ether);
 
         bytes32 orderId1 = bridge.createUnifiedOrder(
-            keccak256('order-1'), nodeOperator, 100 ether, 10, parcelData
+            keccak256('order-1'), nodeOperator, testNodeHash, 100 ether, 10, parcelData
         );
         bytes32 orderId2 = bridge.createUnifiedOrder(
-            keccak256('order-2'), nodeOperator, 200 ether, 20, parcelData
+            keccak256('order-2'), nodeOperator, testNodeHash, 200 ether, 20, parcelData
         );
         vm.stopPrank();
 
@@ -81,6 +82,20 @@ contract BridgeFacetTest is DiamondTestBase {
 
         bytes32[] memory buyerOrders = bridge.getBuyerOrders(user1);
         assertEq(buyerOrders.length, 2, 'User1 should have 2 orders');
+    }
+
+    function test_createUnifiedOrder_revertInvalidNode() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40', '-74', '34', '-118', 'A', 'B'
+        );
+
+        vm.startPrank(user1);
+        quoteToken.approve(address(diamond), 2000 ether);
+        vm.expectRevert(BridgeFacet.InvalidNode.selector);
+        bridge.createUnifiedOrder(
+            keccak256('order'), nodeOperator, bytes32(uint256(999)), 100 ether, 10, parcelData
+        );
+        vm.stopPrank();
     }
 
     // ============================================================================
@@ -96,7 +111,7 @@ contract BridgeFacetTest is DiamondTestBase {
         vm.startPrank(user1);
         quoteToken.approve(address(diamond), 2000 ether);
         bytes32 orderId = bridge.createUnifiedOrder(
-            clobOrderId, nodeOperator, 100 ether, 10, parcelData
+            clobOrderId, nodeOperator, testNodeHash, 100 ether, 10, parcelData
         );
         vm.stopPrank();
 
@@ -134,8 +149,8 @@ contract BridgeFacetTest is DiamondTestBase {
 
         vm.startPrank(user1);
         quoteToken.approve(address(diamond), 20000 ether);
-        bridge.createUnifiedOrder(keccak256('o1'), nodeOperator, 100 ether, 10, parcelData);
-        bridge.createUnifiedOrder(keccak256('o2'), nodeOperator, 200 ether, 20, parcelData);
+        bridge.createUnifiedOrder(keccak256('o1'), nodeOperator, testNodeHash, 100 ether, 10, parcelData);
+        bridge.createUnifiedOrder(keccak256('o2'), nodeOperator, testNodeHash, 200 ether, 20, parcelData);
         vm.stopPrank();
 
         bytes32[] memory buyerOrders = bridge.getBuyerOrders(user1);
@@ -143,8 +158,6 @@ contract BridgeFacetTest is DiamondTestBase {
     }
 
     function test_getSellerOrders() public view {
-        // Note: Seller orders are populated when order is matched/filled
-        // This test verifies the function exists and returns empty for new orders
         bytes32[] memory sellerOrders = bridge.getSellerOrders(user2);
         assertEq(sellerOrders.length, 0, 'Should start with 0 seller orders');
     }
@@ -156,8 +169,6 @@ contract BridgeFacetTest is DiamondTestBase {
     function test_setBountyPercentage() public {
         vm.prank(owner);
         bridge.setBountyPercentage(300); // 3%
-
-        // Verify by creating an order and checking bounty calculation
     }
 
     function test_setBountyPercentage_revertNotOwner() public {
