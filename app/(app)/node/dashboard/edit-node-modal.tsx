@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from '@/app/components/ui/dialog';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
+import { useDiamond } from '@/app/providers/diamond.provider';
 import { useToast } from '@/hooks/use-toast';
 import {
   Tabs,
@@ -39,6 +40,7 @@ export function EditNodeModal({
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('assets');
   const { updateNodeStatus } = useSelectedNode();
+  const { updateSupportedAssets } = useDiamond();
   const { toast } = useToast();
 
   // Asset capacity and price states
@@ -121,9 +123,15 @@ export function EditNodeModal({
         return Number(prices[assetId] || '0');
       });
 
-      // TODO: Implement updateSupportedAssets in the provider
-      // For now, just log the data
-      console.log('Updating assets:', { assetIds, newCapacities, newPrices });
+      // Build NodeAsset array for the contract call
+      const updatedAssets = assets.map((asset) => ({
+        token: asset.token,
+        tokenId: asset.tokenId,
+        price: asset.price,
+        capacity: Number(capacities[Number(asset.tokenId)] ?? asset.capacity),
+      }));
+
+      await updateSupportedAssets(nodeAddress, updatedAssets);
 
       await onNodeUpdated(); // Refresh node data
       toast({

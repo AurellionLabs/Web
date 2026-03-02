@@ -12,6 +12,7 @@ import React, {
 import { Asset } from '@/domain/shared';
 import { AssetClass } from '@/domain/platform';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { CLOBV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
 
 // =============================================================================
 // TYPES
@@ -84,6 +85,11 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     status: 'idle',
   });
 
+  // Volume data: baseTokenId → total quote volume (bigint)
+  const [volumeByTokenId, setVolumeByTokenId] = useState<Map<string, bigint>>(
+    new Map(),
+  );
+
   // Cache for class assets
   const classAssetsCache = useRef<Map<string, CacheEntry<Asset[]>>>(new Map());
 
@@ -91,6 +97,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   const repositoryRef = useRef(
     RepositoryContext.getInstance().getPlatformRepository(),
   );
+  const clobRepoRef = useRef(new CLOBV2Repository());
 
   // Computed: isLoading and error for backwards compatibility
   const isLoading = loadState.status === 'loading';
@@ -111,15 +118,21 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       // Get unique asset types (names) within this class
       const uniqueNames = new Set(classAssets.map((a) => a.name));
 
+      // Sum CLOB trade volumes for all assets in this class
+      const classVolume = classAssets.reduce((acc, asset) => {
+        const vol = volumeByTokenId.get(asset.tokenId?.toString() ?? '') ?? 0n;
+        return acc + vol;
+      }, 0n);
+
       return {
         name: className,
         assetTypeCount: uniqueNames.size,
         assetCount: classAssets.length,
-        totalVolume: '0', // TODO: Integrate with CLOB data when available
+        totalVolume: classVolume.toString(),
         isActive: true,
       };
     });
-  }, [supportedAssetClasses, supportedAssets]);
+  }, [supportedAssetClasses, supportedAssets, volumeByTokenId]);
 
   /**
    * Check if cache entry is still valid
@@ -207,6 +220,19 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
       // Invalidate class assets cache on refresh
       invalidateCache();
+
+      // Fetch CLOB volume data in the background (non-blocking)
+      clobRepoRef.current
+        .getVolumeByBaseTokenId()
+        .then((volumeMap) => {
+          setVolumeByTokenId(volumeMap);
+          console.log(
+            `[PlatformProvider] Loaded CLOB volumes for ${volumeMap.size} token(s)`,
+          );
+        })
+        .catch((err) => {
+          console.warn('[PlatformProvider] Failed to load CLOB volumes:', err);
+        });
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Failed to refresh platform data';

@@ -74,6 +74,10 @@ interface DiamondContextType {
     assetTokenId: string,
     newPrice: bigint,
   ) => Promise<void>;
+  updateSupportedAssets: (
+    nodeHash: string,
+    assets: NodeAsset[],
+  ) => Promise<void>;
   getNodeAssets: (nodeHash: string) => Promise<TokenizedAsset[]>;
   getAssetAttributes: (fileHash: string) => Promise<TokenizedAssetAttribute[]>;
 
@@ -338,6 +342,16 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         assetTokenId,
         newPrice,
       );
+    },
+    [nodeAssetService],
+  );
+
+  const updateSupportedAssets = useCallback(
+    async (nodeHash: string, assets: NodeAsset[]): Promise<void> => {
+      if (!nodeAssetService) {
+        throw new Error('Node asset service not initialised');
+      }
+      await nodeAssetService.updateSupportedAssets(nodeHash, assets);
     },
     [nodeAssetService],
   );
@@ -689,6 +703,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     mintAsset,
     updateAssetCapacity,
     updateAssetPrice,
+    updateSupportedAssets,
     getNodeAssets,
     getAssetAttributes,
     depositTokensToNode,

@@ -844,6 +844,44 @@ export class CLOBV2Repository implements ICLOBRepository {
     }
   }
 
+  /**
+   * Returns a map of baseTokenId → total trade volume (sum of quote_amount)
+   * across all markets. Used by the platform provider to show per-class volumes.
+   */
+  async getVolumeByBaseTokenId(): Promise<Map<string, bigint>> {
+    try {
+      // Fetch all markets to build marketId → baseTokenId mapping
+      const markets = await this.getAllMarkets();
+      const marketToBaseTokenId = new Map<string, string>();
+      for (const market of markets) {
+        marketToBaseTokenId.set(market.id, market.baseTokenId);
+      }
+
+      // Fetch recent trades
+      const response = await graphqlRequest<{
+        trades: { items: any[] };
+      }>(this.graphQLEndpoint, GET_TRADES_EVENTS, { limit: 1000 });
+
+      const volumeMap = new Map<string, bigint>();
+      for (const raw of response.trades?.items || []) {
+        const baseTokenId = marketToBaseTokenId.get(raw.market_id);
+        if (!baseTokenId) continue;
+        const quoteAmount = BigInt(raw.quote_amount || 0);
+        volumeMap.set(
+          baseTokenId,
+          (volumeMap.get(baseTokenId) ?? 0n) + quoteAmount,
+        );
+      }
+      return volumeMap;
+    } catch (error) {
+      console.error(
+        '[CLOBV2Repository] Failed to get volume by base token id:',
+        error,
+      );
+      return new Map();
+    }
+  }
+
   private mapMarketToDomain(raw: any): CLOBMarket {
     return {
       id: raw.market_id || raw.id,
