@@ -653,21 +653,31 @@ export default function CustomerDashboard() {
                           label={holding.className}
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-foreground/30 uppercase tracking-wider">
-                          {holding.balance.toString()} units
-                        </span>
-                        <button
-                          onClick={() => {
-                            setSelectedHolding(holding);
-                            setIsDrawerOpen(true);
-                          }}
-                          className="p-1.5 rounded hover:bg-gold/10 transition-colors group/info"
-                          title="View details"
-                        >
-                          <Info className="w-4 h-4 text-foreground/25 group-hover/info:text-gold transition-colors" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedHolding(holding);
+                          setIsDrawerOpen(true);
+                        }}
+                        className="p-1.5 rounded hover:bg-gold/10 transition-colors group/info"
+                        aria-label="View asset details"
+                      >
+                        <Info className="w-4 h-4 text-foreground/25 group-hover/info:text-gold transition-colors" />
+                      </button>
+                    </div>
+
+                    {/* Asset name */}
+                    <p className="font-mono text-sm font-medium text-foreground/70 uppercase tracking-wider mb-1">
+                      {holding.name || holding.className}
+                    </p>
+
+                    {/* Balance */}
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="font-mono text-3xl font-bold text-gold tabular-nums">
+                        {holding.balance.toString()}
+                      </span>
+                      <span className="font-mono text-sm text-foreground/30 uppercase tracking-wider">
+                        units
+                      </span>
                     </div>
 
                     {/* Token ID */}
