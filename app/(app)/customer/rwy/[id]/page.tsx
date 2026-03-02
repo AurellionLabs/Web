@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import {
   useRWYOpportunity,
   useRWYOpportunityStakers,
@@ -45,6 +46,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { ethers } from 'ethers';
+import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
+import {
+  NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+} from '@/chain-constants';
 
 export default function RWYOpportunityDetailPage() {
   const params = useParams();
@@ -54,6 +60,41 @@ export default function RWYOpportunityDetailPage() {
     useRWYOpportunity(opportunityId);
   const { stakers } = useRWYOpportunityStakers(opportunityId);
   const { address: walletAddress } = useWallet();
+  const [userBalance, setUserBalance] = useState<string>('0');
+
+  // Fetch user's ERC1155 balance for the opportunity's input token
+  useEffect(() => {
+    if (!walletAddress || !opportunity) return;
+    const tokenId = opportunity.inputTokenId;
+    if (!tokenId) return;
+
+    let cancelled = false;
+    const fetch = async () => {
+      try {
+        const provider = RpcProviderFactory.getReadOnlyProvider(
+          NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+        );
+        const erc1155 = new ethers.Contract(
+          NEXT_PUBLIC_AURA_ASSET_ADDRESS,
+          [
+            'function balanceOf(address account, uint256 id) view returns (uint256)',
+          ],
+          provider,
+        );
+        const balance: bigint = await erc1155.balanceOf(
+          walletAddress,
+          BigInt(tokenId),
+        );
+        if (!cancelled) setUserBalance(balance.toString());
+      } catch (err) {
+        console.warn('[RWY detail] Failed to fetch input token balance:', err);
+      }
+    };
+    fetch();
+    return () => {
+      cancelled = true;
+    };
+  }, [walletAddress, opportunity]);
 
   if (loading) {
     return <OpportunityDetailSkeleton />;
@@ -312,7 +353,7 @@ export default function RWYOpportunityDetailPage() {
           <StakeForm
             opportunity={opportunity}
             userAddress={walletAddress as Address | undefined}
-            userBalance="1000000000000000000000" // TODO: Fetch actual balance
+            userBalance={userBalance}
             onSuccess={refetch}
           />
 
