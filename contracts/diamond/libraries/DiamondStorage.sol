@@ -120,6 +120,8 @@ library DiamondStorage {
         mapping(bytes32 => bytes32) clobOrderToUnifiedOrder;
         mapping(address => bytes32[]) buyerUnifiedOrders;
         mapping(address => bytes32[]) sellerUnifiedOrders;
+        // Replay protection: tracks eth-signed message hashes already used in bridgeTradeToLogistics
+        mapping(bytes32 => bool) usedSignatures;
 
         // ======= AUSYS (from AuSys.sol) =======
         // Payment token for bounties/settlements
