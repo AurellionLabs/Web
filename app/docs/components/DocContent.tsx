@@ -105,6 +105,14 @@ export function DocContent({ html }: { html: string }) {
           const { svg } = await mermaid.render(id, graphDef, tmp);
           if (!cancelled) {
             node.innerHTML = svg;
+            // Strip hardcoded pixel dimensions so CSS max-width can scale it
+            const svgEl = node.querySelector('svg');
+            if (svgEl) {
+              svgEl.removeAttribute('width');
+              svgEl.removeAttribute('height');
+              svgEl.style.width = '100%';
+              svgEl.style.height = 'auto';
+            }
             node.classList.add('mermaid-rendered');
           }
         } catch (err) {
