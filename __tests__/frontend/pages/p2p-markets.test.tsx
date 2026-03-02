@@ -130,7 +130,7 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }));
 
-import P2PMarketsPage from '@/app/customer/p2p/page';
+import P2PMarketsPage from '@/app/(app)/customer/p2p/page';
 
 // ===========================================================================
 // HELPERS

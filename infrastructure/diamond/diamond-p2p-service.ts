@@ -421,7 +421,7 @@ export class DiamondP2PService implements IP2PService {
       try {
         const journeyTx = await diamond.createOrderJourney(
           offerId,
-          senderAddress,
+          delivery.senderNodeAddress,
           receiverAddress,
           delivery.parcelData,
           delivery.bountyWei,

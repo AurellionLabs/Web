@@ -132,6 +132,9 @@ function createFlowContext(opts: MockContextOptions = {}) {
     cancelP2POffer: vi.fn().mockResolvedValue(cancelTx),
     createOrderJourney: vi.fn().mockResolvedValue(journeyTx),
     getAuSysOrder: vi.fn().mockResolvedValue(opts.order ?? makeSellOrder()),
+    getPayToken: vi
+      .fn()
+      .mockResolvedValue('0xQuoteToken0000000000000000000000000000'),
     interface: {
       parseLog: vi.fn().mockReturnValue({
         name: 'P2POfferCreated',
@@ -651,7 +654,11 @@ describe('P2P Logical Flow Tests', () => {
           hash: '0xaccepthash',
           wait: () => {
             callOrder.push('accept-confirmed');
-            return Promise.resolve({ hash: '0xaccepthash', logs: [] });
+            return Promise.resolve({
+              hash: '0xaccepthash',
+              status: 1,
+              logs: [],
+            });
           },
         });
       });

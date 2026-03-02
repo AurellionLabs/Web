@@ -69,6 +69,9 @@ const mockRepoContext = {
   getAusysContract: vi.fn().mockReturnValue(mockDiamondContract),
   getDriverRepository: vi.fn().mockReturnValue(mockRepository),
   getSigner: vi.fn().mockReturnValue(mockSigner),
+  getSignerAddress: vi
+    .fn()
+    .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c'),
 };
 
 vi.mock('@/infrastructure/contexts/repository-context', () => {
@@ -132,6 +135,9 @@ describe('DriverProvider', () => {
       .fn()
       .mockReturnValue(mockRepository);
     mockRepoContext.getSigner = vi.fn().mockReturnValue(mockSigner);
+    mockRepoContext.getSignerAddress = vi
+      .fn()
+      .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c');
     mockSigner.getAddress = vi
       .fn()
       .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c');

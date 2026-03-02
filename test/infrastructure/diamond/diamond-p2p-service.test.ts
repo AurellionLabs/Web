@@ -588,6 +588,7 @@ describe('acceptOfferWithDelivery', () => {
       wait: vi.fn().mockResolvedValue({
         hash: '0xaccepthash',
         blockNumber: 100,
+        status: 1,
         logs: [],
       }),
     };
@@ -620,6 +621,9 @@ describe('acceptOfferWithDelivery', () => {
       price: BigInt('1000000000000000000'), // 1 USDT
       tokenQuantity: BigInt(1000),
       txFee: BigInt('20000000000000000'), // 0.02 USDT
+      currentStatus: 1n, // accepted
+      seller: SELLER,
+      buyer: '0xBuyerAddr0000000000000000000000000000000',
     };
 
     const mockQuoteToken = {
@@ -719,7 +723,7 @@ describe('acceptOfferWithDelivery', () => {
         hash: '0xaccepthash',
         wait: () => {
           callOrder.push('accept-confirmed');
-          return Promise.resolve({ hash: '0xaccepthash', logs: [] });
+          return Promise.resolve({ hash: '0xaccepthash', status: 1, logs: [] });
         },
       });
     });
