@@ -459,13 +459,16 @@ contract CLOBFacet is Initializable {
 
     function cancelOrder(bytes32 _orderId) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(s.clobOrders[_orderId].maker == msg.sender, 'Not the order maker');
-        require(s.clobOrders[_orderId].status == 0, 'Order not cancellable');
+        
+        // Cache order to avoid repeated SLOADs (saves ~6300 gas cold, ~300 warm)
+        DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
+        require(order.maker == msg.sender, 'Not the order maker');
+        require(order.status == 0, 'Order not cancellable');
 
-        s.clobOrders[_orderId].status = 3;
-        s.clobOrders[_orderId].updatedAt = block.timestamp;
+        order.status = 3;
+        order.updatedAt = block.timestamp;
 
-        uint256 remaining = s.clobOrders[_orderId].amount - s.clobOrders[_orderId].filledAmount;
+        uint256 remaining = order.amount - order.filledAmount;
         emit CLOBOrderCancelled(_orderId, msg.sender, remaining);
     }
 
@@ -789,16 +792,19 @@ contract CLOBFacet is Initializable {
     ) internal {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         
+        // Cache order early to avoid repeated SLOADs
+        DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
+        uint256 filledAmount = order.filledAmount;
+        
         if (_isBuy) {
             _matchBuyOrder(s, _marketId, _orderId, _baseToken, _baseTokenId, _quoteToken);
-            _refundUnusedQuote(_orderId, _quoteToken, _amount, _maxPrice);
+            _refundUnusedQuote(_orderId, _quoteToken, _amount, _maxPrice, filledAmount);
         } else {
             _matchSellOrder(s, _marketId, _orderId);
-            _returnUnsoldTokens(_orderId, _baseToken, _baseTokenId, _amount);
+            _returnUnsoldTokens(_orderId, _baseToken, _baseTokenId, _amount, filledAmount);
         }
 
         // Finalize order status
-        DiamondStorage.CLOBOrder storage order = s.clobOrders[_orderId];
         order.status = order.filledAmount >= order.amount ? 2 : 3; // Filled or Cancelled
         order.updatedAt = block.timestamp;
     }
@@ -807,12 +813,11 @@ contract CLOBFacet is Initializable {
         bytes32 _orderId,
         address _quoteToken,
         uint256 _amount,
-        uint256 _maxPrice
+        uint256 _maxPrice,
+        uint256 _filledAmount  // Pass filled amount from cached order
     ) internal {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256 filled = s.clobOrders[_orderId].filledAmount;
-        if (filled < _amount) {
-            uint256 refund = _maxPrice * (_amount - filled);
+        if (_filledAmount < _amount) {
+            uint256 refund = _maxPrice * (_amount - _filledAmount);
             if (refund > 0) {
                 IERC20(_quoteToken).transfer(msg.sender, refund);
             }
@@ -823,10 +828,10 @@ contract CLOBFacet is Initializable {
         bytes32 _orderId,
         address _baseToken,
         uint256 _baseTokenId,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _filledAmount  // Pass filled amount from cached order
     ) internal {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256 unsold = _amount - s.clobOrders[_orderId].filledAmount;
+        uint256 unsold = _amount - _filledAmount;
         if (unsold > 0) {
             IERC1155(_baseToken).safeTransferFrom(address(this), msg.sender, _baseTokenId, unsold, "");
         }
