@@ -1,4 +1,3 @@
-// @ts-nocheck - File with type issues that need deeper refactoring
 import {
   IPoolService,
   IPoolRepository,
@@ -640,10 +639,9 @@ export class PoolService implements IPoolService {
       timeRemainingSeconds,
       volume24h,
       volumeChangePercentage,
-      rewardRate: pool.rewardRate,
       tvl: pool.totalValueLocked,
       fundingGoal: pool.fundingGoal,
-      reward: rewardFormatted,
+      reward: pool.rewardRate,
     };
   }
 
@@ -679,7 +677,7 @@ export class PoolService implements IPoolService {
     if (!data.durationDays || data.durationDays <= 0) {
       throw new Error('Duration must be greater than 0 days');
     }
-    if (data.rewardRate < 0 || data.rewardRate > 10000) {
+    if (Number(data.rewardRate) < 0 || Number(data.rewardRate) > 10000) {
       throw new Error(
         'Reward rate must be between 0 and 10000 basis points (0-100%)',
       );
@@ -849,8 +847,11 @@ export class PoolService implements IPoolService {
   private async extractPoolIdFromReceipt(txReceipt: any): Promise<string> {
     try {
       // Look for OpportunityCreated event
-      const eventSignature =
-        this.contract.interface.getEvent('OpportunityCreated').topicHash;
+      const eventFragment =
+        this.contract.interface.getEvent('OpportunityCreated');
+      if (!eventFragment)
+        throw new Error('OpportunityCreated event not found in ABI');
+      const eventSignature = eventFragment.topicHash;
       const eventLog = txReceipt.logs?.find(
         (log: any) => log.topics[0] === eventSignature,
       );
