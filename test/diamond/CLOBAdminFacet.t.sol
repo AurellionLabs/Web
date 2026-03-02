@@ -111,7 +111,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_setFees_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.setFees(50, 25, 10);
     }
 
@@ -137,7 +137,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_setFeeRecipient_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.setFeeRecipient(user1);
     }
 
@@ -156,7 +156,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_setRateLimits_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.setRateLimits(200, 5_000_000 ether);
     }
 
@@ -182,7 +182,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_setMEVProtection_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.setMEVProtection(5, 20_000 ether);
     }
 
@@ -214,7 +214,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_pause_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.pause();
     }
 
@@ -280,7 +280,6 @@ contract CLOBAdminFacetTest is DiamondTestBase {
     // ============================================================================
 
     function test_configureCircuitBreaker_setsParams() public {
-        vm.prank(owner);
         // Warm up market by placing an order
         vm.prank(user1);
         clobCore.placeLimitOrder(
@@ -299,7 +298,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_configureCircuitBreaker_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.configureCircuitBreaker(marketId, 500, 2 hours, true);
     }
 
@@ -358,7 +357,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_setDefaultCircuitBreakerParams_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.setDefaultCircuitBreakerParams(800, 30 minutes);
     }
 
@@ -374,7 +373,7 @@ contract CLOBAdminFacetTest is DiamondTestBase {
 
     function test_setEmergencyTimelock_revertNotOwner() public {
         vm.prank(user1);
-        vm.expectRevert(CLOBAdminFacet.NotOwner.selector);
+        vm.expectRevert(bytes('LibDiamond: Must be contract owner'));
         clobAdmin.setEmergencyTimelock(2 days);
     }
 
