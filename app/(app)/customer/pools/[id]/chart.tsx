@@ -10,7 +10,7 @@ import {
   Tooltip,
   Filler,
 } from 'chart.js';
-import { GroupedStakes } from '@/dapp-connectors/staking-controller';
+import { GroupedStakes } from '@/domain/shared/grouped-stakes';
 
 ChartJS.register(
   CategoryScale,

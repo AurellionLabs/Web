@@ -3,7 +3,6 @@
  * The Diamond pattern is now in use - see infrastructure/services for new implementations.
  * This file is kept for reference but should not be used in production.
  */
-// @ts-nocheck - Legacy controller with outdated contract types
 import {
   AddressLike,
   BigNumberish,
