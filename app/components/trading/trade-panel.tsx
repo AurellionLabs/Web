@@ -83,6 +83,8 @@ export interface TradePanelProps {
   onPlaceOrder?: (order: OrderData) => Promise<boolean>;
   /** Optional className for styling */
   className?: string;
+  /** Pre-select buy or sell side */
+  initialSide?: OrderSide;
 }
 
 /**
@@ -471,8 +473,9 @@ export const TradePanel: React.FC<TradePanelProps> = ({
   onOrderPlaced,
   onPlaceOrder,
   className,
+  initialSide,
 }) => {
-  const [side, setSide] = useState<OrderSide>('buy');
+  const [side, setSide] = useState<OrderSide>(initialSide ?? 'buy');
   const [type, setType] = useState<OrderType>('limit');
   const [price, setPrice] = useState(initialPrice?.toString() || '');
   const [quantity, setQuantity] = useState('');
@@ -573,12 +576,19 @@ export const TradePanel: React.FC<TradePanelProps> = ({
     }
   };
 
-  // Update price when initialPrice changes
+  // Update price when initialPrice changes (e.g. order book click)
   React.useEffect(() => {
     if (initialPrice !== undefined) {
       setPrice(initialPrice.toString());
     }
   }, [initialPrice]);
+
+  // Update side when initialSide changes (e.g. order book click)
+  React.useEffect(() => {
+    if (initialSide !== undefined) {
+      setSide(initialSide);
+    }
+  }, [initialSide]);
 
   // For sell orders, require a selected asset
   // For market orders, price is not required (determined by market)

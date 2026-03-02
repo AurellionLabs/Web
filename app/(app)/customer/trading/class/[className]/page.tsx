@@ -156,6 +156,12 @@ function ClassDetailPageContent() {
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
   const [chartPeriod, setChartPeriod] = useState<TimePeriod>('1d');
   const [isLoadingChart, setIsLoadingChart] = useState(false);
+  const [clickedOrderBookPrice, setClickedOrderBookPrice] = useState<
+    number | undefined
+  >(undefined);
+  const [clickedOrderBookSide, setClickedOrderBookSide] = useState<
+    'buy' | 'sell' | undefined
+  >(undefined);
 
   // Set user role on mount
   useEffect(() => {
@@ -275,10 +281,12 @@ function ClassDetailPageContent() {
     }
   }, [refetch]);
 
-  // Handle price click from order book
+  // Handle price click from order book — pre-fills the trade panel
   const handlePriceClick = useCallback((price: number, side: 'bid' | 'ask') => {
-    console.log(`Clicked ${side} at ${price}`);
-    // TODO: Could pre-fill the trade panel price
+    setClickedOrderBookPrice(price);
+    // Clicking a bid (buy order) → user likely wants to sell into it (sell side)
+    // Clicking an ask (sell order) → user likely wants to buy at that price (buy side)
+    setClickedOrderBookSide(side === 'bid' ? 'sell' : 'buy');
   }, []);
 
   // Handle order placement - connects TradePanel to CLOB
@@ -988,7 +996,8 @@ function ClassDetailPageContent() {
               {selectedAssetType && tradeableAsset ? (
                 <TradePanel
                   asset={tradeableAsset}
-                  initialPrice={basePrice}
+                  initialPrice={clickedOrderBookPrice ?? basePrice}
+                  initialSide={clickedOrderBookSide}
                   bestAskPrice={bestAskPrice}
                   bestBidPrice={bestBidPrice}
                   sellableAssets={sellableAssets}
