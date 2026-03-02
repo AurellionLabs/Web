@@ -20,6 +20,7 @@ vi.mock('@/infrastructure/repositories/shared/graph', () => ({
 vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_AURUM_SUBGRAPH_URL: 'https://indexer.test/graphql',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xDiamondAddress',
+  NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS: '0xClobV2DiamondAddress',
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: '0xQuoteToken',
 }));
 
