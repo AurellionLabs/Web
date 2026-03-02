@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-03-02T06:21:55.489Z
+// Generated at: 2026-03-02T06:37:34.857Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -1293,6 +1293,256 @@ export const diamondOperatorStatsUpdatedEvents = onchainTable(
   }),
 );
 
+export const diamondCircuitBreakerConfiguredEvents = onchainTable(
+  'diamond_circuit_breaker_configured_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    market_id: t.hex().notNull(),
+    price_change_threshold: t.bigint().notNull(),
+    cooldown_period: t.bigint().notNull(),
+    is_enabled: t.boolean().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    marketIdIdx: index().on(table.market_id),
+  }),
+);
+
+export const diamondCircuitBreakerResetEvents = onchainTable(
+  'diamond_circuit_breaker_reset_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    market_id: t.hex().notNull(),
+    reset_at: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    marketIdIdx: index().on(table.market_id),
+  }),
+);
+
+export const diamondCircuitBreakerTrippedEvents = onchainTable(
+  'diamond_circuit_breaker_tripped_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    market_id: t.hex().notNull(),
+    trigger_price: t.bigint().notNull(),
+    previous_price: t.bigint().notNull(),
+    change_percent: t.bigint().notNull(),
+    cooldown_until: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    marketIdIdx: index().on(table.market_id),
+  }),
+);
+
+export const diamondEmergencyActionCancelledEvents = onchainTable(
+  'diamond_emergency_action_cancelled_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    action_id: t.hex().notNull(),
+    canceller: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    actionIdIdx: index().on(table.action_id),
+    cancellerIdx: index().on(table.canceller),
+  }),
+);
+
+export const diamondEmergencyActionExecutedEvents = onchainTable(
+  'diamond_emergency_action_executed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    action_id: t.hex().notNull(),
+    executor: t.hex().notNull(),
+    token: t.hex().notNull(),
+    recipient: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    actionIdIdx: index().on(table.action_id),
+    executorIdx: index().on(table.executor),
+  }),
+);
+
+export const diamondEmergencyActionInitiatedEvents = onchainTable(
+  'diamond_emergency_action_initiated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    action_id: t.hex().notNull(),
+    initiator: t.hex().notNull(),
+    token: t.hex().notNull(),
+    recipient: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    execute_after: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    actionIdIdx: index().on(table.action_id),
+    initiatorIdx: index().on(table.initiator),
+  }),
+);
+
+export const diamondEmergencyWithdrawalEvents = onchainTable(
+  'diamond_emergency_withdrawal_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    user: t.hex().notNull(),
+    order_id: t.hex().notNull(),
+    token: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    userIdx: index().on(table.user),
+    orderIdIdx: index().on(table.order_id),
+  }),
+);
+
+export const diamondFeeRecipientUpdatedEvents = onchainTable(
+  'diamond_fee_recipient_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    old_recipient: t.hex().notNull(),
+    new_recipient: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    oldRecipientIdx: index().on(table.old_recipient),
+    newRecipientIdx: index().on(table.new_recipient),
+  }),
+);
+
+export const diamondFeesUpdatedEvents = onchainTable(
+  'diamond_fees_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    taker_fee_bps: t.bigint().notNull(),
+    maker_fee_bps: t.bigint().notNull(),
+    lp_fee_bps: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+);
+
+export const diamondGlobalPauseEvents = onchainTable(
+  'diamond_global_pause_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    paused: t.boolean().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+);
+
+export const diamondMEVProtectionUpdatedEvents = onchainTable(
+  'diamond_m_e_v_protection_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    min_reveal_delay: t.bigint().notNull(),
+    commitment_threshold: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+);
+
+export const diamondMarketPausedEvents = onchainTable(
+  'diamond_market_paused_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    market_id: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    marketIdIdx: index().on(table.market_id),
+  }),
+);
+
+export const diamondMarketUnpausedEvents = onchainTable(
+  'diamond_market_unpaused_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    market_id: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    marketIdIdx: index().on(table.market_id),
+  }),
+);
+
+export const diamondRateLimitsUpdatedEvents = onchainTable(
+  'diamond_rate_limits_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    max_orders_per_block: t.bigint().notNull(),
+    max_volume_per_block: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+);
+
+export const diamondOrderCommittedEvents = onchainTable(
+  'diamond_order_committed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    commitment_id: t.hex().notNull(),
+    committer: t.hex().notNull(),
+    commit_block: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    commitmentIdIdx: index().on(table.commitment_id),
+    committerIdx: index().on(table.committer),
+  }),
+);
+
+export const diamondOrderRevealedEvents = onchainTable(
+  'diamond_order_revealed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    commitment_id: t.hex().notNull(),
+    order_id: t.hex().notNull(),
+    maker: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    commitmentIdIdx: index().on(table.commitment_id),
+    orderIdIdx: index().on(table.order_id),
+    makerIdx: index().on(table.maker),
+  }),
+);
+
 export const diamondDiamondCutEvents = onchainTable(
   'diamond_diamond_cut_events',
   (t) => ({
@@ -1882,6 +2132,22 @@ export const tables = {
   diamondOperatorRevokedEvents,
   diamondOperatorSlashedEvents,
   diamondOperatorStatsUpdatedEvents,
+  diamondCircuitBreakerConfiguredEvents,
+  diamondCircuitBreakerResetEvents,
+  diamondCircuitBreakerTrippedEvents,
+  diamondEmergencyActionCancelledEvents,
+  diamondEmergencyActionExecutedEvents,
+  diamondEmergencyActionInitiatedEvents,
+  diamondEmergencyWithdrawalEvents,
+  diamondFeeRecipientUpdatedEvents,
+  diamondFeesUpdatedEvents,
+  diamondGlobalPauseEvents,
+  diamondMEVProtectionUpdatedEvents,
+  diamondMarketPausedEvents,
+  diamondMarketUnpausedEvents,
+  diamondRateLimitsUpdatedEvents,
+  diamondOrderCommittedEvents,
+  diamondOrderRevealedEvents,
   diamondDiamondCutEvents,
   diamondOwnershipTransferredEvents,
   diamondAuSysAdminRevokedEvents,

@@ -44,6 +44,7 @@ const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
   RWYStakingFacet: { domain: 'rwy-staking', priority: 6 },
   OperatorFacet: { domain: 'operators', priority: 7 },
   CLOBAdminFacet: { domain: 'clob-admin', priority: 8 },
+  CLOBMEVFacet: { domain: 'clob-mev', priority: 13 },
   DiamondCutFacet: { domain: 'diamond', priority: 9 },
   OwnershipFacet: { domain: 'diamond', priority: 10 },
   AuSysFacet: { domain: 'ausys', priority: 11 },
@@ -65,7 +66,9 @@ const EXTERNAL_CONTRACTS: Record<
 
 // Ponder currently enforces a maximum of 100 schema tables.
 // Exclude low-value admin domains to keep the generated schema within limit.
-const EXCLUDED_INDEXER_DOMAINS = new Set(['clob-admin']);
+const EXCLUDED_INDEXER_DOMAINS = new Set<string>();
+// Note: clob-admin was previously excluded but CircuitBreaker events are now indexed.
+// clob-mev OrderCommitted/OrderRevealed events are now indexed.
 
 // ============================================================================
 // AGGREGATE TABLE CONFIGURATION (US-001, US-002, US-003)

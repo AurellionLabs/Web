@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-03-02T06:21:55.487Z
+// Generated at: 2026-03-02T06:37:34.855Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -18,6 +18,7 @@ export { BridgeFacetABI, BridgeFacetEvents } from './BridgeFacet';
 export { RWYStakingFacetABI, RWYStakingFacetEvents } from './RWYStakingFacet';
 export { OperatorFacetABI, OperatorFacetEvents } from './OperatorFacet';
 export { CLOBAdminFacetABI, CLOBAdminFacetEvents } from './CLOBAdminFacet';
+export { CLOBMEVFacetABI, CLOBMEVFacetEvents } from './CLOBMEVFacet';
 export { DiamondCutFacetABI, DiamondCutFacetEvents } from './DiamondCutFacet';
 export { OwnershipFacetABI, OwnershipFacetEvents } from './OwnershipFacet';
 export { AuSysFacetABI, AuSysFacetEvents } from './AuSysFacet';
@@ -2427,6 +2428,56 @@ export const DiamondABI = [
       },
     ],
     name: 'RateLimitsUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'commitmentId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'committer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'commitBlock',
+        type: 'uint256',
+      },
+    ],
+    name: 'OrderCommitted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'commitmentId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'maker',
+        type: 'address',
+      },
+    ],
+    name: 'OrderRevealed',
     type: 'event',
   },
   {
@@ -7507,6 +7558,128 @@ export const DiamondABI = [
     type: 'function',
   },
   {
+    inputs: [],
+    name: 'MAX_REVEAL_DELAY',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'commitment',
+        type: 'bytes32',
+      },
+    ],
+    name: 'commitOrder',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getCommitmentThreshold',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'quoteAmount',
+        type: 'uint256',
+      },
+    ],
+    name: 'requiresCommitReveal',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'commitmentId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'address',
+        name: 'baseToken',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'baseTokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'address',
+        name: 'quoteToken',
+        type: 'address',
+      },
+      {
+        internalType: 'uint96',
+        name: 'price',
+        type: 'uint96',
+      },
+      {
+        internalType: 'uint96',
+        name: 'amount',
+        type: 'uint96',
+      },
+      {
+        internalType: 'bool',
+        name: 'isBuy',
+        type: 'bool',
+      },
+      {
+        internalType: 'uint8',
+        name: 'timeInForce',
+        type: 'uint8',
+      },
+      {
+        internalType: 'uint40',
+        name: 'expiry',
+        type: 'uint40',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'salt',
+        type: 'bytes32',
+      },
+    ],
+    name: 'revealOrder',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
     inputs: [
       {
         components: [
@@ -9666,6 +9839,16 @@ export const EventSignatureRegistry = {
     name: 'RateLimitsUpdated',
     facet: 'CLOBAdminFacet',
     signature: 'RateLimitsUpdated(uint256,uint256)',
+  },
+  '0x25cd9c95': {
+    name: 'OrderCommitted',
+    facet: 'CLOBMEVFacet',
+    signature: 'OrderCommitted(bytes32,address,uint256)',
+  },
+  '0x73609089': {
+    name: 'OrderRevealed',
+    facet: 'CLOBMEVFacet',
+    signature: 'OrderRevealed(bytes32,bytes32,address)',
   },
   '0xe785b7d4': {
     name: 'DiamondCut',

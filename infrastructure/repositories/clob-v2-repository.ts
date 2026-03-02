@@ -977,9 +977,123 @@ export class CLOBV2Repository implements ICLOBRepository {
   // ============================================================================
 
   async getCircuitBreaker(marketId: string): Promise<CircuitBreaker | null> {
-    // CircuitBreakerConfigured/Tripped events are not currently indexed by the Ponder schema.
-    // When added to generated-schema.ts, query diamondCircuitBreakerConfiguredEventss here.
-    return null;
+    // Query the most recent CircuitBreakerConfigured event for this market
+    // Then overlay the most recent CircuitBreakerTripped event (if any) to determine status
+    const query = `
+      query GetCircuitBreaker($marketId: String!) {
+        configured: diamondCircuitBreakerConfiguredEventss(
+          where: { market_id: $marketId }
+          orderBy: "block_timestamp"
+          orderDirection: "desc"
+          limit: 1
+        ) {
+          items {
+            market_id
+            price_change_threshold
+            cooldown_period
+            is_enabled
+            block_timestamp
+          }
+        }
+        tripped: diamondCircuitBreakerTrippedEventss(
+          where: { market_id: $marketId }
+          orderBy: "block_timestamp"
+          orderDirection: "desc"
+          limit: 1
+        ) {
+          items {
+            market_id
+            trigger_price
+            previous_price
+            change_percent
+            cooldown_until
+            block_timestamp
+          }
+        }
+        reset: diamondCircuitBreakerResetEventss(
+          where: { market_id: $marketId }
+          orderBy: "block_timestamp"
+          orderDirection: "desc"
+          limit: 1
+        ) {
+          items {
+            market_id
+            reset_at
+            block_timestamp
+          }
+        }
+      }
+    `;
+
+    const data = await graphqlRequest<{
+      configured: {
+        items: Array<{
+          market_id: string;
+          price_change_threshold: string;
+          cooldown_period: string;
+          is_enabled: boolean;
+          block_timestamp: string;
+        }>;
+      };
+      tripped: {
+        items: Array<{
+          market_id: string;
+          trigger_price: string;
+          previous_price: string;
+          change_percent: string;
+          cooldown_until: string;
+          block_timestamp: string;
+        }>;
+      };
+      reset: {
+        items: Array<{
+          market_id: string;
+          reset_at: string;
+          block_timestamp: string;
+        }>;
+      };
+    }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, query, { marketId });
+
+    const configuredItem = data.configured.items[0];
+    if (!configuredItem) return null;
+
+    const trippedItem = data.tripped.items[0];
+    const resetItem = data.reset.items[0];
+
+    // Determine current status:
+    // If no trip event: NORMAL
+    // If trip event exists and no reset after it: TRIPPED (unless cooldown expired)
+    // If reset event exists after trip: NORMAL
+    let status = CircuitBreakerStatus.ACTIVE;
+    let tripTimestamp = 0;
+    let lastPrice = '0';
+
+    if (trippedItem) {
+      const tripTs = Number(trippedItem.block_timestamp);
+      const resetTs = resetItem ? Number(resetItem.block_timestamp) : 0;
+      const cooldownUntil = Number(trippedItem.cooldown_until);
+      const nowMs = Date.now();
+
+      if (resetTs > tripTs) {
+        status = CircuitBreakerStatus.ACTIVE;
+      } else if (cooldownUntil * 1000 > nowMs) {
+        status = CircuitBreakerStatus.TRIPPED;
+      } else {
+        status = CircuitBreakerStatus.COOLDOWN;
+      }
+      tripTimestamp = tripTs;
+      lastPrice = trippedItem.trigger_price;
+    }
+
+    return {
+      marketId: configuredItem.market_id,
+      lastPrice,
+      priceChangeThreshold: Number(configuredItem.price_change_threshold),
+      cooldownPeriod: Number(configuredItem.cooldown_period),
+      tripTimestamp,
+      status,
+      isEnabled: configuredItem.is_enabled,
+    };
   }
 
   // ============================================================================
@@ -987,15 +1101,122 @@ export class CLOBV2Repository implements ICLOBRepository {
   // ============================================================================
 
   async getCommitment(commitmentId: string): Promise<CommittedOrder | null> {
-    // OrderCommitted events (CLOBMEVFacet) are not currently indexed by the Ponder schema.
-    // When added to generated-schema.ts, query diamondOrderCommittedEventss here.
-    return null;
+    const query = `
+      query GetCommitment($commitmentId: String!) {
+        committed: diamondOrderCommittedEventss(
+          where: { commitment_id: $commitmentId }
+          limit: 1
+        ) {
+          items {
+            commitment_id
+            committer
+            commit_block
+            block_timestamp
+          }
+        }
+        revealed: diamondOrderRevealedEventss(
+          where: { commitment_id: $commitmentId }
+          limit: 1
+        ) {
+          items {
+            commitment_id
+            order_id
+          }
+        }
+      }
+    `;
+
+    const data = await graphqlRequest<{
+      committed: {
+        items: Array<{
+          commitment_id: string;
+          committer: string;
+          commit_block: string;
+          block_timestamp: string;
+        }>;
+      };
+      revealed: { items: Array<{ commitment_id: string; order_id: string }> };
+    }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, query, { commitmentId });
+
+    const item = data.committed.items[0];
+    if (!item) return null;
+
+    const revealedItem = data.revealed.items[0];
+    // MEV protection reveal window: typically 10 blocks. Mark expired if not yet revealed after ~250 blocks.
+    const REVEAL_DEADLINE_BLOCKS = 10;
+    const commitBlock = Number(item.commit_block);
+
+    return {
+      id: item.commitment_id,
+      commitment: item.commitment_id,
+      commitBlock,
+      committer: item.committer,
+      revealed: !!revealedItem,
+      expired: false, // cannot determine without current block number; UI can infer
+      revealDeadline: commitBlock + REVEAL_DEADLINE_BLOCKS,
+    };
   }
 
   async getUserCommitments(userAddress: string): Promise<CommittedOrder[]> {
-    // OrderCommitted events (CLOBMEVFacet) are not currently indexed by the Ponder schema.
-    // When added to generated-schema.ts, query diamondOrderCommittedEventss by maker here.
-    return [];
+    const query = `
+      query GetUserCommitments($committer: String!) {
+        committed: diamondOrderCommittedEventss(
+          where: { committer: $committer }
+          orderBy: "block_timestamp"
+          orderDirection: "desc"
+          limit: 100
+        ) {
+          items {
+            commitment_id
+            committer
+            commit_block
+            block_timestamp
+          }
+        }
+        revealed: diamondOrderRevealedEventss(
+          orderBy: "block_timestamp"
+          orderDirection: "desc"
+          limit: 1000
+        ) {
+          items {
+            commitment_id
+            order_id
+          }
+        }
+      }
+    `;
+
+    const data = await graphqlRequest<{
+      committed: {
+        items: Array<{
+          commitment_id: string;
+          committer: string;
+          commit_block: string;
+          block_timestamp: string;
+        }>;
+      };
+      revealed: { items: Array<{ commitment_id: string; order_id: string }> };
+    }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, query, {
+      committer: userAddress.toLowerCase(),
+    });
+
+    const revealedSet = new Set(
+      data.revealed.items.map((r) => r.commitment_id),
+    );
+    const REVEAL_DEADLINE_BLOCKS = 10;
+
+    return data.committed.items.map((item) => {
+      const commitBlock = Number(item.commit_block);
+      return {
+        id: item.commitment_id,
+        commitment: item.commitment_id,
+        commitBlock,
+        committer: item.committer,
+        revealed: revealedSet.has(item.commitment_id),
+        expired: false,
+        revealDeadline: commitBlock + REVEAL_DEADLINE_BLOCKS,
+      };
+    });
   }
 
   // ============================================================================
