@@ -130,6 +130,10 @@ contract AuSysFacet is ReentrancyGuard {
     event P2POfferAccepted(bytes32 indexed orderId, address indexed acceptor, bool isSellerInitiated);
     event P2POfferCanceled(bytes32 indexed orderId, address indexed creator);
 
+    // Token destination events
+    event TokenDestinationPending(bytes32 indexed orderId, address indexed buyer, uint256 tokenId, uint256 quantity);
+    event TokenDestinationSelected(bytes32 indexed orderId, address destination, bytes32 nodeId, bool burned);
+
     // ============================================================================
     // ERRORS (from AuSys.sol)
     // ============================================================================
@@ -158,6 +162,8 @@ contract AuSysFacet is ReentrancyGuard {
     error NotTargetCounterparty();
     error CannotAcceptOwnOffer();
     error OnlyCreatorCanCancel();
+    // Token destination errors
+    error NoPendingDestination();
 
     // ============================================================================
     // CONSTANTS (RBAC roles from AuSys.sol)
@@ -911,14 +917,10 @@ contract AuSysFacet is ReentrancyGuard {
         O.currentStatus = OrderStatus.AUSYS_SETTLED;
         emit AuSysOrderStatusUpdated(orderId, OrderStatus.AUSYS_SETTLED);
 
-        // Transfer tokens to buyer
-        IERC1155(O.token).safeTransferFrom(
-            address(this),
-            O.buyer,
-            O.tokenId,
-            O.tokenQuantity,
-            ''
-        );
+        // Hold tokens in escrow — buyer chooses destination via selectTokenDestination
+        s.pendingTokenDestination[orderId] = true;
+        s.pendingTokenBuyer[orderId] = O.buyer;
+        emit TokenDestinationPending(orderId, O.buyer, O.tokenId, O.tokenQuantity);
 
         // Pay seller
         IERC20(s.payToken).safeTransfer(O.seller, O.price);
@@ -938,6 +940,73 @@ contract AuSysFacet is ReentrancyGuard {
         }
 
         emit AuSysOrderSettled(orderId);
+    }
+
+    // ============================================================================
+    // TOKEN DESTINATION SELECTION
+    // ============================================================================
+
+    /**
+     * @notice Buyer selects where settled tokens go: burn or send to owned node
+     * @param orderId The settled order with pending token destination
+     * @param nodeId The node to send tokens to (ignored if burn=true)
+     * @param burn If true, tokens are sent to dead address
+     */
+    function selectTokenDestination(
+        bytes32 orderId,
+        bytes32 nodeId,
+        bool burn
+    ) external nonReentrant {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
+
+        if (!s.pendingTokenDestination[orderId]) revert NoPendingDestination();
+        if (msg.sender != s.pendingTokenBuyer[orderId]) revert InvalidCaller();
+
+        s.pendingTokenDestination[orderId] = false;
+
+        if (burn) {
+            IERC1155(O.token).safeTransferFrom(address(this), address(0xdead), O.tokenId, O.tokenQuantity, '');
+            emit TokenDestinationSelected(orderId, address(0xdead), bytes32(0), true);
+        } else {
+            require(nodeId != bytes32(0), "Node required if not burning");
+            DiamondStorage.Node storage node = s.nodes[nodeId];
+            require(node.active && node.validNode, "Invalid node");
+            // Verify caller owns the node
+            bool ownsNode = false;
+            bytes32[] storage callerNodes = s.ownerNodes[msg.sender];
+            for (uint256 i = 0; i < callerNodes.length; i++) {
+                if (callerNodes[i] == nodeId) { ownsNode = true; break; }
+            }
+            require(ownsNode, "Not node owner");
+            address nodeOwner = node.owner;
+            IERC1155(O.token).safeTransferFrom(address(this), nodeOwner, O.tokenId, O.tokenQuantity, '');
+            emit TokenDestinationSelected(orderId, nodeOwner, nodeId, false);
+        }
+    }
+
+    /**
+     * @notice Get all pending token destination orders for a buyer
+     * @param buyer The buyer address to query
+     * @return Array of order IDs awaiting destination selection
+     */
+    function getPendingTokenDestinations(address buyer) external view returns (bytes32[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 totalOrders = s.ausysOrderIds.length;
+
+        uint256 count = 0;
+        for (uint256 i = 0; i < totalOrders; i++) {
+            bytes32 oid = s.ausysOrderIds[i];
+            if (s.pendingTokenDestination[oid] && s.pendingTokenBuyer[oid] == buyer) count++;
+        }
+
+        bytes32[] memory result = new bytes32[](count);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < totalOrders; i++) {
+            bytes32 oid = s.ausysOrderIds[i];
+            if (s.pendingTokenDestination[oid] && s.pendingTokenBuyer[oid] == buyer) result[idx++] = oid;
+        }
+        return result;
     }
 
     // ============================================================================
