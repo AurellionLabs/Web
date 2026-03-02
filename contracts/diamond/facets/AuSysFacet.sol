@@ -164,6 +164,8 @@ contract AuSysFacet is ReentrancyGuard {
     error OnlyCreatorCanCancel();
     // Token destination errors
     error NoPendingDestination();
+    error NotNodeOwner();
+    error NodeRequired();
 
     // ============================================================================
     // CONSTANTS (RBAC roles from AuSys.sol)
@@ -964,25 +966,37 @@ contract AuSysFacet is ReentrancyGuard {
         if (msg.sender != s.pendingTokenBuyer[orderId]) revert InvalidCaller();
 
         s.pendingTokenDestination[orderId] = false;
+        delete s.pendingTokenBuyer[orderId];
 
         if (burn) {
             IERC1155(O.token).safeTransferFrom(address(this), address(0xdead), O.tokenId, O.tokenQuantity, '');
             emit TokenDestinationSelected(orderId, address(0xdead), bytes32(0), true);
         } else {
-            require(nodeId != bytes32(0), "Node required if not burning");
+            if (nodeId == bytes32(0)) revert NodeRequired();
             DiamondStorage.Node storage node = s.nodes[nodeId];
-            require(node.active && node.validNode, "Invalid node");
-            // Verify caller owns the node
-            bool ownsNode = false;
-            bytes32[] storage callerNodes = s.ownerNodes[msg.sender];
-            for (uint256 i = 0; i < callerNodes.length; i++) {
-                if (callerNodes[i] == nodeId) { ownsNode = true; break; }
-            }
-            require(ownsNode, "Not node owner");
-            address nodeOwner = node.owner;
-            IERC1155(O.token).safeTransferFrom(address(this), nodeOwner, O.tokenId, O.tokenQuantity, '');
-            emit TokenDestinationSelected(orderId, nodeOwner, nodeId, false);
+            if (!node.active || !node.validNode) revert InvalidNode();
+            if (node.owner != msg.sender) revert NotNodeOwner();
+            IERC1155(O.token).safeTransferFrom(address(this), node.owner, O.tokenId, O.tokenQuantity, '');
+            emit TokenDestinationSelected(orderId, node.owner, nodeId, false);
         }
+    }
+
+    /**
+     * @notice Admin recovery of escrowed tokens when buyer has not selected a destination
+     * @param orderId The order with stuck escrow
+     * @param to The address to send the recovered tokens to
+     */
+    function adminRecoverEscrow(bytes32 orderId, address to) external adminOnly nonReentrant {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
+
+        if (!s.pendingTokenDestination[orderId]) revert NoPendingDestination();
+
+        s.pendingTokenDestination[orderId] = false;
+        delete s.pendingTokenBuyer[orderId];
+
+        IERC1155(O.token).safeTransferFrom(address(this), to, O.tokenId, O.tokenQuantity, '');
+        emit TokenDestinationSelected(orderId, to, bytes32(0), false);
     }
 
     /**
