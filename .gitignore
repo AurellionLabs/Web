@@ -8,6 +8,8 @@ typechain-types/
 # Foundry artifacts
 out/
 lib/
+!lib/docs.ts
+!lib/docs-nav.ts
 !lib/contracts/
 
 # Next.js
