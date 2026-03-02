@@ -26,7 +26,7 @@ import {
 } from '@/domain/clob/clob';
 import {
   NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
 import { keccak256, encodePacked } from 'viem';
@@ -416,7 +416,7 @@ export class CLOBV2Repository implements ICLOBRepository {
 
   constructor() {
     this.graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
-    this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
+    this.diamondAddress = NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS;
     this.quoteTokenAddress =
       NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS ||
       '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
