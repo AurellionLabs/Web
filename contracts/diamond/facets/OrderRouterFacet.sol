@@ -8,6 +8,7 @@ import { OrderMatchingLib } from '../libraries/OrderMatchingLib.sol';
 import { OrderUtilsLib } from '../libraries/OrderUtilsLib.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /**
@@ -17,6 +18,7 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  *      Uses OrderBookLib, OrderMatchingLib, and OrderUtilsLib for logic to reduce size.
  */
 contract OrderRouterFacet is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     
     // ============================================================================
     // ERRORS
@@ -24,6 +26,7 @@ contract OrderRouterFacet is ReentrancyGuard {
     
     error InsufficientNodeBalance();
     error NotNodeOwner();
+    error NotNodeOwnerOrApproved();
     error MarketPaused();
     error NoLiquidityForMarketOrder();
     
@@ -95,7 +98,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         // Transfer tokens to escrow
         if (isBuy) {
             uint256 totalCost = CLOBLib.calculateQuoteAmount(price, amount);
-            IERC20(quoteToken).transferFrom(msg.sender, address(this), totalCost);
+            IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), totalCost);
         } else {
             IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
         }
@@ -115,6 +118,7 @@ contract OrderRouterFacet is ReentrancyGuard {
     
     /**
      * @notice Place a sell order from node inventory
+     * @dev Access control: caller must be nodeOwner or approved operator
      */
     function placeNodeSellOrder(
         address nodeOwner,
@@ -129,6 +133,12 @@ contract OrderRouterFacet is ReentrancyGuard {
         OrderUtilsLib.validateOrderParams(price, amount, timeInForce, expiry);
         
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        
+        // SECURITY: Verify caller is node owner or approved operator
+        if (msg.sender != nodeOwner && !s.erc1155OperatorApprovals[nodeOwner][msg.sender]) {
+            revert NotNodeOwnerOrApproved();
+        }
+        
         bytes32 marketId = OrderUtilsLib.getOrCreateMarket(s, baseToken, baseTokenId, quoteToken);
         
         // Tokens already in Diamond from node inventory - no transfer needed
@@ -167,7 +177,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         // Transfer tokens
         if (isBuy) {
             uint256 maxCost = CLOBLib.calculateQuoteAmount(limitPrice, amount);
-            IERC20(quoteToken).transferFrom(msg.sender, address(this), maxCost);
+            IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), maxCost);
         } else {
             IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
         }
@@ -206,7 +216,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         
         // Transfer quote tokens to escrow
         uint256 totalCost = CLOBLib.calculateQuoteAmount(price, amount);
-        IERC20(quoteToken).transferFrom(msg.sender, address(this), totalCost);
+        IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), totalCost);
         
         // Create order
         orderId = _createOrder(s, marketId, msg.sender, price, amount, true, CLOBLib.TYPE_LIMIT, CLOBLib.TIF_GTC, 0);
