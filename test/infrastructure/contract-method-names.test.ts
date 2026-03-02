@@ -24,17 +24,23 @@ function extractDiamondFunctionNames(): Set<string> {
   const content = fs.readFileSync(DIAMOND_ABI_PATH, 'utf-8');
   const names = new Set<string>();
 
-  // Match all ABI entries that are functions
-  const functionRegex =
-    /\{\s*inputs[\s\S]*?name:\s*'([^']+)'[\s\S]*?type:\s*'function'/g;
+  // Match all ABI entries that are functions.
+  // Handles both TS object literal format (name: 'x') and JSON.stringify format ("name": "x")
+  const q = `['"]`;
+  const functionRegex = new RegExp(
+    `\\{\\s*(?:"inputs"|inputs)[\\s\\S]*?(?:"name"|name):\\s*${q}([^'"]+)${q}[\\s\\S]*?(?:"type"|type):\\s*${q}function${q}`,
+    'g',
+  );
   let match;
   while ((match = functionRegex.exec(content)) !== null) {
     names.add(match[1]);
   }
 
-  // Also match constant/view functions (name before outputs)
-  const altRegex =
-    /name:\s*'([^']+)',\s*\n\s*outputs[\s\S]*?type:\s*'function'/g;
+  // Also match constant/view functions (name before outputs) — TS format
+  const altRegex = new RegExp(
+    `(?:"name"|name):\\s*${q}([^'"]+)${q},?\\s*\\n\\s*(?:"outputs"|outputs)[\\s\\S]*?(?:"type"|type):\\s*${q}function${q}`,
+    'g',
+  );
   while ((match = altRegex.exec(content)) !== null) {
     names.add(match[1]);
   }
