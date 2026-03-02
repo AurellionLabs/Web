@@ -120,7 +120,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 
   // Load all pools
   const loadAllPools = useCallback(async () => {
-    console.log('[PoolsProvider] loadAllPools called');
     setLoading(true);
     setError(null);
 
@@ -131,9 +130,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 
       // Get all pools with dynamic data from repository
       const allPools = await poolRepository.getAllPoolsWithDynamicData();
-      console.log(
-        `[PoolsProvider] Loaded ${allPools.length} pools from repository`,
-      );
       setPools(allPools);
     } catch (err) {
       console.error('[PoolsProvider] Error in loadAllPools:', err);
@@ -149,13 +145,8 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
     async (userAddress?: string) => {
       const targetAddress = userAddress ?? address;
       if (!targetAddress) {
-        console.log('[PoolsProvider] No address provided for loadUserPools');
         return;
       }
-
-      console.log(
-        `[PoolsProvider] loadUserPools called for address: ${targetAddress}`,
-      );
       setLoading(true);
       setError(null);
 
@@ -169,9 +160,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
           await poolRepository.getUserPoolsWithDynamicData(
             targetAddress as Address,
           );
-        console.log(
-          `[PoolsProvider] Loaded ${userPoolsWithDynamicData.length} user pools from repository`,
-        );
         setUserPools(userPoolsWithDynamicData);
       } catch (err) {
         console.error('[PoolsProvider] Error in loadUserPools:', err);
@@ -191,15 +179,8 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
     async (providerAddress?: string) => {
       const targetAddress = providerAddress ?? address;
       if (!targetAddress) {
-        console.log(
-          '[PoolsProvider] No address provided for loadProviderPools',
-        );
         return;
       }
-
-      console.log(
-        `[PoolsProvider] loadProviderPools called for address: ${targetAddress}`,
-      );
       setLoading(true);
       setError(null);
 
@@ -213,9 +194,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
           await poolRepository.getProviderPoolsWithDynamicData(
             targetAddress as Address,
           );
-        console.log(
-          `[PoolsProvider] Loaded ${providerPoolsWithDynamicData.length} provider pools from repository`,
-        );
         setProviderPools(providerPoolsWithDynamicData);
       } catch (err) {
         console.error('[PoolsProvider] Error in loadProviderPools:', err);
@@ -242,10 +220,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 
         // Get pool from repository
         const pool = await poolRepository.getPoolById(id);
-        console.log(
-          `[PoolsProvider] Retrieved pool ${id} from repository:`,
-          pool,
-        );
         return pool;
       } catch (err) {
         console.error('[PoolsProvider] Error in getPoolById:', err);
@@ -267,10 +241,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         // Get pool with dynamic data from repository
         const poolWithDynamicData =
           await poolRepository.getPoolWithDynamicData(id);
-        console.log(
-          `[PoolsProvider] Retrieved pool ${id} with dynamic data from repository:`,
-          poolWithDynamicData,
-        );
         return poolWithDynamicData;
       } catch (err) {
         console.error('[PoolsProvider] Error in getPoolWithDynamicData:', err);
@@ -287,13 +257,11 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 
   // Select pool
   const selectPool = useCallback((pool: Pool) => {
-    console.log(`[PoolsProvider] Selecting pool: ${pool.id}`);
     setSelectedPool(pool);
   }, []);
 
   // Clear selected pool
   const clearSelectedPool = useCallback(() => {
-    console.log('[PoolsProvider] Clearing selected pool');
     setSelectedPool(null);
   }, []);
 
@@ -309,15 +277,12 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       if (!poolService) {
         throw new Error('Pool service not available');
       }
-
-      console.log('[PoolsProvider] Creating pool with data:', data);
       setLoading(true);
       setError(null);
 
       try {
         // Use pool service to create pool
         const result = await poolService.createPool(data, address as Address);
-        console.log('[PoolsProvider] Pool created successfully:', result);
 
         // Refresh pools after creation
         await loadAllPools();
@@ -347,8 +312,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       if (!poolService) {
         throw new Error('Pool service not available');
       }
-
-      console.log(`[PoolsProvider] Closing pool: ${poolId}`);
       setLoading(true);
       setError(null);
 
@@ -357,9 +320,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         const transactionHash = await poolService.closePool(
           poolId,
           address as Address,
-        );
-        console.log(
-          `[PoolsProvider] Close pool transaction successful: ${transactionHash}`,
         );
 
         // Refresh pools after closing
@@ -390,8 +350,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       if (!poolService) {
         throw new Error('Pool service not available');
       }
-
-      console.log(`[PoolsProvider] Staking ${amount} in pool: ${poolId}`);
       setLoading(true);
       setError(null);
 
@@ -401,9 +359,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
           poolId,
           amount,
           address as Address,
-        );
-        console.log(
-          `[PoolsProvider] Stake transaction successful: ${transactionHash}`,
         );
 
         // Refresh pools and user pools after staking
@@ -432,8 +387,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       if (!poolService) {
         throw new Error('Pool service not available');
       }
-
-      console.log(`[PoolsProvider] Claiming reward for pool: ${poolId}`);
       setLoading(true);
       setError(null);
 
@@ -442,9 +395,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         const transactionHash = await poolService.claimReward(
           poolId,
           address as Address,
-        );
-        console.log(
-          `[PoolsProvider] Claim reward transaction successful: ${transactionHash}`,
         );
         return transactionHash;
       } catch (err) {
@@ -470,8 +420,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       if (!poolService) {
         throw new Error('Pool service not available');
       }
-
-      console.log(`[PoolsProvider] Unlocking reward for pool: ${poolId}`);
       setLoading(true);
       setError(null);
 
@@ -480,9 +428,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         const transactionHash = await poolService.unlockReward(
           poolId,
           address as Address,
-        );
-        console.log(
-          `[PoolsProvider] Unlock reward transaction successful: ${transactionHash}`,
         );
 
         // Refresh pools after unlocking
@@ -510,8 +455,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Pool service not available');
       }
 
-      console.log(`[PoolsProvider] Getting capacity for pool: ${poolId}`);
-
       try {
         const capacity = await poolService.getPoolCapacity(poolId);
         return capacity;
@@ -529,10 +472,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       if (!poolService) {
         throw new Error('Pool service not available');
       }
-
-      console.log(
-        `[PoolsProvider] Validating stake amount for pool: ${poolId}, amount: ${amount}`,
-      );
 
       try {
         const validation = await poolService.validateStakeAmount(
@@ -556,13 +495,8 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
     async (poolId: string) => {
       // Prevent duplicate calls for the same pool
       if (stakeHistoryLoading && loadingStakeHistoryFor === poolId) {
-        console.log(
-          `[PoolsProvider] Already loading stake history for pool: ${poolId}, skipping...`,
-        );
         return;
       }
-
-      console.log(`[PoolsProvider] Loading stake history for pool: ${poolId}`);
       setStakeHistoryLoading(true);
       setLoadingStakeHistoryFor(poolId);
       setError(null);
@@ -574,9 +508,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 
         // Get stake history from repository
         const history = await poolRepository.getPoolStakeHistory(poolId);
-        console.log(
-          `[PoolsProvider] Loaded ${history.length} stake events for pool ${poolId}`,
-        );
         setStakeHistory(history);
       } catch (err) {
         console.error('[PoolsProvider] Error loading stake history:', err);
@@ -607,9 +538,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
           poolId,
           interval,
         );
-        console.log(
-          `[PoolsProvider] Retrieved grouped stake history for pool ${poolId} with interval ${interval}`,
-        );
         return groupedData;
       } catch (err) {
         console.error(
@@ -637,9 +565,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 
         // Use repository to calculate pool dynamics
         const dynamics = await poolRepository.calculatePoolDynamicData(pool);
-        console.log(
-          `[PoolsProvider] Calculated pool dynamics for pool ${pool.id}`,
-        );
         return dynamics;
       } catch (err) {
         console.error('[PoolsProvider] Error calculating pool dynamics:', err);
@@ -656,7 +581,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
 
   // Refresh all pools
   const refreshPools = useCallback(async () => {
-    console.log('[PoolsProvider] Refreshing all pools...');
     await Promise.all([
       loadAllPools(),
       address ? loadUserPools(address) : Promise.resolve(),
@@ -667,9 +591,6 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
   // Auto-load pools when address changes
   useEffect(() => {
     if (address) {
-      console.log(
-        `[PoolsProvider] Address changed to ${address}, loading pools...`,
-      );
       refreshPools();
     }
   }, [address, refreshPools]);

@@ -46,54 +46,29 @@ export function useUserAssets(filterClass?: string) {
   const [error, setError] = useState<string | null>(null);
 
   // Log context state on each render for debugging
-  console.log('[useUserAssets] Hook called with:', {
-    filterClass,
-    isConnected,
-    diamondInitialized,
-    address: address ? address.slice(0, 10) + '...' : 'none',
-  });
 
   /**
    * Fetch user assets from Diamond contract (same source as Node Dashboard)
    */
   const fetchUserAssets = useCallback(async () => {
-    console.log('[useUserAssets] fetchUserAssets called', {
-      isConnected,
-      diamondInitialized,
-      address,
-    });
-
     if (!isConnected || !address) {
-      console.log(
-        '[useUserAssets] Not connected or no address, skipping fetch',
-      );
       setAssets([]);
       setIsLoading(false);
       return;
     }
 
     if (!diamondInitialized) {
-      console.log('[useUserAssets] Diamond not initialized yet, waiting...');
       return;
     }
-
-    console.log('[useUserAssets] Starting fetch for address:', address);
 
     setIsLoading(true);
     setError(null);
 
     try {
       // Step 1: Get ALL nodes owned by this wallet from Diamond contract
-      console.log('[useUserAssets] Getting owned nodes from Diamond...');
       const ownedNodeIds = await getOwnedNodes();
-      console.log(
-        '[useUserAssets] Found owned nodes:',
-        ownedNodeIds.length,
-        ownedNodeIds,
-      );
 
       if (ownedNodeIds.length === 0) {
-        console.log('[useUserAssets] No owned nodes found');
         setAssets([]);
         setIsLoading(false);
         return;
@@ -104,30 +79,15 @@ export function useUserAssets(filterClass?: string) {
       const allAssets: AssetWithAttributes[] = [];
 
       for (const nodeId of ownedNodeIds) {
-        console.log('[useUserAssets] Fetching assets for node:', nodeId);
         try {
           // Get asset metadata from getNodeAssets
           const nodeAssets = await getNodeAssets(nodeId);
-          console.log(
-            '[useUserAssets] Found',
-            nodeAssets.length,
-            'assets for node',
-            nodeId,
-          );
 
           // For each asset, get wallet's ERC1155 balance (actual tokens in wallet)
           for (const asset of nodeAssets) {
             try {
               // Query wallet's actual ERC1155 balance (for P2P sell orders)
               const actualBalance = await balanceOf(address, asset.id);
-              console.log(
-                '[useUserAssets] Asset',
-                asset.id,
-                'capacity:',
-                asset.capacity,
-                'walletBalance:',
-                actualBalance.toString(),
-              );
 
               // Create asset entry with actual balance
               const assetEntry: AssetWithAttributes = {
@@ -160,11 +120,6 @@ export function useUserAssets(filterClass?: string) {
         }
       }
 
-      console.log(
-        '[useUserAssets] Total assets from all nodes:',
-        allAssets.length,
-      );
-
       // Step 3: Fetch attributes for each asset
       const assetsWithAttributes: AssetWithAttributes[] = await Promise.all(
         allAssets.map(async (asset) => {
@@ -195,11 +150,6 @@ export function useUserAssets(filterClass?: string) {
             return asset;
           }
         }),
-      );
-
-      console.log(
-        '[useUserAssets] Assets with attributes loaded:',
-        assetsWithAttributes.length,
       );
       setAssets(assetsWithAttributes);
     } catch (err) {
@@ -265,12 +215,6 @@ export function useUserAssets(filterClass?: string) {
         nodeHash: asset.nodeHash, // Include the node this asset belongs to
       });
     }
-
-    console.log(
-      '[useUserAssets] Sellable assets:',
-      result.length,
-      result.map((a) => ({ id: a.id, balance: a.balance })),
-    );
     return result;
   }, [assets, filterClass]);
 

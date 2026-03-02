@@ -52,21 +52,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const loadNodes = useCallback(
     async (walletAddress: string) => {
       if (!diamondInitialized) {
-        console.log('[NodesProvider] loadNodes: Diamond not initialized');
         return;
       }
-
-      console.log('[NodesProvider] loadNodes: Starting for', walletAddress);
       setLoading(true);
       setError(null);
 
       try {
         // Get node hashes owned by wallet from Diamond
         const ownedNodeHashes = await getDiamondOwnedNodes();
-        console.log(
-          '[NodesProvider] loadNodes: Got ownedNodeHashes:',
-          ownedNodeHashes,
-        );
 
         // Load full node data for each hash
         const nodeDataPromises = ownedNodeHashes.map((nodeHash) =>
@@ -77,20 +70,12 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         const validNodes = nodeDataResults.filter(
           (node): node is Node => node !== null,
         );
-
-        console.log(
-          '[NodesProvider] loadNodes: Valid Diamond nodes:',
-          validNodes.length,
-        );
         setNodes(validNodes);
         setIsRegisteredNode(validNodes.length > 0);
       } catch (err) {
         console.error('[NodesProvider] Error loading nodes from Diamond:', err);
         setError(err as Error);
       } finally {
-        console.log(
-          '[NodesProvider] loadNodes: Finished, setting loading=false',
-        );
         setLoading(false);
       }
     },
@@ -154,15 +139,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
   // Load nodes when wallet connects
   useEffect(() => {
-    console.log('[NodesProvider] Effect check:', {
-      connected,
-      address: !!address,
-      diamondInitialized,
-    });
     if (connected && address && diamondInitialized) {
-      console.log(
-        '[NodesProvider] All conditions met, calling loadNodes from Diamond',
-      );
       loadNodes(address);
     }
   }, [connected, address, diamondInitialized, loadNodes]);

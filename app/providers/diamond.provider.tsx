@@ -200,19 +200,16 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           const browserProvider = new BrowserProvider(ethereumProvider);
           await context.initialize(browserProvider);
           setIsReadOnly(false);
-          console.log('[DiamondProvider] Initialized with wallet');
         } else {
           // Read-only initialization using public RPC from env
           const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_84532 || '';
           await context.initializeReadOnly(rpcUrl);
           setIsReadOnly(true);
-          console.log('[DiamondProvider] Initialized in read-only mode');
         }
 
         // Create Pinata SDK for IPFS metadata fetching
         const pinata = createPinataSDK();
         if (pinata) {
-          console.log('[DiamondProvider] Created Pinata SDK for IPFS metadata');
         } else {
           console.warn(
             '[DiamondProvider] PINATA_JWT not available, IPFS metadata will not be fetched',
@@ -233,8 +230,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         setP2PService(p2pSvc);
         setP2PRepository(p2pRepo);
         setInitialized(true);
-
-        console.log('[DiamondProvider] Initialized successfully');
       } catch (err) {
         console.error('[DiamondProvider] Initialization error:', err);
         setError(
@@ -387,11 +382,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         throw new Error('Diamond not initialized');
       }
       const diamond = diamondContext.getDiamond();
-      console.log('[DiamondProvider] Depositing tokens to node:', {
-        nodeHash,
-        tokenId,
-        amount: amount.toString(),
-      });
 
       // First, approve Diamond to transfer user's tokens
       const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import('@/chain-constants');
@@ -414,21 +404,16 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       );
 
       if (!isApproved) {
-        console.log(
-          '[DiamondProvider] Approving Diamond to transfer tokens...',
-        );
         const approveTx = await auraAsset.setApprovalForAll(
           diamondAddress,
           true,
         );
         await approveTx.wait();
-        console.log('[DiamondProvider] Diamond approved');
       }
 
       // Now deposit tokens to node
       const tx = await diamond.depositTokensToNode(nodeHash, tokenId, amount);
       await tx.wait();
-      console.log('[DiamondProvider] Tokens deposited successfully');
     },
     [diamondContext],
   );
@@ -444,18 +429,12 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         throw new Error('Diamond not initialized');
       }
       const diamond = diamondContext.getDiamond();
-      console.log('[DiamondProvider] Withdrawing tokens from node:', {
-        nodeHash,
-        tokenId,
-        amount: amount.toString(),
-      });
       const tx = await diamond.withdrawTokensFromNode(
         nodeHash,
         tokenId,
         amount,
       );
       await tx.wait();
-      console.log('[DiamondProvider] Tokens withdrawn successfully');
     },
     [diamondContext],
   );
@@ -510,11 +489,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       const diamond = diamondContext.getDiamond();
       try {
         const [tokenIds, balances] = await diamond.getNodeInventory(nodeHash);
-        console.log('[DiamondProvider] Node inventory:', {
-          nodeHash,
-          tokenIds: tokenIds.map((t: any) => t.toString()),
-          balances: balances.map((b: any) => b.toString()),
-        });
         return {
           tokenIds: tokenIds.map((t: any) => BigInt(t.toString())),
           balances: balances.map((b: any) => BigInt(b.toString())),
@@ -533,9 +507,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     async (nodeHash: string): Promise<void> => {
       // No-op: CLOB is now internal to Diamond via CLOBFacet
       // Tokens are held by Diamond and CLOBFacet can access them directly
-      console.log(
-        '[DiamondProvider] CLOB approval not needed - CLOBFacet is internal to Diamond',
-      );
     },
     [],
   );
@@ -559,13 +530,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         throw new Error('Diamond not initialized');
       }
       const diamond = diamondContext.getDiamond();
-      console.log('[DiamondProvider] Placing sell order from node:', {
-        nodeHash,
-        tokenId,
-        quoteToken,
-        price: price.toString(),
-        amount: amount.toString(),
-      });
       const tx = await diamond.placeSellOrderFromNode(
         nodeHash,
         tokenId,
@@ -574,7 +538,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         amount,
       );
       const receipt = await tx.wait();
-      console.log('[DiamondProvider] Sell order placed, tx:', receipt.hash);
 
       // Extract orderId from events if available
       // For now, return tx hash as order reference
@@ -597,14 +560,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         throw new Error('Diamond not initialized');
       }
       const diamond = diamondContext.getDiamond();
-      console.log('[DiamondProvider] Placing market sell order from node:', {
-        nodeHash,
-        tokenId,
-        quoteToken,
-        price: price.toString(),
-        amount: amount.toString(),
-        maxSlippageBps,
-      });
       const tx = await diamond.placeNodeMarketSellOrder(
         nodeHash,
         tokenId,
@@ -614,10 +569,6 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         maxSlippageBps,
       );
       const receipt = await tx.wait();
-      console.log(
-        '[DiamondProvider] Market sell order placed, tx:',
-        receipt.hash,
-      );
 
       // Extract orderId from events if available
       // For now, return tx hash as order reference
@@ -633,12 +584,10 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         throw new Error('Diamond not initialized');
       }
       const diamond = diamondContext.getDiamond();
-      console.log('[DiamondProvider] Cancelling order:', orderId);
 
       // Call cancelCLOBOrder on the Diamond contract
       const tx = await diamond.cancelCLOBOrder(orderId);
       const receipt = await tx.wait();
-      console.log('[DiamondProvider] Order cancelled, tx:', receipt.hash);
     },
     [diamondContext],
   );

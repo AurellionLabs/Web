@@ -143,16 +143,9 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       try {
         // Pass both the node hash and the wallet address (owner)
         // so the repository can match orders by logistics node field AND by wallet
-        console.log('[SelectedNodeProvider] loadOrders called', {
-          nodeAddress,
-          walletAddress: address,
-        });
         const nodeOrders = await nodeRepository.getNodeOrders(
           nodeAddress,
           address || undefined,
-        );
-        console.log(
-          `[SelectedNodeProvider] Loaded ${nodeOrders.length} orders for node`,
         );
 
         // Fetch asset details for each order
@@ -290,10 +283,6 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       prevAddressRef.current !== address &&
       nodeRepository
     ) {
-      console.log(
-        '[SelectedNodeProvider] Wallet address changed, reloading orders',
-        { selectedNodeAddress, address },
-      );
       loadOrders(selectedNodeAddress);
     }
     prevAddressRef.current = address ?? null;
@@ -464,11 +453,6 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
       const ausys = await getAlignedAusysContract();
 
-      console.log('[NodeProvider] packageSign', {
-        journeyId,
-        nodeAddress: selectedNodeAddress,
-      });
-
       const tx = await ausys.packageSign(journeyId as any);
       await tx.wait();
 
@@ -497,7 +481,6 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       await tx.wait();
 
       // Refresh orders with indexer polling for eventual consistency
-      console.log('[NodeProvider] Journey started. Waiting for indexer...');
       await new Promise((r) => setTimeout(r, 3000));
       await loadOrders(selectedNodeAddress);
 

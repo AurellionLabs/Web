@@ -147,7 +147,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
    */
   const invalidateCache = useCallback(() => {
     classAssetsCache.current.clear();
-    console.log('[PlatformProvider] Cache invalidated');
   }, []);
 
   /**
@@ -167,7 +166,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
    * Refresh all platform data
    */
   const refreshPlatformData = useCallback(async () => {
-    console.log('[PlatformProvider] Refreshing platform data...');
     setLoadState({ status: 'loading' });
 
     try {
@@ -182,9 +180,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
       // Handle assets result
       if (assetsResult.status === 'fulfilled') {
-        console.log(
-          `[PlatformProvider] Loaded ${assetsResult.value.length} supported assets`,
-        );
         setSupportedAssets(assetsResult.value);
       } else {
         const msg =
@@ -197,10 +192,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
       // Handle classes result
       if (classesResult.status === 'fulfilled') {
-        console.log(
-          `[PlatformProvider] Loaded ${classesResult.value.length} asset classes:`,
-          classesResult.value,
-        );
         setSupportedAssetClasses(classesResult.value);
       } else {
         const msg =
@@ -226,9 +217,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         .getVolumeByBaseTokenId()
         .then((volumeMap) => {
           setVolumeByTokenId(volumeMap);
-          console.log(
-            `[PlatformProvider] Loaded CLOB volumes for ${volumeMap.size} token(s)`,
-          );
         })
         .catch((err) => {
           console.warn('[PlatformProvider] Failed to load CLOB volumes:', err);
@@ -252,14 +240,10 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       // Check cache first
       const cached = classAssetsCache.current.get(key);
       if (isCacheValid(cached)) {
-        console.log(`[PlatformProvider] Cache hit for class: ${assetClass}`);
         return cached!.data;
       }
 
       try {
-        console.log(
-          `[PlatformProvider] Fetching assets for class: ${assetClass}`,
-        );
         const assets = await repositoryRef.current.getClassAssets(assetClass);
 
         // Update cache
@@ -301,7 +285,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
   // Initial data fetch
   useEffect(() => {
-    console.log('[PlatformProvider] Initial mount, fetching platform data...');
     refreshPlatformData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

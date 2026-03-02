@@ -46,18 +46,13 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const orderService = ServiceContext.getInstance().getOrderService();
 
   const fetchAssets = useCallback(async () => {
-    console.log('[TradeProvider] fetchAssets called');
     setIsLoading(true);
     setError(null);
 
     try {
       const domainAssets = await nodeRepository.getAllNodeAssets();
-      console.log(
-        `[TradeProvider] Retrieved ${domainAssets.length} domain assets`,
-      );
 
       if (domainAssets.length === 0) {
-        console.log('[TradeProvider] No assets available for trading');
         setAssets([]);
         return;
       }
@@ -94,14 +89,12 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   );
 
   const loadOrders = useCallback(async () => {
-    console.log('[TradeProvider] loadOrders called');
     setIsLoading(true);
     setError(null);
     try {
       const fetchedOrders = await orderRepository.getBuyerOrders(
         address as string,
       );
-      console.log(`[TradeProvider] Fetched ${fetchedOrders.length} orders`);
       setOrders(fetchedOrders);
     } catch (err) {
       console.error('[TradeProvider] Error loading orders:', err);
@@ -131,21 +124,10 @@ export function TradeProvider({ children }: { children: ReactNode }) {
           buyer: walletAddress,
         };
 
-        console.log('[TradeProvider] Placing order:', orderWithBuyer);
-
         // Create the CLOB order - trade completes instantly
         // User receives ERC1155 token immediately, seller receives payment
         // Physical delivery is handled separately via the Redemption flow
         const actualOrderId = await orderService.createOrder(orderWithBuyer);
-        console.log(
-          `[TradeProvider] CLOB order created with ID: ${actualOrderId}`,
-        );
-        console.log(
-          '[TradeProvider] Trade complete - user now holds tokenized asset',
-        );
-        console.log(
-          '[TradeProvider] Physical delivery available via Redeem flow in dashboard',
-        );
 
         await loadOrders();
         return true;

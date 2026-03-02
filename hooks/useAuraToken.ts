@@ -206,16 +206,12 @@ export function useAuraToken(): UseAuraTokenReturn {
           throw new Error('Failed to connect to AURA contract');
         }
 
-        console.log(`[useAuraToken] Minting ${amount} AURA tokens...`);
-
         // The contract multiplies by 10^18 internally
         const tx = await contract.mintTokenToTreasury(amount);
-        console.log('[useAuraToken] Transaction sent:', tx.hash);
         setLastTxHash(tx.hash);
 
         // Wait for confirmation
         const receipt = await tx.wait();
-        console.log('[useAuraToken] Transaction confirmed:', receipt.hash);
 
         // Refresh balance after successful mint
         await refreshBalance();

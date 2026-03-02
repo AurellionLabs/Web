@@ -209,10 +209,6 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
           return; // Already in sync
         }
 
-        console.log(
-          `[RepositoryProvider] Wallet changed (${storedAddr} → ${currentWalletAddress}). Updating signer...`,
-        );
-
         const connectedWallet = privyWallets.wallets?.[0];
         if (!connectedWallet) return;
 
@@ -222,7 +218,6 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
 
         if (!cancelled) {
           await repoContext.updateSigner(newSigner);
-          console.log('[RepositoryProvider] Signer updated successfully.');
         }
       } catch (err) {
         console.error('[RepositoryProvider] Failed to update signer:', err);

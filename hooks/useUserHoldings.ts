@@ -177,9 +177,6 @@ export function useUserHoldings(): UseUserHoldingsReturn {
       }
 
       const uniqueTokenIds = Array.from(tokenIdSet);
-      console.log(
-        `[useUserHoldings] Found ${uniqueTokenIds.length} unique tokenIds from indexer`,
-      );
 
       if (uniqueTokenIds.length === 0) {
         setState({ status: 'success', holdings: [] });
@@ -234,10 +231,6 @@ export function useUserHoldings(): UseUserHoldingsReturn {
           });
         }
       }
-
-      console.log(
-        `[useUserHoldings] Found ${userHoldings.length} holdings for ${address}`,
-      );
       setState({ status: 'success', holdings: userHoldings });
     } catch (err) {
       const message =

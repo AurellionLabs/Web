@@ -55,8 +55,6 @@ export function useWallet() {
 
     // Check if already initialized or not ready
     if (!privy.ready || !privyWallets.ready || repository) return;
-
-    console.log('[useWallet] Initializing PrivyWalletRepository...');
     // Pass the full hook objects to the constructor
     const newRepository = new PrivyWalletRepository(privyWallets, privy);
     setRepository(newRepository);
@@ -71,8 +69,6 @@ export function useWallet() {
   // Derive state directly from Privy hooks and connected wallet
   useEffect(() => {
     const currentWallet = privyWallets.wallets?.[0];
-    console.log('[useWallet] currentWallet', currentWallet);
-    console.log('[useWallet] connectedWallet', connectedWallet);
     setConnectedWallet(currentWallet ?? null);
     setIsConnected(privy.authenticated && !!currentWallet);
     setAddress(currentWallet?.address ?? null);
@@ -108,21 +104,12 @@ export function useWallet() {
 
       if (newAddress === currentAddress) return; // no actual change
 
-      console.log(
-        '[useWallet] accountsChanged: external account switch detected',
-        newAddress,
-      );
-
       // Check if Privy already knows about this address (multi-wallet scenario)
       const matchingPrivyWallet = privyWallets.wallets?.find(
         (w) => w.address?.toLowerCase() === newAddress,
       );
 
       if (matchingPrivyWallet) {
-        console.log(
-          '[useWallet] accountsChanged: matched existing Privy wallet',
-          matchingPrivyWallet.address,
-        );
         setConnectedWallet(matchingPrivyWallet);
         setIsConnected(true);
         setAddress(matchingPrivyWallet.address);
@@ -155,9 +142,7 @@ export function useWallet() {
     setError(null);
     setIsLoading(true);
     try {
-      console.log('[useWallet] Calling Privy login()...');
       await privy.login();
-      console.log('[useWallet] Privy login() finished.');
     } catch (err) {
       console.error('[useWallet] Error during login:', err);
       setError(
@@ -172,9 +157,7 @@ export function useWallet() {
     setError(null);
     setIsLoading(true);
     try {
-      console.log('[useWallet] Calling Privy logout()...');
       await privy.logout(); // Use privy.logout
-      console.log('[useWallet] Privy logout() finished.');
     } catch (err) {
       console.error('[useWallet] Error during logout:', err);
       setError(

@@ -415,18 +415,8 @@ export function useTokenApproval(
 
         // Approve unlimited amount by default, or specific amount if provided
         const approvalAmount = amount ? BigInt(amount) : ethers.MaxUint256;
-
-        console.log(
-          `[useTokenApproval] Requesting approval for ${approvalAmount} tokens...`,
-        );
         const tx = await tokenContract.approve(spenderAddress, approvalAmount);
-
-        console.log(
-          `[useTokenApproval] Approval transaction submitted: ${tx.hash}`,
-        );
         await tx.wait();
-
-        console.log('[useTokenApproval] Approval confirmed');
 
         // Refresh allowance after approval
         await checkAllowance();

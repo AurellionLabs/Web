@@ -47,12 +47,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const repository = repoContext.getDriverRepository();
 
   const refreshDeliveries = async () => {
-    console.log('[DriverProvider] Entering refreshDeliveries function...');
-
     if (!driverWalletAddress) {
-      console.log(
-        '[DriverProvider] refreshDeliveries aborted: driverWalletAddress is missing.',
-      );
       setError('Wallet not connected');
       return;
     }
@@ -65,15 +60,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         repository.getAvailableDeliveries(),
         repository.getMyDeliveries(driverWalletAddress),
       ]);
-
-      console.log(
-        '[DriverProvider] Raw data from repository.getAvailableDeliveries():',
-        available,
-      );
-      console.log(
-        '[DriverProvider] Raw data from repository.getMyDeliveries():',
-        mine,
-      );
 
       // Calculate ETAs for all deliveries
       const availableWithETA = await Promise.all(
@@ -107,9 +93,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
               (e) => e.user.toLowerCase() === driverAddr,
             );
             if (driverSigned) {
-              console.log(
-                `[DriverProvider] Driver already signed for pickup on ${delivery.jobId}, setting AWAITING_SENDER`,
-              );
               return {
                 ...delivery,
                 currentStatus: DeliveryStatus.AWAITING_SENDER,
@@ -183,7 +166,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
       // Check and grant DRIVER_ROLE if needed (best-effort; contract enforces it)
       try {
-        console.log('[Accept] Checking driver role for', driverWalletAddress);
         const DRIVER_ROLE = await (ausys as any).DRIVER_ROLE();
         const hasDriverRole = await (ausys as any).hasAuSysRole(
           DRIVER_ROLE,
@@ -191,23 +173,18 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         );
 
         if (!hasDriverRole) {
-          console.log(
-            '[Accept] Driver role not found, attempting to grant via setDriver...',
-          );
           try {
             const tx = await (ausys as any).setDriver(
               driverWalletAddress,
               true,
             );
             await tx.wait();
-            console.log('[Accept] Driver role granted successfully');
           } catch (roleErr) {
             console.warn('[Accept] Could not auto-grant driver role:', roleErr);
             // Don't throw here — let assignDriverToJourney attempt and fail
             // with a clear InvalidCaller error if the role is truly missing.
           }
         } else {
-          console.log('[Accept] Driver role already granted');
         }
       } catch (roleCheckErr) {
         console.error('[Accept] Role check failed (non-fatal):', roleCheckErr);
@@ -215,11 +192,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Assign driver to journey
-      console.log(
-        '[Accept] Calling assignDriverToJourney',
-        driverWalletAddress,
-        jobId,
-      );
       await ausys.assignDriverToJourney(driverWalletAddress!, jobId as any);
 
       // Optimistically move the job from available → myDeliveries
@@ -237,13 +209,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Wait for indexer to catch up, then refresh with real data
-      console.log('[Accept] Tx confirmed. Waiting for indexer to catch up...');
       await new Promise((r) => setTimeout(r, 3000));
       await refreshDeliveries();
 
       // Schedule a follow-up refresh in case the first was too early
       setTimeout(() => {
-        console.log('[Accept] Follow-up refresh for indexer consistency.');
         refreshDeliveries();
       }, 5000);
     } catch (err) {
@@ -278,24 +248,14 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const ausys = await getSignerAlignedContract();
 
       // Debug: Check journey details
-      console.log('[confirmPickup] Driver address:', driverWalletAddress);
-      console.log('[confirmPickup] Journey ID:', jobId);
       try {
         const journey = await (ausys as any).getJourney(jobId);
-        console.log('[confirmPickup] Journey details:', {
-          sender: journey.sender,
-          receiver: journey.receiver,
-          driver: journey.driver,
-          status: journey.currentStatus.toString(),
-        });
       } catch (e) {
         console.warn('[confirmPickup] Could not fetch journey details:', e);
       }
 
       const tx = await ausys.packageSign(jobId as any);
-      console.log('[confirmPickup] packageSign tx sent:', tx.hash);
       const receipt = await tx.wait();
-      console.log('[confirmPickup] packageSign tx mined:', receipt?.hash);
       await refreshDeliveries();
     } catch (err) {
       console.error('[confirmPickup] Error:', err);
@@ -369,9 +329,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
           // Delay indexer refresh so optimistic state isn't overwritten
           setTimeout(async () => {
-            console.log(
-              '[DriverProvider] Refreshing deliveries after settlement...',
-            );
             await refreshDeliveries();
           }, 5000);
 
@@ -388,18 +345,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
             (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) &&
             attempt < MAX_HANDOFF_ATTEMPTS
           ) {
-            console.log(
-              `[DriverProvider] handOff: driver sig not propagated yet, retrying (${attempt}/${MAX_HANDOFF_ATTEMPTS})...`,
-            );
             await new Promise((r) => setTimeout(r, 2000));
             continue;
           }
 
           // ReceiverNotSigned — receiver genuinely hasn't signed yet
           if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
-            console.log(
-              '[DriverProvider] handOff: receiver has not signed yet',
-            );
             await refreshDeliveries();
             return 'receiver_not_signed';
           }
@@ -445,25 +396,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
       // Log journey status before signing
       const journey = await ausys.getJourney(jobId as any);
-      console.log(
-        '[DriverProvider] packageSign - Journey status before signing:',
-        {
-          jobId,
-          journeyStatus: journey.currentStatus.toString(),
-          driver: journey.driver,
-          caller: driverWalletAddress,
-        },
-      );
 
       const tx = await ausys.packageSign(jobId as any);
       await tx.wait();
-
-      console.log(
-        '[DriverProvider] packageSign succeeded for journey:',
-        jobId,
-        'status:',
-        journey.currentStatus.toString(),
-      );
 
       await refreshDeliveries();
     } catch (err) {
@@ -476,19 +411,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log(
-      '[DriverProvider] useEffect triggered. driverWalletAddress:',
-      driverWalletAddress,
-    );
     if (driverWalletAddress) {
-      console.log(
-        '[DriverProvider] Wallet address found, calling refreshDeliveries...',
-      );
       refreshDeliveries();
     } else {
-      console.log(
-        '[DriverProvider] Wallet address NOT found, refreshDeliveries not called.',
-      );
     }
   }, [driverWalletAddress]);
 

@@ -271,9 +271,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
                 handOffMsg.includes('ReceiverNotSigned')) &&
               attempt < MAX_ATTEMPTS
             ) {
-              console.log(
-                `[CustomerProvider] confirmReceipt: receiver sig not propagated, retrying (${attempt}/${MAX_ATTEMPTS})...`,
-              );
               await new Promise((r) => setTimeout(r, 2000));
               continue;
             }
@@ -345,9 +342,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             // Delay indexer refresh so the optimistic SETTLED status isn't
             // overwritten by stale PROCESSING data from the indexer.
             setTimeout(async () => {
-              console.log(
-                '[CustomerProvider] Refreshing orders after settlement...',
-              );
               await loadCustomerOrders();
             }, 5000);
 
@@ -365,18 +359,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
                 msg.includes('ReceiverNotSigned')) &&
               attempt < MAX_HANDOFF_ATTEMPTS
             ) {
-              console.log(
-                `[CustomerProvider] handOff: receiver sig not propagated yet, retrying (${attempt}/${MAX_HANDOFF_ATTEMPTS})...`,
-              );
               await new Promise((r) => setTimeout(r, 2000));
               continue;
             }
 
             // DriverNotSigned (0x9651c947) — driver genuinely hasn't signed
             if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
-              console.log(
-                '[CustomerProvider] signP2PDelivery: driver has not signed yet, waiting',
-              );
               return 'driver_not_signed';
             }
             // ReceiverNotSigned after all retries — treat as waiting
@@ -438,14 +426,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const msg = err instanceof Error ? err.message : String(err);
         // DriverNotSigned (0x9651c947) — driver hasn't signed for delivery yet
         if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
-          console.log('[CustomerProvider] handOff: driver has not signed yet');
           return 'driver_not_signed';
         }
         // ReceiverNotSigned (0x04d27bc2) — receiver hasn't signed yet
         if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
-          console.log(
-            '[CustomerProvider] handOff: receiver has not signed yet',
-          );
           return 'driver_not_signed';
         }
         console.error('[CustomerProvider] completeP2PHandoff error:', err);
@@ -607,17 +591,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
         // Wait for indexer to catch up (eventual consistency) then refresh.
         // The indexer typically needs 2-4s to process a new block.
-        console.log(
-          '[CustomerProvider] Journey tx confirmed. Waiting for indexer...',
-        );
         await new Promise((r) => setTimeout(r, 3000));
         await loadCustomerOrders();
 
         // Schedule a second refresh in case the first was too early
         setTimeout(() => {
-          console.log(
-            '[CustomerProvider] Doing follow-up refresh for journey indexing.',
-          );
           loadCustomerOrders();
         }, 5000);
       } catch (err) {
