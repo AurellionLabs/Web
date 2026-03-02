@@ -733,3 +733,418 @@
 .stagger-5 {
   animation-delay: 0.5s;
 }
+
+/* ============================================
+   AURELLION DOCS — MARKDOWN CONTENT STYLES
+   NERV × Greek Philosophy — EVA aesthetic
+   ============================================ */
+
+/* ── TYPOGRAPHY ── */
+.doc-content {
+  @apply text-foreground/75 leading-7 text-sm;
+}
+
+.doc-content h1 {
+  font-family: var(--font-serif), 'Playfair Display', serif;
+  @apply text-3xl md:text-4xl text-foreground mt-10 mb-4;
+  background-image: linear-gradient(
+    135deg,
+    hsl(var(--accent-300)) 0%,
+    hsl(var(--red-400)) 60%,
+    hsl(var(--accent-500)) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+}
+
+.doc-content h2 {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  @apply text-xs font-bold tracking-[0.18em] uppercase text-gold/80 mt-10 mb-4;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(43 18% 18%);
+  position: relative;
+}
+.doc-content h2::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 2.5rem;
+  height: 2px;
+  background: hsl(var(--gold));
+}
+
+.doc-content h3 {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  @apply text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/60 mt-7 mb-3;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.doc-content h3::before {
+  content: '▶';
+  color: hsl(var(--crimson));
+  font-size: 7px;
+  opacity: 0.6;
+}
+
+.doc-content h4 {
+  font-family: var(--font-mono), monospace;
+  @apply text-[10px] tracking-[0.12em] uppercase text-foreground/40 mt-5 mb-2;
+}
+
+.doc-content p {
+  @apply mb-4 text-foreground/65 leading-7;
+}
+
+.doc-content strong {
+  @apply text-foreground/90 font-semibold;
+}
+
+.doc-content em {
+  @apply text-foreground/60 italic;
+}
+
+/* ── LINKS ── */
+.doc-content a {
+  @apply text-gold/80 underline underline-offset-2 decoration-gold/30 transition-all duration-200;
+}
+.doc-content a:hover {
+  @apply text-gold decoration-gold/60;
+  text-shadow: 0 0 12px hsl(var(--gold) / 0.25);
+}
+
+/* ── LISTS ── */
+.doc-content ul {
+  @apply mb-4 space-y-1.5;
+  padding-left: 0;
+  list-style: none;
+}
+.doc-content ul li {
+  @apply relative pl-4 text-foreground/65;
+}
+.doc-content ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 6px;
+  height: 6px;
+  border: 1px solid hsl(var(--gold) / 0.4);
+  transform: rotate(45deg);
+}
+.doc-content ul ul li::before {
+  border-color: hsl(var(--crimson) / 0.35);
+  width: 4px;
+  height: 4px;
+}
+
+.doc-content ol {
+  @apply mb-4 space-y-1.5;
+  counter-reset: doc-counter;
+  padding-left: 0;
+  list-style: none;
+}
+.doc-content ol li {
+  @apply relative pl-8 text-foreground/65;
+  counter-increment: doc-counter;
+}
+.doc-content ol li::before {
+  content: counter(doc-counter, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.625rem;
+  color: hsl(var(--crimson) / 0.6);
+  letter-spacing: 0.05em;
+  top: 0.15em;
+}
+
+/* ── INLINE CODE ── */
+.doc-content code:not(pre code) {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.8em;
+  padding: 0.15em 0.45em;
+  border: 1px solid hsl(43 18% 22%);
+  color: hsl(var(--accent-300));
+  background: hsl(0 0% 8%);
+}
+
+/* ── CODE BLOCKS ── */
+.doc-content pre {
+  @apply mb-6 overflow-x-auto;
+  background: hsl(0 0% 5%) !important;
+  border: 1px solid hsl(43 18% 18%);
+  border-left: 3px solid hsl(var(--gold) / 0.4);
+  padding: 1.25rem 1.5rem;
+  position: relative;
+}
+.doc-content pre::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid hsl(var(--crimson) / 0.4);
+  border-right: 1px solid hsl(var(--crimson) / 0.4);
+}
+.doc-content pre code {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  color: hsl(0 0% 72%) !important;
+}
+
+/* Highlight.js — custom EVA colour overrides */
+.hljs-comment,
+.hljs-quote {
+  color: hsl(43 15% 38%) !important;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag {
+  color: hsl(0 65% 60%) !important;
+}
+.hljs-string,
+.hljs-attr {
+  color: hsl(43 70% 65%) !important;
+}
+.hljs-number,
+.hljs-literal {
+  color: hsl(200 60% 65%) !important;
+}
+.hljs-built_in,
+.hljs-type {
+  color: hsl(43 50% 55%) !important;
+}
+.hljs-function,
+.hljs-title {
+  color: hsl(43 65% 70%) !important;
+}
+.hljs-params {
+  color: hsl(0 0% 60%) !important;
+}
+.hljs-variable {
+  color: hsl(0 0% 70%) !important;
+}
+.hljs-meta {
+  color: hsl(200 50% 55%) !important;
+}
+.hljs-deletion {
+  color: hsl(0 70% 55%) !important;
+  background: hsl(0 70% 55% / 0.1) !important;
+}
+.hljs-addition {
+  color: hsl(142 50% 55%) !important;
+  background: hsl(142 50% 55% / 0.1) !important;
+}
+
+/* ── TABLES ── */
+.doc-table-wrap {
+  @apply mb-6 overflow-x-auto;
+  border: 1px solid hsl(43 18% 18%);
+}
+
+.doc-table {
+  @apply w-full border-collapse;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.75rem;
+}
+
+.doc-table thead tr {
+  background: hsl(0 0% 7%);
+  border-bottom: 2px solid hsl(43 18% 20%);
+}
+
+.doc-table thead th {
+  @apply px-4 py-2.5 text-left;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: hsl(var(--gold) / 0.7);
+  font-weight: 700;
+  border-right: 1px solid hsl(43 18% 14%);
+  white-space: nowrap;
+}
+.doc-table thead th:last-child {
+  border-right: none;
+}
+
+.doc-table tbody tr {
+  border-bottom: 1px solid hsl(43 18% 12%);
+  transition: background 0.15s;
+}
+.doc-table tbody tr:hover {
+  background: hsl(0 0% 100% / 0.02);
+}
+.doc-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.doc-table tbody td {
+  @apply px-4 py-2.5 text-foreground/55 align-top;
+  border-right: 1px solid hsl(43 18% 10%);
+  line-height: 1.5;
+}
+.doc-table tbody td:last-child {
+  border-right: none;
+}
+.doc-table tbody td:first-child {
+  color: hsl(var(--gold) / 0.6);
+}
+
+/* ── BLOCKQUOTES ── */
+.doc-content blockquote {
+  @apply mb-5;
+  border-left: 3px solid hsl(var(--crimson) / 0.4);
+  background: hsl(0 0% 7%);
+  padding: 1rem 1.25rem;
+  position: relative;
+}
+.doc-content blockquote::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid hsl(var(--crimson) / 0.3);
+  border-left: 1px solid hsl(var(--crimson) / 0.3);
+}
+.doc-content blockquote p {
+  @apply mb-0 text-foreground/50 italic text-sm;
+}
+
+/* ── CALLOUTS ── */
+.doc-callout {
+  @apply mb-5 p-4;
+  border: 1px solid;
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 12px) 0,
+    100% 12px,
+    100% 100%,
+    12px 100%,
+    0 calc(100% - 12px)
+  );
+}
+.doc-callout::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.doc-callout-note,
+.doc-callout-info {
+  border-color: hsl(200 50% 30%);
+  background: hsl(200 50% 10% / 0.4);
+}
+.doc-callout-note::before,
+.doc-callout-info::before {
+  border-top: 1px solid hsl(200 50% 40%);
+  border-right: 1px solid hsl(200 50% 40%);
+}
+.doc-callout-tip,
+.doc-callout-success {
+  border-color: hsl(142 40% 25%);
+  background: hsl(142 40% 8% / 0.4);
+}
+.doc-callout-warning,
+.doc-callout-caution,
+.doc-callout-important {
+  border-color: hsl(43 50% 30%);
+  background: hsl(43 50% 8% / 0.4);
+}
+.doc-callout-warning::before,
+.doc-callout-caution::before {
+  border-top: 1px solid hsl(43 60% 45%);
+  border-right: 1px solid hsl(43 60% 45%);
+}
+.doc-callout-danger {
+  border-color: hsl(0 50% 30%);
+  background: hsl(0 50% 8% / 0.4);
+}
+.doc-callout-danger::before {
+  border-top: 1px solid hsl(0 60% 45%);
+  border-right: 1px solid hsl(0 60% 45%);
+}
+
+.doc-callout-title {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+.doc-callout-note .doc-callout-title,
+.doc-callout-info .doc-callout-title {
+  color: hsl(200 60% 60%);
+}
+.doc-callout-tip .doc-callout-title,
+.doc-callout-success .doc-callout-title {
+  color: hsl(142 60% 50%);
+}
+.doc-callout-warning .doc-callout-title,
+.doc-callout-caution .doc-callout-title {
+  color: hsl(43 70% 55%);
+}
+.doc-callout-danger .doc-callout-title {
+  color: hsl(0 70% 55%);
+}
+.doc-callout-important .doc-callout-title {
+  color: hsl(43 70% 55%);
+}
+.doc-callout p {
+  @apply mb-0 text-xs;
+}
+
+/* ── HR ── */
+.doc-content hr {
+  @apply my-8;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    hsl(43 18% 20%),
+    transparent
+  );
+  position: relative;
+}
+.doc-content hr::after {
+  content: '◇';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: hsl(var(--gold) / 0.3);
+  background: hsl(var(--background));
+  padding: 0 0.5rem;
+}
+
+/* ── ASCII DIAGRAMS (pre without lang) ── */
+.doc-content pre:has(code.language-plaintext) {
+  border-left-color: hsl(var(--crimson) / 0.3);
+}
+.doc-content pre:has(code.language-plaintext) code {
+  color: hsl(0 0% 55%) !important;
+  font-size: 0.72rem;
+}
+
+/* ── FIRST PARAGRAPH LEAD ── */
+.doc-content > p:first-of-type {
+  @apply text-base text-foreground/70;
+}
