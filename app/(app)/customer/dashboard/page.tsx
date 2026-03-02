@@ -40,7 +40,10 @@ import {
   PenLine,
 } from 'lucide-react';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
+import { useSettlementDestination } from '@/hooks/useSettlementDestination';
 import { RedemptionDialog } from '@/app/components/redemption/RedemptionDialog';
+import { SettlementDestinationModal } from '@/app/components/settlement/SettlementDestinationModal';
+import { PendingSettlementBanner } from '@/app/components/settlement/PendingSettlementBanner';
 import { Input } from '@/app/components/ui/input';
 import {
   Select,
@@ -137,6 +140,14 @@ export default function CustomerDashboard() {
     error: holdingsError,
     refetch: refetchHoldings,
   } = useUserHoldings();
+
+  // Settlement destination
+  const { pendingOrders: pendingSettlements, refetch: refetchSettlements } =
+    useSettlementDestination();
+  const [selectedPendingOrder, setSelectedPendingOrder] = useState<
+    string | null
+  >(null);
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
 
   // Redemption dialog state
   const [selectedHolding, setSelectedHolding] = useState<UserHolding | null>(
