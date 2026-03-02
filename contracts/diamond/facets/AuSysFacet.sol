@@ -922,6 +922,7 @@ contract AuSysFacet is ReentrancyGuard {
         // Hold tokens in escrow — buyer chooses destination via selectTokenDestination
         s.pendingTokenDestination[orderId] = true;
         s.pendingTokenBuyer[orderId] = O.buyer;
+        s.ausysOrderSettledAt[orderId] = block.timestamp;
         emit TokenDestinationPending(orderId, O.buyer, O.tokenId, O.tokenQuantity);
 
         // Pay seller
@@ -991,6 +992,7 @@ contract AuSysFacet is ReentrancyGuard {
         DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
 
         if (!s.pendingTokenDestination[orderId]) revert NoPendingDestination();
+        require(block.timestamp > s.ausysOrderSettledAt[orderId] + 30 days, "Too early: 30-day lock active");
 
         s.pendingTokenDestination[orderId] = false;
         delete s.pendingTokenBuyer[orderId];

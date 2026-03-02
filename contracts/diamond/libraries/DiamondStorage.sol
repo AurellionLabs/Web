@@ -240,6 +240,7 @@ library DiamondStorage {
         // ======= TOKEN DESTINATION ESCROW =======
         mapping(bytes32 => bool) pendingTokenDestination;
         mapping(bytes32 => address) pendingTokenBuyer;
+        mapping(bytes32 => uint256) ausysOrderSettledAt;
 
         // ======= RESERVED =======
         uint256[50] __reserved1;
