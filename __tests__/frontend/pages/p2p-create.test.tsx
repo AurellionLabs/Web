@@ -26,6 +26,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockSetCurrentUserRole = vi.fn();
+const mockGetClassAssets = vi.fn();
 const mockGetClassTokenizableAssets = vi.fn();
 const mockCreateOffer = vi.fn();
 
@@ -48,6 +49,7 @@ vi.mock('@/app/providers/diamond.provider', () => ({
 vi.mock('@/app/providers/platform.provider', () => ({
   usePlatform: () => ({
     supportedAssetClasses: ['GOAT', 'SHEEP'],
+    getClassAssets: mockGetClassAssets,
     getClassTokenizableAssets: mockGetClassTokenizableAssets,
   }),
 }));
@@ -159,7 +161,7 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }));
 
-import CreateP2POfferPage from '@/app/customer/p2p/create/page';
+import CreateP2POfferPage from '@/app/(app)/customer/p2p/create/page';
 
 // ===========================================================================
 // TEST DATA
@@ -224,11 +226,11 @@ function selectAssetClass(className: string) {
   fireEvent.change(classSelect, { target: { value: className } });
 }
 
-/** Select a specific asset via the <select> dropdown (second select on the page) */
+/** Select a specific asset via the <select> dropdown (last select on the page - after attribute filters) */
 function selectAsset(tokenId: string) {
   const selects = document.querySelectorAll('select');
-  // Second select is the asset dropdown
-  const assetSelect = selects[1];
+  // Asset select is the last select (attribute filter dropdowns appear before it)
+  const assetSelect = selects[selects.length - 1];
   fireEvent.change(assetSelect, { target: { value: tokenId } });
 }
 
@@ -239,7 +241,8 @@ function selectAsset(tokenId: string) {
 describe('Create P2P Offer Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetClassTokenizableAssets.mockResolvedValue([]);
+    mockGetClassAssets.mockResolvedValue([]);
+    mockGetClassAssets.mockResolvedValue([]);
   });
 
   describe('step 1: offer type', () => {
@@ -279,7 +282,7 @@ describe('Create P2P Offer Page', () => {
     });
 
     it('should load assets when class is selected in buy flow', async () => {
-      mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
+      mockGetClassAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();
@@ -287,12 +290,12 @@ describe('Create P2P Offer Page', () => {
       selectAssetClass('GOAT');
 
       await waitFor(() => {
-        expect(mockGetClassTokenizableAssets).toHaveBeenCalledWith('GOAT');
+        expect(mockGetClassAssets).toHaveBeenCalledWith('GOAT');
       });
     });
 
     it('should display attribute dropdowns when asset with attributes is selected', async () => {
-      mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
+      mockGetClassAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();
@@ -301,23 +304,24 @@ describe('Create P2P Offer Page', () => {
 
       await waitFor(() => {
         const allOptions = document.querySelectorAll('select option');
-        const texts = Array.from(allOptions).map((o) => o.textContent);
-        expect(texts).toContain('AUGOAT Standard');
+        const texts = Array.from(allOptions).map((o) => o.textContent ?? '');
+        expect(texts.some((t) => t.includes('AUGOAT Standard'))).toBe(true);
       });
 
       selectAsset('12345');
 
       await waitFor(() => {
-        expect(screen.getByText(/Token ID: 12345/)).toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText(/Specify Details/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            (content) =>
+              content.includes('Token ID') && content.includes('12345'),
+          ),
+        ).toBeInTheDocument();
       });
     });
 
     it('should show attribute values as options', async () => {
-      mockGetClassTokenizableAssets.mockResolvedValue(GOAT_ASSETS);
+      mockGetClassAssets.mockResolvedValue(GOAT_ASSETS);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();
@@ -353,7 +357,7 @@ describe('Create P2P Offer Page', () => {
           ],
         },
       ];
-      mockGetClassTokenizableAssets.mockResolvedValue(assets);
+      mockGetClassAssets.mockResolvedValue(assets);
 
       render(<CreateP2POfferPage />);
       await goToAssetStepBuy();

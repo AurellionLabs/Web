@@ -203,8 +203,10 @@ export default function CreateP2POfferPage() {
       (asset.attributes || []).forEach((attribute) => {
         if (!attribute?.name) return;
         const values = optionsByName.get(attribute.name) || new Set<string>();
-        const primaryValue = getPrimaryAttributeValue(attribute);
-        if (primaryValue) values.add(primaryValue);
+        // Collect all possible values for this attribute across all assets
+        (attribute.values || []).forEach((v) => {
+          if (v && v.trim().length > 0) values.add(v);
+        });
         optionsByName.set(attribute.name, values);
       });
     });
