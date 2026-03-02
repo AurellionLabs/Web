@@ -1,10 +1,11 @@
 import { request } from 'graphql-request';
 
-export const graphqlRequest = async <T>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function graphqlRequest<T = any>(
   graphqlEndpoint: string,
   query: string,
   variables?: Record<string, unknown>,
-): Promise<T> => {
+): Promise<T> {
   const apiKey = process.env.NEXT_PUBLIC_THEGRAPH_API_KEY;
 
   const headers = {
@@ -41,4 +42,4 @@ export const graphqlRequest = async <T>(
     });
     throw new Error('error when querying GraphQl', { cause: e as Error });
   }
-};
+}
