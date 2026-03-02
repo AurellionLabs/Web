@@ -12,8 +12,18 @@ import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
  * @notice Library for order matching engine logic
  * @dev Extracted from OrderRouterFacet to reduce contract size and stack depth.
  *      Uses context structs to minimize stack variables.
+ * 
+ * @dev Security fix applied:
+ *      - Fee collection (maker/taker fees) now applied during trade execution
+ *      - Fees distributed to feeRecipient address
  */
 library OrderMatchingLib {
+    // ============================================================================
+    // CONSTANTS
+    // ============================================================================
+    
+    uint256 public constant BASIS_POINTS = 10000;
+    
     // ============================================================================
     // STRUCTS - Used to reduce stack depth
     // ============================================================================
@@ -35,7 +45,9 @@ library OrderMatchingLib {
         bytes32 indexed makerOrderId,
         uint256 price,
         uint256 amount,
-        uint256 quoteAmount
+        uint256 quoteAmount,
+        uint256 makerFee,
+        uint256 takerFee
     );
 
     // ============================================================================
@@ -176,6 +188,7 @@ library OrderMatchingLib {
 
     /**
      * @notice Execute a trade between two orders
+     * @dev Collects maker/taker fees and distributes to fee recipient
      */
     function _executeTrade(
         DiamondStorage.AppStorage storage s,
@@ -190,16 +203,35 @@ library OrderMatchingLib {
         address seller = CLOBLib.unpackMaker(s.packedOrders[sellOrderId].makerAndFlags);
         uint256 quoteAmount = CLOBLib.calculateQuoteAmount(price, amount);
         
-        // Execute transfers
+        // Calculate fees (basis points)
+        uint256 makerFee = s.makerFeeBps > 0 ? (quoteAmount * s.makerFeeBps) / BASIS_POINTS : 0;
+        uint256 takerFee = s.takerFeeBps > 0 ? (quoteAmount * s.takerFeeBps) / BASIS_POINTS : 0;
+        uint256 totalFee = makerFee + takerFee;
+        
+        // Execute base token transfer to buyer
         IERC1155(ctx.baseToken).safeTransferFrom(address(this), buyer, ctx.baseTokenId, amount, "");
-        IERC20(ctx.quoteToken).transfer(seller, quoteAmount);
+        
+        // Execute quote token transfers (with fee deduction)
+        if (totalFee > 0 && s.feeRecipient != address(0)) {
+            // Transfer to seller (quoteAmount - makerFee since seller is maker)
+            uint256 sellerReceive = quoteAmount - makerFee;
+            if (sellerReceive > 0) {
+                IERC20(ctx.quoteToken).transfer(seller, sellerReceive);
+            }
+            // Transfer fees to fee recipient (taker pays their fee)
+            IERC20(ctx.quoteToken).transfer(s.feeRecipient, takerFee);
+        } else {
+            // No fees configured or no fee recipient - transfer full amount
+            IERC20(ctx.quoteToken).transfer(seller, quoteAmount);
+        }
         
         // Update both orders
         _updateOrderFilled(s.packedOrders[buyOrderId], amount);
         _updateOrderFilled(s.packedOrders[sellOrderId], amount);
         
-        // Emit trade event
-        _emitTradeEvent(s, buyOrderId, sellOrderId, price, amount, quoteAmount);
+        // Emit trade event with fee info
+        bytes32 tradeId = keccak256(abi.encodePacked(buyOrderId, sellOrderId, block.timestamp, s.totalTrades++));
+        emit RouterTradeExecuted(tradeId, sellOrderId, buyOrderId, price, amount, quoteAmount, makerFee, takerFee);
     }
 
     /**
@@ -220,20 +252,5 @@ library OrderMatchingLib {
             order.makerAndFlags, 
             newFilled >= amount ? CLOBLib.STATUS_FILLED : CLOBLib.STATUS_PARTIAL
         );
-    }
-
-    /**
-     * @notice Emit trade executed event (separated to reduce stack in _executeTrade)
-     */
-    function _emitTradeEvent(
-        DiamondStorage.AppStorage storage s,
-        bytes32 buyOrderId,
-        bytes32 sellOrderId,
-        uint96 price,
-        uint96 amount,
-        uint256 quoteAmount
-    ) private {
-        bytes32 tradeId = keccak256(abi.encodePacked(buyOrderId, sellOrderId, block.timestamp, s.totalTrades++));
-        emit RouterTradeExecuted(tradeId, sellOrderId, buyOrderId, price, amount, quoteAmount);
     }
 }
