@@ -99,10 +99,9 @@ export class PriceHistoryService {
           .getTrades(baseToken, baseTokenId, 500)
           .catch(() => [] as CLOBTrade[]),
       ]);
-      const trades: CLOBTrade[] = [
-        ...v1Trades,
-        ...(v2Trades as unknown as CLOBTrade[]),
-      ].sort((a, b) => a.timestamp - b.timestamp);
+      const trades: CLOBTrade[] = [...v1Trades, ...v2Trades].sort(
+        (a, b) => a.timestamp - b.timestamp,
+      );
 
       if (trades.length === 0) {
         return [];
@@ -205,20 +204,23 @@ export class PriceHistoryService {
 
       const existing = buckets.get(bucketTime);
 
+      const tradePrice = parseFloat(String(trade.price));
+      const tradeAmount = parseFloat(String(trade.amount));
+
       if (existing) {
         // Update existing bucket
-        existing.high = Math.max(existing.high, trade.price);
-        existing.low = Math.min(existing.low, trade.price);
-        existing.close = trade.price; // Last trade in bucket becomes close
-        existing.volume += trade.amount;
+        existing.high = Math.max(existing.high, tradePrice);
+        existing.low = Math.min(existing.low, tradePrice);
+        existing.close = tradePrice; // Last trade in bucket becomes close
+        existing.volume += tradeAmount;
       } else {
         // Create new bucket
         buckets.set(bucketTime, {
-          open: trade.price,
-          high: trade.price,
-          low: trade.price,
-          close: trade.price,
-          volume: trade.amount,
+          open: tradePrice,
+          high: tradePrice,
+          low: tradePrice,
+          close: tradePrice,
+          volume: tradeAmount,
         });
       }
     }

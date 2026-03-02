@@ -37,6 +37,7 @@ import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '@/chain-constants';
+import type { CLOBTrade as DomainCLOBTrade } from '@/domain/clob/clob';
 // NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
 import { formatEther, parseEther } from 'viem';
 import { ethers } from 'ethers';
@@ -77,23 +78,9 @@ export interface CLOBOrder {
 }
 
 /**
- * CLOB Trade domain model
+ * CLOB Trade domain model — re-exported from domain for backwards compat
  */
-export interface CLOBTrade {
-  id: string;
-  takerOrderId: string;
-  makerOrderId: string;
-  taker: string;
-  maker: string;
-  baseToken: string;
-  baseTokenId: string;
-  quoteToken: string;
-  price: number;
-  amount: number;
-  quoteAmount: number;
-  timestamp: number;
-  transactionHash: string;
-}
+export type CLOBTrade = DomainCLOBTrade;
 
 /**
  * Order book side data
@@ -572,14 +559,17 @@ export class CLOBRepository {
       let totalQuoteVolume = 0;
 
       trades.forEach((trade) => {
-        if (trade.price > high24h) high24h = trade.price;
-        if (trade.price < low24h) low24h = trade.price;
-        totalVolume += trade.amount;
-        totalQuoteVolume += trade.quoteAmount;
+        const p = parseFloat(String(trade.price));
+        const a = parseFloat(String(trade.amount));
+        const qa = parseFloat(String(trade.quoteAmount));
+        if (p > high24h) high24h = p;
+        if (p < low24h) low24h = p;
+        totalVolume += a;
+        totalQuoteVolume += qa;
       });
 
-      const lastPrice = trades[0].price;
-      const oldestPrice = trades[trades.length - 1].price;
+      const lastPrice = parseFloat(String(trades[0].price));
+      const oldestPrice = parseFloat(String(trades[trades.length - 1].price));
       const change24h =
         oldestPrice > 0 ? ((lastPrice - oldestPrice) / oldestPrice) * 100 : 0;
 
@@ -1058,9 +1048,13 @@ export class CLOBRepository {
       baseToken: baseToken,
       baseTokenId: baseTokenId,
       quoteToken: '', // Not available in trade event
-      price: Number(trade.price) / 1e18,
-      amount: Number(trade.amount),
-      quoteAmount: Number(trade.quote_amount) / 1e18,
+      marketId: `${baseToken}-${baseTokenId}`,
+      price: String(Number(trade.price) / 1e18),
+      amount: String(Number(trade.amount)),
+      quoteAmount: String(Number(trade.quote_amount) / 1e18),
+      takerFee: '0',
+      makerFee: '0',
+      takerIsBuy: true,
       timestamp: Number(trade.timestamp) * 1000,
       transactionHash: trade.transaction_hash,
     };
