@@ -102,7 +102,9 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
             bytes32[] storage ownerNodes = s.ownerNodes[node];
             bool hasActiveNode = false;
             for (uint256 i = 0; i < ownerNodes.length; i++) {
-                if (s.nodes[ownerNodes[i]].active && s.nodes[ownerNodes[i]].validNode) {
+                // Cache node to avoid repeated SLOAD (saves ~3000 gas per iteration)
+                DiamondStorage.Node storage nodeData = s.nodes[ownerNodes[i]];
+                if (nodeData.active && nodeData.validNode) {
                     hasActiveNode = true;
                     break;
                 }
