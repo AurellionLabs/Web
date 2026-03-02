@@ -65,6 +65,7 @@ export function BootSequence({
       timers.forEach(clearTimeout);
       clearTimeout(completeTimer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -1305,6 +1306,7 @@ export function TerminalOutput({
       }
     }, 600);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
