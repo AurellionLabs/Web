@@ -29,8 +29,12 @@ import {
   Warehouse,
   MapPin,
   ChevronRight,
+  AlertTriangle,
+  ArrowDownToLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
+import { useNodes } from '@/app/providers/nodes.provider';
 
 interface AssetDetailDrawerProps {
   holding: UserHolding | null;
@@ -46,10 +50,15 @@ export function AssetDetailDrawer({
   onRedemptionSuccess,
 }: AssetDetailDrawerProps) {
   const { address } = useWallet();
+  const { nodes } = useNodes();
   const [isRedemptionOpen, setIsRedemptionOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<CustodyEntry | null>(null);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Use the first owned node as deposit target (required for DepositForTradingModal)
+  const depositNodeHash = nodes[0]?.address ?? null;
 
   const custody = useAssetCustody(
     holding?.tokenId,
@@ -221,18 +230,36 @@ export function AssetDetailDrawer({
               </div>
             ) : (
               <div className="space-y-2">
-                {/* In-wallet row */}
+                {/* In-wallet row — action required, tokens must be deposited to a node */}
                 {custody.inWallet > 0n && (
-                  <div className="flex items-center justify-between py-2 px-3 rounded border border-border/20 bg-foreground/[0.02]">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-gold/60" />
-                      <span className="font-mono text-xs text-foreground/60">
-                        In Wallet
+                  <div className="rounded border border-amber-500/30 bg-amber-500/[0.05] overflow-hidden">
+                    <div className="flex items-center justify-between py-2 px-3">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        <div>
+                          <span className="font-mono text-xs text-amber-300/80 block">
+                            Uncustodied
+                          </span>
+                          <span className="font-mono text-[10px] text-amber-400/50">
+                            Must be deposited to a node
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-mono text-xs font-bold text-amber-400">
+                        {custody.inWallet.toString()} units
                       </span>
                     </div>
-                    <span className="font-mono text-xs font-bold text-gold">
-                      {custody.inWallet.toString()} units
-                    </span>
+                    {depositNodeHash && (
+                      <button
+                        onClick={() => setIsDepositOpen(true)}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 transition-colors border-t border-amber-500/20"
+                      >
+                        <ArrowDownToLine className="w-3 h-3 text-amber-400" />
+                        <span className="font-mono text-[10px] text-amber-400 tracking-wide uppercase">
+                          Deposit to Node
+                        </span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -374,6 +401,24 @@ export function AssetDetailDrawer({
           onRedemptionSuccess();
         }}
       />
+
+      {/* Deposit to Node — for uncustodied (in-wallet) tokens */}
+      {depositNodeHash && holding && (
+        <DepositForTradingModal
+          open={isDepositOpen}
+          onOpenChange={setIsDepositOpen}
+          tokenId={holding.tokenId}
+          tokenName={holding.name || 'Asset'}
+          nodeHash={depositNodeHash}
+          walletBalance={custody.inWallet}
+          nodeBalance={0n}
+          requiredAmount={custody.inWallet}
+          onDepositComplete={() => {
+            setIsDepositOpen(false);
+            onRedemptionSuccess(); // refresh holdings
+          }}
+        />
+      )}
     </>
   );
 }
