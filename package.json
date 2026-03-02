@@ -60,7 +60,7 @@
     "postdeploy:verify": "npm run verify:deployment"
   },
   "lint-staged": {
-    "*.{js,ts,jsx,tsx,json,css,md}": "npm run format",
+    "*.{js,ts,jsx,tsx,json,css,md}": "prettier --write",
     "*.{yml,yaml}": "node -e \"require('js-yaml').load(require('fs').readFileSync(process.argv[1], 'utf8')); process.stdout.write('✅ YAML valid: ' + process.argv[1] + '\\n');\""
   },
   "dependencies": {
