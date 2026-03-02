@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -36,32 +36,13 @@ export function AssetDetailDrawer({
 }: AssetDetailDrawerProps) {
   const [isRedemptionOpen, setIsRedemptionOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    };
-  }, []);
 
   if (!holding) return null;
 
   const handleCopyTokenId = async () => {
-    try {
-      await navigator.clipboard.writeText(holding.tokenId);
-    } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = holding.tokenId;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
+    await navigator.clipboard.writeText(holding.tokenId);
     setCopied(true);
-    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -125,7 +106,6 @@ export function AssetDetailDrawer({
                 </span>
                 <button
                   onClick={handleCopyTokenId}
-                  aria-label="Copy token ID"
                   className="flex-shrink-0 p-1 hover:bg-gold/10 rounded transition-colors"
                 >
                   {copied ? (
@@ -225,3 +205,5 @@ export function AssetDetailDrawer({
     </>
   );
 }
+
+export default AssetDetailDrawer;
