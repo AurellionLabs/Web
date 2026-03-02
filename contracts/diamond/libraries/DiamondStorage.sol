@@ -242,6 +242,12 @@ library DiamondStorage {
         mapping(bytes32 => address) pendingTokenBuyer;
         mapping(bytes32 => uint256) ausysOrderSettledAt;
 
+        // ======= AUSYS SECURITY =======
+        // Nonce-based replay protection for P2P offer acceptance
+        mapping(address => mapping(uint256 => bool)) ausysUsedNonces;
+        // Trusted off-chain signer that authorises P2P offer acceptance (EIP-712)
+        address trustedP2PSigner;
+
         // ======= RESERVED =======
         uint256[50] __reserved1;
         mapping(bytes32 => uint256) __reserved2;
