@@ -5,6 +5,8 @@ import {
   clobRepository,
   type OrderBookData,
 } from '@/infrastructure/repositories/clob-repository';
+import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
+import { NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS } from '@/chain-constants';
 
 /**
  * Order level data structure
@@ -178,20 +180,59 @@ export function useOrderBook(
    */
   const updateOrderBook = useCallback(async () => {
     try {
-      // If we have real market data, fetch from repository
+      // If we have real market data, fetch from both V1 and V2 repositories
       if (baseToken && baseTokenId) {
-        const repoOrderBook = await clobRepository.getOrderBook(
-          baseToken,
-          baseTokenId,
-          levels * 2, // Fetch extra levels for better aggregation
-        );
+        const [v1Book, v2Book] = await Promise.all([
+          clobRepository.getOrderBook(baseToken, baseTokenId, levels * 2),
+          clobV2Repository
+            .getOrderBook(
+              baseToken,
+              baseTokenId,
+              NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+              levels * 2,
+            )
+            .catch(() => ({ bids: [], asks: [], spread: 0, midPrice: 0 })),
+        ]);
 
-        // Check if we have real data
-        const hasRealData =
-          repoOrderBook.bids.length > 0 || repoOrderBook.asks.length > 0;
+        // Merge bids and asks from both books, sort and deduplicate by price
+        const mergeLevels = (
+          a: { price: number; quantity: number; total: number }[],
+          b: {
+            price: number | string;
+            size?: number | string;
+            quantity?: number | string;
+            total?: number;
+          }[],
+          descending: boolean,
+        ): { price: number; quantity: number; total: number }[] => {
+          const map = new Map<number, number>();
+          a.forEach((lvl) =>
+            map.set(lvl.price, (map.get(lvl.price) || 0) + lvl.quantity),
+          );
+          b.forEach((lvl) => {
+            const p = parseFloat(String(lvl.price));
+            const q = parseFloat(String(lvl.size ?? lvl.quantity ?? 0));
+            map.set(p, (map.get(p) || 0) + q);
+          });
+          const sorted = [...map.entries()].sort((x, y) =>
+            descending ? y[0] - x[0] : x[0] - y[0],
+          );
+          let cumulative = 0;
+          return sorted.map(([price, quantity]) => {
+            cumulative += quantity;
+            return { price, quantity, total: cumulative };
+          });
+        };
+
+        const mergedBids = mergeLevels(v1Book.bids, v2Book.bids ?? [], true);
+        const mergedAsks = mergeLevels(v1Book.asks, v2Book.asks ?? [], false);
+        const hasRealData = mergedBids.length > 0 || mergedAsks.length > 0;
 
         if (hasRealData) {
-          const formatted = convertToHookFormat(repoOrderBook, levels);
+          const formatted = convertToHookFormat(
+            { ...v1Book, bids: mergedBids, asks: mergedAsks },
+            levels,
+          );
           setOrderBook(formatted);
           setIsLoading(false);
           setError(null);
