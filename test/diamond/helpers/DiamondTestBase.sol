@@ -360,10 +360,15 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getOperatorSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](3);
+        bytes4[] memory selectors = new bytes4[](8);
         selectors[0] = OperatorFacet.approveOperator.selector;
         selectors[1] = OperatorFacet.revokeOperator.selector;
         selectors[2] = OperatorFacet.isApprovedOperator.selector;
+        selectors[3] = OperatorFacet.setOperatorReputation.selector;
+        selectors[4] = OperatorFacet.getOperatorStats.selector;
+        selectors[5] = OperatorFacet.getOperatorReputation.selector;
+        selectors[6] = OperatorFacet.getOperatorSuccessfulOps.selector;
+        selectors[7] = OperatorFacet.getOperatorTotalValueProcessed.selector;
         return selectors;
     }
 }
