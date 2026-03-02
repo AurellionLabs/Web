@@ -32,7 +32,11 @@ export function useWallet() {
   const [repository, setRepository] = useState<PrivyWalletRepository | null>(
     null,
   );
-  const [isConnected, setIsConnected] = useState<boolean>(false);
+  // Initialize eagerly from Privy state to avoid a render cycle where
+  // address is set but isConnected is still false (race condition on mount).
+  const [isConnected, setIsConnected] = useState<boolean>(
+    () => privy.authenticated && !!privyWallets.wallets?.[0],
+  );
   const [connectedWallet, setConnectedWallet] =
     useState<ConnectedWallet | null>(initialConnectedWallet);
   const [address, setAddress] = useState<string | null>(

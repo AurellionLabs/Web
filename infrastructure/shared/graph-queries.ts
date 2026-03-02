@@ -1677,6 +1677,69 @@ export interface JourneyStatusUpdatesAllResponse {
 
 // ---------------------------------------------------------------------------
 // EmitSig (package signing) events
+
+// =============================================================================
+// MINTED ASSET QUERIES (tokenId -> assetClass lookup)
+// =============================================================================
+
+export const GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS = gql`
+  query GetMintedAssetClassByTokenIds(
+    $tokenIds: [BigInt!]!
+    $limit: Int = 500
+  ) {
+    diamondMintedAssetEventss(
+      where: { token_id_in: $tokenIds }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        token_id
+        asset_class
+        name
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export const GET_ALL_MINTED_ASSET_CLASSES = gql`
+  query GetAllMintedAssetClasses($limit: Int = 1000) {
+    diamondMintedAssetEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        token_id
+        asset_class
+        name
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+export interface MintedAssetRawEvent {
+  id: string;
+  token_id: string;
+  asset_class: string;
+  name: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface MintedAssetEventsResponse {
+  diamondMintedAssetEventss: { items: MintedAssetRawEvent[] };
+}
+
 // ---------------------------------------------------------------------------
 
 export const GET_EMIT_SIG_EVENTS_BY_JOURNEY = gql`

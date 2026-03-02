@@ -113,13 +113,17 @@ export default function P2PPage() {
       )
         continue;
 
-      let offerClass = tokenIdToClass.get(offer.tokenId);
+      // Fast path: use pre-resolved assetClass from repository
+      let offerClass = offer.assetClass;
       if (!offerClass) {
-        try {
-          const normalized = BigInt(offer.tokenId).toString(10);
-          offerClass = tokenIdToClass.get(normalized);
-        } catch {
-          /* ignore */
+        offerClass = tokenIdToClass.get(offer.tokenId);
+        if (!offerClass) {
+          try {
+            const normalized = BigInt(offer.tokenId).toString(10);
+            offerClass = tokenIdToClass.get(normalized);
+          } catch {
+            /* ignore */
+          }
         }
       }
       if (offerClass) {

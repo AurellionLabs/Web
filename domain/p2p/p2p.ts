@@ -91,6 +91,13 @@ export interface P2POffer {
 
   /** Custody nodes involved in the trade */
   nodes: string[];
+
+  /**
+   * Asset class this offer belongs to (e.g. "GOAT", "SHEEP").
+   * Populated from the indexer MintedAsset events — avoids Pinata lookups
+   * for class-based market filtering.
+   */
+  assetClass?: string;
 }
 
 /**

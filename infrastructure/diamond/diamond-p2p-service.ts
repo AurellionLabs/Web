@@ -23,7 +23,9 @@ import {
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
   GET_P2P_OFFERS_BY_CREATOR,
+  GET_ALL_MINTED_ASSET_CLASSES,
   type P2POffersByCreatorResponse,
+  type MintedAssetEventsResponse,
 } from '@/infrastructure/shared/graph-queries';
 
 const ERC20_ABI = [
@@ -681,8 +683,51 @@ export class DiamondP2PRepository implements IP2PRepository {
       );
 
       const offers = await Promise.all(offerIds.map((id) => this.getOffer(id)));
+      const validOffers = offers.filter((o): o is P2POffer => o !== null);
 
-      return offers.filter((o): o is P2POffer => o !== null);
+      // Enrich offers with assetClass from indexer MintedAsset events.
+      // This avoids per-offer Pinata lookups and correctly resolves
+      // per-node tokenized asset IDs to their class (GOAT, SHEEP, etc.)
+      try {
+        const mintedResponse = await graphqlRequest<MintedAssetEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_MINTED_ASSET_CLASSES,
+          { limit: 1000 },
+        );
+        const mintedItems =
+          mintedResponse.diamondMintedAssetEventss?.items ?? [];
+        // Build tokenId -> assetClass map (decimal string keys)
+        const tokenClassMap = new Map<string, string>();
+        for (const item of mintedItems) {
+          // token_id from indexer is a BigInt stored as string
+          tokenClassMap.set(item.token_id, item.asset_class);
+        }
+        for (const offer of validOffers) {
+          if (!offer.assetClass && offer.tokenId) {
+            // Try direct decimal match
+            const cls = tokenClassMap.get(offer.tokenId);
+            if (cls) {
+              offer.assetClass = cls;
+            } else {
+              // Try BigInt normalization for hex vs decimal mismatch
+              try {
+                const normalized = BigInt(offer.tokenId).toString(10);
+                const clsNorm = tokenClassMap.get(normalized);
+                if (clsNorm) offer.assetClass = clsNorm;
+              } catch {
+                /* ignore */
+              }
+            }
+          }
+        }
+      } catch (indexerError) {
+        console.warn(
+          '[DiamondP2PRepository] Could not enrich offers with assetClass from indexer:',
+          indexerError,
+        );
+      }
+
+      return validOffers;
     } catch (error) {
       console.error('[DiamondP2PRepository] Error getting open offers:', error);
       return [];

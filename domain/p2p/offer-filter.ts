@@ -83,7 +83,12 @@ export function filterOffersForMarket(
       return false;
     }
 
-    if (
+    // Fast path: use pre-resolved assetClass from repository (indexer-sourced)
+    if (offer.assetClass) {
+      const inClass =
+        offer.assetClass.toLowerCase() === className.toLowerCase();
+      if (!inClass) return false;
+    } else if (
       !isTokenInClass(
         offer.tokenId,
         className,
