@@ -8,6 +8,8 @@ import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import { MessageHashUtils } from '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
 
 /**
  * @title AuSysFacet
@@ -16,11 +18,17 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  */
 contract AuSysFacet is ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
+    using MessageHashUtils for bytes32;
 
     uint256 public constant MAX_ORDERS = 10000;
     uint256 public constant MAX_JOURNEYS_PER_ORDER = 10;
     uint256 public constant MAX_NODES_PER_ORDER = 20;
     uint256 public constant MAX_DRIVER_JOURNEYS = 10;
+    uint256 public constant SIGNATURE_EXPIRY_SECONDS = 300; // 5 minutes
+
+    // Trusted signer for P2P offer signatures
+    address public trustedP2PSigner;
 
     error ArrayLimitExceeded();
 
@@ -158,6 +166,11 @@ contract AuSysFacet is ReentrancyGuard {
     error NotTargetCounterparty();
     error CannotAcceptOwnOffer();
     error OnlyCreatorCanCancel();
+    // Signature verification errors
+    error InvalidSignature();
+    error SignatureExpired();
+    error NonceAlreadyUsed();
+    error TrustedSignerNotSet();
 
     // ============================================================================
     // CONSTANTS (RBAC roles from AuSys.sol)
@@ -229,6 +242,35 @@ contract AuSysFacet is ReentrancyGuard {
     function getPayToken() external view returns (address) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.payToken;
+    }
+
+    /**
+     * @notice Set the trusted signer for P2P offer acceptance
+     * @dev This signer authorizes who can accept P2P offers to prevent front-running
+     * @param _signer The address of the trusted signer
+     */
+    function setTrustedP2PSigner(address _signer) external onlyOwner {
+        trustedP2PSigner = _signer;
+    }
+
+    /**
+     * @notice Get the trusted P2P signer address
+     */
+    function getTrustedP2PSigner() external view returns (address) {
+        return trustedP2PSigner;
+    }
+
+    /**
+     * @notice EIP-712 domain separator for signature verification
+     */
+    function domainSeparator() internal view returns (bytes32) {
+        return keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256("AuSysFacet"),
+            keccak256("1"),
+            block.chainid,
+            address(this)
+        ));
     }
 
     // ============================================================================
@@ -417,9 +459,12 @@ contract AuSysFacet is ReentrancyGuard {
     /**
      * @notice Accept a P2P offer
      * @dev Counterparty escrows their side and order moves to Processing
+     *      Requires valid signature from trusted signer to prevent front-running
      * @param orderId The order/offer to accept
+     * @param signature Signature from trusted signer (proves authorization to accept)
+     * @param nonce Unique nonce to prevent replay attacks
      */
-    function acceptP2POffer(bytes32 orderId) external nonReentrant {
+    function acceptP2POffer(bytes32 orderId, bytes calldata signature, uint256 nonce) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
 
@@ -433,6 +478,23 @@ contract AuSysFacet is ReentrancyGuard {
             order.currentStatus = OrderStatus.AUSYS_EXPIRED;
             revert OfferExpired();
         }
+
+        // Validate signature - prevents front-running
+        if (trustedP2PSigner == address(0)) revert TrustedSignerNotSet();
+        if (s.ausysUsedNonces[msg.sender][nonce]) revert NonceAlreadyUsed();
+        
+        bytes32 digest = keccak256(abi.encodePacked(
+            orderId,
+            msg.sender,
+            nonce,
+            block.chainid
+        )).toTypedDataHash(domainSeparator());
+        
+        address signer = digest.recover(signature);
+        if (signer != trustedP2PSigner) revert InvalidSignature();
+        
+        // Mark nonce as used
+        s.ausysUsedNonces[msg.sender][nonce] = true;
         
         // Validate caller is allowed counterparty
         if (order.targetCounterparty != address(0) && msg.sender != order.targetCounterparty) {
@@ -878,11 +940,23 @@ contract AuSysFacet is ReentrancyGuard {
     // ============================================================================
 
     function _getHashedJourneyId(DiamondStorage.AppStorage storage s) internal returns (bytes32) {
-        return keccak256(abi.encode(++s.ausysJourneyIdCounter));
+        // Use counter + block data for better entropy (prevents predictable IDs)
+        return keccak256(abi.encode(
+            ++s.ausysJourneyIdCounter,
+            block.prevrandao,
+            block.timestamp,
+            msg.sender
+        ));
     }
 
     function _getHashedOrderId(DiamondStorage.AppStorage storage s) internal returns (bytes32) {
-        return keccak256(abi.encode(++s.ausysOrderIdCounter));
+        // Use counter + block data for better entropy (prevents front-running)
+        return keccak256(abi.encode(
+            ++s.ausysOrderIdCounter,
+            block.prevrandao,
+            block.timestamp,
+            msg.sender
+        ));
     }
 
     function _isValidNode(DiamondStorage.AppStorage storage s, address nodeOwner) internal view returns (bool) {

@@ -143,6 +143,8 @@ library DiamondStorage {
         // P2P offer tracking
         bytes32[] openP2POfferIds;                    // Track open (unaccepted) P2P offers
         mapping(address => bytes32[]) userP2POffers;  // Track P2P offers by creator
+        // Signature nonces to prevent replay attacks
+        mapping(address => mapping(uint256 => bool)) ausysUsedNonces;
 
         // ======= CLOB LOGISTICS (from IAuraCLOB) =======
         // Driver management
