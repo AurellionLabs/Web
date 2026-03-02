@@ -90,8 +90,27 @@ export function useMarketData(
   useEffect(() => {
     fetchData();
     if (autoRefresh) {
-      const interval = setInterval(fetchData, updateInterval);
-      return () => clearInterval(interval);
+      // Only poll when page is visible to save bandwidth and reduce RPC load
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchData();
+        }
+      };
+
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchData();
+        }
+      }, updateInterval);
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      };
     }
   }, [fetchData, autoRefresh, updateInterval]);
 
@@ -155,8 +174,27 @@ export function useMultipleMarkets(
   useEffect(() => {
     fetchAllData();
     if (autoRefresh) {
-      const interval = setInterval(fetchAllData, updateInterval);
-      return () => clearInterval(interval);
+      // Only poll when page is visible to save bandwidth and reduce RPC load
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchAllData();
+        }
+      };
+
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchAllData();
+        }
+      }, updateInterval);
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      };
     }
   }, [fetchAllData, autoRefresh, updateInterval]);
 
