@@ -5,6 +5,7 @@ import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
+import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /**
  * @dev Interface for OrderRouterFacet - SINGLE ENTRY POINT for all order operations
@@ -44,7 +45,7 @@ interface ICLOBFacet {
  * @notice Business logic facet for node registration, management, and node assets
  * @dev Combines AurumNodeManager + NodeAsset functionality
  */
-contract NodesFacet is Initializable {
+contract NodesFacet is Initializable, ReentrancyGuard {
     // Events matching original AurumNodeManager
     event NodeRegistered(
         bytes32 indexed nodeHash,
@@ -596,7 +597,7 @@ contract NodesFacet is Initializable {
         bytes32 _node,
         uint256 _tokenId,
         uint256 _amount
-    ) external {
+    ) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
@@ -634,7 +635,7 @@ contract NodesFacet is Initializable {
         bytes32 _node,
         uint256 _tokenId,
         uint256 _amount
-    ) external {
+    ) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');

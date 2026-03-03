@@ -183,7 +183,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         address _token,
         uint256 _tokenId,
         bytes calldata _signature
-    ) external {
+    ) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
 
@@ -264,6 +264,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
             'Not seller or node'
         );
         require(order.status == OrderStatus.UNIFIED_TRADE_MATCHED, 'Order not bridged');
+        require(order.journeyIds.length == 0, 'Journey already created');
 
         journeyId = keccak256(
             abi.encodePacked(_unifiedOrderId, block.prevrandao, msg.sender, block.timestamp)
