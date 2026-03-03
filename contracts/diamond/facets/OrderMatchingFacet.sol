@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { CLOBLib } from '../libraries/CLOBLib.sol';
+import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -212,7 +213,22 @@ contract OrderMatchingFacet {
     // ORDER CANCELLATION
     // ============================================================================
     
-    function cancelOrderInternal(bytes32 orderId, uint8 reason) external {
+    error NotOrderMaker();
+    
+    modifier onlyOrderMakerOrAdmin(bytes32 orderId) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.PackedOrder storage order = s.packedOrders[orderId];
+        address maker = CLOBLib.unpackMaker(order.makerAndFlags);
+        if (msg.sender != maker && msg.sender != LibDiamond.contractOwner()) {
+            revert NotOrderMaker();
+        }
+        _;
+    }
+    
+    /**
+     * @notice Cancel an order internally (only order maker or admin can call)
+     */
+    function cancelOrderInternal(bytes32 orderId, uint8 reason) external onlyOrderMakerOrAdmin(orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         _cancelOrder(s, orderId, reason);
     }
