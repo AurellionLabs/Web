@@ -50,6 +50,7 @@ contract BridgeFacetTest is DiamondTestBase {
             nodeOperator,
             100 ether,
             10,
+            block.timestamp + 7 days,
             parcelData
         );
         vm.stopPrank();
@@ -70,10 +71,10 @@ contract BridgeFacetTest is DiamondTestBase {
         quoteToken.approve(address(diamond), 20000 ether);
 
         bytes32 orderId1 = bridge.createUnifiedOrder(
-            keccak256('order-1'), nodeOperator, 100 ether, 10, parcelData
+            keccak256('order-1'), nodeOperator, 100 ether, 10, block.timestamp + 7 days, parcelData
         );
         bytes32 orderId2 = bridge.createUnifiedOrder(
-            keccak256('order-2'), nodeOperator, 200 ether, 20, parcelData
+            keccak256('order-2'), nodeOperator, 200 ether, 20, block.timestamp + 7 days, parcelData
         );
         vm.stopPrank();
 
@@ -96,7 +97,7 @@ contract BridgeFacetTest is DiamondTestBase {
         vm.startPrank(user1);
         quoteToken.approve(address(diamond), 2000 ether);
         bytes32 orderId = bridge.createUnifiedOrder(
-            clobOrderId, nodeOperator, 100 ether, 10, parcelData
+            clobOrderId, nodeOperator, 100 ether, 10, block.timestamp + 7 days, parcelData
         );
         vm.stopPrank();
 
@@ -134,8 +135,8 @@ contract BridgeFacetTest is DiamondTestBase {
 
         vm.startPrank(user1);
         quoteToken.approve(address(diamond), 20000 ether);
-        bridge.createUnifiedOrder(keccak256('o1'), nodeOperator, 100 ether, 10, parcelData);
-        bridge.createUnifiedOrder(keccak256('o2'), nodeOperator, 200 ether, 20, parcelData);
+        bridge.createUnifiedOrder(keccak256('o1'), nodeOperator, 100 ether, 10, block.timestamp + 7 days, parcelData);
+        bridge.createUnifiedOrder(keccak256('o2'), nodeOperator, 200 ether, 20, block.timestamp + 7 days, parcelData);
         vm.stopPrank();
 
         bytes32[] memory buyerOrders = bridge.getBuyerOrders(user1);
