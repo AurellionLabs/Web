@@ -38,6 +38,8 @@ import {
 import { Asset } from '@/domain/shared';
 import { BrowserProvider } from 'ethers';
 import { PinataSDK } from 'pinata';
+import { getSettlementService } from '@/infrastructure/services/settlement-service';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 
 interface DiamondContextType {
   // Context state
@@ -384,33 +386,23 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         throw new Error('Diamond not initialized');
       }
       const diamond = diamondContext.getDiamond();
+      const signer = await diamondContext.getSigner();
+      const signerAddress = await signer.getAddress();
+      const diamondAddress = await diamond.getAddress();
 
       // First, approve Diamond to transfer user's tokens
-      const { NEXT_PUBLIC_DIAMOND_ADDRESS } = await import('@/chain-constants');
-      const { ethers } = await import('ethers');
-
-      const signer = await diamondContext.getSigner();
-      const auraAsset = new ethers.Contract(
+      const settlementService = getSettlementService();
+      const isApproved = await settlementService.isApprovedForAll(
+        signerAddress,
         NEXT_PUBLIC_DIAMOND_ADDRESS,
-        [
-          'function setApprovalForAll(address operator, bool approved) external',
-          'function isApprovedForAll(address account, address operator) view returns (bool)',
-        ],
-        signer,
-      );
-
-      const diamondAddress = await diamond.getAddress();
-      const isApproved = await auraAsset.isApprovedForAll(
-        await signer.getAddress(),
         diamondAddress,
       );
 
       if (!isApproved) {
-        const approveTx = await auraAsset.setApprovalForAll(
+        await settlementService.setApprovalForAll(
+          NEXT_PUBLIC_DIAMOND_ADDRESS,
           diamondAddress,
-          true,
         );
-        await approveTx.wait();
       }
 
       // Now deposit tokens to node
