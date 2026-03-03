@@ -6,6 +6,7 @@ import { CLOBLib } from '../libraries/CLOBLib.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /**
@@ -14,6 +15,7 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  * @dev Features: MEV protection, order expiration, circuit breakers, emergency recovery
  */
 contract CLOBFacetV2 is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     
     // ============================================================================
     // EVENTS - Comprehensive for off-chain indexing
@@ -933,16 +935,16 @@ contract CLOBFacetV2 is ReentrancyGuard {
         if (takerIsBuy) {
             // Taker buys: base tokens to taker, quote tokens to maker
             IERC1155(baseToken).safeTransferFrom(address(this), taker, baseTokenId, fillAmount, "");
-            IERC20(quoteToken).transfer(maker, quoteAmount - makerFee);
+            IERC20(quoteToken).safeTransfer(maker, quoteAmount - makerFee);
         } else {
             // Taker sells: base tokens to maker, quote tokens to taker
             IERC1155(baseToken).safeTransferFrom(address(this), maker, baseTokenId, fillAmount, "");
-            IERC20(quoteToken).transfer(taker, quoteAmount - takerFee);
+            IERC20(quoteToken).safeTransfer(taker, quoteAmount - takerFee);
         }
         
         // Collect fees
         if (takerFee + makerFee > 0 && s.feeRecipient != address(0)) {
-            IERC20(quoteToken).transfer(s.feeRecipient, takerFee + makerFee);
+            IERC20(quoteToken).safeTransfer(s.feeRecipient, takerFee + makerFee);
         }
         
         // Update circuit breaker last price

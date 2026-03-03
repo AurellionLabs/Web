@@ -6,6 +6,7 @@ import { CLOBLib } from '../libraries/CLOBLib.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /**
@@ -14,6 +15,7 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  * @dev Separated from main CLOB facet for cleaner upgrades and gas efficiency
  */
 contract CLOBAdminFacet is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     // ============================================================================
     // EVENTS
     // ============================================================================
@@ -270,7 +272,7 @@ contract CLOBAdminFacet is ReentrancyGuard {
         action.executed = true;
         
         // Transfer tokens
-        IERC20(action.token).transfer(action.recipient, action.amount);
+        IERC20(action.token).safeTransfer(action.recipient, action.amount);
         
         emit EmergencyActionExecuted(
             actionId,
