@@ -1,5 +1,4 @@
 #!/usr/bin/env npx ts-node
-// TypeScript types fixed – see postDeploy signature and tx parameter types
 /**
  * Unified Deployment Script
  *
