@@ -25,9 +25,7 @@ const AssetSection: React.FC<Props> = ({
       {/* Asset Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-2 h-8 bg-amber-500 rounded-full"></div>
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-          {assetLabel}
-        </h3>
+        <h3 className="text-lg font-semibold text-white">{assetLabel}</h3>
       </div>
       {/* Capacity Row */}
       <div className="mb-6">
@@ -46,7 +44,7 @@ const AssetSection: React.FC<Props> = ({
             }
           }}
           placeholder="Enter capacity"
-          className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
+          className="w-full h-12 px-4 border border-gray-700 bg-transparent text-sm placeholder:text-white/70 focus-visible:ring-2 focus-visible:ring-primary-500"
         />
       </div>
     </div>

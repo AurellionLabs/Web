@@ -132,31 +132,31 @@ export function OrderActionDialog({
         <div className="space-y-8">
           <div className="rounded-lg bg-gray-900/50 border border-gray-800">
             <div className="px-6 py-4 border-b border-gray-800">
-              <h3 className="font-semibold text-gray-200 text-lg">
+              <h3 className="font-semibold text-white text-lg">
                 Order Details
               </h3>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Order ID</span>
+                <span className="text-base text-white/80">Order ID</span>
                 <span className="text-base font-medium text-right">
                   {order.id}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Asset</span>
+                <span className="text-base text-white/80">Asset</span>
                 <span className="text-base font-medium text-right capitalize">
                   {order.asset?.name}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Quantity</span>
+                <span className="text-base text-white/80">Quantity</span>
                 <span className="text-base font-medium text-right">
                   {order.tokenQuantity}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Value</span>
+                <span className="text-base text-white/80">Value</span>
                 <span className="text-base font-medium text-right">
                   {order.price} AURA
                 </span>

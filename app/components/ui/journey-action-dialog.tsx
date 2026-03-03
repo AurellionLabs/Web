@@ -109,25 +109,25 @@ export function DeliveryActionDialog({
         <div className="space-y-8">
           <div className="rounded-lg bg-gray-900/50 border border-gray-800">
             <div className="px-6 py-4 border-b border-gray-800">
-              <h3 className="font-semibold text-gray-200 text-lg">
+              <h3 className="font-semibold text-white text-lg">
                 Delivery Details
               </h3>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Job ID</span>
+                <span className="text-base text-white/80">Job ID</span>
                 <span className="text-base font-medium text-right">
                   {formatAddress(delivery.jobId)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Customer</span>
+                <span className="text-base text-white/80">Customer</span>
                 <span className="text-base font-medium text-right">
                   {formatAddress(delivery.customer)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">Fee</span>
+                <span className="text-base text-white/80">Fee</span>
                 <span
                   className={`text-base font-medium text-right ${config.accentColor}`}
                 >
@@ -135,7 +135,7 @@ export function DeliveryActionDialog({
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-base text-gray-400">ETA</span>
+                <span className="text-base text-white/80">ETA</span>
                 <span className="text-base font-medium text-right">
                   {delivery.ETA > 946684800
                     ? (() => {
@@ -164,9 +164,9 @@ export function DeliveryActionDialog({
               <div className="border-t border-gray-800 pt-4">
                 <div className="space-y-4">
                   <div className="flex items-start gap-2">
-                    <MapPin className="h-5 w-5 text-gray-400 mt-1" />
+                    <MapPin className="h-5 w-5 text-white/80 mt-1" />
                     <div>
-                      <span className="text-base text-gray-400 block">
+                      <span className="text-base text-white/80 block">
                         Pickup Location
                       </span>
                       <span className="text-base font-medium">
@@ -175,9 +175,9 @@ export function DeliveryActionDialog({
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Navigation className="h-5 w-5 text-gray-400 mt-1" />
+                    <Navigation className="h-5 w-5 text-white/80 mt-1" />
                     <div>
-                      <span className="text-base text-gray-400 block">
+                      <span className="text-base text-white/80 block">
                         Delivery Location
                       </span>
                       <span className="text-base font-medium">

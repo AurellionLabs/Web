@@ -41,9 +41,7 @@ const AssetAttributeInput: React.FC<Props> = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Attributes
-        </h5>
+        <h5 className="text-sm font-medium text-white">Attributes</h5>
       </div>
       {asset.attributes.map((attribute) => {
         const currentValue = attributeValues[attribute.name] ?? '';
@@ -51,7 +49,7 @@ const AssetAttributeInput: React.FC<Props> = ({
           Array.isArray(attribute.values) && attribute.values.length > 0;
         return (
           <div key={attribute.name} className="mb-4">
-            <FormLabel className="block font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">
+            <FormLabel className="block font-semibold text-sm mb-2 text-white">
               {formatAttributeName(attribute.name)}
             </FormLabel>
             {hasOptions ? (

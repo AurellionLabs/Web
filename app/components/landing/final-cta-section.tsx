@@ -21,7 +21,7 @@ const FinalCTASection = () => {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto"
+          className="text-lg md:text-xl text-white mb-10 max-w-2xl mx-auto"
         >
           Get started with Aurellion today or stay connected for the latest
           updates and developments.
@@ -72,13 +72,13 @@ const FinalCTASection = () => {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="flex justify-center items-center space-x-6"
         >
-          <p className="text-gray-500">Connect with us:</p>
+          <p className="text-white/70">Connect with us:</p>
           {/* Themed Social Links */}
           <a
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-400 hover:text-amber-400 hover:scale-110 transition-all duration-300"
+            className="text-white/80 hover:text-amber-400 hover:scale-110 transition-all duration-300"
           >
             <Twitter className="h-6 w-6" />
           </a>
@@ -86,7 +86,7 @@ const FinalCTASection = () => {
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-400 hover:text-amber-400 hover:scale-110 transition-all duration-300"
+            className="text-white/80 hover:text-amber-400 hover:scale-110 transition-all duration-300"
           >
             <Linkedin className="h-6 w-6" />
           </a>
@@ -94,7 +94,7 @@ const FinalCTASection = () => {
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-400 hover:text-amber-400 hover:scale-110 transition-all duration-300"
+            className="text-white/80 hover:text-amber-400 hover:scale-110 transition-all duration-300"
           >
             <Send className="h-6 w-6" /> {/* Representing Telegram/Discord */}
           </a>

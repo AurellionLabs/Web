@@ -171,7 +171,7 @@ export function EditNodeModal({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-medium">Node Status</h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-white/70">
                   Current status: {nodeData.status}
                 </p>
               </div>

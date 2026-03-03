@@ -91,10 +91,10 @@ const PillarsSection = () => {
                 <Icon
                   className={`h-12 w-12 mb-4 ${pillar.color} group-hover:scale-110 transition-transform duration-300`}
                 />
-                <h3 className="text-xl font-semibold mb-3 text-gray-100">
+                <h3 className="text-xl font-semibold mb-3 text-white">
                   {pillar.title}
                 </h3>
-                <p className="text-gray-400 flex-grow text-sm">
+                <p className="text-white/80 flex-grow text-sm">
                   {pillar.description}
                 </p>
                 {/* Optional Learn More Link */}

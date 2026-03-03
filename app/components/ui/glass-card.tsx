@@ -104,7 +104,7 @@ export function GlassCardDescription({
   ...props
 }: GlassCardDescriptionProps) {
   return (
-    <p className={cn('text-sm text-neutral-400', className)} {...props}>
+    <p className={cn('text-sm text-white/80', className)} {...props}>
       {children}
     </p>
   );

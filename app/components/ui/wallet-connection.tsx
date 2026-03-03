@@ -360,7 +360,7 @@ export function WalletConnection() {
   ) => (
     <div className="flex items-center justify-between py-3 border-b border-neutral-800 last:border-b-0">
       <div>
-        <p className="text-sm text-neutral-400">{assetName}</p>
+        <p className="text-sm text-white/80">{assetName}</p>
         <p className="text-lg font-medium text-white">
           {isLoading
             ? 'Loading...'
@@ -372,7 +372,7 @@ export function WalletConnection() {
       {isFundable && (
         <button
           onClick={() => handleFundAsset(assetType)}
-          className="text-sm font-medium text-amber-400 hover:text-amber-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-colors"
+          className="text-sm font-medium text-amber-400 hover:text-amber-300 disabled:text-white/70 disabled:cursor-not-allowed transition-colors"
           disabled={isLoading || balance === null || !walletsReady || !address}
         >
           Fund
@@ -404,12 +404,12 @@ export function WalletConnection() {
             <DialogTitle className="text-white">Wallet Details</DialogTitle>
           </DialogHeader>
           {(isLoading || isFetchingBalances) && !address ? (
-            <p className="text-center py-4 text-neutral-400">
+            <p className="text-center py-4 text-white/80">
               Loading wallet details...
             </p>
           ) : address ? (
             <div className="space-y-4">
-              <div className="text-sm text-neutral-400 text-center py-2 px-4 bg-neutral-800/50 rounded-lg font-mono">
+              <div className="text-sm text-white/80 text-center py-2 px-4 bg-neutral-800/50 rounded-lg font-mono">
                 {formatAddress(address)}
               </div>
 
@@ -446,7 +446,7 @@ export function WalletConnection() {
                       description: 'Address copied to clipboard',
                     });
                   }}
-                  className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-transparent text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all"
+                  className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-transparent text-white hover:bg-neutral-800 hover:text-white transition-all"
                 >
                   Copy Address
                 </button>
@@ -458,7 +458,7 @@ export function WalletConnection() {
                     )
                   }
                   disabled={!currentChainId || !NETWORK_CONFIGS[currentChainId]}
-                  className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-transparent text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-transparent text-white hover:bg-neutral-800 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   View on Explorer
                 </button>
@@ -485,7 +485,7 @@ export function WalletConnection() {
               </button>
             </div>
           ) : (
-            <p className="text-center py-4 text-neutral-400">
+            <p className="text-center py-4 text-white/80">
               Please connect your wallet.
             </p>
           )}

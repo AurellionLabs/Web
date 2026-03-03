@@ -34,15 +34,15 @@ export function PoolCard({
       </div>
       <div className="space-y-2 mb-4">
         <div className="flex justify-between">
-          <span className="text-gray-400">TVL</span>
+          <span className="text-white/80">TVL</span>
           <span className="font-semibold">{tvl}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-400">APY</span>
+          <span className="text-white/80">APY</span>
           <span className="font-semibold text-green-500">{apy}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-400">Volume 24H</span>
+          <span className="text-white/80">Volume 24H</span>
           <span className="font-semibold">{volume}</span>
         </div>
       </div>

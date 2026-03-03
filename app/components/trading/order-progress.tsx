@@ -87,7 +87,7 @@ const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
             step.isCurrent &&
               step.status !== 'cancelled' &&
               'bg-blue-500 text-white animate-pulse',
-            !step.isCompleted && !step.isCurrent && 'bg-gray-700 text-gray-400',
+            !step.isCompleted && !step.isCurrent && 'bg-gray-700 text-white/80',
             step.status === 'cancelled' && 'bg-red-500 text-white',
           )}
         >
@@ -119,7 +119,7 @@ const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
               'font-medium',
               step.isCompleted && 'text-green-500',
               step.isCurrent && 'text-blue-500',
-              !step.isCompleted && !step.isCurrent && 'text-gray-400',
+              !step.isCompleted && !step.isCurrent && 'text-white/80',
               step.status === 'cancelled' && 'text-red-500',
             )}
           >
@@ -326,7 +326,7 @@ export const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({
         className={cn(
           'rounded-full font-medium',
           sizeClasses[size],
-          'bg-gray-500/10 text-gray-500',
+          'bg-gray-500/10 text-white/70',
         )}
       >
         Unknown

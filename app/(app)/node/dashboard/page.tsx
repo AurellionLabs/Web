@@ -1725,7 +1725,7 @@ export default function NodeDashboardPage() {
                           <h4 className="font-medium text-foreground">
                             {doc.title}
                           </h4>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 text-xs capitalize">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-800 text-white text-xs capitalize">
                             {doc.documentType}
                           </span>
                           {doc.isFrozen && (

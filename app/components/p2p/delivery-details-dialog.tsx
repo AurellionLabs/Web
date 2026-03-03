@@ -145,7 +145,7 @@ export function DeliveryDetailsDialog({
               <h2 className="text-lg font-semibold text-white">
                 Confirm &amp; Schedule Delivery
               </h2>
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-white/80">
                 Enter your delivery address to complete the purchase
               </p>
             </div>
@@ -156,45 +156,45 @@ export function DeliveryDetailsDialog({
         <div className="px-6 py-5 space-y-5">
           {/* Order summary */}
           <div className="rounded-lg bg-neutral-900 border border-neutral-800 p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-neutral-300">
+            <div className="flex items-center gap-2 text-sm font-medium text-white">
               <Package className="w-4 h-4 text-amber-400" />
               Order Summary
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <span className="text-neutral-500">Asset</span>
+                <span className="text-white/70">Asset</span>
                 <p className="font-medium text-white">
                   {assetName || `Token #${offer.tokenId}`}
                 </p>
               </div>
               <div>
-                <span className="text-neutral-500">Quantity</span>
+                <span className="text-white/70">Quantity</span>
                 <p className="font-medium text-white">
                   {offer.quantity.toString()}
                 </p>
               </div>
               <div>
-                <span className="text-neutral-500">Price</span>
+                <span className="text-white/70">Price</span>
                 <p className="font-medium text-amber-400">
                   ${formatPrice(offer.price)}
                 </p>
               </div>
               <div>
-                <span className="text-neutral-500">Fee</span>
-                <p className="font-medium text-neutral-300">
+                <span className="text-white/70">Fee</span>
+                <p className="font-medium text-white">
                   ${formatPrice(offer.txFee)}
                 </p>
               </div>
               <div>
-                <span className="text-neutral-500">Delivery Bounty</span>
-                <p className="font-medium text-neutral-300">$0.50</p>
+                <span className="text-white/70">Delivery Bounty</span>
+                <p className="font-medium text-white">$0.50</p>
               </div>
             </div>
           </div>
 
           {/* Delivery address */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
+            <label className="text-sm font-medium text-white flex items-center gap-2">
               <MapPin className="w-4 h-4 text-amber-400" />
               Delivery Address
             </label>
@@ -221,7 +221,7 @@ export function DeliveryDetailsDialog({
                   className={cn(
                     'w-full px-4 py-3 rounded-lg text-sm',
                     'bg-neutral-900 border border-neutral-800',
-                    'text-white placeholder:text-neutral-500',
+                    'text-white placeholder:text-white/70',
                     'focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20',
                     'transition-colors',
                   )}
@@ -237,14 +237,14 @@ export function DeliveryDetailsDialog({
                 className={cn(
                   'w-full px-4 py-3 rounded-lg text-sm',
                   'bg-neutral-900 border border-neutral-800',
-                  'text-white placeholder:text-neutral-500',
+                  'text-white placeholder:text-white/70',
                   'focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20',
                   'transition-colors',
                 )}
                 disabled={isSubmitting}
               />
             )}
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-white/70">
               {lockDeliveryAddress
                 ? 'Delivery destination already set on the buy offer'
                 : 'This is where your goods will be delivered'}
@@ -266,7 +266,7 @@ export function DeliveryDetailsDialog({
             disabled={isSubmitting}
             className={cn(
               'shrink-0 px-5 py-3 rounded-lg text-sm font-medium',
-              'bg-neutral-900 text-neutral-300 border border-neutral-800',
+              'bg-neutral-900 text-white border border-neutral-800',
               'hover:bg-neutral-800 transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}

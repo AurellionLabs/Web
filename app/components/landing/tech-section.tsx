@@ -39,7 +39,7 @@ const TechSection = () => {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-lg text-gray-300 mb-12 max-w-3xl mx-auto"
+          className="text-lg text-white mb-12 max-w-3xl mx-auto"
         >
           Aurellion leverages proven blockchain technologies to ensure security,
           transparency, and efficiency across the platform.
@@ -54,7 +54,7 @@ const TechSection = () => {
           {/* Placeholder Tech Items - Refined Hover */}
           <motion.div
             variants={itemVariants}
-            className="flex flex-col items-center space-y-2 text-gray-300 group cursor-default"
+            className="flex flex-col items-center space-y-2 text-white group cursor-default"
           >
             {/* <SolidityIcon className="h-12 w-12" /> */}
             <span className="text-4xl group-hover:text-amber-400 group-hover:scale-110 transition-all duration-300">
@@ -65,7 +65,7 @@ const TechSection = () => {
           </motion.div>
           <motion.div
             variants={itemVariants}
-            className="flex flex-col items-center space-y-2 text-gray-300 group cursor-default"
+            className="flex flex-col items-center space-y-2 text-white group cursor-default"
           >
             {/* <Erc1155Icon className="h-12 w-12" /> */}
             <span className="text-4xl group-hover:text-amber-400 group-hover:scale-110 transition-all duration-300">
@@ -76,7 +76,7 @@ const TechSection = () => {
           </motion.div>
           <motion.div
             variants={itemVariants}
-            className="flex flex-col items-center space-y-2 text-gray-300 group cursor-default"
+            className="flex flex-col items-center space-y-2 text-white group cursor-default"
           >
             {/* <Erc20Icon className="h-12 w-12" /> */}
             <span className="text-4xl group-hover:text-amber-400 group-hover:scale-110 transition-all duration-300">
@@ -87,7 +87,7 @@ const TechSection = () => {
           </motion.div>
           <motion.div
             variants={itemVariants}
-            className="flex flex-col items-center space-y-2 text-gray-300 group cursor-default"
+            className="flex flex-col items-center space-y-2 text-white group cursor-default"
           >
             {/* Placeholder for Blockchain Logo (e.g., Ethereum, Arbitrum) */}
             <span className="text-4xl group-hover:text-amber-400 group-hover:scale-110 transition-all duration-300">

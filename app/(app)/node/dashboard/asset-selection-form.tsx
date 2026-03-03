@@ -113,9 +113,9 @@ const AssetSelectionForm: React.FC<Props> = ({
       <div>
         <FormLabel>Asset</FormLabel>
         {loadingAssets ? (
-          <div className="p-4 text-sm text-gray-500">Loading assets...</div>
+          <div className="p-4 text-sm text-white/70">Loading assets...</div>
         ) : classAssets.length === 0 ? (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <div className="p-4 text-center text-white/80 border border-gray-200 dark:border-gray-700 rounded-lg">
             <p>No assets found for this class.</p>
           </div>
         ) : (
@@ -157,7 +157,7 @@ const AssetSelectionForm: React.FC<Props> = ({
             }
           }}
         />
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-white/80 mt-1">
           Enter the number of assets to tokenize. Set price when placing sell
           orders.
         </p>
@@ -166,7 +166,7 @@ const AssetSelectionForm: React.FC<Props> = ({
       {/* Asset Attributes */}
       {selectedAsset && (
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+          <h3 className="text-lg font-semibold mb-4 text-white">
             {selectedAsset.name} Attributes
           </h3>
           <AssetAttributeInput

@@ -40,7 +40,7 @@ const ProblemSolutionSection = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-red-500">
               The Old Way: Opaque & Inefficient
             </h2>
-            <p className="text-lg text-gray-300">
+            <p className="text-lg text-white">
               Traditional real-world asset markets suffer from a lack of
               transparency, complex logistics, and limited access, creating
               friction and lost value.
@@ -48,20 +48,20 @@ const ProblemSolutionSection = () => {
             <ul className="space-y-4">
               <li className="flex items-start">
                 <Ban className="h-6 w-6 mr-3 text-red-600 flex-shrink-0 mt-1" />
-                <span className="text-gray-200">
+                <span className="text-white">
                   Lack of verifiable provenance and ownership tracking.
                 </span>
               </li>
               <li className="flex items-start">
                 <ShieldOff className="h-6 w-6 mr-3 text-red-600 flex-shrink-0 mt-1" />
-                <span className="text-gray-200">
+                <span className="text-white">
                   Inefficient, paper-based logistics prone to delays and
                   disputes.
                 </span>
               </li>
               <li className="flex items-start">
                 <Network className="h-6 w-6 mr-3 text-red-600 flex-shrink-0 mt-1" />
-                <span className="text-gray-200">
+                <span className="text-white">
                   Fragmented systems and numerous intermediaries increasing
                   costs.
                 </span>
@@ -79,28 +79,28 @@ const ProblemSolutionSection = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-amber-400">
               The Aurellion Way: Transparent & Automated
             </h2>
-            <p className="text-lg text-gray-200">
+            <p className="text-lg text-white">
               Aurellion leverages blockchain to bring trust, efficiency, and new
               opportunities to RWA management and logistics.
             </p>
             <ul className="space-y-4">
               <li className="flex items-start">
                 <CheckCircle className="h-6 w-6 mr-3 text-amber-500 flex-shrink-0 mt-1" />
-                <span className="text-gray-100">
+                <span className="text-white">
                   Immutable on-chain records for asset verification and
                   ownership.
                 </span>
               </li>
               <li className="flex items-start">
                 <Zap className="h-6 w-6 mr-3 text-amber-500 flex-shrink-0 mt-1" />
-                <span className="text-gray-100">
+                <span className="text-white">
                   Automated, transparent logistics tracking and smart
                   contract-driven payments.
                 </span>
               </li>
               <li className="flex items-start">
                 <BarChart className="h-6 w-6 mr-3 text-amber-500 flex-shrink-0 mt-1" />
-                <span className="text-gray-100">
+                <span className="text-white">
                   Direct access, reduced friction, and innovative RWA-backed
                   financial opportunities.
                 </span>

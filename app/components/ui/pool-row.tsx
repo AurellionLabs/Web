@@ -33,7 +33,7 @@ export function PoolRow({ pool, index }: PoolRowProps) {
 
   return (
     <tr className="border-b border-neutral-800/50 hover:bg-neutral-900/50 transition-colors cursor-pointer group">
-      <td className="py-4 px-4 text-neutral-500 font-mono text-sm">{index}</td>
+      <td className="py-4 px-4 text-white/70 font-mono text-sm">{index}</td>
       <td className="py-4 px-4">
         <Link
           href={`/customer/pools/${pool.id}`}
@@ -63,11 +63,11 @@ export function PoolRow({ pool, index }: PoolRowProps) {
                 </span>
               )}
             </div>
-            <div className="text-sm text-neutral-500">{pool.assetName}</div>
+            <div className="text-sm text-white/70">{pool.assetName}</div>
           </div>
         </Link>
       </td>
-      <td className="py-4 px-4 text-right font-mono text-neutral-300">
+      <td className="py-4 px-4 text-right font-mono text-white">
         ${tvlFormatted}
       </td>
       <td className="py-4 px-4 text-right font-mono">
@@ -87,13 +87,13 @@ export function PoolRow({ pool, index }: PoolRowProps) {
             <Coins
               className={cn(
                 'w-3 h-3',
-                hasCollateral ? 'text-amber-400' : 'text-neutral-600',
+                hasCollateral ? 'text-amber-400' : 'text-white/60',
               )}
             />
             <span
               className={cn(
                 'font-mono',
-                hasCollateral ? 'text-neutral-300' : 'text-neutral-600',
+                hasCollateral ? 'text-white' : 'text-white/60',
               )}
             >
               {hasCollateral ? `$${collateralFormatted}` : 'None'}

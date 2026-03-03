@@ -529,7 +529,7 @@ export function P2POrderFlow({
                       'bg-amber-500/20 border-2 border-amber-500 text-amber-500',
                     !isComplete &&
                       !isCurrent &&
-                      'bg-gray-800 border border-gray-600 text-gray-500',
+                      'bg-gray-800 border border-gray-600 text-white/70',
                   )}
                 >
                   {isComplete ? (
@@ -543,7 +543,7 @@ export function P2POrderFlow({
                     'text-xs mt-1 text-center whitespace-nowrap',
                     isComplete && 'text-amber-400',
                     isCurrent && 'text-amber-300 font-medium',
-                    !isComplete && !isCurrent && 'text-gray-500',
+                    !isComplete && !isCurrent && 'text-white/70',
                   )}
                 >
                   {step.label}
@@ -565,9 +565,9 @@ export function P2POrderFlow({
       </div>
 
       {/* Status message */}
-      <div className="text-sm text-gray-300 bg-gray-900/50 rounded-md px-3 py-2">
+      <div className="text-sm text-white bg-gray-900/50 rounded-md px-3 py-2">
         {sigLoading ? (
-          <span className="flex items-center gap-2 text-gray-400">
+          <span className="flex items-center gap-2 text-white/80">
             <Loader2 className="w-3 h-3 animate-spin" />
             Checking delivery status...
           </span>
@@ -584,7 +584,7 @@ export function P2POrderFlow({
               'px-2 py-1 rounded-full',
               buyerSigned
                 ? 'bg-green-500/20 text-green-400'
-                : 'bg-gray-800 text-gray-400',
+                : 'bg-gray-800 text-white/80',
             )}
           >
             Customer: {buyerSigned ? 'Signed' : 'Pending'}
@@ -594,7 +594,7 @@ export function P2POrderFlow({
               'px-2 py-1 rounded-full',
               driverSigned
                 ? 'bg-green-500/20 text-green-400'
-                : 'bg-gray-800 text-gray-400',
+                : 'bg-gray-800 text-white/80',
             )}
           >
             Driver: {driverSigned ? 'Signed' : 'Pending'}
@@ -656,7 +656,7 @@ export function P2POrderFlow({
                 'px-2 py-1 rounded-full',
                 senderPickupSigned || pickupSigned
                   ? 'bg-green-500/20 text-green-400'
-                  : 'bg-gray-800 text-gray-400',
+                  : 'bg-gray-800 text-white/80',
               )}
             >
               Sender:{' '}
@@ -667,7 +667,7 @@ export function P2POrderFlow({
                 'px-2 py-1 rounded-full',
                 driverPickupSigned
                   ? 'bg-green-500/20 text-green-400'
-                  : 'bg-gray-800 text-gray-400',
+                  : 'bg-gray-800 text-white/80',
               )}
             >
               Driver: {driverPickupSigned ? 'Signed' : 'Pending'}

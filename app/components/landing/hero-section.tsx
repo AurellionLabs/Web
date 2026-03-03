@@ -127,7 +127,7 @@ const HeroSection: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="text-base md:text-lg lg:text-xl text-neutral-400 max-w-2xl mx-auto mb-12 leading-relaxed"
+          className="text-base md:text-lg lg:text-xl text-white/80 max-w-2xl mx-auto mb-12 leading-relaxed"
         >
           Aurellion orchestrates asset onboarding, compliance, and liquidity so
           that commodities, real estate, and private credit can become tradable,
@@ -194,7 +194,7 @@ const HeroSection: React.FC = () => {
               >
                 {stat.value}
               </div>
-              <div className="text-sm text-neutral-500">{stat.label}</div>
+              <div className="text-sm text-white/70">{stat.label}</div>
             </motion.div>
           ))}
         </motion.div>

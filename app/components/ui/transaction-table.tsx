@@ -57,7 +57,7 @@ export function TransactionTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-sm text-gray-400">
+            <tr className="text-sm text-white/80">
               <th className="py-3 px-4 text-left">Time</th>
               <th className="py-3 px-4 text-left">Type</th>
               <th className="py-3 px-4 text-left">Staker</th>
@@ -72,11 +72,11 @@ export function TransactionTable({
                   key={`${tx.poolId}-${tx.timestamp}-${index}`}
                   className="border-t border-gray-800 hover:bg-gray-800/50 transition-colors"
                 >
-                  <td className="py-4 px-4 text-gray-400">
+                  <td className="py-4 px-4 text-white/80">
                     {formatDateTime(tx.timestamp)}
                   </td>
                   <td className="py-4 px-4 text-green-500">Staked</td>
-                  <td className="py-4 px-4 text-gray-300 font-mono text-sm">
+                  <td className="py-4 px-4 text-white font-mono text-sm">
                     {formatAddress(tx.stakerAddress)}
                   </td>
                   <td className="py-4 px-4 text-right font-semibold">
@@ -93,14 +93,14 @@ export function TransactionTable({
                         {formatTransactionHash(tx.transactionHash)}...
                       </a>
                     ) : (
-                      <span className="text-gray-500">-</span>
+                      <span className="text-white/70">-</span>
                     )}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-gray-500">
+                <td colSpan={5} className="p-8 text-center text-white/70">
                   No transactions yet
                 </td>
               </tr>

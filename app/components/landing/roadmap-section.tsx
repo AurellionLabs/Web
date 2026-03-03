@@ -72,9 +72,9 @@ const RoadmapSection = () => {
       case 'Upcoming':
         return 'bg-yellow-600/80 border-yellow-500 text-yellow-100'; // Lighter gold/yellow
       case 'Future':
-        return 'bg-gray-600/80 border-gray-500 text-gray-100';
+        return 'bg-gray-600/80 border-gray-500 text-white';
       default:
-        return 'bg-gray-600/80 border-gray-500 text-gray-100';
+        return 'bg-gray-600/80 border-gray-500 text-white';
     }
   };
 
@@ -143,7 +143,7 @@ const RoadmapSection = () => {
                   <h3 className="text-xl font-semibold mb-2 text-amber-300">
                     {item.title}
                   </h3>
-                  <p className="text-gray-400 text-sm">{item.description}</p>
+                  <p className="text-white/80 text-sm">{item.description}</p>
                 </div>
               </motion.div>
             );
