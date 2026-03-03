@@ -133,17 +133,19 @@ export class SettlementService {
     nodeId: string | null,
     burn: boolean,
   ): Promise<void> {
+    // Validate BEFORE getting signer (avoids unnecessary blockchain call on invalid input)
+    // Also reject zero bytes32 since it's the burn destination
+    if (!burn && (!nodeId || nodeId === ZERO_BYTES32)) {
+      throw new Error('Node ID is required when not burning');
+    }
+    const effectiveNodeId = burn ? ZERO_BYTES32 : nodeId;
+
     const signer = this.repositoryContext.getSigner();
     const contract = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       AUSYS_SETTLEMENT_ABI,
       signer,
     );
-
-    const effectiveNodeId = burn ? ZERO_BYTES32 : nodeId;
-    if (!effectiveNodeId) {
-      throw new Error('Node ID is required when not burning');
-    }
 
     const tx = await contract.selectTokenDestination(
       orderId,
