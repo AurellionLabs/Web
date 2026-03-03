@@ -79,6 +79,37 @@ vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0xb3090aBF81918FF50e921b166126aD6AB9a03944',
 }));
 
+vi.mock('@/app/providers/customer.provider', () => ({
+  useCustomer: () => ({
+    orders: [],
+    isLoading: false,
+    error: null,
+    refreshOrders: vi.fn(),
+    cancelOrder: vi.fn(),
+    confirmReceipt: vi.fn(),
+    signP2PDelivery: vi.fn(),
+    completeP2PHandoff: vi.fn(),
+    getP2PSignatureState: vi.fn(),
+    createP2PJourney: vi.fn(),
+  }),
+}));
+
+vi.mock('@/hooks/useSettlementDestination', () => ({
+  useSettlementDestination: () => ({
+    destination: 'node',
+    setDestination: vi.fn(),
+    showModal: false,
+    setShowModal: vi.fn(),
+    handleConfirm: vi.fn(),
+  }),
+}));
+
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: vi.fn(),
+  }),
+}));
+
 // Mock lucide-react
 vi.mock('lucide-react', () => {
   const icon = (name: string) => (props: any) => (
@@ -101,6 +132,11 @@ vi.mock('lucide-react', () => {
     ExternalLink: icon('external-link'),
     Handshake: icon('handshake'),
     X: icon('x'),
+    Check: icon('check'),
+    Truck: icon('truck'),
+    Loader2: icon('loader-2'),
+    Pen: icon('pen'),
+    PackageCheck: icon('package-check'),
   };
 });
 
