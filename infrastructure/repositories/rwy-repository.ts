@@ -144,12 +144,18 @@ export class RWYRepository implements IRWYRepository {
    */
   async getStakerOpportunities(staker: Address): Promise<RWYOpportunity[]> {
     const all = await this.getAllOpportunities();
-    const stakerOpps: RWYOpportunity[] = [];
 
-    for (const opp of all) {
-      const stake = await this.getStake(opp.id, staker);
+    // Parallelize stake checks for all opportunities
+    const stakeResults = await Promise.all(
+      all.map((opp) => this.getStake(opp.id, staker)),
+    );
+
+    // Filter opportunities where user has a non-zero stake
+    const stakerOpps: RWYOpportunity[] = [];
+    for (let i = 0; i < all.length; i++) {
+      const stake = stakeResults[i];
       if (stake && BigInt(stake.amount) > 0n) {
-        stakerOpps.push(opp);
+        stakerOpps.push(all[i]);
       }
     }
 
@@ -163,14 +169,16 @@ export class RWYRepository implements IRWYRepository {
     try {
       const stakers: string[] =
         await this.contract.getOpportunityStakers(opportunityId);
-      const stakes: RWYStake[] = [];
 
-      for (const staker of stakers) {
-        const stake = await this.getStake(opportunityId, staker as Address);
-        if (stake) stakes.push(stake);
-      }
+      // Parallelize stake fetches for all stakers
+      const stakeResults = await Promise.all(
+        stakers.map((staker) =>
+          this.getStake(opportunityId, staker as Address),
+        ),
+      );
 
-      return stakes;
+      // Filter out null stakes
+      return stakeResults.filter((s): s is RWYStake => s !== null);
     } catch (error) {
       console.error('Error fetching opportunity stakers:', error);
       return [];
@@ -263,13 +271,20 @@ export class RWYRepository implements IRWYRepository {
     RWYOpportunityWithDynamicData[]
   > {
     const opps = await this.getAllOpportunities();
-    const results: RWYOpportunityWithDynamicData[] = [];
 
-    for (const opp of opps) {
-      const stakers = await this.getOpportunityStakers(opp.id);
-      const dynamicData = this.calculateDynamicData(opp, stakers.length);
-      results.push({ ...opp, ...dynamicData });
-    }
+    // Parallelize staker count fetches for all opportunities
+    const stakerCounts = await Promise.all(
+      opps.map(async (opp) => {
+        const stakers = await this.getOpportunityStakers(opp.id);
+        return stakers.length;
+      }),
+    );
+
+    // Combine opportunities with their dynamic data
+    const results: RWYOpportunityWithDynamicData[] = opps.map((opp, i) => {
+      const dynamicData = this.calculateDynamicData(opp, stakerCounts[i]);
+      return { ...opp, ...dynamicData };
+    });
 
     return results;
   }
