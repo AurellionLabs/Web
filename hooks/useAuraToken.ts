@@ -3,8 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserProvider, Contract } from 'ethers';
 import { useWallet } from './useWallet';
+import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
 import { formatErc20Balance } from '@/lib/utils';
+
+const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
 
 /**
  * AURA Token ABI - minimal interface for balance and minting
@@ -70,6 +73,7 @@ const MAX_MINT_AMOUNT = 10000;
  */
 export function useAuraToken(): UseAuraTokenReturn {
   const { address, connectedWallet, isConnected } = useWallet();
+  const e2eAuth = useE2EAuth();
 
   const [balance, setBalance] = useState<string>('0');
   const [balanceRaw, setBalanceRaw] = useState<bigint>(0n);
@@ -81,29 +85,37 @@ export function useAuraToken(): UseAuraTokenReturn {
   const [decimals, setDecimals] = useState<number>(18);
 
   /**
-   * Get ethers provider from connected wallet
-   */
-  const getProvider = useCallback(async (): Promise<BrowserProvider | null> => {
-    if (!connectedWallet) return null;
-
-    try {
-      const ethereumProvider = await connectedWallet.getEthereumProvider();
-      return new BrowserProvider(ethereumProvider);
-    } catch (err) {
-      console.error('[useAuraToken] Failed to get provider:', err);
-      return null;
-    }
-  }, [connectedWallet]);
-
-  /**
-   * Get AURA token contract instance
+   * Get AURA token contract instance.
+   *
+   * In E2E mode the provider/signer come from E2EAuthContext (JsonRpcProvider
+   * + E2EServerSigner) so we never touch BrowserProvider / window.ethereum.
+   * In production mode we go through the Privy connectedWallet as before.
    */
   const getContract = useCallback(
     async (withSigner = false): Promise<Contract | null> => {
-      const provider = await getProvider();
-      if (!provider) return null;
-
       try {
+        if (IS_E2E_TEST_MODE) {
+          if (withSigner) {
+            if (!e2eAuth.signer) return null;
+            return new Contract(
+              NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
+              AURA_TOKEN_ABI,
+              e2eAuth.signer,
+            );
+          }
+          if (!e2eAuth.provider) return null;
+          return new Contract(
+            NEXT_PUBLIC_AURA_TOKEN_ADDRESS,
+            AURA_TOKEN_ABI,
+            e2eAuth.provider,
+          );
+        }
+
+        // Production path — Privy wallet
+        if (!connectedWallet) return null;
+        const ethereumProvider = await connectedWallet.getEthereumProvider();
+        const provider = new BrowserProvider(ethereumProvider);
+
         if (withSigner) {
           const signer = await provider.getSigner();
           return new Contract(
@@ -122,7 +134,7 @@ export function useAuraToken(): UseAuraTokenReturn {
         return null;
       }
     },
-    [getProvider],
+    [connectedWallet, e2eAuth.provider, e2eAuth.signer],
   );
 
   /**
