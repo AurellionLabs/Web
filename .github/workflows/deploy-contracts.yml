@@ -1,5 +1,8 @@
 name: Deploy Contracts
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [dev, main]
