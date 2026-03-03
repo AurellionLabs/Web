@@ -27,7 +27,19 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
+    // Force-inline NEXT_PUBLIC_* vars so they work even with webpackBuildWorker
+    // (the worker thread doesn't always inherit process.env correctly)
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.NEXT_PUBLIC_E2E_TEST_MODE': JSON.stringify(
+          process.env.NEXT_PUBLIC_E2E_TEST_MODE ?? 'false',
+        ),
+        'process.env.NEXT_PUBLIC_RPC_URL_84532': JSON.stringify(
+          process.env.NEXT_PUBLIC_RPC_URL_84532 ?? '',
+        ),
+      }),
+    );
     // Add a rule to handle typechain-types
     config.resolve.alias = {
       ...config.resolve.alias,

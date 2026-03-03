@@ -13,6 +13,7 @@ import {
   setWalletAddress,
 } from '@/dapp-connectors/base-controller';
 import { BrowserProvider } from 'ethers';
+import { E2EAuthProvider } from '@/app/providers/e2e-auth.provider';
 
 const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
 const TEST_CHAIN_ID_HEX = '0x14a34';
@@ -227,7 +228,7 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
       config={{
         loginMethods: IS_E2E_TEST_MODE
-          ? ['wallet']
+          ? ['email'] // E2E: email-only prevents Privy from contacting MetaMask/OKX
           : ['wallet', 'email', 'google', 'twitter'],
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
@@ -250,8 +251,12 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
         },
       }}
     >
-      <PrivyWalletSetupEffect />
-      {children}
+      {!IS_E2E_TEST_MODE && <PrivyWalletSetupEffect />}
+      {IS_E2E_TEST_MODE ? (
+        <E2EAuthProvider>{children}</E2EAuthProvider>
+      ) : (
+        children
+      )}
     </PrivyProvider>
   );
 }
