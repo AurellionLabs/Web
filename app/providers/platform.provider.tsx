@@ -93,6 +93,10 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   // Cache for class assets
   const classAssetsCache = useRef<Map<string, CacheEntry<Asset[]>>>(new Map());
 
+  // Ref to always access latest supportedAssets from callbacks without stale closures
+  const supportedAssetsRef = useRef<Asset[]>(supportedAssets);
+  supportedAssetsRef.current = supportedAssets;
+
   // Repository access
   const repositoryRef = useRef(
     RepositoryContext.getInstance().getPlatformRepository(),
@@ -150,9 +154,31 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Get asset by token ID
+   * Get asset by token ID.
+   * First checks the already-loaded supportedAssets in memory for an instant match,
+   * then falls back to the repository (Pinata/IPFS) lookup.
    */
   const getAssetByTokenId = useCallback(async (tokenId: string) => {
+    // Normalize tokenId to decimal for consistent comparison
+    const normalizedId = (() => {
+      try {
+        return BigInt(tokenId).toString(10);
+      } catch {
+        return tokenId;
+      }
+    })();
+
+    // Check in-memory supported assets first (fast path)
+    const cached = supportedAssetsRef.current.find((a) => {
+      try {
+        return BigInt(a.tokenId).toString(10) === normalizedId;
+      } catch {
+        return a.tokenId === tokenId;
+      }
+    });
+    if (cached) return cached;
+
+    // Fallback to repository/Pinata lookup
     try {
       const asset = await repositoryRef.current.getAssetByTokenId(tokenId);
       return asset;
