@@ -15,6 +15,7 @@ import { TrapButton } from '@/app/components/eva/eva-components';
 import { cn } from '@/lib/utils';
 import { OrderWithAsset, P2POrderDetail } from '@/app/types/shared';
 import { OrderStatus } from '@/domain/orders/order';
+import { SettlementDestinationModal } from '@/app/components/settlement/SettlementDestinationModal';
 
 // =============================================================================
 // Types
@@ -200,6 +201,7 @@ export function P2POrderFlow({
   // Local settled flag — set when handOff succeeds, so we don't wait for
   // the order prop to update from the indexer before showing step 4
   const [localSettled, setLocalSettled] = useState(false);
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
 
   const journeyId =
     order.journeyIds && order.journeyIds.length > 0
@@ -348,6 +350,7 @@ export function P2POrderFlow({
           if (result === 'settled') {
             setLocalSettled(true);
             setWaitingForDriver(false);
+            setIsSettlementModalOpen(true);
             onSettled?.(order.id);
           } else {
             // Driver sig may not be on-chain yet — allow retry
@@ -413,6 +416,7 @@ export function P2POrderFlow({
         setDriverSigned(true);
         setWaitingForDriver(false);
         setLocalSettled(true);
+        setIsSettlementModalOpen(true);
         onSettled?.(order.id);
       } else if (result === 'driver_not_signed') {
         // Driver hasn't signed yet — show waiting state
@@ -682,6 +686,14 @@ export function P2POrderFlow({
           {actionError}
         </div>
       )}
+
+      {/* Settlement destination modal — fires immediately when order settles */}
+      <SettlementDestinationModal
+        isOpen={isSettlementModalOpen}
+        orderId={order.id}
+        onClose={() => setIsSettlementModalOpen(false)}
+        onSuccess={() => setIsSettlementModalOpen(false)}
+      />
     </div>
   );
 }
