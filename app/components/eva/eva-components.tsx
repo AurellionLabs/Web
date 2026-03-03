@@ -351,7 +351,7 @@ export function EvaPanel({
               </div>
             </div>
             {sublabel && (
-              <span className="font-mono text-[11px] tracking-[0.08em] text-foreground/35">
+              <span className="font-mono text-[11px] tracking-[0.08em] text-white/65">
                 {sublabel}
               </span>
             )}
@@ -645,7 +645,7 @@ export function DiamondButton({
   return (
     <button
       onClick={onClick}
-      className={`relative px-5 py-2 font-mono text-xs tracking-[0.1em] uppercase font-bold transition-all ${active ? 'text-gold' : 'text-foreground/35 hover:text-foreground/60'}`}
+      className={`relative px-5 py-2 font-mono text-xs tracking-[0.1em] uppercase font-bold transition-all ${active ? 'text-gold' : 'text-white/65 hover:text-white/80'}`}
       style={{
         clipPath:
           'polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%)',
@@ -946,7 +946,7 @@ export function EvaInput({
   return (
     <div className="mb-4">
       {label && (
-        <span className="font-mono text-xs tracking-[0.2em] text-foreground/45 uppercase block mb-2 font-bold">
+        <span className="font-mono text-xs tracking-[0.2em] text-white/70 uppercase block mb-2 font-bold">
           {label}
         </span>
       )}
@@ -1027,7 +1027,7 @@ export function EvaDataRow({
     gold: 'text-gold',
     crimson: 'text-crimson',
     emerald: 'text-emerald-400',
-    muted: 'text-foreground/55',
+    muted: 'text-white/75',
   };
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-border/10">

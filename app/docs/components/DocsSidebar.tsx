@@ -32,9 +32,7 @@ function NavSection({ item, depth = 0 }: { item: NavItem; depth?: number }) {
         className={cn(
           'relative flex items-center gap-2 py-1.5 pr-3 text-sm transition-all duration-200',
           depth === 0 ? 'pl-3' : depth === 1 ? 'pl-6' : 'pl-9',
-          isActive
-            ? 'text-gold'
-            : 'text-foreground/40 hover:text-foreground/80',
+          isActive ? 'text-gold' : 'text-white/70 hover:text-white/90',
         )}
       >
         {isActive && (
@@ -75,8 +73,8 @@ function NavSection({ item, depth = 0 }: { item: NavItem; depth?: number }) {
             className={cn(
               'font-mono tracking-[0.1em] uppercase',
               depth === 0
-                ? 'text-[10px] text-foreground/60 font-bold'
-                : 'text-[10px] text-foreground/40',
+                ? 'text-[10px] text-white/80 font-bold'
+                : 'text-[10px] text-white/70',
             )}
           >
             {item.title}
@@ -116,7 +114,7 @@ export function DocsSidebar() {
           style={{ borderColor: 'hsl(43 18% 18%)' }}
         >
           <div className="w-1.5 h-1.5 bg-gold/60 animate-eva-pulse" />
-          <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-foreground/30">
+          <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-white/60">
             PROTOCOL DOCS v1.0
           </span>
         </div>
@@ -134,7 +132,7 @@ export function DocsSidebar() {
         className="p-3 border-t mt-auto"
         style={{ borderColor: 'hsl(43 18% 14%)' }}
       >
-        <div className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/20 text-center leading-relaxed">
+        <div className="font-mono text-[9px] tracking-[0.15em] uppercase text-white/55 text-center leading-relaxed">
           BASE SEPOLIA · CHAIN ID 84532
           <br />
           DIAMOND 0x8ed9…66A7

@@ -40,7 +40,7 @@ export function DocsTOC({ headings }: { headings: Heading[] }) {
       className="hidden xl:block w-56 shrink-0 sticky top-[89px] h-[calc(100vh-89px)] overflow-y-auto py-6 px-3"
       style={{ scrollbarWidth: 'thin' }}
     >
-      <div className="font-mono text-[9px] tracking-[0.25em] uppercase text-foreground/30 mb-4 flex items-center gap-2">
+      <div className="font-mono text-[9px] tracking-[0.25em] uppercase text-white/60 mb-4 flex items-center gap-2">
         <div className="w-3 h-[1px] bg-gold/30" />
         ON THIS PAGE
       </div>
@@ -55,7 +55,7 @@ export function DocsTOC({ headings }: { headings: Heading[] }) {
               h.level === 2 ? 'pl-3' : h.level === 3 ? 'pl-5' : 'pl-7',
               active === h.id
                 ? 'text-gold border-gold'
-                : 'text-foreground/30 border-transparent hover:text-foreground/60 hover:border-foreground/20',
+                : 'text-white/60 border-transparent hover:text-white/80 hover:border-foreground/20',
             )}
           >
             {h.text}

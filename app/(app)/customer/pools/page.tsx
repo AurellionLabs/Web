@@ -161,7 +161,7 @@ export default function PoolsPage() {
               <h1 className="font-mono text-2xl font-bold tracking-[0.15em] uppercase text-foreground">
                 Yield Pools
               </h1>
-              <p className="font-mono text-sm text-foreground/40 tracking-[0.08em] mt-1">
+              <p className="font-mono text-sm text-white/70 tracking-[0.08em] mt-1">
                 Earn yield on your real-world asset positions
               </p>
             </div>
@@ -231,7 +231,7 @@ export default function PoolsPage() {
 
         {/* Pool Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 font-mono text-xs text-foreground/40 tracking-[0.15em] uppercase mr-2">
+          <div className="flex items-center gap-2 font-mono text-xs text-white/70 tracking-[0.15em] uppercase mr-2">
             <Filter className="w-4 h-4" />
             <span>Filter:</span>
           </div>
@@ -289,7 +289,7 @@ export default function PoolsPage() {
             {activeFilter !== 'all' && (
               <button
                 onClick={() => setActiveFilter('all')}
-                className="font-mono text-xs text-foreground/40 hover:text-foreground tracking-[0.1em] uppercase transition-colors"
+                className="font-mono text-xs text-white/70 hover:text-foreground tracking-[0.1em] uppercase transition-colors"
               >
                 Clear filter
               </button>
@@ -301,7 +301,7 @@ export default function PoolsPage() {
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-4">
                   <RefreshCw className="w-8 h-8 text-gold animate-spin" />
-                  <span className="font-mono text-sm text-foreground/40 tracking-[0.1em] uppercase">
+                  <span className="font-mono text-sm text-white/70 tracking-[0.1em] uppercase">
                     Loading pools...
                   </span>
                 </div>
@@ -319,7 +319,7 @@ export default function PoolsPage() {
               <h3 className="font-mono text-lg font-bold text-crimson tracking-[0.1em] uppercase mb-2">
                 Error Loading Pools
               </h3>
-              <p className="font-mono text-sm text-foreground/40 mb-4">
+              <p className="font-mono text-sm text-white/70 mb-4">
                 {error.message}
               </p>
               <TrapButton variant="crimson" size="sm" onClick={handleRefresh}>
@@ -341,7 +341,7 @@ export default function PoolsPage() {
                       ? 'No Pools Available'
                       : `No ${activeFilter === 'insured' ? 'Insured' : activeFilter === 'collateralized' ? 'Collateralized' : 'Uncollateralized'} Pools`}
                   </h3>
-                  <p className="font-mono text-sm text-foreground/40 mb-6">
+                  <p className="font-mono text-sm text-white/70 mb-6">
                     {activeFilter === 'all'
                       ? 'Be the first to create a liquidity pool'
                       : 'Try a different filter or create a new pool'}
@@ -370,7 +370,7 @@ export default function PoolsPage() {
               <h3 className="font-mono font-bold text-foreground tracking-[0.1em] uppercase mb-1">
                 Learn About Liquidity Provision
               </h3>
-              <p className="font-mono text-sm text-foreground/40 mb-3">
+              <p className="font-mono text-sm text-white/70 mb-3">
                 Understand how to maximize your yields through strategic
                 liquidity provision.
               </p>
