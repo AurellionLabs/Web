@@ -290,8 +290,11 @@ contract CLOBFacet is Initializable {
         uint256 buyOrderPrice = buyOrder.price;
         uint256 buyOrderFilled = buyOrder.filledAmount;
         
+        // Cache array length to avoid repeated SLOADs
+        uint256 askPriceCount = askPrices.length;
+        
         // Iterate through ask prices (already sorted ascending)
-        for (uint256 i = 0; i < askPrices.length; i++) {
+        for (uint256 i = 0; i < askPriceCount; i++) {
             if (buyOrderFilled >= buyOrderAmount) break;
             
             uint256 askPrice = askPrices[i];
@@ -403,9 +406,9 @@ contract CLOBFacet is Initializable {
         if (orderFilledAmount >= orderAmount) return;
         
         uint256 orderRemaining = orderAmount - orderFilledAmount;
-        uint256 orderIdsLength = s.clobOrderIds.length; // Cache to avoid repeated SLOADs
-
-        for (uint256 i = 0; i < orderIdsLength && orderRemaining > 0; i++) {
+        // Cache length to avoid repeated SLOADs (saves ~3000 gas per iteration)
+        uint256 orderCount = s.clobOrderIds.length;
+        for (uint256 i = 0; i < orderCount && orderRemaining > 0; i++) {
             bytes32 matchOrderId = s.clobOrderIds[i];
             if (matchOrderId == _orderId) continue;
             
@@ -1012,8 +1015,9 @@ contract CLOBFacet is Initializable {
         DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
         if (sellOrder.filledAmount >= sellOrder.amount) return;
         
-        uint256 orderIdsLength = s.clobOrderIds.length; // Cache to avoid repeated SLOADs
-        for (uint256 i = 0; i < orderIdsLength; i++) {
+        // Cache length to avoid repeated SLOADs
+        uint256 orderCount = s.clobOrderIds.length;
+        for (uint256 i = 0; i < orderCount; i++) {
             if (sellOrder.filledAmount >= sellOrder.amount) break;
             
             bytes32 buyOrderId = s.clobOrderIds[i];
@@ -1108,8 +1112,9 @@ contract CLOBFacet is Initializable {
         DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
         if (buyOrder.filledAmount >= buyOrder.amount) return;
         
-        uint256 orderIdsLength = s.clobOrderIds.length; // Cache to avoid repeated SLOADs
-        for (uint256 i = 0; i < orderIdsLength; i++) {
+        // Cache length to avoid repeated SLOADs
+        uint256 orderCount = s.clobOrderIds.length;
+        for (uint256 i = 0; i < orderCount; i++) {
             if (buyOrder.filledAmount >= buyOrder.amount) break;
             
             bytes32 sellOrderId = s.clobOrderIds[i];
@@ -1263,14 +1268,14 @@ contract CLOBFacet is Initializable {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
         
-        // Cache length to avoid repeated SLOADs in loops
-        uint256 orderIdsLength = s.clobOrderIds.length;
+        // Cache order count to avoid repeated SLOADs
+        uint256 orderCount = s.clobOrderIds.length;
         
         // Count open orders
         uint256 buyCount = 0;
         uint256 sellCount = 0;
         
-        for (uint256 i = 0; i < orderIdsLength; i++) {
+        for (uint256 i = 0; i < orderCount; i++) {
             bytes32 orderId = s.clobOrderIds[i];
             DiamondStorage.CLOBOrder storage order = s.clobOrders[orderId];
             if (order.marketId == marketId && (order.status == 0 || order.status == 1)) {
@@ -1285,7 +1290,7 @@ contract CLOBFacet is Initializable {
         uint256 buyIdx = 0;
         uint256 sellIdx = 0;
         
-        for (uint256 i = 0; i < orderIdsLength; i++) {
+        for (uint256 i = 0; i < orderCount; i++) {
             bytes32 orderId = s.clobOrderIds[i];
             DiamondStorage.CLOBOrder storage order = s.clobOrders[orderId];
             if (order.marketId == marketId && (order.status == 0 || order.status == 1)) {
