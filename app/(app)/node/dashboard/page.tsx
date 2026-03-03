@@ -741,7 +741,6 @@ export default function NodeDashboardPage() {
         });
 
         // Wait for indexer to catch up, then refresh
-        console.log('[NodeDashboard] Journey started. Waiting for indexer...');
         await new Promise((r) => setTimeout(r, 3000));
         await refreshOrders();
         setTimeout(() => refreshOrders(), 5000);
