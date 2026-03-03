@@ -15,6 +15,18 @@ import { OrderWithAsset } from '@/app/types/shared';
 // MOCKS
 // =============================================================================
 
+// Mock Next.js router
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
 // Mock GlowButton to a simple button for testing
 vi.mock('@/app/components/ui/glow-button', () => ({
   GlowButton: ({ children, onClick, disabled, loading, ...props }: any) => (
@@ -33,6 +45,50 @@ vi.mock('lucide-react', () => ({
   Loader2: () => <span data-testid="icon-loader" />,
   Pen: () => <span data-testid="icon-pen" />,
   ArrowRight: () => <span data-testid="icon-arrow" />,
+  PackageCheck: () => <span data-testid="icon-package-check" />,
+  AlertTriangle: () => <span data-testid="icon-alert" />,
+  Flame: () => <span data-testid="icon-flame" />,
+  MapPin: () => <span data-testid="icon-mappin" />,
+  Plus: () => <span data-testid="icon-plus" />,
+}));
+
+// Mock nodes provider
+vi.mock('@/app/providers/nodes.provider', () => ({
+  useNodes: () => ({
+    nodes: [],
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+}));
+
+// Mock settlement destination hook
+vi.mock('@/hooks/useSettlementDestination', () => ({
+  useSettlementDestination: () => ({
+    selectDestination: vi.fn().mockResolvedValue(undefined),
+    isLoading: false,
+  }),
+}));
+
+// Mock SettlementDestinationModal to avoid router context issues in tests
+vi.mock('@/app/components/settlement/SettlementDestinationModal', () => ({
+  SettlementDestinationModal: ({
+    isOpen,
+    orderId,
+    onClose,
+    onSuccess,
+  }: {
+    isOpen: boolean;
+    orderId: string;
+    onClose: () => void;
+    onSuccess: () => void;
+  }) =>
+    isOpen ? (
+      <div data-testid="settlement-modal">
+        <span>Mock Settlement Modal for order {orderId}</span>
+        <button onClick={onClose}>Close</button>
+        <button onClick={onSuccess}>Success</button>
+      </div>
+    ) : null,
 }));
 
 // =============================================================================
