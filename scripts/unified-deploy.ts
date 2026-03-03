@@ -1,5 +1,5 @@
 #!/usr/bin/env npx ts-node
-// @ts-nocheck - File with type issues that need deeper refactoring
+// TypeScript types fixed – see postDeploy signature and tx parameter types
 /**
  * Unified Deployment Script
  *
@@ -191,8 +191,13 @@ function printContracts() {
   }
 }
 
-async function getDeploymentBlock(tx: any): Promise<number> {
+async function getDeploymentBlock(
+  tx: {
+    wait: (confirmations?: number) => Promise<{ blockNumber: number }>;
+  } | null,
+): Promise<number> {
   try {
+    if (!tx) return await ethers.provider.getBlockNumber();
     const receipt = await tx.wait(1);
     return receipt.blockNumber;
   } catch {
@@ -200,8 +205,12 @@ async function getDeploymentBlock(tx: any): Promise<number> {
   }
 }
 
-async function waitForConfirmations(tx: any, confirmations: number = 2) {
+async function waitForConfirmations(
+  tx: { wait: (confirmations?: number) => Promise<unknown> } | null,
+  confirmations: number = 2,
+): Promise<void> {
   try {
+    if (!tx) return;
     console.log(`  Waiting for ${confirmations} confirmations...`);
     await tx.wait(confirmations);
     console.log('  ✓ Confirmed');
@@ -225,8 +234,7 @@ async function extractSelectorsFromContract(
     const selectors: string[] = [];
     for (const fragment of contractInterface.fragments) {
       if (fragment.type === 'function') {
-        // Use the selector property from the FunctionFragment
-        const funcFragment = fragment as any;
+        const funcFragment = fragment as ethers.FunctionFragment;
         if (funcFragment.selector) {
           selectors.push(funcFragment.selector);
         }
@@ -545,7 +553,7 @@ async function deployContract(
 
   // Run post-deploy hook if exists
   if (config.postDeploy) {
-    await config.postDeploy(contract, addresses, deployer);
+    await config.postDeploy(contract, addresses);
   }
 
   return { address, blockNumber };
