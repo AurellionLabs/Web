@@ -1,6 +1,5 @@
-// @ts-nocheck - Test file with type issues
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useAssetPrice, useAssetPrices } from '@/hooks/useAssetPrice';
 
 // ─── Mock data ───────────────────────────────────────────────────────────────
@@ -34,12 +33,28 @@ vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: '0xa100000000000000000000000000000000000001',
 }));
 
+const DIAMOND_ADDRESS = '0xd1a0000000000000000000000000000000000001';
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('useAssetPrice', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+
+    // Ensure document is visible so the polling interval fires
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      writable: true,
+      configurable: true,
+    });
+
     mocks.getOrderBook.mockResolvedValue(mockOrderBook());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   describe('initialization', () => {
@@ -64,12 +79,9 @@ describe('useAssetPrice', () => {
 
       const { result } = renderHook(() => useAssetPrice('1'));
 
-      // Wait for loading to be false
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Give time for the async operation to complete
+      // Flush the initial async fetch
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -99,7 +111,7 @@ describe('useAssetPrice', () => {
       const { result } = renderHook(() => useAssetPrice('1'));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -124,7 +136,7 @@ describe('useAssetPrice', () => {
       const { result } = renderHook(() => useAssetPrice('1'));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -149,7 +161,7 @@ describe('useAssetPrice', () => {
       const { result } = renderHook(() => useAssetPrice('1'));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -171,7 +183,7 @@ describe('useAssetPrice', () => {
       const { result } = renderHook(() => useAssetPrice('1'));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -185,7 +197,7 @@ describe('useAssetPrice', () => {
       const { result } = renderHook(() => useAssetPrice('1'));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -199,7 +211,7 @@ describe('useAssetPrice', () => {
 
       // For empty token, isLoading becomes false immediately (synchronously in useEffect)
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 100));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -208,10 +220,11 @@ describe('useAssetPrice', () => {
     });
 
     it('should handle tokenId "0"', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { result } = renderHook(() => useAssetPrice('0'));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 100));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -220,10 +233,11 @@ describe('useAssetPrice', () => {
     });
 
     it('should handle null tokenId', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { result } = renderHook(() => useAssetPrice(null as any));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 100));
+        await Promise.resolve();
       });
 
       expect(result.current.isLoading).toBe(false);
@@ -239,7 +253,7 @@ describe('useAssetPrice', () => {
       const { result } = renderHook(() => useAssetPrice('1'));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       const initialCallCount = mocks.getOrderBook.mock.calls.length;
@@ -261,7 +275,7 @@ describe('useAssetPrice', () => {
       renderHook(() => useAssetPrice('1', '0xCustomBaseToken', 10000));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(mocks.getOrderBook).toHaveBeenCalledWith(
@@ -272,12 +286,165 @@ describe('useAssetPrice', () => {
       );
     });
   });
+
+  // ─── Polling tests (fake timers) ──────────────────────────────────────────
+
+  describe('polling', () => {
+    it('should poll at the specified interval when document is visible', async () => {
+      renderHook(() => useAssetPrice('1', DIAMOND_ADDRESS, 5000));
+
+      // Flush initial fetch
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const callsAfterMount = mocks.getOrderBook.mock.calls.length;
+      expect(callsAfterMount).toBeGreaterThanOrEqual(1);
+
+      // Advance by one poll interval — interval callback fires and calls fetchPrice
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+        await Promise.resolve();
+      });
+
+      expect(mocks.getOrderBook.mock.calls.length).toBeGreaterThan(
+        callsAfterMount,
+      );
+    });
+
+    it('should poll multiple times over multiple intervals', async () => {
+      renderHook(() => useAssetPrice('1', DIAMOND_ADDRESS, 3000));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const callsAfterMount = mocks.getOrderBook.mock.calls.length;
+
+      // Advance by 3 intervals
+      await act(async () => {
+        vi.advanceTimersByTime(9000);
+        await Promise.resolve();
+      });
+
+      expect(mocks.getOrderBook.mock.calls.length).toBeGreaterThanOrEqual(
+        callsAfterMount + 3,
+      );
+    });
+
+    it('should not set up interval when pollInterval is 0', async () => {
+      renderHook(() => useAssetPrice('1', DIAMOND_ADDRESS, 0));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const callsAfterMount = mocks.getOrderBook.mock.calls.length;
+      expect(callsAfterMount).toBeGreaterThanOrEqual(1);
+
+      // Advance a long time — no interval should fire
+      await act(async () => {
+        vi.advanceTimersByTime(60000);
+        await Promise.resolve();
+      });
+
+      expect(mocks.getOrderBook.mock.calls.length).toBe(callsAfterMount);
+    });
+
+    it('should stop polling after unmount', async () => {
+      const { unmount } = renderHook(() =>
+        useAssetPrice('1', DIAMOND_ADDRESS, 5000),
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const callsAfterMount = mocks.getOrderBook.mock.calls.length;
+
+      unmount();
+
+      // Advance past poll interval — interval should have been cleared on unmount
+      await act(async () => {
+        vi.advanceTimersByTime(10000);
+        await Promise.resolve();
+      });
+
+      expect(mocks.getOrderBook.mock.calls.length).toBe(callsAfterMount);
+    });
+
+    it('should not poll when document is hidden', async () => {
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'hidden',
+        writable: true,
+        configurable: true,
+      });
+
+      renderHook(() => useAssetPrice('1', DIAMOND_ADDRESS, 3000));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      // Initial fetch fires immediately (not guarded by visibilityState at call site)
+      const callsAfterMount = mocks.getOrderBook.mock.calls.length;
+
+      // Advance 3 intervals — interval callbacks check visibilityState and skip
+      await act(async () => {
+        vi.advanceTimersByTime(9000);
+        await Promise.resolve();
+      });
+
+      expect(mocks.getOrderBook.mock.calls.length).toBe(callsAfterMount);
+    });
+
+    it('should update priceData on each successful poll cycle', async () => {
+      mocks.getOrderBook
+        .mockResolvedValueOnce(
+          mockOrderBook({
+            bestBid: '1000000000000000000', // 1.0
+            bestAsk: '1100000000000000000', // 1.1
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockOrderBook({
+            bestBid: '2000000000000000000', // 2.0
+            bestAsk: '2200000000000000000', // 2.2
+          }),
+        );
+
+      const { result } = renderHook(() =>
+        useAssetPrice('1', DIAMOND_ADDRESS, 5000),
+      );
+
+      // First fetch
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.priceData?.price).toBe(1.05);
+
+      // Advance to trigger second fetch (poll)
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+        await Promise.resolve();
+      });
+
+      expect(result.current.priceData?.price).toBe(2.1);
+    });
+  });
 });
 
 describe('useAssetPrices', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     mocks.getOrderBook.mockResolvedValue(mockOrderBook());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   describe('initialization', () => {
@@ -299,7 +466,7 @@ describe('useAssetPrices', () => {
       const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 500));
+        await Promise.resolve();
       });
 
       expect(mocks.getOrderBook).toHaveBeenCalledTimes(3);
@@ -317,7 +484,7 @@ describe('useAssetPrices', () => {
       const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 100));
+        await Promise.resolve();
       });
 
       // React 18 flushes effects synchronously inside renderHook/act, so the early-return
@@ -336,7 +503,7 @@ describe('useAssetPrices', () => {
       const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       expect(result.current.error).toBe('Network error');
@@ -353,7 +520,7 @@ describe('useAssetPrices', () => {
       const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 500));
+        await Promise.resolve();
       });
 
       // Should have prices for successful calls
@@ -372,7 +539,7 @@ describe('useAssetPrices', () => {
       const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 200));
+        await Promise.resolve();
       });
 
       const initialCallCount = mocks.getOrderBook.mock.calls.length;
