@@ -52,6 +52,6 @@ COPY --from=builder --chown=ponder:nodejs /app/indexer/node_modules ./indexer/no
 
 USER ponder
 
-EXPOSE 42069
+EXPOSE 8080
 
 CMD ["bun", "run", "--cwd", "indexer", "start"]
