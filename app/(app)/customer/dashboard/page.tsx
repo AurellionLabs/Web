@@ -66,7 +66,7 @@ import {
   DeliveryDetailsDialog,
   DeliveryFormData,
 } from '@/app/components/p2p/delivery-details-dialog';
-import { P2PDeliveryDetails } from '@/domain/p2p';
+import { P2PDeliveryDetails, P2POffer, P2POfferStatus } from '@/domain/p2p';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { BrowserProvider, Contract } from 'ethers';
@@ -1067,7 +1067,7 @@ export default function CustomerDashboard() {
           );
           if (!stuckOrder) return null;
           // Build a P2POffer-shaped object from the order for the dialog
-          const pseudoOffer = {
+          const pseudoOffer: P2POffer = {
             id: stuckOrder.id,
             creator: stuckOrder.seller,
             targetCounterparty: null,
@@ -1077,17 +1077,17 @@ export default function CustomerDashboard() {
             price: BigInt(stuckOrder.price),
             txFee: BigInt(stuckOrder.txFee),
             isSellerInitiated: true,
-            status: 1, // PROCESSING
+            status: P2POfferStatus.PROCESSING,
             buyer: stuckOrder.buyer,
             seller: stuckOrder.seller,
             createdAt: 0,
             expiresAt: 0,
             locationData: stuckOrder.locationData,
-            nodes: stuckOrder.nodes || [],
+            nodes: stuckOrder.nodes,
           };
           return (
             <DeliveryDetailsDialog
-              offer={pseudoOffer as any}
+              offer={pseudoOffer}
               open={scheduleDeliveryDialogOpen}
               onOpenChange={(open) => {
                 setScheduleDeliveryDialogOpen(open);

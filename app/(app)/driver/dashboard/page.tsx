@@ -118,7 +118,7 @@ export default function DriverDashboard() {
         uncheckedPickedUp.map(async (delivery) => {
           try {
             const ausys = RepositoryContext.getInstance().getAusysContract();
-            const journey = await ausys.getJourney(delivery.jobId as any);
+            const journey = await ausys.getJourney(delivery.jobId);
             const pickupTimestamp = Number(journey.journeyStart);
             const receiverAddr = journey.receiver.toLowerCase();
 

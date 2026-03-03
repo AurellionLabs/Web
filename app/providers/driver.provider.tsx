@@ -166,18 +166,15 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
       // Check and grant DRIVER_ROLE if needed (best-effort; contract enforces it)
       try {
-        const DRIVER_ROLE = await (ausys as any).DRIVER_ROLE();
-        const hasDriverRole = await (ausys as any).hasAuSysRole(
+        const DRIVER_ROLE = await ausys.DRIVER_ROLE();
+        const hasDriverRole = await ausys.hasAuSysRole(
           DRIVER_ROLE,
           driverWalletAddress,
         );
 
         if (!hasDriverRole) {
           try {
-            const tx = await (ausys as any).setDriver(
-              driverWalletAddress,
-              true,
-            );
+            const tx = await ausys.setDriver(driverWalletAddress, true);
             await tx.wait();
           } catch (roleErr) {
             console.warn('[Accept] Could not auto-grant driver role:', roleErr);
@@ -192,7 +189,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Assign driver to journey
-      await ausys.assignDriverToJourney(driverWalletAddress!, jobId as any);
+      await ausys.assignDriverToJourney(driverWalletAddress!, jobId);
 
       // Optimistically move the job from available → myDeliveries
       const acceptedJob = availableDeliveries.find(
@@ -249,12 +246,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
       // Debug: Check journey details
       try {
-        const journey = await (ausys as any).getJourney(jobId);
+        const journey = await ausys.getJourney(jobId);
       } catch (e) {
         console.warn('[confirmPickup] Could not fetch journey details:', e);
       }
 
-      const tx = await ausys.packageSign(jobId as any);
+      const tx = await ausys.packageSign(jobId);
       const receipt = await tx.wait();
       await refreshDeliveries();
     } catch (err) {
@@ -275,7 +272,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = await getSignerAlignedContract();
-      const tx = await ausys.handOn(jobId as any);
+      const tx = await ausys.handOn(jobId);
       await tx.wait();
       await refreshDeliveries();
     } catch (err) {
@@ -307,7 +304,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const ausys = await getSignerAlignedContract();
 
       // 1. Sign for delivery (driver confirms delivery)
-      const signTx = await ausys.packageSign(jobId as any);
+      const signTx = await ausys.packageSign(jobId);
       await signTx.wait();
 
       // 2. Auto-attempt handOff with retry — RPC may not have propagated
@@ -315,7 +312,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const MAX_HANDOFF_ATTEMPTS = 3;
       for (let attempt = 1; attempt <= MAX_HANDOFF_ATTEMPTS; attempt++) {
         try {
-          const handOffTx = await ausys.handOff(jobId as any);
+          const handOffTx = await ausys.handOff(jobId);
           await handOffTx.wait();
 
           // Optimistically update this delivery to completed
@@ -395,9 +392,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const ausys = await getSignerAlignedContract();
 
       // Log journey status before signing
-      const journey = await ausys.getJourney(jobId as any);
+      const journey = await ausys.getJourney(jobId);
 
-      const tx = await ausys.packageSign(jobId as any);
+      const tx = await ausys.packageSign(jobId);
       await tx.wait();
 
       await refreshDeliveries();

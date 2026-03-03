@@ -71,11 +71,8 @@ export function usePackageSignatureProcess({
       // and they are calling the correct role in packageSign.
       // You might need more sophisticated role checking or separate hook inputs/logic
       // depending on who calls this (sender or driver).
-      const tx = await contract.packageSign(
-        driverAddress,
-        senderAddress,
-        jobIdBytes32,
-      );
+      // packageSign(bytes32 id) — only the journey id is passed on-chain.
+      const tx = await contract.packageSign(jobIdBytes32);
       await tx.wait(); // Wait for transaction confirmation
 
       // Step 2: Transaction successful, start listening

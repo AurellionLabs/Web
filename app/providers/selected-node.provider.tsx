@@ -453,7 +453,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
       const ausys = await getAlignedAusysContract();
 
-      const tx = await ausys.packageSign(journeyId as any);
+      const tx = await ausys.packageSign(journeyId);
       await tx.wait();
 
       // Refresh orders with indexer polling for eventual consistency
@@ -477,7 +477,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
       const ausys = await getAlignedAusysContract();
 
-      const tx = await ausys.handOn(journeyId as any);
+      const tx = await ausys.handOn(journeyId);
       await tx.wait();
 
       // Refresh orders with indexer polling for eventual consistency

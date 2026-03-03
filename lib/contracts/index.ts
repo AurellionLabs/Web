@@ -5,7 +5,15 @@
  * Uses ABIs directly from Hardhat artifacts.
  */
 
-import { ethers, Contract, Signer, Provider, InterfaceAbi } from 'ethers';
+import {
+  ethers,
+  Contract,
+  Signer,
+  Provider,
+  InterfaceAbi,
+  BytesLike,
+  ContractTransactionResponse,
+} from 'ethers';
 import {
   AurumNodeManagerABI,
   AurumNodeABI,
@@ -67,7 +75,7 @@ export const ContractFactories = {
   
   Ausys: {
     connect: (address: string, signerOrProvider: Signer | Provider) =>
-      createContract(address, AusysABI, signerOrProvider),
+      createContract(address, AusysABI, signerOrProvider) as AusysTyped,
     abi: AusysABI,
   },
   
@@ -142,6 +150,66 @@ export const DiamondCutFacet__factory = ContractFactories.DiamondCutFacet;
 export const DiamondLoupeFacet__factory = ContractFactories.DiamondLoupeFacet;
 export const OwnershipFacet__factory = ContractFactories.OwnershipFacet;
 
+// ---------------------------------------------------------------------------
+// AuSys typed return types
+// ---------------------------------------------------------------------------
+
+/** Return value of getJourney — mirrors DiamondStorage.AuSysJourney */
+export interface AuSysJourney {
+  parcelData: {
+    startLocation: { lat: string; lng: string };
+    endLocation: { lat: string; lng: string };
+    startName: string;
+    endName: string;
+  };
+  journeyId: string;
+  currentStatus: bigint;
+  sender: string;
+  receiver: string;
+  driver: string;
+  journeyStart: bigint;
+  journeyEnd: bigint;
+  bounty: bigint;
+  ETA: bigint;
+}
+
+/**
+ * Typed interface for the AuSys contract (Diamond proxy).
+ * Intersects with the generic ethers Contract, adding strongly typed method
+ * signatures for the driver/logistics facet functions used throughout the app.
+ *
+ * Note: defined as a type intersection (not interface extends) to avoid conflicts
+ * with ethers v6's string index signature on Contract.
+ */
+export type AusysTyped = Contract & {
+  /** Returns the DRIVER_ROLE bytes32 constant */
+  DRIVER_ROLE(): Promise<string>;
+  /** Check whether `account` holds `role` in the AuSys access-control system */
+  hasAuSysRole(role: BytesLike, account: string): Promise<boolean>;
+  /** Grant or revoke the driver role for `driver` */
+  setDriver(
+    driver: string,
+    enable: boolean,
+  ): Promise<ContractTransactionResponse>;
+  /** Fetch full journey details by journey id */
+  getJourney(id: BytesLike): Promise<AuSysJourney>;
+  /** Sign for a package (pickup or delivery confirmation) */
+  packageSign(id: BytesLike): Promise<ContractTransactionResponse>;
+  /** Start a journey (requires both driver + sender signatures) */
+  handOn(id: BytesLike): Promise<ContractTransactionResponse>;
+  /** Complete handoff (settles the journey) */
+  handOff(id: BytesLike): Promise<ContractTransactionResponse>;
+  /** Assign a driver to a journey */
+  assignDriverToJourney(
+    driver: string,
+    journeyId: BytesLike,
+  ): Promise<ContractTransactionResponse>;
+};
+
+// ---------------------------------------------------------------------------
+// Type aliases for contract instances
+// ---------------------------------------------------------------------------
+
 /**
  * Type aliases for contract instances
  * Using Contract type directly - these are runtime ethers.Contract instances
@@ -150,7 +218,8 @@ export type AurumNodeManager = Contract;
 export type AurumNode = Contract;
 export type AuraAsset = Contract;
 export type AuStake = Contract;
-export type Ausys = Contract;
+/** Typed AuSys contract — all logistics/driver methods are strongly typed */
+export type Ausys = AusysTyped;
 export type AuraGoatRed = Contract;
 export type CLOB = Contract;
 export type OrderBridge = Contract;
