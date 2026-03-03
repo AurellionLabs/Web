@@ -95,6 +95,8 @@ interface DiamondContextType {
   getNodeTokenBalance: (nodeHash: string, tokenId: string) => Promise<bigint>;
   // Wallet ERC1155 balance (for P2P sell orders - queries actual tokens in wallet)
   balanceOf: (account: string, tokenId: string) => Promise<bigint>;
+  // Batch balance query for multiple tokenIds (more efficient)
+  balanceOfBatch: (account: string, tokenIds: bigint[]) => Promise<bigint[]>;
   getNodeInventory: (
     nodeHash: string,
   ) => Promise<{ tokenIds: bigint[]; balances: bigint[] }>;
@@ -478,6 +480,42 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [diamondContext],
   );
 
+  // Batch balance query for multiple tokenIds (more efficient)
+  const balanceOfBatch = useCallback(
+    async (account: string, tokenIds: bigint[]): Promise<bigint[]> => {
+      if (!diamondContext || tokenIds.length === 0) {
+        return [];
+      }
+      const diamond = diamondContext.getDiamond();
+      try {
+        const balances = await diamond.balanceOfBatch(
+          tokenIds.map(() => account),
+          tokenIds,
+        );
+        return balances.map((b: { toString(): string }) =>
+          BigInt(b.toString()),
+        );
+      } catch (err) {
+        console.error(
+          '[DiamondProvider] Error getting wallet batch balances:',
+          err,
+        );
+        // Fallback to individual queries
+        const results: bigint[] = [];
+        for (const tokenId of tokenIds) {
+          try {
+            const balance = await diamond.balanceOf(account, tokenId);
+            results.push(BigInt(balance.toString()));
+          } catch {
+            results.push(BigInt(0));
+          }
+        }
+        return results;
+      }
+    },
+    [diamondContext],
+  );
+
   // Get full node inventory (all tokenIds and their balances)
   const getNodeInventory = useCallback(
     async (
@@ -663,6 +701,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     withdrawTokensFromNode,
     getNodeTokenBalance,
     balanceOf,
+    balanceOfBatch,
     getNodeInventory,
     approveClobForTokens,
     isClobApproved,
