@@ -112,7 +112,7 @@ export default function DocsHomePage() {
           <span className="gradient-text-red-gold">Protocol Docs</span>
         </h1>
 
-        <p className="text-foreground/50 max-w-xl leading-relaxed text-sm mb-8">
+        <p className="text-white/75 max-w-xl leading-relaxed text-sm mb-8">
           Complete technical reference. Real-world asset tokenisation, CLOB
           order matching, logistics journeys, and RWY yield staking — all built
           on a Diamond proxy on Base.
@@ -237,14 +237,14 @@ export default function DocsHomePage() {
                   <h3 className="font-mono text-sm tracking-[0.08em] uppercase mb-1 text-foreground/80 group-hover:text-foreground transition-colors">
                     {cat.title}
                   </h3>
-                  <p className="text-xs text-foreground/40 mb-3 leading-relaxed">
+                  <p className="text-xs text-white/70 mb-3 leading-relaxed">
                     {cat.subtitle}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {cat.pages.map((page) => (
                       <span
                         key={page}
-                        className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 border text-foreground/30"
+                        className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 border text-white/60"
                         style={{
                           borderColor: isGold
                             ? 'hsl(43 18% 20%)'
@@ -300,13 +300,13 @@ export default function DocsHomePage() {
             },
           ].map((item) => (
             <div key={item.label}>
-              <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-foreground/30 mb-1.5">
+              <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-white/60 mb-1.5">
                 {item.label}
               </div>
               <div className="font-mono text-[11px] text-gold/70 break-all leading-relaxed">
                 {item.value}
               </div>
-              <div className="font-mono text-[9px] text-foreground/20 mt-1">
+              <div className="font-mono text-[9px] text-white/55 mt-1">
                 {item.note}
               </div>
             </div>

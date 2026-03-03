@@ -82,7 +82,7 @@ export default async function DocPage({
               )}
               <Link
                 href={crumb.href}
-                className="font-mono text-[10px] tracking-[0.12em] uppercase text-foreground/35 hover:text-foreground/70 transition-colors"
+                className="font-mono text-[10px] tracking-[0.12em] uppercase text-white/65 hover:text-white/85 transition-colors"
               >
                 {crumb.label}
               </Link>
@@ -106,7 +106,7 @@ export default async function DocPage({
             {doc.tags.map((tag: string) => (
               <span
                 key={tag}
-                className="font-mono text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 border text-foreground/30"
+                className="font-mono text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 border text-white/60"
                 style={{ borderColor: 'hsl(43 18% 18%)' }}
               >
                 {tag}
@@ -136,7 +136,7 @@ export default async function DocPage({
               <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-foreground/25 flex items-center gap-1">
                 <ArrowLeft size={9} /> Previous
               </span>
-              <span className="font-mono text-xs text-foreground/60 group-hover:text-foreground/90 transition-colors mt-0.5">
+              <span className="font-mono text-xs text-white/80 group-hover:text-foreground/90 transition-colors mt-0.5">
                 {prev.title}
               </span>
             </Link>
@@ -158,7 +158,7 @@ export default async function DocPage({
               <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-foreground/25 flex items-center gap-1 justify-end">
                 Next <ArrowRight size={9} />
               </span>
-              <span className="font-mono text-xs text-foreground/60 group-hover:text-foreground/90 transition-colors mt-0.5">
+              <span className="font-mono text-xs text-white/80 group-hover:text-foreground/90 transition-colors mt-0.5">
                 {next.title}
               </span>
             </Link>

@@ -118,7 +118,7 @@ export default function FaucetPage() {
           <h1 className="font-serif text-3xl font-bold tracking-[0.15em] uppercase text-foreground mb-2">
             AURA TOKEN FAUCET
           </h1>
-          <p className="font-mono text-sm tracking-[0.08em] text-foreground/50 max-w-md mx-auto uppercase">
+          <p className="font-mono text-sm tracking-[0.08em] text-white/75 max-w-md mx-auto uppercase">
             Mint test AURA tokens for trading on Base Sepolia testnet. These
             tokens have no real value.
           </p>
@@ -143,7 +143,7 @@ export default function FaucetPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Wallet className="w-5 h-5 text-gold" />
-                <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/50">
+                <span className="font-mono text-xs tracking-[0.15em] uppercase text-white/75">
                   Current Holdings
                 </span>
               </div>
@@ -179,14 +179,14 @@ export default function FaucetPage() {
                   </span>
                 </>
               ) : (
-                <span className="font-mono text-lg tracking-[0.1em] text-foreground/40 uppercase">
+                <span className="font-mono text-lg tracking-[0.1em] text-white/70 uppercase">
                   Connect wallet to view balance
                 </span>
               )}
             </div>
 
             {isConnected && address && (
-              <p className="font-mono text-sm text-foreground/30 tracking-wider">
+              <p className="font-mono text-sm text-white/60 tracking-wider">
                 {truncateAddress(address)}
               </p>
             )}
@@ -211,7 +211,7 @@ export default function FaucetPage() {
         >
           <div className="flex items-center gap-2 mb-4">
             <Coins className="w-5 h-5 text-gold" />
-            <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+            <span className="font-mono text-xs tracking-[0.15em] uppercase text-white/70">
               Select an amount or enter a custom value (max 10,000 per mint)
             </span>
           </div>
@@ -226,7 +226,7 @@ export default function FaucetPage() {
                   'py-2 px-3 text-sm font-mono font-bold tracking-[0.1em] transition-all duration-200',
                   mintAmount === amount.toString()
                     ? 'bg-gold/15 text-gold'
-                    : 'bg-card/60 text-foreground/40 hover:text-gold hover:bg-gold/5',
+                    : 'bg-card/60 text-white/70 hover:text-gold hover:bg-gold/5',
                 )}
                 style={{
                   clipPath:
@@ -328,7 +328,7 @@ export default function FaucetPage() {
           {/* Not connected state */}
           {!isConnected && (
             <div className="text-center py-4">
-              <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+              <p className="font-mono text-xs tracking-[0.15em] uppercase text-white/70">
                 Please connect your wallet to mint AURA tokens
               </p>
             </div>
@@ -356,7 +356,7 @@ export default function FaucetPage() {
               <h4 className="font-mono text-sm font-bold tracking-[0.15em] uppercase text-foreground mb-1">
                 Testnet Tokens Only
               </h4>
-              <p className="font-mono text-xs tracking-[0.08em] text-foreground/40 mb-3 leading-relaxed">
+              <p className="font-mono text-xs tracking-[0.08em] text-white/70 mb-3 leading-relaxed">
                 These AURA tokens are for testing purposes on Base Sepolia
                 testnet. They have no monetary value and cannot be transferred
                 to mainnet.
@@ -398,7 +398,7 @@ export default function FaucetPage() {
         <EvaPanel label="Token Details" sysId="TKN-04" accent="gold">
           <div className="space-y-3">
             <div className="flex justify-between items-center py-2 border-b border-border/10">
-              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-white/70">
                 Name
               </span>
               <span className="font-mono text-sm font-bold text-gold">
@@ -406,7 +406,7 @@ export default function FaucetPage() {
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border/10">
-              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-white/70">
                 Symbol
               </span>
               <span className="font-mono text-sm font-bold text-gold">
@@ -414,7 +414,7 @@ export default function FaucetPage() {
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border/10">
-              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-white/70">
                 Network
               </span>
               <span className="font-mono text-sm font-bold text-gold">
@@ -422,7 +422,7 @@ export default function FaucetPage() {
               </span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/40">
+              <span className="font-mono text-xs tracking-[0.15em] uppercase text-white/70">
                 Contract
               </span>
               <a
