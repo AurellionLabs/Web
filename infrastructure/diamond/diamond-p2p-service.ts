@@ -21,6 +21,12 @@ import {
   NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+
+interface ContextWithOptionalContracts {
+  getQuoteTokenContract(): ethers.Contract;
+  getERC1155Contract(address: string): ethers.Contract;
+}
+
 import {
   GET_P2P_OFFERS_BY_CREATOR,
   GET_ALL_MINTED_ASSET_CLASSES,
@@ -430,7 +436,7 @@ export class DiamondP2PService implements IP2PService {
       quoteTokenAddress.toLowerCase() ===
         NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase();
     const quoteToken = shouldUseContextHelper
-      ? (this.context as any).getQuoteTokenContract()
+      ? (this.context as unknown as ContextWithOptionalContracts).getQuoteTokenContract()
       : new ethers.Contract(quoteTokenAddress, ERC20_ABI, signer);
 
     const currentAllowance = await quoteToken.allowance(
@@ -496,7 +502,7 @@ export class DiamondP2PService implements IP2PService {
     const erc1155 = isDiamondToken
       ? this.context.getDiamond()
       : 'getERC1155Contract' in this.context
-        ? (this.context as any).getERC1155Contract(tokenAddress)
+        ? (this.context as unknown as ContextWithOptionalContracts).getERC1155Contract(tokenAddress)
         : new ethers.Contract(tokenAddress, ERC1155_ABI, signer);
 
     try {

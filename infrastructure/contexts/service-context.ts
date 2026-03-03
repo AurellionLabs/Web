@@ -37,7 +37,7 @@ export class ServiceContext {
     try {
       const ausys = repositoryContext.getAusysContract();
       const signer = repositoryContext.getSigner();
-      this.orderService = new OrderService(ausys as any, signer as any);
+      this.orderService = new OrderService(ausys as unknown as ConstructorParameters<typeof OrderService>[0], signer as unknown as ConstructorParameters<typeof OrderService>[1]);
     } catch (e) {
       console.warn(
         '[ServiceContext] Unable to initialize OrderService yet:',

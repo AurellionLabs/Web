@@ -69,7 +69,6 @@ import {
 import { P2PDeliveryDetails, P2POffer, P2POfferStatus } from '@/domain/p2p';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
-import { BrowserProvider, Contract } from 'ethers';
 import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';

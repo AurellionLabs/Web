@@ -329,8 +329,8 @@ export const UserOrders: FC<UserOrdersProps> = ({
       100;
 
     // Determine time-in-force from order (default to GTC if not specified)
-    const tif = (order as any).timeInForce || TimeInForce.GTC;
-    const expiry = (order as any).expiry || 0;
+    const tif = order.timeInForce || TimeInForce.GTC;
+    const expiry = order.expiry || 0;
 
     return (
       <div
