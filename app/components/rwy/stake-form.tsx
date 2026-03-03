@@ -26,7 +26,11 @@ import {
   TrendingUp,
   Percent,
 } from 'lucide-react';
-import { ethers } from 'ethers';
+import {
+  formatWeiToEther,
+  parseTokenAmount,
+  formatErc20Balance,
+} from '@/lib/utils';
 
 interface StakeFormProps {
   opportunity: RWYOpportunityWithDynamicData;
@@ -50,12 +54,12 @@ export function StakeForm({
   const { stake: existingStake } = useRWYStake(opportunity.id, userAddress);
   const { expectedProfit, userShareBps } = useRWYExpectedProfit(
     opportunity.id,
-    amount ? ethers.parseUnits(amount, 18).toString() : undefined,
+    amount ? parseTokenAmount(amount, 18).toString() : undefined,
   );
 
   const canStake = isOpportunityStakeable(opportunity);
   const balanceBigInt = BigInt(userBalance);
-  const amountBigInt = amount ? ethers.parseUnits(amount, 18) : 0n;
+  const amountBigInt = amount ? parseTokenAmount(amount, 18) : 0n;
   const remainingCapacity =
     BigInt(opportunity.targetAmount) - BigInt(opportunity.stakedAmount);
 
@@ -107,7 +111,7 @@ export function StakeForm({
   const handleMaxClick = () => {
     const maxAmount =
       balanceBigInt < remainingCapacity ? balanceBigInt : remainingCapacity;
-    setAmount(ethers.formatUnits(maxAmount, 18));
+    setAmount(formatErc20Balance(maxAmount, 18));
   };
 
   const handleSliderChange = (value: number[]) => {
@@ -115,7 +119,7 @@ export function StakeForm({
     const maxAmount =
       balanceBigInt < remainingCapacity ? balanceBigInt : remainingCapacity;
     const sliderAmount = (maxAmount * BigInt(percentage)) / 100n;
-    setAmount(ethers.formatUnits(sliderAmount, 18));
+    setAmount(formatErc20Balance(sliderAmount, 18));
   };
 
   if (!canStake) {
@@ -148,7 +152,7 @@ export function StakeForm({
           >
             <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
             <span className="font-mono text-xs tracking-[0.05em] text-emerald-400">
-              You have staked {ethers.formatUnits(existingStake.amount, 18)}{' '}
+              You have staked {formatErc20Balance(existingStake.amount, 18)}{' '}
               tokens in this opportunity.
             </span>
           </div>
@@ -164,7 +168,7 @@ export function StakeForm({
               Amount to Stake
             </Label>
             <span className="font-mono text-xs tracking-[0.05em] text-foreground/35">
-              Balance: {ethers.formatUnits(userBalance, 18)}
+              Balance: {formatErc20Balance(userBalance, 18)}
             </span>
           </div>
           <div className="relative group">
@@ -238,7 +242,7 @@ export function StakeForm({
                   Expected Profit
                 </p>
                 <p className="font-mono text-sm font-bold text-emerald-400">
-                  {ethers.formatUnits(expectedProfit, 18)} AURUM
+                  {formatErc20Balance(expectedProfit, 18)} AURUM
                 </p>
               </div>
               <div>
@@ -267,7 +271,7 @@ export function StakeForm({
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               Amount exceeds remaining capacity. Max:{' '}
-              {ethers.formatUnits(remainingCapacity, 18)}
+              {formatErc20Balance(remainingCapacity, 18)}
             </AlertDescription>
           </Alert>
         )}

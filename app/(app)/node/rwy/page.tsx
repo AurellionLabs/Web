@@ -38,7 +38,7 @@ import {
   Package,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ethers } from 'ethers';
+import { formatErc20Balance } from '@/lib/utils';
 
 /** Map RWY opportunity status to EVA badge status */
 function getEvaBadgeStatus(
@@ -205,7 +205,7 @@ export default function OperatorRWYDashboard() {
 
         <HexStatCard
           label="Total Processed"
-          value={`$${Number(ethers.formatUnits(stats.totalValueProcessed, 18)).toLocaleString()}`}
+          value={`$${Number(formatErc20Balance(stats.totalValueProcessed, 18)).toLocaleString()}`}
           color="crimson"
         />
       </div>

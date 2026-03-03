@@ -38,7 +38,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ethers } from 'ethers';
+import { formatErc20Balance } from '@/lib/utils';
 
 export default function MyRWYStakesPage() {
   const { address: walletAddress, isConnected } = useWallet();
@@ -292,7 +292,7 @@ function StakePositionCard({
                 Your Stake
               </p>
               <p className="font-mono font-bold text-sm tabular-nums">
-                {stake ? ethers.formatUnits(stake.amount, 18) : '0'} tokens
+                {stake ? formatErc20Balance(stake.amount, 18) : '0'} tokens
               </p>
             </div>
             <div>
@@ -309,7 +309,7 @@ function StakePositionCard({
               </p>
               <p className="font-mono font-bold text-sm tabular-nums text-amber-500">
                 {stake
-                  ? ethers.formatUnits(
+                  ? formatErc20Balance(
                       (BigInt(stake.amount) *
                         BigInt(opportunity.promisedYieldBps)) /
                         10000n,

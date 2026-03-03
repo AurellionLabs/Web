@@ -38,7 +38,7 @@ import {
   Coins,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ethers } from 'ethers';
+import { formatWeiToEther, parseTokenAmount, parseEth } from '@/lib/utils';
 
 const STEPS = [
   { id: 'basic', title: 'Basic Info', icon: Package },
@@ -83,10 +83,10 @@ export default function CreateRWYOpportunityPage() {
 
   const calculateCollateral = () => {
     if (!formData.targetAmount || !formData.minSalePrice) return '0';
-    const target = ethers.parseUnits(formData.targetAmount || '0', 18);
-    const price = ethers.parseUnits(formData.minSalePrice || '0', 18);
+    const target = parseTokenAmount(formData.targetAmount || '0', 18);
+    const price = parseTokenAmount(formData.minSalePrice || '0', 18);
     const collateral = (target * price * 20n) / (10000n * BigInt(1e18)); // 20% collateral
-    return ethers.formatEther(collateral);
+    return formatWeiToEther(collateral);
   };
 
   const handleSubmit = async () => {
@@ -96,17 +96,18 @@ export default function CreateRWYOpportunityPage() {
         description: formData.description,
         inputToken: formData.inputToken as Address,
         inputTokenId: formData.inputTokenId,
-        targetAmount: ethers.parseUnits(formData.targetAmount, 18).toString(),
+        targetAmount: parseTokenAmount(formData.targetAmount, 18).toString(),
         outputToken: formData.outputToken as Address,
-        expectedOutputAmount: ethers
-          .parseUnits(formData.expectedOutputAmount, 18)
-          .toString(),
+        expectedOutputAmount: parseTokenAmount(
+          formData.expectedOutputAmount,
+          18,
+        ).toString(),
         promisedYieldBps: percentToBps(formData.promisedYield),
         operatorFeeBps: percentToBps(formData.operatorFee),
-        minSalePrice: ethers.parseUnits(formData.minSalePrice, 18).toString(),
+        minSalePrice: parseTokenAmount(formData.minSalePrice, 18).toString(),
         fundingDays: formData.fundingDays,
         processingDays: formData.processingDays,
-        collateralAmount: ethers.parseEther(calculateCollateral()).toString(),
+        collateralAmount: parseEth(calculateCollateral()).toString(),
       };
 
       const result = await createOpportunity(data);

@@ -5,7 +5,7 @@ import { Button } from './button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatAddress } from '@/lib/formatters';
-import { ethers } from 'ethers';
+import { formatWeiToEther, formatErc20Balance } from '@/lib/utils';
 import { SUPPORTED_CHAINS, NETWORK_CONFIGS } from '@/config/network';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useWallet } from '@/hooks/useWallet';
@@ -108,7 +108,7 @@ export function WalletConnection() {
 
         // Use repository methods instead of creating direct ethers calls
         const rawEthBalance = await repository.getEthBalance(address);
-        setEthBalance(ethers.formatEther(rawEthBalance));
+        setEthBalance(formatWeiToEther(rawEthBalance));
 
         const usdcAddress = usdcContractAddresses[numericChainId];
         if (usdcAddress) {
@@ -116,7 +116,7 @@ export function WalletConnection() {
             address,
             usdcAddress,
           );
-          setUsdcBalance(ethers.formatUnits(balance, decimals));
+          setUsdcBalance(formatErc20Balance(balance, decimals));
         } else {
           setUsdcBalance(null);
         }

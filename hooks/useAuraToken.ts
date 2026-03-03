@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ethers, BrowserProvider, Contract } from 'ethers';
+import { BrowserProvider, Contract } from 'ethers';
 import { useWallet } from './useWallet';
 import { NEXT_PUBLIC_AURA_TOKEN_ADDRESS } from '@/chain-constants';
+import { formatErc20Balance } from '@/lib/utils';
 
 /**
  * AURA Token ABI - minimal interface for balance and minting
@@ -154,7 +155,7 @@ export function useAuraToken(): UseAuraTokenReturn {
       setSymbol(tokenSymbol);
 
       // Format balance for display
-      const formatted = ethers.formatUnits(rawBalance, tokenDecimals);
+      const formatted = formatErc20Balance(rawBalance, tokenDecimals);
       // Round to 2 decimal places for display
       const rounded = parseFloat(formatted).toLocaleString('en-US', {
         minimumFractionDigits: 0,
