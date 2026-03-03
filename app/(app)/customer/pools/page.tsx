@@ -29,7 +29,7 @@ import { useMainProvider } from '@/app/providers/main.provider';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { cn } from '@/lib/utils';
 import { formatTokenAmount } from '@/lib/formatters';
-import { Pool } from '@/domain/pool';
+import { Pool, PoolDynamicData } from '@/domain/pool';
 
 /**
  * PoolsPage - Yield pools page with EVA protocol aesthetic
@@ -118,7 +118,8 @@ export default function PoolsPage() {
     // Sum 24h volume across all pools
     const volumeSum = pools.reduce((sum, pool) => {
       // Pool has PoolDynamicData merged in from getAllPoolsWithDynamicData
-      const volume24h = (pool as any).volume24h || '0';
+      const volume24h =
+        (pool as Pool & Partial<PoolDynamicData>).volume24h || '0';
       const volume = parseFloat(formatTokenAmount(volume24h, 18, 2));
       return sum + volume;
     }, 0);

@@ -226,7 +226,7 @@ export default function NodeDashboardPage() {
     try {
       const repoContext = RepositoryContext.getInstance();
       const ausys = repoContext.getAusysContract();
-      const journey = await ausys.getJourney(journeyId as any);
+      const journey = await ausys.getJourney(journeyId);
       const status = Number(journey.currentStatus);
 
       if (status >= 2) {
@@ -747,9 +747,10 @@ export default function NodeDashboardPage() {
 
         return 'started';
       } catch (e) {
-        const err = e as Error;
+        const err = e instanceof Error ? e : new Error(String(e));
         const msg = err.message || '';
-        const errData = (err as any)?.data;
+        // ethers errors may carry extra fields (e.g. revert data)
+        const errData = (e as { data?: string })?.data;
 
         const isDriverPending =
           msg.includes('DriverNotSigned') ||

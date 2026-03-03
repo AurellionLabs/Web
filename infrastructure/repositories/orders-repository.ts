@@ -88,8 +88,13 @@ function buildParcelData(
   };
 }
 
-function phaseToJourneyStatus(phase: string | number): JourneyStatus {
-  const phaseNum = typeof phase === 'string' ? parseInt(phase, 10) : phase;
+function phaseToJourneyStatus(phase: string | number | bigint): JourneyStatus {
+  const phaseNum =
+    typeof phase === 'bigint'
+      ? Number(phase)
+      : typeof phase === 'string'
+        ? parseInt(phase, 10)
+        : phase;
   switch (phaseNum) {
     case 0:
       return JourneyStatus.PENDING;
