@@ -280,7 +280,7 @@ export function EvaPanel({
     active: { text: 'text-emerald-400', label: 'ACTIVE' },
     pending: { text: 'text-amber-400', label: 'STANDBY' },
     warning: { text: 'text-crimson', label: 'WARNING' },
-    offline: { text: 'text-foreground/30', label: 'OFFLINE' },
+    offline: { text: 'text-white/60', label: 'OFFLINE' },
   };
 
   return (
@@ -460,7 +460,7 @@ export function HexStatCard({
           NERV
         </span>
         <div className="relative text-center">
-          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-foreground/40 font-bold block mb-2">
+          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-white/70 font-bold block mb-2">
             {label}
           </span>
           <span
@@ -469,7 +469,7 @@ export function HexStatCard({
             {value}
           </span>
           {sub && (
-            <span className="font-mono text-[11px] text-foreground/30 mt-1.5 block">
+            <span className="font-mono text-[11px] text-white/60 mt-1.5 block">
               {sub}
             </span>
           )}
@@ -735,7 +735,7 @@ export function EvaStat({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/50 font-bold">
+      <span className="font-mono text-xs tracking-[0.2em] uppercase text-white/75 font-bold">
         {label}
       </span>
       <div className="flex items-baseline gap-2">
@@ -745,7 +745,7 @@ export function EvaStat({
           {value}
         </span>
         {unit && (
-          <span className="font-mono text-sm text-foreground/40 tracking-wider uppercase">
+          <span className="font-mono text-sm text-white/70 tracking-wider uppercase">
             {unit}
           </span>
         )}
@@ -909,7 +909,7 @@ export function EvaSectionMarker({
           <div
             className={`w-3 h-[2px] ${variant === 'crimson' ? 'bg-crimson/30' : 'bg-gold/30'}`}
           />
-          <span className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40">
+          <span className="font-mono text-sm tracking-[0.15em] uppercase text-white/70">
             {label}
           </span>
         </>
@@ -966,7 +966,7 @@ export function EvaInput({
           className="w-full bg-background/80 border border-border/40 pl-4 pr-14 py-3 font-mono text-base text-foreground/80 placeholder:text-foreground/25 focus:outline-none focus:border-gold/50 transition-colors"
         />
         {suffix && (
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-xs text-foreground/30 tracking-wider uppercase">
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-xs text-white/60 tracking-wider uppercase">
             {suffix}
           </span>
         )}
@@ -1031,7 +1031,7 @@ export function EvaDataRow({
   };
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-border/10">
-      <span className="font-mono text-sm text-foreground/50">{label}</span>
+      <span className="font-mono text-sm text-white/75">{label}</span>
       <span className={`font-mono text-sm font-bold ${colorMap[valueColor]}`}>
         {value}
       </span>
