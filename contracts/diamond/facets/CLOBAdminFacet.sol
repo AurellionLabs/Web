@@ -306,7 +306,8 @@ contract CLOBAdminFacet is ReentrancyGuard {
     function emergencyUserWithdraw(bytes32[] calldata orderIds) external nonReentrant whenPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         
-        for (uint256 i = 0; i < orderIds.length; i++) {
+        uint256 orderCount = orderIds.length;
+        for (uint256 i = 0; i < orderCount; i++) {
             bytes32 orderId = orderIds[i];
             DiamondStorage.PackedOrder storage order = s.packedOrders[orderId];
             

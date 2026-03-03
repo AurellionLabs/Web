@@ -433,7 +433,8 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         // Check if this address is a node owner with an active node
         // ownerNodes maps wallet address => array of node hashes they own
         bytes32[] storage ownerNodes = s.ownerNodes[_node];
-        for (uint256 i = 0; i < ownerNodes.length; i++) {
+        uint256 nodeCount = ownerNodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
             // Cache node to avoid repeated SLOAD (saves ~3000 gas per iteration)
             DiamondStorage.Node storage nodeData = s.nodes[ownerNodes[i]];
             if (nodeData.active && nodeData.validNode) {
@@ -753,9 +754,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
     {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         uint256[] memory ids = s.nodeTokenIds[_node];
-        uint256[] memory bals = new uint256[](ids.length);
+        uint256 idCount = ids.length;
+        uint256[] memory bals = new uint256[](idCount);
         
-        for (uint256 i = 0; i < ids.length; i++) {
+        for (uint256 i = 0; i < idCount; i++) {
             bals[i] = s.nodeTokenBalances[_node][ids[i]];
         }
         
@@ -1230,9 +1232,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
 
         // Find the document by URL
         uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        uint256 docCount = docIds.length;
         bool found = false;
         
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             DiamondStorage.SupportingDocument storage doc = s.nodeSupportingDocuments[_nodeHash][docIds[i]];
             if (!doc.isRemoved && keccak256(bytes(doc.url)) == keccak256(bytes(_url))) {
                 doc.isRemoved = true;
@@ -1288,10 +1291,11 @@ contract NodesFacet is Initializable, ReentrancyGuard {
     {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        uint256 docCount = docIds.length;
         
         // First pass: count active documents
         uint256 activeCount = 0;
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             if (!s.nodeSupportingDocuments[_nodeHash][docIds[i]].isRemoved) {
                 activeCount++;
             }
@@ -1300,7 +1304,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         // Second pass: populate array
         documents = new DiamondStorage.SupportingDocument[](activeCount);
         uint256 idx = 0;
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             DiamondStorage.SupportingDocument storage doc = s.nodeSupportingDocuments[_nodeHash][docIds[i]];
             if (!doc.isRemoved) {
                 documents[idx] = doc;
@@ -1325,10 +1329,11 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
         
-        total = docIds.length;
+        uint256 docCount = docIds.length;
+        total = docCount;
         active = 0;
         
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             if (!s.nodeSupportingDocuments[_nodeHash][docIds[i]].isRemoved) {
                 active++;
             }
