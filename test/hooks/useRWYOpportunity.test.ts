@@ -35,6 +35,31 @@ vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_RPC_URL_84532: 'https://base-sepolia.rpc.example.com',
 }));
 
+// Mock the provider utility
+vi.mock('@/lib/provider', () => ({
+  getProvider: vi.fn().mockResolvedValue({
+    getOpportunityWithDynamicData: vi.fn(),
+    getStake: vi.fn(),
+    getOpportunityStakers: vi.fn(),
+    getOperatorStats: vi.fn(),
+    calculateExpectedProfit: vi.fn(),
+    isApprovedOperator: vi.fn(),
+  }),
+  getReadOnlyProvider: vi.fn().mockReturnValue({
+    getOpportunityWithDynamicData: vi.fn(),
+    getStake: vi.fn(),
+    getOpportunityStakers: vi.fn(),
+    getOperatorStats: vi.fn(),
+    calculateExpectedProfit: vi.fn(),
+    isApprovedOperator: vi.fn(),
+  }),
+  getSigner: vi
+    .fn()
+    .mockRejectedValue(
+      new Error('No wallet detected. Please connect your wallet.'),
+    ),
+}));
+
 // Mock RWYRepository
 vi.mock('@/infrastructure/repositories/rwy-repository', () => ({
   RWYRepository: vi.fn().mockImplementation(() => ({
@@ -55,6 +80,7 @@ Object.defineProperty(window, 'ethereum', {
 
 // Import after mocks
 import { ethers } from 'ethers';
+import { getSigner } from '@/lib/provider';
 import {
   useRWYOpportunity,
   useRWYStake,
@@ -575,6 +601,12 @@ describe('useTokenApproval', () => {
   });
 
   describe('requestApproval', () => {
+    beforeEach(() => {
+      vi.mocked(getSigner).mockRejectedValue(
+        new Error('No wallet detected. Please connect your wallet.'),
+      );
+    });
+
     it('should throw when no window.ethereum', async () => {
       window.ethereum = undefined;
 
