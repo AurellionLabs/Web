@@ -1,6 +1,6 @@
 'use client';
 
-import { ethers } from 'ethers';
+import { ethers, type BytesLike } from 'ethers';
 import {
   createContext,
   useContext,
@@ -238,7 +238,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
         // 1. Sign the receipt (receiver confirms receipt) - this sets customerHandOff[receiver][id] = true
         // 1. Sign the receipt (receiver confirms delivery)
-        const signTx = await ausys.packageSign(journeyId as any);
+        const signTx = await ausys.packageSign(journeyId as BytesLike);
         await signTx.wait();
 
         // 2. Try to complete delivery (handOff) with retry for RPC propagation
@@ -246,7 +246,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         let settled = false;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
           try {
-            const handOffTx = await ausys.handOff(journeyId as any);
+            const handOffTx = await ausys.handOff(journeyId as BytesLike);
             await handOffTx.wait();
 
             // Success! Update order status
@@ -319,7 +319,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const ausys = await getAlignedAusysContract();
 
         // Guard against premature signing before the journey enters transit.
-        const journey = await ausys.getJourney(journeyId as any);
+        const journey = await ausys.getJourney(journeyId as BytesLike);
         if (Number(journey.currentStatus) !== 1) {
           throw new Error(
             'You can sign for delivery only after pickup is complete and the journey is in transit.',
@@ -327,7 +327,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         }
 
         // 1. Sign for delivery (receiver confirms delivery receipt)
-        const signTx = await ausys.packageSign(journeyId as any);
+        const signTx = await ausys.packageSign(journeyId as BytesLike);
         await signTx.wait();
 
         // 2. Auto-attempt handOff with retry — the RPC may not have propagated
@@ -335,7 +335,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const MAX_HANDOFF_ATTEMPTS = 3;
         for (let attempt = 1; attempt <= MAX_HANDOFF_ATTEMPTS; attempt++) {
           try {
-            const handOffTx = await ausys.handOff(journeyId as any);
+            const handOffTx = await ausys.handOff(journeyId as BytesLike);
             await handOffTx.wait();
 
             // Success — update order status optimistically
@@ -417,13 +417,13 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(null);
         const ausys = await getAlignedAusysContract();
 
-        const journey = await ausys.getJourney(journeyId as any);
+        const journey = await ausys.getJourney(journeyId as BytesLike);
         if (Number(journey.currentStatus) === 0) {
           // Pending pickup — not ready for handoff.
           return 'driver_not_signed';
         }
 
-        const handOffTx = await ausys.handOff(journeyId as any);
+        const handOffTx = await ausys.handOff(journeyId as BytesLike);
         await handOffTx.wait();
 
         // Update local state optimistically
@@ -474,7 +474,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }> => {
       try {
         const ausys = repoContext.getAusysContract();
-        const journey = await ausys.getJourney(journeyId as any);
+        const journey = await ausys.getJourney(journeyId as BytesLike);
         const status = Number(journey.currentStatus);
 
         // Definitive: Delivered means both parties signed and handOff succeeded
