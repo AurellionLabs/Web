@@ -44,10 +44,13 @@ export function useAssetCustody(
       const service = getSettlementService();
       const results = await Promise.all(
         nodes.map(async (node) => {
-          const amount = await service.getCustodyInfo(tokenId, node.address);
+          // node.address is the bytes32 nodeHash — NOT a valid Ethereum address.
+          // The custodian recorded in AssetsFacet is the node owner's wallet (node.owner).
+          const custodian = node.owner;
+          const amount = await service.getCustodyInfo(tokenId, custodian);
           return {
-            nodeAddress: node.address,
-            nodeLocation: node.location?.addressName || node.address,
+            nodeAddress: custodian,
+            nodeLocation: node.location?.addressName || custodian,
             amount,
           };
         }),
