@@ -4,10 +4,17 @@ import { IWalletRepository } from '@/domain/wallet';
 import { Wallet, WalletState } from '@/domain/models/wallet';
 import { handleContractError } from '@/utils/error-handler';
 
+// Standard ERC20 ABI for balance and decimals calls
+const erc20Abi = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+];
+
 export class PrivyWalletRepository implements IWalletRepository {
   private wallet: Wallet;
   private privyWallets: ReturnType<typeof useWallets>;
   private privyAuth: ReturnType<typeof usePrivy>;
+  private _provider: ethers.BrowserProvider | null = null;
 
   constructor(
     privyWallets: ReturnType<typeof useWallets>,
@@ -28,6 +35,89 @@ export class PrivyWalletRepository implements IWalletRepository {
     }
     // If it starts with '0x', use it as is, otherwise prepend '0x'
     return chainId.startsWith('0x') ? chainId : `0x${chainId}`;
+  }
+
+  /**
+   * Get or create an ethers BrowserProvider for the connected wallet.
+   * This enables components to access blockchain data without creating their own providers.
+   */
+  public async getProvider(): Promise<ethers.BrowserProvider> {
+    if (this._provider) {
+      return this._provider;
+    }
+
+    const connectedWallet = this.privyWallets.wallets?.[0];
+    if (!connectedWallet) {
+      throw new Error('No connected wallet found');
+    }
+
+    const ethereumProvider = await connectedWallet.getEthereumProvider();
+    this._provider = new ethers.BrowserProvider(ethereumProvider);
+    return this._provider;
+  }
+
+  /**
+   * Get the ETH balance for a given address.
+   */
+  public async getEthBalance(address: string): Promise<bigint> {
+    const provider = await this.getProvider();
+    return await provider.getBalance(address);
+  }
+
+  /**
+   * Get the ERC20 token balance for a given address and contract.
+   */
+  public async getErc20Balance(
+    address: string,
+    tokenAddress: string,
+  ): Promise<{ balance: bigint; decimals: number }> {
+    const provider = await this.getProvider();
+    const contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+    const [balance, decimals] = await Promise.all([
+      contract.balanceOf(address),
+      contract.decimals(),
+    ]);
+    return { balance: BigInt(balance.toString()), decimals };
+  }
+
+  /**
+   * Check if the Diamond contract is approved to transfer a specific NFT.
+   * Used for ERC721 isApprovedForAll checks.
+   */
+  public async isApprovedForAll(
+    owner: string,
+    operator: string,
+    diamondAddress: string,
+  ): Promise<boolean> {
+    const provider = await this.getProvider();
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(
+      diamondAddress,
+      [
+        'function isApprovedForAll(address account, address operator) view returns (bool)',
+      ],
+      signer,
+    );
+    return await contract.isApprovedForAll(owner, operator);
+  }
+
+  /**
+   * Set approval for the Diamond contract to transfer NFTs.
+   */
+  public async setApprovalForAll(
+    operator: string,
+    approved: boolean,
+    diamondAddress: string,
+  ): Promise<ethers.TransactionResponse> {
+    const provider = await this.getProvider();
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(
+      diamondAddress,
+      ['function setApprovalForAll(address operator, bool approved) external'],
+      signer,
+    );
+    const tx = await contract.setApprovalForAll(operator, approved);
+    return tx;
   }
 
   public async connect(): Promise<void> {

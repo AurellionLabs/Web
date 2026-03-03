@@ -270,7 +270,9 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         count = 0;
         for (uint256 i = 0; i < total; i++) {
             address d = s.clobDriverList[i];
-            if (s.clobDrivers[d].isActive && s.clobDrivers[d].isAvailable) {
+            // Cache driver info to avoid repeated SLOADs
+            DiamondStorage.DriverInfo storage driver = s.clobDrivers[d];
+            if (driver.isActive && driver.isAvailable) {
                 count++;
             }
         }
@@ -280,7 +282,9 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         uint256 idx = 0;
         for (uint256 i = 0; i < total; i++) {
             address d = s.clobDriverList[i];
-            if (s.clobDrivers[d].isActive && s.clobDrivers[d].isAvailable) {
+            // Cache driver info to avoid repeated SLOADs
+            DiamondStorage.DriverInfo storage driver = s.clobDrivers[d];
+            if (driver.isActive && driver.isAvailable) {
                 drivers[idx++] = d;
             }
         }

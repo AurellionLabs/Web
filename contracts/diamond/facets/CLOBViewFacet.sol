@@ -78,19 +78,25 @@ contract CLOBViewFacet {
         
         // Get bids (highest to lowest)
         uint256 price = _getBestPrice(s.bidTreeMeta[marketId], s.bidTreeNodes[marketId], false);
+        mapping(uint256 => DiamondStorage.PriceLevel) storage bidLevels = s.bidLevels[marketId];
         for (uint256 i = 0; i < levels && price != 0; i++) {
+            // Cache level reads to avoid repeated SLOADs
+            DiamondStorage.PriceLevel storage level = bidLevels[price];
             bidPrices[i] = price;
-            bidSizes[i] = s.bidLevels[marketId][price].totalAmount;
-            bidCounts[i] = s.bidLevels[marketId][price].orderCount;
+            bidSizes[i] = level.totalAmount;
+            bidCounts[i] = level.orderCount;
             price = _getNextLower(s.bidTreeNodes[marketId], price);
         }
         
         // Get asks (lowest to highest)
         price = _getBestPrice(s.askTreeMeta[marketId], s.askTreeNodes[marketId], true);
+        mapping(uint256 => DiamondStorage.PriceLevel) storage askLevels = s.askLevels[marketId];
         for (uint256 i = 0; i < levels && price != 0; i++) {
+            // Cache level reads to avoid repeated SLOADs
+            DiamondStorage.PriceLevel storage level = askLevels[price];
             askPrices[i] = price;
-            askSizes[i] = s.askLevels[marketId][price].totalAmount;
-            askCounts[i] = s.askLevels[marketId][price].orderCount;
+            askSizes[i] = level.totalAmount;
+            askCounts[i] = level.orderCount;
             price = _getNextHigher(s.askTreeNodes[marketId], price);
         }
     }
@@ -259,18 +265,26 @@ contract CLOBViewFacet {
         lastTradePrice = s.circuitBreakers[marketId].lastPrice;
         circuitBreakerTripped = s.circuitBreakers[marketId].isTripped;
         
+        // Cache level mappings to avoid repeated SLOADs
+        mapping(uint256 => DiamondStorage.PriceLevel) storage bidLevels = s.bidLevels[marketId];
+        mapping(uint256 => DiamondStorage.PriceLevel) storage askLevels = s.askLevels[marketId];
+        
         // Calculate totals by iterating price levels
         uint256 price = _getBestPrice(s.bidTreeMeta[marketId], s.bidTreeNodes[marketId], false);
         while (price != 0) {
-            totalBidVolume += s.bidLevels[marketId][price].totalAmount;
-            totalBidOrders += s.bidLevels[marketId][price].orderCount;
+            // Cache level read to avoid repeated SLOADs
+            DiamondStorage.PriceLevel storage level = bidLevels[price];
+            totalBidVolume += level.totalAmount;
+            totalBidOrders += level.orderCount;
             price = _getNextLower(s.bidTreeNodes[marketId], price);
         }
         
         price = _getBestPrice(s.askTreeMeta[marketId], s.askTreeNodes[marketId], true);
         while (price != 0) {
-            totalAskVolume += s.askLevels[marketId][price].totalAmount;
-            totalAskOrders += s.askLevels[marketId][price].orderCount;
+            // Cache level read to avoid repeated SLOADs
+            DiamondStorage.PriceLevel storage level = askLevels[price];
+            totalAskVolume += level.totalAmount;
+            totalAskOrders += level.orderCount;
             price = _getNextHigher(s.askTreeNodes[marketId], price);
         }
     }
