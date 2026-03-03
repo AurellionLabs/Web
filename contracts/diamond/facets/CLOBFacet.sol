@@ -1206,14 +1206,17 @@ contract CLOBFacet is Initializable {
     }
 
     function _addPriceLevel(uint256[] storage prices, uint256 price) internal {
+        // Cache length to avoid repeated SLOADs in loop (~2000 gas saved)
+        uint256 len = prices.length;
+        
         // Check if price already exists
-        for (uint256 i = 0; i < prices.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             if (prices[i] == price) return;
         }
         // Add and sort (simple insertion for now)
         prices.push(price);
-        // Sort ascending
-        for (uint256 i = prices.length - 1; i > 0; i--) {
+        // Sort ascending - use cached len+1 since we just pushed
+        for (uint256 i = len; i > 0; i--) {
             if (prices[i] < prices[i - 1]) {
                 uint256 temp = prices[i];
                 prices[i] = prices[i - 1];
