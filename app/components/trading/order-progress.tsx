@@ -165,6 +165,7 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
   const mockOrder = order
     ? {
         ...order,
+        status: order.status as unknown as UnifiedOrderStatus,
         statusConfig: {
           label: order.status,
           color: '',
@@ -193,7 +194,7 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
       }
     : null;
 
-  const steps = useOrderProgressSteps(mockOrder as any);
+  const steps = useOrderProgressSteps(mockOrder);
 
   if (!order) {
     return (

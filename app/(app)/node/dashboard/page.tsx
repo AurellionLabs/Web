@@ -1685,7 +1685,7 @@ export default function NodeDashboardPage() {
                       </div>
                       <TrapButton
                         variant="gold"
-                        onClick={handleAddDocument as any}
+                        onClick={() => handleAddDocument({ preventDefault: () => {} } as React.FormEvent)}
                         disabled={isAddingDocument}
                         className="w-full"
                       >
