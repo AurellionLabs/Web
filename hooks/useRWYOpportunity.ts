@@ -12,7 +12,7 @@ import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_RPC_URL_84532,
 } from '../chain-constants';
-import { useWallet } from './useWallet';
+import { getProvider, getReadOnlyProvider, getSigner } from '../lib/provider';
 
 // RWY Staking is now part of the Diamond - use Diamond address
 const RWY_CONTRACT_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS;
@@ -21,7 +21,6 @@ const RWY_CONTRACT_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS;
  * Hook to fetch a single RWY opportunity with dynamic data
  */
 export function useRWYOpportunity(opportunityId: string | undefined) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [opportunity, setOpportunity] =
     useState<RWYOpportunityWithDynamicData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,11 +36,7 @@ export function useRWYOpportunity(opportunityId: string | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const opp = await repository.getOpportunityWithDynamicData(opportunityId);
 
@@ -54,7 +49,7 @@ export function useRWYOpportunity(opportunityId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [opportunityId, isConnected, walletRepository]);
+  }, [opportunityId]);
 
   useEffect(() => {
     fetchOpportunity();
@@ -75,7 +70,6 @@ export function useRWYStake(
   opportunityId: string | undefined,
   userAddress: Address | undefined,
 ) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [stake, setStake] = useState<RWYStake | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,11 +84,7 @@ export function useRWYStake(
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const userStake = await repository.getStake(opportunityId, userAddress);
 
@@ -105,7 +95,7 @@ export function useRWYStake(
     } finally {
       setLoading(false);
     }
-  }, [opportunityId, userAddress, isConnected, walletRepository]);
+  }, [opportunityId, userAddress]);
 
   useEffect(() => {
     fetchStake();
@@ -123,7 +113,6 @@ export function useRWYStake(
  * Hook to fetch all stakers for an opportunity
  */
 export function useRWYOpportunityStakers(opportunityId: string | undefined) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [stakers, setStakers] = useState<RWYStake[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,11 +127,7 @@ export function useRWYOpportunityStakers(opportunityId: string | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const oppStakers = await repository.getOpportunityStakers(opportunityId);
 
@@ -153,7 +138,7 @@ export function useRWYOpportunityStakers(opportunityId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [opportunityId, isConnected, walletRepository]);
+  }, [opportunityId]);
 
   useEffect(() => {
     fetchStakers();
@@ -171,7 +156,6 @@ export function useRWYOpportunityStakers(opportunityId: string | undefined) {
  * Hook to fetch operator statistics
  */
 export function useRWYOperatorStats(operatorAddress: Address | undefined) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [stats, setStats] = useState<RWYOperatorStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -186,11 +170,7 @@ export function useRWYOperatorStats(operatorAddress: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const operatorStats = await repository.getOperatorStats(operatorAddress);
 
@@ -203,7 +183,7 @@ export function useRWYOperatorStats(operatorAddress: Address | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [operatorAddress, isConnected, walletRepository]);
+  }, [operatorAddress]);
 
   useEffect(() => {
     fetchStats();
@@ -224,7 +204,6 @@ export function useRWYExpectedProfit(
   opportunityId: string | undefined,
   stakeAmount: BigNumberString | undefined,
 ) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [expectedProfit, setExpectedProfit] = useState<BigNumberString>('0');
   const [userShareBps, setUserShareBps] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -246,11 +225,7 @@ export function useRWYExpectedProfit(
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const result = await repository.calculateExpectedProfit(
         opportunityId,
@@ -267,7 +242,7 @@ export function useRWYExpectedProfit(
     } finally {
       setLoading(false);
     }
-  }, [opportunityId, stakeAmount, isConnected, walletRepository]);
+  }, [opportunityId, stakeAmount]);
 
   useEffect(() => {
     calculateProfit();
@@ -302,9 +277,8 @@ export function useIsApprovedOperator(operatorAddress: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      // Use JSON RPC provider directly - this is a read-only call, no wallet needed
-      const provider = new ethers.JsonRpcProvider(NEXT_PUBLIC_RPC_URL_84532);
-
+      // Use read-only provider for this read-only call
+      const provider = getReadOnlyProvider(NEXT_PUBLIC_RPC_URL_84532);
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const approved = await repository.isApprovedOperator(operatorAddress);
 
@@ -350,7 +324,6 @@ export function useTokenApproval(
   ownerAddress: Address | undefined,
   requiredAmount?: BigNumberString,
 ) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [allowance, setAllowance] = useState<bigint>(0n);
   const [balance, setBalance] = useState<bigint>(0n);
   const [isApproved, setIsApproved] = useState<boolean>(false);
@@ -371,8 +344,8 @@ export function useTokenApproval(
       setLoading(true);
       setError(null);
 
-      // Use JSON RPC provider for read-only calls
-      const provider = new ethers.JsonRpcProvider(NEXT_PUBLIC_RPC_URL_84532);
+      // Use read-only provider for balance checks
+      const provider = getReadOnlyProvider(NEXT_PUBLIC_RPC_URL_84532);
       const tokenContract = new ethers.Contract(
         tokenAddress,
         ERC20_ABI,
@@ -409,16 +382,12 @@ export function useTokenApproval(
         throw new Error('Token or owner address not set');
       }
 
-      if (!isConnected || !walletRepository) {
-        throw new Error('No wallet detected');
-      }
-
       try {
         setApproving(true);
         setError(null);
 
-        const provider = await walletRepository.getProvider();
-        const signer = await provider.getSigner();
+        // Use the provider utility to get signer
+        const signer = await getSigner();
         const tokenContract = new ethers.Contract(
           tokenAddress,
           ERC20_ABI,
@@ -444,14 +413,7 @@ export function useTokenApproval(
         setApproving(false);
       }
     },
-    [
-      tokenAddress,
-      ownerAddress,
-      spenderAddress,
-      checkAllowance,
-      isConnected,
-      walletRepository,
-    ],
+    [tokenAddress, ownerAddress, spenderAddress, checkAllowance],
   );
 
   useEffect(() => {

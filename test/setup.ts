@@ -60,19 +60,3 @@ afterAll(() => {
 
 // Increase timeout for async tests
 vi.setConfig({ testTimeout: 30000 });
-
-// Global mock for @privy-io/react-auth — provides safe defaults when
-// PrivyProvider is not mounted (e.g. hooks that call useWallet in unit tests).
-// Individual test files can override this with their own vi.mock.
-vi.mock('@privy-io/react-auth', () => ({
-  usePrivy: vi.fn(() => ({
-    authenticated: false,
-    ready: false,
-    login: vi.fn(),
-    logout: vi.fn(),
-  })),
-  useWallets: vi.fn(() => ({
-    wallets: [],
-    ready: false,
-  })),
-}));
