@@ -77,8 +77,8 @@ jobs:
           BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
-          ARB_RPC_URL: https://arb1.arbitrum.io/rpc
-          BASE_RPC_URL: https://mainnet.base.org
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
 
@@ -88,8 +88,8 @@ jobs:
           BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
-          ARB_RPC_URL: https://arb1.arbitrum.io/rpc
-          BASE_RPC_URL: https://mainnet.base.org
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: |
           CHANGES=$(bunx --bun hardhat run scripts/detect-facet-changes.ts --network ${{ github.event.inputs.network || 'baseSepolia' }})
@@ -167,8 +167,8 @@ jobs:
           SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
-          ARB_RPC_URL: https://arb1.arbitrum.io/rpc
-          BASE_RPC_URL: https://mainnet.base.org
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
@@ -188,8 +188,8 @@ jobs:
           BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
-          ARB_RPC_URL: https://arb1.arbitrum.io/rpc
-          BASE_RPC_URL: https://mainnet.base.org
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
         run: |
@@ -221,8 +221,8 @@ jobs:
           BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
-          ARB_RPC_URL: https://arb1.arbitrum.io/rpc
-          BASE_RPC_URL: https://mainnet.base.org
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
 
