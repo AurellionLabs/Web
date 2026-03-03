@@ -197,13 +197,14 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
     if (isInitialized || !isReady || !privy.ready || !privyWallets.ready)
       return;
     initializeRepository();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isReady,
     privy.ready,
     privyWallets.ready,
     isInitialized,
     privy.authenticated,
-  ]);
+  ]); // initializeRepository excluded: stable function, runs once on initialization conditions
 
   if (!privy.ready || !privyWallets.ready) return <LoadingScreen />;
 

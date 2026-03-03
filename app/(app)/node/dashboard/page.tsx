@@ -330,7 +330,8 @@ export default function NodeDashboardPage() {
 
       attemptSelection();
     }
-  }, [nodeIdFromUrl, selectedNodeAddress, selectNode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeIdFromUrl, selectedNodeAddress, selectNode]); // toast excluded: stable callback, including would cause infinite re-render
 
   // When returning to this page with an already-selected node, force a fresh load
   // so newly created offers/orders appear without requiring a hard browser reload.
@@ -576,7 +577,8 @@ export default function NodeDashboardPage() {
     if (assets.length > 0) {
       loadAssetAttributes(assets);
     }
-  }, [assets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets]); // loadAssetAttributes excluded: intentionally runs once when assets change, function reference is stable
 
   const handleAssetAttributeChange = (
     assetId: string,

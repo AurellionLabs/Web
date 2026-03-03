@@ -82,7 +82,8 @@ const AssetSelectionForm: React.FC<Props> = ({
       setSelectedAsset(null);
       onSelectedAssetChange?.(null);
     }
-  }, [selectedAssetId, classAssets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAssetId, classAssets]); // onSelectedAssetChange excluded: stable callback from parent, would cause infinite loop if included
 
   return (
     <div className="space-y-6">
