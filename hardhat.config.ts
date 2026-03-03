@@ -96,7 +96,6 @@ const config: HardhatUserConfig = {
     apiKey: {
       baseSepolia: process.env.BASESCAN_API_KEY || '',
       base: process.env.BASESCAN_API_KEY || '',
-      arbitrumOne: process.env.ARBISCAN_API_KEY || '',
     },
     customChains: [
       {
