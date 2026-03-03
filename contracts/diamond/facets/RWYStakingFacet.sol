@@ -311,7 +311,8 @@ contract RWYStakingFacet {
 
     function stake(
         bytes32 opportunityId,
-        uint256 amount
+        uint256 amount,
+        uint256 minStakeAmount  // Minimum stake amount user expects to have after this deposit
     ) external nonReentrant whenNotPaused opportunityExists(opportunityId) {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
         RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
@@ -320,6 +321,14 @@ contract RWYStakingFacet {
         if (block.timestamp >= opp.fundingDeadline) revert FundingDeadlinePassed();
         if (amount == 0) revert InvalidAmount();
         if (opp.stakedAmount + amount > opp.targetAmount) revert ExceedsTarget();
+
+        // Slippage protection: ensure user gets at least expected stake
+        uint256 newStakeAmount = rs.stakes[opportunityId][msg.sender].amount + amount;
+        if (minStakeAmount > 0 && newStakeAmount < minStakeAmount) revert InvalidAmount();
+
+        // Per-user cap: max 20% of target per user to prevent single point of failure
+        uint256 maxPerUser = opp.targetAmount / 5;  // 20%
+        if (newStakeAmount > maxPerUser) revert ExceedsTarget();
 
         // Transfer tokens from staker - supports both ERC20 (tokenId == 0) and ERC1155 (tokenId > 0)
         if (opp.inputTokenId == 0) {
@@ -351,7 +360,8 @@ contract RWYStakingFacet {
 
     function unstake(
         bytes32 opportunityId,
-        uint256 amount
+        uint256 amount,
+        uint256 minReceiveAmount  // Minimum tokens user expects to receive
     ) external nonReentrant opportunityExists(opportunityId) {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
         RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
@@ -362,6 +372,10 @@ contract RWYStakingFacet {
 
         RWYStorage.RWYStake storage userStake = rs.stakes[opportunityId][msg.sender];
         if (userStake.amount < amount) revert InsufficientStake();
+
+        // Slippage protection: ensure user receives at least expected amount
+        // This is primarily for ERC1155 where transfer might have minTFees
+        if (minReceiveAmount > 0 && amount < minReceiveAmount) revert InvalidAmount();
 
         userStake.amount -= amount;
         opp.stakedAmount -= amount;
@@ -423,19 +437,11 @@ contract RWYStakingFacet {
         userStake.claimed = true;
         userStake.amount = 0;
 
-        // Return staked tokens based on type
+        // Transfer based on token type - ERC20 if tokenId == 0, ERC1155 otherwise
         if (opp.inputTokenId == 0) {
-            // ERC20 emergency claim
             IERC20(opp.inputToken).safeTransfer(msg.sender, amount);
         } else {
-            // ERC1155 emergency claim (primary path — tokenized assets)
-            IERC1155(opp.inputToken).safeTransferFrom(
-                address(this),
-                msg.sender,
-                opp.inputTokenId,
-                amount,
-                ""
-            );
+            IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
         }
 
         emit CommodityUnstaked(opportunityId, msg.sender, amount);
@@ -761,6 +767,7 @@ contract RWYStakingFacet {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
         RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
 
+        // Guard against division by zero
         if (stakeAmount == 0) return (0, 0);
 
         uint256 totalAfterStake = opp.stakedAmount + stakeAmount;

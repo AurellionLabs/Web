@@ -145,18 +145,23 @@ contract CLOBAdminFacet is ReentrancyGuard {
         if (priceChangeThreshold == 0 || priceChangeThreshold > 5000) {
             revert InvalidConfiguration();  // Max 50% change
         }
-        
+
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        
+        DiamondStorage.CircuitBreaker storage existing = s.circuitBreakers[marketId];
+
+        // Only preserve existing lastPrice if already initialized (isEnabled was true)
+        // Otherwise initialize to 0 - first trade will set it
+        uint256 initialLastPrice = existing.isEnabled ? existing.lastPrice : 0;
+
         s.circuitBreakers[marketId] = DiamondStorage.CircuitBreaker({
-            lastPrice: s.circuitBreakers[marketId].lastPrice,
+            lastPrice: initialLastPrice,
             priceChangeThreshold: priceChangeThreshold,
             cooldownPeriod: cooldownPeriod,
-            tripTimestamp: s.circuitBreakers[marketId].tripTimestamp,
-            isTripped: s.circuitBreakers[marketId].isTripped,
+            tripTimestamp: 0,  // Reset trip state when reconfiguring
+            isTripped: false,  // Reset trip state when reconfiguring
             isEnabled: isEnabled
         });
-        
+
         emit CircuitBreakerConfigured(marketId, priceChangeThreshold, cooldownPeriod, isEnabled);
     }
     
