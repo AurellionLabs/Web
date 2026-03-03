@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ethers } from 'ethers';
 import {
   RWYOpportunity,
   RWYOpportunityWithDynamicData,
@@ -7,7 +6,7 @@ import {
   Address,
 } from '../domain/rwy';
 import { RWYRepository } from '../infrastructure/repositories/rwy-repository';
-import { useWallet } from './useWallet';
+import { getProvider } from '../lib/provider';
 
 // RWY Staking is now part of the Diamond - use Diamond address
 const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
@@ -16,7 +15,6 @@ const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
  * Hook to fetch and manage RWY opportunities
  */
 export function useRWYOpportunities() {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [opportunities, setOpportunities] = useState<
     RWYOpportunityWithDynamicData[]
   >([]);
@@ -34,11 +32,8 @@ export function useRWYOpportunities() {
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      // Use the provider utility
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const opps = await repository.getAllOpportunitiesWithDynamicData();
 
@@ -51,7 +46,7 @@ export function useRWYOpportunities() {
     } finally {
       setLoading(false);
     }
-  }, [isConnected, walletRepository]);
+  }, []);
 
   useEffect(() => {
     fetchOpportunities();
@@ -90,7 +85,6 @@ export function useActiveRWYOpportunities() {
  * Hook to fetch opportunities by operator
  */
 export function useOperatorRWYOpportunities(operator: Address | undefined) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [opportunities, setOpportunities] = useState<
     RWYOpportunityWithDynamicData[]
   >([]);
@@ -107,11 +101,7 @@ export function useOperatorRWYOpportunities(operator: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const allOpps = await repository.getAllOpportunitiesWithDynamicData();
       const operatorOpps = allOpps.filter(
@@ -127,7 +117,7 @@ export function useOperatorRWYOpportunities(operator: Address | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [operator, isConnected, walletRepository]);
+  }, [operator]);
 
   useEffect(() => {
     fetchOpportunities();
@@ -145,7 +135,6 @@ export function useOperatorRWYOpportunities(operator: Address | undefined) {
  * Hook to fetch opportunities a user has staked in
  */
 export function useUserRWYStakes(userAddress: Address | undefined) {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [opportunities, setOpportunities] = useState<
     RWYOpportunityWithDynamicData[]
   >([]);
@@ -162,11 +151,7 @@ export function useUserRWYStakes(userAddress: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider =
-        isConnected && walletRepository
-          ? await walletRepository.getProvider()
-          : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const stakerOpps = await repository.getStakerOpportunities(userAddress);
 
@@ -184,7 +169,7 @@ export function useUserRWYStakes(userAddress: Address | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [userAddress, isConnected, walletRepository]);
+  }, [userAddress]);
 
   useEffect(() => {
     fetchStakes();

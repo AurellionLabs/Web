@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
-import type { ContractTransactionReceipt } from 'ethers';
+import { ethers } from 'ethers';
+import { ContractTransactionReceipt } from 'ethers';
 import {
   RWYOpportunityCreationData,
   Address,
   BigNumberString,
 } from '../domain/rwy';
 import { RWYService } from '../infrastructure/services/rwy-service';
-import { useWallet } from './useWallet';
+import { getSigner } from '../lib/provider';
 
 // RWY Staking is now part of the Diamond - use Diamond address
 const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
@@ -21,7 +22,6 @@ interface ActionState {
  * Hook for RWY staking actions
  */
 export function useRWYStakeActions() {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [state, setState] = useState<ActionState>({
     loading: false,
     error: null,
@@ -29,17 +29,16 @@ export function useRWYStakeActions() {
   });
 
   const getService = useCallback(async () => {
-    if (!isConnected || !walletRepository) {
-      throw new Error('No wallet connected');
-    }
-    const provider = await walletRepository.getProvider();
-    const signer = await provider.getSigner();
+    const signer = await getSigner();
+    return new RWYService(RWY_CONTRACT_ADDRESS, signer);
+  }, []);
+
+  // getAddress returns the connected wallet address cast to Address type
+  const getAddress = useCallback(async (): Promise<Address> => {
+    const signer = await getSigner();
     const address = await signer.getAddress();
-    return {
-      service: new RWYService(RWY_CONTRACT_ADDRESS, signer),
-      address: address as Address,
-    };
-  }, [isConnected, walletRepository]);
+    return address as Address;
+  }, []);
 
   const stake = useCallback(
     async (
@@ -49,7 +48,8 @@ export function useRWYStakeActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.stake(opportunityId, amount, address);
 
@@ -67,7 +67,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const unstake = useCallback(
@@ -78,7 +78,8 @@ export function useRWYStakeActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.unstake(opportunityId, amount, address);
 
@@ -96,7 +97,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const claimProfits = useCallback(
@@ -106,7 +107,8 @@ export function useRWYStakeActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.claimProfits(opportunityId, address);
 
@@ -124,7 +126,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const emergencyClaim = useCallback(
@@ -134,7 +136,8 @@ export function useRWYStakeActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.emergencyClaim(opportunityId, address);
 
@@ -152,7 +155,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const approveTokens = useCallback(
@@ -162,7 +165,8 @@ export function useRWYStakeActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.approveTokensForStaking(
           tokenAddress,
@@ -183,13 +187,14 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const checkApproval = useCallback(
     async (tokenAddress: Address): Promise<boolean> => {
       try {
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         return await service.isApprovedForStaking(tokenAddress, address);
       } catch (err) {
@@ -197,7 +202,7 @@ export function useRWYStakeActions() {
         return false;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   return {
@@ -215,7 +220,6 @@ export function useRWYStakeActions() {
  * Hook for RWY operator actions
  */
 export function useRWYOperatorActions() {
-  const { isConnected, repository: walletRepository } = useWallet();
   const [state, setState] = useState<ActionState>({
     loading: false,
     error: null,
@@ -223,17 +227,16 @@ export function useRWYOperatorActions() {
   });
 
   const getService = useCallback(async () => {
-    if (!isConnected || !walletRepository) {
-      throw new Error('No wallet connected');
-    }
-    const provider = await walletRepository.getProvider();
-    const signer = await provider.getSigner();
+    const signer = await getSigner();
+    return new RWYService(RWY_CONTRACT_ADDRESS, signer);
+  }, []);
+
+  // getAddress returns the connected wallet address cast to Address type
+  const getAddress = useCallback(async (): Promise<Address> => {
+    const signer = await getSigner();
     const address = await signer.getAddress();
-    return {
-      service: new RWYService(RWY_CONTRACT_ADDRESS, signer),
-      address: address as Address,
-    };
-  }, [isConnected, walletRepository]);
+    return address as Address;
+  }, []);
 
   const createOpportunity = useCallback(
     async (
@@ -242,7 +245,8 @@ export function useRWYOperatorActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const result = await service.createOpportunity(data, address);
 
@@ -260,7 +264,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const startDelivery = useCallback(
@@ -271,7 +275,8 @@ export function useRWYOperatorActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.startDelivery(
           opportunityId,
@@ -293,7 +298,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const confirmDelivery = useCallback(
@@ -304,7 +309,8 @@ export function useRWYOperatorActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.confirmDelivery(
           opportunityId,
@@ -326,7 +332,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const completeProcessing = useCallback(
@@ -338,7 +344,8 @@ export function useRWYOperatorActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.completeProcessing(
           opportunityId,
@@ -361,7 +368,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const cancelOpportunity = useCallback(
@@ -372,7 +379,8 @@ export function useRWYOperatorActions() {
       try {
         setState({ loading: true, error: null, txHash: null });
 
-        const { service, address } = await getService();
+        const service = await getService();
+        const address = await getAddress();
 
         const receipt = await service.cancelOpportunity(
           opportunityId,
@@ -394,7 +402,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   return {
