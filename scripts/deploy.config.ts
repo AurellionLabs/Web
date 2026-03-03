@@ -442,6 +442,9 @@ export const CONTRACTS: Record<string, ContractConfig> = {
           contract.runner,
         );
 
+        // Wait for nonce state to settle before diamondCut (prevents nonce race on fast networks)
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
         // Execute diamond cut
         console.log('   Executing diamondCut transaction...');
         const tx = await diamondCut.diamondCut(
