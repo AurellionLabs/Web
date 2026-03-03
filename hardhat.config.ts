@@ -80,11 +80,23 @@ const config: HardhatUserConfig = {
       gas: 'auto',
       gasPrice: 'auto',
     },
+    arbitrumOne: {
+      url: process.env.ARB_RPC_URL || 'https://arb1.arbitrum.io/rpc',
+      accounts: process.env.PROD_PRIVATE_KEY
+        ? [process.env.PROD_PRIVATE_KEY]
+        : process.env.PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY]
+          : [],
+      chainId: 42161,
+      gas: 'auto',
+      gasPrice: 'auto',
+    },
   },
   etherscan: {
     apiKey: {
       baseSepolia: process.env.BASESCAN_API_KEY || '',
       base: process.env.BASESCAN_API_KEY || '',
+      arbitrumOne: process.env.ARBISCAN_API_KEY || '',
     },
     customChains: [
       {
