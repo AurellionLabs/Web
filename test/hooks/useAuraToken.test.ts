@@ -48,6 +48,20 @@ vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_AURA_TOKEN_ADDRESS: '0xAura000000000000000000000000000000000001',
 }));
 
+// Mock @/lib/utils so formatErc20Balance returns a predictable string.
+// The hook was refactored (PR #93) to use formatErc20Balance instead of formatUnits directly.
+// This mock prevents the string→bigint type mismatch inside the utility's formatUnits call.
+vi.mock('@/lib/utils', () => ({
+  formatErc20Balance: vi.fn(
+    (balance: bigint | string, _decimals: number | bigint) => {
+      const raw = typeof balance === 'bigint' ? balance : BigInt(balance);
+      const whole = raw / 10n ** 18n;
+      return whole.toString();
+    },
+  ),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+}));
+
 // Mock the entire ethers module. We only need BrowserProvider, Contract, and
 // ethers.formatUnits (used for balance display).
 vi.mock('ethers', () => {

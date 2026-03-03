@@ -50,10 +50,11 @@ jobs:
         run: bun scripts/validate-abis.ts
 
       - name: Run Vitest tests
-        # Use node directly so NODE_OPTIONS propagates reliably to all forked workers.
-        # bunx forks via bun runtime which doesn't inherit NODE_OPTIONS the same way.
-        # 88 test files peaked at 4.5GB per fork without this guard.
-        run: node node_modules/.bin/vitest run
+        # node + --no-file-parallelism: runs files sequentially in one worker process,
+        # avoiding the OOM caused by parallel forks accumulating jsdom/React module registries.
+        # NODE_OPTIONS=6144 gives the worker enough heap for the full sequential run.
+        # (88 files in parallel forks peaked at 4.5 GB/fork and crashed on this runner.)
+        run: node node_modules/.bin/vitest run --no-file-parallelism
         env:
           NODE_OPTIONS: --max-old-space-size=6144
 
