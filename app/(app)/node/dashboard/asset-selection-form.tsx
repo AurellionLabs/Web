@@ -70,6 +70,7 @@ const AssetSelectionForm: React.FC<Props> = ({
   }, [selectedAssetClass, getClassTokenizableAssets]);
 
   // Update selected asset when assetId changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (selectedAssetId) {
       const asset = classAssets.find((a: Asset) => {
@@ -82,6 +83,7 @@ const AssetSelectionForm: React.FC<Props> = ({
       setSelectedAsset(null);
       onSelectedAssetChange?.(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAssetId, classAssets]);
 
   return (

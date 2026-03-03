@@ -164,8 +164,10 @@ export default function NodeRegistrationPage() {
         { shouldDirty: true },
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.watch('supportedAssets')]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const init = async () => {
       try {

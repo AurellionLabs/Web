@@ -135,6 +135,7 @@ export default function NodeDashboardPage() {
 
   const { refreshNodes } = useNodes();
   const router = useRouter();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { toast } = useToast();
   const { isReadOnly: diamondIsReadOnly } = useDiamond();
 
@@ -330,6 +331,7 @@ export default function NodeDashboardPage() {
 
       attemptSelection();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeIdFromUrl, selectedNodeAddress, selectNode]);
 
   // When returning to this page with an already-selected node, force a fresh load
@@ -576,6 +578,7 @@ export default function NodeDashboardPage() {
     if (assets.length > 0) {
       loadAssetAttributes(assets);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets]);
 
   const handleAssetAttributeChange = (

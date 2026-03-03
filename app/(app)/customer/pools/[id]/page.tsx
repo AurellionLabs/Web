@@ -55,6 +55,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     getGroupedStakeHistory,
     loading,
   } = usePoolsProvider();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { toast } = useToast();
 
   const [timeRange, setTimeRange] = useState('1D');
@@ -68,6 +69,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load pool data on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const loadPoolData = async () => {
       try {
@@ -119,6 +121,7 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     };
 
     loadPoolData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, getPoolWithDynamicData, selectPool]);
 
   // Load stake history

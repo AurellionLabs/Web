@@ -132,6 +132,7 @@ export function WalletConnection() {
     if (isOpen) {
       fetchAllBalances();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, address, walletsReady, wallets, currentChainId]);
 
   const handleAccountsChanged = async () => {

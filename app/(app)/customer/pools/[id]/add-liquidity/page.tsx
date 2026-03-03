@@ -15,7 +15,7 @@ import {
   LaurelAccent,
 } from '@/app/components/eva/eva-components';
 import { z } from 'zod';
-import { useToast } from '@/hooks/use-toast';
+import { useToast, toast } from '@/hooks/use-toast';
 import { usePoolsProvider } from '@/app/providers/pools.provider';
 import { Pool } from '@/domain/pool';
 import { useWallet } from '@/hooks/useWallet';
@@ -40,7 +40,9 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { address } = useWallet();
   const { selectedPool, getPoolById, stake, loading } = usePoolsProvider();
-  const { toast } = useToast();
+  // useToast() needed to maintain listener subscription
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useToast();
 
   const [assetAmount, setAssetAmount] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');

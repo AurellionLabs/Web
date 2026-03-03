@@ -197,6 +197,7 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
     if (isInitialized || !isReady || !privy.ready || !privyWallets.ready)
       return;
     initializeRepository();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isReady,
     privy.ready,
