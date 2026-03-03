@@ -12,6 +12,7 @@ import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_RPC_URL_84532,
 } from '../chain-constants';
+import { getProvider, getReadOnlyProvider, getSigner } from '../lib/provider';
 
 // RWY Staking is now part of the Diamond - use Diamond address
 const RWY_CONTRACT_ADDRESS = NEXT_PUBLIC_DIAMOND_ADDRESS;
@@ -35,10 +36,7 @@ export function useRWYOpportunity(opportunityId: string | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const opp = await repository.getOpportunityWithDynamicData(opportunityId);
 
@@ -86,10 +84,7 @@ export function useRWYStake(
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const userStake = await repository.getStake(opportunityId, userAddress);
 
@@ -132,10 +127,7 @@ export function useRWYOpportunityStakers(opportunityId: string | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const oppStakers = await repository.getOpportunityStakers(opportunityId);
 
@@ -178,10 +170,7 @@ export function useRWYOperatorStats(operatorAddress: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const operatorStats = await repository.getOperatorStats(operatorAddress);
 
@@ -236,10 +225,7 @@ export function useRWYExpectedProfit(
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const result = await repository.calculateExpectedProfit(
         opportunityId,
@@ -291,9 +277,8 @@ export function useIsApprovedOperator(operatorAddress: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      // Use JSON RPC provider directly - this is a read-only call, no wallet needed
-      const provider = new ethers.JsonRpcProvider(NEXT_PUBLIC_RPC_URL_84532);
-
+      // Use read-only provider for this read-only call
+      const provider = getReadOnlyProvider(NEXT_PUBLIC_RPC_URL_84532);
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const approved = await repository.isApprovedOperator(operatorAddress);
 
@@ -359,8 +344,8 @@ export function useTokenApproval(
       setLoading(true);
       setError(null);
 
-      // Use JSON RPC provider for read-only calls
-      const provider = new ethers.JsonRpcProvider(NEXT_PUBLIC_RPC_URL_84532);
+      // Use read-only provider for balance checks
+      const provider = getReadOnlyProvider(NEXT_PUBLIC_RPC_URL_84532);
       const tokenContract = new ethers.Contract(
         tokenAddress,
         ERC20_ABI,
@@ -397,16 +382,12 @@ export function useTokenApproval(
         throw new Error('Token or owner address not set');
       }
 
-      if (!window.ethereum) {
-        throw new Error('No wallet detected');
-      }
-
       try {
         setApproving(true);
         setError(null);
 
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const signer = await provider.getSigner();
+        // Use the provider utility to get signer
+        const signer = await getSigner();
         const tokenContract = new ethers.Contract(
           tokenAddress,
           ERC20_ABI,

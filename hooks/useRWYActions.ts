@@ -7,6 +7,7 @@ import {
   BigNumberString,
 } from '../domain/rwy';
 import { RWYService } from '../infrastructure/services/rwy-service';
+import { getSigner } from '../lib/provider';
 
 // RWY Staking is now part of the Diamond - use Diamond address
 const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
@@ -28,12 +29,15 @@ export function useRWYStakeActions() {
   });
 
   const getService = useCallback(async () => {
-    if (!window.ethereum) {
-      throw new Error('No wallet connected');
-    }
-    const provider = new ethers.BrowserProvider(window.ethereum as any);
-    const signer = await provider.getSigner();
+    const signer = await getSigner();
     return new RWYService(RWY_CONTRACT_ADDRESS, signer);
+  }, []);
+
+  // getAddress returns the connected wallet address cast to Address type
+  const getAddress = useCallback(async (): Promise<Address> => {
+    const signer = await getSigner();
+    const address = await signer.getAddress();
+    return address as Address;
   }, []);
 
   const stake = useCallback(
@@ -45,16 +49,9 @@ export function useRWYStakeActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
-        const receipt = await service.stake(
-          opportunityId,
-          amount,
-          address as Address,
-        );
+        const receipt = await service.stake(opportunityId, amount, address);
 
         setState({
           loading: false,
@@ -70,7 +67,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const unstake = useCallback(
@@ -82,16 +79,9 @@ export function useRWYStakeActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
-        const receipt = await service.unstake(
-          opportunityId,
-          amount,
-          address as Address,
-        );
+        const receipt = await service.unstake(opportunityId, amount, address);
 
         setState({
           loading: false,
@@ -107,7 +97,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const claimProfits = useCallback(
@@ -118,15 +108,9 @@ export function useRWYStakeActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
-        const receipt = await service.claimProfits(
-          opportunityId,
-          address as Address,
-        );
+        const receipt = await service.claimProfits(opportunityId, address);
 
         setState({
           loading: false,
@@ -142,7 +126,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const emergencyClaim = useCallback(
@@ -153,15 +137,9 @@ export function useRWYStakeActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
-        const receipt = await service.emergencyClaim(
-          opportunityId,
-          address as Address,
-        );
+        const receipt = await service.emergencyClaim(opportunityId, address);
 
         setState({
           loading: false,
@@ -177,7 +155,7 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const approveTokens = useCallback(
@@ -188,14 +166,11 @@ export function useRWYStakeActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
         const receipt = await service.approveTokensForStaking(
           tokenAddress,
-          address as Address,
+          address,
         );
 
         setState({
@@ -212,28 +187,22 @@ export function useRWYStakeActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const checkApproval = useCallback(
     async (tokenAddress: Address): Promise<boolean> => {
       try {
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
-        return await service.isApprovedForStaking(
-          tokenAddress,
-          address as Address,
-        );
+        return await service.isApprovedForStaking(tokenAddress, address);
       } catch (err) {
         console.error('Error checking approval:', err);
         return false;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   return {
@@ -258,12 +227,15 @@ export function useRWYOperatorActions() {
   });
 
   const getService = useCallback(async () => {
-    if (!window.ethereum) {
-      throw new Error('No wallet connected');
-    }
-    const provider = new ethers.BrowserProvider(window.ethereum as any);
-    const signer = await provider.getSigner();
+    const signer = await getSigner();
     return new RWYService(RWY_CONTRACT_ADDRESS, signer);
+  }, []);
+
+  // getAddress returns the connected wallet address cast to Address type
+  const getAddress = useCallback(async (): Promise<Address> => {
+    const signer = await getSigner();
+    const address = await signer.getAddress();
+    return address as Address;
   }, []);
 
   const createOpportunity = useCallback(
@@ -274,15 +246,9 @@ export function useRWYOperatorActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
-        const result = await service.createOpportunity(
-          data,
-          address as Address,
-        );
+        const result = await service.createOpportunity(data, address);
 
         setState({
           loading: false,
@@ -298,7 +264,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const startDelivery = useCallback(
@@ -310,15 +276,12 @@ export function useRWYOperatorActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
         const receipt = await service.startDelivery(
           opportunityId,
           journeyId,
-          address as Address,
+          address,
         );
 
         setState({
@@ -335,7 +298,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const confirmDelivery = useCallback(
@@ -347,15 +310,12 @@ export function useRWYOperatorActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
         const receipt = await service.confirmDelivery(
           opportunityId,
           deliveredAmount,
-          address as Address,
+          address,
         );
 
         setState({
@@ -372,7 +332,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const completeProcessing = useCallback(
@@ -385,16 +345,13 @@ export function useRWYOperatorActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
         const receipt = await service.completeProcessing(
           opportunityId,
           outputTokenId,
           actualOutputAmount,
-          address as Address,
+          address,
         );
 
         setState({
@@ -411,7 +368,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   const cancelOpportunity = useCallback(
@@ -423,15 +380,12 @@ export function useRWYOperatorActions() {
         setState({ loading: true, error: null, txHash: null });
 
         const service = await getService();
-        const signer = await new ethers.BrowserProvider(
-          window.ethereum as any,
-        ).getSigner();
-        const address = await signer.getAddress();
+        const address = await getAddress();
 
         const receipt = await service.cancelOpportunity(
           opportunityId,
           reason,
-          address as Address,
+          address,
         );
 
         setState({
@@ -448,7 +402,7 @@ export function useRWYOperatorActions() {
         throw err;
       }
     },
-    [getService],
+    [getService, getAddress],
   );
 
   return {

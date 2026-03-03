@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ethers } from 'ethers';
 import {
   RWYOpportunity,
   RWYOpportunityWithDynamicData,
@@ -7,6 +6,7 @@ import {
   Address,
 } from '../domain/rwy';
 import { RWYRepository } from '../infrastructure/repositories/rwy-repository';
+import { getProvider } from '../lib/provider';
 
 // RWY Staking is now part of the Diamond - use Diamond address
 const RWY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS || '';
@@ -32,11 +32,8 @@ export function useRWYOpportunities() {
       setLoading(true);
       setError(null);
 
-      // Use window.ethereum or a default provider
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      // Use the provider utility
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const opps = await repository.getAllOpportunitiesWithDynamicData();
 
@@ -104,10 +101,7 @@ export function useOperatorRWYOpportunities(operator: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const allOpps = await repository.getAllOpportunitiesWithDynamicData();
       const operatorOpps = allOpps.filter(
@@ -157,10 +151,7 @@ export function useUserRWYStakes(userAddress: Address | undefined) {
       setLoading(true);
       setError(null);
 
-      const provider = window.ethereum
-        ? new ethers.BrowserProvider(window.ethereum as any)
-        : new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-
+      const provider = await getProvider();
       const repository = new RWYRepository(RWY_CONTRACT_ADDRESS, provider);
       const stakerOpps = await repository.getStakerOpportunities(userAddress);
 
