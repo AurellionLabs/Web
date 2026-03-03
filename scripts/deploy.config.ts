@@ -493,9 +493,10 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
   full: {
     name: 'Full Deployment',
     description:
-      'Deploy all core contracts (Aura, AuSys, AurumNodeManager, AuStake, AuraAsset, CLOB)',
+      'Deploy all core contracts (AuSys, AurumNodeManager, AuStake, AuraAsset, CLOB)',
     contracts: [
-      'Aura',
+      // Note: Aura excluded - only exists on Base Sepolia/Testnet
+      // Production (Arbitrum One) uses USDC as quote token
       'AuSys',
       'AurumNodeManager',
       'AuStake',
