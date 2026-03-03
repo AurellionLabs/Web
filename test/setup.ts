@@ -76,3 +76,19 @@ vi.mock('@privy-io/react-auth', () => ({
     ready: false,
   })),
 }));
+
+// Global mock for e2e-auth.provider — this module extends ethers.AbstractSigner
+// at import time, which fails in unit tests when ethers is mocked without AbstractSigner.
+// useWallet.ts imports useE2EAuth from this module, so every test that uses useWallet
+// would crash without this guard. Individual E2E test files can override as needed.
+vi.mock('@/app/providers/e2e-auth.provider', () => ({
+  E2EAuthProvider: ({ children }: { children: unknown }) => children,
+  useE2EAuth: vi.fn(() => ({
+    address: null,
+    isConnected: false,
+    isReady: false,
+    eip1193: null,
+    provider: null,
+    signer: null,
+  })),
+}));
