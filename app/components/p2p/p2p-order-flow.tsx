@@ -260,7 +260,7 @@ export function P2POrderFlow({
   }, [loadSignatures]);
 
   // Poll signature state while waiting, so the UI updates when the other
-  // party signs without requiring a manual reload.
+  // party signs without requiring a manual reload. Only poll when tab is visible.
   useEffect(() => {
     // Only poll when we're in a waiting state and the order isn't settled
     const needsPolling =
@@ -273,11 +273,31 @@ export function P2POrderFlow({
 
     if (!needsPolling) return;
 
-    const interval = setInterval(() => {
-      loadSignatures(true);
-    }, 5000);
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    return () => clearInterval(interval);
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        loadSignatures(true);
+      }
+    };
+
+    // Initial tick
+    tick();
+
+    intervalId = setInterval(tick, 5000);
+
+    // Also trigger immediately when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadSignatures(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [
     waitingForDriver,
     buyerSigned,

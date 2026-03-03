@@ -232,15 +232,35 @@ export const UserOrders: FC<UserOrdersProps> = ({
     fetchOrders();
   }, [fetchOrders]);
 
-  // Auto-refresh
+  // Auto-refresh - only poll when tab is visible to save RPC calls
   useEffect(() => {
     if (refreshInterval <= 0) return;
 
-    const interval = setInterval(() => {
-      fetchOrders();
-    }, refreshInterval);
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    return () => clearInterval(interval);
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrders();
+      }
+    };
+
+    // Initial tick
+    tick();
+
+    intervalId = setInterval(tick, refreshInterval);
+
+    // Also trigger immediately when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrders();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchOrders, refreshInterval]);
 
   // Handle manual refresh
