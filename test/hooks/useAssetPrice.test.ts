@@ -316,13 +316,13 @@ describe('useAssetPrices', () => {
       const tokenIds: string[] = [];
       const { result } = renderHook(() => useAssetPrices(tokenIds));
 
-      // Should set isLoading false immediately for empty array
-      expect(result.current.isLoading).toBe(true);
-
       await act(async () => {
         await new Promise((r) => setTimeout(r, 100));
       });
 
+      // React 18 flushes effects synchronously inside renderHook/act, so the early-return
+      // path runs immediately and isLoading is false by the time we assert.
+      expect(result.current.isLoading).toBe(false);
       expect(result.current.prices.size).toBe(0);
       expect(mocks.getOrderBook).not.toHaveBeenCalled();
     });

@@ -200,12 +200,19 @@ export function useAssetPrices(
           };
         }),
       );
+      let firstError: string | null = null;
       for (const result of results) {
-        if (result.status === 'fulfilled')
+        if (result.status === 'fulfilled') {
           newPrices.set(result.value.tokenId, result.value.priceData);
+        } else if (!firstError) {
+          firstError =
+            result.reason instanceof Error
+              ? result.reason.message
+              : 'Failed to fetch prices';
+        }
       }
       setPrices(newPrices);
-      setError(null);
+      setError(firstError);
     } catch (err) {
       console.error('[useAssetPrices] Failed to fetch prices:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch prices');
