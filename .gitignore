@@ -47,3 +47,5 @@ Thumbs.db
 
 # Ralphy
 ralphy/tsconfig.tsbuildinfo
+.claude/
+memory/

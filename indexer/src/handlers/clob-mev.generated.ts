@@ -1,5 +1,5 @@
 // Auto-generated handler for clob-mev domain
-// Generated at: 2026-03-02T06:49:40.889Z
+// Generated at: 2026-03-03T07:50:03.655Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
@@ -47,44 +47,6 @@ ponder.on('Diamond:OrderCommitted', async ({ event, context }) => {
  * Hash: 0x73609089
  */
 ponder.on('Diamond:OrderRevealed', async ({ event, context }) => {
-  const { commitmentId, orderId, maker } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondOrderRevealedEvents).values({
-    id: id,
-    commitment_id: commitmentId,
-    order_id: orderId,
-    maker: maker,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-// ClobDiamond handlers — same logic, CLOB V2 Diamond address
-ponder.on('ClobDiamond:OrderCommitted', async ({ event, context }) => {
-  const { commitmentId, committer, commitBlock } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondOrderCommittedEvents).values({
-    id: id,
-    commitment_id: commitmentId,
-    committer: committer,
-    commit_block: commitBlock,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle OrderRevealed event from CLOBMEVFacet
- * Signature: OrderRevealed(bytes32,bytes32,address)
- * Hash: 0x73609089
- */
-ponder.on('ClobDiamond:OrderRevealed', async ({ event, context }) => {
   const { commitmentId, orderId, maker } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 

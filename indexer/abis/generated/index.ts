@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-03-02T06:49:40.885Z
+// Generated at: 2026-03-03T07:50:03.652Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -3021,6 +3021,68 @@ export const DiamondABI = [
     inputs: [
       {
         indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'TokenDestinationPending',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'destination',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'nodeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'burned',
+        type: 'bool',
+      },
+    ],
+    name: 'TokenDestinationSelected',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
         internalType: 'address',
         name: 'account',
         type: 'address',
@@ -5372,6 +5434,11 @@ export const DiamondABI = [
         name: '_tokenId',
         type: 'uint256',
       },
+      {
+        internalType: 'bytes',
+        name: '_signature',
+        type: 'bytes',
+      },
     ],
     name: 'bridgeTradeToLogistics',
     outputs: [],
@@ -5803,6 +5870,25 @@ export const DiamondABI = [
     name: 'updateJourneyStatus',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    name: 'usedSignatures',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -7428,8 +7514,41 @@ export const DiamondABI = [
         name: 'orderId',
         type: 'bytes32',
       },
+      {
+        internalType: 'uint256',
+        name: 'nonce',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'deadline',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes',
+        name: 'signature',
+        type: 'bytes',
+      },
     ],
     name: 'acceptP2POffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
+      },
+    ],
+    name: 'adminRecoverEscrow',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -7804,6 +7923,19 @@ export const DiamondABI = [
     type: 'function',
   },
   {
+    inputs: [],
+    name: 'domainSeparator',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -8097,6 +8229,25 @@ export const DiamondABI = [
     inputs: [
       {
         internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+    ],
+    name: 'getPendingTokenDestinations',
+    outputs: [
+      {
+        internalType: 'bytes32[]',
+        name: '',
+        type: 'bytes32[]',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
         name: 'user',
         type: 'address',
       },
@@ -8203,6 +8354,29 @@ export const DiamondABI = [
   {
     inputs: [
       {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bool',
+        name: 'burn',
+        type: 'bool',
+      },
+    ],
+    name: 'selectTokenDestination',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'address',
         name: 'admin',
         type: 'address',
@@ -8258,6 +8432,19 @@ export const DiamondABI = [
       },
     ],
     name: 'setPayToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'signer',
+        type: 'address',
+      },
+    ],
+    name: 'setTrustedP2PSigner',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -9481,6 +9668,16 @@ export const EventSignatureRegistry = {
     name: 'SellerPaid',
     facet: 'AuSysFacet',
     signature: 'SellerPaid(address,uint256)',
+  },
+  '0x390f5c7f': {
+    name: 'TokenDestinationPending',
+    facet: 'AuSysFacet',
+    signature: 'TokenDestinationPending(bytes32,address,uint256,uint256)',
+  },
+  '0xd695fe01': {
+    name: 'TokenDestinationSelected',
+    facet: 'AuSysFacet',
+    signature: 'TokenDestinationSelected(bytes32,address,bytes32,bool)',
   },
   '0x17307eab': {
     name: 'ApprovalForAll',

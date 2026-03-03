@@ -1,10 +1,52 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-02T06:49:40.884Z
+// Generated at: 2026-03-03T07:50:03.651Z
 
 export const BridgeFacetABI = [
   {
     inputs: [],
+    name: 'ECDSAInvalidSignature',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'length',
+        type: 'uint256',
+      },
+    ],
+    name: 'ECDSAInvalidSignatureLength',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 's',
+        type: 'bytes32',
+      },
+    ],
+    name: 'ECDSAInvalidSignatureS',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'InvalidInitialization',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidSeller',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidSignature',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidTrade',
     type: 'error',
   },
   {
@@ -26,6 +68,11 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'SafeERC20FailedOperation',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'SignatureAlreadyUsed',
     type: 'error',
   },
   {
@@ -390,6 +437,11 @@ export const BridgeFacetABI = [
         internalType: 'uint256',
         name: '_tokenId',
         type: 'uint256',
+      },
+      {
+        internalType: 'bytes',
+        name: '_signature',
+        type: 'bytes',
       },
     ],
     name: 'bridgeTradeToLogistics',
@@ -829,6 +881,25 @@ export const BridgeFacetABI = [
     name: 'updateJourneyStatus',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    name: 'usedSignatures',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
 ] as const;

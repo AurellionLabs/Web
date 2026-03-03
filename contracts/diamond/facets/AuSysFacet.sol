@@ -621,13 +621,17 @@ contract AuSysFacet is ReentrancyGuard {
 
     /**
      * @dev Remove an order from the open P2P offers list
+     * @notice Optimized: cache storage array to memory to avoid repeated SLOADs
      */
     function _removeFromOpenOffers(DiamondStorage.AppStorage storage s, bytes32 orderId) internal {
-        uint256 length = s.openP2POfferIds.length;
+        // Cache to memory to avoid repeated SLOADs in loop (gas optimization)
+        bytes32[] memory offerIds = s.openP2POfferIds;
+        uint256 length = offerIds.length;
+        
         for (uint256 i = 0; i < length; i++) {
-            if (s.openP2POfferIds[i] == orderId) {
-                // Swap with last element and pop
-                s.openP2POfferIds[i] = s.openP2POfferIds[length - 1];
+            if (offerIds[i] == orderId) {
+                // Swap with last element and pop (use cached memory value to avoid extra SLOAD)
+                s.openP2POfferIds[i] = offerIds[length - 1];
                 s.openP2POfferIds.pop();
                 break;
             }

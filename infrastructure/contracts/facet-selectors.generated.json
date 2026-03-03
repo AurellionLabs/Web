@@ -114,17 +114,20 @@
       "MAX_JOURNEYS_PER_ORDER": "0x03c02705",
       "MAX_NODES_PER_ORDER": "0x9d1f0255",
       "MAX_ORDERS": "0x93254b0e",
-      "acceptP2POffer": "0xe4189a40",
+      "acceptP2POffer": "0x8fa8808c",
+      "adminRecoverEscrow": "0x63c0f828",
       "assignDriverToJourney": "0x26ed9054",
       "cancelP2POffer": "0xf8919799",
       "correctOrderTokenQuantity": "0x60005477",
       "createAuSysOrder": "0xaefc63a0",
       "createJourney": "0x32807bbc",
       "createOrderJourney": "0xd975d24e",
+      "domainSeparator": "0xf698da25",
       "getAuSysOrder": "0xebbce33a",
       "getJourney": "0x3774f2c7",
       "getOpenP2POffers": "0xad4235e7",
       "getPayToken": "0xc57a0295",
+      "getPendingTokenDestinations": "0x85bd7135",
       "getUserP2POffers": "0xa448bbd3",
       "handOff": "0x9d99e418",
       "handOn": "0xbd58cea4",
@@ -133,10 +136,12 @@
       "onERC1155Received": "0xf23a6e61",
       "packageSign": "0x5306bb14",
       "revokeAuSysAdmin": "0xcd3e70cc",
+      "selectTokenDestination": "0x4ec3767d",
       "setAuSysAdmin": "0xcb22182f",
       "setDispatcher": "0x876244b6",
       "setDriver": "0x4a00787a",
-      "setPayToken": "0x6f96e99c"
+      "setPayToken": "0x6f96e99c",
+      "setTrustedP2PSigner": "0x2262c541"
     },
     "allSelectors": [
       "0x75b238fc",
@@ -146,17 +151,20 @@
       "0x03c02705",
       "0x9d1f0255",
       "0x93254b0e",
-      "0xe4189a40",
+      "0x8fa8808c",
+      "0x63c0f828",
       "0x26ed9054",
       "0xf8919799",
       "0x60005477",
       "0xaefc63a0",
       "0x32807bbc",
       "0xd975d24e",
+      "0xf698da25",
       "0xebbce33a",
       "0x3774f2c7",
       "0xad4235e7",
       "0xc57a0295",
+      "0x85bd7135",
       "0xa448bbd3",
       "0x9d99e418",
       "0xbd58cea4",
@@ -165,10 +173,12 @@
       "0xf23a6e61",
       "0x5306bb14",
       "0xcd3e70cc",
+      "0x4ec3767d",
       "0xcb22182f",
       "0x876244b6",
       "0x4a00787a",
-      "0x6f96e99c"
+      "0x6f96e99c",
+      "0x2262c541"
     ]
   },
   "OrderRouterFacet": {
@@ -281,6 +291,7 @@
   "CLOBLogisticsFacet": {
     "selectors": {
       "acceptDelivery": "0xb5a52af0",
+      "authorizedLogisticsCreators": "0x61f84912",
       "cancelLogisticsOrder": "0x9bdd851a",
       "confirmDelivery": "0xaf44d452",
       "confirmPickup": "0xdc839669",
@@ -295,12 +306,14 @@
       "getNodeInventory": "0x6c9a60de",
       "registerDriver": "0x16e21901",
       "setDriverAvailability": "0xb98c0cc1",
+      "setLogisticsCreatorAuthorization": "0x98ca1b29",
       "settleLogisticsOrder": "0x89b0a883",
       "updateDeliveryLocation": "0x019aa4f2",
       "updateDriverLocation": "0xd940cd87"
     },
     "allSelectors": [
       "0xb5a52af0",
+      "0x61f84912",
       "0x9bdd851a",
       "0xaf44d452",
       "0xdc839669",
@@ -315,6 +328,7 @@
       "0x6c9a60de",
       "0x16e21901",
       "0xb98c0cc1",
+      "0x98ca1b29",
       "0x89b0a883",
       "0x019aa4f2",
       "0xd940cd87"
@@ -394,7 +408,7 @@
     "selectors": {
       "BOUNTY_PERCENTAGE": "0x20caf786",
       "PROTOCOL_FEE_PERCENTAGE": "0xe4d7d6dc",
-      "bridgeTradeToLogistics": "0x6111ce0b",
+      "bridgeTradeToLogistics": "0x513c2146",
       "cancelUnifiedOrder": "0x5fc905ec",
       "createLogisticsOrder": "0xe6598313",
       "createUnifiedOrder": "0x6b578921",
@@ -413,12 +427,13 @@
       "settleOrder": "0x49085d8c",
       "updateAusysAddress": "0x7195a934",
       "updateClobAddress": "0xb7f846f9",
-      "updateJourneyStatus": "0x158ed47c"
+      "updateJourneyStatus": "0x158ed47c",
+      "usedSignatures": "0xf978fd61"
     },
     "allSelectors": [
       "0x20caf786",
       "0xe4d7d6dc",
-      "0x6111ce0b",
+      "0x513c2146",
       "0x5fc905ec",
       "0xe6598313",
       "0x6b578921",
@@ -437,7 +452,8 @@
       "0x49085d8c",
       "0x7195a934",
       "0xb7f846f9",
-      "0x158ed47c"
+      "0x158ed47c",
+      "0xf978fd61"
     ]
   },
   "RWYStakingFacet": {
