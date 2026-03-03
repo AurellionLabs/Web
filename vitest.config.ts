@@ -48,6 +48,16 @@ export default defineConfig({
     },
     testTimeout: 30000,
     setupFiles: ['test/setup.ts'],
+    // Run all test files in a single forked process to prevent CI OOM.
+    // The suite grew to 88 files; parallel forks peaked at ~4.5GB and crashed.
+    // singleFork shares one heap across all files — slower but reliable.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+        execArgv: ['--max-old-space-size=8192'],
+      },
+    },
   },
   resolve: {
     alias: {
