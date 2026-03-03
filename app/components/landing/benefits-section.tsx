@@ -88,10 +88,10 @@ const BenefitsSection = () => {
                 variants={itemVariants}
               >
                 <Icon className="h-10 w-10 mb-4 text-amber-400" />
-                <h3 className="text-2xl font-semibold mb-3 text-gray-100">
+                <h3 className="text-2xl font-semibold mb-3 text-white">
                   {benefit.role}
                 </h3>
-                <p className="text-gray-400 mb-6 text-lg">
+                <p className="text-white/80 mb-6 text-lg">
                   {benefit.description}
                 </p>
                 {/* Enhance button shadow for a subtle glow */}

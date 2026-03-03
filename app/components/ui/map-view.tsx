@@ -62,7 +62,7 @@ export function MapView({ lat, lng, addressName }: MapViewProps) {
       <div ref={mapRef} className="w-full h-[600px] rounded-lg" />
       <div className="absolute bottom-4 left-4 bg-black/75 text-white p-3 rounded-lg">
         <h3 className="font-semibold">{addressName}</h3>
-        <div className="text-sm text-gray-300">
+        <div className="text-sm text-white">
           <p>Lat: {lat}</p>
           <p>Lng: {lng}</p>
         </div>

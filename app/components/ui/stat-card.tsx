@@ -21,7 +21,7 @@ export function StatCard({
       {icon && <div>{icon}</div>}
       <div className="flex-1">
         <div className="flex justify-between mb-1">
-          <span className="text-gray-400">{title}</span>
+          <span className="text-white/80">{title}</span>
           {change && (
             <span className={isPositive ? 'text-green-500' : 'text-red-500'}>
               {change}
@@ -30,7 +30,7 @@ export function StatCard({
         </div>
         <div className="text-2xl font-semibold">{value}</div>
         {description && (
-          <div className="text-sm text-gray-400 mt-1">{description}</div>
+          <div className="text-sm text-white/80 mt-1">{description}</div>
         )}
       </div>
     </div>

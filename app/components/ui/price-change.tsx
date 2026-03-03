@@ -47,7 +47,7 @@ export function PriceChange({
     ? 'text-green-400'
     : isNegative
       ? 'text-red-400'
-      : 'text-neutral-400';
+      : 'text-white/80';
 
   const Icon = isPositive ? ArrowUp : isNegative ? ArrowDown : Minus;
   const displayValue =

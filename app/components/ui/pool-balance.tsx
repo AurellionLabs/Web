@@ -9,7 +9,7 @@ export function PoolBalance({
 }: PoolBalanceProps) {
   return (
     <div>
-      <h3 className="text-sm text-gray-400 mb-2">Completion Progress</h3>
+      <h3 className="text-sm text-white/80 mb-2">Completion Progress</h3>
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span>{poolName}</span>

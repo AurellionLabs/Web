@@ -99,7 +99,7 @@ const statusConfig: Record<
   neutral: {
     text: 'Neutral',
     bgColor: 'bg-gray-500/10',
-    textColor: 'text-gray-400',
+    textColor: 'text-white/80',
     dotColor: 'bg-gray-500',
     pulseColor: 'bg-gray-400',
   },
@@ -163,7 +163,7 @@ const statusConfig: Record<
   Neutral: {
     text: 'Neutral',
     bgColor: 'bg-gray-500/10',
-    textColor: 'text-gray-400',
+    textColor: 'text-white/80',
     dotColor: 'bg-gray-500',
     pulseColor: 'bg-gray-400',
   },

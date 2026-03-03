@@ -77,7 +77,7 @@ export function RoleSelector() {
           aria-expanded={open}
           aria-controls={`${comboboxId}-list`}
           disabled={isNavigating}
-          className="w-[140px] px-3 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-neutral-900/50 text-neutral-300 hover:bg-neutral-800 hover:text-white hover:border-neutral-600 transition-all duration-200 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-[140px] px-3 py-2 text-sm font-medium rounded-lg border border-neutral-700 bg-neutral-900/50 text-white hover:bg-neutral-800 hover:text-white hover:border-neutral-600 transition-all duration-200 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {currentUserRole
             ? roles.find((r) => r.value === currentUserRole)?.label
@@ -95,7 +95,7 @@ export function RoleSelector() {
             placeholder="Search role..."
             className="border-neutral-800"
           />
-          <CommandEmpty className="text-neutral-400 text-sm py-3">
+          <CommandEmpty className="text-white/80 text-sm py-3">
             No role found.
           </CommandEmpty>
           <CommandGroup>
@@ -104,7 +104,7 @@ export function RoleSelector() {
                 key={r.value}
                 value={r.value}
                 onSelect={handleRoleSelect}
-                className="text-neutral-300 hover:bg-neutral-800 hover:text-white aria-selected:bg-amber-500/10 aria-selected:text-amber-400"
+                className="text-white hover:bg-neutral-800 hover:text-white aria-selected:bg-amber-500/10 aria-selected:text-amber-400"
               >
                 <Check
                   className={cn(

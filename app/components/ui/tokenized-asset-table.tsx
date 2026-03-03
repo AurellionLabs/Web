@@ -27,7 +27,7 @@ export function TokenizedAssetTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-sm text-gray-400 border-b border-gray-800">
+            <tr className="text-sm text-white/80 border-b border-gray-800">
               <th className="h-12 px-4 text-left">Node</th>
               <th className="h-12 px-4 text-left">
                 Asset Name
@@ -93,7 +93,7 @@ export function TokenizedAssetTable({
                     <div className="font-medium">
                       {asset.nodeLocation.addressName}
                     </div>
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm text-white/80">
                       {asset.nodeAddress}
                     </div>
                   </div>
