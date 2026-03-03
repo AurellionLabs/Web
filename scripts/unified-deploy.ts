@@ -621,6 +621,9 @@ async function deployMode(
     const result = await deployContract(config, addresses, deployer.address);
     addresses[contractName] = result.address;
     deployedContracts[contractName] = result;
+
+    // Small delay between deployments to prevent nonce race conditions on fast networks (Arbitrum, etc.)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
   // Handle Diamond facet installation if Diamond was deployed
