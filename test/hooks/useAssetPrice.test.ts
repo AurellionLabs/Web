@@ -73,14 +73,18 @@ describe('useAssetPrice', () => {
       });
 
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.priceData).toEqual({
+      // Use closeTo for spread/spreadPercent — floating-point imprecision (1.1-1.0 = 0.10000000000000009)
+      expect(result.current.priceData).toMatchObject({
         price: 1.05,
         bestBid: 1.0,
         bestAsk: 1.1,
-        spread: 0.1,
-        spreadPercent: 9.523809523809524,
         lastUpdate: expect.any(Number),
       });
+      expect(result.current.priceData!.spread).toBeCloseTo(0.1, 10);
+      expect(result.current.priceData!.spreadPercent).toBeCloseTo(
+        9.523809523809524,
+        8,
+      );
       expect(result.current.error).toBe(null);
     });
 
@@ -278,7 +282,10 @@ describe('useAssetPrices', () => {
 
   describe('initialization', () => {
     it('should set isLoading to true initially', () => {
-      const { result } = renderHook(() => useAssetPrices(['1', '2']));
+      // Hoist array outside callback — inline literals create a new reference each render,
+      // causing useCallback([tokenIds]) to re-fire and loop indefinitely.
+      const tokenIds = ['1', '2'];
+      const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       expect(result.current.isLoading).toBe(true);
       expect(result.current.prices.size).toBe(0);
@@ -288,7 +295,8 @@ describe('useAssetPrices', () => {
 
   describe('successful multi-token fetch', () => {
     it('should fetch prices for all tokenIds', async () => {
-      const { result } = renderHook(() => useAssetPrices(['1', '2', '3']));
+      const tokenIds = ['1', '2', '3'];
+      const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
         await new Promise((r) => setTimeout(r, 500));
@@ -305,7 +313,8 @@ describe('useAssetPrices', () => {
 
   describe('empty array', () => {
     it('should handle empty tokenIds array', async () => {
-      const { result } = renderHook(() => useAssetPrices([]));
+      const tokenIds: string[] = [];
+      const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       // Should set isLoading false immediately for empty array
       expect(result.current.isLoading).toBe(true);
@@ -323,7 +332,8 @@ describe('useAssetPrices', () => {
     it('should handle API errors', async () => {
       mocks.getOrderBook.mockRejectedValue(new Error('Network error'));
 
-      const { result } = renderHook(() => useAssetPrices(['1']));
+      const tokenIds = ['1'];
+      const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
         await new Promise((r) => setTimeout(r, 200));
@@ -339,7 +349,8 @@ describe('useAssetPrices', () => {
         .mockRejectedValueOnce(new Error('Failed'))
         .mockResolvedValueOnce(mockOrderBook());
 
-      const { result } = renderHook(() => useAssetPrices(['1', '2', '3']));
+      const tokenIds = ['1', '2', '3'];
+      const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
         await new Promise((r) => setTimeout(r, 500));
@@ -357,7 +368,8 @@ describe('useAssetPrices', () => {
 
   describe('refetch', () => {
     it('should expose refetch function', async () => {
-      const { result } = renderHook(() => useAssetPrices(['1']));
+      const tokenIds = ['1'];
+      const { result } = renderHook(() => useAssetPrices(tokenIds));
 
       await act(async () => {
         await new Promise((r) => setTimeout(r, 200));
