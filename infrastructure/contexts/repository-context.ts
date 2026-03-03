@@ -60,7 +60,7 @@ export class RepositoryContext {
     try {
       // Initialize Diamond context
       this.diamondContext = new DiamondContext();
-      await this.diamondContext.initialize(provider);
+      await this.diamondContext.initialize(provider, signer);
 
       // Create Diamond-based NodeRepository with Pinata for IPFS metadata
       this.nodeRepository = new DiamondNodeRepository(
