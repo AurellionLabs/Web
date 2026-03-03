@@ -242,10 +242,13 @@ contract NodesFacet is Initializable {
         s.nodes[_node].owner = _owner;
 
         // Update owner nodes mapping
+        // Cache to memory to avoid repeated SLOADs in loop (saves ~2100 gas per iteration cold, 100 warm)
         bytes32[] storage oldOwnerNodes = s.ownerNodes[oldOwner];
-        for (uint256 i = 0; i < oldOwnerNodes.length; i++) {
-            if (oldOwnerNodes[i] == _node) {
-                oldOwnerNodes[i] = oldOwnerNodes[oldOwnerNodes.length - 1];
+        bytes32[] memory cachedNodes = oldOwnerNodes;
+        uint256 nodeCount = cachedNodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
+            if (cachedNodes[i] == _node) {
+                oldOwnerNodes[i] = cachedNodes[nodeCount - 1];
                 oldOwnerNodes.pop();
                 break;
             }

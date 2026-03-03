@@ -1,5 +1,5 @@
 // Auto-generated from AuSysFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-02T06:49:40.884Z
+// Generated at: 2026-03-03T07:50:03.651Z
 
 export const AuSysFacetABI = [
   {
@@ -29,6 +29,33 @@ export const AuSysFacetABI = [
   },
   {
     inputs: [],
+    name: 'ECDSAInvalidSignature',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'length',
+        type: 'uint256',
+      },
+    ],
+    name: 'ECDSAInvalidSignatureLength',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 's',
+        type: 'bytes32',
+      },
+    ],
+    name: 'ECDSAInvalidSignatureS',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'InvalidAddress',
     type: 'error',
   },
@@ -54,6 +81,11 @@ export const AuSysFacetABI = [
   },
   {
     inputs: [],
+    name: 'InvalidSignature',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'JourneyIncomplete',
     type: 'error',
   },
@@ -69,7 +101,27 @@ export const AuSysFacetABI = [
   },
   {
     inputs: [],
+    name: 'NoPendingDestination',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'NodeRequired',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'NonceAlreadyUsed',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'NotJourneyParticipant',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'NotNodeOwner',
     type: 'error',
   },
   {
@@ -136,6 +188,16 @@ export const AuSysFacetABI = [
   {
     inputs: [],
     name: 'SenderNotSigned',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'SignatureExpired',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'TrustedSignerNotSet',
     type: 'error',
   },
   {
@@ -829,6 +891,68 @@ export const AuSysFacetABI = [
     type: 'event',
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'TokenDestinationPending',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'destination',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'nodeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'burned',
+        type: 'bool',
+      },
+    ],
+    name: 'TokenDestinationSelected',
+    type: 'event',
+  },
+  {
     inputs: [],
     name: 'ADMIN_ROLE',
     outputs: [
@@ -926,8 +1050,41 @@ export const AuSysFacetABI = [
         name: 'orderId',
         type: 'bytes32',
       },
+      {
+        internalType: 'uint256',
+        name: 'nonce',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'deadline',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes',
+        name: 'signature',
+        type: 'bytes',
+      },
     ],
     name: 'acceptP2POffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
+      },
+    ],
+    name: 'adminRecoverEscrow',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1302,6 +1459,19 @@ export const AuSysFacetABI = [
     type: 'function',
   },
   {
+    inputs: [],
+    name: 'domainSeparator',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -1595,6 +1765,25 @@ export const AuSysFacetABI = [
     inputs: [
       {
         internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+    ],
+    name: 'getPendingTokenDestinations',
+    outputs: [
+      {
+        internalType: 'bytes32[]',
+        name: '',
+        type: 'bytes32[]',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
         name: 'user',
         type: 'address',
       },
@@ -1779,6 +1968,29 @@ export const AuSysFacetABI = [
   {
     inputs: [
       {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bool',
+        name: 'burn',
+        type: 'bool',
+      },
+    ],
+    name: 'selectTokenDestination',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'address',
         name: 'admin',
         type: 'address',
@@ -1834,6 +2046,19 @@ export const AuSysFacetABI = [
       },
     ],
     name: 'setPayToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'signer',
+        type: 'address',
+      },
+    ],
+    name: 'setTrustedP2PSigner',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1936,5 +2161,15 @@ export const AuSysFacetEvents = [
     name: 'SellerPaid',
     signature: 'SellerPaid(address,uint256)',
     signatureHash: '0xcb4a9094',
+  },
+  {
+    name: 'TokenDestinationPending',
+    signature: 'TokenDestinationPending(bytes32,address,uint256,uint256)',
+    signatureHash: '0x390f5c7f',
+  },
+  {
+    name: 'TokenDestinationSelected',
+    signature: 'TokenDestinationSelected(bytes32,address,bytes32,bool)',
+    signatureHash: '0xd695fe01',
   },
 ] as const;
