@@ -367,11 +367,16 @@ contract RWYStakingFacet {
         opp.stakedAmount -= amount;
 
         // Transfer tokens back to staker - supports both ERC20 (tokenId == 0) and ERC1155 (tokenId > 0)
+        // NOTE: ERC1155 requires the contract to have setApprovalForAll(address(this), true) on the token
         if (opp.inputTokenId == 0) {
             // ERC20 unstaking (e.g., AURA token)
             IERC20(opp.inputToken).safeTransfer(msg.sender, amount);
         } else {
-            // ERC1155 unstaking (e.g., RWA tokens)
+            // ERC1155 unstaking - check approval to fail fast with clear message
+            require(
+                IERC1155(opp.inputToken).isApprovedForAll(address(this), address(this)),
+                "RWYStaking: contract must self-approve ERC1155 tokens"
+            );
             IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
         }
 
@@ -423,6 +428,11 @@ contract RWYStakingFacet {
         userStake.claimed = true;
         userStake.amount = 0;
 
+        // NOTE: Requires contract to have setApprovalForAll(address(this), true) on the token
+        require(
+            IERC1155(opp.inputToken).isApprovedForAll(address(this), address(this)),
+            "RWYStaking: contract must self-approve ERC1155 tokens"
+        );
         IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
 
         emit CommodityUnstaked(opportunityId, msg.sender, amount);
