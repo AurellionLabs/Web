@@ -492,10 +492,6 @@ export default function CreateP2POfferPage() {
             )
           : selectedTokenId;
 
-      console.log('[P2P Create] Creating offer with selected tokenId:', {
-        tokenId: tokenIdToSubmit,
-        attributes: formData.selectedAttributes,
-      });
       await p2pService.createOffer({
         token: NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId: tokenIdToSubmit,
