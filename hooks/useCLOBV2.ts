@@ -624,12 +624,26 @@ export function useCLOBV2(options: UseCLOBV2Options) {
   useEffect(() => {
     if (!autoRefresh) return;
 
+    // Only poll when page is visible to save bandwidth and reduce RPC load
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrderBook();
+        fetchTrades();
+      }
+    };
+
     const interval = setInterval(() => {
-      fetchOrderBook();
-      fetchTrades();
+      if (document.visibilityState === 'visible') {
+        fetchOrderBook();
+        fetchTrades();
+      }
     }, refreshInterval);
 
-    return () => clearInterval(interval);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [autoRefresh, refreshInterval, fetchOrderBook, fetchTrades]);
 
   // ============ Computed Values ============
