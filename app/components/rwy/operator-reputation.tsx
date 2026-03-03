@@ -15,7 +15,7 @@ import {
   TrendingUp,
   AlertTriangle,
 } from 'lucide-react';
-import { ethers } from 'ethers';
+import { formatErc20Balance } from '@/lib/utils';
 
 interface OperatorReputationProps {
   operatorAddress: Address;
@@ -191,7 +191,7 @@ export function OperatorReputation({
         </p>
         <p className="font-mono text-lg font-bold text-gold">
           {Number(
-            ethers.formatUnits(stats.totalValueProcessed, 18),
+            formatErc20Balance(stats.totalValueProcessed, 18),
           ).toLocaleString('en-US', {
             style: 'currency',
             currency: 'USD',

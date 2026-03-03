@@ -60,7 +60,7 @@ import {
   useTokenApproval,
 } from '@/hooks/useRWYOpportunity';
 import { Address } from '@/domain/rwy';
-import { ethers } from 'ethers';
+import { parseTokenAmount, formatErc20Balance } from '@/lib/utils';
 
 // Supported assets configuration
 const SUPPORTED_ASSETS = [
@@ -317,7 +317,7 @@ export default function CreatePoolPage() {
   const requiredAmountWei = useMemo(() => {
     if (!collateralAmount || isNaN(parseFloat(collateralAmount))) return '0';
     try {
-      return ethers.parseUnits(collateralAmount, 18).toString();
+      return parseTokenAmount(collateralAmount, 18).toString();
     } catch {
       return '0';
     }
@@ -341,7 +341,7 @@ export default function CreatePoolPage() {
   const formattedBalance = useMemo(() => {
     if (!tokenBalance) return '0';
     try {
-      return parseFloat(ethers.formatUnits(tokenBalance, 18)).toLocaleString(
+      return parseFloat(formatErc20Balance(tokenBalance, 18)).toLocaleString(
         undefined,
         {
           maximumFractionDigits: 2,

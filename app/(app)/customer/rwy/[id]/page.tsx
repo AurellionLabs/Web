@@ -45,7 +45,7 @@ import {
   Package,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ethers } from 'ethers';
+import { formatErc20Balance, formatWeiToEther } from '@/lib/utils';
 import { getSettlementService } from '@/infrastructure/services/settlement-service';
 import { NEXT_PUBLIC_AURA_ASSET_ADDRESS } from '@/chain-constants';
 
@@ -252,7 +252,7 @@ export default function RWYOpportunityDetailPage() {
                     Min Sale Price
                   </p>
                   <p className="text-xl font-bold font-mono tabular-nums">
-                    {ethers.formatUnits(opportunity.minSalePrice, 18)} AURUM
+                    {formatErc20Balance(opportunity.minSalePrice, 18)} AURUM
                   </p>
                 </div>
               </div>
@@ -298,7 +298,7 @@ export default function RWYOpportunityDetailPage() {
                 </p>
                 <p className="text-xs font-mono text-foreground/40 tracking-wide">
                   Expected:{' '}
-                  {ethers.formatUnits(opportunity.expectedOutputAmount, 18)}{' '}
+                  {formatErc20Balance(opportunity.expectedOutputAmount, 18)}{' '}
                   units
                 </p>
               </div>
@@ -326,7 +326,7 @@ export default function RWYOpportunityDetailPage() {
                       )}
                     </div>
                     <span className="font-mono font-bold text-sm tabular-nums">
-                      {ethers.formatUnits(stake.amount, 18)} tokens
+                      {formatErc20Balance(stake.amount, 18)} tokens
                     </span>
                   </div>
                 ))}
@@ -356,7 +356,7 @@ export default function RWYOpportunityDetailPage() {
                   Operator Collateral
                 </span>
                 <span className="font-mono font-bold text-sm tabular-nums">
-                  {ethers.formatEther(opportunity.operatorCollateral)} ETH
+                  {formatWeiToEther(opportunity.operatorCollateral)} ETH
                 </span>
               </div>
               <div className="flex justify-between">
