@@ -94,8 +94,21 @@ vi.mock('ethers', () => {
     },
     BrowserProvider: mocks.MockBrowserProvider,
     Contract: mocks.MockContract,
+    AbstractSigner: class {},
+    JsonRpcProvider: vi.fn(),
   };
 });
+
+vi.mock('@/app/providers/e2e-auth.provider', () => ({
+  useE2EAuth: () => ({
+    address: null,
+    isConnected: false,
+    isReady: false,
+    provider: null,
+    signer: null,
+  }),
+  E2EAuthProvider: ({ children }: any) => children,
+}));
 
 // =============================================================================
 // IMPORTS AFTER MOCKS
