@@ -277,9 +277,11 @@ export function ClientHeader() {
           <div className="hidden sm:block">
             <RoleSelector />
           </div>
-          <ConnectButton />
           <div className="hidden sm:block">
             <WalletConnection />
+          </div>
+          <div className="sm:hidden">
+            <ConnectButton />
           </div>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

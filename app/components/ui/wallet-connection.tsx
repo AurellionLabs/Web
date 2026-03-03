@@ -136,10 +136,9 @@ export function WalletConnection() {
 
   const handleAccountsChanged = async () => {
     if (!repository) return;
-    const provider = repository.getProvider();
-    if (!provider) return;
 
     try {
+      const provider = await repository.getProvider();
       const accounts = await provider.listAccounts();
       if (accounts.length === 0) {
         toast({

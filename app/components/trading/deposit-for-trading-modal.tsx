@@ -25,7 +25,6 @@ import {
   Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ethers } from 'ethers';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 
 interface DepositForTradingModalProps {
@@ -54,7 +53,7 @@ export function DepositForTradingModal({
   onDepositComplete,
 }: DepositForTradingModalProps) {
   const { depositTokensToNode, getNodeTokenBalance } = useDiamond();
-  const { address, connectedWallet } = useWallet();
+  const { address, repository } = useWallet();
 
   const [step, setStep] = useState<Step>('info');
   const [depositAmount, setDepositAmount] = useState('');
@@ -74,23 +73,12 @@ export function DepositForTradingModal({
 
   // Check if Diamond is approved to transfer user's tokens
   const checkApproval = useCallback(async () => {
-    if (!connectedWallet || !address) return false;
+    if (!repository || !address) return false;
 
     try {
-      const ethereumProvider = await connectedWallet.getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethereumProvider);
-      const signer = await provider.getSigner();
-
-      const auraAsset = new ethers.Contract(
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
-        [
-          'function isApprovedForAll(address account, address operator) view returns (bool)',
-        ],
-        signer,
-      );
-
-      const approved = await auraAsset.isApprovedForAll(
+      const approved = await repository.isApprovedForAll(
         address,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
         NEXT_PUBLIC_DIAMOND_ADDRESS,
       );
       setIsApproved(approved);
@@ -99,7 +87,7 @@ export function DepositForTradingModal({
       console.error('Error checking approval:', err);
       return false;
     }
-  }, [connectedWallet, address]);
+  }, [repository, address]);
 
   useEffect(() => {
     if (open && step === 'info') {
@@ -108,27 +96,16 @@ export function DepositForTradingModal({
   }, [open, step, checkApproval]);
 
   const handleApprove = async () => {
-    if (!connectedWallet || !address) return;
+    if (!repository || !address) return;
 
     setIsProcessing(true);
     setError(null);
 
     try {
-      const ethereumProvider = await connectedWallet.getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethereumProvider);
-      const signer = await provider.getSigner();
-
-      const auraAsset = new ethers.Contract(
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
-        [
-          'function setApprovalForAll(address operator, bool approved) external',
-        ],
-        signer,
-      );
-
-      const tx = await auraAsset.setApprovalForAll(
+      const tx = await repository.setApprovalForAll(
         NEXT_PUBLIC_DIAMOND_ADDRESS,
         true,
+        NEXT_PUBLIC_DIAMOND_ADDRESS,
       );
       await tx.wait();
 
