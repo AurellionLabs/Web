@@ -80,11 +80,56 @@ const config: HardhatUserConfig = {
       gas: 'auto',
       gasPrice: 'auto',
     },
+    base: {
+      url: process.env.BASE_RPC_URL || 'https://mainnet.base.org',
+      accounts: process.env.PROD_PRIVATE_KEY
+        ? [process.env.PROD_PRIVATE_KEY]
+        : process.env.PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY]
+          : [],
+      chainId: 8453,
+      gas: 'auto',
+      gasPrice: 'auto',
+    },
+    arbitrumOne: {
+      url: process.env.ARB_RPC_URL || 'https://arb1.arbitrum.io/rpc',
+      accounts: process.env.PROD_PRIVATE_KEY
+        ? [process.env.PROD_PRIVATE_KEY]
+        : process.env.PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY]
+          : [],
+      chainId: 42161,
+      gas: 'auto',
+      gasPrice: 'auto',
+    },
+    hyperliquid: {
+      url: process.env.HYPE_RPC_URL || 'https://rpc.hyperliquid.xyz/evm',
+      accounts: process.env.PROD_PRIVATE_KEY
+        ? [process.env.PROD_PRIVATE_KEY]
+        : process.env.PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY]
+          : [],
+      chainId: 999,
+      gas: 'auto',
+      gasPrice: 'auto',
+    },
+    sepolia: {
+      url: process.env.SEP_RPC_URL || 'https://rpc.sepolia.org',
+      accounts: process.env.SEP_PRIVATE_KEY
+        ? [process.env.SEP_PRIVATE_KEY]
+        : process.env.PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY]
+          : [],
+      chainId: 11155111,
+      gas: 'auto',
+      gasPrice: 'auto',
+    },
   },
   etherscan: {
     apiKey: {
       baseSepolia: process.env.BASESCAN_API_KEY || '',
       base: process.env.BASESCAN_API_KEY || '',
+      arbitrumOne: process.env.ARBISCAN_API_KEY || '',
     },
     customChains: [
       {

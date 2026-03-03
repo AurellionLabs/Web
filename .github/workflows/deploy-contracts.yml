@@ -23,6 +23,7 @@ on:
           - base
           - sepolia
           - arbitrumOne
+          - hyperliquid
       mode:
         description: 'Deploy mode (leave empty for change-detection)'
         required: false
@@ -79,6 +80,8 @@ jobs:
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
 
@@ -90,6 +93,8 @@ jobs:
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: |
           CHANGES=$(bunx --bun hardhat run scripts/detect-facet-changes.ts --network ${{ github.event.inputs.network || 'baseSepolia' }})
@@ -169,6 +174,7 @@ jobs:
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
@@ -190,6 +196,8 @@ jobs:
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
         run: |
@@ -223,6 +231,8 @@ jobs:
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
 
