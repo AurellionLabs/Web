@@ -493,7 +493,7 @@ export default function CustomerDashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <RefreshCw className="w-8 h-8 text-gold animate-spin" />
-          <span className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40">
+          <span className="font-mono text-sm tracking-[0.15em] uppercase text-white/70">
             Loading orders...
           </span>
         </div>
@@ -506,7 +506,7 @@ export default function CustomerDashboard() {
       <div className="min-h-screen p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
           <EvaPanel label="Error" sysId="ERR.ORD" accent="crimson">
-            <p className="font-mono text-sm text-foreground/50 mb-4">{error}</p>
+            <p className="font-mono text-sm text-white/75 mb-4">{error}</p>
             <TrapButton variant="gold" onClick={() => refreshOrders()}>
               Try Again
             </TrapButton>
@@ -527,7 +527,7 @@ export default function CustomerDashboard() {
               <h1 className="font-serif text-3xl md:text-4xl text-foreground">
                 Dashboard
               </h1>
-              <p className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/40 mt-1">
+              <p className="font-mono text-sm tracking-[0.15em] uppercase text-white/70 mt-1">
                 Overview of your orders and trading activity
               </p>
               <GreekKeyStrip color="crimson" />
@@ -634,10 +634,10 @@ export default function CustomerDashboard() {
           ) : holdings.length === 0 ? (
             <div className="text-center py-12">
               <TargetRings size={80} className="mx-auto mb-4" />
-              <p className="font-mono text-sm text-foreground/40">
+              <p className="font-mono text-sm text-white/70">
                 No assets in your wallet
               </p>
-              <p className="font-mono text-xs text-foreground/20 mt-1">
+              <p className="font-mono text-xs text-white/50 mt-1">
                 Trade on the order book to acquire tokenized assets
               </p>
             </div>
@@ -696,13 +696,13 @@ export default function CustomerDashboard() {
                       <span className="font-mono text-3xl font-bold text-gold tabular-nums">
                         {holding.balance.toString()}
                       </span>
-                      <span className="font-mono text-sm text-foreground/30 uppercase tracking-wider">
+                      <span className="font-mono text-sm text-white/60 uppercase tracking-wider">
                         units
                       </span>
                     </div>
 
                     {/* Token ID */}
-                    <p className="font-mono text-[10px] text-foreground/20 tabular-nums">
+                    <p className="font-mono text-[10px] text-white/50 tabular-nums">
                       Token: {holding.tokenId.slice(0, 12)}...
                     </p>
                   </div>
@@ -999,7 +999,7 @@ export default function CustomerDashboard() {
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-border/15">
-                <div className="font-mono text-xs text-foreground/30 tracking-wider">
+                <div className="font-mono text-xs text-white/60 tracking-wider">
                   Showing {startIndex + 1} to{' '}
                   {Math.min(endIndex, sortedOrders.length)} of{' '}
                   {sortedOrders.length} orders
@@ -1010,16 +1010,16 @@ export default function CustomerDashboard() {
                     disabled={currentPage === 1}
                     className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsLeft className="w-4 h-4 text-foreground/40" />
+                    <ChevronsLeft className="w-4 h-4 text-white/70" />
                   </button>
                   <button
                     onClick={goToPreviousPage}
                     disabled={currentPage === 1}
                     className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4 text-foreground/40" />
+                    <ChevronLeft className="w-4 h-4 text-white/70" />
                   </button>
-                  <span className="px-4 font-mono text-xs text-foreground/30 tabular-nums">
+                  <span className="px-4 font-mono text-xs text-white/60 tabular-nums">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
@@ -1027,14 +1027,14 @@ export default function CustomerDashboard() {
                     disabled={currentPage === totalPages}
                     className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronRight className="w-4 h-4 text-foreground/40" />
+                    <ChevronRight className="w-4 h-4 text-white/70" />
                   </button>
                   <button
                     onClick={goToLastPage}
                     disabled={currentPage === totalPages}
                     className="p-2 hover:bg-gold/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronsRight className="w-4 h-4 text-foreground/40" />
+                    <ChevronsRight className="w-4 h-4 text-white/70" />
                   </button>
                 </div>
               </div>
