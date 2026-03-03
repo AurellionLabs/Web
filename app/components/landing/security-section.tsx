@@ -64,7 +64,7 @@ const SecuritySection: React.FC = () => {
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-4">
             Custody and Compliance Guardrails
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-foreground/90 max-w-2xl mx-auto">
             Every asset touches compliance checkpoints, insured custody, and
             programmable controls before it becomes tradable.
           </p>
@@ -93,7 +93,7 @@ const SecuritySection: React.FC = () => {
                     <h4 className="font-semibold text-foreground">
                       Regulatory Gateways
                     </h4>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-foreground/90">
                       Legal partners, registrars, and compliance monitors.
                     </p>
                   </div>
@@ -112,7 +112,7 @@ const SecuritySection: React.FC = () => {
                       <h4 className="font-semibold text-foreground">
                         Compliance Smart Contracts
                       </h4>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-foreground/90">
                         KYC gates, investor caps, and enforcement rules.
                       </p>
                     </div>
@@ -135,7 +135,7 @@ const SecuritySection: React.FC = () => {
                       <h4 className="font-semibold text-foreground">
                         Token Vault
                       </h4>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-foreground/90">
                         Insured multi-sig custody for every issuance.
                       </p>
                     </div>
@@ -164,7 +164,7 @@ const SecuritySection: React.FC = () => {
                     <h4 className="font-semibold text-foreground mb-1">
                       {feature.title}
                     </h4>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-foreground/90">
                       {feature.description}
                     </p>
                   </GlassCard>

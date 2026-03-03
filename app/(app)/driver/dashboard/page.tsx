@@ -408,7 +408,7 @@ export default function DriverDashboard() {
             <h2 className="font-mono text-lg font-bold tracking-[0.15em] uppercase text-crimson mb-2">
               Error Loading Deliveries
             </h2>
-            <p className="font-mono text-xs text-foreground/40 mb-4">{error}</p>
+            <p className="font-mono text-xs text-foreground/90 mb-4">{error}</p>
             <TrapButton variant="crimson" onClick={() => refreshDeliveries()}>
               TRY AGAIN
             </TrapButton>

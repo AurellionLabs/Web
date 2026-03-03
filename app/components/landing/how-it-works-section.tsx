@@ -88,7 +88,7 @@ const StepCard: React.FC<StepCardProps> = ({ step, index, isLast }) => {
         <h3 className="text-lg font-semibold text-foreground mb-2">
           {step.title}
         </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm text-foreground/90 leading-relaxed">
           {step.description}
         </p>
       </GlassCard>
@@ -126,7 +126,7 @@ const HowItWorksSection: React.FC = () => {
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-4">
             Tokenization Workflow
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-foreground/90 max-w-2xl mx-auto">
             Every asset is vetted, tokenized with legal guardrails, and routed
             to liquidity so issuers and investors collaborate with confidence.
           </p>
