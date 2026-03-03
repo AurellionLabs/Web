@@ -32,6 +32,7 @@ import {
   AlertTriangle,
   ArrowDownToLine,
 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DepositForTradingModal } from '@/app/components/trading/deposit-for-trading-modal';
 import { useNodes } from '@/app/providers/nodes.provider';
@@ -380,6 +381,19 @@ export function AssetDetailDrawer({
               <p className="font-mono text-[10px] text-center text-foreground/30 mt-2 tracking-wide">
                 Tokens must be in node custody to redeem for delivery
               </p>
+            )}
+            {nodes.length === 0 && !custody.isLoading && (
+              <div className="flex items-center justify-between py-2.5 border-b border-border/10 mt-2">
+                <span className="font-mono text-xs text-foreground/50">
+                  No nodes registered
+                </span>
+                <Link
+                  href="/node/register"
+                  className="font-mono text-xs font-bold text-gold hover:text-gold/80 transition-colors tracking-wide"
+                >
+                  Register a node to enable redemption
+                </Link>
+              </div>
             )}
             {custody.nodes.length > 0 && !selectedNode && (
               <p className="font-mono text-[10px] text-center text-foreground/30 mt-2 tracking-wide">

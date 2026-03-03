@@ -35,6 +35,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Filter,
+  Package,
 } from 'lucide-react';
 import { P2POffer, P2POfferStatus, P2PDeliveryDetails } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
@@ -42,6 +43,12 @@ import {
   DeliveryDetailsDialog,
   DeliveryFormData,
 } from '@/app/components/p2p/delivery-details-dialog';
+import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
+import { SettlementDestinationModal } from '@/app/components/settlement/SettlementDestinationModal';
+import { useCustomer } from '@/app/providers/customer.provider';
+import { useSettlementDestination } from '@/hooks/useSettlementDestination';
+import { useToast } from '@/hooks/use-toast';
+import { OrderStatus } from '@/domain/orders/order';
 
 /**
  * P2P Market Offers Page
@@ -90,6 +97,30 @@ export default function P2PMarketOffersPage() {
   // Delivery dialog state
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<P2POffer | null>(null);
+
+  // P2P order flow state
+  const {
+    orders,
+    signP2PDelivery,
+    completeP2PHandoff,
+    getP2PSignatureState,
+    createP2PJourney,
+  } = useCustomer();
+  const { toast } = useToast();
+  const { refetch: refetchSettlements } = useSettlementDestination();
+  const [selectedPendingOrder, setSelectedPendingOrder] = useState<
+    string | null
+  >(null);
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
+  const [expandedP2POrders, setExpandedP2POrders] = useState<
+    Record<string, boolean>
+  >({});
+  const [p2pActionLoading, setP2PActionLoading] = useState(false);
+  const [scheduleDeliveryOrderId, setScheduleDeliveryOrderId] = useState<
+    string | null
+  >(null);
+  const [scheduleDeliveryDialogOpen, setScheduleDeliveryDialogOpen] =
+    useState(false);
 
   // Set user role on mount
   useEffect(() => {
@@ -430,6 +461,151 @@ export default function P2PMarketOffersPage() {
       offer.expiresAt > 0 && offer.expiresAt <= Math.floor(Date.now() / 1000)
     );
   }, []);
+
+  // Active P2P orders for this asset class
+  const activeP2POrders = useMemo(() => {
+    return orders.filter((order) => {
+      if (!order.isP2P) return false;
+      if (
+        order.currentStatus === OrderStatus.SETTLED ||
+        order.currentStatus === OrderStatus.CANCELLED
+      )
+        return false;
+      return isTokenInClass(order.tokenId);
+    });
+  }, [orders, isTokenInClass]);
+
+  const toggleP2PExpand = useCallback((orderId: string) => {
+    setExpandedP2POrders((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  }, []);
+
+  const handleSignP2PDelivery = useCallback(
+    async (orderId: string, journeyId: string) => {
+      try {
+        setP2PActionLoading(true);
+        const result = await signP2PDelivery(orderId, journeyId);
+        if (result === 'settled') {
+          toast({
+            title: 'Order Settled',
+            description:
+              'Both parties signed. Tokens and payment have been distributed.',
+          });
+        } else {
+          toast({
+            title: 'Delivery Signed',
+            description: 'Your delivery signature has been recorded on-chain.',
+          });
+        }
+        return result;
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'Failed to sign for delivery. Please try again.',
+          variant: 'destructive',
+        });
+        throw err;
+      } finally {
+        setP2PActionLoading(false);
+      }
+    },
+    [signP2PDelivery, toast],
+  );
+
+  const handleCompleteP2PHandoff = useCallback(
+    async (orderId: string, journeyId: string) => {
+      try {
+        setP2PActionLoading(true);
+        const result = await completeP2PHandoff(orderId, journeyId);
+        if (result === 'settled') {
+          toast({
+            title: 'Handoff Complete',
+            description:
+              'The order has been settled. Tokens and payment distributed.',
+          });
+        } else if (result === 'driver_not_signed') {
+          toast({
+            title: 'Waiting for Driver',
+            description:
+              'The driver has not signed for delivery yet. Please wait.',
+          });
+        }
+        return result;
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'Failed to complete handoff. Please try again.',
+          variant: 'destructive',
+        });
+        throw err;
+      } finally {
+        setP2PActionLoading(false);
+      }
+    },
+    [completeP2PHandoff, toast],
+  );
+
+  const handleScheduleDelivery = useCallback((orderId: string) => {
+    setScheduleDeliveryOrderId(orderId);
+    setScheduleDeliveryDialogOpen(true);
+  }, []);
+
+  const handleConfirmScheduleDelivery = useCallback(
+    async (deliveryData: DeliveryFormData) => {
+      if (!scheduleDeliveryOrderId || !address) return;
+      const order = orders.find((o) => o.id === scheduleDeliveryOrderId);
+      if (!order) return;
+      try {
+        setP2PActionLoading(true);
+        const senderNode =
+          deliveryData.senderNodeAddress ||
+          order.seller ||
+          order.nodes?.[0] ||
+          '';
+        const delivery: P2PDeliveryDetails = {
+          senderNodeAddress: senderNode,
+          receiverAddress: address,
+          parcelData: {
+            startLocation: {
+              lat: order.locationData?.startLocation?.lat || '',
+              lng: order.locationData?.startLocation?.lng || '',
+            },
+            endLocation: { lat: '', lng: '' },
+            startName: order.locationData?.startName || 'Pickup Location',
+            endName: deliveryData.deliveryAddress,
+          },
+          bountyWei: BigInt('500000000000000000'),
+          etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600),
+          tokenQuantity: BigInt(order.tokenQuantity),
+          assetId: BigInt(order.tokenId),
+          deliveryAddress: deliveryData.deliveryAddress,
+        };
+        await createP2PJourney(scheduleDeliveryOrderId, delivery);
+        setScheduleDeliveryDialogOpen(false);
+        setScheduleDeliveryOrderId(null);
+        toast({
+          title: 'Delivery Scheduled',
+          description: 'A delivery journey has been created for this order.',
+        });
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Failed to schedule delivery. Please try again.';
+        toast({
+          title: 'Error',
+          description: msg,
+          variant: 'destructive',
+        });
+        throw err;
+      } finally {
+        setP2PActionLoading(false);
+      }
+    },
+    [scheduleDeliveryOrderId, address, orders, createP2PJourney, toast],
+  );
 
   // Filter offers: by market class + by type
   // Uses pure function with direct data deps to avoid stale closure issues
@@ -895,6 +1071,68 @@ export default function P2PMarketOffersPage() {
           renderEmptyState()
         )}
 
+        {/* Active P2P Orders for this class */}
+        {activeP2POrders.length > 0 && (
+          <>
+            <div className="mt-8">
+              <EvaSectionMarker
+                section="Active Orders"
+                label={className}
+                variant="gold"
+              />
+            </div>
+            <div className="space-y-4 mt-4">
+              {activeP2POrders.map((order) => {
+                const isExpanded = expandedP2POrders[order.id];
+                const assetMeta = assetMetadataMap.get(order.tokenId);
+                return (
+                  <EvaPanel
+                    key={order.id}
+                    label={
+                      assetMeta?.name || `Order ${order.id.slice(0, 8)}...`
+                    }
+                    sublabel={`Order ID: ${order.id.slice(0, 10)}...${order.id.slice(-6)}`}
+                    sysId="P2P"
+                    accent="gold"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-gold" />
+                        <span className="font-mono text-xs text-foreground/50">
+                          Qty: {order.tokenQuantity} · $
+                          {formatPrice(BigInt(order.price))}
+                        </span>
+                      </div>
+                      <EvaButton
+                        variant="gold"
+                        size="sm"
+                        active={isExpanded}
+                        onClick={() => toggleP2PExpand(order.id)}
+                      >
+                        {isExpanded ? 'Hide Flow' : 'View Flow'}
+                      </EvaButton>
+                    </div>
+                    {isExpanded && (
+                      <P2POrderFlow
+                        order={order}
+                        onSettled={(orderId) => {
+                          setSelectedPendingOrder(orderId);
+                          setIsSettlementModalOpen(true);
+                        }}
+                        onSignDelivery={handleSignP2PDelivery}
+                        onCompleteHandoff={handleCompleteP2PHandoff}
+                        onScheduleDelivery={handleScheduleDelivery}
+                        fetchSignatureState={getP2PSignatureState}
+                        isActionLoading={p2pActionLoading}
+                      />
+                    )}
+                  </EvaPanel>
+                );
+              })}
+            </div>
+          </>
+        )}
+
         {/* Bottom decorative strip */}
         <div className="mt-8">
           <GreekKeyStrip color="crimson" />
@@ -917,6 +1155,62 @@ export default function P2PMarketOffersPage() {
           assetName={assetMetadataMap.get(selectedOffer.tokenId)?.name}
         />
       )}
+
+      {/* Settlement Destination Modal */}
+      {selectedPendingOrder && (
+        <SettlementDestinationModal
+          isOpen={isSettlementModalOpen}
+          orderId={selectedPendingOrder}
+          onClose={() => {
+            setIsSettlementModalOpen(false);
+            setSelectedPendingOrder(null);
+          }}
+          onSuccess={() => {
+            refetchSettlements();
+          }}
+        />
+      )}
+
+      {/* Delivery Details Dialog for stuck P2P orders */}
+      {scheduleDeliveryOrderId &&
+        (() => {
+          const stuckOrder = orders.find(
+            (o) => o.id === scheduleDeliveryOrderId,
+          );
+          if (!stuckOrder) return null;
+          const pseudoOffer: P2POffer = {
+            id: stuckOrder.id,
+            creator: stuckOrder.seller,
+            targetCounterparty: null,
+            token: stuckOrder.token,
+            tokenId: stuckOrder.tokenId,
+            quantity: BigInt(stuckOrder.tokenQuantity),
+            price: BigInt(stuckOrder.price),
+            txFee: BigInt(stuckOrder.txFee),
+            isSellerInitiated: true,
+            status: P2POfferStatus.PROCESSING,
+            buyer: stuckOrder.buyer,
+            seller: stuckOrder.seller,
+            createdAt: 0,
+            expiresAt: 0,
+            locationData: stuckOrder.locationData,
+            nodes: stuckOrder.nodes || [],
+          };
+          return (
+            <DeliveryDetailsDialog
+              offer={pseudoOffer}
+              open={scheduleDeliveryDialogOpen}
+              onOpenChange={(open) => {
+                setScheduleDeliveryDialogOpen(open);
+                if (!open) setScheduleDeliveryOrderId(null);
+              }}
+              onConfirm={handleConfirmScheduleDelivery}
+              assetName={stuckOrder.asset?.name}
+              initialDeliveryAddress={stuckOrder.locationData?.endName || ''}
+              lockDeliveryAddress={Boolean(stuckOrder.locationData?.endName)}
+            />
+          );
+        })()}
     </div>
   );
 }
