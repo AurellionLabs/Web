@@ -1128,7 +1128,7 @@ async function analyzeSelectorsForFacet(
   const toRemove: string[] = [];
   const unchanged: string[] = [];
 
-  // Get all facets and their selectors from the Diamond
+  // Build a full selector map from facets() for stale-selector removal detection
   const facets = await diamondLoupe.facets();
   const existingSelectorsMap = new Map<string, string>(); // selector -> facetAddress
 
@@ -1146,37 +1146,45 @@ async function analyzeSelectorsForFacet(
   const existingFacetAddress =
     existingAddresses[CONTRACTS[facetName]?.chainConstantKey || ''] || null;
 
-  // Analyze each selector in our config
+  // Analyze each selector using authoritative per-selector facetAddress() lookup.
+  // This is more reliable than the bulk facets() map, which can miss selectors
+  // that were "stolen" by a previous facet's REPLACE operation in the same session.
   for (const selector of configSelectors) {
-    const normalizedSelector = selector.toLowerCase();
-    const existingFacet = existingSelectorsMap.get(normalizedSelector);
+    let currentFacetAddr: string;
+    try {
+      currentFacetAddr = (
+        await diamondLoupe.facetAddress(selector)
+      ).toLowerCase();
+    } catch {
+      currentFacetAddr = ethers.ZeroAddress.toLowerCase();
+    }
 
-    if (!existingFacet) {
-      // Selector doesn't exist in Diamond - needs to be added
+    if (currentFacetAddr === ethers.ZeroAddress.toLowerCase()) {
+      // Selector doesn't exist in Diamond at all — add it
       toAdd.push(selector);
     } else if (
       newFacetAddress !== ethers.ZeroAddress &&
-      existingFacet !== newFacetAddress.toLowerCase()
+      currentFacetAddr !== newFacetAddress.toLowerCase()
     ) {
-      // Selector exists but points to different facet - needs to be replaced
+      // Selector exists but under a different address — replace it
       toReplace.push(selector);
-    } else if (existingFacet === newFacetAddress.toLowerCase()) {
-      // Selector already points to our new facet - no change needed
+    } else if (currentFacetAddr === newFacetAddress.toLowerCase()) {
+      // Already pointing at the new facet — nothing to do
       unchanged.push(selector);
     } else {
-      // In dry-run mode (newFacetAddress is ZeroAddress), treat existing selectors as needing replacement
-      // since we'll be deploying a new facet
+      // Dry-run (newFacetAddress is ZeroAddress) — treat as needing replacement
       toReplace.push(selector);
     }
   }
 
-  // Check for selectors that exist in Diamond for this facet but aren't in our config
-  // (This would indicate selectors that should be removed)
+  // Detect stale selectors: selectors registered under the OLD facet address
+  // that are no longer in our config (need to be removed)
   if (existingFacetAddress) {
+    const configLower = new Set(configSelectors.map((s) => s.toLowerCase()));
     for (const [selector, facetAddr] of existingSelectorsMap) {
       if (
         facetAddr === existingFacetAddress.toLowerCase() &&
-        !configSelectors.map((s) => s.toLowerCase()).includes(selector)
+        !configLower.has(selector)
       ) {
         toRemove.push(selector);
       }
