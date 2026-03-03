@@ -237,10 +237,31 @@ export function useUnifiedOrder(
     refresh();
 
     if (autoRefresh && orderId) {
-      const interval = setInterval(refresh, refreshInterval);
-      return () => clearInterval(interval);
+      // Only poll when page is visible to save bandwidth and reduce RPC load
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          refresh();
+        }
+      };
+
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          refresh();
+        }
+      }, refreshInterval);
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      };
     }
-  }, [orderId, autoRefresh, refreshInterval, refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, autoRefresh, refreshInterval]);
 
   return {
     order,
@@ -360,10 +381,31 @@ export function useUnifiedOrders(
   // Auto-refresh
   useEffect(() => {
     if (autoRefresh && userAddress) {
-      const interval = setInterval(refresh, refreshInterval);
-      return () => clearInterval(interval);
+      // Only poll when page is visible to save bandwidth and reduce RPC load
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          refresh();
+        }
+      };
+
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          refresh();
+        }
+      }, refreshInterval);
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      };
     }
-  }, [userAddress, autoRefresh, refreshInterval, refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userAddress, autoRefresh, refreshInterval]);
 
   return {
     orders,
