@@ -205,6 +205,8 @@ contract CLOBViewFacetTest is DiamondTestBase {
         
         assertEq(askPrices[1], 1.2 ether);
         assertEq(askSizes[1], 25);
+        assertEq(askCounts[0], 1); // One ask at 1.1 ether
+        assertEq(askCounts[1], 1); // One ask at 1.2 ether
     }
 
     // ============================================================================
@@ -220,6 +222,7 @@ contract CLOBViewFacetTest is DiamondTestBase {
         assertEq(amount, 0);
         assertEq(filledAmount, 0);
         assertEq(remainingAmount, 0);
+        assertFalse(isExpired);
     }
 
     function test_getOrderStatus_existingOrder() public {
@@ -285,6 +288,14 @@ contract CLOBViewFacetTest is DiamondTestBase {
         assertEq(maker, address(0));
         assertEq(price, 0);
         assertEq(amount, 0);
+        assertFalse(isBuy);
+        assertEq(orderType, 0);
+        assertEq(status, 0);
+        assertEq(timeInForce, 0);
+        assertEq(filledAmount, 0);
+        assertEq(expiry, 0);
+        assertEq(createdAt, 0);
+        assertEq(orderMarketId, bytes32(0));
     }
 
     function test_getPackedOrder_existingOrder() public {
