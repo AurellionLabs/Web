@@ -37,6 +37,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
     error InvalidSignature();
     error InvalidSeller();
     error SignatureAlreadyUsed();
+    error OrderExpired();
 
     event UnifiedOrderCreated(
         bytes32 indexed unifiedOrderId,
@@ -104,6 +105,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         address _sellerNode,
         uint256 _price,
         uint256 _quantity,
+        uint256 _expiresAt,
         DiamondStorage.ParcelData calldata _deliveryData
     ) external nonReentrant returns (bytes32 unifiedOrderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
@@ -112,6 +114,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         require(s.ownerNodes[_sellerNode].length > 0, 'Invalid node');
         require(_price > 0, 'Invalid price');
         require(_quantity > 0, 'Invalid quantity');
+        require(_expiresAt > block.timestamp, 'Invalid expiration');
 
         unifiedOrderId = keccak256(
             abi.encodePacked(++s.totalUnifiedOrders, block.prevrandao, msg.sender, block.timestamp)
@@ -148,6 +151,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         order.matchedAt = 0;
         order.deliveredAt = 0;
         order.settledAt = 0;
+        order.expiresAt = _expiresAt;
         order.deliveryData = _deliveryData;
 
         s.unifiedOrderIds.push(unifiedOrderId);
@@ -291,13 +295,19 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         DiamondStorage.Journey storage journey = s.journeys[_journeyId];
 
         require(_phase <= OrderStatus.JOURNEY_CANCELED, 'Invalid phase');
-        require(
-            journey.driver == msg.sender || LibDiamond.contractOwner() == msg.sender,
-            'Not driver or owner'
-        );
-
+        
+        // Get the order to check seller/sellerNode
         bytes32 unifiedOrderId = journey.unifiedOrderId;
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[unifiedOrderId];
+        
+        // Allow: driver (if set), seller, sellerNode, or contract owner
+        bool isAuthorized = 
+            journey.driver == msg.sender ||
+            order.seller == msg.sender ||
+            order.sellerNode == msg.sender ||
+            LibDiamond.contractOwner() == msg.sender;
+        
+        require(isAuthorized, 'Not authorized');
 
         journey.phase = _phase;
         journey.updatedAt = block.timestamp;
@@ -394,7 +404,12 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
             order.buyer == msg.sender || LibDiamond.contractOwner() == msg.sender,
             'Not authorized'
         );
-        require(order.status == OrderStatus.UNIFIED_PENDING_TRADE, 'Can only cancel pending orders');
+        
+        // Can cancel if: order is pending, OR order has expired
+        bool canCancel = order.status == OrderStatus.UNIFIED_PENDING_TRADE;
+        bool isExpired = order.expiresAt > 0 && block.timestamp > order.expiresAt;
+        
+        require(canCancel || isExpired, 'Cannot cancel: order not pending or expired');
 
         uint8 previousStatus = order.status;
         order.status = OrderStatus.UNIFIED_CANCELLED;
@@ -497,14 +512,14 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
     function setBountyPercentage(uint256 _percentage) external {
         LibDiamond.enforceIsContractOwner();
-        require(_percentage <= 1000, "Fee too high"); // Max 10%
+        require(_percentage >= 1 && _percentage <= 1000, "Fee must be 0.01-10%"); // Min 0.01%, Max 10%
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         s.bountyPercentage = _percentage;
     }
 
     function setProtocolFeePercentage(uint256 _percentage) external {
         LibDiamond.enforceIsContractOwner();
-        require(_percentage <= 1000, "Fee too high"); // Max 10%
+        require(_percentage >= 1 && _percentage <= 1000, "Fee must be 0.01-10%"); // Min 0.01%, Max 10%
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         s.protocolFeePercentage = _percentage;
     }

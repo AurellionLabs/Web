@@ -541,6 +541,7 @@ library DiamondStorage {
         uint256 matchedAt;
         uint256 deliveredAt;
         uint256 settledAt;
+        uint256 expiresAt;
         ParcelData deliveryData;
         bytes32[] journeyIds;
     }
