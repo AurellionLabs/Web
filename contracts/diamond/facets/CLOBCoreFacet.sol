@@ -7,6 +7,7 @@ import { OrderMatchingLib } from '../libraries/OrderMatchingLib.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /**
@@ -15,6 +16,7 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  * @dev Handles order creation, cancellation, and basic order book management
  */
 contract CLOBCoreFacet is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     
     // ============================================================================
     // EVENTS
@@ -568,7 +570,7 @@ contract CLOBCoreFacet is ReentrancyGuard {
             uint96 price = CLOBLib.unpackPrice(order.priceAmountFilled);
             uint256 refund = CLOBLib.calculateQuoteAmount(price, remaining);
             address quoteToken = CLOBLib.stringToAddress(mkt.quoteToken);
-            if (refund > 0) IERC20(quoteToken).transfer(maker, refund);
+            if (refund > 0) IERC20(quoteToken).safeTransfer(maker, refund);
         } else {
             address baseToken = CLOBLib.stringToAddress(mkt.baseToken);
             if (remaining > 0) IERC1155(baseToken).safeTransferFrom(address(this), maker, mkt.baseTokenId, remaining, "");

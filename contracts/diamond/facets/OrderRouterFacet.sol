@@ -8,6 +8,7 @@ import { OrderMatchingLib } from '../libraries/OrderMatchingLib.sol';
 import { OrderUtilsLib } from '../libraries/OrderUtilsLib.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /**
@@ -17,6 +18,7 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
  *      Uses OrderBookLib, OrderMatchingLib, and OrderUtilsLib for logic to reduce size.
  */
 contract OrderRouterFacet is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     
     // ============================================================================
     // ERRORS
@@ -450,7 +452,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         if (isBuy) {
             // Refund quote tokens
             uint256 refundAmount = CLOBLib.calculateQuoteAmount(price, remaining);
-            IERC20(OrderUtilsLib.stringToAddress(market.quoteToken)).transfer(maker, refundAmount);
+            IERC20(OrderUtilsLib.stringToAddress(market.quoteToken)).safeTransfer(maker, refundAmount);
         } else {
             // Refund base tokens
             IERC1155(OrderUtilsLib.stringToAddress(market.baseToken)).safeTransferFrom(

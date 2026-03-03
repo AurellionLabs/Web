@@ -7,6 +7,7 @@ import { CLOBLib } from '../libraries/CLOBLib.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 /**
  * @dev Interface for OrderRouterFacet - the SINGLE ENTRY POINT for all orders
@@ -54,6 +55,7 @@ interface IOrderRouterFacet {
  * - getTotalMarkets(), getTotalTrades()
  */
 contract CLOBFacet is Initializable {
+    using SafeERC20 for IERC20;
     // Original market-based OrderPlaced event (for backward compatibility)
     event OrderPlaced(
         bytes32 indexed orderId,
@@ -809,7 +811,7 @@ contract CLOBFacet is Initializable {
         if (_filledAmount < _amount) {
             uint256 refund = _maxPrice * (_amount - _filledAmount);
             if (refund > 0) {
-                IERC20(_quoteToken).transfer(msg.sender, refund);
+                IERC20(_quoteToken).safeTransfer(msg.sender, refund);
             }
         }
     }
@@ -859,7 +861,7 @@ contract CLOBFacet is Initializable {
             DiamondStorage.Market storage market = s.markets[order.marketId];
             address quoteToken = CLOBLib.stringToAddress(market.quoteToken);
             uint256 refundAmount = order.price * remaining;
-            IERC20(quoteToken).transfer(msg.sender, refundAmount);
+            IERC20(quoteToken).safeTransfer(msg.sender, refundAmount);
         }
         
         // If sell order, tokens stay in Diamond (node owner can withdraw via NodesFacet)
@@ -914,7 +916,7 @@ contract CLOBFacet is Initializable {
                 IERC1155(baseToken).safeTransferFrom(address(this), buyOrder.maker, baseTokenId, fillAmount, "");
                 
                 // Transfer quote tokens from Diamond (escrowed) to seller
-                IERC20(quoteToken).transfer(sellOrder.maker, quoteAmount);
+                IERC20(quoteToken).safeTransfer(sellOrder.maker, quoteAmount);
                 
                 // Update orders
                 sellOrder.filledAmount += fillAmount;
@@ -997,7 +999,7 @@ contract CLOBFacet is Initializable {
             IERC1155(_baseToken).safeTransferFrom(address(this), buyOrder.maker, _baseTokenId, fillAmount, "");
             
             // Transfer quote tokens from Diamond (escrowed) to seller
-            IERC20(_quoteToken).transfer(sellOrder.maker, quoteAmount);
+            IERC20(_quoteToken).safeTransfer(sellOrder.maker, quoteAmount);
             
             // Update orders
             sellOrder.filledAmount += fillAmount;
@@ -1127,11 +1129,11 @@ contract CLOBFacet is Initializable {
         
         // Transfer tokens
         IERC1155(ctx.baseToken).safeTransferFrom(address(this), buyOrder.maker, ctx.baseTokenId, fillAmount, "");
-        IERC20(ctx.quoteToken).transfer(sellOrder.maker, quoteAmount);
+        IERC20(ctx.quoteToken).safeTransfer(sellOrder.maker, quoteAmount);
         
         // Refund price improvement to buyer
         if (_fillPrice < buyOrder.price) {
-            IERC20(ctx.quoteToken).transfer(buyOrder.maker, (buyOrder.price - _fillPrice) * fillAmount);
+            IERC20(ctx.quoteToken).safeTransfer(buyOrder.maker, (buyOrder.price - _fillPrice) * fillAmount);
         }
         
         // Update orders

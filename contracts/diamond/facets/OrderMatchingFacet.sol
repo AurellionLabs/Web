@@ -5,6 +5,7 @@ import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { CLOBLib } from '../libraries/CLOBLib.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 /**
  * @title OrderMatchingFacet
@@ -12,6 +13,7 @@ import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
  * @dev Handles V1/V2 hybrid matching, trade execution, and order book management
  */
 contract OrderMatchingFacet {
+    using SafeERC20 for IERC20;
     
     struct TradeContext {
         bytes32 marketId;
@@ -177,7 +179,7 @@ contract OrderMatchingFacet {
     function _executeTransfers(address baseToken, address quoteToken, address buyer, address seller, uint256 baseTokenId, uint96 price, uint96 amount) internal {
         uint256 quoteAmount = CLOBLib.calculateQuoteAmount(price, amount);
         IERC1155(baseToken).safeTransferFrom(address(this), buyer, baseTokenId, amount, "");
-        IERC20(quoteToken).transfer(seller, quoteAmount);
+        IERC20(quoteToken).safeTransfer(seller, quoteAmount);
     }
     
     function _emitTradeEvent(DiamondStorage.AppStorage storage s, bytes32 buyOrderId, bytes32 sellOrderId, uint96 price, uint96 amount) internal {
@@ -193,7 +195,7 @@ contract OrderMatchingFacet {
         address seller = v2IsBuy ? v1Maker : v2Maker;
         
         IERC1155(ctx.baseToken).safeTransferFrom(address(this), buyer, ctx.baseTokenId, amount, "");
-        IERC20(ctx.quoteToken).transfer(seller, quoteAmount);
+        IERC20(ctx.quoteToken).safeTransfer(seller, quoteAmount);
         
         _updateOrderFilled(s.packedOrders[v2OrderId], amount);
         
@@ -228,7 +230,7 @@ contract OrderMatchingFacet {
         if (remaining > 0) {
             DiamondStorage.Market storage market = s.markets[order.marketId];
             if (isBuy) {
-                IERC20(CLOBLib.stringToAddress(market.quoteToken)).transfer(maker, CLOBLib.calculateQuoteAmount(price, remaining));
+                IERC20(CLOBLib.stringToAddress(market.quoteToken)).safeTransfer(maker, CLOBLib.calculateQuoteAmount(price, remaining));
             } else {
                 IERC1155(CLOBLib.stringToAddress(market.baseToken)).safeTransferFrom(address(this), maker, market.baseTokenId, remaining, "");
             }
