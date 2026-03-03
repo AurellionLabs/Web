@@ -9,242 +9,206 @@ import {
 } from '@/chain-constants';
 import { Ausys__factory } from '@/lib/contracts';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
-import { usePrivy } from '@privy-io/react-auth';
-import { useWallets } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
 import { ethers } from 'ethers';
 import { PinataSDK } from 'pinata';
+
+export const IS_E2E_TEST_MODE =
+  process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
 
 interface RepositoryProviderProps {
   children: ReactNode;
 }
 
-const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
-const MAX_E2E_INIT_RETRIES = 5;
+// ---------------------------------------------------------------------------
+// Shared setup — takes a ready provider + signer, wires up contracts & context
+// ---------------------------------------------------------------------------
+async function setupRepository(
+  provider: ethers.BrowserProvider,
+  signer: ethers.Signer,
+) {
+  const network = await provider.getNetwork();
+  const chainId = Number(network.chainId);
 
-export function RepositoryProvider({ children }: RepositoryProviderProps) {
+  if (chainId !== NEXT_PUBLIC_DEFAULT_CHAIN_ID) {
+    const names: Record<number, string> = {
+      1: 'Ethereum Mainnet',
+      8453: 'Base Mainnet',
+      84532: 'Base Sepolia',
+    };
+    throw new Error(
+      `Wrong network. Expected ${names[NEXT_PUBLIC_DEFAULT_CHAIN_ID] ?? NEXT_PUBLIC_DEFAULT_CHAIN_ID}, connected to ${names[chainId] ?? chainId}.`,
+    );
+  }
+
+  const ausysContract = Ausys__factory.connect(
+    NEXT_PUBLIC_DIAMOND_ADDRESS,
+    signer,
+  );
+  const pinata = new PinataSDK({
+    pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
+    pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
+  });
+
+  const repoContext = RepositoryContext.getInstance();
+  await repoContext.initialize(ausysContract, provider, signer, pinata);
+  ServiceContext.getInstance().initialize(repoContext);
+}
+
+// ---------------------------------------------------------------------------
+// E2E implementation — uses JsonRpcProvider + E2EServerSigner (no BrowserProvider)
+// MetaMask / OKX cannot intercept JsonRpcProvider calls.
+// ---------------------------------------------------------------------------
+function RepositoryProviderE2E({ children }: RepositoryProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const e2eAuth = useE2EAuth();
+
+  useEffect(() => {
+    if (
+      isInitialized ||
+      !e2eAuth.isReady ||
+      !e2eAuth.provider ||
+      !e2eAuth.signer
+    )
+      return;
+
+    let mounted = true;
+    (async () => {
+      try {
+        // JsonRpcProvider is assignment-incompatible with BrowserProvider in TS
+        // but all operations used by repos (getBlock, getTransaction, etc.) work identically.
+        await setupRepository(
+          e2eAuth.provider as unknown as ethers.BrowserProvider,
+          e2eAuth.signer!,
+        );
+        if (mounted) {
+          setIsInitialized(true);
+          setError(null);
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error('[RepositoryProviderE2E] init error:', err);
+        setError(err instanceof Error ? err : new Error(String(err)));
+        if (retryCount < 5) {
+          setTimeout(() => {
+            if (mounted) setRetryCount((n) => n + 1);
+          }, 1500);
+        }
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [
+    e2eAuth.isReady,
+    e2eAuth.provider,
+    e2eAuth.signer,
+    isInitialized,
+    retryCount,
+  ]);
+
+  if (error && retryCount >= 5) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
+        <div className="max-w-xl text-center">
+          <h2 className="mb-2 text-xl font-semibold text-red-400">
+            E2E init failed
+          </h2>
+          <p className="text-sm text-white/70">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isInitialized) return <LoadingScreen />;
+  return <>{children}</>;
+}
+
+// ---------------------------------------------------------------------------
+// Production implementation — Privy-backed
+// ---------------------------------------------------------------------------
+function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const privy = usePrivy();
   const privyWallets = useWallets();
-  const {
-    connect,
-    isConnected,
-    isReady,
-    isInitialized: isWalletInitialized,
-  } = useWallet();
+  const { connect, isConnected, isReady } = useWallet();
 
   const initializeRepository = useCallback(async () => {
     try {
-      let provider: ethers.BrowserProvider;
-
-      if (IS_E2E_TEST_MODE) {
-        const injectedEthereum = (window as Window & { ethereum?: any })
-          .ethereum;
-        if (!injectedEthereum) {
-          throw new Error(
-            'E2E test mode requires an injected wallet provider.',
-          );
-        }
-
-        provider = new ethers.BrowserProvider(injectedEthereum);
-        await provider.send('eth_requestAccounts', []);
-      } else {
-        if (isReady && !privy.authenticated) {
-          await connect();
-          if (!privy.authenticated) {
-            throw new Error('Authentication failed after connect attempt.');
-          }
-        }
-
-        const connectedWallet = privyWallets.wallets?.[0];
-
-        if (!connectedWallet && privy.authenticated) {
-          await privy.logout();
-          await privy.login();
-          if (!connectedWallet && privy.authenticated) {
-            console.error(
-              'Authenticated but no wallet found. User might need to link a wallet.',
-              privyWallets,
-            );
-            throw new Error(
-              `Privy wallet not available even though user is authenticated.`,
-            );
-          }
-        } else if (!connectedWallet) {
-          throw new Error(
-            `Privy wallet not available after connection attempt.`,
-          );
-        }
-
-        const ethereumProvider = await connectedWallet.getEthereumProvider();
-        if (!ethereumProvider) {
-          throw new Error('Ethereum provider not available from Privy wallet.');
-        }
-        provider = new ethers.BrowserProvider(ethereumProvider);
+      if (isReady && !privy.authenticated) {
+        await connect();
       }
 
+      const connectedWallet = privyWallets.wallets?.[0];
+      if (!connectedWallet) {
+        throw new Error('Privy wallet not available.');
+      }
+
+      const ethereumProvider = await connectedWallet.getEthereumProvider();
+      if (!ethereumProvider) {
+        throw new Error('Ethereum provider not available from Privy wallet.');
+      }
+
+      const provider = new ethers.BrowserProvider(ethereumProvider);
       const signer = await provider.getSigner();
-
-      const ausysContract = Ausys__factory.connect(
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
-        signer,
-      );
-
-      const pinata = new PinataSDK({
-        pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
-        pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
-      });
-
-      // Verify the user is connected to the correct chain before initializing
-      const network = await provider.getNetwork();
-      const chainId = Number(network.chainId);
-      if (chainId !== NEXT_PUBLIC_DEFAULT_CHAIN_ID) {
-        const chainNames: Record<number, string> = {
-          1: 'Ethereum Mainnet',
-          8453: 'Base Mainnet',
-          84532: 'Base Sepolia',
-        };
-        const expected =
-          chainNames[NEXT_PUBLIC_DEFAULT_CHAIN_ID] ??
-          `chain ${NEXT_PUBLIC_DEFAULT_CHAIN_ID}`;
-        const actual = chainNames[chainId] ?? `chain ${chainId}`;
-        throw new Error(
-          `Wrong network detected. Please switch your wallet to ${expected} (currently on ${actual}).`,
-        );
-      }
-
-      const repoContext = RepositoryContext.getInstance();
-      await repoContext.initialize(ausysContract, provider, signer, pinata);
-
-      const serviceContext = ServiceContext.getInstance();
-      serviceContext.initialize(repoContext);
+      await setupRepository(provider, signer);
       setIsInitialized(true);
       setError(null);
-      setRetryCount(0);
     } catch (err) {
-      console.error('Repository initialization error:', err);
+      console.error('[RepositoryProviderPrivy] init error:', err);
       setError(
         err instanceof Error
           ? err
-          : new Error('Failed to initialize repository'),
+          : new Error('Failed to initialise repository'),
       );
-      setIsInitialized(false);
-      throw err;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    connect,
-    privy.authenticated,
-    privyWallets.wallets,
-    isReady,
-    isConnected,
-  ]);
+  }, [connect, privy.authenticated, privyWallets.wallets, isReady]);
 
-  // Track current wallet address for signer updates
+  // Re-sync signer when wallet address changes
   const currentWalletAddress = privyWallets.wallets?.[0]?.address ?? null;
+  useEffect(() => {
+    if (!isInitialized || !currentWalletAddress) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const repoCtx = RepositoryContext.getInstance();
+        const stored = await repoCtx.getSignerAddress();
+        if (stored.toLowerCase() === currentWalletAddress.toLowerCase()) return;
+        const wallet = privyWallets.wallets?.[0];
+        if (!wallet) return;
+        const ep = await wallet.getEthereumProvider();
+        const provider = new ethers.BrowserProvider(ep);
+        const signer = await provider.getSigner();
+        if (!cancelled) await repoCtx.updateSigner(signer);
+      } catch (err) {
+        console.error('[RepositoryProviderPrivy] signer sync error:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentWalletAddress, isInitialized, privyWallets.wallets]);
 
   useEffect(() => {
-    let mounted = true;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    if (isInitialized) {
+    if (isInitialized || !isReady || !privy.ready || !privyWallets.ready)
       return;
-    }
-
-    if (
-      !IS_E2E_TEST_MODE &&
-      (!isReady || !privy.ready || !privyWallets.ready)
-    ) {
-      return;
-    }
-
-    const init = async () => {
-      try {
-        await initializeRepository();
-      } catch (err) {
-        if (mounted) {
-          console.error('[RepositoryProvider] useEffect init error:', err);
-          if (IS_E2E_TEST_MODE && retryCount < MAX_E2E_INIT_RETRIES) {
-            retryTimeout = setTimeout(() => {
-              if (!mounted) return;
-              setRetryCount((prev) => prev + 1);
-            }, 1000);
-          }
-        }
-      }
-    };
-
-    init();
-
-    return () => {
-      mounted = false;
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    initializeRepository();
   }, [
     isReady,
     privy.ready,
     privyWallets.ready,
     isInitialized,
-    isConnected,
     privy.authenticated,
-    retryCount,
   ]);
 
-  // Watch for wallet address changes AFTER initialization and update the signer.
-  // This handles role switches (driver ↔ customer ↔ node) where the connected
-  // Privy wallet changes but RepositoryContext still has the old signer.
-  useEffect(() => {
-    if (!isInitialized || !currentWalletAddress) return;
-
-    let cancelled = false;
-
-    const syncSigner = async () => {
-      try {
-        const repoContext = RepositoryContext.getInstance();
-        const storedAddr = await repoContext.getSignerAddress();
-
-        if (storedAddr.toLowerCase() === currentWalletAddress.toLowerCase()) {
-          return; // Already in sync
-        }
-
-        const connectedWallet = privyWallets.wallets?.[0];
-        if (!connectedWallet) return;
-
-        const ethereumProvider = await connectedWallet.getEthereumProvider();
-        const provider = new ethers.BrowserProvider(ethereumProvider);
-        const newSigner = await provider.getSigner();
-
-        if (!cancelled) {
-          await repoContext.updateSigner(newSigner);
-        }
-      } catch (err) {
-        console.error('[RepositoryProvider] Failed to update signer:', err);
-      }
-    };
-
-    syncSigner();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentWalletAddress, isInitialized]);
-
-  if (!IS_E2E_TEST_MODE && (!privy.ready || !privyWallets.ready)) {
-    return <LoadingScreen />;
-  }
+  if (!privy.ready || !privyWallets.ready) return <LoadingScreen />;
 
   if (!isInitialized) {
-    // Show error UI for unrecoverable failures:
-    // - In E2E mode: after exhausting all retries
-    // - In normal mode: always (retries don't apply, error is likely user-actionable e.g. wrong network)
-    const showError =
-      error && (IS_E2E_TEST_MODE ? retryCount >= MAX_E2E_INIT_RETRIES : true);
-    if (showError) {
+    if (error) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
           <div className="max-w-xl text-center">
@@ -252,6 +216,15 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
               Wallet initialization failed
             </h2>
             <p className="text-sm text-white/80">{error.message}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                initializeRepository();
+              }}
+              className="mt-4 rounded bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
+            >
+              Retry
+            </button>
           </div>
         </div>
       );
@@ -260,4 +233,14 @@ export function RepositoryProvider({ children }: RepositoryProviderProps) {
   }
 
   return <>{children}</>;
+}
+
+// ---------------------------------------------------------------------------
+// Public export — build-time constant selects the right implementation
+// ---------------------------------------------------------------------------
+export function RepositoryProvider({ children }: RepositoryProviderProps) {
+  if (IS_E2E_TEST_MODE) {
+    return <RepositoryProviderE2E>{children}</RepositoryProviderE2E>;
+  }
+  return <RepositoryProviderPrivy>{children}</RepositoryProviderPrivy>;
 }

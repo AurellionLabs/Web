@@ -23,9 +23,14 @@ export class DiamondContext {
   /**
    * Initialize the context with a wallet provider
    */
-  async initialize(walletProvider: BrowserProvider): Promise<void> {
+  async initialize(
+    walletProvider: BrowserProvider,
+    prebuiltSigner?: ethers.Signer,
+  ): Promise<void> {
     this.provider = walletProvider;
-    this.signer = await walletProvider.getSigner();
+    // Accept a pre-built signer (e.g. from E2EServerSigner) to avoid calling
+    // walletProvider.getSigner() which hangs on JsonRpcProvider (public node).
+    this.signer = prebuiltSigner ?? (await walletProvider.getSigner());
 
     // Connect to Diamond proxy - all facet functions are called through this
     this.diamond = new ethers.Contract(
