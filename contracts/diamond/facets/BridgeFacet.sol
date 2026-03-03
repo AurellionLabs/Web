@@ -339,9 +339,13 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
         if (bounty > 0) {
             uint256 journeyCount = order.journeyIds.length;
+            // Cache drivers in memory to avoid repeated SLOADs in second loop
+            address[] memory drivers = new address[](journeyCount);
             uint256 validDrivers = 0;
             for (uint256 i = 0; i < journeyCount; i++) {
-                if (s.journeys[order.journeyIds[i]].driver != address(0)) {
+                address driver = s.journeys[order.journeyIds[i]].driver;
+                drivers[i] = driver;
+                if (driver != address(0)) {
                     validDrivers++;
                 }
             }
@@ -351,7 +355,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
                 uint256 bountyPerDriver = bounty / validDrivers;
                 uint256 totalPaid = 0;
                 for (uint256 i = 0; i < journeyCount; i++) {
-                    address driver = s.journeys[order.journeyIds[i]].driver;
+                    address driver = drivers[i];
                     if (driver != address(0)) {
                         IERC20(payToken).safeTransfer(driver, bountyPerDriver);
                         totalPaid += bountyPerDriver;
