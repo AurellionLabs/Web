@@ -112,9 +112,30 @@ async function main(): Promise<void> {
     );
   }
 
-  // Query the on-chain Diamond via DiamondLoupe
+  // Query the on-chain Diamond via DiamondLoupe.
+  // If no Diamond exists at this address (fresh network), write an empty manifest
+  // so detect-facet-changes treats all facets as "new".
   const loupe = await ethers.getContractAt('IDiamondLoupe', diamondAddress);
-  const onChainFacets = await loupe.facets();
+  let onChainFacets: Array<{
+    facetAddress: string;
+    functionSelectors: string[];
+  }> = [];
+  try {
+    onChainFacets = await loupe.facets();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (
+      msg.includes('BAD_DATA') ||
+      msg.includes('could not decode') ||
+      msg.includes('0x')
+    ) {
+      console.warn(
+        `⚠️  No Diamond found at ${diamondAddress} on this network — writing empty manifest (all facets will be treated as new)`,
+      );
+    } else {
+      throw err;
+    }
+  }
 
   const chainId = Number((await ethers.provider.getNetwork()).chainId);
 
