@@ -63,6 +63,17 @@ export default function NodeOverviewPage() {
     router.push(`/node/dashboard?nodeId=${nodeAddress}`);
   };
 
+  // Move useMemo before conditional return - hooks must be called in same order every render
+  const uniqueNodes = useMemo(() => {
+    const seen = new Set<string>();
+    return (nodes || []).filter((node) => {
+      const key = (node.address || '').toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [nodes]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -75,16 +86,6 @@ export default function NodeOverviewPage() {
       </div>
     );
   }
-
-  const uniqueNodes = useMemo(() => {
-    const seen = new Set<string>();
-    return (nodes || []).filter((node) => {
-      const key = (node.address || '').toLowerCase();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [nodes]);
 
   const getUniqueNodeAssets = (node: Node) => {
     const rawAssets = Array.isArray(node?.assets) ? node.assets : [];

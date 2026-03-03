@@ -386,6 +386,7 @@ export function P2POrderFlow({
     buyerSigned,
     driverSigned,
     onCompleteHandoff,
+    onSettled,
     journeyId,
     order.id,
     order.currentStatus,
