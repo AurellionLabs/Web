@@ -2,13 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from './useWallet';
-import { ethers } from 'ethers';
+import { useDiamond } from '@/app/providers/diamond.provider';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
-import {
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_INDEXER_URL,
-} from '@/chain-constants';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
 
 /**
  * Represents a user's holding of a tokenized asset
@@ -54,12 +50,6 @@ export interface UseUserHoldingsReturn {
   getHoldingByTokenId: (tokenId: string) => UserHolding | undefined;
 }
 
-// ERC1155 ABI for balance queries
-const ERC1155_ABI = [
-  'function balanceOf(address account, uint256 id) view returns (uint256)',
-  'function balanceOfBatch(address[] accounts, uint256[] ids) view returns (uint256[])',
-];
-
 // GraphQL query to get all known assets from the indexer
 const GET_ALL_SUPPORTED_ASSETS = `
   query GetAllSupportedAssets($limit: Int!, $after: String) {
@@ -86,7 +76,7 @@ const GET_ALL_SUPPORTED_ASSETS = `
  *
  * This hook:
  * 1. Queries the indexer for all known tokenIds
- * 2. Queries the ERC1155 contract for user's balance of each tokenId
+ * 2. Uses DiamondProvider's balanceOfBatch for efficient balance queries
  * 3. Returns holdings with balance > 0 along with asset metadata
  *
  * Used in the customer dashboard to show owned assets and enable redemption
@@ -106,6 +96,7 @@ const GET_ALL_SUPPORTED_ASSETS = `
  */
 export function useUserHoldings(): UseUserHoldingsReturn {
   const { address, isConnected } = useWallet();
+  const { balanceOfBatch, initialized: diamondInitialized } = useDiamond();
   const [state, setState] = useState<HoldingsState>({ status: 'idle' });
 
   // Derived state
@@ -117,7 +108,7 @@ export function useUserHoldings(): UseUserHoldingsReturn {
    * Fetch user holdings
    */
   const fetchHoldings = useCallback(async () => {
-    if (!address || !isConnected) {
+    if (!address || !isConnected || !diamondInitialized) {
       setState({ status: 'idle' });
       return;
     }
@@ -183,40 +174,11 @@ export function useUserHoldings(): UseUserHoldingsReturn {
         return;
       }
 
-      // Step 2: Get provider from repository context
-      const repositoryContext = RepositoryContext.getInstance();
-      const provider = repositoryContext.getProvider();
-
-      // Step 3: Create contract instance
-      const diamondAssetContract = new ethers.Contract(
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
-        ERC1155_ABI,
-        provider,
-      );
-
-      // Step 4: Query balances for all unique tokenIds
+      // Step 2: Query balances using DiamondProvider's batch method
       const tokenIds = uniqueTokenIds.map((id) => BigInt(id));
-      const accounts = tokenIds.map(() => address);
+      const balances = await balanceOfBatch(address, tokenIds);
 
-      let balances: bigint[];
-      try {
-        balances = await diamondAssetContract.balanceOfBatch(
-          accounts,
-          tokenIds,
-        );
-      } catch (batchError) {
-        console.warn(
-          '[useUserHoldings] Batch query failed, falling back to individual queries',
-          batchError,
-        );
-        balances = await Promise.all(
-          tokenIds.map((tokenId: bigint) =>
-            diamondAssetContract.balanceOf(address, tokenId),
-          ),
-        );
-      }
-
-      // Step 5: Filter to only holdings with balance > 0
+      // Step 3: Filter to only holdings with balance > 0
       const userHoldings: UserHolding[] = [];
       for (let i = 0; i < uniqueTokenIds.length; i++) {
         const balance = balances[i];
@@ -238,7 +200,7 @@ export function useUserHoldings(): UseUserHoldingsReturn {
       console.error('[useUserHoldings] Error fetching holdings:', err);
       setState({ status: 'error', error: message });
     }
-  }, [address, isConnected]);
+  }, [address, isConnected, diamondInitialized, balanceOfBatch]);
 
   // Fetch on mount and when address changes
   useEffect(() => {
