@@ -178,10 +178,6 @@ export class PrivyWalletRepository implements IWalletRepository {
     }
   }
 
-  public getProvider(): ethers.BrowserProvider | null {
-    return null;
-  }
-
   public getWallet(): Wallet {
     return this.wallet;
   }
