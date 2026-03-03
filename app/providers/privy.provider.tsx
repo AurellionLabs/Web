@@ -223,13 +223,17 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
     process.env.NEXT_PUBLIC_RPC_URL_84532 || 'https://sepolia.base.org',
   );
 
+  // In E2E mode, skip PrivyProvider entirely — no app ID needed, no MetaMask contact.
+  // usePrivy() / useWallets() calls elsewhere will read the default no-op context.
+  if (IS_E2E_TEST_MODE) {
+    return <E2EAuthProvider>{children}</E2EAuthProvider>;
+  }
+
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
       config={{
-        loginMethods: IS_E2E_TEST_MODE
-          ? ['email'] // E2E: email-only prevents Privy from contacting MetaMask/OKX
-          : ['wallet', 'email', 'google', 'twitter'],
+        loginMethods: ['wallet', 'email', 'google', 'twitter'],
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
@@ -251,12 +255,8 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
         },
       }}
     >
-      {!IS_E2E_TEST_MODE && <PrivyWalletSetupEffect />}
-      {IS_E2E_TEST_MODE ? (
-        <E2EAuthProvider>{children}</E2EAuthProvider>
-      ) : (
-        children
-      )}
+      <PrivyWalletSetupEffect />
+      {children}
     </PrivyProvider>
   );
 }
