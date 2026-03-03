@@ -829,11 +829,13 @@ contract NodesFacet is Initializable {
         returns (AssetWithBalance[] memory assets) 
     {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256 count = s.nodeAssetIds[_node].length;
+        // Cache asset IDs to memory to avoid repeated SLOADs in loop
+        uint256[] storage assetIds = s.nodeAssetIds[_node];
+        uint256 count = assetIds.length;
         assets = new AssetWithBalance[](count);
         
         for (uint256 i = 0; i < count; i++) {
-            uint256 assetId = s.nodeAssetIds[_node][i];
+            uint256 assetId = assetIds[i];
             DiamondStorage.NodeAsset storage nodeAsset = s.nodeAssets[_node][assetId];
             
             assets[i] = AssetWithBalance({
@@ -865,12 +867,14 @@ contract NodesFacet is Initializable {
         returns (AssetWithBalance[] memory assets, uint256 count) 
     {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256 totalAssets = s.nodeAssetIds[_node].length;
+        // Cache asset IDs to memory to avoid repeated SLOADs in both loops
+        uint256[] storage assetIds = s.nodeAssetIds[_node];
+        uint256 totalAssets = assetIds.length;
         
         // First pass: count sellable assets
         count = 0;
         for (uint256 i = 0; i < totalAssets; i++) {
-            uint256 assetId = s.nodeAssetIds[_node][i];
+            uint256 assetId = assetIds[i];
             DiamondStorage.NodeAsset storage nodeAsset = s.nodeAssets[_node][assetId];
             uint256 balance = s.nodeTokenBalances[_node][nodeAsset.tokenId];
             if (balance > 0 && nodeAsset.active) {
@@ -882,7 +886,7 @@ contract NodesFacet is Initializable {
         assets = new AssetWithBalance[](count);
         uint256 idx = 0;
         for (uint256 i = 0; i < totalAssets; i++) {
-            uint256 assetId = s.nodeAssetIds[_node][i];
+            uint256 assetId = assetIds[i];
             DiamondStorage.NodeAsset storage nodeAsset = s.nodeAssets[_node][assetId];
             uint256 balance = s.nodeTokenBalances[_node][nodeAsset.tokenId];
             
