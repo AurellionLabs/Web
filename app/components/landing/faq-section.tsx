@@ -101,7 +101,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ faq, isOpen, onToggle, index }) => {
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <p className="pb-6 text-muted-foreground leading-relaxed pr-12">
+            <p className="pb-6 text-foreground/90 leading-relaxed pr-12">
               {faq.answer}
             </p>
           </motion.div>

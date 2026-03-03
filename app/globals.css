@@ -741,7 +741,7 @@
 
 /* ── TYPOGRAPHY ── */
 .doc-content {
-  @apply text-foreground/75 leading-7 text-sm;
+  @apply text-foreground/90 leading-7 text-sm;
 }
 
 .doc-content h1 {
@@ -796,7 +796,7 @@
 }
 
 .doc-content p {
-  @apply mb-4 text-foreground/65 leading-7;
+  @apply mb-4 text-foreground/90 leading-7;
 }
 
 .doc-content strong {
@@ -823,7 +823,7 @@
   list-style: none;
 }
 .doc-content ul li {
-  @apply relative pl-4 text-foreground/65;
+  @apply relative pl-4 text-foreground/90;
 }
 .doc-content ul li::before {
   content: '';
@@ -848,7 +848,7 @@
   list-style: none;
 }
 .doc-content ol li {
-  @apply relative pl-8 text-foreground/65;
+  @apply relative pl-8 text-foreground/90;
   counter-increment: doc-counter;
 }
 .doc-content ol li::before {
@@ -988,7 +988,7 @@
 }
 
 .doc-table tbody td {
-  @apply px-4 py-2.5 text-foreground/55 align-top;
+  @apply px-4 py-2.5 text-foreground/90 align-top;
   border-right: 1px solid hsl(43 18% 10%);
   line-height: 1.5;
 }
@@ -1018,7 +1018,7 @@
   border-left: 1px solid hsl(var(--crimson) / 0.3);
 }
 .doc-content blockquote p {
-  @apply mb-0 text-foreground/50 italic text-sm;
+  @apply mb-0 text-foreground/90 italic text-sm;
 }
 
 /* ── CALLOUTS ── */
@@ -1146,7 +1146,7 @@
 
 /* ── FIRST PARAGRAPH LEAD ── */
 .doc-content > p:first-of-type {
-  @apply text-base text-foreground/70;
+  @apply text-base text-foreground/90;
 }
 
 /* ── MERMAID DIAGRAM STYLES ── */

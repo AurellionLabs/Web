@@ -141,7 +141,7 @@ export const TradingEmptyState = memo<TradingEmptyStateProps>(
         </h3>
 
         {/* Description */}
-        <p className="font-mono text-sm text-foreground/40 max-w-md mb-6 tracking-wide">
+        <p className="font-mono text-sm text-foreground/90 max-w-md mb-6 tracking-wide">
           {description}
         </p>
 

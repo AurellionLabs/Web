@@ -290,7 +290,7 @@ export default function NodeOverviewPage() {
                       <div className="flex items-start gap-2">
                         <MapPin className="w-4 h-4 text-gold/50 mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="font-mono text-sm tracking-[0.05em] text-foreground/70 line-clamp-2">
+                          <p className="font-mono text-sm tracking-[0.05em] text-foreground/90 line-clamp-2">
                             {node.location.addressName}
                           </p>
                           <p className="font-mono text-[10px] tracking-[0.1em] text-foreground/30 mt-0.5">
@@ -340,7 +340,7 @@ export default function NodeOverviewPage() {
               <h3 className="font-mono text-lg font-bold tracking-[0.15em] uppercase text-foreground mb-2">
                 No Nodes Found
               </h3>
-              <p className="font-mono text-sm tracking-[0.1em] text-foreground/40 mb-6">
+              <p className="font-mono text-sm tracking-[0.1em] text-foreground/90 mb-6">
                 Register your first node to get started with the network
               </p>
               <TrapButton

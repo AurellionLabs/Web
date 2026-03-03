@@ -126,7 +126,7 @@ const OrderProgressStepComponent: React.FC<OrderProgressStepProps> = ({
             {step.label}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
+        <p className="text-sm text-foreground/90 mt-1">{step.description}</p>
       </div>
     </div>
   );
