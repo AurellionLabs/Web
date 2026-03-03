@@ -18,11 +18,6 @@ import {
   MoonpayCurrencyCode,
 } from '@privy-io/react-auth';
 
-const erc20Abi = [
-  'function balanceOf(address owner) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-];
-
 import {
   base,
   mainnet as ethMainnet,
@@ -95,7 +90,7 @@ export function WalletConnection() {
 
   useEffect(() => {
     const fetchAllBalances = async () => {
-      if (!isOpen || !address || !walletsReady || !wallets[0]) {
+      if (!isOpen || !address || !repository) {
         setEthBalance(null);
         setUsdcBalance(null);
         return;
@@ -103,19 +98,6 @@ export function WalletConnection() {
 
       setIsFetchingBalances(true);
       try {
-        const privyWallet = wallets[0];
-        if (!privyWallet.getEthereumProvider) {
-          console.warn(
-            'getEthereumProvider is not available on the wallet object.',
-          );
-          setEthBalance(null);
-          setUsdcBalance(null);
-          return;
-        }
-
-        const eip1193Provider = await privyWallet.getEthereumProvider();
-        const provider = new ethers.BrowserProvider(eip1193Provider);
-
         const numericChainId = currentChainId;
         if (numericChainId === undefined) {
           console.warn('Chain ID not available for fetching balances.');
@@ -124,19 +106,17 @@ export function WalletConnection() {
           return;
         }
 
-        const rawEthBalance = await provider.getBalance(address);
+        // Use repository methods instead of creating direct ethers calls
+        const rawEthBalance = await repository.getEthBalance(address);
         setEthBalance(ethers.formatEther(rawEthBalance));
 
         const usdcAddress = usdcContractAddresses[numericChainId];
         if (usdcAddress) {
-          const usdcContract = new ethers.Contract(
+          const { balance, decimals } = await repository.getErc20Balance(
+            address,
             usdcAddress,
-            erc20Abi,
-            provider,
           );
-          const rawUsdcBalance = await usdcContract.balanceOf(address);
-          const usdcDecimals = await usdcContract.decimals();
-          setUsdcBalance(ethers.formatUnits(rawUsdcBalance, usdcDecimals));
+          setUsdcBalance(ethers.formatUnits(balance, decimals));
         } else {
           setUsdcBalance(null);
         }
