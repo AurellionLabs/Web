@@ -171,10 +171,12 @@ test.describe('Sell Order TokenId Verification', () => {
       }
 
       // Look for asset selector in sell mode
-      const assetSelector = page.locator(
-        '[data-testid="sell-asset-selector"], text=Select asset to sell',
-      );
-      const hasAssetSelector = (await assetSelector.count()) > 0;
+      // Fix: Use separate locators instead of invalid mixed CSS/text selector
+      const assetSelector = page.locator('[data-testid="sell-asset-selector"]');
+      const assetSelectorText = page.getByText(/Select.*asset.*sell/i);
+      const hasAssetSelector =
+        (await assetSelector.count()) > 0 ||
+        (await assetSelectorText.count()) > 0;
 
       if (hasAssetSelector) {
         console.log('Asset selector found - sell mode active');
