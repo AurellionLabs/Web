@@ -7,6 +7,10 @@ const AUSYS_SETTLEMENT_ABI = [
   'function getPendingTokenDestinations(address buyer) external view returns (bytes32[])',
 ];
 
+const ASSETS_FACET_ABI = [
+  'function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount)',
+];
+
 const ERC1155_ABI = [
   'function balanceOf(address account, uint256 id) view returns (uint256)',
   'function balanceOfBatch(address[] accounts, uint256[] ids) view returns (uint256[])',
@@ -150,7 +154,29 @@ export class SettlementService {
   }
 
   // ---------------------------------------------------------------------------
-  // Custody breakdown
+  // On-chain custody info
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Queries `getCustodyInfo(tokenId, custodian)` on the Diamond (AssetsFacet).
+   * Returns how much of the underlying the given custodian address is responsible for.
+   */
+  async getCustodyInfo(tokenId: string, custodian: string): Promise<bigint> {
+    const provider = this.repositoryContext.getProvider();
+    const contract = new ethers.Contract(
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      ASSETS_FACET_ABI,
+      provider,
+    );
+    const amount: bigint = await contract.getCustodyInfo(
+      BigInt(tokenId),
+      custodian,
+    );
+    return amount;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Custody breakdown (legacy — wallet-balance based)
   // ---------------------------------------------------------------------------
 
   /**
