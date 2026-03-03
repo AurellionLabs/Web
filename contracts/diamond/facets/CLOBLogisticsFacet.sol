@@ -86,6 +86,10 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
     error AlreadySettled();
     error InvalidSignature();
     error SignatureExpired();
+    error LogisticsCreatorNotAuthorized();
+
+    // Authorized contracts that can create logistics orders
+    mapping(address => bool) public authorizedLogisticsCreators;
 
     bytes32 private constant PICKUP_TYPEHASH = keccak256(
         "PickupConfirmation(bytes32 orderId,address driver,string lat,string lng,uint256 nonce,uint256 deadline)"
@@ -112,6 +116,13 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
     modifier onlyOwner() {
         LibDiamond.enforceIsContractOwner();
         _;
+    }
+
+    /**
+     * @notice Authorize a contract to create logistics orders
+     */
+    function setLogisticsCreatorAuthorization(address creator, bool authorized) external onlyOwner {
+        authorizedLogisticsCreators[creator] = authorized;
     }
 
     modifier orderExists(bytes32 orderId) {
@@ -290,6 +301,13 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         }
     }
 
+    modifier onlyLogisticsCreator() {
+        if (!authorizedLogisticsCreators[msg.sender] && msg.sender != LibDiamond.contractOwner()) {
+            revert LogisticsCreatorNotAuthorized();
+        }
+        _;
+    }
+
     // ============================================================================
     // LOGISTICS ORDER MANAGEMENT
     // ============================================================================
@@ -309,7 +327,7 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
         uint256 totalPrice,
         DiamondStorage.Location calldata pickupLocation,
         DiamondStorage.Location calldata deliveryLocation
-    ) external returns (bytes32 orderId) {
+    ) external onlyLogisticsCreator returns (bytes32 orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         orderId = keccak256(abi.encodePacked(tradeId, buyer, seller, block.timestamp));
@@ -380,24 +398,25 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
 
         if (order.status != OrderStatus.LOGISTICS_ASSIGNED) revert InvalidOrderStatus();
         
-        bool isOwner = msg.sender == LibDiamond.contractOwner();
-        if (!isOwner && order.assignedDriver != msg.sender) revert NotAssignedDriver();
+        // Only the assigned driver can confirm pickup
+        if (order.assignedDriver != msg.sender) revert NotAssignedDriver();
 
-        if (!isOwner) {
-            address signer = _verifyPickupSignature(
-                orderId,
-                msg.sender,
-                location.lat,
-                location.lng,
-                deadline,
-                sellerSignature
-            );
-            
-            if (signer != order.seller && signer != order.sellerNode) {
-                revert InvalidSignature();
-            }
-            pickupNonces[orderId]++;
+        // Always require valid signature from seller
+        address signer = _verifyPickupSignature(
+            orderId,
+            msg.sender,
+            location.lat,
+            location.lng,
+            deadline,
+            sellerSignature
+        );
+        
+        if (signer != order.seller && signer != order.sellerNode) {
+            revert InvalidSignature();
         }
+        
+        // Always increment nonce to prevent replay
+        pickupNonces[orderId]++;
 
         order.status = OrderStatus.LOGISTICS_IN_TRANSIT;
 
@@ -430,24 +449,25 @@ contract CLOBLogisticsFacet is ReentrancyGuard {
 
         if (order.status != OrderStatus.LOGISTICS_IN_TRANSIT) revert InvalidOrderStatus();
         
-        bool isOwner = msg.sender == LibDiamond.contractOwner();
-        if (!isOwner && order.assignedDriver != msg.sender) revert NotAssignedDriver();
+        // Only the assigned driver can confirm delivery
+        if (order.assignedDriver != msg.sender) revert NotAssignedDriver();
 
-        if (!isOwner) {
-            address signer = _verifyDeliverySignature(
-                orderId,
-                msg.sender,
-                location.lat,
-                location.lng,
-                deadline,
-                buyerSignature
-            );
-            
-            if (signer != order.buyer) {
-                revert InvalidSignature();
-            }
-            deliveryNonces[orderId]++;
+        // Always require valid signature from buyer
+        address signer = _verifyDeliverySignature(
+            orderId,
+            msg.sender,
+            location.lat,
+            location.lng,
+            deadline,
+            buyerSignature
+        );
+        
+        if (signer != order.buyer) {
+            revert InvalidSignature();
         }
+        
+        // Always increment nonce to prevent replay
+        deliveryNonces[orderId]++;
 
         order.status = OrderStatus.LOGISTICS_DELIVERED;
         order.deliveredAt = block.timestamp;
