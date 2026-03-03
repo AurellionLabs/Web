@@ -269,7 +269,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         emit UpdateStatus(_status, _node);
     }
 
-    function updateNodeCapacity(bytes32 _node, uint256[] memory _quantities) external {
+    function updateNodeCapacity(bytes32 _node, uint256[] calldata _quantities) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
 
@@ -313,10 +313,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
 
     function updateSupportedAssets(
         bytes32 _node,
-        address[] memory _tokens,
-        uint256[] memory _tokenIds,
-        uint256[] memory _prices,
-        uint256[] memory _capacities
+        address[] calldata _tokens,
+        uint256[] calldata _tokenIds,
+        uint256[] calldata _prices,
+        uint256[] calldata _capacities
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
