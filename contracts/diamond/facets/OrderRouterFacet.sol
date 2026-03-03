@@ -26,6 +26,7 @@ contract OrderRouterFacet is ReentrancyGuard {
     
     error InsufficientNodeBalance();
     error NotNodeOwner();
+    error NotNodeOperator();
     error MarketPaused();
     error NoLiquidityForMarketOrder();
     
@@ -117,6 +118,7 @@ contract OrderRouterFacet is ReentrancyGuard {
     
     /**
      * @notice Place a sell order from node inventory
+     * @dev Only the node owner can place node sell orders
      */
     function placeNodeSellOrder(
         address nodeOwner,
@@ -128,6 +130,12 @@ contract OrderRouterFacet is ReentrancyGuard {
         uint8 timeInForce,
         uint40 expiry
     ) external nonReentrant returns (bytes32 orderId) {
+        // CRITICAL: Verify msg.sender is the node owner
+        // This prevents unauthorized parties from draining node inventory
+        if (msg.sender != nodeOwner) {
+            revert NotNodeOperator();
+        }
+        
         OrderUtilsLib.validateOrderParams(price, amount, timeInForce, expiry);
         
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
