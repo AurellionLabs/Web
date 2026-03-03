@@ -11,41 +11,29 @@ export interface CustodyEntry {
 }
 
 export interface AssetCustodyResult {
-  inWallet: bigint;
   nodes: CustodyEntry[];
-  totalBalance: bigint;
+  totalCustodied: bigint;
+  hasAnyCustodian: boolean;
   isLoading: boolean;
   error: string | null;
 }
 
 /**
- * For a given tokenId + wallet balance, returns how much is held
- * in-wallet vs custodied across each of the user's nodes.
- * All contract calls delegated to SettlementService.
+ * For a given tokenId, queries on-chain getCustodyInfo(tokenId, nodeAddress)
+ * for each of the user's nodes. Token wallet location is irrelevant —
+ * only the custodian record on AssetsFacet matters for redemption.
  */
 export function useAssetCustody(
   tokenId: string | undefined,
-  walletAddress: string | undefined,
-  walletBalance: bigint,
 ): AssetCustodyResult {
   const { nodes } = useNodes();
-  const [result, setResult] = useState<
-    Omit<AssetCustodyResult, 'isLoading' | 'error'>
-  >({
-    inWallet: walletBalance,
-    nodes: [],
-    totalBalance: walletBalance,
-  });
+  const [entries, setEntries] = useState<CustodyEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCustody = useCallback(async () => {
-    if (!tokenId || !walletAddress || nodes.length === 0) {
-      setResult({
-        inWallet: walletBalance,
-        nodes: [],
-        totalBalance: walletBalance,
-      });
+    if (!tokenId || nodes.length === 0) {
+      setEntries([]);
       return;
     }
 
@@ -54,28 +42,36 @@ export function useAssetCustody(
 
     try {
       const service = getSettlementService();
-      const breakdown = await service.getCustodyBreakdown(
-        tokenId,
-        walletBalance,
-        nodes.map((n) => ({
-          address: n.address,
-          location: n.location?.addressName || n.address,
-        })),
+      const results = await Promise.all(
+        nodes.map(async (node) => {
+          const amount = await service.getCustodyInfo(tokenId, node.address);
+          return {
+            nodeAddress: node.address,
+            nodeLocation: node.location?.addressName || node.address,
+            amount,
+          };
+        }),
       );
-      setResult(breakdown);
+
+      // Exclude nodes with zero custody
+      setEntries(results.filter((entry) => entry.amount > 0n));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch custody');
     } finally {
       setIsLoading(false);
     }
-  }, [tokenId, walletAddress, walletBalance, nodes]);
+  }, [tokenId, nodes]);
 
   useEffect(() => {
     fetchCustody();
   }, [fetchCustody]);
 
+  const totalCustodied = entries.reduce((sum, e) => sum + e.amount, 0n);
+
   return {
-    ...result,
+    nodes: entries,
+    totalCustodied,
+    hasAnyCustodian: entries.length > 0,
     isLoading,
     error,
   };
