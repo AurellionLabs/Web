@@ -53,7 +53,8 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 // This replaces the old Diamond which had corrupted V1/V2 storage conflicts
 
 export const NEXT_PUBLIC_DIAMOND_ADDRESS =
-  '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7';
+  process.env.NEXT_PUBLIC_DIAMOND_ADDRESS ||
+  '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7'; // Default: Base Sepolia
 export const NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS =
   '0xf20eBBF5cD6D9Be29C07aefC7A90Fb42C5Fd7770';
 export const NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS =
@@ -108,7 +109,9 @@ export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 // CHAIN CONFIG
 // =============================================================================
 
-export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = 84532; // Base Sepolia
+export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = Number(
+  process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || 84532,
+); // Default: Base Sepolia (84532), Production: Arbitrum One (42161)
 
 // =============================================================================
 // DEPLOYMENT BLOCKS (for indexer configuration)
