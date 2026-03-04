@@ -17,8 +17,12 @@
   "include": [
     "src/**/*.ts",
     "ponder.config.ts",
+    "ponder.config.generated.ts",
     "ponder.schema.ts",
-    "ponder-env.d.ts"
+    "ponder-env.d.ts",
+    "resolve-deploy-block.ts",
+    "diamond-constants.ts",
+    "chain-constants.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }
