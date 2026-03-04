@@ -119,7 +119,8 @@ export default function PoolDetails({ params }: { params: { id: string } }) {
     };
 
     loadPoolData();
-  }, [params.id, getPoolWithDynamicData, selectPool]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id, getPoolWithDynamicData, selectPool]); // toast excluded: stable callback, including would cause infinite re-render
 
   // Load stake history
   useEffect(() => {

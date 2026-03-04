@@ -132,7 +132,8 @@ export function WalletConnection() {
     if (isOpen) {
       fetchAllBalances();
     }
-  }, [isOpen, address, walletsReady, wallets, currentChainId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, address, walletsReady, wallets, currentChainId]); // repository excluded: stable reference from context, would cause unnecessary re-runs
 
   const handleAccountsChanged = async () => {
     if (!repository) return;

@@ -68,7 +68,8 @@ export default function AddLiquidity({ params }: { params: { id: string } }) {
     };
 
     loadPool();
-  }, [params.id, getPoolById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id, getPoolById]); // toast excluded: stable callback, including would cause infinite re-render
 
   // Calculate asset price for display
   const assetPriceDisplay = (() => {

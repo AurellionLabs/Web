@@ -164,7 +164,8 @@ export default function NodeRegistrationPage() {
         { shouldDirty: true },
       );
     }
-  }, [form.watch('supportedAssets')]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.watch('supportedAssets')]); // form excluded: stable reference, watching specific field
 
   useEffect(() => {
     const init = async () => {
