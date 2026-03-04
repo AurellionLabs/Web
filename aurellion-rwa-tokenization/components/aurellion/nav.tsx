@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { NEXT_PUBLIC_DEFAULT_CHAIN_ID } from '../../../../indexer/chain-constants';
 
 const navItems = [
   { label: 'Dashboard', id: 'dashboard' },
@@ -9,14 +10,14 @@ const navItems = [
   { label: 'Components', id: 'components' },
 ];
 
-// Hide trading, yield, faucet on production
-const isProd = process.env.NODE_ENV === 'production';
+// Hide trading, yield, faucet on mainnet (Arbitrum = 42161), show on testnets
+const isMainnet = NEXT_PUBLIC_DEFAULT_CHAIN_ID === 42161;
 const devOnlyItems = [
   { label: 'Yield', id: 'yield' },
   { label: 'Trading', id: 'trading' },
   { label: 'Faucet', id: 'faucet' },
 ];
-const visibleNavItems = isProd ? navItems : [...navItems, ...devOnlyItems];
+const visibleNavItems = isMainnet ? navItems : [...navItems, ...devOnlyItems];
 
 export default function AurellionNav({
   activePage,
