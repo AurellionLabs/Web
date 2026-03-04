@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 
-// Chain ID from env - set NEXT_PUBLIC_CHAIN_ID in Railway (42161 = Arbitrum mainnet, 84532 = Base Sepolia)
-const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '84532', 10);
+// Supported chains
+const MAINNET_CHAIN_ID = 42161; // Arbitrum
+const TESTNET_CHAIN_ID = 84532; // Base Sepolia
 
 const navItems = [
   { label: 'Dashboard', id: 'dashboard' },
@@ -11,15 +12,6 @@ const navItems = [
   { label: 'Node', id: 'node' },
   { label: 'Components', id: 'components' },
 ];
-
-// Hide trading, yield, faucet on mainnet (Arbitrum = 42161), show on testnets
-const isMainnet = CHAIN_ID === 42161;
-const devOnlyItems = [
-  { label: 'Yield', id: 'yield' },
-  { label: 'Trading', id: 'trading' },
-  { label: 'Faucet', id: 'faucet' },
-];
-const visibleNavItems = isMainnet ? navItems : [...navItems, ...devOnlyItems];
 
 export default function AurellionNav({
   activePage,
@@ -30,6 +22,77 @@ export default function AurellionNav({
 }) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [time, setTime] = useState('');
+  const [chainId, setChainId] = useState<number | null>(null);
+  const [needsSwitch, setNeedsSwitch] = useState(false);
+
+  // Detect user's connected chain
+  useEffect(() => {
+    async function checkChain() {
+      try {
+        if (typeof window !== 'undefined' && (window as any).ethereum) {
+          const provider = (window as any).ethereum;
+          const chain = await provider.request({ method: 'eth_chainId' });
+          const chainIdNum = parseInt(chain, 16);
+          setChainId(chainIdNum);
+
+          // Prompt switch if on unsupported non-testnet chain
+          if (
+            chainIdNum !== MAINNET_CHAIN_ID &&
+            chainIdNum !== TESTNET_CHAIN_ID
+          ) {
+            setNeedsSwitch(true);
+          } else {
+            setNeedsSwitch(false);
+          }
+        } else {
+          // No wallet connected - default to showing all (testnet mode)
+          setChainId(TESTNET_CHAIN_ID);
+        }
+      } catch (e) {
+        console.error('Error checking chain:', e);
+      }
+    }
+    checkChain();
+
+    // Listen for chain changes
+    if (typeof window !== 'undefined' && (window as any).ethereum) {
+      (window as any).ethereum.on('chainChanged', (chain: string) => {
+        const chainIdNum = parseInt(chain, 16);
+        setChainId(chainIdNum);
+        if (
+          chainIdNum !== MAINNET_CHAIN_ID &&
+          chainIdNum !== TESTNET_CHAIN_ID
+        ) {
+          setNeedsSwitch(true);
+        } else {
+          setNeedsSwitch(false);
+        }
+      });
+    }
+  }, []);
+
+  // Show prompt to switch chain if needed
+  const switchToMainnet = async () => {
+    try {
+      if ((window as any).ethereum) {
+        await (window as any).ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xa4b1' }], // 42161 in hex
+        });
+      }
+    } catch (e) {
+      console.error('Error switching chain:', e);
+    }
+  };
+
+  // Hide dev-only pages on mainnet
+  const isMainnet = chainId === MAINNET_CHAIN_ID;
+  const devOnlyItems = [
+    { label: 'Yield', id: 'yield' },
+    { label: 'Trading', id: 'trading' },
+    { label: 'Faucet', id: 'faucet' },
+  ];
+  const visibleNavItems = isMainnet ? navItems : [...navItems, ...devOnlyItems];
 
   useEffect(() => {
     const update = () => {
@@ -150,16 +213,28 @@ export default function AurellionNav({
             </span>
           </div>
 
-          {/* Network */}
-          <div className="hidden md:flex items-center gap-2.5 px-3 py-2 border border-emerald-500/25 bg-emerald-500/[0.04]">
-            <div className="relative">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping opacity-30" />
+          {/* Network / Chain switcher */}
+          {needsSwitch ? (
+            <button
+              onClick={switchToMainnet}
+              className="hidden md:flex items-center gap-2.5 px-3 py-2 border border-amber-500/50 bg-amber-500/[0.1] hover:bg-amber-500/[0.2] transition-colors"
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="font-mono text-sm tracking-[0.12em] uppercase text-amber-400 font-bold">
+                Switch to Mainnet
+              </span>
+            </button>
+          ) : (
+            <div className="hidden md:flex items-center gap-2.5 px-3 py-2 border border-emerald-500/25 bg-emerald-500/[0.04]">
+              <div className="relative">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping opacity-30" />
+              </div>
+              <span className="font-mono text-sm tracking-[0.12em] uppercase text-emerald-400 font-bold">
+                {isMainnet ? 'Mainnet' : 'Testnet'}
+              </span>
             </div>
-            <span className="font-mono text-sm tracking-[0.12em] uppercase text-emerald-400 font-bold">
-              Mainnet
-            </span>
-          </div>
+          )}
 
           {/* Wallet */}
           <button className="relative flex items-center gap-2.5 border border-gold/30 hover:border-gold/60 px-4 py-2 transition-colors duration-300 group">
