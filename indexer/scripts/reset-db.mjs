@@ -2,11 +2,9 @@
 /**
  * Database reset script for Ponder indexer
  * 
- * Automatically resets DB when:
- * - DROP_DB=true env var is set
- * - Chain config changed (CHAIN_ID or DIAMOND_ADDRESS different from last run)
- * 
- * Set DROP_DB=true in Railway to force a clean reindex.
+ * Always drops all tables in the schema on each deploy.
+ * This is intentional for DeFi indexers - data comes from the chain anyway,
+ * so re-syncing is fine and avoids schema conflicts between deploys.
  */
 
 import pg from 'pg';
@@ -15,9 +13,6 @@ const { Pool } = pg;
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const SCHEMA = process.env.DATABASE_SCHEMA || 'public';
-const DROP_DB = process.env.DROP_DB === 'true';
-const CHAIN_ID = process.env.CHAIN_ID || '84532';
-const DIAMOND_ADDRESS = process.env.DIAMOND_ADDRESS || '';
 
 if (!DATABASE_URL) {
   console.log('⚠️  No DATABASE_URL, skipping DB reset check');
@@ -30,89 +25,23 @@ async function run() {
   const client = await pool.connect();
   
   try {
-    // Check if we need to reset
-    let shouldReset = DROP_DB;
+    console.log('🗑️  Dropping all tables in schema...');
     
-    if (!shouldReset) {
-      // Check if chain config changed
-      try {
-        const result = await client.query(`
-          SELECT value FROM "${SCHEMA}"._indexer_chain_config WHERE key = 'chain_config'
-        `);
-        
-        if (result.rows.length > 0) {
-          const lastConfig = JSON.parse(result.rows[0].value);
-          if (lastConfig.chainId !== CHAIN_ID || lastConfig.diamondAddress !== DIAMOND_ADDRESS) {
-            console.log('🔄 Chain config changed, resetting database...');
-            console.log(`   Old: chainId=${lastConfig.chainId}, diamond=${lastConfig.diamondAddress}`);
-            console.log(`   New: chainId=${CHAIN_ID}, diamond=${DIAMOND_ADDRESS}`);
-            shouldReset = true;
-          }
-        }
-      } catch (e) {
-        // Table doesn't exist or parse error — reset to be safe
-        console.log('⚠️  Error checking chain config:', e.message);
-        console.log('🔄 Resetting database to be safe...');
-        shouldReset = true;
-      }
-    }
-    
-    // Check for stale Ponder migration state (causes "different app" error)
-    // Ponder stores metadata in tables within the schema, not a separate schema
-    if (!shouldReset) {
-      try {
-        const ponderTables = await client.query(`
-          SELECT table_name FROM information_schema.tables 
-          WHERE table_schema = $1 AND table_name LIKE '_ponder%'
-        `, [SCHEMA]);
-        
-        if (ponderTables.rows.length > 0) {
-          console.log('⚠️  Found stale Ponder tables:', ponderTables.rows.map(r => r.table_name).join(', '));
-          console.log('🔄 Resetting database...');
-          shouldReset = true;
-        }
-      } catch (e) {
-        // Ignore - table check failed
-      }
-    }
-    
-    if (shouldReset) {
-      console.log('🗑️  Dropping all Ponder tables...');
-      
-      // Drop all tables in the schema (Ponder will recreate them)
-      await client.query(`
-        DO $$ DECLARE
-          r RECORD;
-        BEGIN
-          FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '${SCHEMA}') LOOP
-            EXECUTE 'DROP TABLE IF EXISTS "${SCHEMA}"."' || r.tablename || '" CASCADE';
-          END LOOP;
-        END $$;
-      `);
-      
-      // Also drop Ponder's internal schema if it exists (causes "different app" conflict)
-      await client.query(`
-        DROP SCHEMA IF EXISTS ponder CASCADE
-      `).catch(() => {}); // Schema might not exist
-      
-      console.log('✅ Database reset complete');
-    } else {
-      console.log('✅ Database config unchanged, keeping existing data');
-    }
-    
-    // Ensure our config table exists (separate from Ponder's internal tables)
+    // Drop all tables in the schema (Ponder will recreate them on start)
     await client.query(`
-      CREATE TABLE IF NOT EXISTS "${SCHEMA}"._indexer_chain_config (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      )
-    `);
+      DO $$ DECLARE
+        r RECORD;
+      BEGIN
+        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = $1) LOOP
+          EXECUTE 'DROP TABLE IF EXISTS "' || $1 || '"."' || r.tablename || '" CASCADE';
+        END LOOP;
+      END $$;
+    `, [SCHEMA]);
     
-    await client.query(`
-      INSERT INTO "${SCHEMA}"._indexer_chain_config (key, value) 
-      VALUES ('chain_config', $1)
-      ON CONFLICT (key) DO UPDATE SET value = $1
-    `, [JSON.stringify({ chainId: CHAIN_ID, diamondAddress: DIAMOND_ADDRESS })]);
+    // Also drop Ponder's internal schema if it exists
+    await client.query(`DROP SCHEMA IF EXISTS ponder CASCADE`).catch(() => {});
+    
+    console.log('✅ Database reset complete - Ponder will re-sync on start');
     
   } finally {
     client.release();
