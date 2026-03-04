@@ -5,8 +5,8 @@ export const DIAMOND_ADDRESS: `0x${string}` = (process.env.DIAMOND_ADDRESS ||
   '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7') as `0x${string}`; // Default: Base Sepolia
 
 export const DIAMOND_DEPLOY_BLOCK = Number(
-  process.env.DIAMOND_DEPLOY_BLOCK || 37798377,
-); // Default: Base Sepolia
+  process.env.DIAMOND_DEPLOY_BLOCK || (CHAIN_ID === 84532 ? 1000000 : 1000000), // Safe default: 1M (Base Sepolia / Arbitrum)
+);
 
 // Chain configuration
 export const CHAIN_ID = Number(process.env.CHAIN_ID || 84532); // Default: Base Sepolia (84532), Prod: Arbitrum One (42161)
