@@ -151,9 +151,9 @@ interface OrderProgressComponentProps {
   order: {
     status: string;
     createdAt: number;
-    matchedAt: number;
-    deliveredAt: number;
-    settledAt: number;
+    matchedAt?: number;
+    deliveredAt?: number;
+    settledAt?: number;
   } | null;
   className?: string;
 }
