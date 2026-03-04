@@ -686,10 +686,19 @@ export default function CustomerDashboard() {
                       </button>
                     </div>
 
-                    {/* Asset name */}
-                    <p className="font-mono text-sm font-medium text-foreground/70 uppercase tracking-wider mb-1">
-                      {holding.name || holding.className}
+                    {/* Asset name - prominent display */}
+                    <p className="font-mono text-sm font-bold text-foreground/90 uppercase tracking-wider mb-2">
+                      {holding.name || 'Unnamed Asset'}
                     </p>
+
+                    {/* Asset class badge */}
+                    {(holding.assetClass || holding.className) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-gold/10 text-gold border border-gold/20">
+                          {holding.className || holding.assetClass}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Balance */}
                     <div className="flex items-baseline gap-2 mb-2">
@@ -700,6 +709,20 @@ export default function CustomerDashboard() {
                         units
                       </span>
                     </div>
+
+                    {/* Key attributes - show 1-2 key ones like Weight, Sex */}
+                    {holding.attributes && holding.attributes.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {holding.attributes.slice(0, 2).map((attr) => (
+                          <span
+                            key={attr.name}
+                            className="font-mono text-[10px] text-white/50 bg-white/5 px-1.5 py-0.5 rounded"
+                          >
+                            {attr.name}: {attr.values.join(', ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Token ID */}
                     <p className="font-mono text-[10px] text-white/50 tabular-nums">
