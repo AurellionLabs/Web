@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { RoleSelector } from '@/app/components/ui/role-selector';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useMainProvider } from '@/app/providers/main.provider';
+import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import ConnectButton from '../ConnectButtont';
 import { TrapButton } from '@/app/components/eva/eva-components';
@@ -15,6 +16,10 @@ import { Menu, X, BookOpen } from 'lucide-react';
    NERV × AURELLION — HEADER & NAV
    Evangelion command bar + Greek philosophy
    ───────────────────────────────────────── */
+
+// Supported chains
+const MAINNET_CHAIN_ID = 42161; // Arbitrum
+const TESTNET_CHAIN_ID = 84532; // Base Sepolia
 
 interface NavLinkProps {
   href: string;
@@ -70,37 +75,53 @@ const DocsNavLink: React.FC<{ pathname: string }> = ({ pathname }) => {
 };
 
 /** Customer navigation */
-const CustomerNav: React.FC<{ pathname: string }> = ({ pathname }) => (
-  <>
-    <NavLink
-      href="/customer/dashboard"
-      isActive={pathname === '/customer/dashboard'}
-    >
-      Dashboard
-    </NavLink>
-    <NavLink
-      href="/customer/pools"
-      isActive={pathname.startsWith('/customer/pools')}
-    >
-      Yield
-    </NavLink>
-    <NavLink
-      href="/customer/trading"
-      isActive={pathname.startsWith('/customer/trading')}
-    >
-      Trading
-    </NavLink>
-    <NavLink
-      href="/customer/p2p"
-      isActive={pathname.startsWith('/customer/p2p')}
-    >
-      P2P
-    </NavLink>
-    <NavLink href="/customer/faucet" isActive={pathname === '/customer/faucet'}>
-      Faucet
-    </NavLink>
-  </>
-);
+const CustomerNav: React.FC<{ pathname: string; chainId: number | null }> = ({
+  pathname,
+  chainId,
+}) => {
+  const isMainnet = chainId === MAINNET_CHAIN_ID;
+
+  return (
+    <>
+      <NavLink
+        href="/customer/dashboard"
+        isActive={pathname === '/customer/dashboard'}
+      >
+        Dashboard
+      </NavLink>
+      {!isMainnet && (
+        <NavLink
+          href="/customer/pools"
+          isActive={pathname.startsWith('/customer/pools')}
+        >
+          Yield
+        </NavLink>
+      )}
+      {!isMainnet && (
+        <NavLink
+          href="/customer/trading"
+          isActive={pathname.startsWith('/customer/trading')}
+        >
+          Trading
+        </NavLink>
+      )}
+      <NavLink
+        href="/customer/p2p"
+        isActive={pathname.startsWith('/customer/p2p')}
+      >
+        P2P
+      </NavLink>
+      {!isMainnet && (
+        <NavLink
+          href="/customer/faucet"
+          isActive={pathname === '/customer/faucet'}
+        >
+          Faucet
+        </NavLink>
+      )}
+    </>
+  );
+};
 
 /** Node navigation */
 const NodeNav: React.FC<{ pathname: string }> = ({ pathname }) => (
@@ -126,7 +147,28 @@ export function ClientHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [time, setTime] = useState('');
   const { currentUserRole } = useMainProvider();
+  const { chainId } = useWallet();
   const pathname = usePathname();
+  const isMainnet = chainId === MAINNET_CHAIN_ID;
+
+  // Show prompt to switch chain if on unsupported non-testnet chain
+  const needsSwitch =
+    chainId !== null &&
+    chainId !== MAINNET_CHAIN_ID &&
+    chainId !== TESTNET_CHAIN_ID;
+
+  const switchToMainnet = async () => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        await (window as any).ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xa4b1' }], // 42161 in hex
+        });
+      }
+    } catch (e) {
+      console.error('Error switching chain:', e);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -262,7 +304,7 @@ export function ClientHeader() {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-[2px]">
           {currentUserRole === 'customer' && (
-            <CustomerNav pathname={pathname} />
+            <CustomerNav pathname={pathname} chainId={chainId} />
           )}
           {currentUserRole === 'node' && <NodeNav pathname={pathname} />}
           {currentUserRole === 'driver' && <DriverNav pathname={pathname} />}
@@ -274,6 +316,24 @@ export function ClientHeader() {
         {/* Right section */}
         <div className="flex items-center gap-3">
           <SysClock />
+          {/* Chain indicator / switch prompt */}
+          {needsSwitch ? (
+            <button
+              onClick={switchToMainnet}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border border-amber-500/50 bg-amber-500/[0.1] text-amber-400 hover:bg-amber-500/[0.2] transition-colors"
+            >
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              Switch to Mainnet
+            </button>
+          ) : (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border border-emerald-500/25 bg-emerald-500/[0.04] text-emerald-400">
+              <div className="relative">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-30" />
+              </div>
+              {isMainnet ? 'Mainnet' : 'Testnet'}
+            </div>
+          )}
           <div className="hidden sm:block">
             <RoleSelector />
           </div>
@@ -311,30 +371,36 @@ export function ClientHeader() {
                   >
                     Dashboard
                   </MobileNavLink>
-                  <MobileNavLink
-                    href="/customer/pools"
-                    active={pathname.startsWith('/customer/pools')}
-                  >
-                    Yield
-                  </MobileNavLink>
-                  <MobileNavLink
-                    href="/customer/trading"
-                    active={pathname.startsWith('/customer/trading')}
-                  >
-                    Trading
-                  </MobileNavLink>
+                  {!isMainnet && (
+                    <MobileNavLink
+                      href="/customer/pools"
+                      active={pathname.startsWith('/customer/pools')}
+                    >
+                      Yield
+                    </MobileNavLink>
+                  )}
+                  {!isMainnet && (
+                    <MobileNavLink
+                      href="/customer/trading"
+                      active={pathname.startsWith('/customer/trading')}
+                    >
+                      Trading
+                    </MobileNavLink>
+                  )}
                   <MobileNavLink
                     href="/customer/p2p"
                     active={pathname.startsWith('/customer/p2p')}
                   >
                     P2P
                   </MobileNavLink>
-                  <MobileNavLink
-                    href="/customer/faucet"
-                    active={pathname === '/customer/faucet'}
-                  >
-                    Faucet
-                  </MobileNavLink>
+                  {!isMainnet && (
+                    <MobileNavLink
+                      href="/customer/faucet"
+                      active={pathname === '/customer/faucet'}
+                    >
+                      Faucet
+                    </MobileNavLink>
+                  )}
                 </>
               )}
               {currentUserRole === 'node' && (
