@@ -27,16 +27,18 @@ async function run() {
   try {
     console.log('🗑️  Dropping all tables in schema...');
     
-    // Drop all tables in the schema (Ponder will recreate them on start)
-    await client.query(`
-      DO $$ DECLARE
-        r RECORD;
-      BEGIN
-        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = $1) LOOP
-          EXECUTE 'DROP TABLE IF EXISTS "' || $1 || '"."' || r.tablename || '" CASCADE';
-        END LOOP;
-      END $$;
+    // Get all tables in the schema
+    const tables = await client.query(`
+      SELECT tablename FROM pg_tables WHERE schemaname = $1
     `, [SCHEMA]);
+    
+    // Drop each table
+    for (const table of tables.rows) {
+      await client.query(`DROP TABLE IF EXISTS "${SCHEMA}"."${table.tablename}" CASCADE`);
+      console.log(`   Dropped: ${table.tablename}`);
+    }
+    
+    console.log('✅ Database reset complete - Ponder will re-sync on start');
     
     // Also drop Ponder's internal schema if it exists
     await client.query(`DROP SCHEMA IF EXISTS ponder CASCADE`).catch(() => {});
