@@ -74,51 +74,53 @@ export function useUserAssets(filterClass?: string) {
         return;
       }
 
-      // Step 2: Fetch assets for each node from getNodeAssets (metadata)
-      // Then get ACTUAL tradable balance from getNodeTokenBalance for each
-      const allAssets: AssetWithAttributes[] = [];
+      // Step 2: Fetch assets for ALL nodes in PARALLEL, then get balances in PARALLEL
+      // This reduces RPC round-trips from O(nodes * assets) sequential calls to 2 batches
+      const nodeAssetPromises = ownedNodeIds.map(
+        async (nodeId): Promise<AssetWithAttributes[]> => {
+          try {
+            const nodeAssets = await getNodeAssets(nodeId);
 
-      for (const nodeId of ownedNodeIds) {
-        try {
-          // Get asset metadata from getNodeAssets
-          const nodeAssets = await getNodeAssets(nodeId);
+            // Parallelize all balance queries for this node's assets
+            const assetsWithBalances = await Promise.all(
+              nodeAssets.map(async (asset): Promise<AssetWithAttributes> => {
+                try {
+                  const actualBalance = await balanceOf(address, asset.id);
+                  return {
+                    ...asset,
+                    actualBalance: actualBalance.toString(),
+                    nodeHash: nodeId,
+                  };
+                } catch (balanceError) {
+                  console.warn(
+                    '[useUserAssets] Error getting balance for asset',
+                    asset.id,
+                    balanceError,
+                  );
+                  return {
+                    ...asset,
+                    actualBalance: asset.capacity || '0',
+                    nodeHash: nodeId,
+                  };
+                }
+              }),
+            );
 
-          // For each asset, get wallet's ERC1155 balance (actual tokens in wallet)
-          for (const asset of nodeAssets) {
-            try {
-              // Query wallet's actual ERC1155 balance (for P2P sell orders)
-              const actualBalance = await balanceOf(address, asset.id);
-
-              // Create asset entry with actual balance
-              const assetEntry: AssetWithAttributes = {
-                ...asset,
-                actualBalance: actualBalance.toString(),
-                nodeHash: nodeId,
-              };
-
-              allAssets.push(assetEntry);
-            } catch (balanceError) {
-              console.warn(
-                '[useUserAssets] Error getting balance for asset',
-                asset.id,
-                balanceError,
-              );
-              // Still add the asset but with capacity as fallback
-              allAssets.push({
-                ...asset,
-                actualBalance: asset.capacity || '0',
-                nodeHash: nodeId,
-              });
-            }
+            return assetsWithBalances;
+          } catch (nodeError) {
+            console.error(
+              '[useUserAssets] Error fetching assets for node',
+              nodeId,
+              nodeError,
+            );
+            return [];
           }
-        } catch (nodeError) {
-          console.error(
-            '[useUserAssets] Error fetching assets for node',
-            nodeId,
-            nodeError,
-          );
-        }
-      }
+        },
+      );
+
+      // Wait for all nodes in parallel
+      const nodeAssetResults = await Promise.all(nodeAssetPromises);
+      const allAssets = nodeAssetResults.flat();
 
       // Step 3: Fetch attributes for each asset
       const assetsWithAttributes: AssetWithAttributes[] = await Promise.all(
