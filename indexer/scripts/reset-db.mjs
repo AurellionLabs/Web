@@ -58,17 +58,21 @@ async function run() {
     }
     
     // Check for stale Ponder migration state (causes "different app" error)
+    // Ponder stores metadata in tables within the schema, not a separate schema
     if (!shouldReset) {
       try {
-        const ponderSchemaCheck = await client.query(`
-          SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'ponder'
-        `);
-        if (ponderSchemaCheck.rows.length > 0) {
-          console.log('⚠️  Found stale Ponder schema, resetting...');
+        const ponderTables = await client.query(`
+          SELECT table_name FROM information_schema.tables 
+          WHERE table_schema = $1 AND table_name LIKE '_ponder%'
+        `, [SCHEMA]);
+        
+        if (ponderTables.rows.length > 0) {
+          console.log('⚠️  Found stale Ponder tables:', ponderTables.rows.map(r => r.table_name).join(', '));
+          console.log('🔄 Resetting database...');
           shouldReset = true;
         }
       } catch (e) {
-        // Ignore - schema check failed
+        // Ignore - table check failed
       }
     }
     
