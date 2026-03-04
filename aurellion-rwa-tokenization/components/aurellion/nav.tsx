@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { NEXT_PUBLIC_DEFAULT_CHAIN_ID } from '../../../../indexer/chain-constants';
+
+// Chain ID from env - set NEXT_PUBLIC_CHAIN_ID in Railway (42161 = Arbitrum mainnet, 84532 = Base Sepolia)
+const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '84532', 10);
 
 const navItems = [
   { label: 'Dashboard', id: 'dashboard' },
@@ -11,7 +13,7 @@ const navItems = [
 ];
 
 // Hide trading, yield, faucet on mainnet (Arbitrum = 42161), show on testnets
-const isMainnet = NEXT_PUBLIC_DEFAULT_CHAIN_ID === 42161;
+const isMainnet = CHAIN_ID === 42161;
 const devOnlyItems = [
   { label: 'Yield', id: 'yield' },
   { label: 'Trading', id: 'trading' },
