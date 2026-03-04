@@ -263,11 +263,7 @@ export function AssetDetailDrawer({
                             isSelected ? 'text-gold' : 'text-foreground/60',
                           )}
                         >
-                          {(entry.amount > holding.balance
-                            ? holding.balance
-                            : entry.amount
-                          ).toString()}{' '}
-                          units
+                          {entry.amount.toString()} units
                         </span>
                         <ChevronRight
                           className={cn(

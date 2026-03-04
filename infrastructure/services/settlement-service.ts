@@ -9,6 +9,7 @@ const AUSYS_SETTLEMENT_ABI = [
 
 const ASSETS_FACET_ABI = [
   'function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount)',
+  'function getNodeCustodyInfo(uint256 tokenId, bytes32 nodeHash) external view returns (uint256 amount)',
 ];
 
 const ERC1155_ABI = [
@@ -173,6 +174,24 @@ export class SettlementService {
     const amount: bigint = await contract.getCustodyInfo(
       BigInt(tokenId),
       custodian,
+    );
+    return amount;
+  }
+
+  /**
+   * Queries `getNodeCustodyInfo(tokenId, nodeHash)` on the Diamond (AssetsFacet).
+   * Returns how much of the token is custodied at a specific node (not wallet).
+   */
+  async getNodeCustodyInfo(tokenId: string, nodeHash: string): Promise<bigint> {
+    const provider = this.repositoryContext.getProvider();
+    const contract = new ethers.Contract(
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      ASSETS_FACET_ABI,
+      provider,
+    );
+    const amount: bigint = await contract.getNodeCustodyInfo(
+      BigInt(tokenId),
+      nodeHash,
     );
     return amount;
   }

@@ -237,6 +237,10 @@ library DiamondStorage {
         // Multiple nodes can mint the same tokenId; each tracks their own custody
         mapping(uint256 => mapping(address => uint256)) tokenCustodianAmounts;
 
+        // Per-node custody: tokenId => nodeHash => amount in custody at this specific node
+        // Needed because multiple nodes can share the same owner wallet
+        mapping(uint256 => mapping(bytes32 => uint256)) tokenNodeCustodyAmounts;
+
         // ======= TOKEN DESTINATION ESCROW =======
         mapping(bytes32 => bool) pendingTokenDestination;
         mapping(bytes32 => address) pendingTokenBuyer;

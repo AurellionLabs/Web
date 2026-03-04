@@ -277,6 +277,53 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         string memory className,
         bytes memory data
     ) external validNode(msg.sender) returns (bytes32 hash, uint256 tokenID) {
+        // Default path: uses first active node for per-node custody tracking
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        bytes32 mintingNode = _getFirstActiveNode(s, msg.sender);
+        return _nodeMintInternal(account, asset, amount, className, data, mintingNode);
+    }
+
+    /**
+     * @notice Mint tokens via a specific node — use when wallet owns multiple nodes
+     * @param nodeHash The specific node hash to attribute custody to
+     */
+    function nodeMintForNode(
+        address account,
+        DiamondStorage.AssetDefinition memory asset,
+        uint256 amount,
+        string memory className,
+        bytes memory data,
+        bytes32 nodeHash
+    ) external validNode(msg.sender) returns (bytes32 hash, uint256 tokenID) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        // Verify the caller owns this specific node and it's active
+        DiamondStorage.Node storage node = s.nodes[nodeHash];
+        require(node.active && node.validNode && node.owner == msg.sender, "Invalid node");
+        return _nodeMintInternal(account, asset, amount, className, data, nodeHash);
+    }
+
+    function _getFirstActiveNode(
+        DiamondStorage.AppStorage storage s,
+        address owner
+    ) internal view returns (bytes32) {
+        bytes32[] storage ownerNodes = s.ownerNodes[owner];
+        for (uint256 i = 0; i < ownerNodes.length; i++) {
+            DiamondStorage.Node storage nodeData = s.nodes[ownerNodes[i]];
+            if (nodeData.active && nodeData.validNode) {
+                return ownerNodes[i];
+            }
+        }
+        return bytes32(0);
+    }
+
+    function _nodeMintInternal(
+        address account,
+        DiamondStorage.AssetDefinition memory asset,
+        uint256 amount,
+        string memory className,
+        bytes memory data,
+        bytes32 mintingNodeHash
+    ) internal returns (bytes32 hash, uint256 tokenID) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         // Require class to be active
@@ -295,10 +342,15 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         // Mint tokens
         _mint(account, tokenID, amount, data);
 
-        // Establish custody - track per-custodian amounts
-        // Multiple nodes can mint the same tokenId; each tracks their own custody
+        // Establish custody - track per-custodian (wallet) amounts
         s.tokenCustodianAmounts[tokenID][account] += amount;
         s.tokenCustodyAmount[tokenID] += amount;
+
+        // Track per-node custody for multi-node wallets
+        if (mintingNodeHash != bytes32(0)) {
+            s.tokenNodeCustodyAmounts[tokenID][mintingNodeHash] += amount;
+        }
+
         emit CustodyEstablished(tokenID, account, amount);
 
         // Get resolved class name
@@ -367,6 +419,36 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     }
 
     /**
+     * @notice Redeem tokens from a specific node — use when custodian wallet owns multiple nodes
+     * @param tokenId The token ID to redeem
+     * @param amount The amount to redeem
+     * @param custodian The custodian wallet address
+     * @param nodeHash The specific node hash to release custody from
+     */
+    function redeemFromNode(uint256 tokenId, uint256 amount, address custodian, bytes32 nodeHash) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+
+        if (s.erc1155Balances[tokenId][msg.sender] < amount) revert InsufficientBalance();
+        if (custodian == address(0)) revert NoCustodian();
+        if (msg.sender == custodian) revert CannotRedeemOwnCustody();
+        if (s.tokenCustodianAmounts[tokenId][custodian] < amount) revert ExceedsCustodyAmount();
+        if (s.tokenNodeCustodyAmounts[tokenId][nodeHash] < amount) revert ExceedsCustodyAmount();
+
+        // Verify node is owned by custodian
+        require(s.nodes[nodeHash].owner == custodian, "Node not owned by custodian");
+
+        // Burn the tokens
+        _burn(msg.sender, tokenId, amount);
+
+        // Release from custody (per-custodian, per-node, and total)
+        s.tokenCustodianAmounts[tokenId][custodian] -= amount;
+        s.tokenNodeCustodyAmounts[tokenId][nodeHash] -= amount;
+        s.tokenCustodyAmount[tokenId] -= amount;
+
+        emit CustodyReleased(tokenId, custodian, amount, msg.sender);
+    }
+
+    /**
      * @notice Get custody amount for a specific custodian of a token
      * @param tokenId The token ID to query
      * @param custodian The custodian address to query
@@ -375,6 +457,17 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.tokenCustodianAmounts[tokenId][custodian];
+    }
+
+    /**
+     * @notice Get custody amount for a specific node (not wallet)
+     * @param tokenId The token ID to query
+     * @param nodeHash The node hash to query
+     * @return amount The amount this specific node holds in custody
+     */
+    function getNodeCustodyInfo(uint256 tokenId, bytes32 nodeHash) external view returns (uint256 amount) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.tokenNodeCustodyAmounts[tokenId][nodeHash];
     }
 
     /**
