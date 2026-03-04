@@ -159,20 +159,25 @@ export class DiamondNodeAssetService implements INodeAssetService {
       await addAssetTx.wait();
 
       // Step 4: Upload metadata to IPFS/Pinata so node dashboard can resolve it
+      // Mirrors the old uploadMetadataToIPFS() from node-asset.service.ts
       if (this.pinata) {
         try {
-          const metadataJson = JSON.stringify({
-            name: contractAsset.name,
-            className: asset.assetClass,
-            assetClass: asset.assetClass,
-            asset: contractAsset,
+          const assetHash = ethers.keccak256(encodedAsset);
+          const metadataJson = {
             tokenId: tokenId.toString(),
-            nodeHash,
-            mintedAt: Date.now(),
-          });
+            hash: assetHash,
+            asset: contractAsset,
+            className: asset.assetClass,
+          };
+
           await this.pinata.upload.public
-            .json(JSON.parse(metadataJson))
-            .keyvalues({ tokenId: tokenId.toString() });
+            .json(metadataJson)
+            .name(`${tokenId}.json`)
+            .keyvalues({
+              tokenId: tokenId.toString(),
+              className: asset.assetClass || '',
+              hash: assetHash,
+            });
         } catch (ipfsErr) {
           // Non-fatal — on-chain data is the source of truth
           console.warn(
