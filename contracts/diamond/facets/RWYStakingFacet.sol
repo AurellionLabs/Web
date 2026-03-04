@@ -423,11 +423,14 @@ contract RWYStakingFacet {
         userStake.claimed = true;
         userStake.amount = 0;
 
-        // Use safeTransfer for ERC1155 when contract is sender (no approval needed)
+        // Return staked tokens based on type
         if (opp.inputTokenId == 0) {
-            // ERC20 - already handled above
+            // ERC20 emergency claim
+            IERC20(opp.inputToken).safeTransfer(msg.sender, amount);
         } else {
-            IERC1155(opp.inputToken).safeTransfer(
+            // ERC1155 emergency claim (primary path — tokenized assets)
+            IERC1155(opp.inputToken).safeTransferFrom(
+                address(this),
                 msg.sender,
                 opp.inputTokenId,
                 amount,
@@ -443,7 +446,11 @@ contract RWYStakingFacet {
     // ============================================================================
 
     function recordSaleProceeds(bytes32 opportunityId, uint256 proceeds) external opportunityExists(opportunityId) {
-        if (msg.sender != address(this) && msg.sender != LibDiamond.diamondStorage().contractOwner) {
+        RWYStorage.RWYAppStorage storage rwyS = RWYStorage.rwyStorage();
+        bool isAuthorized = msg.sender == address(this) ||
+            msg.sender == LibDiamond.diamondStorage().contractOwner ||
+            (rwyS.clobAddress != address(0) && msg.sender == rwyS.clobAddress);
+        if (!isAuthorized) {
             revert NotAuthorized();
         }
 
@@ -753,6 +760,8 @@ contract RWYStakingFacet {
     function calculateExpectedProfit(bytes32 opportunityId, uint256 stakeAmount) external view returns (uint256, uint256) {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
         RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
+
+        if (stakeAmount == 0) return (0, 0);
 
         uint256 totalAfterStake = opp.stakedAmount + stakeAmount;
         uint256 userShareBps = (stakeAmount * 10000) / totalAfterStake;
