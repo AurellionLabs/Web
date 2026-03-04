@@ -90,7 +90,10 @@ export function AssetDetailDrawer({
   // The holding passed to redemption — augmented with selected node if chosen
   // Use nodeHash if available, otherwise fall back to nodeAddress (owner wallet)
   const holdingForRedemption: UserHolding = selectedNode
-    ? { ...holding, originNode: selectedNode.nodeHash || selectedNode.nodeAddress }
+    ? {
+        ...holding,
+        originNode: selectedNode.nodeHash || selectedNode.nodeAddress,
+      }
     : holding;
 
   return (
@@ -260,7 +263,11 @@ export function AssetDetailDrawer({
                             isSelected ? 'text-gold' : 'text-foreground/60',
                           )}
                         >
-                          {entry.amount.toString()} units
+                          {(entry.amount > holding.balance
+                            ? holding.balance
+                            : entry.amount
+                          ).toString()}{' '}
+                          units
                         </span>
                         <ChevronRight
                           className={cn(

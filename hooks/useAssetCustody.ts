@@ -131,6 +131,10 @@ export function useAssetCustody(
 
   const totalCustodied = entries.reduce((sum, e) => sum + e.amount, 0n);
 
+  // Note: individual node amounts may exceed user's wallet balance
+  // (custody tracks what the node physically holds, not what the user owns).
+  // UI should cap displayed amounts at the user's balance.
+
   return {
     nodes: entries,
     totalCustodied,
