@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNodes } from '@/app/providers/nodes.provider';
-import { getSettlementService } from '@/infrastructure/services/settlement-service';
 
 export interface CustodyEntry {
   nodeAddress: string;
   nodeLocation: string;
+  nodeHash: string;
   amount: bigint;
 }
 
@@ -41,23 +41,32 @@ export function useAssetCustody(
     setError(null);
 
     try {
-      const service = getSettlementService();
-      const results = await Promise.all(
-        nodes.map(async (node) => {
-          // node.address is the bytes32 nodeHash — NOT a valid Ethereum address.
-          // The custodian recorded in AssetsFacet is the node owner's wallet (node.owner).
-          const custodian = node.owner;
-          const amount = await service.getCustodyInfo(tokenId, custodian);
+      // Use per-node asset quantities from nodes.provider
+      // Each node tracks its own assets with amounts - this differentiates
+      // custody per node instead of using the shared owner wallet
+      const results = nodes
+        .map((node) => {
+          // Find the asset entry for this tokenId in the node's assets
+          const nodeAsset = node.assets.find(
+            (asset) => asset.tokenId === tokenId,
+          );
+          // If no asset entry found, check if there's a capacity (represents total)
+          // The capacity field represents the node's allocation for this asset
+          const amount = nodeAsset
+            ? BigInt(nodeAsset.capacity)
+            : 0n;
+
           return {
-            nodeAddress: custodian,
-            nodeLocation: node.location?.addressName || custodian,
+            nodeAddress: node.owner,
+            nodeLocation: node.location?.addressName || node.owner,
+            nodeHash: node.address,
             amount,
           };
-        }),
-      );
+        })
+        // Exclude nodes with zero custody
+        .filter((entry) => entry.amount > 0n);
 
-      // Exclude nodes with zero custody
-      setEntries(results.filter((entry) => entry.amount > 0n));
+      setEntries(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch custody');
     } finally {
