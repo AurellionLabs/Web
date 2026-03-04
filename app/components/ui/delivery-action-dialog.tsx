@@ -17,6 +17,7 @@ import {
   Truck,
   Loader2,
   User,
+  AlertTriangle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Delivery } from '@/domain/driver/driver';
@@ -29,6 +30,7 @@ interface DeliveryActionDialogProps {
   isLoading?: boolean;
   isWaitingForSignature?: boolean;
   waitingForRole?: 'driver' | 'customer';
+  missingPickupLocation?: boolean;
 }
 
 interface ActionConfig {
@@ -99,6 +101,7 @@ export function DeliveryActionDialog({
   isLoading = false,
   isWaitingForSignature = false,
   waitingForRole,
+  missingPickupLocation = false,
 }: DeliveryActionDialogProps) {
   const [open, setOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -129,7 +132,7 @@ export function DeliveryActionDialog({
       <DialogTrigger asChild>
         <Button
           className={config.buttonStyle}
-          disabled={isLoading || isWaitingForSignature}
+          disabled={isLoading || isWaitingForSignature || (variant === 'accept' && missingPickupLocation)}
         >
           {isLoading ? (
             <>
@@ -239,6 +242,20 @@ export function DeliveryActionDialog({
               </div>
             </div>
           </div>
+          {missingPickupLocation && variant === 'accept' && (
+            <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-300 text-sm">
+                  No pickup location
+                </p>
+                <p className="text-amber-200/70 text-xs mt-1">
+                  This delivery has no pickup location set. You cannot accept
+                  deliveries without a valid pickup location.
+                </p>
+              </div>
+            </div>
+          )}
           <DialogDescription className="text-center text-base py-4">
             {config.confirmationMessage}
             <br />
@@ -260,7 +277,7 @@ export function DeliveryActionDialog({
             type="submit"
             className={`w-full ${config.buttonStyle}`}
             onClick={handleConfirm}
-            disabled={isConfirming || isWaitingForSignature}
+            disabled={isConfirming || isWaitingForSignature || (variant === 'accept' && missingPickupLocation)}
           >
             {isConfirming ? (
               <>
