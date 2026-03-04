@@ -52,9 +52,7 @@ export function useAssetCustody(
           );
           // If no asset entry found, check if there's a capacity (represents total)
           // The capacity field represents the node's allocation for this asset
-          const amount = nodeAsset
-            ? BigInt(nodeAsset.capacity)
-            : 0n;
+          const amount = nodeAsset ? BigInt(nodeAsset.amount || '0') : 0n;
 
           return {
             nodeAddress: node.owner,
