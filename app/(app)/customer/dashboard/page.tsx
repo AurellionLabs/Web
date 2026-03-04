@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { usePlatform } from '@/app/providers/platform.provider';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import {
   DropdownMenu,
@@ -139,6 +140,47 @@ export default function CustomerDashboard() {
     error: holdingsError,
     refetch: refetchHoldings,
   } = useUserHoldings();
+
+  // Platform data for asset metadata enrichment
+  const { getAssetByTokenId } = usePlatform();
+
+  // Enrich holdings with IPFS metadata (attributes, full name, class)
+  const [enrichedHoldings, setEnrichedHoldings] = useState<UserHolding[]>([]);
+  useEffect(() => {
+    if (holdings.length === 0) {
+      setEnrichedHoldings([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const enriched = await Promise.all(
+        holdings.map(async (h) => {
+          try {
+            const asset = await getAssetByTokenId(h.tokenId);
+            if (!asset || cancelled) return h;
+            return {
+              ...h,
+              name: asset.name || h.name,
+              assetClass: asset.assetClass || h.assetClass,
+              className: asset.assetClass || h.className,
+              attributes:
+                asset.attributes?.map((a) => ({
+                  name: a.name,
+                  values: a.values,
+                  description: a.description,
+                })) || h.attributes,
+            };
+          } catch {
+            return h;
+          }
+        }),
+      );
+      if (!cancelled) setEnrichedHoldings(enriched);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [holdings, getAssetByTokenId]);
 
   // Settlement destination
   const { pendingOrders: pendingSettlements, refetch: refetchSettlements } =
@@ -631,7 +673,7 @@ export default function CustomerDashboard() {
                 Try Again
               </TrapButton>
             </div>
-          ) : holdings.length === 0 ? (
+          ) : enrichedHoldings.length === 0 && !holdingsLoading ? (
             <div className="text-center py-12">
               <TargetRings size={80} className="mx-auto mb-4" />
               <p className="font-mono text-sm text-white/70">
@@ -646,7 +688,7 @@ export default function CustomerDashboard() {
               {(() => {
                 return null;
               })()}
-              {holdings.map((holding) => (
+              {enrichedHoldings.map((holding) => (
                 <div
                   key={holding.tokenId}
                   className="relative group"
