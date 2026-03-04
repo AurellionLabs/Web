@@ -350,7 +350,8 @@ contract AuSysFacet is ReentrancyGuard {
         newOrder.expiresAt = order.expiresAt;
         
         if (order.nodes.length > MAX_NODES_PER_ORDER) revert ArrayLimitExceeded();
-        for (uint256 i = 0; i < order.nodes.length; i++) {
+        uint256 nodeCount = order.nodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
             newOrder.nodes.push(order.nodes[i]);
         }
 
@@ -974,7 +975,8 @@ contract AuSysFacet is ReentrancyGuard {
 
     function _isValidNode(DiamondStorage.AppStorage storage s, address nodeOwner) internal view returns (bool) {
         bytes32[] storage ownerNodes = s.ownerNodes[nodeOwner];
-        for (uint256 i = 0; i < ownerNodes.length; i++) {
+        uint256 nodeCount = ownerNodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
             // Cache node to avoid repeated SLOAD (saves ~3000 gas per iteration)
             DiamondStorage.Node storage nodeData = s.nodes[ownerNodes[i]];
             if (nodeData.active && nodeData.validNode) {

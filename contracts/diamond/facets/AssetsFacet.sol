@@ -143,9 +143,10 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         }
 
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256[] memory batchBalances = new uint256[](accounts.length);
+        uint256 accountCount = accounts.length;
+        uint256[] memory batchBalances = new uint256[](accountCount);
 
-        for (uint256 i = 0; i < accounts.length; ++i) {
+        for (uint256 i = 0; i < accountCount; ++i) {
             batchBalances[i] = s.erc1155Balances[ids[i]][accounts[i]];
         }
 
@@ -370,7 +371,8 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         );
 
         // Emit separate events for each attribute
-        for (uint256 i = 0; i < asset.attributes.length; i++) {
+        uint256 attrCount = asset.attributes.length;
+        for (uint256 i = 0; i < attrCount; i++) {
             emit AssetAttributeAdded(
                 hash,
                 i,
@@ -720,7 +722,8 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
             revert ERC1155InvalidArrayLength(ids.length, amounts.length);
         }
 
-        for (uint256 i = 0; i < ids.length; ++i) {
+        uint256 idCount = ids.length;
+        for (uint256 i = 0; i < idCount; ++i) {
             uint256 id = ids[i];
             uint256 amount = amounts[i];
 
@@ -772,7 +775,8 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
             revert ERC1155InvalidArrayLength(ids.length, amounts.length);
         }
 
-        for (uint256 i = 0; i < ids.length; i++) {
+        uint256 idCount = ids.length;
+        for (uint256 i = 0; i < idCount; i++) {
             s.erc1155Balances[ids[i]][to] += amounts[i];
             s.erc1155TotalSupply[ids[i]] += amounts[i];
             if (!s.erc1155Exists[ids[i]]) {

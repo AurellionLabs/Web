@@ -230,7 +230,8 @@ contract CLOBCoreFacet is ReentrancyGuard {
     function cancelOrders(bytes32[] calldata orderIds) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         
-        for (uint256 i = 0; i < orderIds.length; i++) {
+        uint256 orderCount = orderIds.length;
+        for (uint256 i = 0; i < orderCount; i++) {
             DiamondStorage.PackedOrder storage order = s.packedOrders[orderIds[i]];
             
             if (order.makerAndFlags == 0) continue;
