@@ -74,8 +74,8 @@ export const NEXT_PUBLIC_ORDER_ROUTER_FACET_ADDRESS =
   '0x549Adb2a4d24607DCa383700C43e2c01dbaa060f';
 
 // Diamond deployment block (for indexer start block)
-// Default to 1M as safe fallback - Ponder will find events from there
-export const DIAMOND_DEPLOY_BLOCK = 1000000;
+// 0 = auto-detect based on contract deployment
+export const DIAMOND_DEPLOY_BLOCK = 0;
 
 // =============================================================================
 // RPC URLS - Read from environment variables, never hardcode API keys
@@ -107,15 +107,15 @@ export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = 84532; // Base Sepolia
 
 // =============================================================================
 // DEPLOYMENT BLOCKS (for indexer configuration)
-// These should be overridden per-chain via environment or auto-detected
+// Set to 0 for auto-detection - Ponder will find events from contract deployment
 // =============================================================================
 
 export const DEPLOYMENT_BLOCKS = {
-  // Safe defaults - will work on both Base Sepolia and Arbitrum
-  auraToken: 1000000,
-  auSys: 1000000,
-  aurumNodeManager: 1000000,
-  auStake: 1000000,
-  auraAsset: 1000000,
-  clob: 1000000,
+  // 0 = auto-detect
+  auraToken: 0,
+  auSys: 0,
+  aurumNodeManager: 0,
+  auStake: 0,
+  auraAsset: 0,
+  clob: 0,
 };
