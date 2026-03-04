@@ -470,4 +470,5 @@ export function useOrderProgressSteps(
   }, [order]);
 }
 
+export { UnifiedOrderStatus };
 export default useUnifiedOrder;

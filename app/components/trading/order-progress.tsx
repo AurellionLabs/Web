@@ -7,6 +7,7 @@ import {
   OrderProgressStep,
   useOrderProgressSteps,
   OrderStatusConfig,
+  UnifiedOrderStatus,
 } from '@/hooks/useUnifiedOrder';
 import {
   Check,
