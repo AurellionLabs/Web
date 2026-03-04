@@ -7,10 +7,7 @@ import type { Ausys as LocationContract } from '@/lib/contracts';
 import { BrowserProvider, ethers } from 'ethers';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
-import {
-  NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
-  NEXT_PUBLIC_INDEXER_URL,
-} from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { listenForSignature } from '../services/signature-listener.service';
 import { IPoolRepository } from '@/domain/pool';
 import { PoolRepository } from '../repositories/pool-repository';
@@ -253,8 +250,8 @@ export class RepositoryContext {
    */
   public getSubgraphEndpoints() {
     return {
-      indexer: NEXT_PUBLIC_INDEXER_URL,
-      ausys: NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+      indexer: getCurrentIndexerUrl(),
+      ausys: getCurrentIndexerUrl(),
     };
   }
 

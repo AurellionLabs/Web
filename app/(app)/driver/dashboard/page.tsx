@@ -41,7 +41,7 @@ import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 type TabType = 'available' | 'my-deliveries';
@@ -124,7 +124,7 @@ export default function DriverDashboard() {
 
             const sigResponse =
               await graphqlRequest<EmitSigEventsByJourneyResponse>(
-                NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+                getCurrentIndexerUrl(),
                 GET_EMIT_SIG_EVENTS_BY_JOURNEY,
                 { journeyId: delivery.jobId, limit: 50 },
               );

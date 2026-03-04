@@ -19,7 +19,7 @@ import {
   AllJourneysCreatedResponse,
   JourneysByDriverResponse,
 } from './shared/graph-queries';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 
 /**
  * Infrastructure implementation of the IDriverRepository interface
@@ -29,7 +29,9 @@ export class DriverRepository implements IDriverRepository {
   private ausysContract: Ausys;
   private provider: BrowserProvider;
   private signer: Signer;
-  private graphQLEndpoint = NEXT_PUBLIC_AUSYS_SUBGRAPH_URL;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
 
   constructor(ausysContract: Ausys, provider: BrowserProvider, signer: Signer) {
     if (!ausysContract) {

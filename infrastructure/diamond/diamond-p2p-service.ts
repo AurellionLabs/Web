@@ -18,8 +18,8 @@ import {
 import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 
 interface ContextWithOptionalContracts {
@@ -436,7 +436,9 @@ export class DiamondP2PService implements IP2PService {
       quoteTokenAddress.toLowerCase() ===
         NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase();
     const quoteToken = shouldUseContextHelper
-      ? (this.context as unknown as ContextWithOptionalContracts).getQuoteTokenContract()
+      ? (
+          this.context as unknown as ContextWithOptionalContracts
+        ).getQuoteTokenContract()
       : new ethers.Contract(quoteTokenAddress, ERC20_ABI, signer);
 
     const currentAllowance = await quoteToken.allowance(
@@ -502,7 +504,9 @@ export class DiamondP2PService implements IP2PService {
     const erc1155 = isDiamondToken
       ? this.context.getDiamond()
       : 'getERC1155Contract' in this.context
-        ? (this.context as unknown as ContextWithOptionalContracts).getERC1155Contract(tokenAddress)
+        ? (
+            this.context as unknown as ContextWithOptionalContracts
+          ).getERC1155Contract(tokenAddress)
         : new ethers.Contract(tokenAddress, ERC1155_ABI, signer);
 
     try {
@@ -576,7 +580,9 @@ export class DiamondP2PService implements IP2PService {
  */
 export class DiamondP2PRepository implements IP2PRepository {
   private context: DiamondContext;
-  private graphQLEndpoint = NEXT_PUBLIC_INDEXER_URL;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
 
   constructor(context: DiamondContext) {
     this.context = context;

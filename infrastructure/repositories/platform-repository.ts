@@ -7,7 +7,7 @@ import {
   GET_SUPPORTED_CLASS_ADDED_EVENTS,
   GET_SUPPORTED_CLASS_REMOVED_EVENTS,
 } from '../shared/graph-queries';
-import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import {
   SupportedAssetAddedEvent,
   SupportedClassAddedEvent,
@@ -23,7 +23,9 @@ interface SupportedAssetEventsResponse {
 
 export class PlatformRepository implements IPlatformRepository {
   pinata: PinataSDK;
-  private graphEndpoint = NEXT_PUBLIC_INDEXER_URL;
+  private get graphEndpoint() {
+    return getCurrentIndexerUrl();
+  }
   private processedTokenIds = new Set<string>();
   private assetByTokenIdCache = new Map<string, Asset | null>();
   private inFlightAssetByTokenId = new Map<string, Promise<Asset | null>>();

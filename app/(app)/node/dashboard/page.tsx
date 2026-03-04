@@ -83,7 +83,7 @@ import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -242,7 +242,7 @@ export default function NodeDashboardPage() {
       try {
         const sigResponse =
           await graphqlRequest<EmitSigEventsByJourneyResponse>(
-            NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+            getCurrentIndexerUrl(),
             GET_EMIT_SIG_EVENTS_BY_JOURNEY,
             { journeyId, limit: 50 },
           );

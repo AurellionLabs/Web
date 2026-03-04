@@ -53,8 +53,8 @@ import {
 import {
   NEXT_PUBLIC_AUSTAKE_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
 import { readContract } from 'viem/actions';
 import { gql, request } from 'graphql-request';
@@ -92,7 +92,9 @@ export class PoolRepository implements IPoolRepository {
   private contractAddress: string;
   private diamondAddress: string;
   private isInitialized = false;
-  private graphqlEndpoint = NEXT_PUBLIC_INDEXER_URL;
+  private get graphqlEndpoint() {
+    return getCurrentIndexerUrl();
+  }
 
   // NodeCache for GraphQL responses (30 second TTL)
   private cache = new NodeCache({

@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { Delivery, DeliveryStatus } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
@@ -84,7 +84,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
           try {
             const sigResponse =
               await graphqlRequest<EmitSigEventsByJourneyResponse>(
-                NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+                getCurrentIndexerUrl(),
                 GET_EMIT_SIG_EVENTS_BY_JOURNEY,
                 { journeyId: delivery.jobId, limit: 50 },
               );

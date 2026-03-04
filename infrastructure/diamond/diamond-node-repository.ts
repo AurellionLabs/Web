@@ -23,7 +23,7 @@ import {
   hashToAssets,
   tokenIdToAssets,
 } from '@/infrastructure/repositories/shared/ipfs';
-import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import {
   GET_LOGISTICS_ORDER_CREATED_EVENTS,
   GET_ALL_UNIFIED_ORDER_EVENTS,
@@ -122,7 +122,9 @@ function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
  */
 export class DiamondNodeRepository implements NodeRepository {
   private context: DiamondContext;
-  private graphQLEndpoint: string;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
   private pinata: PinataSDK | null = null;
   private metadataCache = new Map<
     string,
@@ -135,7 +137,6 @@ export class DiamondNodeRepository implements NodeRepository {
 
   constructor(context: DiamondContext, pinata?: PinataSDK) {
     this.context = context;
-    this.graphQLEndpoint = NEXT_PUBLIC_INDEXER_URL;
     this.pinata = pinata || null;
   }
 

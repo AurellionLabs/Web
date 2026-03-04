@@ -49,7 +49,7 @@ import {
   LogisticsOrderCreatedEvent,
   JourneyStatusUpdatedEvent,
 } from '../shared/indexer-types';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 
 interface GraphQLResponse<T> {
   items: T[];
@@ -181,7 +181,9 @@ export class OrderRepository implements IOrderRepository {
   private signer: Signer;
   private contractAddress: string;
   private isInitialized = false;
-  private graphQLEndpoint = NEXT_PUBLIC_AUSYS_SUBGRAPH_URL;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
 
   constructor(contract: Ausys, userProvider: BrowserProvider, signer: Signer) {
     if (!contract) {

@@ -7,6 +7,7 @@ import {
 } from '@privy-io/react-auth';
 import { PrivyWalletRepository } from '@/infrastructure/repositories/privy-wallet-repository';
 import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
+import { setCurrentChainId } from '@/infrastructure/config/indexer-endpoint';
 
 export const IS_E2E_TEST_MODE =
   process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
@@ -96,7 +97,10 @@ function useWalletPrivy() {
     setConnectedWallet(currentWallet ?? null);
     setIsConnected(privy.authenticated && !!currentWallet);
     setAddress(currentWallet?.address ?? null);
-    setChainId(parseChainId(currentWallet?.chainId));
+    const newChainId = parseChainId(currentWallet?.chainId);
+    setChainId(newChainId);
+    // Sync to indexer endpoint resolver so repositories use the right URL
+    setCurrentChainId(newChainId);
   }, [privy.authenticated, privyWallets.wallets]);
 
   useEffect(() => {

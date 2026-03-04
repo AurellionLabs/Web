@@ -33,10 +33,10 @@ import type {
   AggregatedOrder,
 } from '@/infrastructure/shared/indexer-types';
 import {
-  NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import type { CLOBTrade as DomainCLOBTrade } from '@/domain/clob/clob';
 // NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
 import { formatEther, parseEther } from 'viem';
@@ -157,13 +157,14 @@ export interface OrderPlacementResult {
  * and handles on-chain order placement via CLOB smart contract
  */
 export class CLOBRepository {
-  private graphQLEndpoint: string;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
   private repositoryContext: RepositoryContext;
   private diamondAddress: string;
   private quoteTokenAddress: string;
 
   constructor() {
-    this.graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
     this.repositoryContext = RepositoryContext.getInstance();
     // Diamond address - all CLOB operations go through Diamond CLOBFacet
     this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;

@@ -94,24 +94,51 @@ export const NEXT_PUBLIC_RPC_URL_8453 =
   process.env.NEXT_PUBLIC_RPC_URL_8453 || '';
 
 // =============================================================================
-// SUBGRAPH / INDEXER URLS
-// =============================================================================
-// Ponder indexer GraphQL endpoint (custom domain with SSL)
-export const NEXT_PUBLIC_INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL ||
-  'https://indexer.aurellionlabs.com/graphql';
-export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-
-// =============================================================================
-// CHAIN CONFIG
+// CHAIN CONFIG (must be before indexer URLs — they depend on default chain)
 // =============================================================================
 
 export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = Number(
   process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || 84532,
 ); // Default: Base Sepolia (84532), Production: Arbitrum One (42161)
+
+// =============================================================================
+// SUBGRAPH / INDEXER URLS
+// =============================================================================
+
+// Indexer endpoints per chain
+const INDEXER_URLS: Record<number, string> = {
+  // Mainnet (Arbitrum One)
+  42161:
+    process.env.NEXT_PUBLIC_INDEXER_URL_42161 ||
+    'https://indexer.aurellionlabs.com/graphql',
+  // Testnet (Base Sepolia)
+  84532:
+    process.env.NEXT_PUBLIC_INDEXER_URL_84532 ||
+    'https://dev.indexer.aurellionlabs.com/graphql',
+};
+
+// Default / legacy static export (uses default chain)
+export const NEXT_PUBLIC_INDEXER_URL =
+  process.env.NEXT_PUBLIC_INDEXER_URL ||
+  INDEXER_URLS[NEXT_PUBLIC_DEFAULT_CHAIN_ID] ||
+  'https://indexer.aurellionlabs.com/graphql';
+
+/**
+ * Get the indexer GraphQL URL for a given chain.
+ * Falls back to the default chain's URL if the chain is unknown.
+ */
+export function getIndexerUrl(chainId?: number | null): string {
+  if (chainId && INDEXER_URLS[chainId]) {
+    return INDEXER_URLS[chainId];
+  }
+  return NEXT_PUBLIC_INDEXER_URL;
+}
+
+// Legacy aliases — kept for backward compat, prefer getIndexerUrl(chainId)
+export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
+export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
+export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
+export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 
 // =============================================================================
 // DEPLOYMENT BLOCKS (for indexer configuration)

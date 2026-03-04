@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from './useWallet';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
-import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 
 /**
  * Represents a user's holding of a tokenized asset
@@ -141,7 +141,7 @@ export function useUserHoldings(): UseUserHoldingsReturn {
           };
         };
         const assetsResponse = (await graphqlRequest<AssetsResponse>(
-          NEXT_PUBLIC_INDEXER_URL,
+          getCurrentIndexerUrl(),
           GET_ALL_SUPPORTED_ASSETS,
           { limit: PAGE, after },
         )) as AssetsResponse;

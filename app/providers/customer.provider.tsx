@@ -23,7 +23,7 @@ import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 
 type CustomerContextType = {
   orders: OrderWithAsset[];
@@ -491,7 +491,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         try {
           const sigResponse =
             await graphqlRequest<EmitSigEventsByJourneyResponse>(
-              NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+              getCurrentIndexerUrl(),
               GET_EMIT_SIG_EVENTS_BY_JOURNEY,
               { journeyId, limit: 50 },
             );

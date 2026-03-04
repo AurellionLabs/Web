@@ -21,10 +21,7 @@ import { PinataSDK } from 'pinata';
 import { hashToAssets, tokenIdToAssets } from './shared/ipfs';
 import { AssetIpfsRecord } from '@/domain/platform';
 import { GraphQLClient } from 'graphql-request';
-import {
-  NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
-  NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
-} from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import {
   GET_NODE_ASSETS_AURUM,
   GET_ALL_NODE_ASSETS_AURUM,
@@ -154,7 +151,9 @@ export class BlockchainNodeRepository implements NodeRepository {
   private signer: ethers.Signer;
   private auraAsset: string;
   private auraAssetContractInstance: AuraAsset | null = null;
-  private graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
   pinata: PinataSDK;
 
   constructor(
@@ -315,7 +314,7 @@ export class BlockchainNodeRepository implements NodeRepository {
       // Step 1: Get node pricing/capacity from Ponder indexer
       const aurumResponse = await graphqlRequest<{
         diamondSupportedAssetAddedEventss: { items: NodeAssetAurum[] };
-      }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, GET_NODE_ASSETS_AURUM, {
+      }>(getCurrentIndexerUrl(), GET_NODE_ASSETS_AURUM, {
         nodeAddress: nodeAddress.toLowerCase(),
       });
 
@@ -331,7 +330,7 @@ export class BlockchainNodeRepository implements NodeRepository {
       };
       try {
         auraBalanceResponse = await graphqlRequest(
-          NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+          getCurrentIndexerUrl(),
           GET_USER_BALANCES_AURA,
           { userAddress: nodeAddress.toLowerCase() },
         );
@@ -430,7 +429,7 @@ export class BlockchainNodeRepository implements NodeRepository {
           };
         };
         const pageResp: PageResponse = await graphqlRequest<PageResponse>(
-          NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
+          getCurrentIndexerUrl(),
           GET_ALL_NODE_ASSETS_AURUM,
           {
             limit: PAGE_SIZE,
@@ -471,7 +470,7 @@ export class BlockchainNodeRepository implements NodeRepository {
 
         try {
           const balancesResp: UserBalancesAuraResponse = await graphqlRequest(
-            NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+            getCurrentIndexerUrl(),
             GET_USER_BALANCES_AURA,
             { userAddress: nodeAddr.toLowerCase() },
           );
@@ -696,7 +695,7 @@ export class BlockchainNodeRepository implements NodeRepository {
   ): Promise<number> {
     try {
       const balancesResp: UserBalancesAuraResponse = await graphqlRequest(
-        NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL,
+        getCurrentIndexerUrl(),
         GET_USER_BALANCES_AURA,
         { userAddress: ownerAddress.toLowerCase() },
       );
