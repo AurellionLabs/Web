@@ -37,7 +37,7 @@ async function run() {
       // Check if chain config changed
       try {
         const result = await client.query(`
-          SELECT value FROM "${SCHEMA}"._ponder_meta WHERE key = 'chain_config'
+          SELECT value FROM "${SCHEMA}"._indexer_chain_config WHERE key = 'chain_config'
         `);
         
         if (result.rows.length > 0) {
@@ -76,16 +76,16 @@ async function run() {
       console.log('✅ Database config unchanged, keeping existing data');
     }
     
-    // Ensure meta table exists and store current config
+    // Ensure our config table exists (separate from Ponder's internal tables)
     await client.query(`
-      CREATE TABLE IF NOT EXISTS "${SCHEMA}"._ponder_meta (
+      CREATE TABLE IF NOT EXISTS "${SCHEMA}"._indexer_chain_config (
         key TEXT PRIMARY KEY,
         value TEXT
       )
     `);
     
     await client.query(`
-      INSERT INTO "${SCHEMA}"._ponder_meta (key, value) 
+      INSERT INTO "${SCHEMA}"._indexer_chain_config (key, value) 
       VALUES ('chain_config', $1)
       ON CONFLICT (key) DO UPDATE SET value = $1
     `, [JSON.stringify({ chainId: CHAIN_ID, diamondAddress: DIAMOND_ADDRESS })]);
