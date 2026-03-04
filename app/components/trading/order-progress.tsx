@@ -6,6 +6,7 @@ import { GlassCard, GlassCardHeader, GlassCardTitle } from '../ui/glass-card';
 import {
   OrderProgressStep,
   useOrderProgressSteps,
+  OrderStatusConfig,
 } from '@/hooks/useUnifiedOrder';
 import {
   Check,
@@ -150,9 +151,9 @@ interface OrderProgressComponentProps {
   order: {
     status: string;
     createdAt: number;
-    matchedAt?: number;
-    deliveredAt?: number;
-    settledAt?: number;
+    matchedAt: number;
+    deliveredAt: number;
+    settledAt: number;
   } | null;
   className?: string;
 }
