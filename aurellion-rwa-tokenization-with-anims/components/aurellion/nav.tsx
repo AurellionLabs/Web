@@ -4,14 +4,20 @@ import { useState, useEffect } from 'react';
 
 const navItems = [
   { label: 'Dashboard', id: 'dashboard' },
-  { label: 'Yield', id: 'yield' },
-  { label: 'Trading', id: 'trading' },
   { label: 'P2P', id: 'p2p' },
   { label: 'Node', id: 'node' },
-  { label: 'Faucet', id: 'faucet' },
   { label: 'Components', id: 'components' },
   { label: 'Animations', id: 'animations' },
 ];
+
+// Hide trading, yield, faucet on production
+const isProd = process.env.NODE_ENV === 'production';
+const devOnlyItems = [
+  { label: 'Yield', id: 'yield' },
+  { label: 'Trading', id: 'trading' },
+  { label: 'Faucet', id: 'faucet' },
+];
+const visibleNavItems = isProd ? navItems : [...navItems, ...devOnlyItems];
 
 export default function AurellionNav({
   activePage,
@@ -94,7 +100,7 @@ export default function AurellionNav({
 
         {/* Nav items */}
         <div className="flex items-center gap-[2px]">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = activePage === item.id;
             return (
               <button

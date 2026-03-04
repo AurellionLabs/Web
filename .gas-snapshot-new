@@ -1,0 +1,1137 @@
+[2m2026-03-03T16:13:18.492549Z[0m [31mERROR[0m [2mfoundry_compilers::cache[0m[2m:[0m [3merror[0m[2m=[0minvalid type: sequence, expected a map at line 48 column 19
+Compiling 110 files with Solc 0.8.28
+Solc 0.8.28 finished in 53.65s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> contracts/diamond/libraries/LibDiamond.sol:83:9:
+   |
+83 |         uint16 selectorPosition = uint16(
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> contracts/diamond/libraries/LibDiamond.sol:215:5:
+    |
+215 |     function selectorPosition(bytes4 _selector) internal view returns (uint16 selPos_) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> contracts/diamond/libraries/LibDiamond.sol:160:13:
+    |
+160 |             bytes4[] storage facetFunctionSelectors = ds.facetFunctionSelectors[facetAddr];
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> contracts/diamond/libraries/LibDiamond.sol:207:5:
+    |
+207 |     function facetFunctionSelectors(address _facetAddr) internal view returns (bytes4[] memory funcSelectors_) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> contracts/diamond/libraries/OrderBookLib.sol:122:13:
+    |
+122 |             uint256 current = nodes[price].right;
+    |             ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> contracts/diamond/libraries/OrderBookLib.sol:129:9:
+    |
+129 |         uint256 current = price;
+    |         ^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> contracts/diamond/libraries/OrderBookLib.sol:146:13:
+    |
+146 |             uint256 current = nodes[price].left;
+    |             ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> contracts/diamond/libraries/OrderBookLib.sol:153:9:
+    |
+153 |         uint256 current = price;
+    |         ^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> contracts/diamond/facets/OrderMatchingFacet.sol:292:40:
+    |
+292 |         if (nodes[price].right != 0) { uint256 c = nodes[price].right; while (nodes[c].left != 0) c = nodes[c].left; return c; }
+    |                                        ^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> contracts/diamond/facets/OrderMatchingFacet.sol:293:9:
+    |
+293 |         uint256 c = price; uint256 p = nodes[c].parent;
+    |         ^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> contracts/diamond/facets/OrderMatchingFacet.sol:299:39:
+    |
+299 |         if (nodes[price].left != 0) { uint256 c = nodes[price].left; while (nodes[c].right != 0) c = nodes[c].right; return c; }
+    |                                       ^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> contracts/diamond/facets/OrderMatchingFacet.sol:300:9:
+    |
+300 |         uint256 c = price; uint256 p = nodes[c].parent;
+    |         ^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> contracts/diamond/facets/AuSysFacet.sol:711:9:
+    |
+711 |         uint256 assetId
+    |         ^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> contracts/diamond/facets/CLOBFacet.sol:844:9:
+    |
+844 |         bytes32 _orderId,
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> contracts/diamond/facets/CLOBFacet.sol:859:9:
+    |
+859 |         bytes32 _orderId,
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> contracts/diamond/facets/OrderRouterFacet.sol:410:10:
+    |
+410 |         (uint96 price, uint96 amount, uint64 filled) = OrderUtilsLib.unpackPriceAmountFilled(order.priceAmountFilled);
+    |          ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> test/diamond/CLOBMatching.t.sol:91:9:
+   |
+91 |         uint96 price = 10e18; // 10 USDC
+   |         ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> test/diamond/CLOBMatching.t.sol:92:9:
+   |
+92 |         uint96 amount = 100;
+   |         ^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:113:9:
+    |
+113 |         uint96 sellPrice = 8e18;
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:114:9:
+    |
+114 |         uint96 buyPrice = 10e18;
+    |         ^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:115:9:
+    |
+115 |         uint96 amount = 100;
+    |         ^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:134:9:
+    |
+134 |         uint96 buyPrice = 12e18;
+    |         ^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:135:9:
+    |
+135 |         uint96 sellPrice = 10e18;
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:136:9:
+    |
+136 |         uint96 amount = 100;
+    |         ^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:158:9:
+    |
+158 |         uint96 sellAmount = 50;
+    |         ^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:159:9:
+    |
+159 |         uint96 buyAmount = 100;
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:160:9:
+    |
+160 |         uint96 price = 10e18;
+    |         ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:179:9:
+    |
+179 |         uint96 sellAmount = 100;
+    |         ^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:180:9:
+    |
+180 |         uint96 buyAmount = 50;
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBMatching.t.sol:181:9:
+    |
+181 |         uint96 price = 10e18;
+    |         ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:237:10:
+    |
+237 |         (uint8 status, uint96 amount, uint64 filledAmount, uint96 remainingAmount, bool isExpired) = 
+    |          ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:237:84:
+    |
+237 |         (uint8 status, uint96 amount, uint64 filledAmount, uint96 remainingAmount, bool isExpired) = 
+    |                                                                                    ^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:311:13:
+    |
+311 |             uint8 orderType,
+    |             ^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:312:13:
+    |
+312 |             uint8 status,
+    |             ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:313:13:
+    |
+313 |             uint8 timeInForce,
+    |             ^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:317:13:
+    |
+317 |             uint40 expiry,
+    |             ^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:318:13:
+    |
+318 |             uint40 createdAt,
+    |             ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:376:13:
+    |
+376 |             uint256 priceLevelsBid,
+    |             ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:377:13:
+    |
+377 |             uint256 priceLevelsAsk,
+    |             ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:378:13:
+    |
+378 |             uint256 lastTradePrice,
+    |             ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:379:13:
+    |
+379 |             bool circuitBreakerTripped
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:433:13:
+    |
+433 |             string memory baseTokenStr,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:435:13:
+    |
+435 |             string memory quoteTokenStr,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:437:13:
+    |
+437 |             uint256 createdAt,
+    |             ^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:438:13:
+    |
+438 |             uint256 lastTradePrice,
+    |             ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:440:13:
+    |
+440 |             uint256 askCount
+    |             ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:469:53:
+    |
+469 |         (uint256 totalOrders, uint256 activeOrders, uint256 markets) = clobView.getTotalCounts();
+    |                                                     ^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:489:13:
+    |
+489 |             address[] memory makers,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:490:13:
+    |
+490 |             uint96[] memory amounts,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:491:13:
+    |
+491 |             uint64[] memory filledAmounts
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:514:13:
+    |
+514 |             uint96[] memory amounts,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/CLOBViewFacet.t.sol:515:13:
+    |
+515 |             uint64[] memory filledAmounts
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:104:9:
+    |
+104 |         uint256 amount = 1000;
+    |         ^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:124:9:
+    |
+124 |         uint256 credit1 = 100;
+    |         ^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:125:9:
+    |
+125 |         uint256 credit2 = 200;
+    |         ^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:126:9:
+    |
+126 |         uint256 credit3 = 300;
+    |         ^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:127:9:
+    |
+127 |         uint256 expectedTotal = 600;
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:163:9:
+    |
+163 |         uint256 amount = 100;
+    |         ^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:230:9:
+    |
+230 |         uint256 initialBalance = 100;
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:231:9:
+    |
+231 |         uint256 withdrawAmount = 50;
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:298:9:
+    |
+298 |         bytes32 node1 = keccak256("Node1");
+    |         ^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:299:9:
+    |
+299 |         bytes32 node2 = keccak256("Node2");
+    |         ^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:300:9:
+    |
+300 |         uint256 transferAmount = 50;
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:353:9:
+    |
+353 |         uint256 initialBalance = 100;
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodeInventory.t.sol:354:9:
+    |
+354 |         uint256 sellAmount = 50;
+    |         ^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/NodesFacetAligned.t.sol:124:9:
+    |
+124 |         bytes32 nodeHash = nodes.registerNode('LOGISTICS', 1000, bytes32(0), 'Hub', '40', '-74');
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/OrdersFacet.t.sol:245:72:
+    |
+245 |         (address buyer, address seller, uint256 price, uint256 amount, string memory status, uint256 createdAt) = 
+    |                                                                        ^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/OrdersFacet.t.sol:245:94:
+    |
+245 |         (address buyer, address seller, uint256 price, uint256 amount, string memory status, uint256 createdAt) = 
+    |                                                                                              ^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/OrdersFacet.t.sol:278:9:
+    |
+278 |         bytes32[] memory buyerOrders = orders.getBuyerOrders(user1);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/diamond/OrdersFacet.t.sol:286:9:
+    |
+286 |         bytes32[] memory sellerOrders = orders.getSellerOrders(user2);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to pure
+  --> test/diamond/CLOBMatching.t.sol:85:5:
+   |
+85 |     function test_BuyMatchesSellAtSamePrice() public {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:107:5:
+    |
+107 |     function test_BuyerGetsPriceImprovement() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:128:5:
+    |
+128 |     function test_SellerGetsPriceImprovement() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:152:5:
+    |
+152 |     function test_PartialFillBuyLargerThanSell() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:173:5:
+    |
+173 |     function test_PartialFillSellLargerThanBuy() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:194:5:
+    |
+194 |     function test_MultiplePartialFills() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:217:5:
+    |
+217 |     function test_NodeSellMatchesUserBuy() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:236:5:
+    |
+236 |     function test_NodeSellFailsInsufficientInventory() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:256:5:
+    |
+256 |     function test_GTCOrderRemainsOpen() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:271:5:
+    |
+271 |     function test_IOCOrderCancelsUnfilled() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:288:5:
+    |
+288 |     function test_FOKOrderFillsCompletely() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:303:5:
+    |
+303 |     function test_FOKOrderRevertsIfNotFilled() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:319:5:
+    |
+319 |     function test_GTDOrderExpires() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:340:5:
+    |
+340 |     function test_UserCanCancelOwnOrder() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:357:5:
+    |
+357 |     function test_UserCannotCancelOthersOrder() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:372:5:
+    |
+372 |     function test_CancelPartiallyFilledOrder() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:393:5:
+    |
+393 |     function test_PriceTimePriority() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:411:5:
+    |
+411 |     function test_OrderBookDepth() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:432:5:
+    |
+432 |     function test_V2OrdersMatch() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBMatching.t.sol:448:5:
+    |
+448 |     function test_RedirectedPlaceBuyOrderUsesV2() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/CLOBViewFacet.t.sol:456:5:
+    |
+456 |     function test_calculateQuoteAmount() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/diamond/CLOBViewFacet.t.sol:467:5:
+    |
+467 |     function test_getTotalCounts_withOrders() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+  --> test/diamond/NodeInventory.t.sol:97:5:
+   |
+97 |     function test_CreditNodeTokens() public {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:117:5:
+    |
+117 |     function test_CreditNodeTokensAccumulates() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:139:5:
+    |
+139 |     function test_CreditNodeTokensOnlyAuthorized() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:157:5:
+    |
+157 |     function test_DepositTokensToNode() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:176:5:
+    |
+176 |     function test_DepositTokensInsufficientBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:191:5:
+    |
+191 |     function test_DepositTokensNotApproved() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:206:5:
+    |
+206 |     function test_DepositTokensOnlyNodeOwner() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:224:5:
+    |
+224 |     function test_WithdrawTokensFromNode() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:244:5:
+    |
+244 |     function test_WithdrawTokensInsufficientBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:259:5:
+    |
+259 |     function test_WithdrawTokensOnlyNodeOwner() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:273:5:
+    |
+273 |     function test_WithdrawTokensToRecipient() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:292:5:
+    |
+292 |     function test_TransferTokensBetweenNodes() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:314:5:
+    |
+314 |     function test_TransferBetweenNodesInsufficientBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:329:5:
+    |
+329 |     function test_TransferBetweenNodesOnlyAuthorized() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:347:5:
+    |
+347 |     function test_SellOrderDebitsBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:366:5:
+    |
+366 |     function test_SellOrderInsufficientBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:382:5:
+    |
+382 |     function test_CancelledSellOrderCreditsBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:399:5:
+    |
+399 |     function test_PartialFillCancelCreditsRemaining() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:420:5:
+    |
+420 |     function test_GetNodeTokenBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:435:5:
+    |
+435 |     function test_GetNodeInventory() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:452:5:
+    |
+452 |     function test_GetNodeInventoryWithMetadata() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:469:5:
+    |
+469 |     function test_GetNodeSellableAssets() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:490:5:
+    |
+490 |     function test_VerifyTokenAccounting() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:508:5:
+    |
+508 |     function test_AccountingAfterOperations() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:530:5:
+    |
+530 |     function test_CapacityVsBalance() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/diamond/NodeInventory.t.sol:548:5:
+    |
+548 |     function test_CanCreditMoreThanCapacity() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/diamond/OperatorFacet.t.sol:195:5:
+    |
+195 |     function test_getOperatorSuccessfulOps_returnsCount() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/diamond/OperatorFacet.t.sol:200:5:
+    |
+200 |     function test_getOperatorTotalValueProcessed_returnsTotal() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/diamond/OperatorFacet.t.sol:279:5:
+    |
+279 |     function test_isApprovedOperator_returnsTrueForOwnerByDefault() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 26 tests for test/diamond/NodeInventory.t.sol:NodeInventoryTest
+[PASS] test_AccountingAfterOperations() (gas: 4162)
+[PASS] test_CanCreditMoreThanCapacity() (gas: 3744)
+[PASS] test_CancelledSellOrderCreditsBalance() (gas: 4074)
+[PASS] test_CapacityVsBalance() (gas: 4296)
+[PASS] test_CreditNodeTokens() (gas: 3538)
+[PASS] test_CreditNodeTokensAccumulates() (gas: 3956)
+[PASS] test_CreditNodeTokensOnlyAuthorized() (gas: 4052)
+[PASS] test_DepositTokensInsufficientBalance() (gas: 4008)
+[PASS] test_DepositTokensNotApproved() (gas: 3942)
+[PASS] test_DepositTokensOnlyNodeOwner() (gas: 3876)
+[PASS] test_DepositTokensToNode() (gas: 3582)
+[PASS] test_GetNodeInventory() (gas: 3502)
+[PASS] test_GetNodeInventoryWithMetadata() (gas: 3810)
+[PASS] test_GetNodeSellableAssets() (gas: 3920)
+[PASS] test_GetNodeTokenBalance() (gas: 3766)
+[PASS] test_PartialFillCancelCreditsRemaining() (gas: 4250)
+[PASS] test_SellOrderDebitsBalance() (gas: 4184)
+[PASS] test_SellOrderInsufficientBalance() (gas: 4315)
+[PASS] test_TransferBetweenNodesInsufficientBalance() (gas: 3854)
+[PASS] test_TransferBetweenNodesOnlyAuthorized() (gas: 3678)
+[PASS] test_TransferTokensBetweenNodes() (gas: 3626)
+[PASS] test_VerifyTokenAccounting() (gas: 3832)
+[PASS] test_WithdrawTokensFromNode() (gas: 4228)
+[PASS] test_WithdrawTokensInsufficientBalance() (gas: 3656)
+[PASS] test_WithdrawTokensOnlyNodeOwner() (gas: 3788)
+[PASS] test_WithdrawTokensToRecipient() (gas: 3524)
+Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 5.62ms (510.75µs CPU time)
+
+Ran 20 tests for test/diamond/CLOBMatching.t.sol:CLOBMatchingTest
+[PASS] test_BuyMatchesSellAtSamePrice() (gas: 4109)
+[PASS] test_BuyerGetsPriceImprovement() (gas: 3465)
+[PASS] test_CancelPartiallyFilledOrder() (gas: 3543)
+[PASS] test_FOKOrderFillsCompletely() (gas: 3807)
+[PASS] test_FOKOrderRevertsIfNotFilled() (gas: 3939)
+[PASS] test_GTCOrderRemainsOpen() (gas: 3653)
+[PASS] test_GTDOrderExpires() (gas: 4049)
+[PASS] test_IOCOrderCancelsUnfilled() (gas: 3565)
+[PASS] test_MultiplePartialFills() (gas: 3741)
+[PASS] test_NodeSellFailsInsufficientInventory() (gas: 4159)
+[PASS] test_NodeSellMatchesUserBuy() (gas: 3609)
+[PASS] test_OrderBookDepth() (gas: 4071)
+[PASS] test_PartialFillBuyLargerThanSell() (gas: 3977)
+[PASS] test_PartialFillSellLargerThanBuy() (gas: 4131)
+[PASS] test_PriceTimePriority() (gas: 3521)
+[PASS] test_RedirectedPlaceBuyOrderUsesV2() (gas: 3675)
+[PASS] test_SellerGetsPriceImprovement() (gas: 3779)
+[PASS] test_UserCanCancelOwnOrder() (gas: 3895)
+[PASS] test_UserCannotCancelOthersOrder() (gas: 3851)
+[PASS] test_V2OrdersMatch() (gas: 3763)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 5.48ms (470.17µs CPU time)
+
+Ran 8 tests for test/AuSysTokenDestination.t.sol:AuSysTokenDestinationTest
+[PASS] testNodeHash() (gas: 2616)
+[PASS] test_selectTokenDestination_burn() (gas: 1358141)
+[PASS] test_selectTokenDestination_clearsPendingState() (gas: 1368119)
+[PASS] test_selectTokenDestination_revert_calledTwice() (gas: 1361579)
+[PASS] test_selectTokenDestination_revert_noPending() (gas: 43237)
+[PASS] test_selectTokenDestination_revert_nonBuyer() (gas: 1385037)
+[PASS] test_selectTokenDestination_revert_notNodeOwner() (gas: 1390627)
+[PASS] test_selectTokenDestination_toNode() (gas: 1362284)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 8.03ms (1.81ms CPU time)
+
+Ran 20 tests for test/diamond/CLOBLogisticsFacet.t.sol:CLOBLogisticsFacetTest
+[PASS] testNodeHash() (gas: 2682)
+[FAIL: LogisticsCreatorNotAuthorized()] test_acceptDelivery() (gas: 167849)
+[FAIL: LogisticsCreatorNotAuthorized()] test_acceptDelivery_revertNotRegistered() (gas: 167739)
+[FAIL: LogisticsCreatorNotAuthorized()] test_cancelLogisticsOrder() (gas: 168534)
+[FAIL: LogisticsCreatorNotAuthorized()] test_cancelLogisticsOrder_revertAfterAccepted() (gas: 168135)
+[FAIL: LogisticsCreatorNotAuthorized()] test_confirmDelivery() (gas: 167871)
+[FAIL: LogisticsCreatorNotAuthorized()] test_confirmPickup() (gas: 168113)
+[FAIL: LogisticsCreatorNotAuthorized()] test_confirmPickup_revertNotAssignedDriver() (gas: 168377)
+[FAIL: LogisticsCreatorNotAuthorized()] test_createLogisticsOrder() (gas: 168589)
+[FAIL: LogisticsCreatorNotAuthorized()] test_disputeOrder() (gas: 167519)
+[PASS] test_getDriverInfo() (gas: 180315)
+[FAIL: LogisticsCreatorNotAuthorized()] test_getLogisticsOrder() (gas: 167984)
+[PASS] test_registerDriver() (gas: 131989)
+[PASS] test_registerDriver_multipleDrivers() (gas: 219556)
+[PASS] test_setDriverAvailability() (gas: 135974)
+[PASS] test_setDriverAvailability_revertNotRegistered() (gas: 18559)
+[PASS] test_setDriverAvailability_toggle() (gas: 144370)
+[FAIL: LogisticsCreatorNotAuthorized()] test_settleLogisticsOrder() (gas: 167827)
+[FAIL: LogisticsCreatorNotAuthorized()] test_settleLogisticsOrder_revertNotDelivered() (gas: 167607)
+[PASS] test_updateDriverLocation() (gas: 179813)
+Suite result: FAILED. 8 passed; 12 failed; 0 skipped; finished in 2.46ms (622.63µs CPU time)
+
+Ran 15 tests for test/diamond/NodesFacetAligned.t.sol:NodesFacetAlignedTest
+[PASS] testNodeHash() (gas: 2594)
+[PASS] test_deactivateNode() (gas: 297673)
+[PASS] test_deactivateNode_revertNotOwner() (gas: 287644)
+[PASS] test_getNode() (gas: 292829)
+[PASS] test_getNodeStatus() (gas: 286168)
+[PASS] test_isNodeAdmin() (gas: 52698)
+[PASS] test_reduceCapacityForOrder_asAdmin() (gas: 323180)
+[PASS] test_reduceCapacityForOrder_revertNonOwner() (gas: 291317)
+[PASS] test_registerNode() (gas: 280974)
+[PASS] test_registerNode_multipleByOwner() (gas: 520999)
+[PASS] test_revokeNodeAdmin() (gas: 43797)
+[PASS] test_setNodeAdmin() (gas: 51827)
+[PASS] test_setNodeAdmin_revertNotOwner() (gas: 22416)
+[PASS] test_updateNode() (gas: 299508)
+[PASS] test_updateNode_revertNotOwner() (gas: 287189)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 2.48ms (666.58µs CPU time)
+
+Ran 23 tests for test/diamond/CLOBViewFacet.t.sol:CLOBViewFacetTest
+[PASS] testNodeHash() (gas: 2792)
+[PASS] test_calculateQuoteAmount() (gas: 4321)
+[PASS] test_getAllMarkets() (gas: 875440)
+[PASS] test_getBestBidAsk_emptyBook() (gas: 22899)
+[PASS] test_getBestBidAsk_multipleOrdersAtSamePrice() (gas: 1103575)
+[PASS] test_getBestBidAsk_withOrders() (gas: 1301566)
+[PASS] test_getMarketId_generatesCorrectId() (gas: 22893)
+[PASS] test_getMarketStats_empty() (gas: 32294)
+[PASS] test_getMarketStats_withOrders() (gas: 1641037)
+[PASS] test_getMarket_returnsMarketInfo() (gas: 881127)
+[PASS] test_getOrderBookDepth_emptyBook() (gas: 35403)
+[PASS] test_getOrderBookDepth_withOrders() (gas: 1995336)
+[PASS] test_getOrderStatus_afterPartialFill() (gas: 1324195)
+[PASS] test_getOrderStatus_existingOrder() (gas: 873638)
+[PASS] test_getOrderStatus_nonExistent() (gas: 22883)
+[PASS] test_getOrdersAtPrice_empty() (gas: 881620)
+[PASS] test_getOrdersAtPrice_withOrders() (gas: 1109614)
+[PASS] test_getPackedOrder_existingOrder() (gas: 877823)
+[PASS] test_getPackedOrder_nonExistent() (gas: 29946)
+[PASS] test_getTotalCounts_withOrders() (gas: 20190)
+[PASS] test_isOrderActive_activeOrder() (gas: 871804)
+[PASS] test_isOrderActive_afterCancel() (gas: 743195)
+[PASS] test_isOrderActive_nonExistent() (gas: 16325)
+Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 8.37ms (1.94ms CPU time)
+
+Ran 17 tests for test/diamond/OrdersFacet.t.sol:OrdersFacetStandaloneTest
+[PASS] test_cancelOrder_byBuyer() (gas: 258836)
+[PASS] test_cancelOrder_revertAlreadyCancelled() (gas: 254018)
+[PASS] test_cancelOrder_revertNotBuyer() (gas: 248320)
+[PASS] test_createOrder_basic() (gas: 255616)
+[PASS] test_createOrder_incrementsTotalOrders() (gas: 248875)
+[PASS] test_createOrder_multipleOrders() (gas: 428326)
+[PASS] test_createOrder_zeroAmount() (gas: 224154)
+[PASS] test_createOrder_zeroPrice() (gas: 224726)
+[PASS] test_getBuyerOrders() (gas: 250451)
+[PASS] test_getOrder_nonexistent() (gas: 30696)
+[PASS] test_getOrder_returnsCorrectData() (gas: 254692)
+[PASS] test_getSellerOrders() (gas: 250712)
+[PASS] test_getTotalOrders_afterCreates() (gas: 432675)
+[PASS] test_updateOrderStatus_byBuyer() (gas: 257607)
+[PASS] test_updateOrderStatus_bySeller() (gas: 257049)
+[PASS] test_updateOrderStatus_revertNotParticipant() (gas: 250593)
+[PASS] test_updateOrderStatus_toCustomStatus() (gas: 257011)
+Suite result: ok. 17 passed; 0 failed; 0 skipped; finished in 797.63µs (420.17µs CPU time)
+
+Ran 32 tests for test/diamond/CLOBAdminFacet.t.sol:CLOBAdminFacetTest
+[PASS] testNodeHash() (gas: 2814)
+[PASS] test_configureCircuitBreaker_revertInvalidConfig() (gas: 21111)
+[PASS] test_configureCircuitBreaker_revertNotOwner() (gas: 21622)
+[PASS] test_configureCircuitBreaker_setsParams() (gas: 894867)
+[PASS] test_emergencyUserWithdraw_requiresPause() (gas: 41916)
+[PASS] test_emergencyUserWithdraw_worksWhenPaused() (gas: 959121)
+[PASS] test_fullFlow_pauseBlocksOrders_withdrawReturnsTokens_unpauseRestores() (gas: 1129002)
+[PASS] test_pause_emitsEvent() (gas: 65116)
+[PASS] test_pause_revertAlreadyPaused() (gas: 66537)
+[PASS] test_pause_revertNotOwner() (gas: 18644)
+[PASS] test_pause_setsGlobalPause() (gas: 67523)
+[PASS] test_resetCircuitBreaker_clearsTripped() (gas: 926594)
+[PASS] test_setDefaultCircuitBreakerParams_revertNotOwner() (gas: 20036)
+[PASS] test_setDefaultCircuitBreakerParams_updatesDefaults() (gas: 29075)
+[PASS] test_setEmergencyTimelock_revertNotOwner() (gas: 18738)
+[PASS] test_setEmergencyTimelock_updatesValue() (gas: 24302)
+[PASS] test_setFeeRecipient_revertNotOwner() (gas: 19140)
+[PASS] test_setFeeRecipient_revertZeroAddress() (gas: 20242)
+[PASS] test_setFeeRecipient_updatesAddress() (gas: 52007)
+[PASS] test_setFees_emitsEvent() (gas: 26913)
+[PASS] test_setFees_revertExceedsMax() (gas: 19374)
+[PASS] test_setFees_revertNotOwner() (gas: 19664)
+[PASS] test_setFees_updatesConfig() (gas: 32552)
+[PASS] test_setMEVProtection_emitsEvent() (gas: 32058)
+[PASS] test_setMEVProtection_revertNotOwner() (gas: 18429)
+[PASS] test_setMEVProtection_updatesConfig() (gas: 34345)
+[PASS] test_setRateLimits_emitsEvent() (gas: 32084)
+[PASS] test_setRateLimits_revertNotOwner() (gas: 18905)
+[PASS] test_setRateLimits_updatesConfig() (gas: 34792)
+[PASS] test_tripCircuitBreaker_setsTripped() (gas: 920519)
+[PASS] test_unpause_clearsGlobalPause() (gas: 54520)
+[PASS] test_unpause_revertNotPaused() (gas: 21769)
+Suite result: ok. 32 passed; 0 failed; 0 skipped; finished in 10.76ms (1.07ms CPU time)
+
+Ran 27 tests for test/diamond/AssetsFacet.t.sol:AssetsFacetTest
+[PASS] testNodeHash() (gas: 2715)
+[PASS] test_addSupportedClass() (gas: 360637)
+[PASS] test_addSupportedClass_revertNotOwner() (gas: 20226)
+[PASS] test_balanceOfBatch() (gas: 626929)
+[PASS] test_balanceOfBatch_revertArrayMismatch() (gas: 23650)
+[PASS] test_balanceOf_initiallyZero() (gas: 19190)
+[PASS] test_exists() (gas: 415408)
+[PASS] test_mintBatch() (gas: 171433)
+[PASS] test_mintBatch_revertNotOwner() (gas: 20876)
+[PASS] test_nodeMint_establishesCustody() (gas: 374366)
+[PASS] test_nodeMint_revertInvalidNode() (gas: 132904)
+[PASS] test_nodeMint_validNode() (gas: 370298)
+[PASS] test_redeem_burnsTokens() (gas: 397660)
+[PASS] test_redeem_releasesCustody() (gas: 391706)
+[PASS] test_redeem_revertCustodianCannotRedeemOwnCustody() (gas: 365284)
+[PASS] test_redeem_revertInsufficientBalance() (gas: 405405)
+[PASS] test_removeSupportedClass() (gas: 114425)
+[PASS] test_safeBatchTransferFrom() (gas: 688875)
+[PASS] test_safeTransferFrom() (gas: 448114)
+[PASS] test_safeTransferFrom_revertInsufficientBalance() (gas: 414325)
+[PASS] test_safeTransferFrom_revertNotApproved() (gas: 416876)
+[PASS] test_safeTransferFrom_withApproval() (gas: 473532)
+[PASS] test_setApprovalForAll() (gas: 48729)
+[PASS] test_setApprovalForAll_revoke() (gas: 40408)
+[PASS] test_setURI() (gas: 91890)
+[PASS] test_setURI_revertNotOwner() (gas: 18768)
+[PASS] test_totalSupply() (gas: 631462)
+Suite result: ok. 27 passed; 0 failed; 0 skipped; finished in 11.15ms (1.74ms CPU time)
+
+Ran 28 tests for test/diamond/RWYStakingFacet.t.sol:RWYStakingFacetTest
+[PASS] testNodeHash() (gas: 2792)
+[PASS] testOpportunityId() (gas: 3298)
+[PASS] test_documentUris_httpsFormat() (gas: 1391426)
+[PASS] test_documentUris_ipfsFormat() (gas: 1281307)
+[PASS] test_fullConfiguration() (gas: 98932)
+[PASS] test_fullDocumentFlow() (gas: 1498032)
+[PASS] test_pauseRWY() (gas: 40759)
+[PASS] test_pauseRWY_revertNotOwner() (gas: 20063)
+[PASS] test_pauseWhileOperating() (gas: 107493)
+[PASS] test_setInsurance() (gas: 850803)
+[PASS] test_setInsurance_revertNotOperator() (gas: 704623)
+[PASS] test_setInsurance_withHttpsUrl() (gas: 847114)
+[PASS] test_setRWYCLOBAddress() (gas: 41798)
+[PASS] test_setRWYCLOBAddress_revertNotOwner() (gas: 20834)
+[PASS] test_setRWYFeeRecipient() (gas: 43166)
+[PASS] test_setRWYFeeRecipient_revertNotOwner() (gas: 21164)
+[PASS] test_setRWYQuoteToken() (gas: 43399)
+[PASS] test_setRWYQuoteToken_revertNotOwner() (gas: 21604)
+[PASS] test_submitCustodyProof() (gas: 1116791)
+[PASS] test_submitCustodyProof_revertDuringFunding() (gas: 703710)
+[PASS] test_submitCustodyProof_revertNotOperator() (gas: 943511)
+[PASS] test_submitMultipleCustodyProofs() (gas: 1319884)
+[PASS] test_submitTokenizationProof() (gas: 825719)
+[PASS] test_submitTokenizationProof_overwrite() (gas: 785764)
+[PASS] test_submitTokenizationProof_revertNotOperator() (gas: 705532)
+[PASS] test_unpauseRWY() (gas: 32303)
+[PASS] test_unpauseRWY_revertNotOwner() (gas: 47756)
+[PASS] test_unpauseRWY_whenNotPaused() (gas: 21287)
+Suite result: ok. 28 passed; 0 failed; 0 skipped; finished in 4.48ms (1.47ms CPU time)
+
+Ran 32 tests for test/diamond/RWYStakingLifecycle.t.sol:RWYStakingLifecycleTest
+[PASS] testNodeHash() (gas: 2814)
+[PASS] test_cancelOpportunity() (gas: 607228)
+[PASS] test_cancelOpportunity_revertAfterFunded() (gas: 763387)
+[PASS] test_cancelOpportunity_revertNotOperator() (gas: 421039)
+[PASS] test_createOpportunity_ERC1155() (gas: 478976)
+[PASS] test_createOpportunity_ERC20() (gas: 418161)
+[PASS] test_createOpportunity_revertExceedsMaxYield() (gas: 36716)
+[PASS] test_createOpportunity_revertInvalidAmount() (gas: 35900)
+[PASS] test_createOpportunity_revertInvalidTimeline() (gas: 35780)
+[PASS] test_createOpportunity_revertNotApprovedOperator() (gas: 23442)
+[FAIL: Diamond: Function does not exist] test_emergencyClaim_ERC1155_noSelfApprovalNeeded() (gas: 557484)
+[FAIL: EvmError: Revert] test_emergencyClaim_ERC20() (gas: 665027)
+[FAIL: EvmError: Revert] test_emergencyClaim_revertDoubleClaim() (gas: 664230)
+[PASS] test_emergencyClaim_revertNoStake() (gas: 434692)
+[PASS] test_emergencyClaim_revertNotCancelled() (gas: 605089)
+[FAIL: Diamond: Function does not exist] test_fullLifecycle_ERC20_profitDistribution() (gas: 930222)
+[FAIL: Diamond: Function does not exist] test_stake_ERC1155() (gas: 557728)
+[FAIL: ApprovalForAll != expected OpportunityFunded] test_stake_ERC1155_fullFunding() (gas: 514658)
+[FAIL: Approval != expected CommodityStaked] test_stake_ERC20() (gas: 453539)
+[FAIL: Approval != expected OpportunityFunded] test_stake_ERC20_fullFunding_triggersStatus() (gas: 651489)
+[PASS] test_stake_ERC20_multipleStakers() (gas: 711750)
+[PASS] test_stake_revertExceedsTarget() (gas: 454583)
+[PASS] test_stake_revertFundingDeadlinePassed() (gas: 455535)
+[PASS] test_stake_revertOpportunityNotFound() (gas: 58429)
+[PASS] test_stake_revertZeroAmount() (gas: 434895)
+[FAIL: Diamond: Function does not exist] test_unstake_ERC1155_noSelfApprovalNeeded() (gas: 557688)
+[FAIL: Diamond: Function does not exist] test_unstake_ERC1155_partialUnstake() (gas: 556299)
+[PASS] test_unstake_ERC20_full() (gas: 550167)
+[PASS] test_unstake_ERC20_partial() (gas: 612440)
+[PASS] test_unstake_revertAfterFunded() (gas: 762260)
+[PASS] test_unstake_revertInsufficientStake() (gas: 605485)
+[PASS] test_unstake_revertOpportunityNotFound() (gas: 24625)
+Suite result: FAILED. 22 passed; 10 failed; 0 skipped; finished in 4.40ms (5.62ms CPU time)
+
+Ran 14 tests for test/diamond/BridgeFacet.t.sol:BridgeFacetTest
+[PASS] testNodeHash() (gas: 2638)
+[PASS] test_createUnifiedOrder() (gas: 615912)
+[PASS] test_createUnifiedOrder_multipleOrders() (gas: 1051321)
+[PASS] test_getBuyerOrders() (gas: 1050308)
+[PASS] test_getSellerOrders() (gas: 19757)
+[PASS] test_getUnifiedOrder() (gas: 620913)
+[PASS] test_setBountyPercentage() (gas: 40174)
+[PASS] test_setBountyPercentage_revertNotOwner() (gas: 19068)
+[PASS] test_setProtocolFeePercentage() (gas: 40465)
+[PASS] test_setProtocolFeePercentage_revertNotOwner() (gas: 19510)
+[PASS] test_updateAusysAddress() (gas: 41657)
+[PASS] test_updateAusysAddress_revertNotOwner() (gas: 20961)
+[PASS] test_updateClobAddress() (gas: 42031)
+[PASS] test_updateClobAddress_revertNotOwner() (gas: 20807)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 12.94ms (658.29µs CPU time)
+
+Ran 25 tests for test/diamond/AuSysFacet.t.sol:AuSysFacetTest
+[PASS] testNodeHash() (gas: 2726)
+[PASS] test_assignDriverToJourney() (gas: 532301)
+[PASS] test_assignDriverToJourney_revertNotAdmin() (gas: 421137)
+[PASS] test_createAuSysOrder() (gas: 583483)
+[PASS] test_createAuSysOrder_multipleOrders() (gas: 973681)
+[PASS] test_createJourney() (gas: 427735)
+[PASS] test_getAuSysOrder() (gas: 580643)
+[PASS] test_getJourney() (gas: 425116)
+[PASS] test_getPayToken() (gas: 18850)
+[PASS] test_handOn_requiresSignatures() (gas: 587699)
+[PASS] test_handOn_revertWithoutDriverSignature() (gas: 531747)
+[PASS] test_hasAuSysRole() (gas: 31860)
+[PASS] test_packageSign_driver() (gas: 526926)
+[PASS] test_packageSign_receiver() (gas: 526841)
+[PASS] test_packageSign_revertNotParticipant() (gas: 501088)
+[PASS] test_packageSign_sender() (gas: 526628)
+[PASS] test_revokeAuSysAdmin() (gas: 29096)
+[PASS] test_setAuSysAdmin() (gas: 50635)
+[PASS] test_setAuSysAdmin_revertNotOwner() (gas: 21240)
+[PASS] test_setDispatcher() (gas: 47455)
+[PASS] test_setDriver() (gas: 46753)
+[PASS] test_setDriver_disable() (gas: 26427)
+[PASS] test_setDriver_revertNotAdmin() (gas: 22539)
+[PASS] test_setPayToken() (gas: 29640)
+[PASS] test_setPayToken_revertNotOwner() (gas: 21298)
+Suite result: ok. 25 passed; 0 failed; 0 skipped; finished in 13.33ms (2.43ms CPU time)
+
+Ran 24 tests for test/diamond/OperatorFacet.t.sol:OperatorFacetTest
+[PASS] testNodeHash() (gas: 2704)
+[PASS] test_approveOperator_addsOperator() (gas: 47759)
+[PASS] test_approveOperator_emitsEvent() (gas: 44908)
+[PASS] test_approveOperator_multipleOperators() (gas: 105564)
+[PASS] test_approveOperator_revertAlreadyApproved() (gas: 45927)
+[PASS] test_approveOperator_revertNotOwner() (gas: 20376)
+[PASS] test_approveOperator_revertZeroAddress() (gas: 19301)
+[PASS] test_fullFlow_approveOperator_checkStats_revoke() (gas: 78630)
+[PASS] test_getOperatorReputation_returnsReputation() (gas: 49202)
+[PASS] test_getOperatorReputation_returnsZeroForNonExistent() (gas: 18031)
+[PASS] test_getOperatorStats_returnsAllStats() (gas: 83072)
+[PASS] test_getOperatorSuccessfulOps_returnsCount() (gas: 17795)
+[PASS] test_getOperatorTotalValueProcessed_returnsTotal() (gas: 18046)
+[PASS] test_isApprovedOperator_returnsFalseForNonApproved() (gas: 17616)
+[PASS] test_isApprovedOperator_returnsTrueForOwnerByDefault() (gas: 18312)
+[PASS] test_revokeOperator_emitsEvent() (gas: 37082)
+[PASS] test_revokeOperator_removesOperator() (gas: 38923)
+[PASS] test_revokeOperator_revertNotApproved() (gas: 23229)
+[PASS] test_revokeOperator_revertNotOwner() (gas: 49670)
+[PASS] test_setOperatorReputation_emitsEvent() (gas: 46808)
+[PASS] test_setOperatorReputation_revertNotOwner() (gas: 19435)
+[PASS] test_setOperatorReputation_toMaxUint256() (gas: 48904)
+[PASS] test_setOperatorReputation_toZero() (gas: 28315)
+[PASS] test_setOperatorReputation_updatesReputation() (gas: 55549)
+Suite result: ok. 24 passed; 0 failed; 0 skipped; finished in 16.85ms (1.02ms CPU time)
+
+Ran 24 tests for test/diamond/CLOBCoreFacet.t.sol:CLOBCoreFacetTest
+[PASS] testNodeHash() (gas: 2748)
+[PASS] test_cancelOrder_openOrder_cancelled() (gas: 751351)
+[PASS] test_cancelOrder_revertNotMaker() (gas: 876578)
+[PASS] test_cancelOrder_revertOrderNotFound() (gas: 40351)
+[PASS] test_cancelOrder_sellOrder_locksTokensInEscrow() (gas: 758699)
+[PASS] test_cancelOrders_batchCancels() (gas: 989099)
+[PASS] test_getOrderStatus_open() (gas: 879130)
+[PASS] test_initializeCLOBV2_onlyOwner() (gas: 19435)
+[PASS] test_initializeCLOBV2_setsFeeParams() (gas: 19057)
+[PASS] test_initializeCLOBV2_setsMEVConfig() (gas: 18290)
+[PASS] test_initializeCLOBV2_setsRateLimits() (gas: 19306)
+[PASS] test_isOrderActive_falseAfterCancel() (gas: 750081)
+[PASS] test_isOrderActive_trueForOpen() (gas: 878125)
+[PASS] test_placeLimitOrder_FOK_revertsIfNoMatch() (gas: 870049)
+[PASS] test_placeLimitOrder_IOC_cancelledIfNoMatch() (gas: 751134)
+[PASS] test_placeLimitOrder_buyOrder_createsOrder() (gas: 874003)
+[PASS] test_placeLimitOrder_emitsOrderCreated() (gas: 1216438)
+[PASS] test_placeLimitOrder_largeOrder_requiresCommitReveal() (gas: 108881)
+[PASS] test_placeLimitOrder_revertInvalidAmount() (gas: 99556)
+[PASS] test_placeLimitOrder_revertInvalidPrice() (gas: 99884)
+[PASS] test_placeLimitOrder_sellBuyMatch_bothFilled() (gas: 1311716)
+[PASS] test_placeLimitOrder_sellOrder_createsOrder() (gas: 880809)
+[PASS] test_placeLimitOrder_whenPaused_reverts() (gas: 103928)
+[PASS] test_placeNodeSellOrderV2_createsOrder() (gas: 790528)
+Suite result: ok. 24 passed; 0 failed; 0 skipped; finished in 16.94ms (2.77ms CPU time)
+
+Ran 15 test suites in 103.47ms (124.08ms CPU time): 313 tests passed, 22 failed, 0 skipped (335 total tests)
+
+Failing tests:
+Encountered 12 failing tests in test/diamond/CLOBLogisticsFacet.t.sol:CLOBLogisticsFacetTest
+[FAIL: LogisticsCreatorNotAuthorized()] test_acceptDelivery() (gas: 167849)
+[FAIL: LogisticsCreatorNotAuthorized()] test_acceptDelivery_revertNotRegistered() (gas: 167739)
+[FAIL: LogisticsCreatorNotAuthorized()] test_cancelLogisticsOrder() (gas: 168534)
+[FAIL: LogisticsCreatorNotAuthorized()] test_cancelLogisticsOrder_revertAfterAccepted() (gas: 168135)
+[FAIL: LogisticsCreatorNotAuthorized()] test_confirmDelivery() (gas: 167871)
+[FAIL: LogisticsCreatorNotAuthorized()] test_confirmPickup() (gas: 168113)
+[FAIL: LogisticsCreatorNotAuthorized()] test_confirmPickup_revertNotAssignedDriver() (gas: 168377)
+[FAIL: LogisticsCreatorNotAuthorized()] test_createLogisticsOrder() (gas: 168589)
+[FAIL: LogisticsCreatorNotAuthorized()] test_disputeOrder() (gas: 167519)
+[FAIL: LogisticsCreatorNotAuthorized()] test_getLogisticsOrder() (gas: 167984)
+[FAIL: LogisticsCreatorNotAuthorized()] test_settleLogisticsOrder() (gas: 167827)
+[FAIL: LogisticsCreatorNotAuthorized()] test_settleLogisticsOrder_revertNotDelivered() (gas: 167607)
+
+Encountered 10 failing tests in test/diamond/RWYStakingLifecycle.t.sol:RWYStakingLifecycleTest
+[FAIL: Diamond: Function does not exist] test_emergencyClaim_ERC1155_noSelfApprovalNeeded() (gas: 557484)
+[FAIL: EvmError: Revert] test_emergencyClaim_ERC20() (gas: 665027)
+[FAIL: EvmError: Revert] test_emergencyClaim_revertDoubleClaim() (gas: 664230)
+[FAIL: Diamond: Function does not exist] test_fullLifecycle_ERC20_profitDistribution() (gas: 930222)
+[FAIL: Diamond: Function does not exist] test_stake_ERC1155() (gas: 557728)
+[FAIL: ApprovalForAll != expected OpportunityFunded] test_stake_ERC1155_fullFunding() (gas: 514658)
+[FAIL: Approval != expected CommodityStaked] test_stake_ERC20() (gas: 453539)
+[FAIL: Approval != expected OpportunityFunded] test_stake_ERC20_fullFunding_triggersStatus() (gas: 651489)
+[FAIL: Diamond: Function does not exist] test_unstake_ERC1155_noSelfApprovalNeeded() (gas: 557688)
+[FAIL: Diamond: Function does not exist] test_unstake_ERC1155_partialUnstake() (gas: 556299)
+
+Encountered a total of 22 failing tests, 313 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 22 failed tests
