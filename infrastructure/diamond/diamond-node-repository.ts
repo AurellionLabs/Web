@@ -626,19 +626,37 @@ export class DiamondNodeRepository implements NodeRepository {
         }
       }
 
+      // Build map of order_id -> journey sender for P2P order filtering
+      // This allows filtering P2P orders by the actual node that created the journey
+      const orderSenderMap = new Map<string, string>();
+      const journeyItems = journeysResp.diamondJourneyCreatedEventss?.items || [];
+      for (const journey of journeyItems) {
+        const oid = journey.order_id?.toLowerCase();
+        if (oid && journey.sender) {
+          // Keep the first sender encountered for each order
+          if (!orderSenderMap.has(oid)) {
+            orderSenderMap.set(oid, journey.sender.toLowerCase());
+          }
+        }
+      }
+
       for (const order of p2pOrders) {
         const oid = order.id.toLowerCase();
         if (seenIds.has(oid)) continue;
 
         // For P2P orders, only include if the specific node is referenced
-        // in the order's nodes array or seller field. This prevents the
-        // same P2P order from appearing under every node owned by the
-        // same wallet.
+        // in the order's nodes array, seller field, OR journey sender.
+        // This prevents the same P2P order from appearing under every node
+        // owned by the same wallet by cross-referencing journey sender.
         const orderNodes = (order.nodes || []).map((n) => n.toLowerCase());
+        const journeySender = orderSenderMap.get(oid);
         const isLinkedToThisNode =
-          orderNodes.includes(hash) || order.seller?.toLowerCase() === hash;
-        // If the order has no node references (common for P2P), fall back
-        // to showing it only on the first node to avoid duplicates.
+          orderNodes.includes(hash) ||
+          order.seller?.toLowerCase() === hash ||
+          journeySender === hash;
+        // If the order has no node references and no journey sender (common
+        // for P2P), fall back to showing it only on the first node to avoid
+        // duplicates.
         const hasNoNodeRef =
           orderNodes.length === 0 ||
           orderNodes.every(
