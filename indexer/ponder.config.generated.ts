@@ -14,11 +14,13 @@ import {
   CHAIN_NAME,
 } from './diamond-constants';
 
-// RPC URL from environment
+// RPC URL from environment - prefer the one matching our chain ID
 const RPC_URL =
   process.env.PONDER_RPC_URL ||
-  process.env.NEXT_PUBLIC_RPC_URL_42161 ||
+  (CHAIN_ID === 84532 ? process.env.NEXT_PUBLIC_RPC_URL_84532 : '') ||
+  (CHAIN_ID === 42161 ? process.env.NEXT_PUBLIC_RPC_URL_42161 : '') ||
   process.env.NEXT_PUBLIC_RPC_URL_84532 ||
+  process.env.NEXT_PUBLIC_RPC_URL_42161 ||
   '';
 
 if (!RPC_URL) {
