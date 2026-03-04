@@ -5,7 +5,7 @@ export const DIAMOND_ADDRESS: `0x${string}` = (process.env.DIAMOND_ADDRESS ||
   '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7') as `0x${string}`; // Default: Base Sepolia
 
 export const DIAMOND_DEPLOY_BLOCK = Number(
-  process.env.DIAMOND_DEPLOY_BLOCK || 0, // 0 = auto-detect from chain
+  process.env.DIAMOND_DEPLOY_BLOCK || 0, // Set explicitly per environment if needed
 );
 
 // Chain configuration
