@@ -205,6 +205,7 @@ export const DeliveryCard: React.FC<DeliveryCardProps> = ({
               onConfirm={onAccept}
               variant="accept"
               isLoading={isLoading}
+              missingPickupLocation={!delivery.parcelData.startName}
             />
           )}
           {delivery.currentStatus === DeliveryStatus.ACCEPTED && onPickup && (
