@@ -50,10 +50,10 @@ async function run() {
           }
         }
       } catch (e) {
-        // Table doesn't exist yet, that's fine
-        if (!e.message.includes('does not exist')) {
-          console.log('⚠️  Error checking chain config:', e.message);
-        }
+        // Table doesn't exist or parse error — reset to be safe
+        console.log('⚠️  Error checking chain config:', e.message);
+        console.log('🔄 Resetting database to be safe...');
+        shouldReset = true;
       }
     }
     
