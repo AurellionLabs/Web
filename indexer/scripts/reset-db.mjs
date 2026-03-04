@@ -71,6 +71,11 @@ async function run() {
         END $$;
       `);
       
+      // Also drop Ponder's internal schema if it exists (causes "different app" conflict)
+      await client.query(`
+        DROP SCHEMA IF EXISTS ponder CASCADE
+      `).catch(() => {}); // Schema might not exist
+      
       console.log('✅ Database reset complete');
     } else {
       console.log('✅ Database config unchanged, keeping existing data');
