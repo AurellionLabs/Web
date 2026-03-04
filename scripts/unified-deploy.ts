@@ -1094,11 +1094,14 @@ function loadExistingAddresses(): Record<string, string> {
   if (!fs.existsSync(constantsPath)) return addresses;
 
   const content = fs.readFileSync(constantsPath, 'utf-8');
-  const regex = /export const (NEXT_PUBLIC_\w+)\s*=\s*['"]([^'"]+)['"]/g;
+  // Match both direct assignments: export const X = '0x...'
+  // and env fallbacks: export const X = process.env.X || '0x...'
+  const regex =
+    /export const (NEXT_PUBLIC_\w+)\s*=\s*(?:['"]([^'"]+)['"]|[^;]*\|\|\s*['"]([^'"]+)['"])/g;
 
   let match;
   while ((match = regex.exec(content)) !== null) {
-    addresses[match[1]] = match[2];
+    addresses[match[1]] = match[2] || match[3]; // match[2] for direct, match[3] for env fallback
   }
 
   return addresses;
