@@ -197,6 +197,58 @@ export class DiamondNodeRepository implements NodeRepository {
   /**
    * Fetch asset metadata from IPFS by tokenId
    */
+  /**
+   * Fallback: fetch asset metadata from indexer MintedAsset events
+   * when IPFS/Pinata has no data for a tokenId
+   */
+  private async fetchMetadataFromIndexer(
+    tokenId: string,
+  ): Promise<{ name: string; class: string; fileHash: string }> {
+    try {
+      const { graphqlRequest } = await import(
+        '@/infrastructure/repositories/shared/graph'
+      );
+      const { getCurrentIndexerUrl } = await import(
+        '@/infrastructure/config/indexer-endpoint'
+      );
+      const { GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS } = await import(
+        '@/infrastructure/shared/graph-queries'
+      );
+
+      type MintedResp = {
+        diamondMintedAssetEventss?: {
+          items: Array<{
+            token_id: string;
+            name: string;
+            asset_class: string;
+          }>;
+        };
+      };
+
+      const resp = await graphqlRequest<MintedResp>(
+        getCurrentIndexerUrl(),
+        GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS,
+        { tokenIds: [tokenId], limit: 1 },
+      );
+
+      const item = resp.diamondMintedAssetEventss?.items?.[0];
+      if (item) {
+        return {
+          name: item.name || '',
+          class: item.asset_class || '',
+          fileHash: '',
+        };
+      }
+    } catch (err) {
+      console.warn(
+        '[DiamondNodeRepository] Indexer fallback also failed for tokenId:',
+        tokenId,
+        err,
+      );
+    }
+    return { name: '', class: '', fileHash: '' };
+  }
+
   private async fetchAssetMetadata(
     tokenId: string,
   ): Promise<{ name: string; class: string; fileHash: string }> {
@@ -227,7 +279,8 @@ export class DiamondNodeRepository implements NodeRepository {
             '[DiamondNodeRepository] No IPFS files found for tokenId:',
             tokenId,
           );
-          return { name: '', class: '', fileHash: '' };
+          // Fallback: try indexer MintedAsset events for metadata
+          return this.fetchMetadataFromIndexer(tokenId);
         }
 
         const item = list[0];
@@ -629,7 +682,8 @@ export class DiamondNodeRepository implements NodeRepository {
       // Build map of order_id -> journey sender for P2P order filtering
       // This allows filtering P2P orders by the actual node that created the journey
       const orderSenderMap = new Map<string, string>();
-      const journeyItems = journeysResp.diamondJourneyCreatedEventss?.items || [];
+      const journeyItems =
+        journeysResp.diamondJourneyCreatedEventss?.items || [];
       for (const journey of journeyItems) {
         const oid = journey.order_id?.toLowerCase();
         if (oid && journey.sender) {

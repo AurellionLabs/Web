@@ -9,16 +9,18 @@ import { ethers } from 'ethers';
 import { INodeAssetService, NodeAsset } from '@/domain/node';
 import { Asset } from '@/domain/shared';
 import { DiamondContext } from './diamond-context';
-// NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
+import { PinataSDK } from 'pinata';
 
 /**
  * Diamond-based implementation of INodeAssetService
  */
 export class DiamondNodeAssetService implements INodeAssetService {
   private context: DiamondContext;
+  private pinata: PinataSDK | null = null;
 
-  constructor(context: DiamondContext) {
+  constructor(context: DiamondContext, pinata?: PinataSDK) {
     this.context = context;
+    this.pinata = pinata || null;
   }
 
   /**
@@ -156,7 +158,31 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
       await addAssetTx.wait();
 
-      // Step 4: Ensure CLOB is approved for trading
+      // Step 4: Upload metadata to IPFS/Pinata so node dashboard can resolve it
+      if (this.pinata) {
+        try {
+          const metadataJson = JSON.stringify({
+            name: contractAsset.name,
+            className: asset.assetClass,
+            assetClass: asset.assetClass,
+            asset: contractAsset,
+            tokenId: tokenId.toString(),
+            nodeHash,
+            mintedAt: Date.now(),
+          });
+          await this.pinata.upload.public
+            .json(JSON.parse(metadataJson))
+            .keyvalues({ tokenId: tokenId.toString() });
+        } catch (ipfsErr) {
+          // Non-fatal — on-chain data is the source of truth
+          console.warn(
+            '[DiamondNodeAssetService] IPFS metadata upload failed (non-fatal):',
+            ipfsErr,
+          );
+        }
+      }
+
+      // Step 5: Ensure CLOB is approved for trading
       await this.ensureClobApproval(nodeHash);
     } catch (error: any) {
       console.error('[DiamondNodeAssetService] Error minting asset:', error);

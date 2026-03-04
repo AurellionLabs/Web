@@ -223,7 +223,10 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         // Create services with Pinata for IPFS metadata
         const repository = new DiamondNodeRepository(context, pinata);
         const service = new DiamondNodeService(context);
-        const assetService = new DiamondNodeAssetService(context);
+        const assetService = new DiamondNodeAssetService(
+          context,
+          pinata || undefined,
+        );
         const p2pSvc = new DiamondP2PService(context);
         const p2pRepo = new DiamondP2PRepository(context);
 
