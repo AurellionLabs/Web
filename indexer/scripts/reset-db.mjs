@@ -57,6 +57,21 @@ async function run() {
       }
     }
     
+    // Check for stale Ponder migration state (causes "different app" error)
+    if (!shouldReset) {
+      try {
+        const ponderSchemaCheck = await client.query(`
+          SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'ponder'
+        `);
+        if (ponderSchemaCheck.rows.length > 0) {
+          console.log('⚠️  Found stale Ponder schema, resetting...');
+          shouldReset = true;
+        }
+      } catch (e) {
+        // Ignore - schema check failed
+      }
+    }
+    
     if (shouldReset) {
       console.log('🗑️  Dropping all Ponder tables...');
       
