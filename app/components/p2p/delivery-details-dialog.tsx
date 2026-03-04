@@ -1,8 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapPin, Truck, Package } from 'lucide-react';
+import { MapPin, Truck, Package, Network } from 'lucide-react';
 import { TrapButton } from '@/app/components/eva/eva-components';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import { cn } from '@/lib/utils';
 import { P2POffer } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
@@ -61,6 +68,7 @@ export function DeliveryDetailsDialog({
     lat: number;
     lng: number;
   } | null>(null);
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,11 +85,13 @@ export function DeliveryDetailsDialog({
     setDeliveryAddress(initialDeliveryAddress || '');
   }, [open, initialDeliveryAddress]);
 
-  // Use the first node as sender, or fall back to the seller address
+  // Use selected node as sender, or fall back to the seller address
   const senderNode =
     offer.nodes && offer.nodes.length > 0
-      ? offer.nodes[0]
+      ? offer.nodes[selectedNodeIndex] || offer.nodes[0]
       : offer.seller || offer.creator;
+
+  const hasMultipleNodes = offer.nodes && offer.nodes.length > 1;
 
   const formatPrice = (price: bigint) => {
     return parseFloat(formatUnits(price, 18)).toLocaleString(undefined, {
@@ -191,6 +201,40 @@ export function DeliveryDetailsDialog({
               </div>
             </div>
           </div>
+
+          {/* Node selector - show when wallet has multiple nodes */}
+          {hasMultipleNodes && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white flex items-center gap-2">
+                <Network className="w-4 h-4 text-amber-400" />
+                Sender Node
+              </label>
+              <Select
+                value={selectedNodeIndex.toString()}
+                onValueChange={(value) => setSelectedNodeIndex(parseInt(value, 10))}
+              >
+                <SelectTrigger className="w-full font-mono text-sm">
+                  <SelectValue placeholder="Select a node" />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-neutral-800">
+                  {offer.nodes?.map((node, index) => (
+                    <SelectItem
+                      key={index}
+                      value={index.toString()}
+                      className="font-mono text-sm text-white/80 focus:bg-amber-500/10 focus:text-amber-400"
+                    >
+                      <span className="font-mono text-xs">
+                        {node.slice(0, 6)}...{node.slice(-4)}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-white/70">
+                Choose which node will deliver this order
+              </p>
+            </div>
+          )}
 
           {/* Delivery address */}
           <div className="space-y-2">
