@@ -179,6 +179,7 @@ export function ClientHeader() {
 
   useEffect(() => {
     const update = () => {
+      if (document.visibilityState !== 'visible') return;
       const now = new Date();
       setTime(
         now.toLocaleTimeString('en-US', {
@@ -190,8 +191,17 @@ export function ClientHeader() {
       );
     };
     update();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        update();
+      }
+    };
     const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   if (!mounted) return null;

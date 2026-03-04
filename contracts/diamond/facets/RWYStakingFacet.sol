@@ -423,7 +423,17 @@ contract RWYStakingFacet {
         userStake.claimed = true;
         userStake.amount = 0;
 
-        IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
+        // Use safeTransfer for ERC1155 when contract is sender (no approval needed)
+        if (opp.inputTokenId == 0) {
+            // ERC20 - already handled above
+        } else {
+            IERC1155(opp.inputToken).safeTransfer(
+                msg.sender,
+                opp.inputTokenId,
+                amount,
+                ""
+            );
+        }
 
         emit CommodityUnstaked(opportunityId, msg.sender, amount);
     }
@@ -556,6 +566,10 @@ contract RWYStakingFacet {
     ) external onlyOwner opportunityExists(opportunityId) nonReentrant {
         RWYStorage.Opportunity storage opp = RWYStorage.getOpportunity(opportunityId);
         if (opp.status == RWYStorage.OpportunityStatus.COMPLETED) revert InvalidStatus();
+        
+        // Return operator collateral (same as cancelOpportunity)
+        RWYLib.returnCollateral(opp);
+        
         opp.status = RWYStorage.OpportunityStatus.CANCELLED;
         emit OpportunityCancelled(opportunityId, reason);
     }
