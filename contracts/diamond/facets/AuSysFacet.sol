@@ -612,6 +612,22 @@ contract AuSysFacet is ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Remove a journey from driver's active list (swap-and-pop)
+     */
+    function _removeDriverJourney(DiamondStorage.AppStorage storage s, address driver, bytes32 journeyId) internal {
+        bytes32[] storage journeys = s.driverToJourneyIds[driver];
+        uint256 length = journeys.length;
+        
+        for (uint256 i = 0; i < length; i++) {
+            if (journeys[i] == journeyId) {
+                journeys[i] = journeys[length - 1];
+                journeys.pop();
+                break;
+            }
+        }
+    }
+
     // ============================================================================
     // JOURNEY MANAGEMENT (from AuSys.sol)
     // ============================================================================
@@ -901,6 +917,10 @@ contract AuSysFacet is ReentrancyGuard {
 
         J.currentStatus = OrderStatus.JOURNEY_DELIVERED;
         J.journeyEnd = block.timestamp;
+
+        // Remove journey from driver's active list (swap-and-pop)
+        _removeDriverJourney(s, J.driver, id);
+
         emit AuSysJourneyStatusUpdated(
             id,
             OrderStatus.JOURNEY_DELIVERED,
