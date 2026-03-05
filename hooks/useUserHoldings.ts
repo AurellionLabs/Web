@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useWallet } from './useWallet';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
@@ -258,15 +258,31 @@ export function useUserHoldings(): UseUserHoldingsReturn {
     [holdings],
   );
 
+  const prevHoldingsRef = useRef<UserHolding[]>(holdings);
+  if (holdings !== prevHoldingsRef.current) {
+    const hasChanged =
+      holdings.length !== prevHoldingsRef.current.length ||
+      holdings.some(
+        (h, i) =>
+          i >= prevHoldingsRef.current.length ||
+          h.tokenId !== prevHoldingsRef.current[i]?.tokenId ||
+          h.balance !== prevHoldingsRef.current[i]?.balance,
+      );
+    if (hasChanged) {
+      prevHoldingsRef.current = holdings;
+    }
+  }
+  const stableHoldings = prevHoldingsRef.current;
+
   return useMemo(
     () => ({
-      holdings,
+      holdings: stableHoldings,
       isLoading,
       error,
       refetch: fetchHoldings,
       getHoldingByTokenId,
     }),
-    [holdings, isLoading, error, fetchHoldings, getHoldingByTokenId],
+    [stableHoldings, isLoading, error, fetchHoldings, getHoldingByTokenId],
   );
 }
 
