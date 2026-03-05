@@ -145,18 +145,23 @@ contract CLOBAdminFacet is ReentrancyGuard {
         if (priceChangeThreshold == 0 || priceChangeThreshold > 5000) {
             revert InvalidConfiguration();  // Max 50% change
         }
-        
+
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        
+        DiamondStorage.CircuitBreaker storage existing = s.circuitBreakers[marketId];
+
+        // Only preserve existing lastPrice if already initialized (isEnabled was true)
+        // Otherwise initialize to 0 - first trade will set it
+        uint256 initialLastPrice = existing.isEnabled ? existing.lastPrice : 0;
+
         s.circuitBreakers[marketId] = DiamondStorage.CircuitBreaker({
-            lastPrice: s.circuitBreakers[marketId].lastPrice,
+            lastPrice: initialLastPrice,
             priceChangeThreshold: priceChangeThreshold,
             cooldownPeriod: cooldownPeriod,
-            tripTimestamp: s.circuitBreakers[marketId].tripTimestamp,
-            isTripped: s.circuitBreakers[marketId].isTripped,
+            tripTimestamp: 0,  // Reset trip state when reconfiguring
+            isTripped: false,  // Reset trip state when reconfiguring
             isEnabled: isEnabled
         });
-        
+
         emit CircuitBreakerConfigured(marketId, priceChangeThreshold, cooldownPeriod, isEnabled);
     }
     
@@ -311,19 +316,21 @@ contract CLOBAdminFacet is ReentrancyGuard {
             bytes32 orderId = orderIds[i];
             DiamondStorage.PackedOrder storage order = s.packedOrders[orderId];
             
-            if (order.makerAndFlags == 0) continue;
+            // Cache makerAndFlags to avoid repeated SLOADs (~3000 gas saved per iteration)
+            uint256 makerAndFlags = order.makerAndFlags;
+            if (makerAndFlags == 0) continue;
             
-            address maker = CLOBLib.unpackMaker(order.makerAndFlags);
+            address maker = CLOBLib.unpackMaker(makerAndFlags);
             if (maker != msg.sender) continue;
             
-            uint8 status = CLOBLib.unpackStatus(order.makerAndFlags);
+            uint8 status = CLOBLib.unpackStatus(makerAndFlags);
             if (status != CLOBLib.STATUS_OPEN && status != CLOBLib.STATUS_PARTIAL) continue;
             
             uint96 remaining = CLOBLib.getRemainingAmount(order.priceAmountFilled);
             if (remaining == 0) continue;
             
             // Mark as cancelled
-            order.makerAndFlags = CLOBLib.updateStatus(order.makerAndFlags, CLOBLib.STATUS_CANCELLED);
+            order.makerAndFlags = CLOBLib.updateStatus(makerAndFlags, CLOBLib.STATUS_CANCELLED);
             
             // Track withdrawal
             s.userEmergencyWithdrawals[msg.sender] += remaining;

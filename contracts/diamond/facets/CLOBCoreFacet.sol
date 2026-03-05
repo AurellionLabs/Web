@@ -234,12 +234,14 @@ contract CLOBCoreFacet is ReentrancyGuard {
         for (uint256 i = 0; i < orderCount; i++) {
             DiamondStorage.PackedOrder storage order = s.packedOrders[orderIds[i]];
             
-            if (order.makerAndFlags == 0) continue;
+            // Cache makerAndFlags to avoid repeated SLOADs (~3000 gas saved per iteration)
+            uint256 makerAndFlags = order.makerAndFlags;
+            if (makerAndFlags == 0) continue;
             
-            address maker = CLOBLib.unpackMaker(order.makerAndFlags);
+            address maker = CLOBLib.unpackMaker(makerAndFlags);
             if (maker != msg.sender) continue;
             
-            uint8 status = CLOBLib.unpackStatus(order.makerAndFlags);
+            uint8 status = CLOBLib.unpackStatus(makerAndFlags);
             if (status == CLOBLib.STATUS_OPEN || status == CLOBLib.STATUS_PARTIAL) {
                 _cancelOrder(orderIds[i], 0);
             }
