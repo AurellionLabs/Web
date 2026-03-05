@@ -213,23 +213,22 @@ export function ClientHeader() {
     'AURELLION PROTOCOL V2.1 · TESTNET · BLOCK 19,847,293 · GAS 12 GWEI · ETH $3,842.17 · TVL $2.4B · 847 ASSETS TOKENIZED · ';
   const TickerBar = () => (
     <div
-      className="h-7 bg-background border-b border-border/25 overflow-hidden relative"
-      style={{ contain: 'strict' }}
+      className="h-7 bg-background border-b border-border/25 overflow-hidden relative isolate"
+      style={{ contain: 'layout style paint' }}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-8 bg-crimson/10 z-10" />
-      <div className="absolute right-0 top-0 bottom-0 w-8 bg-crimson/10 z-10" />
       <div
-        className="absolute top-0 bottom-0 flex items-center whitespace-nowrap"
+        className="absolute top-0 bottom-0 flex items-center whitespace-nowrap pointer-events-none"
         style={{
-          animation: 'ticker-fast 25s linear infinite',
+          animation: 'ticker-fast 40s linear infinite',
           willChange: 'transform',
+          WebkitFontSmoothing: 'antialiased',
         }}
       >
         <span className="font-mono text-[11px] tracking-[0.15em] uppercase text-foreground/25 px-4">
-          {tickerText.repeat(8)}
+          {tickerText.repeat(6)}
         </span>
         <span className="font-mono text-[11px] tracking-[0.15em] uppercase text-foreground/25 px-4">
-          {tickerText.repeat(8)}
+          {tickerText.repeat(6)}
         </span>
       </div>
     </div>
