@@ -313,52 +313,55 @@ export default function LandingPage() {
                   </div>
 
                   <div className="space-y-5">
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 bg-gold rotate-45 mt-1.5 shrink-0" />
-                      <div>
+                    {/* Metadata section */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1.5 h-1.5 bg-gold rotate-45" />
                         <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
                           IMMUTABLE METADATA
                         </span>
-                        <span className="font-mono text-[10px] text-gold/40 tracking-widest ml-3">
+                        <span className="font-mono text-[10px] text-gold/40 tracking-widest ml-auto">
                           IPFS.PIN.OK
                         </span>
                       </div>
+                      <p className="font-sans text-sm leading-relaxed text-foreground/45 pl-4">
+                        Every tokenized asset carries on-chain provenance —
+                        species, weight, origin, and custodian identity are
+                        hashed into the token at mint and pinned to IPFS.
+                        Attributes are cryptographically bound to the ERC-1155
+                        token ID, making post-mint tampering impossible.
+                      </p>
                     </div>
 
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 bg-emerald-500 rotate-45 mt-1.5 shrink-0" />
-                      <div>
+                    {/* Node scoring section */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rotate-45" />
                         <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
                           NODE TRUST SCORING
                         </span>
-                        <span className="font-mono text-[10px] text-emerald-500/40 tracking-widest ml-3">
+                        <span className="font-mono text-[10px] text-emerald-500/40 tracking-widest ml-auto">
                           REP.ENGINE.V2
                         </span>
                       </div>
+                      <p className="font-sans text-sm leading-relaxed text-foreground/45 pl-4">
+                        Custodian nodes earn reputation through verified
+                        deliveries, on-time settlements, and staking collateral.
+                        The protocol scores each node across uptime, fulfilment
+                        rate, and dispute history — weighting recent performance
+                        to surface reliable custodians for buyer selection.
+                      </p>
                     </div>
 
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 bg-crimson rotate-45 mt-1.5 shrink-0" />
-                      <div>
-                        <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
-                          PER-NODE CUSTODY TRACKING
-                        </span>
-                        <span className="font-mono text-[10px] text-crimson/40 tracking-widest ml-3">
-                          CUST.NODE.V1
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 bg-gold rotate-45 mt-1.5 shrink-0" />
-                      <div>
-                        <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
-                          PROVENANCE CHAIN
-                        </span>
-                        <span className="font-mono text-[10px] text-gold/40 tracking-widest ml-3">
-                          PROV.HASH.OK
-                        </span>
-                      </div>
+                    {/* Per-node custody — label only */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-crimson rotate-45" />
+                      <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
+                        PER-NODE CUSTODY TRACKING
+                      </span>
+                      <span className="font-mono text-[10px] text-crimson/40 tracking-widest ml-auto">
+                        CUST.NODE.V1
+                      </span>
                     </div>
                   </div>
                 </div>
