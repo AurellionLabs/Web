@@ -258,7 +258,7 @@ export default function LandingPage() {
           variant="crimson"
         />
         <div className="px-6 md:px-16 lg:px-24 pb-12">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <BootSequence
               items={[
                 { label: 'SMART CONTRACT VERIFICATION', code: 'SC.VERIFY.OK' },
@@ -268,6 +268,72 @@ export default function LandingPage() {
               ]}
               onComplete={() => setBootComplete(true)}
             />
+
+            {/* On-Chain Metadata & Node Scoring */}
+            <div
+              className="relative bg-card/60 border border-border/30 overflow-hidden"
+              style={{
+                clipPath:
+                  'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px))',
+              }}
+            >
+              <div className="absolute inset-0 eva-hex-pattern opacity-10 pointer-events-none" />
+              <div className="p-6 md:p-8">
+                <div className="font-mono text-xs tracking-[0.2em] text-gold/60 uppercase mb-4">
+                  ASSET METADATA &amp; NODE INTEGRITY
+                </div>
+
+                {/* Metadata section */}
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 bg-gold rotate-45" />
+                    <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
+                      IMMUTABLE METADATA
+                    </span>
+                  </div>
+                  <p className="font-sans text-sm leading-relaxed text-foreground/45 pl-4">
+                    Every tokenized asset carries on-chain provenance — species,
+                    weight, origin, and custodian identity are hashed into the
+                    token at mint and pinned to IPFS. Attributes are
+                    cryptographically bound to the ERC-1155 token ID, making
+                    post-mint tampering impossible.
+                  </p>
+                </div>
+
+                {/* Node scoring section */}
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rotate-45" />
+                    <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
+                      NODE TRUST SCORING
+                    </span>
+                  </div>
+                  <p className="font-sans text-sm leading-relaxed text-foreground/45 pl-4">
+                    Custodian nodes earn reputation through verified deliveries,
+                    on-time settlements, and staking collateral. The protocol
+                    scores each node across uptime, fulfilment rate, and dispute
+                    history — weighting recent performance to surface reliable
+                    custodians for buyer selection.
+                  </p>
+                </div>
+
+                {/* Per-node custody */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 bg-crimson rotate-45" />
+                    <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
+                      PER-NODE CUSTODY TRACKING
+                    </span>
+                  </div>
+                  <p className="font-sans text-sm leading-relaxed text-foreground/45 pl-4">
+                    Custody amounts are tracked at the individual node level,
+                    not just per wallet. Multi-node operators see exactly how
+                    many tokens each facility holds — enabling precise inventory
+                    management, auditing, and real-time redemption routing.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
