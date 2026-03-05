@@ -255,7 +255,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         );
     }
 
-    function createLogisticsOrder(bytes32 _unifiedOrderId) external returns (bytes32 journeyId) {
+    function createLogisticsOrder(bytes32 _unifiedOrderId) external nonReentrant returns (bytes32 journeyId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
 
@@ -291,7 +291,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         );
     }
 
-    function updateJourneyStatus(bytes32 _journeyId, uint8 _phase) external {
+    function updateJourneyStatus(bytes32 _journeyId, uint8 _phase) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.Journey storage journey = s.journeys[_journeyId];
 
