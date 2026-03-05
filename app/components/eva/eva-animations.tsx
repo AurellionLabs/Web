@@ -953,32 +953,43 @@ export function ChevronDataStream({
           'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
       }}
     >
-      {/* Scrolling chevrons */}
+      {/* Scrolling chevrons — two identical strips for seamless infinite loop */}
       <div
-        className="absolute inset-0 flex items-center"
-        style={{ animation: `ticker ${speed} linear infinite` }}
+        className="absolute inset-y-0 left-0 flex items-center"
+        style={{
+          animation: `chevronScroll ${speed} linear infinite`,
+          width: 'max-content',
+        }}
       >
-        {Array.from({ length: 40 }).map((_, i) => (
-          <div key={i} className="flex-shrink-0 mx-1">
-            <svg width="24" height="40" viewBox="0 0 24 40">
-              <polygon
-                points="0,0 20,0 24,20 20,40 0,40 4,20"
-                fill={
-                  i % 3 === 0
-                    ? 'hsl(0 70% 38% / 0.2)'
-                    : 'hsl(43 65% 62% / 0.12)'
-                }
-                stroke={
-                  i % 3 === 0
-                    ? 'hsl(0 70% 38% / 0.3)'
-                    : 'hsl(43 65% 62% / 0.15)'
-                }
-                strokeWidth="0.5"
-              />
-            </svg>
-          </div>
-        ))}
+        {[0, 1].map((set) =>
+          Array.from({ length: 40 }).map((_, i) => (
+            <div key={`${set}-${i}`} className="flex-shrink-0 mx-1">
+              <svg width="24" height="40" viewBox="0 0 24 40">
+                <polygon
+                  points="0,0 20,0 24,20 20,40 0,40 4,20"
+                  fill={
+                    i % 3 === 0
+                      ? 'hsl(0 70% 38% / 0.2)'
+                      : 'hsl(43 65% 62% / 0.12)'
+                  }
+                  stroke={
+                    i % 3 === 0
+                      ? 'hsl(0 70% 38% / 0.3)'
+                      : 'hsl(43 65% 62% / 0.15)'
+                  }
+                  strokeWidth="0.5"
+                />
+              </svg>
+            </div>
+          )),
+        )}
       </div>
+      <style>{`
+        @keyframes chevronScroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
       {/* Overlay text */}
       <div className="absolute inset-0 flex items-center justify-center bg-background/30">
         <span className="font-mono text-sm text-foreground/50 tracking-[0.4em] uppercase font-bold">
