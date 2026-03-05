@@ -352,28 +352,7 @@ export default function LandingPage() {
                         to surface reliable custodians for buyer selection.
                       </p>
                     </div>
-
-                    {/* Per-node custody — label only */}
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-crimson rotate-45" />
-                      <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
-                        PER-NODE CUSTODY TRACKING
-                      </span>
-                      <span className="font-mono text-[10px] text-crimson/40 tracking-widest ml-auto">
-                        CUST.NODE.V1
-                      </span>
-                    </div>
                   </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-border/20 flex items-center gap-4">
-                  <div className="w-3 h-3 bg-gold animate-pulse rotate-45" />
-                  <span className="font-mono text-base text-gold font-bold tracking-[0.2em]">
-                    INTEGRITY VERIFIED
-                  </span>
-                  <span className="font-mono text-xs text-foreground/25 tracking-widest">
-                    SCORE: 98.4
-                  </span>
                 </div>
               </div>
             </div>
