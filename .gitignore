@@ -2,7 +2,7 @@ node_modules/
 
 # Hardhat artifacts
 artifacts/
-cache/
+/cache/
 typechain-types/
 
 # Foundry artifacts

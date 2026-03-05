@@ -110,6 +110,7 @@
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "input-otp": "1.4.1",
+    "ioredis": "^5.10.0",
     "lightweight-charts": "^5.1.0",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.454.0",
