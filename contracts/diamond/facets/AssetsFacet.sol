@@ -100,8 +100,10 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         // Check if Diamond itself (always valid) or check ownerNodes
         if (node != address(this)) {
             bytes32[] storage ownerNodes = s.ownerNodes[node];
+            // Cache length to avoid repeated SLOAD
+            uint256 nodeCount = ownerNodes.length;
             bool hasActiveNode = false;
-            for (uint256 i = 0; i < ownerNodes.length; i++) {
+            for (uint256 i = 0; i < nodeCount; i++) {
                 // Cache node to avoid repeated SLOAD (saves ~3000 gas per iteration)
                 DiamondStorage.Node storage nodeData = s.nodes[ownerNodes[i]];
                 if (nodeData.active && nodeData.validNode) {
