@@ -240,25 +240,60 @@ jobs:
         run: |
           # Check if manifest actually changed
           git diff --quiet deployments/manifest.json && echo "No manifest changes" && exit 0
-          # Use GitHub Contents API — works with contents:write even on protected branches.
+          
+          # Use GitHub Contents API with retry on 409 conflicts (race condition protection)
           # git push fails on protected branches; the API route does not.
-          FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-            --jq '.sha' 2>/dev/null || echo "")
-          CONTENT=$(base64 -w0 deployments/manifest.json)
-          if [ -n "$FILE_SHA" ]; then
-            gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-              --method PUT \
-              --field message="chore: update deployments/manifest.json [skip ci]" \
-              --field content="$CONTENT" \
-              --field sha="$FILE_SHA" \
-              --field branch="${{ github.ref_name }}"
-          else
-            gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-              --method PUT \
-              --field message="chore: update deployments/manifest.json [skip ci]" \
-              --field content="$CONTENT" \
-              --field branch="${{ github.ref_name }}"
-          fi
+          MAX_RETRIES=5
+          RETRY_DELAY=2
+          
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $attempt of $MAX_RETRIES to update manifest..."
+            
+            # Fetch current file SHA (may have changed since last fetch)
+            FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
+              --jq '.sha' 2>/dev/null || echo "")
+            
+            if [ -z "$FILE_SHA" ]; then
+              echo "Warning: Could not fetch file SHA, attempting create..."
+            fi
+            
+            CONTENT=$(base64 -w0 deployments/manifest.json)
+            
+            if [ -n "$FILE_SHA" ]; then
+              RESPONSE=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
+                --method PUT \
+                --field message="chore: update deployments/manifest.json [skip ci]" \
+                --field content="$CONTENT" \
+                --field sha="$FILE_SHA" \
+                --field branch="${{ github.ref_name }}" 2>&1)
+            else
+              RESPONSE=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
+                --method PUT \
+                --field message="chore: update deployments/manifest.json [skip ci]" \
+                --field content="$CONTENT" \
+                --field branch="${{ github.ref_name }}" 2>&1)
+            fi
+            
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ Manifest updated successfully"
+              exit 0
+            fi
+            
+            # Check for 409 conflict
+            if echo "$RESPONSE" | grep -q "409"; then
+              echo "⚠️  Conflict detected (SHA mismatch), retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              RETRY_DELAY=$((RETRY_DELAY * 2))  # Exponential backoff
+            else
+              echo "❌ Failed to update manifest: $RESPONSE"
+              exit 1
+            fi
+          done
+          
+          echo "❌ Failed to update manifest after $MAX_RETRIES attempts"
+          exit 1
 
       - name: Upload deployment artifacts
         uses: actions/upload-artifact@v4
