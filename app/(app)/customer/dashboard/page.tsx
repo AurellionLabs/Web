@@ -235,13 +235,6 @@ export default function CustomerDashboard() {
     setCurrentUserRole('customer');
   }, [setCurrentUserRole]);
 
-  // Debug: Log P2P orders with tokenIds
-  useEffect(() => {
-    const p2pOrders = orders.filter((o) => o.isP2P);
-    if (p2pOrders.length > 0) {
-    }
-  }, [orders]);
-
   // Apply filters and sorting
   const filteredOrders = orders.filter((order) => {
     if (
