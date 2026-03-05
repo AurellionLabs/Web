@@ -45,6 +45,19 @@ const nextConfig = {
       ...config.resolve.alias,
       '@/typechain-types': resolve(__dirname, './typechain-types'),
     };
+    // Use no-op cache stub for client builds (ioredis uses Node.js 'net' which isn't in browser)
+    if (!isServer) {
+      const cacheStub = resolve(__dirname, 'infrastructure/cache/client-stub.ts');
+      config.resolve.alias['@/infrastructure/cache'] = cacheStub;
+      config.resolve.alias['@/infrastructure/cache/index'] = cacheStub;
+      // Replace redis-cache module so ioredis is never loaded in client bundle
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(
+          /infrastructure[\\/]cache[\\/]redis-cache\.ts$/,
+          cacheStub,
+        ),
+      );
+    }
     return config;
   },
 };

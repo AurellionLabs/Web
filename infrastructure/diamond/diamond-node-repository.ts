@@ -24,6 +24,7 @@ import {
   tokenIdToAssets,
 } from '@/infrastructure/repositories/shared/ipfs';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import { getCache, type AssetMetadata } from '@/infrastructure/cache';
 import {
   GET_LOGISTICS_ORDER_CREATED_EVENTS,
   GET_ALL_UNIFIED_ORDER_EVENTS,
@@ -126,14 +127,6 @@ export class DiamondNodeRepository implements NodeRepository {
     return getCurrentIndexerUrl();
   }
   private pinata: PinataSDK | null = null;
-  private metadataCache = new Map<
-    string,
-    { name: string; class: string; fileHash: string }
-  >();
-  private inFlightMetadata = new Map<
-    string,
-    Promise<{ name: string; class: string; fileHash: string }>
-  >();
 
   constructor(context: DiamondContext, pinata?: PinataSDK) {
     this.context = context;
@@ -252,74 +245,74 @@ export class DiamondNodeRepository implements NodeRepository {
   private async fetchAssetMetadata(
     tokenId: string,
   ): Promise<{ name: string; class: string; fileHash: string }> {
-    const cached = this.metadataCache.get(tokenId);
-    if (cached) return cached;
-    const inFlight = this.inFlightMetadata.get(tokenId);
-    if (inFlight) return inFlight;
+    // Try Redis cache first
+    const cache = getCache();
+    const cached = await cache.getIpfsMetadata(tokenId);
+    if (cached) {
+      return {
+        name: cached.name || '',
+        class: cached.class || '',
+        fileHash: cached.cid || '',
+      };
+    }
 
-    const lookupPromise = (async (): Promise<{
-      name: string;
-      class: string;
-      fileHash: string;
-    }> => {
-      if (!this.pinata) {
-        console.warn(
-          '[DiamondNodeRepository] Pinata not available for metadata fetch',
-        );
-        return { name: '', class: '', fileHash: '' };
-      }
+    if (!this.pinata) {
+      console.warn(
+        '[DiamondNodeRepository] Pinata not available for metadata fetch',
+      );
+      return { name: '', class: '', fileHash: '' };
+    }
 
-      try {
-        const list = await this.withPinataRetry(() =>
-          this.pinata!.files.public.list().keyvalues({ tokenId }).all(),
-        );
-
-        if (!list || list.length === 0) {
-          console.warn(
-            '[DiamondNodeRepository] No IPFS files found for tokenId:',
-            tokenId,
-          );
-          // Fallback: try indexer MintedAsset events for metadata
-          return this.fetchMetadataFromIndexer(tokenId);
-        }
-
-        const item = list[0];
-        const cid = item.cid;
-
-        const { data } = await this.withPinataRetry<any>(() =>
-          this.pinata!.gateways.public.get(cid),
-        );
-        const json = typeof data === 'string' ? JSON.parse(data) : data;
-
-        // Extract class from multiple possible fields
-        const assetClass =
-          (json.className as string) ||
-          (json.class as string) ||
-          (json.assetClass as string) ||
-          (json.asset?.assetClass as string) ||
-          '';
-
-        const result = {
-          name: (json.name as string) || (json.asset?.name as string) || '',
-          class: assetClass,
-          fileHash: cid,
-        };
-        this.metadataCache.set(tokenId, result);
-        return result;
-      } catch (error) {
-        console.error(
-          `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
-          error,
-        );
-        return { name: '', class: '', fileHash: '' };
-      }
-    })();
-
-    this.inFlightMetadata.set(tokenId, lookupPromise);
     try {
-      return await lookupPromise;
-    } finally {
-      this.inFlightMetadata.delete(tokenId);
+      const list = await this.withPinataRetry(() =>
+        this.pinata!.files.public.list().keyvalues({ tokenId }).all(),
+      );
+
+      if (!list || list.length === 0) {
+        console.warn(
+          '[DiamondNodeRepository] No IPFS files found for tokenId:',
+          tokenId,
+        );
+        // Fallback: try indexer MintedAsset events for metadata
+        return this.fetchMetadataFromIndexer(tokenId);
+      }
+
+      const item = list[0];
+      const cid = item.cid;
+
+      const { data } = await this.withPinataRetry<any>(() =>
+        this.pinata!.gateways.public.get(cid),
+      );
+      const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+      // Extract class from multiple possible fields
+      const assetClass =
+        (json.className as string) ||
+        (json.class as string) ||
+        (json.assetClass as string) ||
+        (json.asset?.assetClass as string) ||
+        '';
+
+      const result = {
+        name: (json.name as string) || (json.asset?.name as string) || '',
+        class: assetClass,
+        fileHash: cid,
+      };
+
+      // Cache in Redis (permanent - immutable metadata)
+      await cache.setIpfsMetadata(tokenId, {
+        name: result.name,
+        class: result.class,
+        cid: result.fileHash,
+      });
+
+      return result;
+    } catch (error) {
+      console.error(
+        `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
+        error,
+      );
+      return { name: '', class: '', fileHash: '' };
     }
   }
 

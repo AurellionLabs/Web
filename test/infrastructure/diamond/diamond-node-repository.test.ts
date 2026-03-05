@@ -34,6 +34,16 @@ vi.mock('@/infrastructure/config/indexer-endpoint', () => ({
   getCurrentIndexerUrl: () => 'http://localhost:42069',
 }));
 
+// Mock Redis cache - tests should not hit real Redis
+vi.mock('@/infrastructure/cache', () => ({
+  getCache: () => ({
+    getIpfsMetadata: vi.fn().mockResolvedValue(null),
+    setIpfsMetadata: vi.fn().mockResolvedValue(undefined),
+    getCidContent: vi.fn().mockResolvedValue(null),
+    setCidContent: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 /** Create a mock PinataSDK with chainable list builder */
 function createMockPinata(
   files: Array<{ cid: string }> = [],
