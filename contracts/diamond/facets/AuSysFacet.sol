@@ -432,19 +432,12 @@ contract AuSysFacet is ReentrancyGuard {
 
     /**
      * @notice Accept a P2P offer
-     * @dev FIX 2+3: EIP-712 ECDSA signature verification with nonce replay protection.
-     *      CEI pattern: all checks first, nonce consumed before external calls.
-     *      Counterparty escrows their side and order moves to Processing.
-     * @param orderId   The order/offer to accept
-     * @param nonce     Unique per-caller nonce (must not have been used before)
-     * @param deadline  Unix timestamp after which the signature is invalid
-     * @param signature Off-chain EIP-712 signature from trustedP2PSigner
+     * @dev Counterparty escrows their side and order moves to Processing.
+     *      msg.sender is the authorization — no additional signature needed.
+     * @param orderId The order/offer to accept
      */
     function acceptP2POffer(
-        bytes32 orderId,
-        uint256 nonce,
-        uint256 deadline,
-        bytes calldata signature
+        bytes32 orderId
     ) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
@@ -470,27 +463,7 @@ contract AuSysFacet is ReentrancyGuard {
         address creator = order.isSellerInitiated ? order.seller : order.buyer;
         if (msg.sender == creator) revert CannotAcceptOwnOffer();
 
-        // ── SIGNATURE VERIFICATION (after all business checks) ────────────
-        if (s.trustedP2PSigner == address(0)) revert TrustedSignerNotSet();
-
-        bytes32 structHash = keccak256(abi.encode(
-            keccak256("AcceptOffer(bytes32 orderId,address acceptor,uint256 nonce,uint256 deadline)"),
-            orderId,
-            msg.sender,
-            nonce,
-            deadline
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
-        address recovered = ECDSA.recover(digest, signature);
-
-        if (recovered != s.trustedP2PSigner) revert InvalidSignature();
-        if (s.ausysUsedNonces[msg.sender][nonce]) revert NonceAlreadyUsed();
-        if (block.timestamp > deadline) revert SignatureExpired();
-
         // ── EFFECTS ──────────────────────────────────────────────────────────
-        // Consume nonce before any external calls (CEI)
-        s.ausysUsedNonces[msg.sender][nonce] = true;
-
         // Update status to Processing
         order.currentStatus = OrderStatus.AUSYS_PROCESSING;
 
