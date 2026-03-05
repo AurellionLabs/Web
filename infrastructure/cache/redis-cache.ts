@@ -332,9 +332,8 @@ export class RedisCache {
   async getStats(): Promise<CacheStats> {
     let keyCount = 0;
     try {
-      const info = await this.client.info('keyspace');
-      const match = info.match(/keys=(\d+)/);
-      keyCount = match ? parseInt(match[1], 10) : 0;
+      // DBSIZE returns count for current database only (unlike INFO keyspace)
+      keyCount = await this.client.dbsize();
     } catch {
       // Ignore errors in stats
     }
