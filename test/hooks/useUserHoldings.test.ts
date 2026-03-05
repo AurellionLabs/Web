@@ -31,6 +31,7 @@ vi.mock('@/infrastructure/repositories/shared/graph', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'https://indexer.example.com/graphql',
 }));
 
@@ -484,8 +485,9 @@ describe('useUserHoldings', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      // Should have called GraphQL twice (full page triggers next, partial page ends)
-      expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+      // Should have called GraphQL 3 times:
+      // 2 for paginated asset loading + 1 for GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS enrichment
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(3);
 
       // Balance batch should be called with 502 token IDs
       expect(balanceOfBatchMock).toHaveBeenCalled();
@@ -516,8 +518,8 @@ describe('useUserHoldings', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      // Should only call once because items.length < PAGE breaks
-      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+      // Should call twice: 1 for asset loading (partial page stops) + 1 for name enrichment
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     });
   });
 });

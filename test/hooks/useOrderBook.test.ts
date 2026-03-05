@@ -17,6 +17,7 @@ vi.mock('@/infrastructure/repositories/clob-v2-repository', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: '0xQuote00000000000000000000000000000001',
 }));
 

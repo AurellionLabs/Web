@@ -15,6 +15,7 @@ vi.mock('@/infrastructure/repositories/shared/graph', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'https://indexer.test/graphql',
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0xAuraAsset',
 }));

@@ -19,12 +19,10 @@ vi.mock('@/infrastructure/services/rwy-service', () => ({
     emergencyClaim: vi.fn().mockResolvedValue({ hash: '0xtestabc' }),
     approveTokensForStaking: vi.fn().mockResolvedValue({ hash: '0xtestdef' }),
     isApprovedForStaking: vi.fn().mockResolvedValue(true),
-    createOpportunity: vi
-      .fn()
-      .mockResolvedValue({
-        opportunityId: 'new-opp-1',
-        transactionHash: '0xcreate',
-      }),
+    createOpportunity: vi.fn().mockResolvedValue({
+      opportunityId: 'new-opp-1',
+      transactionHash: '0xcreate',
+    }),
     startDelivery: vi.fn().mockResolvedValue({ hash: '0xstart' }),
     confirmDelivery: vi.fn().mockResolvedValue({ hash: '0xconfirm' }),
     completeProcessing: vi.fn().mockResolvedValue({ hash: '0xcomplete' }),
@@ -33,6 +31,7 @@ vi.mock('@/infrastructure/services/rwy-service', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0x1234567890123456789012345678901234567890',
 }));
 

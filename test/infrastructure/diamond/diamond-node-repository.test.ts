@@ -11,6 +11,7 @@ import { DiamondNodeRepository } from '@/infrastructure/diamond/diamond-node-rep
 
 // Mock chain-constants
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'https://mock-indexer.test/graphql',
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0x1234567890abcdef1234567890abcdef12345678',
 }));
@@ -25,6 +26,12 @@ vi.mock('@/infrastructure/shared/graph-queries', () => ({
   GET_LOGISTICS_ORDER_CREATED_EVENTS: 'mock-query',
   GET_ALL_UNIFIED_ORDER_EVENTS: 'mock-query',
   GET_SUPPORTED_ASSET_ADDED_EVENTS: 'mock-query',
+  GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS: 'mock-minted-query',
+}));
+
+// Mock indexer-endpoint
+vi.mock('@/infrastructure/config/indexer-endpoint', () => ({
+  getCurrentIndexerUrl: () => 'http://localhost:42069',
 }));
 
 /** Create a mock PinataSDK with chainable list builder */

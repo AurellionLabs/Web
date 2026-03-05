@@ -12,6 +12,7 @@ import {
 
 // Mock chain-constants
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58',
 }));
 

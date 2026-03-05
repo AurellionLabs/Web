@@ -18,6 +18,7 @@ vi.mock('@/infrastructure/repositories/shared/graph', () => ({
 
 // Mock chain constants
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'http://localhost:42069/graphql',
 }));
 

@@ -11,6 +11,7 @@ import { PlatformRepository } from '@/infrastructure/repositories/platform-repos
 
 // Mock chain-constants
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'https://mock-indexer.test/graphql',
 }));
 

@@ -21,6 +21,7 @@ vi.mock('@/infrastructure/repositories/rwy-repository', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0x1234567890123456789012345678901234567890',
   NEXT_PUBLIC_RPC_URL: 'https://rpc.example.com',
 }));

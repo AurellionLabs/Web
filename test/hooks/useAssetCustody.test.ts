@@ -1,6 +1,6 @@
 // @ts-nocheck - Test file with type issues
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 
 // =============================================================================
 // MODULE MOCKS (must be before imports of the mocked modules)
@@ -30,22 +30,37 @@ const mockGetSettlementService = vi.mocked(getSettlementService);
 // =============================================================================
 
 const TOKEN_ID = '42';
+const NODE_HASH_1 =
+  '0xaaa0000000000000000000000000000000000000000000000000000000000001';
+const NODE_HASH_2 =
+  '0xbbb0000000000000000000000000000000000000000000000000000000000002';
 const NODE_OWNER_1 = '0xOwner1000000000000000000000000000000001';
 const NODE_OWNER_2 = '0xOwner2000000000000000000000000000000002';
 
-const makeNode = (owner: string, location?: string) => ({
+const makeNode = (
+  owner: string,
+  address: string,
+  location?: string,
+  tokenIds: string[] = [TOKEN_ID],
+) => ({
   owner,
+  address, // nodeHash — used by the hook to call getNodeCustodyInfo
   location: location ? { addressName: location } : undefined,
+  assets: tokenIds.map((id) => ({ tokenId: id })),
 });
 
 // =============================================================================
 // HELPERS
 // =============================================================================
 
-let mockService: { getCustodyInfo: ReturnType<typeof vi.fn> };
+let mockService: {
+  getNodeCustodyInfo: ReturnType<typeof vi.fn>;
+  getCustodyInfo: ReturnType<typeof vi.fn>;
+};
 
 function setupMocks(nodes = [], serviceOverride?: Partial<typeof mockService>) {
   mockService = {
+    getNodeCustodyInfo: vi.fn().mockResolvedValue(0n),
     getCustodyInfo: vi.fn().mockResolvedValue(0n),
     ...serviceOverride,
   };
@@ -67,12 +82,12 @@ describe('useAssetCustody', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Idle / guard conditions
+  // Guard conditions
   // ---------------------------------------------------------------------------
 
   describe('guard conditions', () => {
     it('returns empty state when tokenId is undefined', async () => {
-      setupMocks([makeNode(NODE_OWNER_1)]);
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1)]);
 
       const { result } = renderHook(() => useAssetCustody(undefined));
 
@@ -84,11 +99,11 @@ describe('useAssetCustody', () => {
       expect(result.current.totalCustodied).toBe(0n);
       expect(result.current.hasAnyCustodian).toBe(false);
       expect(result.current.error).toBeNull();
-      expect(mockService?.getCustodyInfo).not.toHaveBeenCalled();
+      expect(mockService.getNodeCustodyInfo).not.toHaveBeenCalled();
     });
 
     it('returns empty state when tokenId is empty string', async () => {
-      setupMocks([makeNode(NODE_OWNER_1)]);
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1)]);
 
       const { result } = renderHook(() => useAssetCustody(''));
 
@@ -97,7 +112,7 @@ describe('useAssetCustody', () => {
       });
 
       expect(result.current.nodes).toEqual([]);
-      expect(mockService?.getCustodyInfo).not.toHaveBeenCalled();
+      expect(mockService.getNodeCustodyInfo).not.toHaveBeenCalled();
     });
 
     it('returns empty state when there are no nodes', async () => {
@@ -112,6 +127,20 @@ describe('useAssetCustody', () => {
       expect(result.current.nodes).toEqual([]);
       expect(result.current.hasAnyCustodian).toBe(false);
     });
+
+    it('skips nodes that do not hold the queried tokenId', async () => {
+      // Node has assets but not the TOKEN_ID we're querying
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1, 'Farm A', ['999'])]);
+
+      const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.nodes).toEqual([]);
+      expect(mockService.getNodeCustodyInfo).not.toHaveBeenCalled();
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -125,19 +154,15 @@ describe('useAssetCustody', () => {
         resolveFn = resolve;
       });
 
-      setupMocks([makeNode(NODE_OWNER_1)], {
-        getCustodyInfo: vi.fn().mockReturnValue(pending),
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1)], {
+        getNodeCustodyInfo: vi.fn().mockReturnValue(pending),
       });
 
       const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
 
-      // Initial render — fetch is in-flight
       expect(result.current.isLoading).toBe(true);
 
-      // Resolve the promise
-      act(() => {
-        resolveFn(100n);
-      });
+      resolveFn!(100n);
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -146,13 +171,13 @@ describe('useAssetCustody', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Success states
+  // Per-node custody (primary path)
   // ---------------------------------------------------------------------------
 
-  describe('success — single node with custody', () => {
-    it('returns the custodied node entry', async () => {
-      setupMocks([makeNode(NODE_OWNER_1, 'Farm A')], {
-        getCustodyInfo: vi.fn().mockResolvedValue(500n),
+  describe('success — single node with per-node custody', () => {
+    it('returns the custodied node entry with nodeHash', async () => {
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1, 'Farm A')], {
+        getNodeCustodyInfo: vi.fn().mockResolvedValue(500n),
       });
 
       const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
@@ -165,6 +190,7 @@ describe('useAssetCustody', () => {
       expect(result.current.nodes[0]).toEqual({
         nodeAddress: NODE_OWNER_1,
         nodeLocation: 'Farm A',
+        nodeHash: NODE_HASH_1,
         amount: 500n,
       });
       expect(result.current.totalCustodied).toBe(500n);
@@ -175,7 +201,7 @@ describe('useAssetCustody', () => {
 
   describe('success — multiple nodes', () => {
     it('aggregates entries from all nodes with non-zero custody', async () => {
-      const getCustodyInfo = vi
+      const getNodeCustodyInfo = vi
         .fn()
         .mockResolvedValueOnce(300n) // node 1
         .mockResolvedValueOnce(0n) // node 2 — zero, should be excluded
@@ -183,11 +209,15 @@ describe('useAssetCustody', () => {
 
       setupMocks(
         [
-          makeNode(NODE_OWNER_1, 'Farm A'),
-          makeNode(NODE_OWNER_2, 'Farm B'),
-          makeNode('0xOwner3', 'Farm C'),
+          makeNode(NODE_OWNER_1, NODE_HASH_1, 'Farm A'),
+          makeNode(NODE_OWNER_2, NODE_HASH_2, 'Farm B'),
+          makeNode(
+            '0xOwner3',
+            '0xccc0000000000000000000000000000000000000000000000000000000000003',
+            'Farm C',
+          ),
         ],
-        { getCustodyInfo },
+        { getNodeCustodyInfo },
       );
 
       const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
@@ -203,8 +233,8 @@ describe('useAssetCustody', () => {
     });
 
     it('uses owner address as location when node.location is absent', async () => {
-      setupMocks([makeNode(NODE_OWNER_1)], {
-        getCustodyInfo: vi.fn().mockResolvedValue(100n),
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1)], {
+        getNodeCustodyInfo: vi.fn().mockResolvedValue(100n),
       });
 
       const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
@@ -217,11 +247,64 @@ describe('useAssetCustody', () => {
     });
   });
 
+  // ---------------------------------------------------------------------------
+  // Fallback to wallet-level custody
+  // ---------------------------------------------------------------------------
+
+  describe('fallback — getNodeCustodyInfo fails, getCustodyInfo used', () => {
+    it('falls back to getCustodyInfo when getNodeCustodyInfo throws', async () => {
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1, 'Farm A')], {
+        getNodeCustodyInfo: vi
+          .fn()
+          .mockRejectedValue(new Error('not supported')),
+        getCustodyInfo: vi.fn().mockResolvedValue(250n),
+      });
+
+      const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.nodes).toHaveLength(1);
+      expect(result.current.nodes[0].amount).toBe(250n);
+      expect(mockService.getCustodyInfo).toHaveBeenCalledWith(
+        TOKEN_ID,
+        NODE_OWNER_1,
+      );
+    });
+
+    it('returns 0 when both getNodeCustodyInfo and getCustodyInfo fail', async () => {
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1, 'Farm A')], {
+        getNodeCustodyInfo: vi.fn().mockRejectedValue(new Error('fail1')),
+        getCustodyInfo: vi.fn().mockRejectedValue(new Error('fail2')),
+      });
+
+      const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      // Both failed → amount = 0n → filtered out
+      expect(result.current.nodes).toEqual([]);
+      expect(result.current.totalCustodied).toBe(0n);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // All nodes zero
+  // ---------------------------------------------------------------------------
+
   describe('success — all nodes have zero custody', () => {
     it('returns empty nodes array', async () => {
-      setupMocks([makeNode(NODE_OWNER_1), makeNode(NODE_OWNER_2)], {
-        getCustodyInfo: vi.fn().mockResolvedValue(0n),
-      });
+      setupMocks(
+        [
+          makeNode(NODE_OWNER_1, NODE_HASH_1),
+          makeNode(NODE_OWNER_2, NODE_HASH_2),
+        ],
+        { getNodeCustodyInfo: vi.fn().mockResolvedValue(0n) },
+      );
 
       const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
 
@@ -236,60 +319,28 @@ describe('useAssetCustody', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Error handling
-  // ---------------------------------------------------------------------------
-
-  describe('error handling', () => {
-    it('captures Error message on getCustodyInfo rejection', async () => {
-      setupMocks([makeNode(NODE_OWNER_1)], {
-        getCustodyInfo: vi.fn().mockRejectedValue(new Error('RPC error')),
-      });
-
-      const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.error).toBe('RPC error');
-      expect(result.current.nodes).toEqual([]);
-    });
-
-    it('sets generic message for non-Error rejections', async () => {
-      setupMocks([makeNode(NODE_OWNER_1)], {
-        getCustodyInfo: vi.fn().mockRejectedValue('unknown failure'),
-      });
-
-      const { result } = renderHook(() => useAssetCustody(TOKEN_ID));
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.error).toBe('Failed to fetch custody');
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // Reactivity
   // ---------------------------------------------------------------------------
 
   describe('reactivity', () => {
     it('refetches when tokenId changes', async () => {
-      const getCustodyInfo = vi.fn().mockResolvedValue(100n);
-      setupMocks([makeNode(NODE_OWNER_1)], { getCustodyInfo });
+      const getNodeCustodyInfo = vi.fn().mockResolvedValue(100n);
+      // Node has both tokenIds so both renders trigger fetches
+      setupMocks([makeNode(NODE_OWNER_1, NODE_HASH_1, 'Farm A', ['1', '2'])], {
+        getNodeCustodyInfo,
+      });
 
       const { result, rerender } = renderHook(({ id }) => useAssetCustody(id), {
         initialProps: { id: '1' },
       });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
-      const firstCallCount = getCustodyInfo.mock.calls.length;
+      const firstCallCount = getNodeCustodyInfo.mock.calls.length;
 
       rerender({ id: '2' });
 
       await waitFor(() => {
-        expect(getCustodyInfo.mock.calls.length).toBeGreaterThan(
+        expect(getNodeCustodyInfo.mock.calls.length).toBeGreaterThan(
           firstCallCount,
         );
       });

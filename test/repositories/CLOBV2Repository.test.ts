@@ -18,6 +18,7 @@ vi.mock('@/infrastructure/repositories/shared/graph', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_AURUM_SUBGRAPH_URL: 'https://indexer.test/graphql',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xDiamondAddress',
   NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS: '0xClobV2DiamondAddress',

@@ -84,6 +84,7 @@ vi.mock('@/lib/contracts', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xDiamond',
 }));
 

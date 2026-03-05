@@ -7,6 +7,7 @@ import { ethers } from 'ethers';
 import { DiamondNodeService } from '@/infrastructure/diamond/diamond-node-service';
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0x1235E39477752713902bCE541Fc02ADeb6FF465b',
 }));
 

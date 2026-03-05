@@ -20,6 +20,7 @@ vi.mock('@/infrastructure/services/settlement-service', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0x742d35cc6634c0532925a3b844bc9e7595f0ab12',
 }));
 
