@@ -209,21 +209,28 @@ export function ClientHeader() {
   const isLandingPage = pathname === '/';
 
   /* ── TICKER BAR (shared) ── */
+  const tickerText =
+    'AURELLION PROTOCOL V2.1 · TESTNET · BLOCK 19,847,293 · GAS 12 GWEI · ETH $3,842.17 · TVL $2.4B · 847 ASSETS TOKENIZED · ';
   const TickerBar = () => (
-    <div className="h-7 bg-background border-b border-border/25 overflow-hidden flex items-center relative">
-      <div className="absolute left-0 top-0 bottom-0 w-8 bg-crimson/10" />
-      <div className="absolute right-0 top-0 bottom-0 w-8 bg-crimson/10" />
-      <div className="flex items-center animate-ticker-fast whitespace-nowrap">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <span
-            key={i}
-            className="font-mono text-[11px] tracking-[0.15em] uppercase text-foreground/25 mx-8"
-          >
-            AURELLION PROTOCOL v2.1 &middot; TESTNET &middot; BLOCK 19,847,293
-            &middot; GAS 12 GWEI &middot; ETH $3,842.17 &middot; TVL $2.4B
-            &middot; 847 ASSETS TOKENIZED &middot;&nbsp;
-          </span>
-        ))}
+    <div
+      className="h-7 bg-background border-b border-border/25 overflow-hidden relative"
+      style={{ contain: 'strict' }}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-8 bg-crimson/10 z-10" />
+      <div className="absolute right-0 top-0 bottom-0 w-8 bg-crimson/10 z-10" />
+      <div
+        className="absolute top-0 bottom-0 flex items-center whitespace-nowrap"
+        style={{
+          animation: 'ticker-fast 25s linear infinite',
+          willChange: 'transform',
+        }}
+      >
+        <span className="font-mono text-[11px] tracking-[0.15em] uppercase text-foreground/25 px-4">
+          {tickerText.repeat(8)}
+        </span>
+        <span className="font-mono text-[11px] tracking-[0.15em] uppercase text-foreground/25 px-4">
+          {tickerText.repeat(8)}
+        </span>
       </div>
     </div>
   );
