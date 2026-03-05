@@ -5,6 +5,10 @@
  * - Tier 1: PERMANENT (IPFS metadata - never invalidate)
  * - Tier 2: EVENT-DRIVEN (node capacity, order state - invalidate on events)
  * - Tier 3: TTL-BASED (block number, gas price - auto-expire)
+ *
+ * NOTE: These tests require a running Redis server.
+ * Set REDIS_URL env var or use localhost:6379.
+ * Tests are skipped in CI environments (CI=true) since Redis isn't available.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -13,7 +17,11 @@ import { RedisCache } from '@/infrastructure/cache/redis-cache';
 // Test Redis URL - separate database for tests
 const TEST_REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379/15';
 
-describe('RedisCache', () => {
+// Skip tests in CI (no Redis available) or when explicitly disabled
+const shouldRunTests =
+  !process.env.CI && process.env.SKIP_REDIS_TESTS !== 'true';
+
+describe.skipIf(!shouldRunTests)('RedisCache', () => {
   let cache: RedisCache;
 
   beforeEach(async () => {
