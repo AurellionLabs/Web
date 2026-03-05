@@ -698,7 +698,7 @@ contract AuSysFacet is ReentrancyGuard {
         uint256 ETA,
         uint256 tokenQuantity,
         uint256 assetId
-    ) external {
+    ) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
 
