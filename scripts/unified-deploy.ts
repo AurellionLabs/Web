@@ -53,6 +53,10 @@ import {
   DEPRECATED_SELECTORS,
   ContractConfig,
 } from './deploy.config';
+import {
+  renderIndexerDiamondConstants,
+  replaceChainConstant,
+} from './lib/deploy-config';
 
 // =============================================================================
 // FACET SELECTORS - Loaded from generated JSON (single source of truth)
@@ -288,14 +292,10 @@ function updateChainConstants(
 
   // Update or create each constant
   for (const [key, value] of Object.entries(allAddresses)) {
-    const regex = new RegExp(
-      `export const ${key}\\s*=\\s*['"][^'"]*['"];?`,
-      'm',
-    );
-    const newLine = `export const ${key} =\n  '${value}';`;
+    const updatedContent = replaceChainConstant(content, key, value);
 
-    if (regex.test(content)) {
-      content = content.replace(regex, newLine);
+    if (updatedContent !== content) {
+      content = updatedContent;
     } else {
       // Find the right section to insert
       const sectionMarker = key.includes('DIAMOND')
@@ -303,6 +303,7 @@ function updateChainConstants(
         : key.includes('RWY')
           ? '// RWY Vault'
           : '// =============================================================================\n// CONTRACT ADDRESSES';
+      const newLine = `export const ${key} =\n  '${value}';`;
 
       const insertIndex = content.indexOf(sectionMarker);
       if (insertIndex === -1) {
@@ -365,15 +366,11 @@ function updateIndexerConfig(deployment: DeploymentResult) {
   const diamondConstantsPath = path.resolve('./indexer/diamond-constants.ts');
 
   if (deployment.contracts.Diamond) {
-    const content = `// Diamond contract constants for the Ponder indexer
-// Auto-updated by unified-deploy.ts script
-// Last updated: ${deployment.timestamp}
-
-export const DIAMOND_ADDRESS: \`0x\${string}\` =
-  '${deployment.contracts.Diamond.address}';
-
-export const DIAMOND_DEPLOY_BLOCK = ${deployment.contracts.Diamond.blockNumber};
-`;
+    const content = renderIndexerDiamondConstants({
+      address: deployment.contracts.Diamond.address,
+      blockNumber: deployment.contracts.Diamond.blockNumber,
+      timestamp: deployment.timestamp,
+    });
     fs.writeFileSync(diamondConstantsPath, content);
     console.log('✅ Updated indexer/diamond-constants.ts');
   }

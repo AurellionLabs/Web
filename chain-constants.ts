@@ -55,7 +55,7 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 
 export const NEXT_PUBLIC_DIAMOND_ADDRESS =
   process.env.NEXT_PUBLIC_DIAMOND_ADDRESS ||
-  '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7'; // Default: Base Sepolia
+  '0x77FA5086e44B797F3C82A265ebac98937A258c8e'; // Default: Base Sepolia
 export const NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS =
   '0xa7845b149E570d0b635e0E810ecAbC497Af83e70';
 export const NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS =
@@ -81,7 +81,7 @@ export const NEXT_PUBLIC_ORDER_ROUTER_FACET_ADDRESS =
   '0xa277fE16188fde8Cf7CC4f0e1b272726C6d6d9CE';
 
 // Diamond deployment block (for indexer start block)
-export const DIAMOND_DEPLOY_BLOCK = 36030424;
+export const DIAMOND_DEPLOY_BLOCK = 38515909;
 
 // =============================================================================
 // RPC URLS - Read from environment variables, never hardcode API keys
