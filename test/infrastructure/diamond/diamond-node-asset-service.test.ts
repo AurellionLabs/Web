@@ -27,8 +27,7 @@ function createMockContext(overrides: Record<string, any> = {}) {
       owner: overrides.nodeOwner ?? OWNER,
     }),
     getNodeAssets: vi.fn().mockResolvedValue(overrides.nodeAssets ?? []),
-    nodeMint: vi.fn().mockResolvedValue(mockTx),
-    addSupportedAsset: vi.fn().mockResolvedValue(mockTx),
+    addNodeItem: vi.fn().mockResolvedValue(mockTx),
     updateSupportedAssets: vi.fn().mockResolvedValue(mockTx),
     ...overrides.diamond,
   };
@@ -58,7 +57,7 @@ describe('DiamondNodeAssetService', () => {
   });
 
   describe('mintAsset', () => {
-    it('should mint tokens to node owner and add supported asset', async () => {
+    it('should mint tokens through addNodeItem', async () => {
       const context = createMockContext();
       const service = new DiamondNodeAssetService(context);
 
@@ -74,18 +73,15 @@ describe('DiamondNodeAssetService', () => {
         100,
       );
 
-      // Should call nodeMint on AuraAsset
-      expect(context._diamond.nodeMint).toHaveBeenCalledTimes(1);
-      const mintArgs = context._diamond.nodeMint.mock.calls[0];
-      expect(mintArgs[0]).toBe(OWNER); // Minted to node owner
-      expect(mintArgs[1].name).toBe('AUGOAT');
-      expect(mintArgs[1].assetClass).toBe('GOAT');
-      expect(mintArgs[2]).toBe(100); // Amount
-      expect(mintArgs[3]).toBe('GOAT'); // Asset class
-      expect(mintArgs[4]).toBe('0x'); // Extra data
-
-      // Should call addSupportedAsset on Diamond
-      expect(context._diamond.addSupportedAsset).toHaveBeenCalledTimes(1);
+      expect(context._diamond.addNodeItem).toHaveBeenCalledTimes(1);
+      const mintArgs = context._diamond.addNodeItem.mock.calls[0];
+      expect(mintArgs[0]).toBe(NODE_HASH);
+      expect(mintArgs[1]).toBe(OWNER);
+      expect(mintArgs[2]).toBe(100);
+      expect(mintArgs[3].name).toBe('AUGOAT');
+      expect(mintArgs[3].assetClass).toBe('GOAT');
+      expect(mintArgs[4]).toBe('GOAT');
+      expect(mintArgs[5]).toBe('0x');
     });
 
     it('should throw if node is not registered (ZeroAddress owner)', async () => {
@@ -153,7 +149,7 @@ describe('DiamondNodeAssetService', () => {
     it('should provide helpful error for NodeManager misconfiguration', async () => {
       const context = createMockContext({
         diamond: {
-          nodeMint: vi.fn().mockRejectedValue({
+          addNodeItem: vi.fn().mockRejectedValue({
             message: 'missing revert data',
             code: 'CALL_EXCEPTION',
           }),

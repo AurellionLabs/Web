@@ -92,7 +92,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
     amount: number,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
-    const diamondAddress = this.context.getDiamondAddress();
 
     // Convert to bytes32 format for Diamond operations
     const initialNodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
@@ -135,31 +134,19 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
       const tokenId = BigInt(ethers.keccak256(encodedAsset));
 
-      // Step 1: Mint tokens to the node owner's wallet (they are the custodian)
-      // The node owner holds the tokens directly and must approve Diamond for CLOB trading
-      const mintTx = await diamond.nodeMint(
-        nodeOwnerWallet, // Mint to node owner's wallet - they are the custodian
-        contractAsset,
+      // Use the unified node minting path so the contract updates node inventory
+      // and supported-asset metadata through a single accounting flow.
+      const mintTx = await diamond.addNodeItem(
+        nodeHash,
+        nodeOwnerWallet,
         amount,
+        contractAsset,
         asset.assetClass,
         '0x',
       );
-      const mintReceipt = await mintTx.wait();
+      await mintTx.wait();
 
-      // Note: No need to call creditNodeTokens - tokens are in the owner's wallet
-      // The node owner will need to approve Diamond for CLOB trading
-
-      // Step 3: Add/update supported asset with capacity (price is 0, set via CLOB orders)
-      const addAssetTx = await diamond.addSupportedAsset(
-        nodeHash,
-        diamondAddress,
-        tokenId,
-        0n, // Price is 0 - actual price set when placing sell orders on CLOB
-        amount,
-      );
-      await addAssetTx.wait();
-
-      // Step 4: Upload metadata to IPFS/Pinata so node dashboard can resolve it
+      // Upload metadata to IPFS/Pinata so node dashboard can resolve it.
       // Mirrors the old uploadMetadataToIPFS() from node-asset.service.ts
       if (this.pinata) {
         try {
@@ -191,7 +178,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
         }
       }
 
-      // Step 5: Ensure CLOB is approved for trading
+      // Ensure CLOB is approved for trading
       await this.ensureClobApproval(nodeHash);
     } catch (error: any) {
       console.error('[DiamondNodeAssetService] Error minting asset:', error);

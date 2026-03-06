@@ -79,6 +79,7 @@ function createMockContext(
   overrides: {
     nodeData?: any;
     nodeAssets?: any[];
+    inventoryWithMetadata?: any[];
     getNodeError?: Error;
   } = {},
 ) {
@@ -96,6 +97,9 @@ function createMockContext(
           },
         ),
     getNodeAssets: vi.fn().mockResolvedValue(overrides.nodeAssets ?? []),
+    getNodeInventoryWithMetadata: vi
+      .fn()
+      .mockResolvedValue(overrides.inventoryWithMetadata ?? []),
   };
   return {
     getDiamond: vi.fn().mockReturnValue(diamond),
@@ -253,6 +257,15 @@ describe('DiamondNodeRepository', () => {
             capacity: 100,
           },
         ],
+        inventoryWithMetadata: [
+          {
+            token: '0xtoken',
+            tokenId: BigInt(tokenId),
+            price: BigInt(1000),
+            capacity: BigInt(100),
+            balance: BigInt(20),
+          },
+        ],
       });
 
       const { graphqlRequest } = await import(
@@ -277,6 +290,8 @@ describe('DiamondNodeRepository', () => {
       expect(assets[0].name).toBe('API Goat');
       expect(assets[0].class).toBe('GOAT');
       expect(assets[0].fileHash).toBe('QmApiCid');
+      expect(assets[0].amount).toBe('20');
+      expect(assets[0].capacity).toBe('100');
     });
 
     it('should fetch metadata from IPFS when pinata is available', async () => {
@@ -309,6 +324,15 @@ describe('DiamondNodeRepository', () => {
             capacity: 100,
           },
         ],
+        inventoryWithMetadata: [
+          {
+            token: '0xtoken',
+            tokenId: BigInt(tokenId),
+            price: BigInt(1000),
+            capacity: BigInt(100),
+            balance: BigInt(7),
+          },
+        ],
       });
 
       const { graphqlRequest } = await import(
@@ -328,6 +352,7 @@ describe('DiamondNodeRepository', () => {
       expect(assets[0].name).toBe('AUGOAT');
       expect(assets[0].class).toBe('GOAT');
       expect(assets[0].fileHash).toBe(cid);
+      expect(assets[0].amount).toBe('7');
     });
 
     it('should handle IPFS fetch errors gracefully (returns empty metadata)', async () => {
@@ -353,6 +378,15 @@ describe('DiamondNodeRepository', () => {
             tokenId: BigInt(tokenId),
             price: BigInt(500),
             capacity: 50,
+          },
+        ],
+        inventoryWithMetadata: [
+          {
+            token: '0xtoken',
+            tokenId: BigInt(tokenId),
+            price: BigInt(500),
+            capacity: BigInt(50),
+            balance: BigInt(9),
           },
         ],
       });
@@ -394,6 +428,15 @@ describe('DiamondNodeRepository', () => {
             tokenId: BigInt(tokenId),
             price: BigInt(500),
             capacity: 50,
+          },
+        ],
+        inventoryWithMetadata: [
+          {
+            token: '0xtoken',
+            tokenId: BigInt(tokenId),
+            price: BigInt(500),
+            capacity: BigInt(50),
+            balance: BigInt(11),
           },
         ],
       });
@@ -449,6 +492,15 @@ describe('DiamondNodeRepository', () => {
               capacity: 1,
             },
           ],
+          inventoryWithMetadata: [
+            {
+              token: '0xaaa',
+              tokenId: BigInt(1),
+              price: BigInt(1),
+              capacity: BigInt(1),
+              balance: BigInt(1),
+            },
+          ],
         });
 
         const { graphqlRequest } = await import(
@@ -489,6 +541,15 @@ describe('DiamondNodeRepository', () => {
         },
         nodeAssets: [
           { token: '0xaaa', tokenId: BigInt(1), price: BigInt(1), capacity: 1 },
+        ],
+        inventoryWithMetadata: [
+          {
+            token: '0xaaa',
+            tokenId: BigInt(1),
+            price: BigInt(1),
+            capacity: BigInt(1),
+            balance: BigInt(1),
+          },
         ],
       });
 

@@ -591,6 +591,7 @@ export function TrapButton({
   children,
   variant = 'gold',
   size = 'default',
+  type = 'button',
   onClick,
   className = '',
   disabled = false,
@@ -598,6 +599,7 @@ export function TrapButton({
   children: ReactNode;
   variant?: 'gold' | 'crimson' | 'emerald';
   size?: 'sm' | 'default' | 'lg';
+  type?: 'button' | 'submit' | 'reset';
   onClick?: () => void;
   className?: string;
   disabled?: boolean;
@@ -620,6 +622,7 @@ export function TrapButton({
 
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={`relative font-mono tracking-[0.12em] uppercase font-bold transition-all duration-300 ${bgColors[variant]} ${textColors[variant]} ${sizes[size]} disabled:opacity-40 disabled:pointer-events-none ${className}`}

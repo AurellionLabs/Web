@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   ChevronLeft,
@@ -147,6 +147,7 @@ export default function NodeDashboardPage() {
 
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
+  const isTokenizingRef = useRef(false);
   const [isViewingOrders, setIsViewingOrders] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 5;
@@ -379,7 +380,9 @@ export default function NodeDashboardPage() {
 
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
     if (!selectedNodeAddress || !currentNodeData) return;
+    if (isTokenizingRef.current) return;
 
+    isTokenizingRef.current = true;
     setCapacityError(null);
     setIsTokenizing(true);
     try {
@@ -404,6 +407,7 @@ export default function NodeDashboardPage() {
           setCapacityError(
             `You are exceeding capacity for ${getAssetByTokenId(assetIdStr)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
           );
+          isTokenizingRef.current = false;
           setIsTokenizing(false);
           return;
         }
@@ -440,6 +444,7 @@ export default function NodeDashboardPage() {
       console.error('Error tokenizing asset:', error);
       setCapacityError('Failed to tokenize asset. Please try again.');
     } finally {
+      isTokenizingRef.current = false;
       setIsTokenizing(false);
     }
   };
@@ -1038,7 +1043,7 @@ export default function NodeDashboardPage() {
                     )}
                     <TrapButton
                       variant="gold"
-                      onClick={form.handleSubmit(onSubmit)}
+                      type="submit"
                       disabled={isTokenizing}
                       className="w-full"
                     >

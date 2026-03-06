@@ -138,6 +138,12 @@ export class DiamondNodeRepository implements NodeRepository {
     this.pinata = pinata || null;
   }
 
+  private toBytes32NodeHash(nodeAddress: string): string {
+    return nodeAddress.startsWith('0x') && nodeAddress.length === 66
+      ? nodeAddress
+      : ethers.zeroPadValue(nodeAddress, 32);
+  }
+
   private isPinataRateLimitError(error: unknown): boolean {
     const message =
       error instanceof Error
@@ -336,10 +342,7 @@ export class DiamondNodeRepository implements NodeRepository {
 
       // In Diamond, nodes are identified by bytes32 hash
       // For compatibility, we treat the address as a hash or query by owner
-      const nodeHash =
-        nodeAddress.startsWith('0x') && nodeAddress.length === 66
-          ? nodeAddress // Already a bytes32 hash
-          : ethers.zeroPadValue(nodeAddress, 32); // Convert address to bytes32
+      const nodeHash = this.toBytes32NodeHash(nodeAddress);
 
       const nodeData = await diamond.getNode(nodeHash);
 
@@ -432,54 +435,30 @@ export class DiamondNodeRepository implements NodeRepository {
         return [];
       }
 
-      // Step 2: Query raw events to get asset details
-      // In the pure dumb indexer, we query diamondSupportedAssetAddedEventss
-      // for all assets and filter by nodeHash
-      const response = await graphqlRequest<AssetEventsResponse>(
-        this.graphQLEndpoint,
-        GET_SUPPORTED_ASSET_ADDED_EVENTS,
-        { limit: 1000 },
+      const diamond = this.context.getDiamond();
+      const inventoryWithMetadata = await diamond.getNodeInventoryWithMetadata(
+        this.toBytes32NodeHash(nodeAddress),
       );
 
-      const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
-
-      // Step 3: Get the node owner address for ERC1155 balance lookups
-      const nodeOwner = node.owner;
-      const diamond = this.context.getDiamond();
-
-      // Step 4: Fetch IPFS metadata and actual ERC1155 balances for each asset
+      // Fetch IPFS metadata and use the node inventory balance returned
+      // by the contract as the quantity source of truth.
       const assetsWithMetadata = await this.mapWithConcurrency(
-        node.assets,
+        inventoryWithMetadata,
         3,
-        async (nodeAsset) => {
-          // Find matching raw event for this asset on this node
-          const rawEvent = allAssets.find(
-            (e) =>
-              e.node_hash?.toLowerCase() === nodeAddress.toLowerCase() &&
-              e.token_id === nodeAsset.tokenId,
-          );
-
+        async (nodeAsset: {
+          token: string;
+          tokenId: bigint | { toString(): string };
+          price: bigint | { toString(): string };
+          capacity: bigint | { toString(): string };
+          balance: bigint | { toString(): string };
+        }) => {
+          const tokenId = nodeAsset.tokenId.toString();
           // Fetch IPFS metadata
-          const metadata = await this.fetchAssetMetadata(nodeAsset.tokenId);
-
-          // Fetch actual ERC1155 balance of the node owner (source of truth).
-          // This naturally excludes tokens escrowed in the Diamond for active orders.
-          let actualBalance: string;
-          try {
-            const bal = await diamond.balanceOf(nodeOwner, nodeAsset.tokenId);
-            actualBalance = bal.toString();
-          } catch (e) {
-            console.warn(
-              '[DiamondNodeRepository] balanceOf failed for token',
-              nodeAsset.tokenId,
-              '— falling back to capacity',
-            );
-            actualBalance = nodeAsset.capacity.toString();
-          }
+          const metadata = await this.fetchAssetMetadata(tokenId);
 
           return {
-            id: nodeAsset.tokenId,
-            amount: actualBalance,
+            id: tokenId,
+            amount: nodeAsset.balance.toString(),
             name: metadata.name,
             class: metadata.class || 'Unknown',
             fileHash: metadata.fileHash,
