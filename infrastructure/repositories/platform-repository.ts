@@ -13,6 +13,7 @@ import {
   SupportedClassAddedEvent,
   SupportedClassRemovedEvent,
 } from '../shared/indexer-types';
+import { getIpfsGroupId } from '@/chain-constants';
 
 interface SupportedAssetEventsResponse {
   diamondSupportedAssetAddedEventss: {
@@ -23,6 +24,7 @@ interface SupportedAssetEventsResponse {
 
 export class PlatformRepository implements IPlatformRepository {
   pinata: PinataSDK;
+  private chainId: number;
   private get graphEndpoint() {
     return getCurrentIndexerUrl();
   }
@@ -86,11 +88,23 @@ export class PlatformRepository implements IPlatformRepository {
     return results;
   }
 
-  constructor(_contractOrPinata: unknown, _pinata?: PinataSDK) {
+  constructor(
+    _contractOrPinata: unknown,
+    _pinata?: PinataSDK,
+    _chainId?: number,
+  ) {
     // Backward-compatible constructor:
     // - old callsites/tests: new PlatformRepository(contract, pinata)
-    // - new callsites: new PlatformRepository(pinata)
+    // - new callsites: new PlatformRepository(pinata, chainId)
     this.pinata = (_pinata ?? _contractOrPinata) as PinataSDK;
+    this.chainId = _chainId ?? 0;
+  }
+
+  private get groupId(): string {
+    if (!this.chainId) {
+      throw new Error('PlatformRepository: chainId not set');
+    }
+    return getIpfsGroupId(this.chainId);
   }
 
   async getSupportedAssets(): Promise<Asset[]> {
@@ -196,6 +210,7 @@ export class PlatformRepository implements IPlatformRepository {
       let list = await this.withPinataRetry(() =>
         this.pinata.files.public
           .list()
+          .group(this.groupId)
           .keyvalues({ token: token, tokenId: tokenId })
           .all(),
       );
@@ -203,7 +218,11 @@ export class PlatformRepository implements IPlatformRepository {
 
       // Fallback: query by tokenId only (upload scripts may not set 'token' keyvalue)
       list = await this.withPinataRetry(() =>
-        this.pinata.files.public.list().keyvalues({ tokenId: tokenId }).all(),
+        this.pinata.files.public
+          .list()
+          .group(this.groupId)
+          .keyvalues({ tokenId: tokenId })
+          .all(),
       );
       if (list && list.length > 0) return list[0].cid;
 
@@ -214,6 +233,7 @@ export class PlatformRepository implements IPlatformRepository {
           list = await this.withPinataRetry(() =>
             this.pinata.files.public
               .list()
+              .group(this.groupId)
               .keyvalues({ tokenId: tokenIdDecimal })
               .all(),
           );
@@ -323,6 +343,7 @@ export class PlatformRepository implements IPlatformRepository {
     try {
       list = await this.pinata.files.public
         .list()
+        .group(this.groupId)
         .keyvalues({ className: assetClass })
         .all();
     } catch (e) {
@@ -398,7 +419,11 @@ export class PlatformRepository implements IPlatformRepository {
   async getAssetByOwnerAssetHash(hashHex: string): Promise<Asset | null> {
     try {
       const list = await this.withPinataRetry(() =>
-        this.pinata.files.public.list().keyvalues({ hash: hashHex }).all(),
+        this.pinata.files.public
+          .list()
+          .group(this.groupId)
+          .keyvalues({ hash: hashHex })
+          .all(),
       );
       if (!list || list.length === 0) return null;
       const cid = list[0].cid;
@@ -496,6 +521,7 @@ export class PlatformRepository implements IPlatformRepository {
           list = await this.withPinataRetry(() =>
             this.pinata.files.public
               .list()
+              .group(this.groupId)
               .keyvalues({ tokenId: candidate })
               .all(),
           );

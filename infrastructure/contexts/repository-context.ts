@@ -50,14 +50,15 @@ export class RepositoryContext {
     provider: BrowserProvider,
     signer: ethers.Signer,
     pinata: PinataSDK,
+    chainId: number,
   ) {
     this.ausysContract = ausysContract;
     this.signer = signer;
 
     try {
-      // Initialize Diamond context
+      // Initialize Diamond context with chainId
       this.diamondContext = new DiamondContext();
-      await this.diamondContext.initialize(provider, signer);
+      await this.diamondContext.initialize(provider, signer, chainId);
 
       // Create Diamond-based NodeRepository with Pinata for IPFS metadata
       this.nodeRepository = new DiamondNodeRepository(
@@ -81,7 +82,11 @@ export class RepositoryContext {
 
       this.poolRepository = new PoolRepository(provider, signer);
 
-      this.platformRepository = new PlatformRepository(pinata);
+      this.platformRepository = new PlatformRepository(
+        pinata,
+        undefined,
+        chainId,
+      );
     } catch (error) {
       console.error(
         '[RepositoryContext] Failed to create repositories:',

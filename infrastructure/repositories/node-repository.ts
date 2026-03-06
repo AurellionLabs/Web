@@ -23,6 +23,10 @@ import { AssetIpfsRecord } from '@/domain/platform';
 import { GraphQLClient } from 'graphql-request';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import {
+  getIpfsGroupId,
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+} from '@/chain-constants';
+import {
   GET_NODE_ASSETS_AURUM,
   GET_ALL_NODE_ASSETS_AURUM,
   GET_USER_BALANCES_AURA,
@@ -711,13 +715,16 @@ export class BlockchainNodeRepository implements NodeRepository {
 
   async getAssetAttributes(fileHash: string): Promise<any[]> {
     try {
+      // Use default chain ID for legacy repository
+      const groupId = getIpfsGroupId(NEXT_PUBLIC_DEFAULT_CHAIN_ID);
+
       // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails
       let records: AssetIpfsRecord[] = [];
       if (fileHash && fileHash.length > 0) {
-        records = await hashToAssets(fileHash, this.pinata);
+        records = await hashToAssets(fileHash, this.pinata, groupId);
       }
       if ((!records || records.length === 0) && /^(\d+)$/.test(fileHash)) {
-        records = await tokenIdToAssets(fileHash, this.pinata);
+        records = await tokenIdToAssets(fileHash, this.pinata, groupId);
       }
 
       if (!records || records.length === 0) {

@@ -9,6 +9,7 @@ import { getCache, type AssetMetadata } from '@/infrastructure/cache';
 export const hashToAssets = async (
   hash: string,
   pinata: PinataSDK,
+  groupId: string,
 ): Promise<AssetIpfsRecord[]> => {
   const cache = getCache();
   const cacheKey = `ipfs:hash:${hash}`;
@@ -20,9 +21,10 @@ export const hashToAssets = async (
       return cached as AssetIpfsRecord[];
     }
 
-    // Fetch from Pinata
+    // Fetch from Pinata with group filter
     const list = await pinata.files.public
       .list()
+      .group(groupId)
       .keyvalues({ hash: hash })
       .all();
 
@@ -64,6 +66,7 @@ export const hashToAssets = async (
 export const tokenIdToAssets = async (
   tokenId: string,
   pinata: PinataSDK,
+  groupId: string,
 ): Promise<AssetIpfsRecord[]> => {
   const cache = getCache();
 
@@ -75,9 +78,10 @@ export const tokenIdToAssets = async (
       return [cached as unknown as AssetIpfsRecord];
     }
 
-    // Fetch from Pinata
+    // Fetch from Pinata with group filter
     const list = await pinata.files.public
       .list()
+      .group(groupId)
       .keyvalues({ tokenId: tokenId })
       .all();
 

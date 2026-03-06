@@ -1,8 +1,23 @@
-// @ts-nocheck - Script with outdated contract types
+// @ts-nocheck - Script with chain constants defined inline
+
 /**
  * Script to add supported asset classes and default assets to the AuraAsset contract
  * This should be run after deployment if asset classes were not added during deployment
  */
+
+// IPFS Group IDs per chain
+const IPFS_GROUP_IDS: Record<number, string> = {
+  42161: '9282bdc8-1a27-469a-b132-1e820e2433db', // Arbitrum One
+  84532: '6eae9d79-14a8-45c4-9d1c-acf2a0f9a42c', // Base Sepolia
+};
+
+function getIpfsGroupId(chainId: number): string {
+  const groupId = IPFS_GROUP_IDS[chainId];
+  if (!groupId) {
+    throw new Error(`No IPFS group configured for chain ${chainId}`);
+  }
+  return groupId;
+}
 
 import { ethers } from 'hardhat';
 import { PinataSDK } from 'pinata';
@@ -104,8 +119,15 @@ async function main() {
       const metadataBase64 = Buffer.from(JSON.stringify(metadataJson)).toString(
         'base64',
       );
+
+      // Get chain from environment or default to Base Sepolia
+      const chainId = Number(process.env.CHAIN_ID || 84532);
+      const groupId = getIpfsGroupId(chainId);
+      console.log(`Using IPFS group: ${groupId} for chain: ${chainId}`);
+
       const upload = await pinata.upload.public
         .base64(metadataBase64)
+        .group(groupId)
         .name(`${hash}.json`)
         .keyvalues({
           tokenId: hash.toString(),

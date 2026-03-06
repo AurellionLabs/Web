@@ -52,7 +52,13 @@ async function setupRepository(
   });
 
   const repoContext = RepositoryContext.getInstance();
-  await repoContext.initialize(ausysContract, provider, signer, pinata);
+  await repoContext.initialize(
+    ausysContract,
+    provider,
+    signer,
+    pinata,
+    chainId,
+  );
   ServiceContext.getInstance().initialize(repoContext);
 }
 

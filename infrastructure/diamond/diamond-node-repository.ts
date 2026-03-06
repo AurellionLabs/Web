@@ -23,6 +23,7 @@ import {
   hashToAssets,
   tokenIdToAssets,
 } from '@/infrastructure/repositories/shared/ipfs';
+import { getIpfsGroupId } from '@/chain-constants';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { getCache, type AssetMetadata } from '@/infrastructure/cache';
 import {
@@ -792,13 +793,17 @@ export class DiamondNodeRepository implements NodeRepository {
     }
 
     try {
+      // Get chain-specific IPFS group
+      const chainId = this.context.getChainId();
+      const groupId = getIpfsGroupId(chainId);
+
       // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails
       let records: import('@/domain/platform').AssetIpfsRecord[] = [];
       if (fileHash && fileHash.length > 0) {
-        records = await hashToAssets(fileHash, this.pinata);
+        records = await hashToAssets(fileHash, this.pinata, groupId);
       }
       if ((!records || records.length === 0) && /^(\d+)$/.test(fileHash)) {
-        records = await tokenIdToAssets(fileHash, this.pinata);
+        records = await tokenIdToAssets(fileHash, this.pinata, groupId);
       }
 
       if (!records || records.length === 0) {

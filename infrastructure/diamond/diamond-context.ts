@@ -19,6 +19,7 @@ export class DiamondContext {
   private diamond: Contract | null = null;
   private initialized = false;
   private readOnly = false;
+  private chainId: number = 0;
 
   /**
    * Initialize the context with a wallet provider
@@ -26,11 +27,20 @@ export class DiamondContext {
   async initialize(
     walletProvider: BrowserProvider,
     prebuiltSigner?: ethers.Signer,
+    chainId?: number,
   ): Promise<void> {
     this.provider = walletProvider;
     // Accept a pre-built signer (e.g. from E2EServerSigner) to avoid calling
     // walletProvider.getSigner() which hangs on JsonRpcProvider (public node).
     this.signer = prebuiltSigner ?? (await walletProvider.getSigner());
+
+    // Get chainId from parameter or from provider
+    if (chainId !== undefined) {
+      this.chainId = chainId;
+    } else {
+      const network = await walletProvider.getNetwork();
+      this.chainId = Number(network.chainId);
+    }
 
     // Connect to Diamond proxy - all facet functions are called through this
     this.diamond = new ethers.Contract(
@@ -113,7 +123,19 @@ export class DiamondContext {
   }
 
   /**
-   * Get the current signer address
+   * Get the current chain ID
+   */
+  getChainId(): number {
+    if (!this.initialized) {
+      throw new Error(
+        'DiamondContext not initialized. Call initialize() first.',
+      );
+    }
+    return this.chainId;
+  }
+
+  /**
+   * Get the signer's address
    */
   async getSignerAddress(): Promise<string> {
     const signer = this.getSigner();

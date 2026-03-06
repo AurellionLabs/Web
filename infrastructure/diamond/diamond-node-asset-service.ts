@@ -10,6 +10,7 @@ import { INodeAssetService, NodeAsset } from '@/domain/node';
 import { Asset } from '@/domain/shared';
 import { DiamondContext } from './diamond-context';
 import { PinataSDK } from 'pinata';
+import { getIpfsGroupId } from '@/chain-constants';
 
 /**
  * Diamond-based implementation of INodeAssetService
@@ -163,6 +164,8 @@ export class DiamondNodeAssetService implements INodeAssetService {
       if (this.pinata) {
         try {
           const assetHash = ethers.keccak256(encodedAsset);
+          const chainId = this.context.getChainId();
+          const groupId = getIpfsGroupId(chainId);
           const metadataJson = {
             tokenId: tokenId.toString(),
             hash: assetHash,
@@ -172,6 +175,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
 
           await this.pinata.upload.public
             .json(metadataJson)
+            .group(groupId)
             .name(`${tokenId}.json`)
             .keyvalues({
               tokenId: tokenId.toString(),

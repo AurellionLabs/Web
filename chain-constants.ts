@@ -11,7 +11,7 @@ export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
 export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
   '0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6';
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
-  '0x725793e4Ebb067df8167D43be56b4d86A6c964F3';
+  '0x725793e4Ebb067df8167D43be56B4d86A6c964F3';
 export const NEXT_PUBLIC_AUSYS_ADDRESS =
   '0x94a61417e11C2e4FB756DBF2a0CaC7f433eaE6Aa';
 export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
@@ -40,8 +40,7 @@ export const NEXT_PUBLIC_AUSYS_FACET_ADDRESS =
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)
 export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = 18; // Change to 6 for USDC in production
-export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
-  'AURA'; // Change to 'USDC' for production
+export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL = 'AURA'; // Change to 'USDC' for production
 
 //
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
@@ -160,3 +159,20 @@ export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
 
 export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
   '0xf6959b08B01d10358E06545b663eBE352327f5b8';
+
+// =============================================================================
+// IPFS GROUP IDS - Chain-specific Pinata groups for metadata
+// =============================================================================
+
+export const IPFS_GROUP_IDS: Record<number, string> = {
+  42161: '9282bdc8-1a27-469a-b132-1e820e2433db', // Arbitrum One
+  84532: '6eae9d79-14a8-45c4-9d1c-acf2a0f9a42c', // Base Sepolia
+};
+
+export function getIpfsGroupId(chainId: number): string {
+  const groupId = IPFS_GROUP_IDS[chainId];
+  if (!groupId) {
+    throw new Error(`No IPFS group configured for chain ${chainId}`);
+  }
+  return groupId;
+}
