@@ -131,6 +131,20 @@ export class PlatformRepository implements IPlatformRepository {
     return listBuilder;
   }
 
+  private getAssetClassFromMetadata(
+    json: Record<string, any>,
+    fallbackClass?: string,
+  ): string {
+    return (
+      json.className ??
+      json.class ??
+      json.assetClass ??
+      json.asset?.assetClass ??
+      fallbackClass ??
+      'Unknown'
+    );
+  }
+
   async getSupportedAssets(): Promise<Asset[]> {
     const PAGE = 500;
     const out: Asset[] = [];
@@ -401,6 +415,17 @@ export class PlatformRepository implements IPlatformRepository {
       return [];
     }
 
+    let shouldFilterByPayloadClass = false;
+    if (!list || list.length === 0) {
+      shouldFilterByPayloadClass = true;
+      try {
+        list = await this.getPinataListBuilder().all();
+      } catch (e) {
+        console.error('[getClassAssets] Pinata fallback scan failed', e);
+        return [];
+      }
+    }
+
     if (!list || list.length === 0) return [];
 
     const assets = await this.mapWithConcurrency(list, 3, async (item) => {
@@ -410,6 +435,13 @@ export class PlatformRepository implements IPlatformRepository {
           pinata.gateways.public.get(`${cid}`),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;
+        const resolvedClass = this.getAssetClassFromMetadata(json, assetClass);
+        if (
+          shouldFilterByPayloadClass &&
+          resolvedClass.toLowerCase() !== assetClass.toLowerCase()
+        ) {
+          return null;
+        }
         const contractAsset = json.asset as {
           id?: string | number | bigint;
           name?: string;
@@ -440,7 +472,7 @@ export class PlatformRepository implements IPlatformRepository {
             : [];
 
         const asset: Asset = {
-          assetClass: json.className ?? (json.class as string) ?? assetClass,
+          assetClass: resolvedClass,
           tokenId: String(
             (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
           ),

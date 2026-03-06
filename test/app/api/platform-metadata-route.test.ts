@@ -43,6 +43,7 @@ describe('GET /api/platform/metadata', () => {
     mockCache.setIpfsMetadata.mockResolvedValue(undefined);
     mockCache.getCidContent.mockResolvedValue(null);
     mockCache.setCidContent.mockResolvedValue(undefined);
+    mockList.mockImplementation(() => ({ keyvalues: mockKeyvalues }));
     mockListAll.mockResolvedValue([]);
     mockGatewayGet.mockResolvedValue({ data: {} });
   });
@@ -148,6 +149,53 @@ describe('GET /api/platform/metadata', () => {
     expect(body.assets).toHaveLength(1);
     expect(body.assets[0].name).toBe('Class Goat');
     expect(mockCache.setCidContent).toHaveBeenCalled();
+  });
+
+  it('falls back to scanning metadata payloads when Pinata class keyvalues are missing', async () => {
+    mockList.mockReset();
+    const mockScanAll = vi
+      .fn()
+      .mockResolvedValue([{ cid: 'QmGoat' }, { cid: 'QmSheep' }]);
+    mockList
+      .mockImplementationOnce(() => ({ keyvalues: mockKeyvalues }))
+      .mockImplementationOnce(() => ({ all: mockScanAll }));
+    mockListAll.mockResolvedValue([]);
+    mockGatewayGet.mockImplementation(async (cid: string) => ({
+      data:
+        cid === 'QmGoat'
+          ? {
+              className: 'GOAT',
+              tokenId: '7',
+              asset: {
+                name: 'Fallback Goat',
+                attributes: [
+                  { name: 'weight', values: ['M'], description: '' },
+                ],
+              },
+            }
+          : {
+              className: 'SHEEP',
+              tokenId: '8',
+              asset: {
+                name: 'Fallback Sheep',
+                attributes: [
+                  { name: 'weight', values: ['M'], description: '' },
+                ],
+              },
+            },
+    }));
+
+    const { GET } = await import('@/app/api/platform/metadata/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/platform/metadata?className=GOAT'),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.assets).toHaveLength(1);
+    expect(body.assets[0].assetClass).toBe('GOAT');
+    expect(body.assets[0].name).toBe('Fallback Goat');
+    expect(mockScanAll).toHaveBeenCalledTimes(1);
   });
 
   it('returns cached hash records without requiring Pinata', async () => {

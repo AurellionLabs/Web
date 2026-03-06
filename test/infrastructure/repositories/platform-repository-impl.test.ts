@@ -461,6 +461,74 @@ describe('PlatformRepository', () => {
       expect(assets[1].name).toBe('AUGOAT Premium');
     });
 
+    it('should fall back to scanning payloads when Pinata keyvalues are missing', async () => {
+      const keyvalueBuilder = {
+        keyvalues: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue([]),
+      };
+      const scanBuilder = {
+        all: vi.fn().mockResolvedValue([{ cid: 'QmGoat' }, { cid: 'QmSheep' }]),
+      };
+      const pinata = {
+        files: {
+          public: {
+            list: vi
+              .fn()
+              .mockReturnValueOnce(keyvalueBuilder)
+              .mockReturnValueOnce(scanBuilder),
+          },
+        },
+        gateways: {
+          public: {
+            get: vi.fn().mockImplementation((cid: string) => ({
+              data:
+                cid === 'QmGoat'
+                  ? {
+                      className: 'GOAT',
+                      tokenId: '1',
+                      asset: {
+                        name: 'AUGOAT',
+                        attributes: [
+                          {
+                            name: 'weight',
+                            values: ['S', 'M', 'L'],
+                            description: '',
+                          },
+                        ],
+                      },
+                    }
+                  : {
+                      className: 'SHEEP',
+                      tokenId: '2',
+                      asset: {
+                        name: 'AUSHEEP',
+                        attributes: [
+                          {
+                            name: 'weight',
+                            values: ['S', 'M', 'L'],
+                            description: '',
+                          },
+                        ],
+                      },
+                    },
+            })),
+          },
+        },
+        config: { pinataJwt: 'test-jwt' },
+      } as any;
+
+      const repo = new PlatformRepository(mockContract, pinata);
+      const assets = await repo.getClassAssets('GOAT');
+
+      expect(keyvalueBuilder.keyvalues).toHaveBeenCalledWith({
+        className: 'GOAT',
+      });
+      expect(scanBuilder.all).toHaveBeenCalledTimes(1);
+      expect(assets).toHaveLength(1);
+      expect(assets[0].assetClass).toBe('GOAT');
+      expect(assets[0].name).toBe('AUGOAT');
+    });
+
     it('should handle individual asset fetch failures gracefully', async () => {
       const pinata = createMockPinata({
         files: [{ cid: 'QmGood' }, { cid: 'QmBad' }],

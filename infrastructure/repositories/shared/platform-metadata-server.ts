@@ -96,6 +96,20 @@ function mapJsonToAsset(
   };
 }
 
+function getAssetClassFromJson(
+  json: Record<string, any>,
+  fallbackClass?: string,
+): string {
+  return (
+    (json.className as string | undefined) ||
+    (json.class as string | undefined) ||
+    (json.assetClass as string | undefined) ||
+    (json.asset?.assetClass as string | undefined) ||
+    fallbackClass ||
+    'Unknown'
+  );
+}
+
 function mapCachedMetadataToAsset(
   tokenId: string,
   metadata: AssetMetadata,
@@ -122,6 +136,16 @@ function createServerPinata(): PinataSDK | null {
     pinataJwt,
     pinataGateway: PINATA_GATEWAY,
   });
+}
+
+function getServerPinataListBuilder(pinata: PinataSDK) {
+  const listBuilder = pinata.files.public.list() as any;
+
+  if (typeof listBuilder.group === 'function') {
+    return listBuilder.group(getIpfsGroupId(NEXT_PUBLIC_DEFAULT_CHAIN_ID));
+  }
+
+  return listBuilder;
 }
 
 async function getCacheSafely() {
@@ -284,7 +308,9 @@ export async function getAssetByTokenIdFromServerCache(
 
   for (const candidate of candidates) {
     list = await withPinataRetry(() =>
-      pinata.files.public.list().keyvalues({ tokenId: candidate }).all(),
+      getServerPinataListBuilder(pinata)
+        .keyvalues({ tokenId: candidate })
+        .all(),
     );
     if (list.length > 0) break;
   }
@@ -329,9 +355,19 @@ export async function getClassAssetsFromServerCache(
     return [];
   }
 
-  const list = await withPinataRetry(() =>
-    pinata.files.public.list().keyvalues({ className: normalizedClass }).all(),
+  let list = await withPinataRetry(() =>
+    getServerPinataListBuilder(pinata)
+      .keyvalues({ className: normalizedClass })
+      .all(),
   );
+  let shouldFilterByPayloadClass = false;
+
+  if (!list.length) {
+    shouldFilterByPayloadClass = true;
+    list = await withPinataRetry(() =>
+      getServerPinataListBuilder(pinata).all(),
+    );
+  }
 
   if (!list.length) {
     return [];
@@ -339,9 +375,16 @@ export async function getClassAssetsFromServerCache(
 
   const assets = (
     await Promise.all(
-      list.map(async ({ cid }) => {
+      list.map(async ({ cid }: { cid: string }) => {
         try {
           const json = await getGatewayPayload(pinata, cid);
+          if (
+            shouldFilterByPayloadClass &&
+            getAssetClassFromJson(json, normalizedClass).toLowerCase() !==
+              normalizedClass.toLowerCase()
+          ) {
+            return null;
+          }
           return mapJsonToAsset(json as Record<string, any>, normalizedClass);
         } catch (error) {
           console.error(
