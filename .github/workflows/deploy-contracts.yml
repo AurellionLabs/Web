@@ -2,6 +2,7 @@ name: Deploy Contracts
 
 permissions:
   contents: write
+  actions: write
 
 on:
   # Auto-deploy testnet on dev branch only — main deploys are manual (workflow_dispatch)
@@ -234,66 +235,139 @@ jobs:
           PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
 
-      - name: Commit updated manifest
+      - name: Detect persisted deployment changes
+        id: persist_changes
+        env:
+          DEPLOY_MODE: ${{ github.event.inputs.mode }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          TRACKED_FILES=(
+            deployments/manifest.json
+            chain-constants.ts
+            indexer/diamond-constants.ts
+          )
+
+          : > .deploy-sync-files
+          CONFIG_CHANGED=false
+
+          for file in "${TRACKED_FILES[@]}"; do
+            if ! git diff --quiet -- "$file"; then
+              echo "$file" >> .deploy-sync-files
+              echo "Will persist $file"
+
+              if [ "$file" != "deployments/manifest.json" ]; then
+                CONFIG_CHANGED=true
+              fi
+            fi
+          done
+
+          if [ ! -s .deploy-sync-files ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "should_refresh_indexer=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SHOULD_REFRESH_INDEXER=false
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$CONFIG_CHANGED" = "true" ]; then
+            case "$DEPLOY_MODE" in
+              diamond|diamond-v2|all)
+                SHOULD_REFRESH_INDEXER=true
+                ;;
+            esac
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "should_refresh_indexer=$SHOULD_REFRESH_INDEXER" >> "$GITHUB_OUTPUT"
+
+      - name: Persist deployment files
+        if: steps.persist_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if manifest actually changed
-          git diff --quiet deployments/manifest.json && echo "No manifest changes" && exit 0
-          
-          # Use GitHub Contents API with retry on 409 conflicts (race condition protection)
-          # git push fails on protected branches; the API route does not.
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          FILE_LIST=".deploy-sync-files"
           MAX_RETRIES=5
           RETRY_DELAY=2
-          
+
           for attempt in $(seq 1 $MAX_RETRIES); do
-            echo "Attempt $attempt of $MAX_RETRIES to update manifest..."
-            
-            # Fetch current file SHA (may have changed since last fetch)
-            FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-              --jq '.sha' 2>/dev/null || echo "")
-            
-            if [ -z "$FILE_SHA" ]; then
-              echo "Warning: Could not fetch file SHA, attempting create..."
-            fi
-            
-            CONTENT=$(base64 -w0 deployments/manifest.json)
-            
-            if [ -n "$FILE_SHA" ]; then
-              RESPONSE=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-                --method PUT \
-                --field message="chore: update deployments/manifest.json [skip ci]" \
-                --field content="$CONTENT" \
-                --field sha="$FILE_SHA" \
-                --field branch="${{ github.ref_name }}" 2>&1)
-            else
-              RESPONSE=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-                --method PUT \
-                --field message="chore: update deployments/manifest.json [skip ci]" \
-                --field content="$CONTENT" \
-                --field branch="${{ github.ref_name }}" 2>&1)
-            fi
-            
+            echo "Attempt $attempt of $MAX_RETRIES to persist deployment files..."
+
+            BASE_SHA=$(gh api "repos/$REPO/git/ref/heads/$BRANCH" --jq '.object.sha')
+            BASE_TREE=$(gh api "repos/$REPO/git/commits/$BASE_SHA" --jq '.tree.sha')
+
+            TREE_ENTRIES='[]'
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              ENTRY=$(jq -n \
+                --arg path "$file" \
+                --rawfile content "$file" \
+                '{path:$path, mode:"100644", type:"blob", content:$content}')
+              TREE_ENTRIES=$(jq -c --argjson entry "$ENTRY" '. + [$entry]' <<<"$TREE_ENTRIES")
+            done < "$FILE_LIST"
+
+            TREE_PAYLOAD=$(jq -n \
+              --arg base_tree "$BASE_TREE" \
+              --argjson tree "$TREE_ENTRIES" \
+              '{base_tree:$base_tree, tree:$tree}')
+            NEW_TREE_SHA=$(gh api "repos/$REPO/git/trees" --method POST --input - --jq '.sha' <<<"$TREE_PAYLOAD")
+
+            COMMIT_PAYLOAD=$(jq -n \
+              --arg message "chore: sync deploy artifacts [skip ci]" \
+              --arg tree "$NEW_TREE_SHA" \
+              --arg parent "$BASE_SHA" \
+              '{message:$message, tree:$tree, parents:[$parent]}')
+            NEW_COMMIT_SHA=$(gh api "repos/$REPO/git/commits" --method POST --input - --jq '.sha' <<<"$COMMIT_PAYLOAD")
+
+            REF_UPDATE_PAYLOAD=$(jq -n --arg sha "$NEW_COMMIT_SHA" '{sha:$sha, force:false}')
+
+            set +e
+            RESPONSE=$(printf '%s' "$REF_UPDATE_PAYLOAD" | \
+              gh api "repos/$REPO/git/refs/heads/$BRANCH" --method PATCH --input - 2>&1)
             EXIT_CODE=$?
-            
+            set -e
+
             if [ $EXIT_CODE -eq 0 ]; then
-              echo "✅ Manifest updated successfully"
+              echo "✅ Persisted deployment files:"
+              cat "$FILE_LIST"
               exit 0
             fi
-            
-            # Check for 409 conflict
-            if echo "$RESPONSE" | grep -q "409"; then
-              echo "⚠️  Conflict detected (SHA mismatch), retrying in ${RETRY_DELAY}s..."
+
+            if [[ "$RESPONSE" == *"409"* || "$RESPONSE" == *"Reference update failed"* ]]; then
+              echo "⚠️  Branch moved while updating files, retrying in ${RETRY_DELAY}s..."
               sleep $RETRY_DELAY
-              RETRY_DELAY=$((RETRY_DELAY * 2))  # Exponential backoff
+              RETRY_DELAY=$((RETRY_DELAY * 2))
             else
-              echo "❌ Failed to update manifest: $RESPONSE"
+              echo "❌ Failed to persist deployment files: $RESPONSE"
               exit 1
             fi
           done
-          
-          echo "❌ Failed to update manifest after $MAX_RETRIES attempts"
+
+          echo "❌ Failed to persist deployment files after $MAX_RETRIES attempts"
           exit 1
+
+      - name: Trigger indexer redeploy
+        if: steps.persist_changes.outputs.should_refresh_indexer == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          BRANCH="${{ github.ref_name }}"
+          DISPATCH_PAYLOAD=$(jq -n \
+            --arg branch "$BRANCH" \
+            '{ref:$branch, inputs:{branch:$branch}}')
+
+          printf '%s' "$DISPATCH_PAYLOAD" | \
+            gh api "repos/${{ github.repository }}/actions/workflows/deploy-indexer.yml/dispatches" \
+              --method POST \
+              --input -
+
+          echo "Triggered deploy-indexer.yml for $BRANCH after Diamond config changes."
 
       - name: Upload deployment artifacts
         uses: actions/upload-artifact@v4
