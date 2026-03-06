@@ -1,6 +1,10 @@
 import { Asset } from '@/domain/shared';
 import { AssetIpfsRecord } from '@/domain/platform';
 import {
+  getIpfsGroupId,
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+} from '@/chain-constants';
+import {
   getCache,
   initCache,
   type AssetMetadata,
@@ -100,7 +104,9 @@ function mapCachedMetadataToAsset(
     assetClass: metadata.class || 'Unknown',
     tokenId,
     name: metadata.name || 'Unknown Asset',
-    attributes: Array.isArray(metadata.attributes) ? metadata.attributes : [],
+    attributes: mapAttributes(
+      Array.isArray(metadata.attributes) ? metadata.attributes : undefined,
+    ),
   };
 }
 
@@ -201,7 +207,7 @@ async function setCachedCidContent(
 }
 
 async function withPinataRetry<T>(
-  operation: () => Promise<T>,
+  operation: () => T | Promise<T>,
   maxAttempts = 3,
 ): Promise<T> {
   let lastError: unknown;
@@ -228,6 +234,30 @@ async function withPinataRetry<T>(
   }
 
   throw lastError;
+}
+
+async function getGatewayPayload(
+  pinata: PinataSDK,
+  cid: string,
+): Promise<Record<string, unknown>> {
+  const response = await withPinataRetry(() => pinata.gateways.public.get(cid));
+  const payload =
+    response &&
+    typeof response === 'object' &&
+    'data' in response &&
+    typeof response.data !== 'undefined'
+      ? response.data
+      : response;
+
+  if (typeof payload === 'string') {
+    return JSON.parse(payload) as Record<string, unknown>;
+  }
+
+  if (payload && typeof payload === 'object') {
+    return payload as Record<string, unknown>;
+  }
+
+  throw new Error(`Invalid Pinata gateway payload for CID ${cid}`);
 }
 
 export async function getAssetByTokenIdFromServerCache(
@@ -264,8 +294,7 @@ export async function getAssetByTokenIdFromServerCache(
   }
 
   const cid = list[0].cid;
-  const { data } = await withPinataRetry(() => pinata.gateways.public.get(cid));
-  const json = typeof data === 'string' ? JSON.parse(data) : data;
+  const json = await getGatewayPayload(pinata, cid);
   const asset = mapJsonToAsset(
     json as Record<string, any>,
     undefined,
@@ -312,10 +341,7 @@ export async function getClassAssetsFromServerCache(
     await Promise.all(
       list.map(async ({ cid }) => {
         try {
-          const { data } = await withPinataRetry(() =>
-            pinata.gateways.public.get(`${cid}`),
-          );
-          const json = typeof data === 'string' ? JSON.parse(data) : data;
+          const json = await getGatewayPayload(pinata, cid);
           return mapJsonToAsset(json as Record<string, any>, normalizedClass);
         } catch (error) {
           console.error(
@@ -369,10 +395,11 @@ export async function getAssetRecordsByHashFromServerCache(
     return [];
   }
 
-  const byHash = await hashToAssets(hash, pinata);
+  const groupId = getIpfsGroupId(NEXT_PUBLIC_DEFAULT_CHAIN_ID);
+  const byHash = await hashToAssets(hash, pinata, groupId);
   if (byHash.length > 0 || !/^(\d+)$/.test(hash)) {
     return byHash;
   }
 
-  return tokenIdToAssets(hash, pinata);
+  return tokenIdToAssets(hash, pinata, groupId);
 }

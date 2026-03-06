@@ -72,6 +72,29 @@ describe('GET /api/platform/metadata', () => {
     expect(mockList).not.toHaveBeenCalled();
   });
 
+  it('normalizes cached metadata attributes that omit description', async () => {
+    mockCache.getIpfsMetadata.mockResolvedValue({
+      name: 'Cached Goat',
+      class: 'GOAT',
+      cid: 'QmCached',
+      attributes: [{ name: 'weight', values: ['L'] }],
+    });
+
+    const { GET } = await import('@/app/api/platform/metadata/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/platform/metadata?tokenId=42'),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.asset).toEqual({
+      assetClass: 'GOAT',
+      tokenId: '42',
+      name: 'Cached Goat',
+      attributes: [{ name: 'weight', values: ['L'], description: '' }],
+    });
+  });
+
   it('repopulates Redis from Pinata on a token metadata miss', async () => {
     mockListAll.mockResolvedValue([{ cid: 'QmFresh' }]);
     mockGatewayGet.mockResolvedValue({

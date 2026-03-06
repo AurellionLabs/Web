@@ -381,8 +381,9 @@ export class PlatformRepository implements IPlatformRepository {
     if (!this.pinata) {
       return fetchClassAssetsFromMetadataApi(assetClass);
     }
+    const pinata = this.pinata;
 
-    const hasJwt = Boolean((this.pinata as any)?.config?.pinataJwt);
+    const hasJwt = Boolean((pinata as any)?.config?.pinataJwt);
     if (!hasJwt) {
       console.warn(
         '[getClassAssets] Missing Pinata JWT; cannot query by keyvalues',
@@ -406,7 +407,7 @@ export class PlatformRepository implements IPlatformRepository {
       try {
         const cid = item.cid;
         const { data } = await this.withPinataRetry<any>(() =>
-          this.pinata.gateways.public.get(`${cid}`),
+          pinata.gateways.public.get(`${cid}`),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;
         const contractAsset = json.asset as {
@@ -557,6 +558,7 @@ export class PlatformRepository implements IPlatformRepository {
           this.assetByTokenIdCache.set(canonicalTokenId, apiResult.asset);
           return apiResult.asset;
         }
+        const pinata = this.pinata;
 
         const tokenIdStr = String(tokenId);
 
@@ -590,7 +592,7 @@ export class PlatformRepository implements IPlatformRepository {
         }
         const cid = list[0].cid;
         const { data } = await this.withPinataRetry<any>(() =>
-          this.pinata.gateways.public.get(`${cid}`),
+          pinata.gateways.public.get(`${cid}`),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;
         const contractAsset = json.asset as {
