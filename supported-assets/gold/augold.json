@@ -1,0 +1,19 @@
+{
+  "className": "GOLD",
+  "name": "AUGOLD",
+  "attributes": [
+    {
+      "name": "weight",
+      "values": ["1oz"],
+      "description": "The weight of the gold in troy ounces"
+    },
+    {
+      "name": "purity",
+      "values": ["24k", "22k", "20k", "18k", "14k", "10k"],
+      "description": "The purity of the gold in karats"
+    }
+  ],
+  "metadata": {
+    "description": "Canonical supported asset definition for GOLD."
+  }
+}
