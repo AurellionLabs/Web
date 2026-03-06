@@ -170,6 +170,23 @@ contract AuSysFacetTest is DiamondTestBase {
         assertFalse(ausys.hasAuSysRole(DRIVER_ROLE, driver1), 'Driver role should be disabled');
     }
 
+    function test_getAllowedDrivers() public view {
+        address[] memory allowedDrivers = ausys.getAllowedDrivers();
+
+        assertEq(allowedDrivers.length, 2, 'Should expose active drivers');
+        assertEq(allowedDrivers[0], driver1, 'First driver should match setup');
+        assertEq(allowedDrivers[1], driver2, 'Second driver should match setup');
+    }
+
+    function test_getAllowedDrivers_removesDisabledDriver() public {
+        vm.prank(admin);
+        ausys.setDriver(driver1, false);
+
+        address[] memory allowedDrivers = ausys.getAllowedDrivers();
+        assertEq(allowedDrivers.length, 1, 'Disabled drivers should be removed from enumeration');
+        assertEq(allowedDrivers[0], driver2, 'Remaining driver should stay listed');
+    }
+
     function test_setDriver_revertNotAdmin() public {
         vm.prank(user1);
         vm.expectRevert();

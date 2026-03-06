@@ -1,5 +1,5 @@
 // Auto-generated from AssetsFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-06T14:55:07.960Z
+// Generated at: 2026-03-06T16:33:32.567Z
 
 export const AssetsFacetABI = [
   {

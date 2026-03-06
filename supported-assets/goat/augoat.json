@@ -1,0 +1,19 @@
+{
+  "className": "GOAT",
+  "name": "AUGOAT",
+  "attributes": [
+    {
+      "name": "weight",
+      "values": ["S", "M", "L"],
+      "description": "A goats weight either S = 20 KG, M = 30 KG, L = 40KG"
+    },
+    {
+      "name": "sex",
+      "values": ["M", "F"],
+      "description": "Gender of the goat"
+    }
+  ],
+  "metadata": {
+    "description": "Canonical supported asset definition for GOAT."
+  }
+}

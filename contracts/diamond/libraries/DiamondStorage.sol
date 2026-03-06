@@ -18,6 +18,7 @@ library DiamondStorage {
     bytes32 constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 constant DRIVER_ROLE = keccak256("DRIVER_ROLE");
     bytes32 constant DISPATCHER_ROLE = keccak256("DISPATCHER_ROLE");
+    bytes32 constant NODE_REGISTRAR_ROLE = keccak256("NODE_REGISTRAR_ROLE");
 
     struct AppStorage {
         // ======= OWNERSHIP =======
@@ -35,6 +36,10 @@ library DiamondStorage {
         mapping(bytes32 => uint256) totalNodeAssets;
         // Node admin system (from AurumNodeManager)
         mapping(address => bool) nodeAdmins;
+        // Allowed node registrars
+        mapping(address => bool) nodeRegistrars;
+        address[] nodeRegistrarList;
+        mapping(address => uint256) nodeRegistrarIndex;
 
         // ======= ASSETS (LEGACY) =======
         mapping(uint256 => Asset) assets;
@@ -140,6 +145,8 @@ library DiamondStorage {
         mapping(bytes32 => bool) journeyRewardPaid;
         // RBAC for AuSys
         mapping(bytes32 => mapping(address => bool)) ausysRoles;
+        mapping(address => uint256) driverRoleIndex;
+        address[] driverRoleMembers;
         // P2P offer tracking
         bytes32[] openP2POfferIds;                    // Track open (unaccepted) P2P offers
         mapping(address => bytes32[]) userP2POffers;  // Track P2P offers by creator

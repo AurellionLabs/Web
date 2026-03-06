@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-03-06T14:55:07.961Z
+// Generated at: 2026-03-06T16:33:32.567Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -155,6 +155,25 @@ export const DiamondABI = [
       },
     ],
     name: 'NodeRegistered',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'registrar',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'enabled',
+        type: 'bool',
+      },
+    ],
+    name: 'NodeRegistrarUpdated',
     type: 'event',
   },
   {
@@ -3371,6 +3390,19 @@ export const DiamondABI = [
     type: 'event',
   },
   {
+    inputs: [],
+    name: 'NODE_REGISTRAR_ROLE',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -3705,6 +3737,19 @@ export const DiamondABI = [
         internalType: 'struct DiamondStorage.SupportingDocument[]',
         name: 'documents',
         type: 'tuple[]',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getAllowedNodeRegistrars',
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
       },
     ],
     stateMutability: 'view',
@@ -4201,6 +4246,30 @@ export const DiamondABI = [
     type: 'function',
   },
   {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'role',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    name: 'hasNodeRole',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'initialize',
     outputs: [],
@@ -4507,6 +4576,24 @@ export const DiamondABI = [
       },
     ],
     name: 'setNodeAdmin',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'registrar',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    name: 'setNodeRegistrar',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -7936,6 +8023,19 @@ export const DiamondABI = [
     type: 'function',
   },
   {
+    inputs: [],
+    name: 'getAllowedDrivers',
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -9366,6 +9466,11 @@ export const EventSignatureRegistry = {
     name: 'NodeRegistered',
     facet: 'NodesFacet',
     signature: 'NodeRegistered(bytes32,address,string)',
+  },
+  '0xff3e2fb4': {
+    name: 'NodeRegistrarUpdated',
+    facet: 'NodesFacet',
+    signature: 'NodeRegistrarUpdated(address,bool)',
   },
   '0x3de5f088': {
     name: 'NodeSellOrderPlaced',

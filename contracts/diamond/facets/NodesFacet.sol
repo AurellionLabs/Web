@@ -46,6 +46,8 @@ interface ICLOBFacet {
  * @dev Combines AurumNodeManager + NodeAsset functionality
  */
 contract NodesFacet is Initializable, ReentrancyGuard {
+    bytes32 public constant NODE_REGISTRAR_ROLE = keccak256('NODE_REGISTRAR_ROLE');
+
     // Events matching original AurumNodeManager
     event NodeRegistered(
         bytes32 indexed nodeHash,
@@ -107,6 +109,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 amount,
         address indexed depositor
     );
+    event NodeRegistrarUpdated(address indexed registrar, bool enabled);
 
     // Supporting document events
     event SupportingDocumentAdded(
@@ -119,6 +122,42 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 indexed timestamp,
         address indexed addedBy
     );
+
+    function _setNodeRegistrar(
+        DiamondStorage.AppStorage storage s,
+        address registrar,
+        bool enable
+    ) internal {
+        bool wasEnabled = s.nodeRegistrars[registrar];
+        if (wasEnabled == enable) {
+            return;
+        }
+
+        s.nodeRegistrars[registrar] = enable;
+
+        if (enable) {
+            s.nodeRegistrarList.push(registrar);
+            s.nodeRegistrarIndex[registrar] = s.nodeRegistrarList.length;
+            return;
+        }
+
+        uint256 indexPlusOne = s.nodeRegistrarIndex[registrar];
+        if (indexPlusOne == 0) {
+            return;
+        }
+
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = s.nodeRegistrarList.length - 1;
+
+        if (index != lastIndex) {
+            address movedRegistrar = s.nodeRegistrarList[lastIndex];
+            s.nodeRegistrarList[index] = movedRegistrar;
+            s.nodeRegistrarIndex[movedRegistrar] = index + 1;
+        }
+
+        s.nodeRegistrarList.pop();
+        delete s.nodeRegistrarIndex[registrar];
+    }
     event SupportingDocumentRemoved(
         bytes32 indexed nodeHash,
         string url,
@@ -171,6 +210,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         string memory _lng
     ) external returns (bytes32 nodeHash) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodeRegistrars[msg.sender], 'Not allowed node registrar');
 
         nodeHash = keccak256(
             abi.encodePacked(msg.sender, block.timestamp, s.totalNodes)
@@ -949,6 +989,36 @@ contract NodesFacet is Initializable, ReentrancyGuard {
     function isNodeAdmin(address _admin) external view returns (bool) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.nodeAdmins[_admin];
+    }
+
+    /**
+     * @notice Enable or disable an allowed node registrar
+     */
+    function setNodeRegistrar(address registrar, bool enable) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        _setNodeRegistrar(s, registrar, enable);
+        emit NodeRegistrarUpdated(registrar, enable);
+    }
+
+    /**
+     * @notice Check if an address has a node role
+     */
+    function hasNodeRole(bytes32 role, address account) external view returns (bool) {
+        if (role != NODE_REGISTRAR_ROLE) {
+            return false;
+        }
+
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.nodeRegistrars[account];
+    }
+
+    /**
+     * @notice Enumerate allowed node registrars
+     */
+    function getAllowedNodeRegistrars() external view returns (address[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.nodeRegistrarList;
     }
 
     // ============================================================================

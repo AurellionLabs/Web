@@ -4,9 +4,9 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-03-06T14:55:07.795Z
+ * Generated: 2026-03-06T16:33:32.411Z
  * Facets: NodesFacet, AuSysFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
- * Total items: 257
+ * Total items: 263
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,6 +143,25 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'NodeRegistered',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'registrar',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'enabled',
+        type: 'bool',
+      },
+    ],
+    name: 'NodeRegistrarUpdated',
     type: 'event',
   },
   {
@@ -549,6 +568,19 @@ export const DIAMOND_ABI: any[] = [
     type: 'event',
   },
   {
+    inputs: [],
+    name: 'NODE_REGISTRAR_ROLE',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -883,6 +915,19 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'struct DiamondStorage.SupportingDocument[]',
         name: 'documents',
         type: 'tuple[]',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getAllowedNodeRegistrars',
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
       },
     ],
     stateMutability: 'view',
@@ -1379,6 +1424,30 @@ export const DIAMOND_ABI: any[] = [
     type: 'function',
   },
   {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'role',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    name: 'hasNodeRole',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'initialize',
     outputs: [],
@@ -1685,6 +1754,24 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'setNodeAdmin',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'registrar',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    name: 'setNodeRegistrar',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -3163,6 +3250,19 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'bytes32',
         name: '',
         type: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getAllowedDrivers',
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
       },
     ],
     stateMutability: 'view',

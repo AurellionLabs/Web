@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-03-06T14:55:07.963Z
+// Generated at: 2026-03-06T16:33:32.569Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -211,6 +211,21 @@ export const diamondNodeRegisteredEvents = onchainTable(
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
     ownerIdx: index().on(table.owner),
+  }),
+);
+
+export const diamondNodeRegistrarUpdatedEvents = onchainTable(
+  'diamond_node_registrar_updated_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    registrar: t.hex().notNull(),
+    enabled: t.boolean().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    registrarIdx: index().on(table.registrar),
   }),
 );
 
@@ -1785,6 +1800,7 @@ export const tables = {
   diamondNodeCapacityUpdatedEvents,
   diamondNodeDeactivatedEvents,
   diamondNodeRegisteredEvents,
+  diamondNodeRegistrarUpdatedEvents,
   diamondNodeSellOrderPlacedEvents,
   diamondNodeUpdatedEvents,
   diamondSupportedAssetAddedEvents,

@@ -1,5 +1,5 @@
 // Auto-generated from AuSysFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-06T14:55:07.959Z
+// Generated at: 2026-03-06T16:33:32.567Z
 
 export const AuSysFacetABI = [
   {
@@ -1424,6 +1424,19 @@ export const AuSysFacetABI = [
         internalType: 'bytes32',
         name: '',
         type: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getAllowedDrivers',
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
       },
     ],
     stateMutability: 'view',

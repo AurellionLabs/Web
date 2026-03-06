@@ -151,6 +151,9 @@ abstract contract DiamondTestBase is Test {
     function _initializeFacets() internal {
         AuSysFacet(address(diamond)).setPayToken(address(payToken));
         BridgeFacet(address(diamond)).setQuoteTokenAddress(address(quoteToken));
+        NodesFacet(address(diamond)).setNodeRegistrar(nodeOperator, true);
+        NodesFacet(address(diamond)).setNodeRegistrar(user1, true);
+        NodesFacet(address(diamond)).setNodeRegistrar(user2, true);
         testNodeHash = _registerTestNode(nodeOperator);
     }
 
@@ -239,7 +242,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getNodesSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](12);
+        bytes4[] memory selectors = new bytes4[](15);
         selectors[0] = NodesFacet.registerNode.selector;
         selectors[1] = NodesFacet.updateNode.selector;
         selectors[2] = NodesFacet.deactivateNode.selector;
@@ -252,6 +255,9 @@ abstract contract DiamondTestBase is Test {
         selectors[9] = NodesFacet.nodeHandoff.selector;
         selectors[10] = NodesFacet.reduceCapacityForOrder.selector;
         selectors[11] = NodesFacet.addNodeItem.selector;
+        selectors[12] = NodesFacet.setNodeRegistrar.selector;
+        selectors[13] = NodesFacet.hasNodeRole.selector;
+        selectors[14] = NodesFacet.getAllowedNodeRegistrars.selector;
         return selectors;
     }
 
@@ -282,7 +288,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getAuSysSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](15);
+        bytes4[] memory selectors = new bytes4[](16);
         selectors[0] = AuSysFacet.setPayToken.selector;
         selectors[1] = AuSysFacet.getPayToken.selector;
         selectors[2] = AuSysFacet.setAuSysAdmin.selector;
@@ -290,14 +296,15 @@ abstract contract DiamondTestBase is Test {
         selectors[4] = AuSysFacet.setDriver.selector;
         selectors[5] = AuSysFacet.setDispatcher.selector;
         selectors[6] = AuSysFacet.hasAuSysRole.selector;
-        selectors[7] = AuSysFacet.createAuSysOrder.selector;
-        selectors[8] = AuSysFacet.getAuSysOrder.selector;
-        selectors[9] = AuSysFacet.createJourney.selector;
-        selectors[10] = AuSysFacet.createOrderJourney.selector;
-        selectors[11] = AuSysFacet.getJourney.selector;
-        selectors[12] = AuSysFacet.assignDriverToJourney.selector;
-        selectors[13] = AuSysFacet.packageSign.selector;
-        selectors[14] = AuSysFacet.handOn.selector;
+        selectors[7] = AuSysFacet.getAllowedDrivers.selector;
+        selectors[8] = AuSysFacet.createAuSysOrder.selector;
+        selectors[9] = AuSysFacet.getAuSysOrder.selector;
+        selectors[10] = AuSysFacet.createJourney.selector;
+        selectors[11] = AuSysFacet.createOrderJourney.selector;
+        selectors[12] = AuSysFacet.getJourney.selector;
+        selectors[13] = AuSysFacet.assignDriverToJourney.selector;
+        selectors[14] = AuSysFacet.packageSign.selector;
+        selectors[15] = AuSysFacet.handOn.selector;
         return selectors;
     }
 

@@ -11,6 +11,10 @@ on:
     paths:
       - 'contracts/diamond/facets/**'
       - 'scripts/deploy.config.ts'
+      - 'scripts/unified-deploy.ts'
+      - 'scripts/sync-supported-assets.ts'
+      - 'scripts/lib/supported-assets*.ts'
+      - 'supported-assets/**'
 
   workflow_dispatch:
     inputs:
@@ -132,9 +136,7 @@ jobs:
 # ---------------------------------------------------------------------------
   deploy:
     needs: detect
-    if: >-
-      needs.detect.outputs.has_changes == 'true'
-      || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
 
     # Manual approval gate for main branch
@@ -234,6 +236,21 @@ jobs:
           SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
           PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
+
+      - name: Sync supported asset catalog
+        env:
+          BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
+          SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
+          PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
+          PINATA_JWT: ${{ secrets.PINATA_JWT }}
+        run: |
+          NETWORK=${{ github.event.inputs.network || 'baseSepolia' }}
+          bunx --bun hardhat run scripts/sync-supported-assets.ts --network "$NETWORK" -- --write
 
       - name: Detect persisted deployment changes
         id: persist_changes

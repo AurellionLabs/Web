@@ -57,6 +57,10 @@ import {
   renderIndexerDiamondConstants,
   replaceChainConstant,
 } from './lib/deploy-config';
+import {
+  getSupportedAssetClasses,
+  loadSupportedAssetCatalog,
+} from './lib/supported-assets';
 
 // =============================================================================
 // FACET SELECTORS - Loaded from generated JSON (single source of truth)
@@ -74,6 +78,9 @@ interface FacetSelectorsData {
 const FACET_SELECTORS_PATH = path.join(
   __dirname,
   '../infrastructure/contracts/facet-selectors.generated.json',
+);
+const DEFAULT_SUPPORTED_ASSET_CLASSES = getSupportedAssetClasses(
+  loadSupportedAssetCatalog(),
 );
 
 function loadFacetSelectors(): Record<string, string[]> {
@@ -858,10 +865,9 @@ async function postDeploymentConfig(
       resolvedAddresses.Diamond,
     );
 
-    const defaultClasses = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
     let addedCount = 0;
 
-    for (const className of defaultClasses) {
+    for (const className of DEFAULT_SUPPORTED_ASSET_CLASSES) {
       try {
         const tx = await assetsFacet.addSupportedClass(className);
         await tx.wait();

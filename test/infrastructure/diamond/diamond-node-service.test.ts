@@ -14,6 +14,8 @@ vi.mock('@/chain-constants', () => ({
 const OWNER = '0xFdE9344cabFa9504eEaD8a3E4e2096DA1316BbaF';
 const NODE_HASH =
   '0x0000000000000000000000001234567890123456789012345678901234567890';
+const NODE_REGISTRAR_ROLE =
+  '0x1111111111111111111111111111111111111111111111111111111111111111';
 
 function createMockContext(overrides: Record<string, any> = {}) {
   const mockReceipt = {
@@ -36,6 +38,8 @@ function createMockContext(overrides: Record<string, any> = {}) {
   };
 
   const diamond = {
+    NODE_REGISTRAR_ROLE: vi.fn().mockResolvedValue(NODE_REGISTRAR_ROLE),
+    hasNodeRole: vi.fn().mockResolvedValue(true),
     registerNode: vi.fn().mockResolvedValue(mockTx),
     updateNodeStatus: vi.fn().mockResolvedValue(mockTx),
     updateNodeLocation: vi.fn().mockResolvedValue(mockTx),
@@ -90,9 +94,10 @@ describe('DiamondNodeService', () => {
       );
     });
 
-    it('should reject if signer is not the owner', async () => {
+    it('should reject if signer is not an allowed node registrar', async () => {
       const context = createMockContext();
       context.getSignerAddress.mockResolvedValue('0xDIFFERENT');
+      context._diamond.hasNodeRole.mockResolvedValue(false);
       const service = new DiamondNodeService(context);
 
       const node = {
@@ -108,7 +113,7 @@ describe('DiamondNodeService', () => {
       };
 
       await expect(service.registerNode(node)).rejects.toThrow(
-        'Signer must be the node owner',
+        'Connected wallet is not allowed to register nodes',
       );
     });
 

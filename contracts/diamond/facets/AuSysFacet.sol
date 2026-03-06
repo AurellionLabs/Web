@@ -182,6 +182,42 @@ contract AuSysFacet is ReentrancyGuard {
     bytes32 public constant DRIVER_ROLE = keccak256('DRIVER_ROLE');
     bytes32 public constant DISPATCHER_ROLE = keccak256('DISPATCHER_ROLE');
 
+    function _setDriverRole(
+        DiamondStorage.AppStorage storage s,
+        address driver,
+        bool enable
+    ) internal {
+        bool wasEnabled = s.ausysRoles[DRIVER_ROLE][driver];
+        if (wasEnabled == enable) {
+            return;
+        }
+
+        s.ausysRoles[DRIVER_ROLE][driver] = enable;
+
+        if (enable) {
+            s.driverRoleMembers.push(driver);
+            s.driverRoleIndex[driver] = s.driverRoleMembers.length;
+            return;
+        }
+
+        uint256 indexPlusOne = s.driverRoleIndex[driver];
+        if (indexPlusOne == 0) {
+            return;
+        }
+
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = s.driverRoleMembers.length - 1;
+
+        if (index != lastIndex) {
+            address movedDriver = s.driverRoleMembers[lastIndex];
+            s.driverRoleMembers[index] = movedDriver;
+            s.driverRoleIndex[movedDriver] = index + 1;
+        }
+
+        s.driverRoleMembers.pop();
+        delete s.driverRoleIndex[driver];
+    }
+
     // ============================================================================
     // MODIFIERS
     // ============================================================================
@@ -273,7 +309,7 @@ contract AuSysFacet is ReentrancyGuard {
      */
     function setDriver(address driver, bool enable) external adminOnly {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[DRIVER_ROLE][driver] = enable;
+        _setDriverRole(s, driver, enable);
     }
 
     /**
@@ -290,6 +326,14 @@ contract AuSysFacet is ReentrancyGuard {
     function hasAuSysRole(bytes32 role, address account) external view returns (bool) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.ausysRoles[role][account];
+    }
+
+    /**
+     * @notice Get all currently allowed drivers
+     */
+    function getAllowedDrivers() external view returns (address[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.driverRoleMembers;
     }
 
     // ============================================================================

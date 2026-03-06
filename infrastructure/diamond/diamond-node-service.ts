@@ -48,10 +48,13 @@ export class DiamondNodeService implements INodeService {
   async registerNode(nodeData: Node): Promise<string> {
     const diamond = this.context.getDiamond();
     const signerAddress = await this.context.getSignerAddress();
-
-    // Verify the signer is the owner
-    if (signerAddress.toLowerCase() !== nodeData.owner.toLowerCase()) {
-      throw new Error('Signer must be the node owner');
+    const registrarRole = await diamond.NODE_REGISTRAR_ROLE();
+    const canRegisterNode = await diamond.hasNodeRole(
+      registrarRole,
+      signerAddress,
+    );
+    if (!canRegisterNode) {
+      throw new Error('Connected wallet is not allowed to register nodes');
     }
 
     try {
@@ -107,6 +110,12 @@ export class DiamondNodeService implements INodeService {
       );
     } catch (error) {
       console.error('[DiamondNodeService] Error registering node:', error);
+      if (
+        error instanceof Error &&
+        error.message.includes('Not allowed node registrar')
+      ) {
+        throw new Error('Connected wallet is not allowed to register nodes');
+      }
       throw error;
     }
   }

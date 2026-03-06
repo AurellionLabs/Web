@@ -225,9 +225,11 @@ export default function NodeRegistrationPage() {
       router.push('/node/overview');
     } catch (error) {
       console.error('Error registering node:', error);
+      const description =
+        error instanceof Error ? error.message : 'Failed to register node';
       toast({
         title: 'Error',
-        description: 'Failed to register node',
+        description,
         variant: 'destructive',
       });
     }

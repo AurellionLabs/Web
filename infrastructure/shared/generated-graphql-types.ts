@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-03-06T14:55:07.974Z
+// Generated at: 2026-03-06T16:33:32.577Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -26,6 +26,8 @@ export const TABLE_DIAMOND_NODE_DEACTIVATED_EVENTS =
   'diamondNodeDeactivatedEventss' as const;
 export const TABLE_DIAMOND_NODE_REGISTERED_EVENTS =
   'diamondNodeRegisteredEventss' as const;
+export const TABLE_DIAMOND_NODE_REGISTRAR_UPDATED_EVENTS =
+  'diamondNodeRegistrarUpdatedEventss' as const;
 export const TABLE_DIAMOND_NODE_SELL_ORDER_PLACED_EVENTS =
   'diamondNodeSellOrderPlacedEventss' as const;
 export const TABLE_DIAMOND_NODE_UPDATED_EVENTS =
@@ -211,6 +213,7 @@ export const VALID_TABLE_NAMES = [
   'diamondNodeCapacityUpdatedEventss',
   'diamondNodeDeactivatedEventss',
   'diamondNodeRegisteredEventss',
+  'diamondNodeRegistrarUpdatedEventss',
   'diamondNodeSellOrderPlacedEventss',
   'diamondNodeUpdatedEventss',
   'diamondSupportedAssetAddedEventss',
@@ -372,6 +375,15 @@ export interface diamondNodeRegisteredEvent {
   node_hash: string;
   owner: string;
   node_type: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondNodeRegistrarUpdatedEvent {
+  id: string;
+  registrar: string;
+  enabled: boolean;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1402,6 +1414,10 @@ export interface diamondNodeRegisteredEventsResponse {
   diamondNodeRegisteredEventss: PonderItemsResponse<diamondNodeRegisteredEvent>;
 }
 
+export interface diamondNodeRegistrarUpdatedEventsResponse {
+  diamondNodeRegistrarUpdatedEventss: PonderItemsResponse<diamondNodeRegistrarUpdatedEvent>;
+}
+
 export interface diamondNodeSellOrderPlacedEventsResponse {
   diamondNodeSellOrderPlacedEventss: PonderItemsResponse<diamondNodeSellOrderPlacedEvent>;
 }
@@ -1823,6 +1839,15 @@ export const FIELDS_DIAMOND_NODE_REGISTERED_EVENTS = [
   'node_hash',
   'owner',
   'node_type',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_NODE_REGISTRAR_UPDATED_EVENTS = [
+  'id',
+  'registrar',
+  'enabled',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2851,6 +2876,7 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     NodeCapacityUpdated: 'diamondNodeCapacityUpdatedEventss',
     NodeDeactivated: 'diamondNodeDeactivatedEventss',
     NodeRegistered: 'diamondNodeRegisteredEventss',
+    NodeRegistrarUpdated: 'diamondNodeRegistrarUpdatedEventss',
     NodeSellOrderPlaced: 'diamondNodeSellOrderPlacedEventss',
     NodeUpdated: 'diamondNodeUpdatedEventss',
     SupportedAssetAdded: 'diamondSupportedAssetAddedEventss',

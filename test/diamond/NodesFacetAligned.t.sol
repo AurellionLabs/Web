@@ -12,6 +12,7 @@ import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
  */
 contract NodesFacetAlignedTest is DiamondTestBase {
     NodesFacet public nodes;
+    bytes32 public constant NODE_REGISTRAR_ROLE = keccak256('NODE_REGISTRAR_ROLE');
 
     // Events
     event NodeAdminSet(address indexed admin);
@@ -71,6 +72,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     // ============================================================================
 
     function test_registerNode() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode(
             'WAREHOUSE',
@@ -85,6 +89,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_registerNode_multipleByOwner() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.startPrank(user1);
         bytes32 hash1 = nodes.registerNode('WAREHOUSE', 500, bytes32(0), 'Loc1', '40', '-74');
         bytes32 hash2 = nodes.registerNode('RETAIL', 200, bytes32(0), 'Loc2', '41', '-75');
@@ -97,6 +104,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_getNode() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('LOGISTICS', 1000, bytes32(0), 'Main Hub', '40.7', '-74.0');
 
@@ -120,6 +130,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_getNodeStatus() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('LOGISTICS', 1000, bytes32(0), 'Hub', '40', '-74');
 
@@ -129,6 +142,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_updateNode() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('LOGISTICS', 1000, bytes32(0), 'Hub', '40', '-74');
 
@@ -141,6 +157,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_updateNode_revertNotOwner() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('LOGISTICS', 1000, bytes32(0), 'Hub', '40', '-74');
 
@@ -150,6 +169,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_deactivateNode() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('LOGISTICS', 1000, bytes32(0), 'Hub', '40', '-74');
 
@@ -163,6 +185,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_deactivateNode_revertNotOwner() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('LOGISTICS', 1000, bytes32(0), 'Hub', '40', '-74');
 
@@ -176,6 +201,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     // ============================================================================
 
     function test_reduceCapacityForOrder_revertNonOwner() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('WAREHOUSE', 1000, bytes32(0), 'Hub', '40', '-74');
 
@@ -186,6 +214,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
     }
 
     function test_reduceCapacityForOrder_asAdmin() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
         vm.prank(user1);
         bytes32 nodeHash = nodes.registerNode('WAREHOUSE', 1000, bytes32(0), 'Hub', '40', '-74');
 
@@ -198,5 +229,43 @@ contract NodesFacetAlignedTest is DiamondTestBase {
         vm.expectRevert('Insufficient balance');
         nodes.reduceCapacityForOrder(nodeHash, address(payToken), 1, 100);
         // The revert on balance means authorization passed
+    }
+
+    function test_setNodeRegistrar() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
+        assertTrue(nodes.hasNodeRole(NODE_REGISTRAR_ROLE, user1), 'Registrar role should be granted');
+    }
+
+    function test_getAllowedNodeRegistrars() public {
+        vm.startPrank(owner);
+        nodes.setNodeRegistrar(user1, true);
+        nodes.setNodeRegistrar(user2, true);
+        vm.stopPrank();
+
+        address[] memory registrars = nodes.getAllowedNodeRegistrars();
+        assertEq(registrars.length, 2, 'Should enumerate active registrars');
+        assertEq(registrars[0], user1, 'First registrar should match');
+        assertEq(registrars[1], user2, 'Second registrar should match');
+    }
+
+    function test_getAllowedNodeRegistrars_removesRevokedRegistrar() public {
+        vm.startPrank(owner);
+        nodes.setNodeRegistrar(user1, true);
+        nodes.setNodeRegistrar(user2, true);
+        nodes.setNodeRegistrar(user1, false);
+        vm.stopPrank();
+
+        address[] memory registrars = nodes.getAllowedNodeRegistrars();
+        assertEq(registrars.length, 1, 'Revoked registrars should be removed from enumeration');
+        assertEq(registrars[0], user2, 'Remaining registrar should stay listed');
+    }
+
+    function test_registerNode_revertWhenCallerNotRegistrar() public {
+        address nonRegistrar = makeAddr('nonRegistrar');
+        vm.prank(nonRegistrar);
+        vm.expectRevert();
+        nodes.registerNode('WAREHOUSE', 500, bytes32(0), 'Test Location', '40.7128', '-74.0060');
     }
 }
