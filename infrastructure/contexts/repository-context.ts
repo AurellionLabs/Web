@@ -49,8 +49,8 @@ export class RepositoryContext {
     ausysContract: Ausys,
     provider: BrowserProvider,
     signer: ethers.Signer,
-    pinata: PinataSDK,
-    chainId: number,
+    pinata?: PinataSDK,
+    chainId: number = 0,
   ) {
     this.ausysContract = ausysContract;
     this.signer = signer;
@@ -82,11 +82,7 @@ export class RepositoryContext {
 
       this.poolRepository = new PoolRepository(provider, signer);
 
-      this.platformRepository = new PlatformRepository(
-        pinata,
-        undefined,
-        chainId,
-      );
+      this.platformRepository = new PlatformRepository(pinata, undefined, chainId);
     } catch (error) {
       console.error(
         '[RepositoryContext] Failed to create repositories:',

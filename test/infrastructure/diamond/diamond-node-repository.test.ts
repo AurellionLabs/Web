@@ -114,9 +114,47 @@ const TEST_NODE_HASH =
 describe('DiamondNodeRepository', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('getAssetAttributes', () => {
+    it('should fall back to the platform metadata API when Pinata is unavailable', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          records: [
+            {
+              asset: {
+                attributes: [
+                  {
+                    name: 'weight',
+                    values: ['M'],
+                    description: 'Weight bucket',
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const context = createMockContext();
+      const repo = new DiamondNodeRepository(context);
+      const result = await repo.getAssetAttributes('QmHash123');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/platform/metadata?hash=QmHash123',
+      );
+      expect(result).toEqual([
+        {
+          name: 'weight',
+          value: 'M',
+          description: 'Weight bucket',
+        },
+      ]);
+    });
+
     it('should NOT be a no-op stub that always returns empty array', async () => {
       // This test exists because getAssetAttributes was a stub returning []
       // for months, causing "No attributes" in the node dashboard.
@@ -182,8 +220,22 @@ describe('DiamondNodeRepository', () => {
       expect(assets).toEqual([]);
     });
 
-    it('should return assets with empty metadata when pinata is not available', async () => {
+    it('should use the platform metadata API when pinata is not available', async () => {
       const tokenId = '12345';
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          asset: {
+            assetClass: 'GOAT',
+            tokenId,
+            name: 'API Goat',
+            attributes: [],
+          },
+          cid: 'QmApiCid',
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
       const context = createMockContext({
         nodeData: {
           owner: '0x1111111111111111111111111111111111111111',
@@ -219,9 +271,12 @@ describe('DiamondNodeRepository', () => {
 
       expect(assets.length).toBe(1);
       expect(assets[0].id).toBe(tokenId);
-      expect(assets[0].name).toBe('');
-      expect(assets[0].class).toBe('Unknown');
-      expect(assets[0].fileHash).toBe('');
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/platform/metadata?tokenId=${tokenId}`,
+      );
+      expect(assets[0].name).toBe('API Goat');
+      expect(assets[0].class).toBe('GOAT');
+      expect(assets[0].fileHash).toBe('QmApiCid');
     });
 
     it('should fetch metadata from IPFS when pinata is available', async () => {

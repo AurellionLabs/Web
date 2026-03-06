@@ -19,6 +19,7 @@ import {
 import {
   PulsingHexNetwork,
   SpinningReticle,
+  projectNodesToSVG,
 } from '@/app/components/eva/eva-animations';
 import {
   RefreshCw,
@@ -63,7 +64,6 @@ export default function NodeOverviewPage() {
     router.push(`/node/dashboard?nodeId=${nodeAddress}`);
   };
 
-  // Move useMemo before conditional return - hooks must be called in same order every render
   const uniqueNodes = useMemo(() => {
     const seen = new Set<string>();
     return (nodes || []).filter((node) => {
@@ -73,6 +73,24 @@ export default function NodeOverviewPage() {
       return true;
     });
   }, [nodes]);
+
+  const topologyNodes = useMemo(
+    () =>
+      projectNodesToSVG(
+        uniqueNodes.map((n) => ({
+          lat: n.location?.location?.lat || '0',
+          lng: n.location?.location?.lng || '0',
+          label: n.address
+            ? n.address.slice(0, 6) + '...' + n.address.slice(-4)
+            : undefined,
+          status:
+            n.status === 'Active' ? ('Active' as const) : ('Inactive' as const),
+          address: n.address,
+          locationName: n.location?.addressName,
+        })),
+      ),
+    [uniqueNodes],
+  );
 
   if (loading) {
     return (
@@ -210,7 +228,11 @@ export default function NodeOverviewPage() {
           label="Node Map"
           variant="gold"
         />
-        <PulsingHexNetwork />
+        <PulsingHexNetwork
+          nodes={topologyNodes}
+          onNodeClick={handleNodeSelect}
+          onAddNode={() => router.push('/node/register')}
+        />
 
         <HexCluster size="md" className="justify-center my-2" />
         <EvaScanLine variant="mixed" />

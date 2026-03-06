@@ -66,16 +66,16 @@ function setupDiamond(
     initialized: boolean;
     getOwnedNodes: ReturnType<typeof vi.fn>;
     getNodeAssets: ReturnType<typeof vi.fn>;
+    getNodeTokenBalance: ReturnType<typeof vi.fn>;
     getAssetAttributes: ReturnType<typeof vi.fn>;
-    balanceOf: ReturnType<typeof vi.fn>;
   }> = {},
 ) {
   mockUseDiamond.mockReturnValue({
     initialized: true,
     getOwnedNodes: vi.fn().mockResolvedValue([]),
     getNodeAssets: vi.fn().mockResolvedValue([]),
+    getNodeTokenBalance: vi.fn().mockResolvedValue(0n),
     getAssetAttributes: vi.fn().mockResolvedValue([]),
-    balanceOf: vi.fn().mockResolvedValue(0n),
     ...overrides,
   } as any);
 }
@@ -151,7 +151,7 @@ describe('useUserAssets', () => {
     it('returns sellable assets with actual balance', async () => {
       const asset = makeAsset('42', 'Boer Goat');
       const getNodeAssets = vi.fn().mockResolvedValue([asset]);
-      const balanceOf = vi.fn().mockResolvedValue(5n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(5n);
       const getAssetAttributes = vi
         .fn()
         .mockResolvedValue([makeAttribute('weight', '30kg')]);
@@ -161,7 +161,7 @@ describe('useUserAssets', () => {
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets,
         getAssetAttributes,
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());
@@ -175,6 +175,7 @@ describe('useUserAssets', () => {
       expect(sa.balance).toBe('5');
       expect(sa.nodeHash).toBe(NODE_ID_1);
       expect(sa.attributes).toHaveLength(1);
+      expect(getNodeTokenBalance).toHaveBeenCalledWith(NODE_ID_1, '42');
       expect(result.current.hasAssets).toBe(true);
       expect(result.current.assetCount).toBe(1);
     });
@@ -187,14 +188,14 @@ describe('useUserAssets', () => {
         .fn()
         .mockResolvedValueOnce([asset1])
         .mockResolvedValueOnce([asset2]);
-      const balanceOf = vi.fn().mockResolvedValue(3n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(3n);
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1, NODE_ID_2]),
         getNodeAssets,
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());
@@ -206,14 +207,14 @@ describe('useUserAssets', () => {
 
     it('falls back to capacity when actualBalance is 0 and capacity is set', async () => {
       const asset = makeAsset('5', 'Goat', 'Livestock', { capacity: '8' });
-      const balanceOf = vi.fn().mockResolvedValue(0n); // zero balance
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(0n);
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets: vi.fn().mockResolvedValue([asset]),
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());
@@ -227,14 +228,14 @@ describe('useUserAssets', () => {
 
     it('excludes assets where both actualBalance and capacity are 0', async () => {
       const asset = makeAsset('7', 'Goat', 'Livestock', { capacity: '0' });
-      const balanceOf = vi.fn().mockResolvedValue(0n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(0n);
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets: vi.fn().mockResolvedValue([asset]),
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());
@@ -248,14 +249,14 @@ describe('useUserAssets', () => {
       const asset = makeAsset('9', 'Goat', 'Livestock', {
         price: String(2n * 10n ** 18n), // 2 ETH in wei
       });
-      const balanceOf = vi.fn().mockResolvedValue(1n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(1n);
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets: vi.fn().mockResolvedValue([asset]),
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());
@@ -274,14 +275,14 @@ describe('useUserAssets', () => {
     it('only returns assets matching the filter class', async () => {
       const livestock = makeAsset('1', 'Goat', 'Livestock');
       const grain = makeAsset('2', 'Wheat', 'Grain');
-      const balanceOf = vi.fn().mockResolvedValue(5n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(5n);
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets: vi.fn().mockResolvedValue([livestock, grain]),
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets('Livestock'));
@@ -294,14 +295,14 @@ describe('useUserAssets', () => {
 
     it('is case-insensitive', async () => {
       const asset = makeAsset('1', 'Goat', 'Livestock');
-      const balanceOf = vi.fn().mockResolvedValue(5n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(5n);
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets: vi.fn().mockResolvedValue([asset]),
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets('LIVESTOCK'));
@@ -340,14 +341,14 @@ describe('useUserAssets', () => {
         .fn()
         .mockRejectedValueOnce(new Error('node 1 failed'))
         .mockResolvedValueOnce([asset2]);
-      const balanceOf = vi.fn().mockResolvedValue(2n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(2n);
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1, NODE_ID_2]),
         getNodeAssets,
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());
@@ -359,17 +360,19 @@ describe('useUserAssets', () => {
       expect(result.current.error).toBeNull();
     });
 
-    it('falls back to capacity when balanceOf throws for an asset', async () => {
+    it('falls back to capacity when getNodeTokenBalance throws for an asset', async () => {
       const asset = makeAsset('3', 'Boer Goat', 'Livestock', { capacity: '6' });
 
-      const balanceOf = vi.fn().mockRejectedValue(new Error('balance error'));
+      const getNodeTokenBalance = vi
+        .fn()
+        .mockRejectedValue(new Error('balance error'));
 
       setupWallet(true);
       setupDiamond({
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets: vi.fn().mockResolvedValue([asset]),
         getAssetAttributes: vi.fn().mockResolvedValue([]),
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());
@@ -385,7 +388,7 @@ describe('useUserAssets', () => {
       const asset = makeAsset('4', 'Goat', 'Livestock', {
         fileHash: undefined,
       });
-      const balanceOf = vi.fn().mockResolvedValue(1n);
+      const getNodeTokenBalance = vi.fn().mockResolvedValue(1n);
       const getAssetAttributes = vi.fn();
 
       setupWallet(true);
@@ -393,7 +396,7 @@ describe('useUserAssets', () => {
         getOwnedNodes: vi.fn().mockResolvedValue([NODE_ID_1]),
         getNodeAssets: vi.fn().mockResolvedValue([asset]),
         getAssetAttributes,
-        balanceOf,
+        getNodeTokenBalance,
       });
 
       const { result } = renderHook(() => useUserAssets());

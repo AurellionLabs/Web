@@ -211,17 +211,16 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           setIsReadOnly(true);
         }
 
-        // Create Pinata SDK for IPFS metadata fetching
+        // Pinata remains available here for metadata writes during tokenization.
         const pinata = createPinataSDK();
-        if (pinata) {
-        } else {
+        if (!pinata) {
           console.warn(
-            '[DiamondProvider] PINATA_JWT not available, IPFS metadata will not be fetched',
+            '[DiamondProvider] PINATA_JWT not available, metadata uploads will not be available',
           );
         }
 
-        // Create services with Pinata for IPFS metadata
-        const repository = new DiamondNodeRepository(context, pinata);
+        // Read-side metadata resolution now goes through our server metadata API.
+        const repository = new DiamondNodeRepository(context);
         const service = new DiamondNodeService(context);
         const assetService = new DiamondNodeAssetService(
           context,

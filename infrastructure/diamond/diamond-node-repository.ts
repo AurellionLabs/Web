@@ -24,6 +24,10 @@ import {
   tokenIdToAssets,
 } from '@/infrastructure/repositories/shared/ipfs';
 import { getIpfsGroupId } from '@/chain-constants';
+import {
+  fetchAssetByTokenIdFromMetadataApi,
+  fetchAssetRecordsByHashFromMetadataApi,
+} from '@/infrastructure/repositories/shared/platform-metadata-api';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { getCache, type AssetMetadata } from '@/infrastructure/cache';
 import {
@@ -258,10 +262,15 @@ export class DiamondNodeRepository implements NodeRepository {
     }
 
     if (!this.pinata) {
-      console.warn(
-        '[DiamondNodeRepository] Pinata not available for metadata fetch',
-      );
-      return { name: '', class: '', fileHash: '' };
+      const { asset, cid } = await fetchAssetByTokenIdFromMetadataApi(tokenId);
+      if (asset) {
+        return {
+          name: asset.name,
+          class: asset.assetClass,
+          fileHash: cid || '',
+        };
+      }
+      return this.fetchMetadataFromIndexer(tokenId);
     }
 
     try {
@@ -786,15 +795,23 @@ export class DiamondNodeRepository implements NodeRepository {
     fileHash: string,
   ): Promise<TokenizedAssetAttribute[]> {
     if (!this.pinata) {
-      console.warn(
-        '[DiamondNodeRepository] getAssetAttributes: Pinata not configured, returning empty array',
-      );
-      return [];
+      const records = await fetchAssetRecordsByHashFromMetadataApi(fileHash);
+      const first = records[0];
+      const attrs = first?.asset?.attributes || [];
+      return attrs.map((a) => ({
+        name: a.name,
+        value: a.values && a.values.length > 0 ? a.values[0] : '',
+        description: a.description || '',
+      }));
     }
 
     try {
       // Get chain-specific IPFS group
-      const chainId = this.context.getChainId();
+      const chainId =
+        typeof (this.context as { getChainId?: () => number }).getChainId ===
+        'function'
+          ? (this.context as { getChainId: () => number }).getChainId()
+          : 84532;
       const groupId = getIpfsGroupId(chainId);
 
       // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails

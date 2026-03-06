@@ -124,6 +124,7 @@
       "createOrderJourney": "0xd975d24e",
       "domainSeparator": "0xf698da25",
       "getAuSysOrder": "0xebbce33a",
+      "getDriverJourneyCount": "0xe420f74b",
       "getJourney": "0x3774f2c7",
       "getOpenP2POffers": "0xad4235e7",
       "getPayToken": "0xc57a0295",
@@ -161,6 +162,7 @@
       "0xd975d24e",
       "0xf698da25",
       "0xebbce33a",
+      "0xe420f74b",
       "0x3774f2c7",
       "0xad4235e7",
       "0xc57a0295",
@@ -492,12 +494,12 @@
       "setRWYCLOBAddress": "0x3a623cd1",
       "setRWYFeeRecipient": "0xd47a07d6",
       "setRWYQuoteToken": "0xba04c66b",
-      "stake": "0x8caa5230",
+      "stake": "0x2daedd52",
       "startDelivery": "0x2d50a1c7",
       "submitCustodyProof": "0x27def264",
       "submitTokenizationProof": "0x457aceab",
       "unpauseRWY": "0xd7fe51ce",
-      "unstake": "0x16ae261d"
+      "unstake": "0xd42c21ba"
     },
     "allSelectors": [
       "0x9f058834",
@@ -534,12 +536,12 @@
       "0x3a623cd1",
       "0xd47a07d6",
       "0xba04c66b",
-      "0x8caa5230",
+      "0x2daedd52",
       "0x2d50a1c7",
       "0x27def264",
       "0x457aceab",
       "0xd7fe51ce",
-      "0x16ae261d"
+      "0xd42c21ba"
     ]
   },
   "AssetsFacet": {

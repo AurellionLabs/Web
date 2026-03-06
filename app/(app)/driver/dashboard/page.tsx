@@ -401,14 +401,30 @@ export default function DriverDashboard() {
   }
 
   if (error) {
+    const isMaxAssignments =
+      error.includes('0xd5391167') ||
+      error.includes('DriverMaxAssignment') ||
+      error.includes('Maximum delivery assignments');
+    const errorTitle = isMaxAssignments
+      ? 'Maximum Assignments Reached'
+      : 'Error Loading Deliveries';
+    const errorHint = isMaxAssignments
+      ? 'Complete or cancel existing deliveries before accepting new ones. Stuck InTransit journeys need the receiver to sign for delivery.'
+      : undefined;
+
     return (
       <div className="min-h-screen p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           <EvaPanel label="System Error" accent="crimson" status="warning">
             <h2 className="font-mono text-lg font-bold tracking-[0.15em] uppercase text-crimson mb-2">
-              Error Loading Deliveries
+              {errorTitle}
             </h2>
             <p className="font-mono text-xs text-foreground/90 mb-4">{error}</p>
+            {errorHint && (
+              <p className="font-mono text-xs text-foreground/70 mb-4 italic">
+                {errorHint}
+              </p>
+            )}
             <TrapButton variant="crimson" onClick={() => refreshDeliveries()}>
               TRY AGAIN
             </TrapButton>

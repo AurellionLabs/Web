@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   ChevronLeft,
@@ -43,6 +43,7 @@ import {
   PulsingHexNetwork,
   CascadeLoadBars,
   useCounter,
+  projectNodesToSVG,
 } from '@/app/components/eva/eva-animations';
 import {
   Dialog,
@@ -133,7 +134,7 @@ export default function NodeDashboardPage() {
     refreshOrders,
   } = useSelectedNode();
 
-  const { refreshNodes } = useNodes();
+  const { nodes: allNodes, refreshNodes } = useNodes();
   const router = useRouter();
   const { toast } = useToast();
   const { isReadOnly: diamondIsReadOnly } = useDiamond();
@@ -165,6 +166,28 @@ export default function NodeDashboardPage() {
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
   const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
+
+  const dashboardTopologyNodes = useMemo(() => {
+    const unique = new Map<string, (typeof allNodes)[number]>();
+    (allNodes || []).forEach((n) => {
+      const key = (n.address || '').toLowerCase();
+      if (key && !unique.has(key)) unique.set(key, n);
+    });
+    return projectNodesToSVG(
+      Array.from(unique.values()).map((n) => ({
+        lat: n.location?.location?.lat || '0',
+        lng: n.location?.location?.lng || '0',
+        label: n.address
+          ? n.address.slice(0, 6) + '...' + n.address.slice(-4)
+          : undefined,
+        status:
+          n.status === 'Active' ? ('Active' as const) : ('Inactive' as const),
+        address: n.address,
+        locationName: n.location?.addressName,
+      })),
+    );
+  }, [allNodes]);
+
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
 
   // Document management state
@@ -1540,7 +1563,15 @@ export default function NodeDashboardPage() {
           status="active"
           accent="gold"
         >
-          <PulsingHexNetwork />
+          <PulsingHexNetwork
+            nodes={dashboardTopologyNodes}
+            selectedAddress={selectedNodeAddress || undefined}
+            onNodeClick={(addr) => {
+              selectNode(addr);
+              router.push(`/node/dashboard?nodeId=${addr}`);
+            }}
+            onAddNode={() => router.push('/node/register')}
+          />
         </EvaPanel>
 
         {/* ── Node Reputation — Cascading Load Bars ── */}
@@ -1687,7 +1718,11 @@ export default function NodeDashboardPage() {
                       </div>
                       <TrapButton
                         variant="gold"
-                        onClick={() => handleAddDocument({ preventDefault: () => {} } as React.FormEvent)}
+                        onClick={() =>
+                          handleAddDocument({
+                            preventDefault: () => {},
+                          } as React.FormEvent)
+                        }
                         disabled={isAddingDocument}
                         className="w-full"
                       >

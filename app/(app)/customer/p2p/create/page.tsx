@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
+import { useNodes } from '@/app/providers/nodes.provider';
 import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import type { Asset, AssetAttribute } from '@/domain/shared';
@@ -34,17 +35,27 @@ import {
   Globe,
   Wallet,
   Package,
+  Network,
+  MapPin,
 } from 'lucide-react';
 import { parseUnits, isAddress } from 'ethers';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { useUserAssets } from '@/hooks/useUserAssets';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 
-type Step = 'type' | 'asset' | 'details' | 'logistics' | 'target' | 'review';
+type Step =
+  | 'type'
+  | 'filters'
+  | 'asset'
+  | 'details'
+  | 'logistics'
+  | 'target'
+  | 'review';
 
 interface FormData {
   offerType: 'buy' | 'sell' | null;
   assetClass: string;
+  selectedNodeHash: string;
   tokenId: string;
   selectedAttributes: Record<string, string>;
   quantity: string;
@@ -92,6 +103,22 @@ const normalizeTokenId = (value: unknown): string => {
   }
 };
 
+const parseBalance = (value?: string): bigint => {
+  if (!value) return 0n;
+  try {
+    return BigInt(value);
+  } catch {
+    return 0n;
+  }
+};
+
+const formatNodeLabel = (nodeHash: string, locationName?: string): string => {
+  if (locationName && locationName.trim().length > 0) {
+    return locationName;
+  }
+  return `${nodeHash.slice(0, 8)}...${nodeHash.slice(-6)}`;
+};
+
 const computeDeterministicTokenId = (
   name: string,
   assetClass: string,
@@ -121,16 +148,17 @@ const computeDeterministicTokenId = (
  *
  * Steps:
  * 1. Select offer type (buy or sell)
- * 2. Select asset class and token
- * 3. Enter quantity and price
- * 4. Set target (public or specific address)
- * 5. Review and confirm
+ * 2. Apply filters (asset class, and for sell offers choose the node)
+ * 3. Select the exact asset/token
+ * 4. Enter quantity and price
+ * 5. Set target (public or specific address)
+ * 6. Review and confirm
  */
 export default function CreateP2POfferPage() {
   const { setCurrentUserRole, connected } = useMainProvider();
-  const { address } = useWallet();
-  const { p2pService, initialized: diamondInitialized } = useDiamond();
+  const { p2pService } = useDiamond();
   const { supportedAssetClasses, getClassAssets } = usePlatform();
+  const { nodes: ownedNodes } = useNodes();
   const router = useRouter();
 
   // State
@@ -138,6 +166,7 @@ export default function CreateP2POfferPage() {
   const [formData, setFormData] = useState<FormData>({
     offerType: null,
     assetClass: '',
+    selectedNodeHash: '',
     tokenId: '',
     selectedAttributes: {},
     quantity: '',
@@ -176,6 +205,68 @@ export default function CreateP2POfferPage() {
       (a) => a.class.toLowerCase() === formData.assetClass.toLowerCase(),
     );
   }, [allSellableAssets, formData.assetClass]);
+
+  const ownedNodesByHash = useMemo(() => {
+    return new Map(ownedNodes.map((node) => [node.address, node]));
+  }, [ownedNodes]);
+
+  const sellNodeOptions = useMemo(() => {
+    const assetsByNode = new Map<
+      string,
+      {
+        nodeHash: string;
+        assets: typeof sellableAssets;
+        totalBalance: bigint;
+      }
+    >();
+
+    for (const asset of sellableAssets) {
+      if (!asset.nodeHash) continue;
+
+      const existing = assetsByNode.get(asset.nodeHash) || {
+        nodeHash: asset.nodeHash,
+        assets: [],
+        totalBalance: 0n,
+      };
+
+      existing.assets.push(asset);
+      existing.totalBalance += parseBalance(asset.balance);
+      assetsByNode.set(asset.nodeHash, existing);
+    }
+
+    return Array.from(assetsByNode.values())
+      .map((entry) => {
+        const node = ownedNodesByHash.get(entry.nodeHash);
+        const sortedAssets = [...entry.assets].sort((a, b) => {
+          const byName = a.name.localeCompare(b.name);
+          if (byName !== 0) return byName;
+          return a.tokenId.localeCompare(b.tokenId);
+        });
+
+        return {
+          ...entry,
+          assets: sortedAssets,
+          locationName: node?.location?.addressName || '',
+          status: node?.status,
+        };
+      })
+      .sort((a, b) => {
+        if (a.locationName && b.locationName) {
+          return a.locationName.localeCompare(b.locationName);
+        }
+        return a.nodeHash.localeCompare(b.nodeHash);
+      });
+  }, [ownedNodesByHash, sellableAssets]);
+
+  const selectedSellNode = useMemo(() => {
+    return sellNodeOptions.find(
+      (option) => option.nodeHash === formData.selectedNodeHash,
+    );
+  }, [sellNodeOptions, formData.selectedNodeHash]);
+
+  const selectedNodeAssets = useMemo(() => {
+    return selectedSellNode?.assets || [];
+  }, [selectedSellNode]);
 
   // Derive unique asset classes the user actually owns (for sell class dropdown)
   const ownedAssetClasses = useMemo(() => {
@@ -278,7 +369,9 @@ export default function CreateP2POfferPage() {
   useEffect(() => {
     if (!isSellFlow) return;
     if (formData.tokenId) {
-      const match = sellableAssets.find((a) => a.tokenId === formData.tokenId);
+      const match = selectedNodeAssets.find(
+        (a) => a.tokenId === formData.tokenId,
+      );
       if (match) {
         // Map SellableAsset to Asset shape for the review step
         setSelectedAsset({
@@ -297,7 +390,46 @@ export default function CreateP2POfferPage() {
     } else {
       setSelectedAsset(null);
     }
-  }, [formData.tokenId, sellableAssets, isSellFlow]);
+  }, [formData.tokenId, selectedNodeAssets, isSellFlow]);
+
+  useEffect(() => {
+    if (!isSellFlow) return;
+
+    if (
+      formData.selectedNodeHash &&
+      !sellNodeOptions.some(
+        (option) => option.nodeHash === formData.selectedNodeHash,
+      )
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        selectedNodeHash: '',
+        tokenId: '',
+      }));
+      setError(null);
+    }
+  }, [formData.selectedNodeHash, isSellFlow, sellNodeOptions]);
+
+  useEffect(() => {
+    if (!isSellFlow || !formData.selectedNodeHash || !formData.tokenId) return;
+
+    const tokenStillAvailable = selectedNodeAssets.some(
+      (asset) => asset.tokenId === formData.tokenId,
+    );
+
+    if (!tokenStillAvailable) {
+      setFormData((prev) => ({
+        ...prev,
+        tokenId: '',
+      }));
+      setError(null);
+    }
+  }, [
+    formData.selectedNodeHash,
+    formData.tokenId,
+    isSellFlow,
+    selectedNodeAssets,
+  ]);
 
   // Set user role on mount
   useEffect(() => {
@@ -373,13 +505,31 @@ export default function CreateP2POfferPage() {
       return { valid: false, reason: 'Price must be greater than zero.' };
     }
 
-    if (isSellFlow && formData.tokenId) {
-      const asset = sellableAssets.find((a) => a.tokenId === formData.tokenId);
-      const available = parseInt(String(asset?.balance ?? '0'), 10);
+    if (isSellFlow) {
+      if (!formData.selectedNodeHash) {
+        return {
+          valid: false,
+          reason: 'Select a node before setting sell terms.',
+        };
+      }
+
+      const asset = selectedNodeAssets.find(
+        (a) => a.tokenId === formData.tokenId,
+      );
+      const available = Number(parseBalance(asset?.balance));
+
+      if (!asset) {
+        return {
+          valid: false,
+          reason: 'The selected asset is no longer available on that node.',
+        };
+      }
+
       if (qty > available) {
         return {
           valid: false,
-          reason: 'Quantity exceeds your available sell balance.',
+          reason:
+            'Quantity exceeds the selected node inventory for this asset.',
         };
       }
     }
@@ -389,13 +539,15 @@ export default function CreateP2POfferPage() {
     formData.quantity,
     formData.price,
     formData.tokenId,
+    formData.selectedNodeHash,
     isSellFlow,
-    sellableAssets,
+    selectedNodeAssets,
   ]);
 
   // Step navigation
   const steps: Step[] = [
     'type',
+    'filters',
     'asset',
     'details',
     'logistics',
@@ -408,11 +560,15 @@ export default function CreateP2POfferPage() {
     switch (currentStep) {
       case 'type':
         return formData.offerType !== null;
+      case 'filters': {
+        if (formData.assetClass === '') return false;
+        if (isSellFlow) {
+          return formData.selectedNodeHash !== '';
+        }
+        return true;
+      }
       case 'asset': {
-        if (formData.assetClass === '' || formData.tokenId === '') return false;
-        // For sell flow, attributes are already set on the owned token - no selection needed
-        if (isSellFlow) return true;
-        // For buy flow, attribute filters are optional; token selection is required.
+        if (formData.tokenId === '') return false;
         return true;
       }
       case 'details': {
@@ -498,6 +654,10 @@ export default function CreateP2POfferPage() {
         quantity: BigInt(formData.quantity),
         price: parseUnits(formData.price, 18),
         isSellOffer: formData.offerType === 'sell',
+        nodes:
+          formData.offerType === 'sell' && formData.selectedNodeHash
+            ? [formData.selectedNodeHash]
+            : undefined,
         targetCounterparty:
           formData.targetType === 'targeted'
             ? formData.targetAddress
@@ -605,6 +765,7 @@ export default function CreateP2POfferPage() {
                   updateFormData({
                     offerType: 'buy',
                     assetClass: '',
+                    selectedNodeHash: '',
                     tokenId: '',
                     selectedAttributes: {},
                   })
@@ -652,6 +813,7 @@ export default function CreateP2POfferPage() {
                   updateFormData({
                     offerType: 'sell',
                     assetClass: '',
+                    selectedNodeHash: '',
                     tokenId: '',
                     selectedAttributes: {},
                   })
@@ -696,23 +858,22 @@ export default function CreateP2POfferPage() {
           </div>
         );
 
-      case 'asset':
+      case 'filters':
         return (
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="text-center mb-8">
               <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
-                Select Asset
+                Step 2 Filters
               </h2>
               <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
                 {isSellFlow
-                  ? 'Choose from the assets you own'
-                  : 'Choose the asset class and then select the specific asset'}
+                  ? 'Select an asset class, then choose which of your nodes will fulfill it'
+                  : 'Choose the asset class and optional attribute filters'}
               </p>
             </div>
 
-            <EvaPanel label="Asset Selection" sysId="AST-SEL">
+            <EvaPanel label="Filters" sysId="AST-FLT">
               <div className="space-y-4">
-                {/* Asset Class Selection */}
                 <div>
                   <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
                     Asset Class
@@ -722,6 +883,7 @@ export default function CreateP2POfferPage() {
                     onChange={(e) =>
                       updateFormData({
                         assetClass: e.target.value,
+                        selectedNodeHash: '',
                         tokenId: '',
                         selectedAttributes: {},
                       })
@@ -753,112 +915,161 @@ export default function CreateP2POfferPage() {
 
                 <EvaScanLine variant="gold" />
 
-                {/* Asset Selection - SELL FLOW: show owned assets with balances */}
                 {isSellFlow ? (
-                  <div>
-                    <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
-                      Your Assets
-                    </label>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                        Select Node
+                      </label>
+                      <p className="font-mono text-xs text-foreground/30 tracking-[0.08em]">
+                        Only nodes in this account that hold the selected asset
+                        class are shown here.
+                      </p>
+                    </div>
                     {isLoadingSellable ? (
                       <div className="p-4 font-mono text-sm text-foreground/40 flex items-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin" />
-                        Loading your assets...
+                        Loading your nodes...
                       </div>
                     ) : !formData.assetClass ? (
                       <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
                         <p>Select an asset class first</p>
                       </div>
-                    ) : sellableAssets.length === 0 ? (
+                    ) : sellNodeOptions.length === 0 ? (
                       <div className="p-6 text-center border border-border/20 bg-card/40">
-                        <Package className="w-8 h-8 mx-auto mb-2 text-foreground/20" />
+                        <Network className="w-8 h-8 mx-auto mb-2 text-foreground/20" />
                         <p className="font-mono text-sm text-foreground/40">
-                          No {formData.assetClass} assets in your wallet
+                          No nodes in this account currently custody{' '}
+                          {formData.assetClass}
                         </p>
                         <p className="font-mono text-xs text-foreground/25 mt-1">
-                          Tokenize assets from your node to sell them here
+                          Add inventory to a node before creating a sell offer
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {sellableAssets.map((asset) => (
-                          <button
-                            key={asset.tokenId}
-                            onClick={() =>
-                              updateFormData({
-                                tokenId: asset.tokenId,
-                                selectedAttributes: {},
-                              })
-                            }
-                            className={cn(
-                              'w-full p-4 border transition-all text-left',
-                              formData.tokenId === asset.tokenId
-                                ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
-                                : 'border-border/20 bg-card/40 hover:border-emerald-500/30',
-                            )}
-                            style={{
-                              clipPath:
-                                'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-mono font-bold text-foreground tracking-[0.08em] flex items-center gap-2">
-                                  {formData.tokenId === asset.tokenId && (
-                                    <Check className="w-4 h-4 text-emerald-400" />
-                                  )}
-                                  {asset.name}
-                                </p>
-                                <EvaStatusBadge
-                                  status="active"
-                                  label={asset.class}
-                                />
-                              </div>
-                              <div className="text-right">
-                                {formData.tokenId === asset.tokenId && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-1 border border-emerald-500/70 bg-emerald-500/20 font-mono text-[10px] font-bold text-emerald-300 tracking-[0.12em] uppercase">
-                                    Selected
-                                  </span>
-                                )}
-                                <p className="font-mono text-lg font-bold text-gold tabular-nums">
-                                  {asset.balance}
-                                </p>
-                                <p className="font-mono text-xs text-foreground/30 tracking-[0.1em] uppercase">
-                                  available
-                                </p>
-                              </div>
-                            </div>
-                            {/* Show attributes if any */}
-                            {asset.attributes &&
-                              asset.attributes.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                  {asset.attributes.map((attr) => (
-                                    <span
-                                      key={attr.name}
-                                      className="px-2 py-0.5 font-mono text-xs bg-card/80 text-foreground/50 border border-border/20"
+                        {sellNodeOptions.map((nodeOption) => {
+                          const isSelected =
+                            formData.selectedNodeHash === nodeOption.nodeHash;
+
+                          return (
+                            <button
+                              key={nodeOption.nodeHash}
+                              onClick={() =>
+                                updateFormData({
+                                  selectedNodeHash: nodeOption.nodeHash,
+                                  tokenId: '',
+                                })
+                              }
+                              className={cn(
+                                'w-full p-4 border transition-all text-left',
+                                isSelected
+                                  ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
+                                  : 'border-border/20 bg-card/40 hover:border-emerald-500/30',
+                              )}
+                              style={{
+                                clipPath:
+                                  'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+                              }}
+                            >
+                              <div className="space-y-3">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                    <p className="font-mono font-bold text-foreground tracking-[0.08em] flex items-center gap-2">
+                                      {isSelected && (
+                                        <Check className="w-4 h-4 text-emerald-400" />
+                                      )}
+                                      {formatNodeLabel(
+                                        nodeOption.nodeHash,
+                                        nodeOption.locationName,
+                                      )}
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                      {nodeOption.locationName && (
+                                        <span className="inline-flex items-center gap-1 font-mono text-xs text-foreground/40">
+                                          <MapPin className="w-3 h-3" />
+                                          {nodeOption.locationName}
+                                        </span>
+                                      )}
+                                      <span className="font-mono text-xs text-foreground/30 break-all">
+                                        {nodeOption.nodeHash}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    {isSelected && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-1 border border-emerald-500/70 bg-emerald-500/20 font-mono text-[10px] font-bold text-emerald-300 tracking-[0.12em] uppercase">
+                                        Selected
+                                      </span>
+                                    )}
+                                    <p className="font-mono text-lg font-bold text-gold tabular-nums">
+                                      {nodeOption.totalBalance.toString()}
+                                    </p>
+                                    <p className="font-mono text-xs text-foreground/30 tracking-[0.1em] uppercase">
+                                      total units
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="grid gap-2">
+                                  {nodeOption.assets.map((asset) => (
+                                    <div
+                                      key={`${nodeOption.nodeHash}-${asset.tokenId}`}
+                                      className="border border-border/20 bg-background/40 px-3 py-2"
                                     >
-                                      {formatAttributeName(attr.name)}:{' '}
-                                      {attr.value}
-                                    </span>
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="font-mono text-sm font-bold text-foreground tracking-[0.06em]">
+                                            {asset.name}
+                                          </p>
+                                          <p className="font-mono text-[11px] text-foreground/25 break-all">
+                                            Token ID: {asset.tokenId}
+                                          </p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-mono text-sm font-bold text-gold tabular-nums">
+                                            {asset.balance}
+                                          </p>
+                                          <p className="font-mono text-[10px] text-foreground/30 uppercase tracking-[0.1em]">
+                                            available
+                                          </p>
+                                        </div>
+                                      </div>
+                                      {asset.attributes &&
+                                        asset.attributes.length > 0 && (
+                                          <div className="flex flex-wrap gap-1.5 mt-2">
+                                            {asset.attributes.map((attr) => (
+                                              <span
+                                                key={attr.name}
+                                                className="px-2 py-0.5 font-mono text-xs bg-card/80 text-foreground/50 border border-border/20"
+                                              >
+                                                {formatAttributeName(attr.name)}
+                                                : {attr.value}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                    </div>
                                   ))}
                                 </div>
-                              )}
-                          </button>
-                        ))}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
                 ) : (
-                  /* Asset Selection - BUY FLOW: show all tokenizable assets */
                   <div>
                     {buyClassAttributeOptions.length > 0 && (
-                      <div className="space-y-4 mb-4">
+                      <div className="space-y-4">
                         <div>
                           <h3 className="font-mono text-xs font-bold text-foreground/50 mb-1 tracking-[0.2em] uppercase">
                             Filter by Attributes
                           </h3>
                           <p className="font-mono text-xs text-foreground/30 tracking-[0.08em]">
-                            Pick the exact attributes you want before selecting
-                            a token ID
+                            Narrow the market before you select a token ID in
+                            the next step
                           </p>
                         </div>
                         {buyClassAttributeOptions.map((attribute) => (
@@ -899,7 +1110,128 @@ export default function CreateP2POfferPage() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            </EvaPanel>
+          </div>
+        );
 
+      case 'asset':
+        return (
+          <div className="space-y-6 max-w-xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="font-serif text-2xl font-bold text-foreground tracking-[0.15em] uppercase mb-2">
+                Select Asset
+              </h2>
+              <p className="font-mono text-sm text-foreground/40 tracking-[0.1em]">
+                {isSellFlow
+                  ? 'Choose the exact asset variant held by the selected node'
+                  : 'Select the specific asset you want to buy'}
+              </p>
+            </div>
+
+            <EvaPanel label="Asset Selection" sysId="AST-SEL">
+              <div className="space-y-4">
+                {isSellFlow ? (
+                  <div>
+                    <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
+                      Node Inventory
+                    </label>
+                    {!formData.assetClass ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>Select an asset class in Step 2 first</p>
+                      </div>
+                    ) : !formData.selectedNodeHash ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>Select a node in Step 2 first</p>
+                      </div>
+                    ) : selectedNodeAssets.length === 0 ? (
+                      <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">
+                        <p>No eligible assets found on that node</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="rounded-none border border-gold/20 bg-gold/5 px-4 py-3">
+                          <p className="font-mono text-xs text-gold tracking-[0.08em]">
+                            Each sell offer is backed by one token ID from one
+                            node. If you need to sell multiple variants, create
+                            one offer per asset variant.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          {selectedNodeAssets.map((asset) => (
+                            <button
+                              key={`${formData.selectedNodeHash}-${asset.tokenId}`}
+                              onClick={() =>
+                                updateFormData({
+                                  tokenId: asset.tokenId,
+                                  selectedAttributes: {},
+                                })
+                              }
+                              className={cn(
+                                'w-full p-4 border transition-all text-left',
+                                formData.tokenId === asset.tokenId
+                                  ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
+                                  : 'border-border/20 bg-card/40 hover:border-emerald-500/30',
+                              )}
+                              style={{
+                                clipPath:
+                                  'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-mono font-bold text-foreground tracking-[0.08em] flex items-center gap-2">
+                                    {formData.tokenId === asset.tokenId && (
+                                      <Check className="w-4 h-4 text-emerald-400" />
+                                    )}
+                                    {asset.name}
+                                  </p>
+                                  <EvaStatusBadge
+                                    status="active"
+                                    label={asset.class}
+                                  />
+                                </div>
+                                <div className="text-right">
+                                  {formData.tokenId === asset.tokenId && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-1 border border-emerald-500/70 bg-emerald-500/20 font-mono text-[10px] font-bold text-emerald-300 tracking-[0.12em] uppercase">
+                                      Selected
+                                    </span>
+                                  )}
+                                  <p className="font-mono text-lg font-bold text-gold tabular-nums">
+                                    {asset.balance}
+                                  </p>
+                                  <p className="font-mono text-xs text-foreground/30 tracking-[0.1em] uppercase">
+                                    available on node
+                                  </p>
+                                </div>
+                              </div>
+                              {asset.attributes &&
+                                asset.attributes.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {asset.attributes.map((attr) => (
+                                      <span
+                                        key={attr.name}
+                                        className="px-2 py-0.5 font-mono text-xs bg-card/80 text-foreground/50 border border-border/20"
+                                      >
+                                        {formatAttributeName(attr.name)}:{' '}
+                                        {attr.value}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              <p className="font-mono text-[11px] text-foreground/25 mt-2 break-all">
+                                Token ID: {asset.tokenId}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
                     <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
                       Asset
                     </label>
@@ -1019,7 +1351,7 @@ export default function CreateP2POfferPage() {
                     min="1"
                     max={
                       isSellFlow
-                        ? sellableAssets.find(
+                        ? selectedNodeAssets.find(
                             (a) => a.tokenId === formData.tokenId,
                           )?.balance
                         : undefined
@@ -1031,7 +1363,7 @@ export default function CreateP2POfferPage() {
                     (() => {
                       const available = parseInt(
                         String(
-                          sellableAssets.find(
+                          selectedNodeAssets.find(
                             (a) => a.tokenId === formData.tokenId,
                           )?.balance ?? '0',
                         ),
@@ -1043,7 +1375,7 @@ export default function CreateP2POfferPage() {
                         <p
                           className={`font-mono text-xs mt-1 tracking-[0.08em] ${exceeds ? 'text-red-400' : 'text-foreground/30'}`}
                         >
-                          Available balance:{' '}
+                          Available on selected node:{' '}
                           <span
                             className={
                               exceeds
@@ -1495,6 +1827,15 @@ export default function CreateP2POfferPage() {
                 </div>
 
                 <EvaDataRow label="Quantity" value={formData.quantity} />
+                {isSellFlow && selectedSellNode && (
+                  <EvaDataRow
+                    label="Fulfillment Node"
+                    value={formatNodeLabel(
+                      selectedSellNode.nodeHash,
+                      selectedSellNode.locationName,
+                    )}
+                  />
+                )}
                 <EvaDataRow
                   label="Price"
                   value={`$${parseFloat(formData.price).toLocaleString()}`}

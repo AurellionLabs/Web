@@ -4,9 +4,9 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-03-05T02:31:17.812Z
+ * Generated: 2026-03-06T14:55:07.795Z
  * Facets: NodesFacet, AuSysFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
- * Total items: 256
+ * Total items: 257
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3310,6 +3310,25 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'struct DiamondStorage.AuSysOrder',
         name: '',
         type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    name: 'getDriverJourneyCount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
     ],
     stateMutability: 'view',

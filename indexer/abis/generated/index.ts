@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.652Z
+// Generated at: 2026-03-06T14:55:07.961Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -5500,6 +5500,11 @@ export const DiamondABI = [
         type: 'uint256',
       },
       {
+        internalType: 'uint256',
+        name: '_expiresAt',
+        type: 'uint256',
+      },
+      {
         components: [
           {
             components: [
@@ -6772,6 +6777,11 @@ export const DiamondABI = [
         name: 'amount',
         type: 'uint256',
       },
+      {
+        internalType: 'uint256',
+        name: 'minStakeAmount',
+        type: 'uint256',
+      },
     ],
     name: 'stake',
     outputs: [],
@@ -6854,6 +6864,11 @@ export const DiamondABI = [
       {
         internalType: 'uint256',
         name: 'amount',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'minReceiveAmount',
         type: 'uint256',
       },
     ],
@@ -7514,21 +7529,6 @@ export const DiamondABI = [
         name: 'orderId',
         type: 'bytes32',
       },
-      {
-        internalType: 'uint256',
-        name: 'nonce',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'deadline',
-        type: 'uint256',
-      },
-      {
-        internalType: 'bytes',
-        name: 'signature',
-        type: 'bytes',
-      },
     ],
     name: 'acceptP2POffer',
     outputs: [],
@@ -8077,6 +8077,25 @@ export const DiamondABI = [
         internalType: 'struct DiamondStorage.AuSysOrder',
         name: '',
         type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    name: 'getDriverJourneyCount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
     ],
     stateMutability: 'view',
@@ -8654,6 +8673,30 @@ export const DiamondABI = [
     type: 'function',
   },
   {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'getNodeCustodyInfo',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'getSupportedAssets',
     outputs: [
@@ -8935,6 +8978,89 @@ export const DiamondABI = [
   {
     inputs: [
       {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        components: [
+          {
+            internalType: 'string',
+            name: 'name',
+            type: 'string',
+          },
+          {
+            internalType: 'string',
+            name: 'assetClass',
+            type: 'string',
+          },
+          {
+            components: [
+              {
+                internalType: 'string',
+                name: 'name',
+                type: 'string',
+              },
+              {
+                internalType: 'string[]',
+                name: 'values',
+                type: 'string[]',
+              },
+              {
+                internalType: 'string',
+                name: 'description',
+                type: 'string',
+              },
+            ],
+            internalType: 'struct DiamondStorage.Attribute[]',
+            name: 'attributes',
+            type: 'tuple[]',
+          },
+        ],
+        internalType: 'struct DiamondStorage.AssetDefinition',
+        name: 'asset',
+        type: 'tuple',
+      },
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        internalType: 'string',
+        name: 'className',
+        type: 'string',
+      },
+      {
+        internalType: 'bytes',
+        name: 'data',
+        type: 'bytes',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'nodeMintForNode',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: 'hash',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'uint256',
+        name: 'tokenID',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'uint256',
         name: 'tokenId',
         type: 'uint256',
@@ -8951,6 +9077,34 @@ export const DiamondABI = [
       },
     ],
     name: 'redeem',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'redeemFromNode',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

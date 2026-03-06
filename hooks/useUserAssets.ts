@@ -37,8 +37,8 @@ export function useUserAssets(filterClass?: string) {
     initialized: diamondInitialized,
     getOwnedNodes,
     getNodeAssets,
+    getNodeTokenBalance,
     getAssetAttributes,
-    balanceOf,
   } = useDiamond();
 
   const [assets, setAssets] = useState<AssetWithAttributes[]>([]);
@@ -81,11 +81,15 @@ export function useUserAssets(filterClass?: string) {
           try {
             const nodeAssets = await getNodeAssets(nodeId);
 
-            // Parallelize all balance queries for this node's assets
+            // Query node inventory directly so each asset reflects the
+            // selected node's actual sellable balance.
             const assetsWithBalances = await Promise.all(
               nodeAssets.map(async (asset): Promise<AssetWithAttributes> => {
                 try {
-                  const actualBalance = await balanceOf(address, asset.id);
+                  const actualBalance = await getNodeTokenBalance(
+                    nodeId,
+                    asset.id,
+                  );
                   return {
                     ...asset,
                     actualBalance: actualBalance.toString(),
@@ -161,13 +165,12 @@ export function useUserAssets(filterClass?: string) {
       setIsLoading(false);
     }
   }, [
-    address,
     isConnected,
-    diamondInitialized,
     getOwnedNodes,
     getNodeAssets,
+    getNodeTokenBalance,
     getAssetAttributes,
-    balanceOf,
+    diamondInitialized,
   ]);
 
   // Fetch on mount and when dependencies change

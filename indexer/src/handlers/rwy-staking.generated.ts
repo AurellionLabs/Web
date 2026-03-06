@@ -1,5 +1,5 @@
 // Auto-generated handler for rwy-staking domain
-// Generated at: 2026-03-03T07:50:03.655Z
+// Generated at: 2026-03-06T14:55:07.968Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.

@@ -180,6 +180,25 @@ describe('DiamondP2PService', () => {
       expect(orderArg.targetCounterparty).toBe(target);
     });
 
+    it('should attach the selected node to sell offers', async () => {
+      const selectedNodeHash =
+        '0x1111111111111111111111111111111111111111111111111111111111111111';
+      const context = createMockContext();
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [selectedNodeHash],
+      });
+
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.nodes).toEqual([selectedNodeHash]);
+    });
+
     it('should propagate contract errors', async () => {
       const context = createMockContext({
         diamond: {

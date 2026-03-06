@@ -2,6 +2,46 @@ import { AssetIpfsRecord } from '@/domain/platform';
 import { PinataSDK } from 'pinata';
 import { getCache, type AssetMetadata } from '@/infrastructure/cache';
 
+async function readCidContentSafely(key: string) {
+  try {
+    return await getCache().getCidContent(key);
+  } catch (error) {
+    console.warn('[ipfs] Failed reading CID cache', error);
+    return null;
+  }
+}
+
+async function writeCidContentSafely(
+  key: string,
+  content: Record<string, unknown>,
+) {
+  try {
+    await getCache().setCidContent(key, content);
+  } catch (error) {
+    console.warn('[ipfs] Failed writing CID cache', error);
+  }
+}
+
+async function readIpfsMetadataSafely(tokenId: string) {
+  try {
+    return await getCache().getIpfsMetadata(tokenId);
+  } catch (error) {
+    console.warn('[ipfs] Failed reading metadata cache', error);
+    return null;
+  }
+}
+
+async function writeIpfsMetadataSafely(
+  tokenId: string,
+  metadata: AssetMetadata,
+) {
+  try {
+    await getCache().setIpfsMetadata(tokenId, metadata);
+  } catch (error) {
+    console.warn('[ipfs] Failed writing metadata cache', error);
+  }
+}
+
 /**
  * Fetch assets from IPFS by hash
  * Uses Redis cache to avoid rate limiting on Pinata
@@ -11,12 +51,11 @@ export const hashToAssets = async (
   pinata: PinataSDK,
   groupId: string,
 ): Promise<AssetIpfsRecord[]> => {
-  const cache = getCache();
   const cacheKey = `ipfs:hash:${hash}`;
 
   try {
     // Check cache first
-    const cached = await cache.getCidContent(cacheKey);
+    const cached = await readCidContentSafely(cacheKey);
     if (cached && Array.isArray(cached)) {
       return cached as AssetIpfsRecord[];
     }
@@ -46,7 +85,7 @@ export const hashToAssets = async (
 
     // Cache the result permanently (immutable)
     if (filtered.length > 0) {
-      await cache.setCidContent(
+      await writeCidContentSafely(
         cacheKey,
         filtered as unknown as Record<string, unknown>,
       );
@@ -68,11 +107,9 @@ export const tokenIdToAssets = async (
   pinata: PinataSDK,
   groupId: string,
 ): Promise<AssetIpfsRecord[]> => {
-  const cache = getCache();
-
   try {
     // Check cache first (permanent cache for immutable metadata)
-    const cached = await cache.getIpfsMetadata(tokenId);
+    const cached = await readIpfsMetadataSafely(tokenId);
     if (cached) {
       // Return as array for backward compatibility
       return [cached as unknown as AssetIpfsRecord];
@@ -105,7 +142,7 @@ export const tokenIdToAssets = async (
     // Most tokenIds have one metadata entry
     if (filtered.length > 0) {
       const metadata = filtered[0] as unknown as AssetMetadata;
-      await cache.setIpfsMetadata(tokenId, metadata);
+      await writeIpfsMetadataSafely(tokenId, metadata);
     }
 
     return filtered;

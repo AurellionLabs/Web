@@ -67,9 +67,79 @@ const mockContract = {} as any;
 describe('PlatformRepository', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  describe('getSupportedAssets', () => {
+    it('should batch metadata lookup through the platform metadata API when Pinata is unavailable', async () => {
+      mockGraphqlRequest.mockResolvedValue({
+        diamondSupportedAssetAddedEventss: {
+          items: [
+            { token: '0x1', token_id: '1' },
+            { token: '0x1', token_id: '2' },
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          assets: [
+            {
+              assetClass: 'GOAT',
+              tokenId: '1',
+              name: 'First Goat',
+              attributes: [],
+            },
+            {
+              assetClass: 'SHEEP',
+              tokenId: '2',
+              name: 'Second Sheep',
+              attributes: [],
+            },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const repo = new PlatformRepository(mockContract, undefined as any);
+      const assets = await repo.getSupportedAssets();
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/platform/metadata?tokenIds=1%2C2',
+      );
+      expect(assets).toHaveLength(2);
+      expect(assets[0].name).toBe('First Goat');
+      expect(assets[1].name).toBe('Second Sheep');
+    });
   });
 
   describe('getAssetByTokenId', () => {
+    it('should fall back to the platform metadata API when Pinata is unavailable', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          asset: {
+            assetClass: 'GOAT',
+            tokenId: '321',
+            name: 'API Goat',
+            attributes: [],
+          },
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const repo = new PlatformRepository(mockContract, undefined as any);
+      const asset = await repo.getAssetByTokenId('321');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/platform/metadata?tokenId=321',
+      );
+      expect(asset?.name).toBe('API Goat');
+    });
+
     it('should try multiple tokenId formats (raw, decimal, hex) for Pinata query', async () => {
       const hexTokenId =
         '0xb4ea2cef8a0db05f1d5db458b7e725abe12c5dea46810992eae76b8687876a40';
@@ -319,6 +389,32 @@ describe('PlatformRepository', () => {
   });
 
   describe('getClassAssets', () => {
+    it('should fall back to the platform metadata API when Pinata is unavailable', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          assets: [
+            {
+              assetClass: 'GOAT',
+              tokenId: '1',
+              name: 'API Goat',
+              attributes: [],
+            },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const repo = new PlatformRepository(mockContract, undefined as any);
+      const assets = await repo.getClassAssets('GOAT');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/platform/metadata?className=GOAT',
+      );
+      expect(assets).toHaveLength(1);
+      expect(assets[0].name).toBe('API Goat');
+    });
+
     it('should return empty array when Pinata JWT is missing', async () => {
       const pinata = createMockPinata({ hasJwt: false });
       const repo = new PlatformRepository(mockContract, pinata);

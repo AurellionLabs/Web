@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.651Z
+// Generated at: 2026-03-06T14:55:07.959Z
 
 export const BridgeFacetABI = [
   {
@@ -52,6 +52,11 @@ export const BridgeFacetABI = [
   {
     inputs: [],
     name: 'NotInitializing',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'OrderExpired',
     type: 'error',
   },
   {
@@ -501,6 +506,11 @@ export const BridgeFacetABI = [
       {
         internalType: 'uint256',
         name: '_quantity',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: '_expiresAt',
         type: 'uint256',
       },
       {

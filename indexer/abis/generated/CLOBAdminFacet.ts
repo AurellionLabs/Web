@@ -1,5 +1,5 @@
 // Auto-generated from CLOBAdminFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.651Z
+// Generated at: 2026-03-06T14:55:07.959Z
 
 export const CLOBAdminFacetABI = [
   {

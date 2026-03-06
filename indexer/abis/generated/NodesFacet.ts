@@ -1,5 +1,5 @@
 // Auto-generated from NodesFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.650Z
+// Generated at: 2026-03-06T14:55:07.958Z
 
 export const NodesFacetABI = [
   {
@@ -10,6 +10,11 @@ export const NodesFacetABI = [
   {
     inputs: [],
     name: 'NotInitializing',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ReentrancyGuardReentrantCall',
     type: 'error',
   },
   {

@@ -811,6 +811,14 @@ contract AuSysFacet is ReentrancyGuard {
         );
     }
 
+    /**
+     * @notice Get count of active journeys assigned to a driver (for debugging)
+     * @dev Journeys are only removed on handOff; stuck InTransit journeys count here
+     */
+    function getDriverJourneyCount(address driver) external view returns (uint256) {
+        return DiamondStorage.appStorage().driverToJourneyIds[driver].length;
+    }
+
     // ============================================================================
     // SIGNATURE SYSTEM (from AuSys.sol)
     // ============================================================================

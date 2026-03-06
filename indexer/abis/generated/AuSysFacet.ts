@@ -1,5 +1,5 @@
 // Auto-generated from AuSysFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.651Z
+// Generated at: 2026-03-06T14:55:07.959Z
 
 export const AuSysFacetABI = [
   {
@@ -25,33 +25,6 @@ export const AuSysFacetABI = [
   {
     inputs: [],
     name: 'DriverNotSigned',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'ECDSAInvalidSignature',
-    type: 'error',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: 'length',
-        type: 'uint256',
-      },
-    ],
-    name: 'ECDSAInvalidSignatureLength',
-    type: 'error',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 's',
-        type: 'bytes32',
-      },
-    ],
-    name: 'ECDSAInvalidSignatureS',
     type: 'error',
   },
   {
@@ -1050,21 +1023,6 @@ export const AuSysFacetABI = [
         name: 'orderId',
         type: 'bytes32',
       },
-      {
-        internalType: 'uint256',
-        name: 'nonce',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'deadline',
-        type: 'uint256',
-      },
-      {
-        internalType: 'bytes',
-        name: 'signature',
-        type: 'bytes',
-      },
     ],
     name: 'acceptP2POffer',
     outputs: [],
@@ -1613,6 +1571,25 @@ export const AuSysFacetABI = [
         internalType: 'struct DiamondStorage.AuSysOrder',
         name: '',
         type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    name: 'getDriverJourneyCount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
     ],
     stateMutability: 'view',
