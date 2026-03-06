@@ -81,4 +81,4 @@ jobs:
             ARGS+=("--diamond" "${DIAMOND_ADDRESS}")
           fi
 
-          bunx --bun hardhat run scripts/sync-supported-assets.ts --network "$NETWORK" -- "${ARGS[@]}"
+          HARDHAT_NETWORK="$NETWORK" bun scripts/sync-supported-assets.ts "${ARGS[@]}"

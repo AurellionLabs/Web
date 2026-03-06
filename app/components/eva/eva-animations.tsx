@@ -1077,18 +1077,7 @@ export function PulsingHexNetwork({
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [addHovered, setAddHovered] = useState(false);
 
-  const displayNodes: TopologyNode[] =
-    nodes !== undefined
-      ? nodes
-      : [
-          { cx: 120, cy: 80, label: 'NODE-01', status: 'Active' },
-          { cx: 300, cy: 140, label: 'NODE-02', status: 'Active' },
-          { cx: 450, cy: 60, label: 'NODE-03', status: 'Active' },
-          { cx: 550, cy: 180, label: 'NODE-04', status: 'Inactive' },
-          { cx: 680, cy: 100, label: 'NODE-05', status: 'Active' },
-          { cx: 200, cy: 200, label: 'NODE-06', status: 'Active' },
-          { cx: 400, cy: 130, label: 'NODE-07', status: 'Active' },
-        ];
+  const displayNodes: TopologyNode[] = nodes ?? [];
 
   const addNodePos = (() => {
     if (!onAddNode) return null;

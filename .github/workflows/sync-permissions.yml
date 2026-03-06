@@ -94,4 +94,4 @@ jobs:
             ARGS+=("--diamond" "${DIAMOND_ADDRESS}")
           fi
 
-          bunx --bun hardhat run scripts/sync-permissions.ts --network "$NETWORK" -- "${ARGS[@]}"
+          HARDHAT_NETWORK="$NETWORK" bun scripts/sync-permissions.ts "${ARGS[@]}"
