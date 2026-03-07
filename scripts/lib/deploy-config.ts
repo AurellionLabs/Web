@@ -16,7 +16,7 @@ export function replaceChainConstant(
   }
 
   const simpleRegex = new RegExp(
-    String.raw`export const ${key}\s*=\s*['"][^'"]*['"];?`,
+    String.raw`export const ${key}\s*=\s*\n?\s*['"][^'"]*['"];?[^\n]*`,
     'm',
   );
 

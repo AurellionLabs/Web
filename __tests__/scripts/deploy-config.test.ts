@@ -36,4 +36,22 @@ describe('deploy config helpers', () => {
     expect(updated).toContain('0x77FA5086e44B797F3C82A265ebac98937A258c8e');
     expect(updated).not.toContain('0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7');
   });
+
+  it('updates multiline literal chain constants instead of appending duplicates', () => {
+    const original = `export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
+  '0xf6959b08B01d10358E06545b663eBE352327f5b8';`;
+
+    const updated = replaceChainConstant(
+      original,
+      'NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS',
+      '0x1111111111111111111111111111111111111111',
+    );
+
+    expect(updated).toContain(
+      "export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =\n  '0x1111111111111111111111111111111111111111';",
+    );
+    expect(
+      updated.match(/NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS/g)?.length,
+    ).toBe(1);
+  });
 });
