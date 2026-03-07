@@ -247,6 +247,7 @@ export default function CreateP2POfferPage() {
           ...entry,
           assets: sortedAssets,
           locationName: node?.location?.addressName || '',
+          ownerAddress: node?.owner || '',
           status: node?.status,
         };
       })
@@ -266,6 +267,10 @@ export default function CreateP2POfferPage() {
 
   const selectedNodeAssets = useMemo(() => {
     return selectedSellNode?.assets || [];
+  }, [selectedSellNode]);
+
+  const selectedSellNodeOwnerAddress = useMemo(() => {
+    return selectedSellNode?.ownerAddress || '';
   }, [selectedSellNode]);
 
   // Derive unique asset classes the user actually owns (for sell class dropdown)
@@ -648,16 +653,18 @@ export default function CreateP2POfferPage() {
             )
           : selectedTokenId;
 
+      const selectedNodeAddresses =
+        formData.offerType === 'sell' && selectedSellNodeOwnerAddress
+          ? [selectedSellNodeOwnerAddress]
+          : undefined;
+
       await p2pService.createOffer({
         token: NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId: tokenIdToSubmit,
         quantity: BigInt(formData.quantity),
         price: parseUnits(formData.price, 18),
         isSellOffer: formData.offerType === 'sell',
-        nodes:
-          formData.offerType === 'sell' && formData.selectedNodeHash
-            ? [formData.selectedNodeHash]
-            : undefined,
+        nodes: selectedNodeAddresses,
         targetCounterparty:
           formData.targetType === 'targeted'
             ? formData.targetAddress
@@ -689,6 +696,7 @@ export default function CreateP2POfferPage() {
     router,
     selectedAsset,
     selectedBuyFilters,
+    selectedSellNodeOwnerAddress,
     classAssets,
     validateDetailsStep,
   ]);

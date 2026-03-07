@@ -23,9 +23,9 @@ interface AssetWithAttributes extends TokenizedAsset {
 /**
  * Hook to fetch user's owned assets with balances
  *
- * Uses the Diamond contract to get accurate inventory balances.
- * Gets asset list from getNodeAssets() (metadata) and actual tradable
- * balance from getNodeTokenBalance() for each asset.
+ * Uses the same node-asset source as the node dashboard.
+ * getNodeAssets() already returns the node-specific custody amount in
+ * `asset.amount`, so this hook should not override it with node inventory.
  * No node selection required - automatically aggregates from all owned nodes.
  *
  * @param filterClass - Optional asset class to filter by
@@ -37,7 +37,6 @@ export function useUserAssets(filterClass?: string) {
     initialized: diamondInitialized,
     getOwnedNodes,
     getNodeAssets,
-    getNodeTokenBalance,
     getAssetAttributes,
   } = useDiamond();
 
@@ -74,43 +73,18 @@ export function useUserAssets(filterClass?: string) {
         return;
       }
 
-      // Step 2: Fetch assets for ALL nodes in PARALLEL, then get balances in PARALLEL
-      // This reduces RPC round-trips from O(nodes * assets) sequential calls to 2 batches
+      // Step 2: Fetch assets for ALL nodes in PARALLEL.
       const nodeAssetPromises = ownedNodeIds.map(
         async (nodeId): Promise<AssetWithAttributes[]> => {
           try {
             const nodeAssets = await getNodeAssets(nodeId);
-
-            // Query node inventory directly so each asset reflects the
-            // selected node's actual sellable balance.
-            const assetsWithBalances = await Promise.all(
-              nodeAssets.map(async (asset): Promise<AssetWithAttributes> => {
-                try {
-                  const actualBalance = await getNodeTokenBalance(
-                    nodeId,
-                    asset.id,
-                  );
-                  return {
-                    ...asset,
-                    actualBalance: actualBalance.toString(),
-                    nodeHash: nodeId,
-                  };
-                } catch (balanceError) {
-                  console.warn(
-                    '[useUserAssets] Error getting balance for asset',
-                    asset.id,
-                    balanceError,
-                  );
-                  return {
-                    ...asset,
-                    actualBalance: asset.capacity || '0',
-                    nodeHash: nodeId,
-                  };
-                }
+            return nodeAssets.map(
+              (asset): AssetWithAttributes => ({
+                ...asset,
+                actualBalance: asset.amount || '0',
+                nodeHash: nodeId,
               }),
             );
-
-            return assetsWithBalances;
           } catch (nodeError) {
             console.error(
               '[useUserAssets] Error fetching assets for node',
@@ -168,7 +142,6 @@ export function useUserAssets(filterClass?: string) {
     isConnected,
     getOwnedNodes,
     getNodeAssets,
-    getNodeTokenBalance,
     getAssetAttributes,
     diamondInitialized,
   ]);
@@ -180,8 +153,8 @@ export function useUserAssets(filterClass?: string) {
 
   /**
    * Convert TokenizedAsset to SellableAsset format
-   * Uses actualBalance (real node inventory) - this is what the CLOB will check
-   * Falls back to capacity if actualBalance is not available
+   * Uses actualBalance from node-specific custody. This keeps the sell-offer
+   * wizard aligned with the node dashboard.
    */
   const sellableAssets = useMemo((): SellableAsset[] => {
     const result: SellableAsset[] = [];
@@ -195,15 +168,9 @@ export function useUserAssets(filterClass?: string) {
         continue;
       }
 
-      // Use actualBalance (real tradable inventory) - this matches what CLOB checks
-      // Fall back to capacity if actualBalance is not set
       const actualBalance = BigInt(asset.actualBalance || '0');
-      const capacity = BigInt(asset.capacity || '0');
 
-      // Use actualBalance if available, otherwise fall back to capacity
-      const displayBalance = actualBalance > 0n ? actualBalance : capacity;
-
-      if (displayBalance <= 0n) {
+      if (actualBalance <= 0n) {
         continue; // Skip assets with no balance
       }
 
@@ -212,7 +179,7 @@ export function useUserAssets(filterClass?: string) {
         tokenId: asset.id,
         name: asset.name || 'Unknown Asset',
         class: asset.class || 'Unknown',
-        balance: displayBalance.toString(),
+        balance: actualBalance.toString(),
         price: asset.price
           ? (Number(asset.price) / 1e18).toFixed(2)
           : undefined,
