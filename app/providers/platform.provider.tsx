@@ -297,13 +297,15 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     async (assetClass: string): Promise<Asset[]> => {
       const assets = await getClassAssets(assetClass);
 
-      // Filter to tokenizable assets (those with multiple values for attributes)
+      // Filter to tokenizable assets (those with at least one attribute that
+      // offers multiple selectable values).
       return assets.filter(
         (asset) =>
           asset.attributes &&
-          asset.attributes.length > 0 &&
-          asset.attributes[0]?.values &&
-          asset.attributes[0].values.length > 1,
+          asset.attributes.some(
+            (attribute) =>
+              Array.isArray(attribute?.values) && attribute.values.length > 1,
+          ),
       );
     },
     [getClassAssets],
