@@ -97,6 +97,16 @@ function createMockContext(
           },
         ),
     getNodeAssets: vi.fn().mockResolvedValue(overrides.nodeAssets ?? []),
+    getNodeCustodyInfo: vi.fn().mockImplementation((tokenId: bigint) => {
+      const key = tokenId.toString();
+      const custodyMap = new Map(
+        (overrides.inventoryWithMetadata ?? []).map((entry) => [
+          entry.tokenId.toString(),
+          BigInt(entry.balance),
+        ]),
+      );
+      return Promise.resolve(custodyMap.get(key) ?? 0n);
+    }),
     getNodeInventoryWithMetadata: vi
       .fn()
       .mockResolvedValue(overrides.inventoryWithMetadata ?? []),

@@ -436,29 +436,31 @@ export class DiamondNodeRepository implements NodeRepository {
       }
 
       const diamond = this.context.getDiamond();
-      const inventoryWithMetadata = await diamond.getNodeInventoryWithMetadata(
-        this.toBytes32NodeHash(nodeAddress),
-      );
+      const nodeHash = this.toBytes32NodeHash(nodeAddress);
 
-      // Fetch IPFS metadata and use the node inventory balance returned
-      // by the contract as the quantity source of truth.
+      // Fetch IPFS metadata and use node-specific custody as the quantity
+      // source of truth. This reflects wallet-held tokens custodied by the
+      // selected node rather than Diamond-held inventory.
       const assetsWithMetadata = await this.mapWithConcurrency(
-        inventoryWithMetadata,
+        node.assets,
         3,
         async (nodeAsset: {
           token: string;
           tokenId: bigint | { toString(): string };
           price: bigint | { toString(): string };
           capacity: bigint | { toString(): string };
-          balance: bigint | { toString(): string };
         }) => {
           const tokenId = nodeAsset.tokenId.toString();
           // Fetch IPFS metadata
           const metadata = await this.fetchAssetMetadata(tokenId);
+          const custodyAmount = await diamond.getNodeCustodyInfo(
+            nodeAsset.tokenId,
+            nodeHash,
+          );
 
           return {
             id: tokenId,
-            amount: nodeAsset.balance.toString(),
+            amount: custodyAmount.toString(),
             name: metadata.name,
             class: metadata.class || 'Unknown',
             fileHash: metadata.fileHash,
