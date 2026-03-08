@@ -146,9 +146,16 @@ function createFlowContext(opts: MockContextOptions = {}) {
 
   const approveTx = makeMockTx('0xapprovehash');
   const erc1155ApproveTx = makeMockTx('0xerc1155approvehash');
+  const configuredErc20Allowance = opts.erc20Allowance ?? BigInt(0);
 
   const mockQuoteToken = {
-    allowance: vi.fn().mockResolvedValue(opts.erc20Allowance ?? BigInt(0)),
+    allowance:
+      configuredErc20Allowance === BigInt(0)
+        ? vi
+            .fn()
+            .mockResolvedValueOnce(BigInt(0))
+            .mockResolvedValue(ethers.MaxUint256)
+        : vi.fn().mockResolvedValue(configuredErc20Allowance),
     approve: vi.fn().mockResolvedValue(approveTx),
   };
 

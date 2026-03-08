@@ -260,6 +260,7 @@ library DiamondStorage {
         mapping(bytes32 => bool) pendingTokenDestination;
         mapping(bytes32 => address) pendingTokenBuyer;
         mapping(bytes32 => uint256) ausysOrderSettledAt;
+        mapping(bytes32 => bool) ausysOrderTokenEscrowed;
 
         // ======= AUSYS SECURITY =======
         // Nonce-based replay protection for P2P offer acceptance

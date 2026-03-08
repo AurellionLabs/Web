@@ -482,7 +482,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
         if (!skipTransfer) {
             if (isBuy) {
                 uint256 totalCost = CLOBLib.calculateQuoteAmount(price, amount);
-                IERC20(quoteToken).transferFrom(msg.sender, address(this), totalCost);
+                IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), totalCost);
             } else {
                 IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
             }
@@ -1133,4 +1133,3 @@ contract CLOBFacetV2 is ReentrancyGuard {
         return this.onERC1155BatchReceived.selector;
     }
 }
-

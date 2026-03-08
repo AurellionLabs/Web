@@ -267,6 +267,42 @@ describe('DiamondP2PService', () => {
       expect(context._diamond.createAuSysOrder).toHaveBeenCalled();
     });
 
+    it('should tolerate delayed ERC1155 approval visibility after approval tx confirmation', async () => {
+      vi.useFakeTimers();
+      try {
+        const mockERC1155 = {
+          isApprovedForAll: vi
+            .fn()
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(true),
+          setApprovalForAll: vi.fn().mockResolvedValue({
+            wait: vi.fn().mockResolvedValue({}),
+          }),
+        };
+        const context = createMockContext({ erc1155: mockERC1155 });
+        const service = new DiamondP2PService(context);
+
+        const offerPromise = service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+        });
+
+        await vi.runAllTimersAsync();
+
+        await expect(offerPromise).resolves.toBeUndefined();
+        expect(mockERC1155.setApprovalForAll).toHaveBeenCalledTimes(1);
+        expect(context._diamond.createAuSysOrder).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('should skip ERC1155 approval for sell offers when already approved', async () => {
       const mockERC1155 = {
         isApprovedForAll: vi.fn().mockResolvedValue(true),
@@ -358,17 +394,20 @@ describe('DiamondP2PService', () => {
 
     it('should calculate totalCost as price + txFee (not price * qty)', async () => {
       // Verify the approval amount is price + txFee (contract's formula)
+      const price = BigInt('5000000000000000000'); // 5 tokens
+      const txFee = BigInt('100000000000000000'); // 0.1 tokens
+      const expectedTotal = price + txFee; // 5100000000000000000n
       const mockApproveTx = {
         hash: '0xapprove',
         wait: vi.fn().mockResolvedValue({}),
       };
       const mockQuoteToken = {
-        allowance: vi.fn().mockResolvedValue(0n),
+        allowance: vi
+          .fn()
+          .mockResolvedValueOnce(0n)
+          .mockResolvedValue(expectedTotal),
         approve: vi.fn().mockResolvedValue(mockApproveTx),
       };
-
-      const price = BigInt('5000000000000000000'); // 5 tokens
-      const txFee = BigInt('100000000000000000'); // 0.1 tokens
       const tokenQuantity = BigInt(10);
 
       const context = createMockContext({
@@ -389,7 +428,6 @@ describe('DiamondP2PService', () => {
 
       // Allowance check should use price + txFee = 5.1 tokens
       // NOT price * tokenQuantity + txFee = 50.1 tokens
-      const expectedTotal = price + txFee; // 5100000000000000000n
       expect(mockQuoteToken.allowance).toHaveBeenCalled();
 
       // Since allowance was 0, approve was called. The ensureQuoteTokenApproval
@@ -410,7 +448,12 @@ describe('DiamondP2PService', () => {
         wait: vi.fn().mockResolvedValue({}),
       };
       const mockQuoteToken = {
-        allowance: vi.fn().mockResolvedValue(0n), // Insufficient
+        allowance: vi
+          .fn()
+          .mockResolvedValueOnce(0n)
+          .mockResolvedValue(
+            BigInt('5000000000000000000') + BigInt('100000000000000000'),
+          ),
         approve: vi.fn().mockResolvedValue(mockApproveTx),
       };
 
@@ -705,7 +748,13 @@ describe('acceptOfferWithDelivery', () => {
   it('should ensure ERC20 approval covers price + txFee + bounty', async () => {
     // Set allowance to 0 so approval is needed
     const context = createAcceptWithDeliveryContext();
-    context._mockQuoteToken.allowance.mockResolvedValue(BigInt(0));
+    context._mockQuoteToken.allowance
+      .mockResolvedValueOnce(BigInt(0))
+      .mockResolvedValue(
+        BigInt('1000000000000000000') +
+          BigInt('20000000000000000') +
+          DELIVERY_DETAILS.bountyWei,
+      );
     context._mockQuoteToken.approve.mockResolvedValue({
       wait: vi.fn().mockResolvedValue({}),
     });
@@ -716,6 +765,48 @@ describe('acceptOfferWithDelivery', () => {
 
     // Should have called approve (since allowance was 0)
     expect(context._mockQuoteToken.approve).toHaveBeenCalled();
+  });
+
+  it('should wait for ERC20 allowance visibility before accepting with delivery', async () => {
+    vi.useFakeTimers();
+    try {
+      const context = createAcceptWithDeliveryContext();
+      const service = new DiamondP2PService(context);
+      const requiredAllowance =
+        BigInt('1000000000000000000') +
+        BigInt('20000000000000000') +
+        DELIVERY_DETAILS.bountyWei;
+      let allowanceReads = 0;
+
+      context._mockQuoteToken.allowance.mockImplementation(() => {
+        allowanceReads += 1;
+        if (allowanceReads < 3) {
+          return Promise.resolve(BigInt(0));
+        }
+        return Promise.resolve(requiredAllowance);
+      });
+
+      context._diamond.acceptP2POffer.mockImplementation(() => {
+        if (allowanceReads < 3) {
+          return Promise.reject(new Error('ERC20: insufficient allowance'));
+        }
+        return Promise.resolve(context._acceptTx);
+      });
+
+      const acceptPromise = service.acceptOfferWithDelivery(
+        OFFER_ID,
+        DELIVERY_DETAILS,
+      );
+
+      await vi.runAllTimersAsync();
+
+      await expect(acceptPromise).resolves.toBeUndefined();
+      expect(context._mockQuoteToken.approve).toHaveBeenCalledTimes(1);
+      expect(context._mockQuoteToken.allowance).toHaveBeenCalledTimes(3);
+      expect(context._diamond.acceptP2POffer).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('should not call createOrderJourney if acceptP2POffer fails', async () => {

@@ -98,7 +98,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         // Transfer tokens to escrow
         if (isBuy) {
             uint256 totalCost = CLOBLib.calculateQuoteAmount(price, amount);
-            IERC20(quoteToken).transferFrom(msg.sender, address(this), totalCost);
+            IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), totalCost);
         } else {
             IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
         }
@@ -177,7 +177,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         // Transfer tokens
         if (isBuy) {
             uint256 maxCost = CLOBLib.calculateQuoteAmount(limitPrice, amount);
-            IERC20(quoteToken).transferFrom(msg.sender, address(this), maxCost);
+            IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), maxCost);
         } else {
             IERC1155(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenId, amount, "");
         }
@@ -216,7 +216,7 @@ contract OrderRouterFacet is ReentrancyGuard {
         
         // Transfer quote tokens to escrow
         uint256 totalCost = CLOBLib.calculateQuoteAmount(price, amount);
-        IERC20(quoteToken).transferFrom(msg.sender, address(this), totalCost);
+        IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), totalCost);
         
         // Create order
         orderId = _createOrder(s, marketId, msg.sender, price, amount, true, CLOBLib.TYPE_LIMIT, CLOBLib.TIF_GTC, 0);

@@ -6,6 +6,7 @@ pragma solidity ^0.8.28;
 // https://eips.ethereum.org/EIPS/eip-2535
 
 import { IDiamondCut } from './interfaces/IDiamondCut.sol';
+import { DiamondCutFacet } from './facets/DiamondCutFacet.sol';
 import { LibDiamond } from './libraries/LibDiamond.sol';
 
 /**
@@ -14,6 +15,8 @@ import { LibDiamond } from './libraries/LibDiamond.sol';
  * @dev The Diamond is a proxy contract that delegates calls to facets.
  */
 contract Diamond {
+    uint256 internal constant DEFAULT_DIAMOND_CUT_TIMELOCK = 2 days;
+
     /**
      * @notice Diamond constructor
      * @param _contractOwner The address that will own the Diamond
@@ -21,10 +24,19 @@ contract Diamond {
      */
     constructor(address _contractOwner, address _diamondCutFacet) {
         LibDiamond.setContractOwner(_contractOwner);
+        LibDiamond.diamondStorage().diamondCutTimelock = DEFAULT_DIAMOND_CUT_TIMELOCK;
         
         // Add DiamondCutFacet
-        bytes4[] memory selectors = new bytes4[](1);
+        bytes4[] memory selectors = new bytes4[](9);
         selectors[0] = IDiamondCut.diamondCut.selector;
+        selectors[1] = DiamondCutFacet.scheduleDiamondCut.selector;
+        selectors[2] = DiamondCutFacet.cancelDiamondCut.selector;
+        selectors[3] = DiamondCutFacet.getDiamondCutTimelock.selector;
+        selectors[4] = DiamondCutFacet.getPendingDiamondCut.selector;
+        selectors[5] = DiamondCutFacet.scheduleDiamondCutTimelockChange.selector;
+        selectors[6] = DiamondCutFacet.executeDiamondCutTimelockChange.selector;
+        selectors[7] = DiamondCutFacet.cancelDiamondCutTimelockChange.selector;
+        selectors[8] = DiamondCutFacet.getPendingDiamondCutTimelockChange.selector;
         
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({

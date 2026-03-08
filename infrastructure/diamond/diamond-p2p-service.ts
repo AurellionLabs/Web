@@ -118,6 +118,31 @@ export class DiamondP2PService implements IP2PService {
     this.context = context;
   }
 
+  private async waitForApprovalState<T>(options: {
+    read: () => Promise<T>;
+    isSatisfied: (value: T) => boolean;
+    label: string;
+    maxAttempts?: number;
+  }): Promise<T> {
+    const maxAttempts = options.maxAttempts ?? 5;
+    let lastValue: T | undefined;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+      }
+
+      lastValue = await options.read();
+      if (options.isSatisfied(lastValue)) {
+        return lastValue;
+      }
+    }
+
+    throw new Error(
+      `${options.label} did not become visible after the approval transaction confirmed`,
+    );
+  }
+
   /**
    * Create a new P2P offer
    * @param input The offer details
@@ -452,6 +477,19 @@ export class DiamondP2PService implements IP2PService {
         ethers.MaxUint256,
       );
       await tx.wait();
+      await this.waitForApprovalState({
+        label: `ERC20 allowance for token ${quoteTokenAddress}`,
+        read: async () =>
+          BigInt(
+            (
+              await quoteToken.allowance(
+                signerAddress,
+                NEXT_PUBLIC_DIAMOND_ADDRESS,
+              )
+            ).toString(),
+          ),
+        isSatisfied: (allowance) => allowance >= amount,
+      });
     } else {
     }
   }
@@ -517,21 +555,18 @@ export class DiamondP2PService implements IP2PService {
 
       if (!isApproved) {
         const tx = await erc1155.setApprovalForAll(diamondAddress, true);
-        const receipt = await tx.wait();
+        await tx.wait();
 
-        // Verify the approval took effect; retry with short delay to handle RPC propagation
-        let verified = false;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          if (attempt > 0) {
-            await new Promise((r) => setTimeout(r, 500 * attempt));
-          }
-          verified = await erc1155.isApprovedForAll(
-            signerAddress,
-            diamondAddress,
-          );
-          if (verified) break;
-        }
-        if (!verified) {
+        try {
+          await this.waitForApprovalState({
+            label: `ERC1155 operator approval for token ${tokenAddress}`,
+            read: async () =>
+              Boolean(
+                await erc1155.isApprovedForAll(signerAddress, diamondAddress),
+              ),
+            isSatisfied: (approved) => approved,
+          });
+        } catch (verificationError) {
           console.error(
             '[DiamondP2PService] Approval failed - token:',
             tokenAddress,
@@ -541,7 +576,7 @@ export class DiamondP2PService implements IP2PService {
             diamondAddress,
           );
           throw new Error(
-            `ERC1155 approval failed — setApprovalForAll did not take effect for token ${tokenAddress}`,
+            `ERC1155 approval failed — ${verificationError instanceof Error ? verificationError.message : String(verificationError)}`,
           );
         }
       } else {

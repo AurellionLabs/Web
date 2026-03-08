@@ -164,6 +164,13 @@ describe('User Bug u2+u5: P2P order flow step guards', () => {
     const showPickupButton = driverPickupSigned;
     expect(showPickupButton).toBe(true);
   });
+
+  it('should skip re-signing pickup when sender signature is already on-chain', () => {
+    const senderPickupSigned = true;
+    const shouldCallPackageSign = !senderPickupSigned;
+
+    expect(shouldCallPackageSign).toBe(false);
+  });
 });
 
 describe('User Bug u6: Asset deduplication', () => {

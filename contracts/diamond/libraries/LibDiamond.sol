@@ -19,6 +19,11 @@ library LibDiamond {
         mapping(address => bytes4[]) facetFunctionSelectors;
         address[] facetAddresses;
         address contractOwner;
+        uint256 diamondCutTimelock;
+        bytes32 pendingDiamondCutHash;
+        uint256 pendingDiamondCutEta;
+        uint256 pendingDiamondCutDelay;
+        uint256 pendingDiamondCutDelayEta;
     }
 
     function diamondStorage() internal pure returns (DiamondStorage storage ds) {
@@ -80,7 +85,7 @@ library LibDiamond {
             'LibDiamond: Add facet address is zero'
         );
         DiamondStorage storage ds = diamondStorage();
-        uint16 selectorPosition = uint16(
+        uint16 nextSelectorPosition = uint16(
             ds.facetFunctionSelectors[_facetAddress].length
         );
         // add the facet address to the facetAddresses array
@@ -96,11 +101,11 @@ library LibDiamond {
             // add the selector
             ds.selectorToFacetAndPosition[selector] = FacetAndPosition({
                 facetAddr: _facetAddress,
-                selectorPos: selectorPosition
+                selectorPos: nextSelectorPosition
             });
             // add the selector to the facet
             ds.facetFunctionSelectors[_facetAddress].push(selector);
-            selectorPosition++;
+            nextSelectorPosition++;
         }
     }
 
@@ -157,18 +162,18 @@ library LibDiamond {
             // remove the selector
             delete ds.selectorToFacetAndPosition[selector];
             // remove the selector from the facet
-            bytes4[] storage facetFunctionSelectors = ds.facetFunctionSelectors[facetAddr];
-            for (uint256 i; i < facetFunctionSelectors.length; i++) {
-                if (facetFunctionSelectors[i] == selector) {
-                    facetFunctionSelectors[i] = facetFunctionSelectors[
-                        facetFunctionSelectors.length - 1
+            bytes4[] storage selectorsForFacet = ds.facetFunctionSelectors[facetAddr];
+            for (uint256 i; i < selectorsForFacet.length; i++) {
+                if (selectorsForFacet[i] == selector) {
+                    selectorsForFacet[i] = selectorsForFacet[
+                        selectorsForFacet.length - 1
                     ];
-                    facetFunctionSelectors.pop();
+                    selectorsForFacet.pop();
                     break;
                 }
             }
             // if no more selectors for the facet, remove the facet
-            if (facetFunctionSelectors.length == 0) {
+            if (selectorsForFacet.length == 0) {
                 // remove the facet from the facetAddresses array
                 for (uint256 i; i < ds.facetAddresses.length; i++) {
                     if (ds.facetAddresses[i] == facetAddr) {
@@ -219,12 +224,12 @@ library LibDiamond {
     function selectors() internal view returns (bytes4[] memory selrs_) {
         DiamondStorage storage ds = diamondStorage();
         uint256 numFacets = ds.facetAddresses.length;
-        uint256 totalSelectors;
+        uint256 totalSelectors = 0;
         for (uint256 i; i < numFacets; i++) {
             totalSelectors += ds.facetFunctionSelectors[ds.facetAddresses[i]].length;
         }
         selrs_ = new bytes4[](totalSelectors);
-        uint256 index;
+        uint256 index = 0;
         for (uint256 i; i < numFacets; i++) {
             address facetAddr = ds.facetAddresses[i];
             bytes4[] memory funcs = ds.facetFunctionSelectors[facetAddr];

@@ -67,6 +67,10 @@ contract OrdersFacetStandaloneTest is Test {
             action: IDiamondCut.FacetCutAction.Add,
             functionSelectors: selectors
         });
+        vm.prank(owner);
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
+        vm.prank(owner);
         IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
     }
 

@@ -1177,6 +1177,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
         require(s.nodes[_nodeHash].validNode, 'Invalid node');
+        require(_itemOwner != address(0), 'Invalid item owner');
 
         // Call AssetsFacet.nodeMint via delegatecall
         (bool success, bytes memory result) = address(this).delegatecall(

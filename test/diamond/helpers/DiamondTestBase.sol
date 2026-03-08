@@ -145,6 +145,8 @@ abstract contract DiamondTestBase is Test {
             action: IDiamondCut.FacetCutAction.Add,
             functionSelectors: selectors
         });
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
         IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
     }
 

@@ -684,7 +684,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.supportedClasses[_assetClass], 'Class not supported');
 
-        assetHash = keccak256(abi.encodePacked(_name, _assetClass, s.totalAssets));
+        assetHash = keccak256(abi.encode(_name, _assetClass, s.totalAssets));
 
         s.assets[s.totalAssets] = DiamondStorage.Asset({
             name: _name,

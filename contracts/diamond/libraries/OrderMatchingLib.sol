@@ -15,6 +15,7 @@ import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  *      Uses context structs to minimize stack variables.
  */
 library OrderMatchingLib {
+    using SafeERC20 for IERC20;
     // ============================================================================
     // STRUCTS - Used to reduce stack depth
     // ============================================================================
@@ -193,7 +194,7 @@ library OrderMatchingLib {
         
         // Execute transfers
         IERC1155(ctx.baseToken).safeTransferFrom(address(this), buyer, ctx.baseTokenId, amount, "");
-        IERC20(ctx.quoteToken).transfer(seller, quoteAmount);
+        IERC20(ctx.quoteToken).safeTransfer(seller, quoteAmount);
         
         // Update both orders
         _updateOrderFilled(s.packedOrders[buyOrderId], amount);

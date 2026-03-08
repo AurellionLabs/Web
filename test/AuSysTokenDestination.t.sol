@@ -4,6 +4,8 @@ pragma solidity ^0.8.28;
 import { Test, console2, Vm } from 'forge-std/Test.sol';
 import { DiamondTestBase } from './diamond/helpers/DiamondTestBase.sol';
 import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
+import { AssetsFacet } from 'contracts/diamond/facets/AssetsFacet.sol';
+import { DiamondCutFacet } from 'contracts/diamond/facets/DiamondCutFacet.sol';
 import { NodesFacet } from 'contracts/diamond/facets/NodesFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
@@ -15,6 +17,7 @@ import { ERC1155Mock } from './diamond/helpers/ERC1155Mock.sol';
  */
 contract AuSysTokenDestinationTest is DiamondTestBase {
     AuSysFacet public ausys;
+    AssetsFacet public assets;
     ERC1155Mock public erc1155Token;
 
     address public buyer;
@@ -36,6 +39,7 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
     function setUp() public override {
         super.setUp();
         ausys = AuSysFacet(address(diamond));
+        assets = AssetsFacet(address(diamond));
 
         // Deploy ERC1155 mock
         erc1155Token = new ERC1155Mock();
@@ -83,6 +87,9 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
         });
 
         vm.prank(owner);
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
+        vm.prank(owner);
         IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
     }
 
@@ -125,7 +132,8 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
 
         // Create order journey (sender=seller, receiver=buyer)
         // Bounty is pulled from buyer via safeTransferFrom inside createOrderJourney
-        vm.prank(admin);
+        vm.startPrank(buyer);
+        payToken.approve(address(diamond), BOUNTY);
         vm.recordLogs();
         ausys.createOrderJourney(
             orderId,
@@ -137,6 +145,7 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             TOKEN_QTY,
             TOKEN_ID
         );
+        vm.stopPrank();
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes32 journeyId = _extractJourneyId(logs);
@@ -178,6 +187,29 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             }
         }
         revert('JourneyCreated event not found');
+    }
+
+    function _createJourneyForOrder(
+        bytes32 orderId,
+        address receiver,
+        DiamondStorage.ParcelData memory parcelData
+    ) internal returns (bytes32 journeyId) {
+        vm.startPrank(buyer);
+        payToken.approve(address(diamond), BOUNTY);
+        vm.recordLogs();
+        ausys.createOrderJourney(
+            orderId,
+            seller,
+            receiver,
+            parcelData,
+            BOUNTY,
+            block.timestamp + 86400,
+            TOKEN_QTY,
+            TOKEN_ID
+        );
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        vm.stopPrank();
+        return _extractJourneyId(logs);
     }
 
     // ============================================================================
@@ -285,5 +317,153 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             }
         }
         assertFalse(foundAfter, 'Order should NOT be pending after selection');
+    }
+
+    function test_selectTokenDestination_creditsNodeSellableForDiamondErc1155() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(nodeOperator);
+        (, uint256 tokenId) = assets.nodeMint(seller, assetDef, TOKEN_QTY, 'COMMODITY', '');
+
+        vm.prank(seller);
+        assets.setApprovalForAll(address(diamond), true);
+
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060', '34.0522', '-118.2437', 'Origin', 'Destination'
+        );
+        address[] memory orderNodes = new address[](1);
+        orderNodes[0] = nodeOperator;
+        bytes32[] memory journeyIds = new bytes32[](0);
+
+        DiamondStorage.AuSysOrder memory order = DiamondStorage.AuSysOrder({
+            id: bytes32(0),
+            token: address(diamond),
+            tokenId: tokenId,
+            tokenQuantity: TOKEN_QTY,
+            price: ORDER_PRICE,
+            txFee: 0,
+            buyer: buyer,
+            seller: seller,
+            journeyIds: journeyIds,
+            nodes: orderNodes,
+            locationData: parcelData,
+            currentStatus: 0,
+            contractualAgreement: bytes32(0),
+            isSellerInitiated: false,
+            targetCounterparty: address(0),
+            expiresAt: 0
+        });
+
+        vm.startPrank(buyer);
+        payToken.approve(address(diamond), 10_000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+        payToken.approve(address(diamond), BOUNTY);
+        vm.recordLogs();
+        ausys.createOrderJourney(
+            orderId,
+            seller,
+            buyer,
+            parcelData,
+            BOUNTY,
+            block.timestamp + 86400,
+            TOKEN_QTY,
+            tokenId
+        );
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        vm.stopPrank();
+
+        bytes32 journeyId = _extractJourneyId(logs);
+
+        vm.prank(admin);
+        ausys.assignDriverToJourney(driver1, journeyId);
+
+        vm.prank(seller);
+        ausys.packageSign(journeyId);
+        vm.prank(driver1);
+        ausys.packageSign(journeyId);
+        vm.prank(driver1);
+        ausys.handOn(journeyId);
+
+        vm.prank(buyer);
+        ausys.packageSign(journeyId);
+        vm.prank(driver1);
+        ausys.packageSign(journeyId);
+        vm.prank(driver1);
+        ausys.handOff(journeyId);
+
+        vm.prank(buyer);
+        ausys.selectTokenDestination(orderId, buyerNodeId, false);
+
+        assertEq(assets.balanceOf(buyer, tokenId), TOKEN_QTY, 'Buyer should receive settled tokens');
+        assertEq(
+            assets.getNodeSellableAmount(buyer, tokenId, buyerNodeId),
+            TOKEN_QTY,
+            'Node sellable should be credited on settlement'
+        );
+    }
+
+    function test_handOn_escrowsSellerTokensOnlyOncePerOrder() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060', '34.0522', '-118.2437', 'Origin', 'Destination'
+        );
+        address[] memory orderNodes = new address[](1);
+        orderNodes[0] = nodeOperator;
+        bytes32[] memory journeyIds = new bytes32[](0);
+
+        DiamondStorage.AuSysOrder memory order = DiamondStorage.AuSysOrder({
+            id: bytes32(0),
+            token: address(erc1155Token),
+            tokenId: TOKEN_ID,
+            tokenQuantity: TOKEN_QTY,
+            price: ORDER_PRICE,
+            txFee: 0,
+            buyer: buyer,
+            seller: seller,
+            journeyIds: journeyIds,
+            nodes: orderNodes,
+            locationData: parcelData,
+            currentStatus: 0,
+            contractualAgreement: bytes32(0),
+            isSellerInitiated: false,
+            targetCounterparty: address(0),
+            expiresAt: 0
+        });
+
+        vm.startPrank(buyer);
+        payToken.approve(address(diamond), 10_000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+        vm.stopPrank();
+
+        bytes32 firstJourneyId = _createJourneyForOrder(orderId, buyer, parcelData);
+        bytes32 secondJourneyId = _createJourneyForOrder(orderId, nodeOperator, parcelData);
+
+        vm.startPrank(admin);
+        ausys.assignDriverToJourney(driver1, firstJourneyId);
+        ausys.assignDriverToJourney(driver1, secondJourneyId);
+        vm.stopPrank();
+
+        vm.prank(seller);
+        ausys.packageSign(firstJourneyId);
+        vm.prank(driver1);
+        ausys.packageSign(firstJourneyId);
+        vm.prank(driver1);
+        ausys.handOn(firstJourneyId);
+
+        uint256 escrowAfterFirstHandOn = erc1155Token.balanceOf(address(diamond), TOKEN_ID);
+        assertEq(escrowAfterFirstHandOn, TOKEN_QTY, 'First handOn should escrow tokens once');
+
+        vm.prank(seller);
+        ausys.packageSign(secondJourneyId);
+        vm.prank(driver1);
+        ausys.packageSign(secondJourneyId);
+        vm.prank(driver1);
+        ausys.handOn(secondJourneyId);
+
+        uint256 escrowAfterSecondHandOn = erc1155Token.balanceOf(address(diamond), TOKEN_ID);
+        assertEq(escrowAfterSecondHandOn, TOKEN_QTY, 'Second handOn must not escrow the order twice');
     }
 }
