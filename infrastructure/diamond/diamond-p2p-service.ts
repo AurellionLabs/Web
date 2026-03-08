@@ -21,6 +21,7 @@ import {
 } from '@/chain-constants';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
 
 interface ContextWithOptionalContracts {
   getQuoteTokenContract(): ethers.Contract;
@@ -66,6 +67,8 @@ const P2P_ERROR_MAP: Record<string, string> = {
     'Insufficient token balance. You do not have enough of this asset to create the offer.',
   '0x48f5c3ed':
     'You are not authorized to create the delivery journey. Only the buyer, seller, or admin can do this.',
+  '0x89e4b4ad':
+    'Sender, driver, and customer must use different wallet addresses.',
 };
 
 /**
@@ -371,6 +374,16 @@ export class DiamondP2PService implements IP2PService {
       if (isZeroAddress(receiverAddress)) {
         throw new Error(
           'Cannot create journey: receiver address is unresolved after offer acceptance.',
+        );
+      }
+      const roleConflict = detectJourneyRoleConflict(
+        delivery.senderNodeAddress,
+        receiverAddress,
+      );
+      if (roleConflict.hasConflict) {
+        throw new Error(
+          roleConflict.message ||
+            'Sender, driver, and customer must use different wallet addresses.',
         );
       }
 

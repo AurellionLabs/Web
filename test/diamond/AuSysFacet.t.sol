@@ -299,6 +299,53 @@ contract AuSysFacetTest is DiamondTestBase {
         assertEq(journey.currentStatus, 0, 'Status should be Pending (0)');
     }
 
+    function test_createJourney_revertWhenSenderEqualsReceiver() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+
+        vm.prank(user1);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
+        ausys.createJourney(
+            user1,
+            user1,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400
+        );
+    }
+
+    function test_createOrderJourney_revertWhenSenderEqualsReceiver() public {
+        DiamondStorage.AuSysOrder memory order = _createTestOrder();
+
+        vm.startPrank(user1);
+        payToken.approve(address(diamond), 10000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
+        ausys.createOrderJourney(
+            orderId,
+            user1,
+            user1,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400,
+            10,
+            1
+        );
+        vm.stopPrank();
+    }
+
     function test_getJourney() public {
         bytes32 journeyId = _createTestJourney();
 
@@ -344,6 +391,62 @@ contract AuSysFacetTest is DiamondTestBase {
         // Let's check if user1 (sender) can do it - based on implementation it might be allowed
         vm.prank(user2); // user2 is neither sender nor admin
         vm.expectRevert();
+        ausys.assignDriverToJourney(driver1, journeyId);
+    }
+
+    function test_assignDriverToJourney_revertWhenDriverEqualsSender() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+
+        vm.prank(user2);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.recordLogs();
+        vm.prank(admin);
+        ausys.createJourney(
+            driver1,
+            user2,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400
+        );
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 journeyId = _extractJourneyIdFromLogs(logs);
+
+        vm.prank(admin);
+        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
+        ausys.assignDriverToJourney(driver1, journeyId);
+    }
+
+    function test_assignDriverToJourney_revertWhenDriverEqualsReceiver() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+
+        vm.prank(driver1);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.recordLogs();
+        vm.prank(admin);
+        ausys.createJourney(
+            user1,
+            driver1,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400
+        );
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 journeyId = _extractJourneyIdFromLogs(logs);
+
+        vm.prank(admin);
+        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
         ausys.assignDriverToJourney(driver1, journeyId);
     }
 
