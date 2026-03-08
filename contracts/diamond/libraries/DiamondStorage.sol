@@ -268,6 +268,13 @@ library DiamondStorage {
         // Trusted off-chain signer that authorises P2P offer acceptance (EIP-712)
         address trustedP2PSigner;
 
+        // ======= TREASURY =======
+        // Accrued protocol fees claimable by owner (pull pattern)
+        uint256 treasuryAccrued;
+        // Fee rates in basis points (100 bps = 1%). Defaults set during init.
+        uint16 treasuryFeeBps; // default 10 = 0.1% — always charged
+        uint16 nodeFeeBps;     // default 10 = 0.1% — only charged when intermediate nodes present
+
         // ======= RESERVED =======
         uint256[50] __reserved1;
         mapping(bytes32 => uint256) __reserved2;
