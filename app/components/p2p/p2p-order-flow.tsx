@@ -9,6 +9,7 @@ import {
   Loader2,
   Pen,
   PackageCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { TrapButton } from '@/app/components/eva/eva-components';
@@ -56,6 +57,8 @@ export interface P2POrderFlowProps {
     driverDeliverySigned: boolean;
     senderPickupSigned?: boolean;
     driverPickupSigned?: boolean;
+    roleConflict?: boolean;
+    roleConflictReason?: string;
   }>;
   /** Whether an action is currently in progress */
   isActionLoading?: boolean;
@@ -198,6 +201,10 @@ export function P2POrderFlow({
   // Pickup signature states from EmitSig events
   const [senderPickupSigned, setSenderPickupSigned] = useState(false);
   const [driverPickupSigned, setDriverPickupSigned] = useState(false);
+  const [roleConflict, setRoleConflict] = useState(false);
+  const [roleConflictReason, setRoleConflictReason] = useState<string | null>(
+    null,
+  );
   // Local settled flag — set when handOff succeeds, so we don't wait for
   // the order prop to update from the indexer before showing step 4
   const [localSettled, setLocalSettled] = useState(false);
@@ -240,6 +247,8 @@ export function P2POrderFlow({
         if (state.driverPickupSigned !== undefined) {
           setDriverPickupSigned(state.driverPickupSigned);
         }
+        setRoleConflict(Boolean(state.roleConflict));
+        setRoleConflictReason(state.roleConflictReason || null);
       } catch (err) {
         console.warn('[P2POrderFlow] Failed to fetch signatures:', err);
       } finally {
@@ -308,6 +317,13 @@ export function P2POrderFlow({
     loadSignatures,
   ]);
 
+  useEffect(() => {
+    if (roleConflict) {
+      setWaitingForDriver(false);
+      setPickupSigned(false);
+    }
+  }, [roleConflict]);
+
   // Auto-attempt handOn when both pickup sigs are detected on-chain but
   // the journey is still pending (step 1). This covers the case where both
   // parties signed but the initial handOn failed or was never called.
@@ -324,6 +340,7 @@ export function P2POrderFlow({
       !autoHandOnAttemptedRef.current &&
       onSignPickup &&
       journeyId &&
+      !roleConflict &&
       isJourneyPendingLike &&
       order.currentStatus !== OrderStatus.SETTLED
     ) {
@@ -348,6 +365,7 @@ export function P2POrderFlow({
     order.id,
     order.journeyStatus,
     order.currentStatus,
+    roleConflict,
   ]);
 
   // Auto-attempt handOff when both delivery sigs are detected on-chain but
@@ -361,6 +379,7 @@ export function P2POrderFlow({
       !autoHandOffAttemptedRef.current &&
       onCompleteHandoff &&
       journeyId &&
+      !roleConflict &&
       order.currentStatus !== OrderStatus.SETTLED &&
       !localSettled
     ) {
@@ -391,6 +410,7 @@ export function P2POrderFlow({
     order.id,
     order.currentStatus,
     localSettled,
+    roleConflict,
   ]);
 
   const currentStep = localSettled
@@ -399,7 +419,11 @@ export function P2POrderFlow({
 
   // Build status message with pickup awareness
   let statusMessage: string;
-  if (waitingForDriver) {
+  if (roleConflict) {
+    statusMessage =
+      roleConflictReason ||
+      'Journey blocked: sender, driver, and customer must use different wallet addresses.';
+  } else if (waitingForDriver) {
     statusMessage =
       'Your delivery signature has been recorded. Waiting for driver to sign.';
   } else if (currentStep === 1) {
@@ -487,6 +511,7 @@ export function P2POrderFlow({
   const showPickupButton =
     currentStep === 1 &&
     onSignPickup &&
+    !roleConflict &&
     !pickupSigned &&
     !senderPickupSigned &&
     driverPickupSigned &&
@@ -499,6 +524,7 @@ export function P2POrderFlow({
   const showSignButton =
     currentStep === 2 &&
     onSignDelivery &&
+    !roleConflict &&
     !buyerSigned &&
     !waitingForDriver &&
     journeyIsInTransit &&
@@ -603,11 +629,22 @@ export function P2POrderFlow({
       )}
 
       {/* Waiting for driver indicator */}
-      {waitingForDriver && order.currentStatus !== OrderStatus.SETTLED && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-          <span className="text-sm text-amber-300">
-            Waiting for driver to sign for delivery
+      {waitingForDriver &&
+        !roleConflict &&
+        order.currentStatus !== OrderStatus.SETTLED && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+            <span className="text-sm text-amber-300">
+              Waiting for driver to sign for delivery
+            </span>
+          </div>
+        )}
+
+      {roleConflict && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30">
+          <AlertTriangle className="w-4 h-4 text-red-400" />
+          <span className="text-sm text-red-300">
+            Journey blocked until participants use distinct wallet addresses.
           </span>
         </div>
       )}

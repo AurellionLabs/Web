@@ -43,6 +43,7 @@ import {
 } from '@/infrastructure/shared/graph-queries';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 
 type TabType = 'available' | 'my-deliveries';
 
@@ -273,20 +274,26 @@ export default function DriverDashboard() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       // Show a user-friendly message for known contract errors
-      let description = 'Failed to accept delivery. Please try again.';
-      if (msg.includes('0x48f5c3ed') || msg.includes('InvalidCaller')) {
-        description =
+      let toastTitle = 'Error';
+      let toastDescription = 'Failed to accept delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      } else if (msg.includes('0x48f5c3ed') || msg.includes('InvalidCaller')) {
+        toastDescription =
           'Your wallet is not authorized. Ensure you have the Driver role and try refreshing the page.';
       } else if (
         msg.includes('0xd5391167') ||
         msg.includes('DriverMaxAssignment')
       ) {
-        description =
+        toastDescription =
           'Maximum delivery assignments reached. Complete existing deliveries first.';
       }
       toast({
-        title: 'Error',
-        description,
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
     }
@@ -331,12 +338,19 @@ export default function DriverDashboard() {
         }
       }
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription =
+        err instanceof Error
+          ? err.message
+          : 'Failed to confirm pickup. Please try again.';
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
       toast({
-        title: 'Error',
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Failed to confirm pickup. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
     }
@@ -373,12 +387,21 @@ export default function DriverDashboard() {
         });
       }
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription =
+        err instanceof Error
+          ? err.message
+          : 'Failed to sign for delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Failed to sign for delivery. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
     }
