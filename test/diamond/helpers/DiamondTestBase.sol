@@ -156,6 +156,58 @@ abstract contract DiamondTestBase is Test {
         IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
     }
 
+    function _upsertFacet(address facetAddress, bytes4[] memory selectors) internal {
+        if (selectors.length == 0) return;
+
+        bytes4[] memory addSelectors = new bytes4[](selectors.length);
+        bytes4[] memory replaceSelectors = new bytes4[](selectors.length);
+        uint256 addCount;
+        uint256 replaceCount;
+
+        for (uint256 i = 0; i < selectors.length; i++) {
+            address existingFacet = IDiamondLoupe(address(diamond)).facetAddress(selectors[i]);
+            if (existingFacet == address(0)) {
+                addSelectors[addCount++] = selectors[i];
+            } else if (existingFacet != facetAddress) {
+                replaceSelectors[replaceCount++] = selectors[i];
+            }
+        }
+
+        uint256 cutCount = (addCount > 0 ? 1 : 0) + (replaceCount > 0 ? 1 : 0);
+        if (cutCount == 0) return;
+
+        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](cutCount);
+        uint256 cutIndex;
+
+        if (addCount > 0) {
+            bytes4[] memory trimmedAdds = new bytes4[](addCount);
+            for (uint256 i = 0; i < addCount; i++) {
+                trimmedAdds[i] = addSelectors[i];
+            }
+            cut[cutIndex++] = IDiamondCut.FacetCut({
+                facetAddress: facetAddress,
+                action: IDiamondCut.FacetCutAction.Add,
+                functionSelectors: trimmedAdds
+            });
+        }
+
+        if (replaceCount > 0) {
+            bytes4[] memory trimmedReplacements = new bytes4[](replaceCount);
+            for (uint256 i = 0; i < replaceCount; i++) {
+                trimmedReplacements[i] = replaceSelectors[i];
+            }
+            cut[cutIndex] = IDiamondCut.FacetCut({
+                facetAddress: facetAddress,
+                action: IDiamondCut.FacetCutAction.Replace,
+                functionSelectors: trimmedReplacements
+            });
+        }
+
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
+        IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
+    }
+
     function _initializeFacets() internal {
         AuSysFacet(address(diamond)).setPayToken(address(payToken));
         BridgeFacet(address(diamond)).setQuoteTokenAddress(address(quoteToken));
@@ -250,7 +302,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getNodesSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](15);
+        bytes4[] memory selectors = new bytes4[](17);
         selectors[0] = NodesFacet.registerNode.selector;
         selectors[1] = NodesFacet.updateNode.selector;
         selectors[2] = NodesFacet.deactivateNode.selector;
@@ -266,6 +318,8 @@ abstract contract DiamondTestBase is Test {
         selectors[12] = NodesFacet.setNodeRegistrar.selector;
         selectors[13] = NodesFacet.hasNodeRole.selector;
         selectors[14] = NodesFacet.getAllowedNodeRegistrars.selector;
+        selectors[15] = NodesFacet.getNodeTokenBalance.selector;
+        selectors[16] = NodesFacet.creditNodeTokens.selector;
         return selectors;
     }
 
@@ -334,21 +388,31 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getBridgeSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](9);
+        bytes4[] memory selectors = new bytes4[](19);
         selectors[0] = BridgeFacet.createUnifiedOrder.selector;
-        selectors[1] = BridgeFacet.getUnifiedOrder.selector;
-        selectors[2] = BridgeFacet.getBuyerOrders.selector;
-        selectors[3] = BridgeFacet.getSellerOrders.selector;
-        selectors[4] = BridgeFacet.setBountyPercentage.selector;
-        selectors[5] = BridgeFacet.setProtocolFeePercentage.selector;
-        selectors[6] = BridgeFacet.updateClobAddress.selector;
-        selectors[7] = BridgeFacet.updateAusysAddress.selector;
-        selectors[8] = BridgeFacet.setQuoteTokenAddress.selector;
+        selectors[1] = BridgeFacet.bridgeTradeToLogistics.selector;
+        selectors[2] = BridgeFacet.createLogisticsOrder.selector;
+        selectors[3] = BridgeFacet.assignJourneyDriver.selector;
+        selectors[4] = BridgeFacet.updateJourneyStatus.selector;
+        selectors[5] = BridgeFacet.settleOrder.selector;
+        selectors[6] = BridgeFacet.cancelUnifiedOrder.selector;
+        selectors[7] = BridgeFacet.getUnifiedOrder.selector;
+        selectors[8] = BridgeFacet.getTotalUnifiedOrders.selector;
+        selectors[9] = BridgeFacet.getBuyerOrders.selector;
+        selectors[10] = BridgeFacet.getSellerOrders.selector;
+        selectors[11] = BridgeFacet.getUnifiedOrderFromClobOrder.selector;
+        selectors[12] = BridgeFacet.getUnifiedOrderFromClobTrade.selector;
+        selectors[13] = BridgeFacet.setFeeRecipient.selector;
+        selectors[14] = BridgeFacet.setBountyPercentage.selector;
+        selectors[15] = BridgeFacet.setProtocolFeePercentage.selector;
+        selectors[16] = BridgeFacet.updateClobAddress.selector;
+        selectors[17] = BridgeFacet.updateAusysAddress.selector;
+        selectors[18] = BridgeFacet.setQuoteTokenAddress.selector;
         return selectors;
     }
 
     function _getCLOBLogisticsSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](12);
+        bytes4[] memory selectors = new bytes4[](13);
         selectors[0] = CLOBLogisticsFacet.registerDriver.selector;
         selectors[1] = CLOBLogisticsFacet.setDriverAvailability.selector;
         selectors[2] = CLOBLogisticsFacet.updateDriverLocation.selector;
@@ -361,6 +425,7 @@ abstract contract DiamondTestBase is Test {
         selectors[9] = CLOBLogisticsFacet.disputeOrder.selector;
         selectors[10] = CLOBLogisticsFacet.cancelLogisticsOrder.selector;
         selectors[11] = CLOBLogisticsFacet.getLogisticsOrder.selector;
+        selectors[12] = CLOBLogisticsFacet.setLogisticsCreatorAuthorization.selector;
         return selectors;
     }
 

@@ -245,9 +245,10 @@ contract NodesFacetAlignedTest is DiamondTestBase {
         vm.stopPrank();
 
         address[] memory registrars = nodes.getAllowedNodeRegistrars();
-        assertEq(registrars.length, 2, 'Should enumerate active registrars');
-        assertEq(registrars[0], user1, 'First registrar should match');
-        assertEq(registrars[1], user2, 'Second registrar should match');
+        assertEq(registrars.length, 3, 'Should enumerate default and explicitly allowed registrars');
+        assertEq(registrars[0], nodeOperator, 'Default registrar should remain listed');
+        assertEq(registrars[1], user1, 'First explicit registrar should match');
+        assertEq(registrars[2], user2, 'Second explicit registrar should match');
     }
 
     function test_getAllowedNodeRegistrars_removesRevokedRegistrar() public {
@@ -258,8 +259,9 @@ contract NodesFacetAlignedTest is DiamondTestBase {
         vm.stopPrank();
 
         address[] memory registrars = nodes.getAllowedNodeRegistrars();
-        assertEq(registrars.length, 1, 'Revoked registrars should be removed from enumeration');
-        assertEq(registrars[0], user2, 'Remaining registrar should stay listed');
+        assertEq(registrars.length, 2, 'Revoked registrars should be removed from enumeration');
+        assertEq(registrars[0], nodeOperator, 'Default registrar should remain listed');
+        assertEq(registrars[1], user2, 'Remaining explicit registrar should stay listed');
     }
 
     function test_registerNode_revertWhenCallerNotRegistrar() public {
@@ -267,5 +269,17 @@ contract NodesFacetAlignedTest is DiamondTestBase {
         vm.prank(nonRegistrar);
         vm.expectRevert();
         nodes.registerNode('WAREHOUSE', 500, bytes32(0), 'Test Location', '40.7128', '-74.0060');
+    }
+
+    function test_creditNodeTokens_revertWhenCalledExternally() public {
+        vm.prank(owner);
+        nodes.setNodeRegistrar(user1, true);
+
+        vm.prank(user1);
+        bytes32 nodeHash = nodes.registerNode('WAREHOUSE', 500, bytes32(0), 'Test Location', '40.7128', '-74.0060');
+
+        vm.prank(user1);
+        vm.expectRevert('Only internal Diamond calls');
+        nodes.creditNodeTokens(nodeHash, 1, 100);
     }
 }

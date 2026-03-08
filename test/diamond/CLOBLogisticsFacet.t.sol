@@ -17,6 +17,10 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
     using ECDSA for bytes32;
 
     CLOBLogisticsFacet public logistics;
+    uint256 internal buyerPk;
+    uint256 internal sellerPk;
+    address internal signedBuyer;
+    address internal signedSeller;
 
     bytes32 internal constant PICKUP_TYPEHASH = keccak256(
         "PickupConfirmation(bytes32 orderId,address driver,string lat,string lng,uint256 nonce,uint256 deadline)"
@@ -54,6 +58,16 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
     function setUp() public override {
         super.setUp();
         logistics = CLOBLogisticsFacet(address(diamond));
+
+        buyerPk = 0xB0B;
+        sellerPk = 0xA11CE;
+        signedBuyer = vm.addr(buyerPk);
+        signedSeller = vm.addr(sellerPk);
+
+        quoteToken.mint(signedBuyer, 100_000 ether);
+
+        vm.prank(owner);
+        logistics.setLogisticsCreatorAuthorization(user1, true);
     }
 
     function _domainSeparator() internal view returns (bytes32) {
@@ -260,60 +274,86 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
     }
 
     function test_confirmPickup() public {
-        bytes32 orderId = _createTestLogisticsOrder();
+        bytes32 orderId = _createSignedTestLogisticsOrder();
 
         vm.prank(driver1);
         logistics.acceptDelivery(orderId, block.timestamp + 3600, block.timestamp + 7200);
 
         DiamondStorage.Location memory location = _createLocation('40.7128', '-74.0060');
+        bytes memory sellerSignature =
+            _signPickup(orderId, driver1, location.lat, location.lng, block.timestamp + 1 hours, sellerPk);
 
-        vm.prank(owner);
-        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', location);
+        vm.prank(driver1);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, sellerSignature, location);
 
         DiamondStorage.LogisticsOrder memory order = logistics.getLogisticsOrder(orderId);
         assertEq(order.status, OrderStatus.LOGISTICS_IN_TRANSIT, 'Status should be InTransit');
     }
 
     function test_confirmPickup_revertNotAssignedDriver() public {
-        bytes32 orderId = _createTestLogisticsOrder();
+        bytes32 orderId = _createSignedTestLogisticsOrder();
 
         vm.prank(driver1);
         logistics.acceptDelivery(orderId, block.timestamp + 3600, block.timestamp + 7200);
 
         DiamondStorage.Location memory location = _createLocation('40.7128', '-74.0060');
+        bytes memory sellerSignature =
+            _signPickup(orderId, driver1, location.lat, location.lng, block.timestamp + 1 hours, sellerPk);
 
         vm.prank(driver2);
         vm.expectRevert();
-        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', location);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, sellerSignature, location);
     }
 
     function test_confirmDelivery() public {
-        bytes32 orderId = _createTestLogisticsOrder();
+        bytes32 orderId = _createSignedTestLogisticsOrder();
 
         vm.prank(driver1);
         logistics.acceptDelivery(orderId, block.timestamp + 3600, block.timestamp + 7200);
 
         DiamondStorage.Location memory pickupLoc = _createLocation('40.7128', '-74.0060');
-        vm.prank(owner);
-        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', pickupLoc);
+        bytes memory sellerSignature = _signPickup(
+            orderId,
+            driver1,
+            pickupLoc.lat,
+            pickupLoc.lng,
+            block.timestamp + 1 hours,
+            sellerPk
+        );
+        vm.prank(driver1);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, sellerSignature, pickupLoc);
 
         DiamondStorage.Location memory deliveryLoc = _createLocation('34.0522', '-118.2437');
-        vm.prank(owner);
-        logistics.confirmDelivery(orderId, block.timestamp + 1 hours, '', deliveryLoc);
+        bytes memory buyerSignature = _signDelivery(
+            orderId,
+            driver1,
+            deliveryLoc.lat,
+            deliveryLoc.lng,
+            block.timestamp + 1 hours,
+            buyerPk
+        );
+        vm.prank(driver1);
+        logistics.confirmDelivery(orderId, block.timestamp + 1 hours, buyerSignature, deliveryLoc);
 
         DiamondStorage.LogisticsOrder memory order = logistics.getLogisticsOrder(orderId);
         assertEq(order.status, OrderStatus.LOGISTICS_DELIVERED, 'Status should be Delivered');
     }
 
     function test_settleLogisticsOrder() public {
-        bytes32 orderId = _createTestLogisticsOrder();
+        bytes32 orderId = _createSignedTestLogisticsOrder();
 
         vm.prank(driver1);
         logistics.acceptDelivery(orderId, block.timestamp + 3600, block.timestamp + 7200);
-        vm.prank(owner);
-        logistics.confirmPickup(orderId, block.timestamp + 1 hours, '', _createLocation('40', '-74'));
-        vm.prank(owner);
-        logistics.confirmDelivery(orderId, block.timestamp + 1 hours, '', _createLocation('34', '-118'));
+        DiamondStorage.Location memory pickupLoc = _createLocation('40', '-74');
+        DiamondStorage.Location memory deliveryLoc = _createLocation('34', '-118');
+        bytes memory sellerSignature =
+            _signPickup(orderId, driver1, pickupLoc.lat, pickupLoc.lng, block.timestamp + 1 hours, sellerPk);
+        bytes memory buyerSignature =
+            _signDelivery(orderId, driver1, deliveryLoc.lat, deliveryLoc.lng, block.timestamp + 1 hours, buyerPk);
+        vm.prank(driver1);
+        logistics.confirmPickup(orderId, block.timestamp + 1 hours, sellerSignature, pickupLoc);
+        vm.prank(driver1);
+        logistics.confirmDelivery(orderId, block.timestamp + 1 hours, buyerSignature, deliveryLoc);
 
         vm.prank(owner);
         logistics.settleLogisticsOrder(orderId);
@@ -323,7 +363,7 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
     }
 
     function test_settleLogisticsOrder_revertNotDelivered() public {
-        bytes32 orderId = _createTestLogisticsOrder();
+        bytes32 orderId = _createSignedTestLogisticsOrder();
 
         // Only accept, don't complete delivery
         vm.prank(driver1);
@@ -430,5 +470,29 @@ contract CLOBLogisticsFacetTest is DiamondTestBase {
         vm.stopPrank();
 
         return orderId;
+    }
+
+    function _createSignedTestLogisticsOrder() internal returns (bytes32) {
+        _registerDriver(driver1);
+
+        DiamondStorage.Location memory pickup = _createLocation('40.7128', '-74.0060');
+        DiamondStorage.Location memory delivery = _createLocation('34.0522', '-118.2437');
+
+        vm.prank(signedBuyer);
+        quoteToken.approve(address(diamond), 200 ether);
+
+        vm.prank(owner);
+        return logistics.createLogisticsOrder(
+            bytes32(uint256(1)),
+            signedBuyer,
+            signedSeller,
+            signedSeller,
+            address(quoteToken),
+            1,
+            10,
+            100 ether,
+            pickup,
+            delivery
+        );
     }
 }

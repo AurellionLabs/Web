@@ -564,7 +564,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         address _quoteToken,
         uint256 _price,
         uint256 _amount
-    ) external returns (bytes32 orderId) {
+    ) external nonReentrant returns (bytes32 orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
@@ -615,7 +615,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 _amount
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(msg.sender == address(this), 'Only internal Diamond calls');
         require(_amount > 0, 'Amount must be positive');
         
         // Update balance
@@ -1173,7 +1173,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AssetDefinition memory _asset,
         string memory _className,
         bytes memory _data
-    ) external returns (uint256 tokenId) {
+    ) external nonReentrant returns (uint256 tokenId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
         require(s.nodes[_nodeHash].validNode, 'Invalid node');
@@ -1194,15 +1194,6 @@ contract NodesFacet is Initializable, ReentrancyGuard {
 
         // Decode the returned tokenId
         (, tokenId) = abi.decode(result, (bytes32, uint256));
-
-        // Update node's internal balance
-        s.nodeTokenBalances[_nodeHash][tokenId] += _amount;
-        
-        // Track token in node's list if not already
-        if (!s.nodeHasToken[_nodeHash][tokenId]) {
-            s.nodeTokenIds[_nodeHash].push(tokenId);
-            s.nodeHasToken[_nodeHash][tokenId] = true;
-        }
 
         emit TokensMintedToNode(_nodeHash, tokenId, _amount, msg.sender);
         return tokenId;

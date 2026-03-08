@@ -259,6 +259,32 @@ contract AssetsFacetTest is DiamondTestBase {
         );
     }
 
+    function test_addNodeItem_requiresDepositBeforeNodeInventoryIsTradable() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        bytes32 userNode = _registerTestNode(user1);
+        vm.stopPrank();
+
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(user1);
+        uint256 id = nodes.addNodeItem(userNode, user1, 25, assetDef, 'COMMODITY', '');
+
+        assertEq(assets.balanceOf(user1, id), 25, 'Wallet should receive minted tokens');
+        assertEq(
+            nodes.getNodeTokenBalance(userNode, id),
+            0,
+            'Node inventory should remain zero until tokens are deposited into Diamond custody'
+        );
+        assertEq(
+            assets.getNodeSellableAmount(user1, id, userNode),
+            25,
+            'Sellable allocation should stay on the wallet until deposit'
+        );
+    }
+
     function test_nodeMintForNode_tracksIndependentNodeSellableAllocations() public {
         vm.startPrank(owner);
         assets.addSupportedClass('COMMODITY');

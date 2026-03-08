@@ -61,6 +61,7 @@ describe('DiamondContext', () => {
       };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);
@@ -76,6 +77,7 @@ describe('DiamondContext', () => {
       };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);
@@ -88,6 +90,7 @@ describe('DiamondContext', () => {
       const mockSigner = { getAddress: vi.fn().mockResolvedValue('0x1234') };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);
@@ -113,6 +116,7 @@ describe('DiamondContext', () => {
       const mockSigner = { getAddress: vi.fn().mockResolvedValue('0x1234') };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);

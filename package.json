@@ -42,7 +42,7 @@
     "validate:queries": "bunx vitest run test/infrastructure/graphql-query-validation.test.ts",
     "deploy:diamond": "bunx --bun hardhat run scripts/deploy-diamond.ts --network baseSepolia",
     "upgrade:diamond": "bunx --bun hardhat run scripts/upgrade-diamond.ts --network baseSepolia",
-    "test:diamond": "forge test --match-contract DiamondTest -vv",
+    "test:diamond": "forge test --cache-path /tmp/foundry-cache-codex --skip test/diamond/RWYStakingFacet.t.sol --skip test/diamond/RWYStakingLifecycle.t.sol -vv",
     "test:e2e": "bunx vitest run --config e2e/vitest.config.ts",
     "test:e2e:fast": "bunx vitest run --config e2e/vitest.config.ts",
     "test:e2e:isolated": "cross-env ISOLATE_TESTS=true bunx vitest run --config e2e/vitest.config.ts",

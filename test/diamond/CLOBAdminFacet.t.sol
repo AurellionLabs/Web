@@ -57,9 +57,9 @@ contract CLOBAdminFacetTest is DiamondTestBase {
         CLOBAdminFacet clobAdminFacet = new CLOBAdminFacet();
         CLOBViewFacet clobViewFacet = new CLOBViewFacet();
 
-        _addFacet(address(clobCoreFacet), _getCLOBCoreSelectors());
-        _addFacet(address(clobAdminFacet), _getCLOBAdminSelectors());
-        _addFacet(address(clobViewFacet), _getCLOBViewSelectors());
+        _upsertFacet(address(clobCoreFacet), _getCLOBCoreSelectors());
+        _upsertFacet(address(clobAdminFacet), _getCLOBAdminSelectors());
+        _upsertFacet(address(clobViewFacet), _getCLOBViewSelectors());
 
         clobCore = CLOBCoreFacet(address(diamond));
         clobAdmin = CLOBAdminFacet(address(diamond));

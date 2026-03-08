@@ -39,9 +39,9 @@ contract CLOBViewFacetTest is DiamondTestBase {
         CLOBAdminFacet clobAdminFacet = new CLOBAdminFacet();
         CLOBViewFacet clobViewFacet = new CLOBViewFacet();
 
-        _addFacet(address(clobCoreFacet), _getCLOBCoreSelectors());
-        _addFacet(address(clobAdminFacet), _getCLOBAdminSelectors());
-        _addFacet(address(clobViewFacet), _getCLOBViewSelectors());
+        _upsertFacet(address(clobCoreFacet), _getCLOBCoreSelectors());
+        _upsertFacet(address(clobAdminFacet), _getCLOBAdminSelectors());
+        _upsertFacet(address(clobViewFacet), _getCLOBViewSelectors());
 
         clobCore = CLOBCoreFacet(address(diamond));
         clobAdmin = CLOBAdminFacet(address(diamond));
@@ -555,7 +555,6 @@ contract CLOBViewFacetTest is DiamondTestBase {
         selectors[2] = CLOBCoreFacet.placeNodeSellOrderV2.selector;
         selectors[3] = CLOBCoreFacet.cancelOrder.selector;
         selectors[4] = CLOBCoreFacet.cancelOrders.selector;
-        // ERC1155 receiver callbacks (needed when diamond holds ERC1155 in escrow)
         selectors[5] = bytes4(keccak256('onERC1155Received(address,address,uint256,uint256,bytes)'));
         selectors[6] = bytes4(keccak256('onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)'));
         return selectors;
