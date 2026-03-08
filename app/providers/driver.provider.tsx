@@ -11,6 +11,10 @@ import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
+import {
+  detectJourneyRoleConflict,
+  getJourneyRoleConflictMessage,
+} from '@/utils/journey-role-conflicts';
 
 export interface DriverContextType {
   availableDeliveries: Delivery[];
@@ -163,6 +167,18 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = await getSignerAlignedContract();
+      const journey = await ausys.getJourney(jobId);
+      const roleConflict = detectJourneyRoleConflict(
+        journey.sender,
+        journey.receiver,
+        driverWalletAddress,
+      );
+      if (roleConflict.hasConflict) {
+        const msg =
+          roleConflict.message ||
+          'Sender, driver, and customer must use different wallet addresses.';
+        throw new Error(msg);
+      }
 
       // Check and grant DRIVER_ROLE if needed (best-effort; contract enforces it)
       try {
@@ -214,6 +230,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         refreshDeliveries();
       }, 5000);
     } catch (err) {
+      if (getJourneyRoleConflictMessage(err)) {
+        throw err;
+      }
+
       const msg = err instanceof Error ? err.message : String(err);
 
       // Decode InvalidCaller (0x48f5c3ed) — caller not authorized or missing role
@@ -243,12 +263,17 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = await getSignerAlignedContract();
-
-      // Debug: Check journey details
-      try {
-        const journey = await ausys.getJourney(jobId);
-      } catch (e) {
-        console.warn('[confirmPickup] Could not fetch journey details:', e);
+      const journey = await ausys.getJourney(jobId);
+      const roleConflict = detectJourneyRoleConflict(
+        journey.sender,
+        journey.receiver,
+        driverWalletAddress,
+      );
+      if (roleConflict.hasConflict) {
+        throw new Error(
+          roleConflict.message ||
+            'Sender, driver, and customer must use different wallet addresses.',
+        );
       }
 
       const tx = await ausys.packageSign(jobId);
@@ -256,7 +281,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       await refreshDeliveries();
     } catch (err) {
       console.error('[confirmPickup] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to confirm pickup');
+      // let role conflicts bubble up with their specific messages for toast message
+      if (!getJourneyRoleConflictMessage(err)) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to confirm pickup',
+        );
+      }
       throw err;
     } finally {
       setIsLoading(false);
@@ -302,6 +332,18 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const ausys = await getSignerAlignedContract();
+      const journey = await ausys.getJourney(jobId);
+      const roleConflict = detectJourneyRoleConflict(
+        journey.sender,
+        journey.receiver,
+        driverWalletAddress,
+      );
+      if (roleConflict.hasConflict) {
+        throw new Error(
+          roleConflict.message ||
+            'Sender, driver, and customer must use different wallet addresses.',
+        );
+      }
 
       // 1. Sign for delivery (driver confirms delivery)
       const signTx = await ausys.packageSign(jobId);
@@ -370,9 +412,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       return 'signed';
     } catch (err) {
       console.error('[DriverProvider] completeDelivery error:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to sign for delivery',
-      );
+      if (!getJourneyRoleConflictMessage(err)) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to sign for delivery',
+        );
+      }
       throw err;
     } finally {
       setIsLoading(false);
@@ -400,7 +444,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       await refreshDeliveries();
     } catch (err) {
       console.error('[DriverProvider] packageSign error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to sign package');
+      if (!getJourneyRoleConflictMessage(err)) {
+        setError(err instanceof Error ? err.message : 'Failed to sign package');
+      }
       throw err;
     } finally {
       setIsLoading(false);

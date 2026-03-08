@@ -150,6 +150,7 @@ contract AuSysFacet is ReentrancyGuard {
     error DriverNotSigned();
     error SenderNotSigned();
     error ReceiverNotSigned();
+    error DuplicateJourneyRoleAddress();
     error InvalidAddress();
     error InvalidAmount();
     error InvalidETA();
@@ -641,6 +642,7 @@ contract AuSysFacet is ReentrancyGuard {
 
         if (msg.sender != receiver) revert CallerMustBeBuyer();
         if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
+        if (sender == receiver) revert DuplicateJourneyRoleAddress();
         if (bounty == 0) revert InvalidAmount();
         if (ETA <= block.timestamp) revert InvalidETA();
         if (s.payToken == address(0)) revert PayTokenNotSet();
@@ -708,7 +710,8 @@ contract AuSysFacet is ReentrancyGuard {
         }
         if (O.expiresAt != 0 && block.timestamp > O.expiresAt) revert OfferExpired();
         if (sender != O.seller) revert InvalidJourneyRoute();
-        if (receiver == address(0) || sender == address(0)) revert InvalidAddress();
+        if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
+        if (sender == receiver) revert DuplicateJourneyRoleAddress();
         if (ETA <= block.timestamp) revert InvalidETA();
         if (bounty == 0) revert InvalidAmount();
         if (tokenQuantity == 0) revert InvalidAmount();
@@ -777,6 +780,9 @@ contract AuSysFacet is ReentrancyGuard {
 
         // Require driver to be registered
         if (!s.ausysRoles[DRIVER_ROLE][driver]) revert InvalidCaller();
+        if (driver == J.sender || driver == J.receiver || J.sender == J.receiver) {
+            revert DuplicateJourneyRoleAddress();
+        }
 
         // Only driver, dispatcher, or journey sender can assign
         bool callerAuthorized = (
