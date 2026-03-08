@@ -9,6 +9,7 @@ import {
   Loader2,
   Pen,
   PackageCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { TrapButton } from '@/app/components/eva/eva-components';
@@ -641,7 +642,7 @@ export function P2POrderFlow({
 
       {roleConflict && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30">
-          <Clock className="w-4 h-4 text-red-400" />
+          <AlertTriangle className="w-4 h-4 text-red-400" />
           <span className="text-sm text-red-300">
             Journey blocked until participants use distinct wallet addresses.
           </span>
