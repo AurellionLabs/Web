@@ -50,6 +50,7 @@ const OUTPUT = {
 const FRONTEND_FACETS = [
   'NodesFacet',
   'AuSysFacet',
+  'AuSysViewFacet',
   'OrderRouterFacet',
   'CLOBFacetV2',
   'CLOBMatchingFacet',
@@ -66,6 +67,7 @@ const FRONTEND_FACETS = [
 const ALL_FACETS = [
   'NodesFacet',
   'AuSysFacet',
+  'AuSysViewFacet',
   'OrderRouterFacet',
   'CLOBFacetV2',
   'CLOBMatchingFacet',

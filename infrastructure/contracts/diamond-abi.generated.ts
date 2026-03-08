@@ -4,9 +4,9 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-03-06T16:33:32.411Z
- * Facets: NodesFacet, AuSysFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
- * Total items: 263
+ * Generated: 2026-03-08T20:37:20.949Z
+ * Facets: NodesFacet, AuSysFacet, AuSysViewFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
+ * Total items: 265
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3243,6 +3243,246 @@ export const DIAMOND_ABI: any[] = [
     type: 'function',
   },
   {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    name: 'handOff',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    name: 'handOn',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
+      {
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
+      {
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
+    ],
+    name: 'onERC1155BatchReceived',
+    outputs: [
+      {
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
+    ],
+    stateMutability: 'pure',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
+    ],
+    name: 'onERC1155Received',
+    outputs: [
+      {
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
+    ],
+    stateMutability: 'pure',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    name: 'packageSign',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    name: 'revokeAuSysAdmin',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bool',
+        name: 'burn',
+        type: 'bool',
+      },
+    ],
+    name: 'selectTokenDestination',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    name: 'setAuSysAdmin',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'dispatcher',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    name: 'setDispatcher',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    name: 'setDriver',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '_payToken',
+        type: 'address',
+      },
+    ],
+    name: 'setPayToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'signer',
+        type: 'address',
+      },
+    ],
+    name: 'setTrustedP2PSigner',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'domainSeparator',
     outputs: [
@@ -3619,44 +3859,6 @@ export const DIAMOND_ABI: any[] = [
     inputs: [
       {
         internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
-    name: 'handOff',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
-    name: 'handOn',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
         name: 'role',
         type: 'bytes32',
       },
@@ -3675,208 +3877,6 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256[]',
-        name: '',
-        type: 'uint256[]',
-      },
-      {
-        internalType: 'uint256[]',
-        name: '',
-        type: 'uint256[]',
-      },
-      {
-        internalType: 'bytes',
-        name: '',
-        type: 'bytes',
-      },
-    ],
-    name: 'onERC1155BatchReceived',
-    outputs: [
-      {
-        internalType: 'bytes4',
-        name: '',
-        type: 'bytes4',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-      {
-        internalType: 'bytes',
-        name: '',
-        type: 'bytes',
-      },
-    ],
-    name: 'onERC1155Received',
-    outputs: [
-      {
-        internalType: 'bytes4',
-        name: '',
-        type: 'bytes4',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
-    name: 'packageSign',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
-      },
-    ],
-    name: 'revokeAuSysAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'bytes32',
-        name: 'nodeId',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'bool',
-        name: 'burn',
-        type: 'bool',
-      },
-    ],
-    name: 'selectTokenDestination',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
-      },
-    ],
-    name: 'setAuSysAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'dispatcher',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
-    ],
-    name: 'setDispatcher',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'driver',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
-    ],
-    name: 'setDriver',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '_payToken',
-        type: 'address',
-      },
-    ],
-    name: 'setPayToken',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'signer',
-        type: 'address',
-      },
-    ],
-    name: 'setTrustedP2PSigner',
-    outputs: [],
-    stateMutability: 'nonpayable',
     type: 'function',
   },
   {
@@ -7204,6 +7204,64 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'uint256',
         name: 'amount',
         type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'getNodeSellableAmount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    name: 'getOwnerNodeSellableBalances',
+    outputs: [
+      {
+        internalType: 'bytes32[]',
+        name: 'nodeHashes',
+        type: 'bytes32[]',
+      },
+      {
+        internalType: 'uint256[]',
+        name: 'amounts',
+        type: 'uint256[]',
       },
     ],
     stateMutability: 'view',

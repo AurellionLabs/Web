@@ -328,6 +328,14 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     chainConstantKey: 'NEXT_PUBLIC_AUSYS_FACET_ADDRESS',
   },
 
+  // AuSysViewFacet - Read-only AuSys helpers split from AuSysFacet
+  AuSysViewFacet: {
+    name: 'AuSysViewFacet',
+    contractName: 'AuSysViewFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_AUSYS_VIEW_FACET_ADDRESS',
+  },
+
   // CLOBLogisticsFacet - Driver and delivery logistics management
   CLOBLogisticsFacet: {
     name: 'CLOBLogisticsFacet',
@@ -537,6 +545,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'CLOBMEVFacet',
       'OrderMatchingFacet',
       'AuSysFacet',
+      'AuSysViewFacet',
       'CLOBLogisticsFacet',
       'Diamond',
     ],
@@ -561,6 +570,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'CLOBFacet',
       'OrderRouterFacet',
       'AuSysFacet',
+      'AuSysViewFacet',
       'Diamond',
     ],
   },

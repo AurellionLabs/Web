@@ -7,13 +7,14 @@ import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
 import { DiamondCutFacet } from 'contracts/diamond/facets/DiamondCutFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
+import { IAuSysDiamond } from 'contracts/diamond/interfaces/IAuSysDiamond.sol';
 
 /**
  * @title AuSysFacetTest
  * @notice Tests for AuSysFacet (AuSys.sol parity)
  */
 contract AuSysFacetTest is DiamondTestBase {
-    AuSysFacet public ausys;
+    IAuSysDiamond public ausys;
     error CallerMustBeBuyer();
     error CallerMustBeSeller();
     error JourneyNotFound();
@@ -97,7 +98,7 @@ contract AuSysFacetTest is DiamondTestBase {
 
     function setUp() public override {
         super.setUp();
-        ausys = AuSysFacet(address(diamond));
+        ausys = IAuSysDiamond(address(diamond));
         _addMissingAuSysSelectors();
 
         // Setup admin
@@ -113,11 +114,10 @@ contract AuSysFacetTest is DiamondTestBase {
     }
 
     function _addMissingAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](4);
+        bytes4[] memory sels = new bytes4[](3);
         sels[0] = AuSysFacet.acceptP2POffer.selector;
         sels[1] = AuSysFacet.cancelP2POffer.selector;
-        sels[2] = AuSysFacet.getOpenP2POffers.selector;
-        sels[3] = AuSysFacet.handOff.selector;
+        sels[2] = AuSysFacet.handOff.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({

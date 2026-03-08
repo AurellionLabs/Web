@@ -8,7 +8,6 @@ import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
-import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 
 /**
  * @title AuSysFacet
@@ -17,7 +16,6 @@ import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
  */
 contract AuSysFacet is ReentrancyGuard {
     using SafeERC20 for IERC20;
-    using ECDSA for bytes32;
 
     uint256 public constant MAX_ORDERS = 10000;
     uint256 public constant MAX_JOURNEYS_PER_ORDER = 10;
@@ -281,14 +279,6 @@ contract AuSysFacet is ReentrancyGuard {
         s.payToken = _payToken;
     }
 
-    /**
-     * @notice Get the payment token address
-     */
-    function getPayToken() external view returns (address) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.payToken;
-    }
-
     // ============================================================================
     // RBAC (from AuSys.sol)
     // ============================================================================
@@ -325,22 +315,6 @@ contract AuSysFacet is ReentrancyGuard {
     function setDispatcher(address dispatcher, bool enable) external adminOnly {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         s.ausysRoles[DISPATCHER_ROLE][dispatcher] = enable;
-    }
-
-    /**
-     * @notice Check if an address has a role (from AuSys.hasRole)
-     */
-    function hasAuSysRole(bytes32 role, address account) external view returns (bool) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.ausysRoles[role][account];
-    }
-
-    /**
-     * @notice Get all currently allowed drivers
-     */
-    function getAllowedDrivers() external view returns (address[] memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.driverRoleMembers;
     }
 
     // ============================================================================
@@ -472,23 +446,6 @@ contract AuSysFacet is ReentrancyGuard {
         return id;
     }
 
-    /**
-     * @notice Get an order by ID (from AuSys.getOrder)
-     */
-    function getAuSysOrder(bytes32 id) external view returns (DiamondStorage.AuSysOrder memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        DiamondStorage.AuSysOrder memory order = s.ausysOrders[id];
-        if (
-            order.id != bytes32(0) &&
-            order.currentStatus == OrderStatus.AUSYS_CREATED &&
-            order.expiresAt != 0 &&
-            block.timestamp > order.expiresAt
-        ) {
-            order.currentStatus = OrderStatus.AUSYS_EXPIRED;
-        }
-        return order;
-    }
-
     // ============================================================================
     // P2P OFFER MANAGEMENT
     // ============================================================================
@@ -617,66 +574,6 @@ contract AuSysFacet is ReentrancyGuard {
         if (signer == address(0)) revert InvalidAddress();
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         s.trustedP2PSigner = signer;
-    }
-
-    /**
-     * @notice Return the EIP-712 domain separator for this contract
-     */
-    function domainSeparator() external view returns (bytes32) {
-        return _domainSeparator();
-    }
-
-    /// @dev EIP-712 domain separator bound to chainId + address(this)
-    function _domainSeparator() internal view returns (bytes32) {
-        return keccak256(abi.encode(
-            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-            keccak256("Aurellion"),
-            keccak256("1"),
-            block.chainid,
-            address(this)
-        ));
-    }
-
-    /**
-     * @notice Get all open P2P offers
-     * @return Array of order IDs that are open P2P offers
-     */
-    function getOpenP2POffers() external view returns (bytes32[] memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        bytes32[] storage offerIds = s.openP2POfferIds;
-        uint256 length = offerIds.length;
-        bytes32[] memory tempResults = new bytes32[](length);
-        uint256 resultCount = 0;
-
-        for (uint256 i = 0; i < length; i++) {
-            bytes32 orderId = offerIds[i];
-            DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
-            if (order.id == bytes32(0) || order.currentStatus != OrderStatus.AUSYS_CREATED) {
-                continue;
-            }
-
-            if (order.expiresAt != 0 && block.timestamp > order.expiresAt) {
-                continue;
-            }
-
-            tempResults[resultCount++] = orderId;
-        }
-
-        bytes32[] memory result = new bytes32[](resultCount);
-        for (uint256 i = 0; i < resultCount; i++) {
-            result[i] = tempResults[i];
-        }
-        return result;
-    }
-
-    /**
-     * @notice Get P2P offers created by a specific user
-     * @param user The user address
-     * @return Array of order IDs created by the user
-     */
-    function getUserP2POffers(address user) external view returns (bytes32[] memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.userP2POffers[user];
     }
 
     /**
@@ -853,14 +750,6 @@ contract AuSysFacet is ReentrancyGuard {
         );
     }
 
-    /**
-     * @notice Get a journey by ID (from AuSys.getjourney)
-     */
-    function getJourney(bytes32 id) external view returns (DiamondStorage.AuSysJourney memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.ausysJourneys[id];
-    }
-
     // ============================================================================
     // DRIVER ASSIGNMENT (from AuSys.sol)
     // ============================================================================
@@ -906,14 +795,6 @@ contract AuSysFacet is ReentrancyGuard {
             J.parcelData.startName,
             J.parcelData.endName
         );
-    }
-
-    /**
-     * @notice Get count of active journeys assigned to a driver (for debugging)
-     * @dev Journeys are only removed on handOff; stuck InTransit journeys count here
-     */
-    function getDriverJourneyCount(address driver) external view returns (uint256) {
-        return DiamondStorage.appStorage().driverToJourneyIds[driver].length;
     }
 
     // ============================================================================
@@ -1184,37 +1065,6 @@ contract AuSysFacet is ReentrancyGuard {
 
         IERC1155(O.token).safeTransferFrom(address(this), to, O.tokenId, O.tokenQuantity, '');
         emit TokenDestinationSelected(orderId, to, bytes32(0), false);
-    }
-
-    /**
-     * @notice Get all pending token destination orders for a buyer
-     * @param buyer The buyer address to query
-     * @return Array of order IDs awaiting destination selection
-     * @dev Optimized: uses single-pass with count-first approach, caching storage reads
-     */
-    function getPendingTokenDestinations(address buyer) external view returns (bytes32[] memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256 totalOrders = s.ausysOrderIds.length;
-
-        // Single pass: build result directly without counting first
-        // Use temporary storage for matches to avoid stack too deep
-        bytes32[] memory tempResults = new bytes32[](totalOrders);
-        uint256 resultCount = 0;
-
-        for (uint256 i = 0; i < totalOrders; i++) {
-            bytes32 oid = s.ausysOrderIds[i];
-            // Cache storage reads to avoid repeated SLOADs (saves ~2000 gas per iteration)
-            if (s.pendingTokenDestination[oid] && s.pendingTokenBuyer[oid] == buyer) {
-                tempResults[resultCount++] = oid;
-            }
-        }
-
-        // Resize result to exact size
-        bytes32[] memory result = new bytes32[](resultCount);
-        for (uint256 i = 0; i < resultCount; i++) {
-            result[i] = tempResults[i];
-        }
-        return result;
     }
 
     function _creditOwnerNodeSellable(

@@ -11,6 +11,7 @@ import { OwnershipFacet } from 'contracts/diamond/facets/OwnershipFacet.sol';
 import { NodesFacet } from 'contracts/diamond/facets/NodesFacet.sol';
 import { AssetsFacet } from 'contracts/diamond/facets/AssetsFacet.sol';
 import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
+import { AuSysViewFacet } from 'contracts/diamond/facets/AuSysViewFacet.sol';
 import { BridgeFacet } from 'contracts/diamond/facets/BridgeFacet.sol';
 import { CLOBLogisticsFacet } from 'contracts/diamond/facets/CLOBLogisticsFacet.sol';
 import { RWYStakingFacet } from 'contracts/diamond/facets/RWYStakingFacet.sol';
@@ -35,6 +36,7 @@ abstract contract DiamondTestBase is Test {
     NodesFacet public nodesFacet;
     AssetsFacet public assetsFacet;
     AuSysFacet public auSysFacet;
+    AuSysViewFacet public auSysViewFacet;
     BridgeFacet public bridgeFacet;
     CLOBLogisticsFacet public clobLogisticsFacet;
     RWYStakingFacet public rwyStakingFacet;
@@ -98,6 +100,7 @@ abstract contract DiamondTestBase is Test {
         nodesFacet = new NodesFacet();
         assetsFacet = new AssetsFacet();
         auSysFacet = new AuSysFacet();
+        auSysViewFacet = new AuSysViewFacet();
         bridgeFacet = new BridgeFacet();
         clobLogisticsFacet = new CLOBLogisticsFacet();
         rwyStakingFacet = new RWYStakingFacet();
@@ -122,6 +125,9 @@ abstract contract DiamondTestBase is Test {
         
         // Add AuSysFacet
         _addFacet(address(auSysFacet), _getAuSysSelectors());
+
+        // Add AuSysViewFacet
+        _addFacet(address(auSysViewFacet), _getAuSysViewSelectors());
         
         // Add BridgeFacet
         _addFacet(address(bridgeFacet), _getBridgeSelectors());
@@ -295,23 +301,35 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getAuSysSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](16);
+        bytes4[] memory selectors = new bytes4[](13);
         selectors[0] = AuSysFacet.setPayToken.selector;
-        selectors[1] = AuSysFacet.getPayToken.selector;
-        selectors[2] = AuSysFacet.setAuSysAdmin.selector;
-        selectors[3] = AuSysFacet.revokeAuSysAdmin.selector;
-        selectors[4] = AuSysFacet.setDriver.selector;
-        selectors[5] = AuSysFacet.setDispatcher.selector;
-        selectors[6] = AuSysFacet.hasAuSysRole.selector;
-        selectors[7] = AuSysFacet.getAllowedDrivers.selector;
-        selectors[8] = AuSysFacet.createAuSysOrder.selector;
-        selectors[9] = AuSysFacet.getAuSysOrder.selector;
-        selectors[10] = AuSysFacet.createJourney.selector;
-        selectors[11] = AuSysFacet.createOrderJourney.selector;
-        selectors[12] = AuSysFacet.getJourney.selector;
-        selectors[13] = AuSysFacet.assignDriverToJourney.selector;
-        selectors[14] = AuSysFacet.packageSign.selector;
-        selectors[15] = AuSysFacet.handOn.selector;
+        selectors[1] = AuSysFacet.setAuSysAdmin.selector;
+        selectors[2] = AuSysFacet.revokeAuSysAdmin.selector;
+        selectors[3] = AuSysFacet.setDriver.selector;
+        selectors[4] = AuSysFacet.setDispatcher.selector;
+        selectors[5] = AuSysFacet.createAuSysOrder.selector;
+        selectors[6] = AuSysFacet.createJourney.selector;
+        selectors[7] = AuSysFacet.createOrderJourney.selector;
+        selectors[8] = AuSysFacet.assignDriverToJourney.selector;
+        selectors[9] = AuSysFacet.packageSign.selector;
+        selectors[10] = AuSysFacet.handOn.selector;
+        selectors[11] = AuSysFacet.correctOrderTokenQuantity.selector;
+        selectors[12] = AuSysFacet.adminRecoverEscrow.selector;
+        return selectors;
+    }
+
+    function _getAuSysViewSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](10);
+        selectors[0] = AuSysViewFacet.getPayToken.selector;
+        selectors[1] = AuSysViewFacet.hasAuSysRole.selector;
+        selectors[2] = AuSysViewFacet.getAllowedDrivers.selector;
+        selectors[3] = AuSysViewFacet.getAuSysOrder.selector;
+        selectors[4] = AuSysViewFacet.domainSeparator.selector;
+        selectors[5] = AuSysViewFacet.getOpenP2POffers.selector;
+        selectors[6] = AuSysViewFacet.getUserP2POffers.selector;
+        selectors[7] = AuSysViewFacet.getJourney.selector;
+        selectors[8] = AuSysViewFacet.getDriverJourneyCount.selector;
+        selectors[9] = AuSysViewFacet.getPendingTokenDestinations.selector;
         return selectors;
     }
 

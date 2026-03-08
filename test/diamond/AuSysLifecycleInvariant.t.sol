@@ -9,12 +9,13 @@ import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
 import { DiamondCutFacet } from 'contracts/diamond/facets/DiamondCutFacet.sol';
 import { NodesFacet } from 'contracts/diamond/facets/NodesFacet.sol';
 import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
+import { IAuSysDiamond } from 'contracts/diamond/interfaces/IAuSysDiamond.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 import { OrderStatus } from 'contracts/diamond/libraries/OrderStatus.sol';
 import { ERC1155Mock } from './helpers/ERC1155Mock.sol';
 
 contract AuSysLifecycleHandler is Test {
-    AuSysFacet internal immutable ausys;
+    IAuSysDiamond internal immutable ausys;
     ERC1155Mock internal immutable assetToken;
     address internal immutable diamondAddress;
     address internal immutable admin;
@@ -31,7 +32,7 @@ contract AuSysLifecycleHandler is Test {
     uint256 internal constant TOKEN_ID = 7;
 
     constructor(
-        AuSysFacet _ausys,
+        IAuSysDiamond _ausys,
         ERC1155Mock _assetToken,
         address _diamondAddress,
         address _admin,
@@ -280,13 +281,13 @@ interface ERC20MockLike {
 }
 
 contract AuSysLifecycleInvariantTest is StdInvariant, DiamondTestBase {
-    AuSysFacet internal ausys;
+    IAuSysDiamond internal ausys;
     ERC1155Mock internal erc1155Token;
     AuSysLifecycleHandler internal handler;
 
     function setUp() public override {
         super.setUp();
-        ausys = AuSysFacet(address(diamond));
+        ausys = IAuSysDiamond(address(diamond));
         erc1155Token = new ERC1155Mock();
         _addExtendedAuSysSelectors();
 
@@ -398,16 +399,12 @@ contract AuSysLifecycleInvariantTest is StdInvariant, DiamondTestBase {
     }
 
     function _addExtendedAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](9);
+        bytes4[] memory sels = new bytes4[](5);
         sels[0] = AuSysFacet.acceptP2POffer.selector;
         sels[1] = AuSysFacet.cancelP2POffer.selector;
-        sels[2] = AuSysFacet.getOpenP2POffers.selector;
-        sels[3] = AuSysFacet.handOff.selector;
-        sels[4] = AuSysFacet.selectTokenDestination.selector;
-        sels[5] = AuSysFacet.getPendingTokenDestinations.selector;
-        sels[6] = AuSysFacet.getDriverJourneyCount.selector;
-        sels[7] = AuSysFacet.onERC1155Received.selector;
-        sels[8] = AuSysFacet.onERC1155BatchReceived.selector;
+        sels[2] = AuSysFacet.handOff.selector;
+        sels[3] = AuSysFacet.selectTokenDestination.selector;
+        sels[4] = AuSysFacet.onERC1155Received.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({
@@ -425,7 +422,7 @@ contract AuSysLifecycleInvariantTest is StdInvariant, DiamondTestBase {
 }
 
 contract AuSysLifecycleFuzzTest is DiamondTestBase {
-    AuSysFacet internal ausys;
+    IAuSysDiamond internal ausys;
     ERC1155Mock internal erc1155Token;
     bytes32 internal buyerNodeId;
 
@@ -435,7 +432,7 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
 
     function setUp() public override {
         super.setUp();
-        ausys = AuSysFacet(address(diamond));
+        ausys = IAuSysDiamond(address(diamond));
         erc1155Token = new ERC1155Mock();
         _addExtendedAuSysSelectors();
 
@@ -656,16 +653,12 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
     }
 
     function _addExtendedAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](9);
+        bytes4[] memory sels = new bytes4[](5);
         sels[0] = AuSysFacet.acceptP2POffer.selector;
         sels[1] = AuSysFacet.cancelP2POffer.selector;
-        sels[2] = AuSysFacet.getOpenP2POffers.selector;
-        sels[3] = AuSysFacet.handOff.selector;
-        sels[4] = AuSysFacet.selectTokenDestination.selector;
-        sels[5] = AuSysFacet.getPendingTokenDestinations.selector;
-        sels[6] = AuSysFacet.getDriverJourneyCount.selector;
-        sels[7] = AuSysFacet.onERC1155Received.selector;
-        sels[8] = AuSysFacet.onERC1155BatchReceived.selector;
+        sels[2] = AuSysFacet.handOff.selector;
+        sels[3] = AuSysFacet.selectTokenDestination.selector;
+        sels[4] = AuSysFacet.onERC1155Received.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({

@@ -44,7 +44,7 @@
  *   - Removed functions leave orphaned selectors
  */
 
-import { ethers, network } from 'hardhat';
+import { artifacts, ethers, network } from 'hardhat';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -448,6 +448,7 @@ function regenerateFrontendABI() {
       'OrderRouterFacet',
       'AssetsFacet',
       'AuSysFacet',
+      'AuSysViewFacet',
       'BridgeFacet',
       'RWYStakingFacet',
       'CLOBLogisticsFacet',
@@ -459,8 +460,14 @@ function regenerateFrontendABI() {
     const includedFunctions = new Set<string>();
 
     for (const facetName of FRONTEND_FACETS) {
-      const facetABI = FACET_ABI[facetName];
-      if (!facetABI) continue;
+      let facetABI = FACET_ABI[facetName];
+      if (!facetABI) {
+        try {
+          facetABI = artifacts.readArtifactSync(facetName).abi;
+        } catch {
+          continue;
+        }
+      }
 
       for (const fragment of facetABI) {
         const key =
@@ -502,10 +509,17 @@ import { ABIFragment } from '@/scripts/deploy.config';
 export const DIAMOND_ABI: ABIFragment[] = ${JSON.stringify(combinedABI, null, 2)} as const;
 
 // Export individual facet ABIs for selective imports
-${FRONTEND_FACETS.map(
-  (facet) =>
-    `export const ${facet.toUpperCase()}_ABI = ${JSON.stringify(FACET_ABI[facet] || [], null, 2)} as const;`,
-).join('\n\n')}
+${FRONTEND_FACETS.map((facet) => {
+  let facetAbi = FACET_ABI[facet];
+  if (!facetAbi) {
+    try {
+      facetAbi = artifacts.readArtifactSync(facet).abi;
+    } catch {
+      facetAbi = [];
+    }
+  }
+  return `export const ${facet.toUpperCase()}_ABI = ${JSON.stringify(facetAbi || [], null, 2)} as const;`;
+}).join('\n\n')}
 
 // Helper to get ABI as ethers-compatible format
 export function getEthersABI(): any[] {
@@ -901,7 +915,11 @@ async function postDeploymentConfig(
         'AuSysFacet',
         resolvedAddresses.Diamond,
       );
-      const currentPayToken = await auSysFacet.getPayToken();
+      const auSysViewFacet = await ethers.getContractAt(
+        'AuSysViewFacet',
+        resolvedAddresses.Diamond,
+      );
+      const currentPayToken = await auSysViewFacet.getPayToken();
       if (currentPayToken === ethers.ZeroAddress) {
         const tx = await auSysFacet.setPayToken(resolvedAddresses.Aura);
         await tx.wait();
@@ -1351,20 +1369,19 @@ async function updateFacet(
     }
   }
 
-  // Get selectors - try FACET_SELECTORS first, then auto-extract from contract
-  let selectors = FACET_SELECTORS[facetName];
-  if (!selectors || selectors.length === 0) {
-    console.log(
-      `📋 No FACET_ABI defined for ${facetName}, auto-extracting from contract...`,
-    );
-    selectors = await extractSelectorsFromContract(config.contractName);
-    if (selectors.length === 0) {
-      throw new Error(`Could not extract selectors for ${facetName}`);
-    }
-    console.log(
-      `   ✓ Extracted ${selectors.length} selectors from ${config.contractName}\n`,
-    );
+  // Always extract selectors from the compiled artifact for facet upgrades.
+  // This avoids drift when functions are split across facets but deploy.config.ts
+  // has not been manually reshaped yet.
+  let selectors = await extractSelectorsFromContract(config.contractName);
+  if (selectors.length === 0) {
+    selectors = FACET_SELECTORS[facetName];
   }
+  if (!selectors || selectors.length === 0) {
+    throw new Error(`Could not extract selectors for ${facetName}`);
+  }
+  console.log(
+    `   ✓ Using ${selectors.length} selectors from ${config.contractName}\n`,
+  );
 
   let facetAddress = ethers.ZeroAddress;
   let blockNumber = 0;

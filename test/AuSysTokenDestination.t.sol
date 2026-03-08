@@ -9,6 +9,7 @@ import { DiamondCutFacet } from 'contracts/diamond/facets/DiamondCutFacet.sol';
 import { NodesFacet } from 'contracts/diamond/facets/NodesFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
+import { IAuSysDiamond } from 'contracts/diamond/interfaces/IAuSysDiamond.sol';
 import { ERC1155Mock } from './diamond/helpers/ERC1155Mock.sol';
 
 /**
@@ -16,7 +17,7 @@ import { ERC1155Mock } from './diamond/helpers/ERC1155Mock.sol';
  * @notice Tests for selectTokenDestination (PR #44, branch feature/settlement-token-destination)
  */
 contract AuSysTokenDestinationTest is DiamondTestBase {
-    AuSysFacet public ausys;
+    IAuSysDiamond public ausys;
     AssetsFacet public assets;
     ERC1155Mock public erc1155Token;
 
@@ -38,7 +39,7 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
 
     function setUp() public override {
         super.setUp();
-        ausys = AuSysFacet(address(diamond));
+        ausys = IAuSysDiamond(address(diamond));
         assets = AssetsFacet(address(diamond));
 
         // Deploy ERC1155 mock
@@ -72,12 +73,11 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
     }
 
     function _addMissingAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](5);
+        bytes4[] memory sels = new bytes4[](4);
         sels[0] = AuSysFacet.selectTokenDestination.selector;
-        sels[1] = AuSysFacet.getPendingTokenDestinations.selector;
-        sels[2] = AuSysFacet.handOff.selector;
-        sels[3] = AuSysFacet.onERC1155Received.selector;
-        sels[4] = AuSysFacet.onERC1155BatchReceived.selector;
+        sels[1] = AuSysFacet.handOff.selector;
+        sels[2] = AuSysFacet.onERC1155Received.selector;
+        sels[3] = AuSysFacet.onERC1155BatchReceived.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({

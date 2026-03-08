@@ -130,18 +130,8 @@
       "createAuSysOrder": "0xaefc63a0",
       "createJourney": "0x32807bbc",
       "createOrderJourney": "0xd975d24e",
-      "domainSeparator": "0xf698da25",
-      "getAllowedDrivers": "0x5b5d3bb8",
-      "getAuSysOrder": "0xebbce33a",
-      "getDriverJourneyCount": "0xe420f74b",
-      "getJourney": "0x3774f2c7",
-      "getOpenP2POffers": "0xad4235e7",
-      "getPayToken": "0xc57a0295",
-      "getPendingTokenDestinations": "0x85bd7135",
-      "getUserP2POffers": "0xa448bbd3",
       "handOff": "0x9d99e418",
       "handOn": "0xbd58cea4",
-      "hasAuSysRole": "0x62508270",
       "onERC1155BatchReceived": "0xbc197c81",
       "onERC1155Received": "0xf23a6e61",
       "packageSign": "0x5306bb14",
@@ -169,18 +159,8 @@
       "0xaefc63a0",
       "0x32807bbc",
       "0xd975d24e",
-      "0xf698da25",
-      "0x5b5d3bb8",
-      "0xebbce33a",
-      "0xe420f74b",
-      "0x3774f2c7",
-      "0xad4235e7",
-      "0xc57a0295",
-      "0x85bd7135",
-      "0xa448bbd3",
       "0x9d99e418",
       "0xbd58cea4",
-      "0x62508270",
       "0xbc197c81",
       "0xf23a6e61",
       "0x5306bb14",
@@ -191,6 +171,32 @@
       "0x4a00787a",
       "0x6f96e99c",
       "0x2262c541"
+    ]
+  },
+  "AuSysViewFacet": {
+    "selectors": {
+      "domainSeparator": "0xf698da25",
+      "getAllowedDrivers": "0x5b5d3bb8",
+      "getAuSysOrder": "0xebbce33a",
+      "getDriverJourneyCount": "0xe420f74b",
+      "getJourney": "0x3774f2c7",
+      "getOpenP2POffers": "0xad4235e7",
+      "getPayToken": "0xc57a0295",
+      "getPendingTokenDestinations": "0x85bd7135",
+      "getUserP2POffers": "0xa448bbd3",
+      "hasAuSysRole": "0x62508270"
+    },
+    "allSelectors": [
+      "0xf698da25",
+      "0x5b5d3bb8",
+      "0xebbce33a",
+      "0xe420f74b",
+      "0x3774f2c7",
+      "0xad4235e7",
+      "0xc57a0295",
+      "0x85bd7135",
+      "0xa448bbd3",
+      "0x62508270"
     ]
   },
   "OrderRouterFacet": {
@@ -364,9 +370,27 @@
   },
   "DiamondCutFacet": {
     "selectors": {
-      "diamondCut": "0x1f931c1c"
+      "cancelDiamondCut": "0x6fb05998",
+      "cancelDiamondCutTimelockChange": "0x3d351616",
+      "diamondCut": "0x1f931c1c",
+      "executeDiamondCutTimelockChange": "0x706dc068",
+      "getDiamondCutTimelock": "0x95fb23d0",
+      "getPendingDiamondCut": "0x4081716a",
+      "getPendingDiamondCutTimelockChange": "0xa05c8229",
+      "scheduleDiamondCut": "0x4a0e40d7",
+      "scheduleDiamondCutTimelockChange": "0xc513ff8f"
     },
-    "allSelectors": ["0x1f931c1c"]
+    "allSelectors": [
+      "0x6fb05998",
+      "0x3d351616",
+      "0x1f931c1c",
+      "0x706dc068",
+      "0x95fb23d0",
+      "0x4081716a",
+      "0xa05c8229",
+      "0x4a0e40d7",
+      "0xc513ff8f"
+    ]
   },
   "OwnershipFacet": {
     "selectors": {
@@ -567,6 +591,8 @@
       "getAssetByHash": "0xef6fd2f0",
       "getCustodyInfo": "0x35ad687c",
       "getNodeCustodyInfo": "0x27c88476",
+      "getNodeSellableAmount": "0x016473cb",
+      "getOwnerNodeSellableBalances": "0xe52fbe70",
       "getSupportedAssets": "0xe5406dbf",
       "getSupportedClasses": "0x30fc181d",
       "getTotalAssets": "0x6e07302b",
@@ -602,6 +628,8 @@
       "0xef6fd2f0",
       "0x35ad687c",
       "0x27c88476",
+      "0x016473cb",
+      "0xe52fbe70",
       "0xe5406dbf",
       "0x30fc181d",
       "0x6e07302b",
