@@ -52,11 +52,12 @@ jobs:
       - name: Run Vitest tests
         # node + --no-file-parallelism: runs files sequentially in one worker process,
         # avoiding the OOM caused by parallel forks accumulating jsdom/React module registries.
-        # NODE_OPTIONS=6144 gives the worker enough heap for the full sequential run.
+        # NODE_OPTIONS=7680 gives the worker enough heap for the full sequential run.
         # (88 files in parallel forks peaked at 4.5 GB/fork and crashed on this runner.)
+        # Bumped from 6144 → 7680 as suite grew past 6GB ceiling (March 2026).
         run: node node_modules/.bin/vitest run --no-file-parallelism
         env:
-          NODE_OPTIONS: --max-old-space-size=6144
+          NODE_OPTIONS: --max-old-space-size=7680
 
       - name: Run Hardhat tests
         run: bunx --bun hardhat test
