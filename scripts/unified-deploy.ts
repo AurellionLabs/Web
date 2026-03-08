@@ -304,18 +304,23 @@ function updateChainConstants(
     if (updatedContent !== content) {
       content = updatedContent;
     } else {
-      // Find the right section to insert
-      const sectionMarker = key.includes('DIAMOND')
-        ? '// =============================================================================\n// EIP-2535 DIAMOND CONTRACTS'
-        : key.includes('RWY')
-          ? '// RWY Vault'
-          : '// =============================================================================\n// CONTRACT ADDRESSES';
-      const newLine = `export const ${key} =\n  '${value}';`;
+      // Guard: only insert if the key truly doesn't exist yet.
+      // replaceChainConstant returns unchanged content when the regex didn't
+      // match — but the constant may already be present in a different format.
+      // Appending without this check causes duplicate export declarations.
+      const existsCheck = new RegExp(`export const ${key}\\s*=`, 'm');
+      if (!existsCheck.test(content)) {
+        const sectionMarker = key.includes('DIAMOND')
+          ? '// =============================================================================\n// EIP-2535 DIAMOND CONTRACTS'
+          : key.includes('RWY')
+            ? '// RWY Vault'
+            : '// =============================================================================\n// CONTRACT ADDRESSES';
+        const newLine = `export const ${key} =\n  '${value}';`;
 
-      const insertIndex = content.indexOf(sectionMarker);
-      if (insertIndex === -1) {
-        // Append to end of contract addresses section
-        content += `\n${newLine}\n`;
+        const insertIndex = content.indexOf(sectionMarker);
+        if (insertIndex === -1) {
+          content += `\n${newLine}\n`;
+        }
       }
     }
   }
