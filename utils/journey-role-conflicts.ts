@@ -180,6 +180,11 @@ function toActionableConflictMessage(type: JourneyRoleConflictType): string {
       'Assign a different driver wallet, then retry.'
     );
   }
+
+  return (
+    'Role mismatch: sender, driver, and customer must all use different ' +
+    'wallet addresses. Switch one role to a different wallet and retry.'
+  );
 }
 
 export function getJourneyRoleConflictMessage(error: unknown): string | null {

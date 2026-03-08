@@ -73,6 +73,7 @@ import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';
+import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 
 type SortConfig = {
   key: 'tokenQuantity' | 'price' | null;
@@ -384,9 +385,18 @@ export default function CustomerDashboard() {
 
       return result;
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription = 'Failed to sign for delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description: 'Failed to sign for delivery. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
       throw err;
@@ -419,9 +429,18 @@ export default function CustomerDashboard() {
 
       return result;
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription = 'Failed to complete handoff. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description: 'Failed to complete handoff. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
       throw err;
@@ -479,13 +498,21 @@ export default function CustomerDashboard() {
       });
     } catch (err) {
       console.error('Error scheduling delivery:', err);
-      const msg =
+      let toastTitle = 'Error';
+      let toastDescription =
         err instanceof Error
           ? err.message
           : 'Failed to schedule delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description: msg,
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
       throw err; // Re-throw so dialog can show the error
