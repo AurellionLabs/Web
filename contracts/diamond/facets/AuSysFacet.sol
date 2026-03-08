@@ -23,6 +23,8 @@ contract AuSysFacet is ReentrancyGuard {
     uint256 public constant MAX_DRIVER_JOURNEYS = 10;
 
     error ArrayLimitExceeded();
+    error ContractPaused();
+    error RecoveryTooEarly();
 
     // ============================================================================
     // EVENTS (from AuSys.sol)
@@ -227,6 +229,12 @@ contract AuSysFacet is ReentrancyGuard {
     // MODIFIERS
     // ============================================================================
 
+    modifier whenNotPaused() {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        if (s.paused) revert ContractPaused();
+        _;
+    }
+
     modifier onlyOwner() {
         LibDiamond.enforceIsContractOwner();
         _;
@@ -328,7 +336,7 @@ contract AuSysFacet is ReentrancyGuard {
      */
     function createAuSysOrder(
         DiamondStorage.AuSysOrder memory order
-    ) external nonReentrant returns (bytes32) {
+    ) external nonReentrant whenNotPaused returns (bytes32) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         if (order.token == address(0)) {
@@ -458,7 +466,7 @@ contract AuSysFacet is ReentrancyGuard {
      */
     function acceptP2POffer(
         bytes32 orderId
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
 
@@ -521,7 +529,7 @@ contract AuSysFacet is ReentrancyGuard {
      * @notice Cancel a P2P offer (only creator, only if not yet accepted)
      * @param orderId The order/offer to cancel
      */
-    function cancelP2POffer(bytes32 orderId) external nonReentrant {
+    function cancelP2POffer(bytes32 orderId) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
 
@@ -567,8 +575,12 @@ contract AuSysFacet is ReentrancyGuard {
     // ============================================================================
 
     /**
-     * @notice Set the trusted off-chain signer for P2P offer acceptance (admin only)
-     * @param signer The address whose EIP-712 signatures are accepted in acceptP2POffer
+     * @notice Set the trusted off-chain signer address (reserved for future EIP-712 flow).
+     * @dev IMPORTANT: This signer is stored but NOT yet enforced in acceptP2POffer.
+     *      acceptP2POffer currently relies solely on msg.sender authorization.
+     *      Full EIP-712 signature verification is planned for a future upgrade.
+     *      Auditors: this field is intentionally inert in v1 — see roadmap docs.
+     * @param signer The address to designate as trusted signer for future enforcement
      */
     function setTrustedP2PSigner(address signer) external adminOnly {
         if (signer == address(0)) revert InvalidAddress();
@@ -624,7 +636,7 @@ contract AuSysFacet is ReentrancyGuard {
         DiamondStorage.ParcelData memory _data,
         uint256 bounty,
         uint256 ETA
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         if (msg.sender != receiver) revert CallerMustBeBuyer();
@@ -679,7 +691,7 @@ contract AuSysFacet is ReentrancyGuard {
         uint256 ETA,
         uint256 tokenQuantity,
         uint256 assetId
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
 
@@ -757,7 +769,7 @@ contract AuSysFacet is ReentrancyGuard {
     /**
      * @notice Assign a driver to a journey (from AuSys.assignDriverToJourneyId)
      */
-    function assignDriverToJourney(address driver, bytes32 journeyId) external {
+    function assignDriverToJourney(address driver, bytes32 journeyId) external whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysJourney storage J = s.ausysJourneys[journeyId];
 
@@ -804,7 +816,7 @@ contract AuSysFacet is ReentrancyGuard {
     /**
      * @notice Sign for package pickup/delivery (from AuSys.packageSign)
      */
-    function packageSign(bytes32 id) external customerDriverCheck(id) {
+    function packageSign(bytes32 id) external customerDriverCheck(id) whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysJourney storage J = s.ausysJourneys[id];
 
@@ -820,6 +832,9 @@ contract AuSysFacet is ReentrancyGuard {
                 s.driverPickupSigned[J.driver][id] = true;
             } else if (J.currentStatus == OrderStatus.JOURNEY_IN_TRANSIT) {
                 s.driverDeliverySigned[J.driver][id] = true;
+            } else {
+                // Journey is in a terminal state (Delivered/Canceled) — signing is meaningless
+                revert JourneyNotInProgress();
             }
             emit EmitSig(J.driver, id);
         }
@@ -829,7 +844,7 @@ contract AuSysFacet is ReentrancyGuard {
      * @notice Hand on - pickup confirmation (from AuSys.handOn)
      * @dev Requires driver and sender signatures. Transitions to InTransit.
      */
-    function handOn(bytes32 id) external customerDriverCheck(id) isPending(id) nonReentrant returns (bool) {
+    function handOn(bytes32 id) external customerDriverCheck(id) isPending(id) nonReentrant whenNotPaused returns (bool) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysJourney storage J = s.ausysJourneys[id];
 
@@ -889,7 +904,7 @@ contract AuSysFacet is ReentrancyGuard {
      * @dev Requires driver delivery signature and receiver signature. 
      *      Pays driver bounty and settles order if final delivery.
      */
-    function handOff(bytes32 id) external isInProgress(id) customerDriverCheck(id) nonReentrant returns (bool) {
+    function handOff(bytes32 id) external isInProgress(id) customerDriverCheck(id) nonReentrant whenNotPaused returns (bool) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysJourney storage J = s.ausysJourneys[id];
         bytes32 orderId = s.journeyToAusysOrderId[id];
@@ -926,7 +941,9 @@ contract AuSysFacet is ReentrancyGuard {
             J.parcelData.endName
         );
 
-        // Pay driver bounty
+        // Pay driver bounty.
+        // NOTE: State (JOURNEY_DELIVERED, journeyEnd, driver removal) is fully updated above
+        // before any external calls below. Reentrancy is additionally guarded by nonReentrant.
         _generateReward(s, id);
 
         // Settle order if this is final delivery to buyer
@@ -945,7 +962,7 @@ contract AuSysFacet is ReentrancyGuard {
     // ============================================================================
 
     function _getHashedJourneyId(DiamondStorage.AppStorage storage s) internal returns (bytes32) {
-        return keccak256(abi.encode(++s.ausysJourneyIdCounter));
+        return keccak256(abi.encodePacked(++s.ausysJourneyIdCounter, block.prevrandao, msg.sender, block.timestamp));
     }
 
     /// @dev FIX 4: prevrandao + creator + timestamp added for order ID entropy
@@ -1022,7 +1039,7 @@ contract AuSysFacet is ReentrancyGuard {
         bytes32 orderId,
         bytes32 nodeId,
         bool burn
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
 
@@ -1058,7 +1075,7 @@ contract AuSysFacet is ReentrancyGuard {
         DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
 
         if (!s.pendingTokenDestination[orderId]) revert NoPendingDestination();
-        require(block.timestamp > s.ausysOrderSettledAt[orderId] + 30 days, "Too early: 30-day lock active");
+        if (block.timestamp <= s.ausysOrderSettledAt[orderId] + 30 days) revert RecoveryTooEarly();
 
         s.pendingTokenDestination[orderId] = false;
         delete s.pendingTokenBuyer[orderId];
