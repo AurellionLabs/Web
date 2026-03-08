@@ -25,10 +25,17 @@ contract AuSysFacet is ReentrancyGuard {
     error ArrayLimitExceeded();
     error ContractPaused();
     error RecoveryTooEarly();
+    error FeeBpsTooHigh();
+    error NothingToClaim();
 
     // ============================================================================
     // EVENTS (from AuSys.sol)
     // ============================================================================
+
+    event TreasuryFeeAccrued(bytes32 indexed orderId, uint256 amount);
+    event TreasuryFeeClaimed(address indexed to, uint256 amount);
+    event TreasuryFeeBpsUpdated(uint16 oldBps, uint16 newBps);
+    event NodeFeeBpsUpdated(uint16 oldBps, uint16 newBps);
 
     event AuSysAdminSet(address indexed admin);
     event AuSysAdminRevoked(address indexed admin);
@@ -288,6 +295,65 @@ contract AuSysFacet is ReentrancyGuard {
         s.payToken = _payToken;
     }
 
+    /**
+     * @notice One-time initialiser for fee defaults (call after upgrading Diamond).
+     * @dev Safe to call again — only sets fees if both are currently 0 (uninitialised).
+     *      Default: 10 bps (0.1%) treasury fee, 10 bps (0.1%) node fee.
+     */
+    function initAuSysFees() external onlyOwner {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        if (s.treasuryFeeBps == 0 && s.nodeFeeBps == 0) {
+            s.treasuryFeeBps = 10; // 0.1%
+            s.nodeFeeBps = 10;     // 0.1%
+            emit TreasuryFeeBpsUpdated(0, 10);
+            emit NodeFeeBpsUpdated(0, 10);
+        }
+    }
+
+    /**
+     * @notice Set the treasury fee in basis points (100 = 1%). Max 500 bps (5%).
+     * @dev Applied to every order at creation time. Existing orders use the rate baked at creation.
+     */
+    function setTreasuryFeeBps(uint16 bps) external onlyOwner {
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        emit TreasuryFeeBpsUpdated(s.treasuryFeeBps, bps);
+        s.treasuryFeeBps = bps;
+    }
+
+    /**
+     * @notice Set the node fee in basis points (100 = 1%). Max 500 bps (5%).
+     * @dev Only charged when intermediate nodes are present on the order.
+     */
+    function setNodeFeeBps(uint16 bps) external onlyOwner {
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        emit NodeFeeBpsUpdated(s.nodeFeeBps, bps);
+        s.nodeFeeBps = bps;
+    }
+
+    /**
+     * @notice Claim all accrued treasury fees to a given address (owner only).
+     * @dev Pull pattern — fees accumulate in storage, owner withdraws on demand.
+     * @param to Recipient address (typically the Aurellion treasury multisig)
+     */
+    function claimTreasuryFees(address to) external onlyOwner nonReentrant {
+        if (to == address(0)) revert InvalidAddress();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 amount = s.treasuryAccrued;
+        if (amount == 0) revert NothingToClaim();
+        s.treasuryAccrued = 0;
+        IERC20(s.payToken).safeTransfer(to, amount);
+        emit TreasuryFeeClaimed(to, amount);
+    }
+
+    /**
+     * @notice View the current accrued treasury balance
+     */
+    function getTreasuryAccrued() external view returns (uint256) {
+        return DiamondStorage.appStorage().treasuryAccrued;
+    }
+
     // ============================================================================
     // RBAC (from AuSys.sol)
     // ============================================================================
@@ -361,9 +427,11 @@ contract AuSysFacet is ReentrancyGuard {
         }
 
         bytes32 id = _getHashedOrderId(s, msg.sender);
-        
-        // Calculate tx fee (2% from AuSys.sol)
-        uint256 txFee = (order.price * 2) / 100;
+
+        // Treasury fee always applies. Node fee only if intermediate nodes are present.
+        uint256 treasuryFee = (order.price * s.treasuryFeeBps) / 10000;
+        uint256 nodeFee = order.nodes.length > 0 ? (order.price * s.nodeFeeBps) / 10000 : 0;
+        uint256 txFee = treasuryFee + nodeFee;
 
         // Store order
         DiamondStorage.AuSysOrder storage newOrder = s.ausysOrders[id];
@@ -1015,16 +1083,26 @@ contract AuSysFacet is ReentrancyGuard {
         IERC20(s.payToken).safeTransfer(O.seller, O.price);
         emit SellerPaid(O.seller, O.price);
 
-        // Distribute tx fees to nodes
-        if (O.nodes.length > 0) {
-            uint256 nodeCount = O.nodes.length;
-            uint256 nodeReward = O.txFee / nodeCount;
-            uint256 remainder = O.txFee % nodeCount;
+        // ── FEE DISTRIBUTION ────────────────────────────────────────────────
+        // Treasury fee: always accrued (pull pattern — owner calls claimTreasuryFees)
+        uint256 treasuryPortion = (O.price * s.treasuryFeeBps) / 10000;
+        if (treasuryPortion > 0) {
+            s.treasuryAccrued += treasuryPortion;
+            emit TreasuryFeeAccrued(orderId, treasuryPortion);
+        }
 
-            for (uint256 i = 0; i < nodeCount; i++) {
-                uint256 amount = nodeReward + (i == 0 ? remainder : 0);
-                IERC20(s.payToken).safeTransfer(O.nodes[i], amount);
-                emit NodeFeeDistributed(O.nodes[i], amount);
+        // Node fee: only distributed when intermediate nodes were part of the order
+        if (O.nodes.length > 0) {
+            uint256 nodePortion = O.txFee > treasuryPortion ? O.txFee - treasuryPortion : 0;
+            if (nodePortion > 0) {
+                uint256 nodeCount = O.nodes.length;
+                uint256 nodeReward = nodePortion / nodeCount;
+                uint256 remainder = nodePortion % nodeCount;
+                for (uint256 i = 0; i < nodeCount; i++) {
+                    uint256 amount = nodeReward + (i == 0 ? remainder : 0);
+                    IERC20(s.payToken).safeTransfer(O.nodes[i], amount);
+                    emit NodeFeeDistributed(O.nodes[i], amount);
+                }
             }
         }
 
