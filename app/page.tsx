@@ -95,6 +95,12 @@ export default function LandingPage() {
                 <div className="flex items-start gap-4 mb-10">
                   <LaurelAccent side="left" className="hidden lg:block mt-4" />
                   <h1 className="font-serif text-5xl md:text-7xl xl:text-8xl leading-[0.85] tracking-tight">
+                    <span className="font-mono text-sm md:text-base tracking-[0.28em] uppercase text-crimson/75 block mb-4">
+                      Aurellion Labs
+                    </span>
+                    <span className="text-foreground block text-balance">
+                      Aurellion
+                    </span>
                     <span className="text-gold block text-balance">
                       The New
                     </span>
@@ -109,10 +115,11 @@ export default function LandingPage() {
                 <div className="flex gap-4 mb-12 max-w-lg">
                   <div className="w-[1px] bg-gold/30 shrink-0 mt-1" />
                   <p className="font-sans text-base leading-relaxed text-foreground/60">
-                    Where ancient wisdom meets modern finance. Tokenize
-                    real-world assets with the precision of philosophy and the
-                    power of blockchain. Every asset undergoes rigorous
-                    compliance, legal structuring, and custodial verification.
+                    Aurellion Labs builds the Aurellion platform for tokenized
+                    real-world assets, compliant on-chain trading, and DeFi
+                    infrastructure. Every asset goes through legal structuring,
+                    custodial verification, and compliance review before it
+                    reaches the market.
                   </p>
                 </div>
 
@@ -123,11 +130,14 @@ export default function LandingPage() {
                       Launch App
                     </TrapButton>
                   </Link>
-                  <button className="px-8 py-4 border border-border/40 hover:border-foreground/30 transition-colors duration-500">
+                  <Link
+                    href="/docs"
+                    className="px-8 py-4 border border-border/40 hover:border-foreground/30 transition-colors duration-500"
+                  >
                     <span className="font-mono text-sm tracking-[0.2em] uppercase text-foreground/50 hover:text-foreground/80">
                       Read Protocol
                     </span>
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="mt-8">
