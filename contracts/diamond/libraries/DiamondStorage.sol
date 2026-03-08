@@ -248,6 +248,14 @@ library DiamondStorage {
         // Needed because multiple nodes can share the same owner wallet
         mapping(uint256 => mapping(bytes32 => uint256)) tokenNodeCustodyAmounts;
 
+        // ======= OWNER-NODE SELLABLE ALLOCATION =======
+        // Wallet-held, node-attributed sellable amounts: owner => tokenId => nodeHash => amount
+        // This preserves a canonical split for holders with balances linked to multiple nodes.
+        mapping(address => mapping(uint256 => mapping(bytes32 => uint256))) ownerNodeSellableAmounts;
+        // Enumerates node hashes that have ever had sellable allocation for a given owner/token.
+        mapping(address => mapping(uint256 => bytes32[])) ownerTokenSellableNodes;
+        mapping(address => mapping(uint256 => mapping(bytes32 => bool))) ownerTokenHasSellableNode;
+
         // ======= TOKEN DESTINATION ESCROW =======
         mapping(bytes32 => bool) pendingTokenDestination;
         mapping(bytes32 => address) pendingTokenBuyer;

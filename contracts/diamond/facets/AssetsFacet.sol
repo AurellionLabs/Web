@@ -79,6 +79,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     error AssetAlreadyExists();
     error InsufficientBalance();
     error ExceedsCustodyAmount();
+    error ExceedsNodeSellableAmount();
     error NoCustodian();
     error DifferentCustodian(); // DEPRECATED: multi-custodian model now allows different minters
     error CannotRedeemOwnCustody();
@@ -352,6 +353,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         // Track per-node custody for multi-node wallets
         if (mintingNodeHash != bytes32(0)) {
             s.tokenNodeCustodyAmounts[tokenID][mintingNodeHash] += amount;
+            _creditOwnerNodeSellable(s, account, tokenID, mintingNodeHash, amount);
         }
 
         emit CustodyEstablished(tokenID, account, amount);
@@ -411,6 +413,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         if (custodian == address(0)) revert NoCustodian();
         if (msg.sender == custodian) revert CannotRedeemOwnCustody();
         if (s.tokenCustodianAmounts[tokenId][custodian] < amount) revert ExceedsCustodyAmount();
+        _debitOwnerSellable(s, msg.sender, tokenId, amount);
 
         // Burn the tokens
         _burn(msg.sender, tokenId, amount);
@@ -437,6 +440,9 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         if (msg.sender == custodian) revert CannotRedeemOwnCustody();
         if (s.tokenCustodianAmounts[tokenId][custodian] < amount) revert ExceedsCustodyAmount();
         if (s.tokenNodeCustodyAmounts[tokenId][nodeHash] < amount) revert ExceedsCustodyAmount();
+        if (s.ownerNodeSellableAmounts[msg.sender][tokenId][nodeHash] < amount) {
+            revert ExceedsNodeSellableAmount();
+        }
 
         // Verify node is owned by custodian
         require(s.nodes[nodeHash].owner == custodian, "Node not owned by custodian");
@@ -448,6 +454,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         s.tokenCustodianAmounts[tokenId][custodian] -= amount;
         s.tokenNodeCustodyAmounts[tokenId][nodeHash] -= amount;
         s.tokenCustodyAmount[tokenId] -= amount;
+        s.ownerNodeSellableAmounts[msg.sender][tokenId][nodeHash] -= amount;
 
         emit CustodyReleased(tokenId, custodian, amount, msg.sender);
     }
@@ -472,6 +479,58 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     function getNodeCustodyInfo(uint256 tokenId, bytes32 nodeHash) external view returns (uint256 amount) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         return s.tokenNodeCustodyAmounts[tokenId][nodeHash];
+    }
+
+    /**
+     * @notice Get wallet-held sellable amount attributed to a specific node
+     * @param owner The wallet owner
+     * @param tokenId The token ID to query
+     * @param nodeHash The node hash to query
+     * @return amount The owner's sellable amount attributed to that node
+     */
+    function getNodeSellableAmount(
+        address owner,
+        uint256 tokenId,
+        bytes32 nodeHash
+    ) external view returns (uint256 amount) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.ownerNodeSellableAmounts[owner][tokenId][nodeHash];
+    }
+
+    /**
+     * @notice Get all positive node sellable allocations for an owner/token
+     * @param owner The wallet owner
+     * @param tokenId The token ID to query
+     * @return nodeHashes Nodes with positive sellable allocation
+     * @return amounts Corresponding positive sellable amounts
+     */
+    function getOwnerNodeSellableBalances(
+        address owner,
+        uint256 tokenId
+    ) external view returns (bytes32[] memory nodeHashes, uint256[] memory amounts) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        bytes32[] storage trackedNodes = s.ownerTokenSellableNodes[owner][tokenId];
+        uint256 trackedCount = trackedNodes.length;
+        uint256 positiveCount = 0;
+
+        for (uint256 i = 0; i < trackedCount; i++) {
+            if (s.ownerNodeSellableAmounts[owner][tokenId][trackedNodes[i]] > 0) {
+                positiveCount++;
+            }
+        }
+
+        nodeHashes = new bytes32[](positiveCount);
+        amounts = new uint256[](positiveCount);
+
+        uint256 idx = 0;
+        for (uint256 i = 0; i < trackedCount; i++) {
+            bytes32 nodeHash = trackedNodes[i];
+            uint256 amount = s.ownerNodeSellableAmounts[owner][tokenId][nodeHash];
+            if (amount == 0) continue;
+            nodeHashes[idx] = nodeHash;
+            amounts[idx] = amount;
+            idx++;
+        }
     }
 
     /**
@@ -702,6 +761,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
             s.erc1155Balances[id][from] = fromBalance - amount;
         }
         s.erc1155Balances[id][to] += amount;
+        _moveOwnerNodeSellable(s, from, to, id, amount);
 
         emit TransferSingle(msg.sender, from, to, id, amount);
 
@@ -737,6 +797,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
                 s.erc1155Balances[id][from] = fromBalance - amount;
             }
             s.erc1155Balances[id][to] += amount;
+            _moveOwnerNodeSellable(s, from, to, id, amount);
         }
 
         emit TransferBatch(msg.sender, from, to, ids, amounts);
@@ -805,6 +866,73 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         }
 
         emit TransferSingle(msg.sender, from, address(0), id, amount);
+    }
+
+    function _creditOwnerNodeSellable(
+        DiamondStorage.AppStorage storage s,
+        address owner,
+        uint256 tokenId,
+        bytes32 nodeHash,
+        uint256 amount
+    ) internal {
+        if (owner == address(0) || nodeHash == bytes32(0) || amount == 0) return;
+
+        if (!s.ownerTokenHasSellableNode[owner][tokenId][nodeHash]) {
+            s.ownerTokenHasSellableNode[owner][tokenId][nodeHash] = true;
+            s.ownerTokenSellableNodes[owner][tokenId].push(nodeHash);
+        }
+
+        s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] += amount;
+    }
+
+    function _moveOwnerNodeSellable(
+        DiamondStorage.AppStorage storage s,
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 amount
+    ) internal {
+        if (amount == 0 || from == address(this) || to == address(this)) {
+            return;
+        }
+
+        bytes32[] storage trackedNodes = s.ownerTokenSellableNodes[from][tokenId];
+        uint256 remaining = amount;
+
+        for (uint256 i = 0; i < trackedNodes.length && remaining > 0; i++) {
+            bytes32 nodeHash = trackedNodes[i];
+            uint256 nodeAmount = s.ownerNodeSellableAmounts[from][tokenId][nodeHash];
+            if (nodeAmount == 0) continue;
+
+            uint256 moved = nodeAmount > remaining ? remaining : nodeAmount;
+            s.ownerNodeSellableAmounts[from][tokenId][nodeHash] -= moved;
+            _creditOwnerNodeSellable(s, to, tokenId, nodeHash, moved);
+            remaining -= moved;
+        }
+
+        if (remaining > 0) revert ExceedsNodeSellableAmount();
+    }
+
+    function _debitOwnerSellable(
+        DiamondStorage.AppStorage storage s,
+        address owner,
+        uint256 tokenId,
+        uint256 amount
+    ) internal {
+        bytes32[] storage trackedNodes = s.ownerTokenSellableNodes[owner][tokenId];
+        uint256 remaining = amount;
+
+        for (uint256 i = 0; i < trackedNodes.length && remaining > 0; i++) {
+            bytes32 nodeHash = trackedNodes[i];
+            uint256 nodeAmount = s.ownerNodeSellableAmounts[owner][tokenId][nodeHash];
+            if (nodeAmount == 0) continue;
+
+            uint256 debited = nodeAmount > remaining ? remaining : nodeAmount;
+            s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] -= debited;
+            remaining -= debited;
+        }
+
+        if (remaining > 0) revert ExceedsNodeSellableAmount();
     }
 
     function _doSafeTransferAcceptanceCheck(

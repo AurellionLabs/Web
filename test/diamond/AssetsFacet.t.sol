@@ -97,6 +97,16 @@ contract AssetsFacetTest is DiamondTestBase {
 
         assertEq(assets.balanceOf(user1, tokenId), 50, 'Sender balance should decrease');
         assertEq(assets.balanceOf(user2, tokenId), 50, 'Receiver balance should increase');
+        assertEq(
+            assets.getNodeSellableAmount(user1, tokenId, testNodeHash),
+            50,
+            'Sender node sellable should decrease'
+        );
+        assertEq(
+            assets.getNodeSellableAmount(user2, tokenId, testNodeHash),
+            50,
+            'Receiver node sellable should increase'
+        );
     }
 
     function test_safeTransferFrom_withApproval() public {
@@ -237,6 +247,92 @@ contract AssetsFacetTest is DiamondTestBase {
         
         uint256 totalAmount = assets.getTotalCustodyAmount(id);
         assertEq(totalAmount, 100, 'Total custody amount should match');
+        assertEq(
+            assets.getNodeCustodyInfo(id, testNodeHash),
+            100,
+            'Node custody amount should match'
+        );
+        assertEq(
+            assets.getNodeSellableAmount(user1, id, testNodeHash),
+            100,
+            'Node sellable amount should match'
+        );
+    }
+
+    function test_nodeMintForNode_tracksIndependentNodeSellableAllocations() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        bytes32 firstNode = _registerTestNode(user1);
+        bytes32 secondNode = _registerTestNode(user1);
+        vm.stopPrank();
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(user1);
+        (, uint256 id) = assets.nodeMintForNode(user1, assetDef, 40, 'COMMODITY', '', firstNode);
+
+        vm.prank(user1);
+        assets.nodeMintForNode(user1, assetDef, 60, 'COMMODITY', '', secondNode);
+
+        assertEq(assets.balanceOf(user1, id), 100, 'Total balance should accumulate');
+        assertEq(assets.getNodeCustodyInfo(id, firstNode), 40, 'First node custody mismatch');
+        assertEq(assets.getNodeCustodyInfo(id, secondNode), 60, 'Second node custody mismatch');
+        assertEq(assets.getNodeSellableAmount(user1, id, firstNode), 40, 'First node sellable mismatch');
+        assertEq(assets.getNodeSellableAmount(user1, id, secondNode), 60, 'Second node sellable mismatch');
+    }
+
+    function test_safeTransferFrom_movesNodeSellableAllocationAcrossNodes() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        bytes32 firstNode = _registerTestNode(user1);
+        bytes32 secondNode = _registerTestNode(user1);
+        vm.stopPrank();
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(user1);
+        (, uint256 id) = assets.nodeMintForNode(user1, assetDef, 40, 'COMMODITY', '', firstNode);
+
+        vm.prank(user1);
+        assets.nodeMintForNode(user1, assetDef, 60, 'COMMODITY', '', secondNode);
+
+        vm.prank(user1);
+        assets.safeTransferFrom(user1, user2, id, 50, '');
+
+        assertEq(assets.getNodeSellableAmount(user1, id, firstNode), 0, 'First node should be fully consumed');
+        assertEq(assets.getNodeSellableAmount(user1, id, secondNode), 50, 'Second node remainder mismatch');
+        assertEq(assets.getNodeSellableAmount(user2, id, firstNode), 40, 'Receiver first node mismatch');
+        assertEq(assets.getNodeSellableAmount(user2, id, secondNode), 10, 'Receiver second node mismatch');
+    }
+
+    function test_redeemFromNode_debitsExactNodeSellableAllocation() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        bytes32 firstNode = _registerTestNode(user1);
+        bytes32 secondNode = _registerTestNode(user1);
+        vm.stopPrank();
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(user1);
+        (, uint256 id) = assets.nodeMintForNode(user1, assetDef, 40, 'COMMODITY', '', firstNode);
+
+        vm.prank(user1);
+        assets.nodeMintForNode(user1, assetDef, 60, 'COMMODITY', '', secondNode);
+
+        vm.prank(user1);
+        assets.safeTransferFrom(user1, user2, id, 50, '');
+
+        vm.prank(user2);
+        assets.redeemFromNode(id, 40, user1, firstNode);
+
+        assertEq(assets.balanceOf(user2, id), 10, 'Redeemer balance should decrease');
+        assertEq(assets.getNodeSellableAmount(user2, id, firstNode), 0, 'First node sellable should be consumed');
+        assertEq(assets.getNodeSellableAmount(user2, id, secondNode), 10, 'Second node sellable should remain');
+        assertEq(assets.getNodeCustodyInfo(id, firstNode), 0, 'First node custody should be released');
     }
 
     // ============================================================================

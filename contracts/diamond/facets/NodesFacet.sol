@@ -646,6 +646,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
         require(_amount > 0, 'Amount must be positive');
+        require(
+            s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] >= _amount,
+            'Insufficient node sellable amount'
+        );
         
         // Transfer tokens from caller to Diamond
         IERC1155(s.auraAssetAddress).safeTransferFrom(
@@ -658,6 +662,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         
         // Update internal balance
         s.nodeTokenBalances[_node][_tokenId] += _amount;
+        s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] -= _amount;
         
         // Track token ID if new
         if (!s.nodeHasToken[_node][_tokenId]) {
@@ -688,6 +693,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         
         // Update internal balance first (checks-effects-interactions)
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
+        _creditOwnerNodeSellable(s, msg.sender, _tokenId, _node, _amount);
         
         // Transfer tokens from Diamond to caller
         IERC1155(s.auraAssetAddress).safeTransferFrom(
@@ -732,6 +738,23 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         }
         
         emit TokensTransferredBetweenNodes(_fromNode, _toNode, _tokenId, _amount);
+    }
+
+    function _creditOwnerNodeSellable(
+        DiamondStorage.AppStorage storage s,
+        address owner,
+        uint256 tokenId,
+        bytes32 nodeHash,
+        uint256 amount
+    ) internal {
+        if (owner == address(0) || nodeHash == bytes32(0) || amount == 0) return;
+
+        if (!s.ownerTokenHasSellableNode[owner][tokenId][nodeHash]) {
+            s.ownerTokenHasSellableNode[owner][tokenId][nodeHash] = true;
+            s.ownerTokenSellableNodes[owner][tokenId].push(nodeHash);
+        }
+
+        s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] += amount;
     }
 
     /**
