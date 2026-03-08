@@ -24,6 +24,10 @@ import {
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import {
+  detectJourneyRoleConflict,
+  getJourneyRoleConflictMessage,
+} from '@/utils/journey-role-conflicts';
 
 type CustomerContextType = {
   orders: OrderWithAsset[];
@@ -53,6 +57,8 @@ type CustomerContextType = {
     driverDeliverySigned: boolean;
     senderPickupSigned?: boolean;
     driverPickupSigned?: boolean;
+    roleConflict?: boolean;
+    roleConflictReason?: string;
   }>;
   /** Create a delivery journey for an accepted P2P order that has no journey */
   createP2PJourney: (
@@ -320,6 +326,17 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
         // Guard against premature signing before the journey enters transit.
         const journey = await ausys.getJourney(journeyId as BytesLike);
+        const roleConflict = detectJourneyRoleConflict(
+          journey.sender,
+          journey.receiver,
+          journey.driver,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
+          );
+        }
         if (Number(journey.currentStatus) !== 1) {
           throw new Error(
             'You can sign for delivery only after pickup is complete and the journey is in transit.',
@@ -394,6 +411,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         return 'signed';
       } catch (err) {
         console.error('[CustomerProvider] signP2PDelivery error:', err);
+        // let journey role conflicts bubble up with their specific messages
+        if (getJourneyRoleConflictMessage(err)) {
+          throw err;
+        }
         setError('Failed to sign for delivery');
         handleContractError(err, 'sign P2P delivery');
         throw err;
@@ -418,6 +439,17 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const ausys = await getAlignedAusysContract();
 
         const journey = await ausys.getJourney(journeyId as BytesLike);
+        const roleConflict = detectJourneyRoleConflict(
+          journey.sender,
+          journey.receiver,
+          journey.driver,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
+          );
+        }
         if (Number(journey.currentStatus) === 0) {
           // Pending pickup — not ready for handoff.
           return 'driver_not_signed';
@@ -437,6 +469,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         await loadCustomerOrders();
         return 'settled';
       } catch (err) {
+        if (getJourneyRoleConflictMessage(err)) {
+          throw err;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         // DriverNotSigned (0x9651c947) — driver hasn't signed for delivery yet
         if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
@@ -471,11 +506,18 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       driverDeliverySigned: boolean;
       senderPickupSigned?: boolean;
       driverPickupSigned?: boolean;
+      roleConflict?: boolean;
+      roleConflictReason?: string;
     }> => {
       try {
         const ausys = repoContext.getAusysContract();
         const journey = await ausys.getJourney(journeyId as BytesLike);
         const status = Number(journey.currentStatus);
+        const roleConflict = detectJourneyRoleConflict(
+          journey.sender,
+          journey.receiver,
+          journey.driver,
+        );
 
         // Definitive: Delivered means both parties signed and handOff succeeded
         if (status >= 2) {
@@ -484,6 +526,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             driverDeliverySigned: true,
             senderPickupSigned: true,
             driverPickupSigned: true,
+            roleConflict: false,
           };
         }
 
@@ -516,6 +559,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
               driverDeliverySigned: false,
               senderPickupSigned,
               driverPickupSigned,
+              roleConflict: roleConflict.hasConflict,
+              roleConflictReason: roleConflict.message,
             };
           }
 
@@ -537,6 +582,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
               driverDeliverySigned,
               senderPickupSigned: true,
               driverPickupSigned: true,
+              roleConflict: roleConflict.hasConflict,
+              roleConflictReason: roleConflict.message,
             };
           }
         } catch (indexerErr) {
@@ -546,7 +593,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        return { buyerSigned: false, driverDeliverySigned: false };
+        return {
+          buyerSigned: false,
+          driverDeliverySigned: false,
+          roleConflict: roleConflict.hasConflict,
+          roleConflictReason: roleConflict.message,
+        };
       } catch (err) {
         console.warn('[CustomerProvider] getP2PSignatureState error:', err);
         return { buyerSigned: false, driverDeliverySigned: false };
@@ -588,6 +640,16 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         if (isZeroAddress(receiverAddress)) {
           throw new Error(
             'Cannot create delivery journey: receiver address is unresolved.',
+          );
+        }
+        const roleConflict = detectJourneyRoleConflict(
+          senderAddress,
+          receiverAddress,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
           );
         }
 
@@ -672,6 +734,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         }, 5000);
       } catch (err) {
         console.error('[CustomerProvider] createP2PJourney error:', err);
+
+        // let journey role conflicts bubble up with their specific messages
+        if (getJourneyRoleConflictMessage(err)) {
+          throw err;
+        }
+
         setError('Failed to create delivery journey');
         handleContractError(err, 'create P2P journey');
         throw err;

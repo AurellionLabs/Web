@@ -148,6 +148,7 @@ contract AuSysFacet is ReentrancyGuard {
     error DriverNotSigned();
     error SenderNotSigned();
     error ReceiverNotSigned();
+    error DuplicateJourneyRoleAddress();
     error InvalidAddress();
     error InvalidAmount();
     error InvalidETA();
@@ -692,6 +693,7 @@ contract AuSysFacet is ReentrancyGuard {
             revert InvalidCaller();
         }
         if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
+        if (sender == receiver) revert DuplicateJourneyRoleAddress();
         if (bounty == 0) revert InvalidAmount();
         if (ETA <= block.timestamp) revert InvalidETA();
         if (s.payToken == address(0)) revert PayTokenNotSet();
@@ -754,6 +756,8 @@ contract AuSysFacet is ReentrancyGuard {
         if (msg.sender != O.buyer && msg.sender != O.seller && !s.ausysRoles[ADMIN_ROLE][msg.sender]) {
             revert InvalidCaller();
         }
+        if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
+        if (sender == receiver) revert DuplicateJourneyRoleAddress();
         if (ETA <= block.timestamp) revert InvalidETA();
         if (tokenQuantity == 0) revert InvalidAmount();
         if (s.payToken == address(0)) revert PayTokenNotSet();
@@ -821,24 +825,26 @@ contract AuSysFacet is ReentrancyGuard {
      */
     function assignDriverToJourney(address driver, bytes32 journeyId) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.AuSysJourney storage J = s.ausysJourneys[journeyId];
 
         // Require driver to be registered
         if (!s.ausysRoles[DRIVER_ROLE][driver]) revert InvalidCaller();
+        if (driver == J.sender || driver == J.receiver || J.sender == J.receiver) {
+            revert DuplicateJourneyRoleAddress();
+        }
 
         // Only driver, dispatcher, or journey sender can assign
         bool callerAuthorized = (
             msg.sender == driver ||
             s.ausysRoles[DISPATCHER_ROLE][msg.sender] ||
-            msg.sender == s.ausysJourneys[journeyId].sender
+            msg.sender == J.sender
         );
         if (!callerAuthorized) revert InvalidCaller();
 
         if (s.driverToJourneyIds[driver].length >= MAX_DRIVER_JOURNEYS) revert DriverMaxAssignment();
 
         s.driverToJourneyIds[driver].push(journeyId);
-        s.ausysJourneys[journeyId].driver = driver;
-
-        DiamondStorage.AuSysJourney storage J = s.ausysJourneys[journeyId];
+        J.driver = driver;
         emit DriverAssigned(
             journeyId,
             driver,
