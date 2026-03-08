@@ -171,29 +171,9 @@ export default function NodeOverviewPage() {
 
         <EvaScanLine variant="mixed" />
 
-        {/* Stats Overview — Static cards to avoid transient mismatches */}
+        {/* Stats Overview */}
         <EvaSectionMarker section="SYSTEM STATUS" label="Node Statistics" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <EvaPanel label="Total Nodes" accent="gold">
-            <p className="font-mono text-4xl font-bold text-gold tabular-nums">
-              {totalNodes}
-            </p>
-          </EvaPanel>
-          <EvaPanel label="Active Nodes" accent="gold">
-            <p className="font-mono text-4xl font-bold text-emerald-400 tabular-nums">
-              {activeNodes}
-            </p>
-          </EvaPanel>
-          <EvaPanel label="Total Assets" accent="crimson">
-            <p className="font-mono text-4xl font-bold text-crimson tabular-nums">
-              {totalAssets}
-            </p>
-          </EvaPanel>
-        </div>
-
-        <EvaScanLine variant="gold" />
-
-        {/* HexStatCard Row — Persistent stat reference */}
+        {/* HexStatCard Row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <HexStatCard
             label="Total Nodes"
