@@ -85,6 +85,7 @@ import {
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -246,12 +247,19 @@ export default function NodeDashboardPage() {
     driverDeliverySigned: boolean;
     senderPickupSigned?: boolean;
     driverPickupSigned?: boolean;
+    roleConflict?: boolean;
+    roleConflictReason?: string;
   }> => {
     try {
       const repoContext = RepositoryContext.getInstance();
       const ausys = repoContext.getAusysContract();
       const journey = await ausys.getJourney(journeyId);
       const status = Number(journey.currentStatus);
+      const roleConflict = detectJourneyRoleConflict(
+        journey.sender,
+        journey.receiver,
+        journey.driver,
+      );
 
       if (status >= 2) {
         return {
@@ -259,6 +267,7 @@ export default function NodeDashboardPage() {
           driverDeliverySigned: true,
           senderPickupSigned: true,
           driverPickupSigned: true,
+          roleConflict: false,
         };
       }
 
@@ -291,6 +300,8 @@ export default function NodeDashboardPage() {
             driverDeliverySigned: false,
             senderPickupSigned,
             driverPickupSigned,
+            roleConflict: roleConflict.hasConflict,
+            roleConflictReason: roleConflict.message,
           };
         }
 
@@ -313,6 +324,8 @@ export default function NodeDashboardPage() {
             driverDeliverySigned,
             senderPickupSigned: true,
             driverPickupSigned: true,
+            roleConflict: roleConflict.hasConflict,
+            roleConflictReason: roleConflict.message,
           };
         }
       } catch (indexerErr) {
@@ -750,6 +763,16 @@ export default function NodeDashboardPage() {
       // the driver has already signed pickup (driver accepted and acknowledged).
       if (order.isP2P) {
         const sigState = await getP2PSignatureState(order.id, journeyId);
+        if (sigState.roleConflict) {
+          toast({
+            title: 'Journey Blocked',
+            description:
+              sigState.roleConflictReason ||
+              'Sender, driver, and customer must use different wallet addresses.',
+            variant: 'destructive',
+          });
+          return 'signed';
+        }
         if (!sigState.driverPickupSigned) {
           toast({
             title: 'Driver Signature Required',
