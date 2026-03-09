@@ -83,6 +83,8 @@ export function DeliveryDetailsDialog({
   useEffect(() => {
     if (!open) return;
     setDeliveryAddress(initialDeliveryAddress || '');
+    setDeliveryCoords(null);
+    setError(null);
   }, [open, initialDeliveryAddress]);
 
   // Use selected node as sender, or fall back to the seller address
@@ -115,6 +117,16 @@ export function DeliveryDetailsDialog({
 
   const handleConfirm = async () => {
     setError(null);
+    if (!deliveryAddress.trim()) {
+      setError('Delivery address is required.');
+      return;
+    }
+    if (!lockDeliveryAddress && !deliveryCoords) {
+      setError(
+        'Please choose a suggested delivery address so coordinates are captured.',
+      );
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onConfirm({
@@ -134,6 +146,11 @@ export function DeliveryDetailsDialog({
   };
 
   if (!open) return null;
+
+  const isConfirmDisabled =
+    isSubmitting ||
+    !deliveryAddress.trim() ||
+    (!lockDeliveryAddress && !deliveryCoords);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -211,7 +228,9 @@ export function DeliveryDetailsDialog({
               </label>
               <Select
                 value={selectedNodeIndex.toString()}
-                onValueChange={(value) => setSelectedNodeIndex(parseInt(value, 10))}
+                onValueChange={(value) =>
+                  setSelectedNodeIndex(parseInt(value, 10))
+                }
               >
                 <SelectTrigger className="w-full font-mono text-sm">
                   <SelectValue placeholder="Select a node" />
@@ -291,7 +310,9 @@ export function DeliveryDetailsDialog({
             <p className="text-xs text-white/70">
               {lockDeliveryAddress
                 ? 'Delivery destination already set on the buy offer'
-                : 'This is where your goods will be delivered'}
+                : mapsLoaded
+                  ? 'This is where your goods will be delivered'
+                  : 'Address suggestions are unavailable. Reload until search is available so coordinates can be captured.'}
             </p>
           </div>
 
@@ -322,7 +343,7 @@ export function DeliveryDetailsDialog({
             variant="gold"
             className="flex-1 min-w-0"
             onClick={handleConfirm}
-            disabled={!deliveryAddress.trim() || isSubmitting}
+            disabled={isConfirmDisabled}
           >
             <span className="inline-flex items-center justify-center gap-2">
               {isSubmitting ? 'Scheduling...' : 'Accept & Schedule Delivery'}

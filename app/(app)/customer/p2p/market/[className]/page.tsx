@@ -102,6 +102,7 @@ export default function P2PMarketOffersPage() {
   // P2P order flow state
   const {
     orders,
+    refreshOrders,
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,
@@ -392,7 +393,10 @@ export default function P2PMarketOffersPage() {
               lat: selectedOffer.locationData?.startLocation?.lat || '',
               lng: selectedOffer.locationData?.startLocation?.lng || '',
             },
-            endLocation: { lat: '', lng: '' },
+            endLocation: {
+              lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
+              lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
+            },
             startName:
               selectedOffer.locationData?.startName || 'Pickup Location',
             endName: deliveryData.deliveryAddress,
@@ -415,6 +419,13 @@ export default function P2PMarketOffersPage() {
           error instanceof Error
             ? error.message
             : 'Failed to accept offer. Please try again.';
+        if ((error as { partialSuccess?: boolean })?.partialSuccess) {
+          await refreshOrders();
+          setDeliveryDialogOpen(false);
+          setSelectedOffer(null);
+          setScheduleDeliveryOrderId(selectedOffer.id);
+          setScheduleDeliveryDialogOpen(true);
+        }
         setErrorMessage(msg);
         await loadOffers();
         // Re-throw so the dialog can show the error too
@@ -423,7 +434,7 @@ export default function P2PMarketOffersPage() {
         setProcessingOfferId(null);
       }
     },
-    [p2pService, selectedOffer, address, loadOffers],
+    [p2pService, selectedOffer, address, loadOffers, refreshOrders],
   );
 
   // Cancel an offer
@@ -591,7 +602,10 @@ export default function P2PMarketOffersPage() {
               lat: order.locationData?.startLocation?.lat || '',
               lng: order.locationData?.startLocation?.lng || '',
             },
-            endLocation: { lat: '', lng: '' },
+            endLocation: {
+              lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
+              lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
+            },
             startName: order.locationData?.startName || 'Pickup Location',
             endName: deliveryData.deliveryAddress,
           },
@@ -1234,7 +1248,11 @@ export default function P2PMarketOffersPage() {
               onConfirm={handleConfirmScheduleDelivery}
               assetName={stuckOrder.asset?.name}
               initialDeliveryAddress={stuckOrder.locationData?.endName || ''}
-              lockDeliveryAddress={Boolean(stuckOrder.locationData?.endName)}
+              lockDeliveryAddress={Boolean(
+                stuckOrder.locationData?.endName &&
+                  stuckOrder.locationData?.endLocation?.lat &&
+                  stuckOrder.locationData?.endLocation?.lng,
+              )}
             />
           );
         })()}

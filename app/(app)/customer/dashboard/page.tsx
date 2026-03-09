@@ -478,7 +478,10 @@ export default function CustomerDashboard() {
             lat: order.locationData?.startLocation?.lat || '',
             lng: order.locationData?.startLocation?.lng || '',
           },
-          endLocation: { lat: '', lng: '' },
+          endLocation: {
+            lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
+            lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
+          },
           startName: order.locationData?.startName || 'Pickup Location',
           endName: deliveryData.deliveryAddress,
         },
@@ -1180,7 +1183,11 @@ export default function CustomerDashboard() {
               onConfirm={handleConfirmScheduleDelivery}
               assetName={stuckOrder.asset?.name}
               initialDeliveryAddress={stuckOrder.locationData?.endName || ''}
-              lockDeliveryAddress={Boolean(stuckOrder.locationData?.endName)}
+              lockDeliveryAddress={Boolean(
+                stuckOrder.locationData?.endName &&
+                  stuckOrder.locationData?.endLocation?.lat &&
+                  stuckOrder.locationData?.endLocation?.lng,
+              )}
             />
           );
         })()}

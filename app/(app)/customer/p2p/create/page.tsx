@@ -587,11 +587,7 @@ export default function CreateP2POfferPage() {
             formData.deliveryLng.trim().length > 0;
           if (!hasDestination) return false;
         }
-        // Network = open to any driver, no address needed
-        // Custom = specific driver wallet required
-        return formData.logisticsType === 'network'
-          ? true
-          : isAddress(formData.logisticsPartner);
+        return true;
       case 'target':
         return (
           formData.targetType === 'public' ||
@@ -1565,49 +1561,6 @@ export default function CreateP2POfferPage() {
                 </EvaPanel>
               </button>
 
-              {/* Specific Driver Option */}
-              <button
-                onClick={() =>
-                  updateFormData({
-                    logisticsType: 'custom',
-                    logisticsPartner: '',
-                  })
-                }
-                className="w-full text-left"
-                aria-pressed={formData.logisticsType === 'custom'}
-              >
-                <EvaPanel
-                  label="Specific Driver"
-                  sysId="CUS-DRV"
-                  accent="crimson"
-                  className={cn(
-                    'transition-all duration-300 border',
-                    formData.logisticsType === 'custom'
-                      ? 'ring-2 ring-crimson/70 border-crimson/40 bg-crimson/5 shadow-[0_0_24px_rgba(239,68,68,0.18)]'
-                      : 'border-border/20 hover:ring-1 hover:ring-crimson/20 hover:border-crimson/30',
-                  )}
-                >
-                  <div className="flex items-center gap-4 py-2">
-                    {formData.logisticsType === 'custom' && (
-                      <div className="inline-flex items-center gap-1 px-2 py-1 border border-crimson/70 bg-crimson/20">
-                        <Check className="w-3 h-3 text-crimson" />
-                        <span className="font-mono text-[10px] font-bold text-crimson tracking-[0.12em] uppercase">
-                          Selected
-                        </span>
-                      </div>
-                    )}
-                    <div className="w-12 h-12 rounded-full bg-crimson/10 flex items-center justify-center">
-                      <Wallet className="w-6 h-6 text-crimson" />
-                    </div>
-                    <div>
-                      <p className="font-mono text-sm text-foreground/40 tracking-[0.08em]">
-                        Assign a specific wallet address as the driver
-                      </p>
-                    </div>
-                  </div>
-                </EvaPanel>
-              </button>
-
               {/* Network - No selection needed, any driver can accept */}
               {formData.logisticsType === 'network' && (
                 <div className="mt-4 p-4 bg-gold/5 border border-gold/20">
@@ -1627,32 +1580,21 @@ export default function CreateP2POfferPage() {
                 </div>
               )}
 
-              {/* Specific Driver Wallet Input */}
-              {formData.logisticsType === 'custom' && (
-                <div className="mt-4">
-                  <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
-                    Driver Wallet Address
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="0x..."
-                    value={formData.logisticsPartner}
-                    onChange={(e) =>
-                      updateFormData({ logisticsPartner: e.target.value })
-                    }
-                    className="bg-background/80 border-border/40 font-mono rounded-none"
-                  />
-                  {formData.logisticsPartner &&
-                    !isAddress(formData.logisticsPartner) && (
-                      <p className="font-mono text-xs text-crimson mt-1">
-                        Please enter a valid Ethereum address
-                      </p>
-                    )}
-                  <p className="font-mono text-xs text-foreground/30 mt-1 tracking-[0.05em]">
-                    Only this wallet will be able to accept the delivery job
-                  </p>
+              <div className="mt-4 p-4 bg-card/40 border border-border/20">
+                <div className="flex items-start gap-3">
+                  <Wallet className="w-5 h-5 text-foreground/40 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-mono text-sm text-foreground font-bold mb-1 tracking-[0.08em] uppercase">
+                      Specific-driver routing is not live yet
+                    </p>
+                    <p className="font-mono text-xs text-foreground/40 tracking-[0.05em]">
+                      This release uses the Aurellion network delivery flow
+                      only. We are hiding driver allowlisting until it is
+                      enforced onchain.
+                    </p>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         );
@@ -1876,17 +1818,8 @@ export default function CreateP2POfferPage() {
                   <div className="text-right">
                     <span className="font-mono text-sm font-bold text-foreground flex items-center gap-2 justify-end">
                       <Truck className="w-4 h-4" />
-                      {formData.logisticsType === 'network'
-                        ? 'Any Network Driver'
-                        : 'Specific Driver'}
+                      Any Network Driver
                     </span>
-                    {formData.logisticsType === 'custom' &&
-                      formData.logisticsPartner && (
-                        <span className="font-mono text-xs text-foreground/30">
-                          {formData.logisticsPartner.slice(0, 6)}...
-                          {formData.logisticsPartner.slice(-4)}
-                        </span>
-                      )}
                   </div>
                 </div>
 

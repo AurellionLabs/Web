@@ -710,6 +710,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             'Cannot schedule delivery without a destination address.',
           );
         }
+        if (!parcelData.endLocation.lat || !parcelData.endLocation.lng) {
+          throw new Error(
+            'Cannot schedule delivery without destination coordinates. Choose a suggested address so coordinates are captured.',
+          );
+        }
 
         const journeyTx = await diamond.createOrderJourney(
           orderId,

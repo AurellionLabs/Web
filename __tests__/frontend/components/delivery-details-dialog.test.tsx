@@ -119,10 +119,13 @@ describe('DeliveryDetailsDialog', () => {
   });
 
   it('should enable confirm button when delivery address is filled', async () => {
-    render(<DeliveryDetailsDialog {...defaultProps} />);
-
-    const input = screen.getByPlaceholderText(/delivery address/i);
-    fireEvent.change(input, { target: { value: '123 Main St, Cape Town' } });
+    render(
+      <DeliveryDetailsDialog
+        {...defaultProps}
+        initialDeliveryAddress="123 Main St, Cape Town"
+        lockDeliveryAddress
+      />,
+    );
 
     const confirmBtn = screen.getByRole('button', {
       name: /accept.*schedule/i,
@@ -132,10 +135,14 @@ describe('DeliveryDetailsDialog', () => {
 
   it('should call onConfirm with delivery details when confirmed', async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
-    render(<DeliveryDetailsDialog {...defaultProps} onConfirm={onConfirm} />);
-
-    const input = screen.getByPlaceholderText(/delivery address/i);
-    fireEvent.change(input, { target: { value: '123 Main St, Cape Town' } });
+    render(
+      <DeliveryDetailsDialog
+        {...defaultProps}
+        onConfirm={onConfirm}
+        initialDeliveryAddress="123 Main St, Cape Town"
+        lockDeliveryAddress
+      />,
+    );
 
     const confirmBtn = screen.getByRole('button', {
       name: /accept.*schedule/i,
@@ -158,10 +165,14 @@ describe('DeliveryDetailsDialog', () => {
       }),
     );
 
-    render(<DeliveryDetailsDialog {...defaultProps} onConfirm={onConfirm} />);
-
-    const input = screen.getByPlaceholderText(/delivery address/i);
-    fireEvent.change(input, { target: { value: '123 Main St' } });
+    render(
+      <DeliveryDetailsDialog
+        {...defaultProps}
+        onConfirm={onConfirm}
+        initialDeliveryAddress="123 Main St"
+        lockDeliveryAddress
+      />,
+    );
 
     const confirmBtn = screen.getByRole('button', {
       name: /accept.*schedule/i,
@@ -181,10 +192,14 @@ describe('DeliveryDetailsDialog', () => {
       .fn()
       .mockRejectedValue(new Error('Offer is no longer open'));
 
-    render(<DeliveryDetailsDialog {...defaultProps} onConfirm={onConfirm} />);
-
-    const input = screen.getByPlaceholderText(/delivery address/i);
-    fireEvent.change(input, { target: { value: '123 Main St' } });
+    render(
+      <DeliveryDetailsDialog
+        {...defaultProps}
+        onConfirm={onConfirm}
+        initialDeliveryAddress="123 Main St"
+        lockDeliveryAddress
+      />,
+    );
 
     const confirmBtn = screen.getByRole('button', {
       name: /accept.*schedule/i,
@@ -219,11 +234,10 @@ describe('DeliveryDetailsDialog', () => {
         {...defaultProps}
         offer={offer}
         onConfirm={onConfirm}
+        initialDeliveryAddress="Buyer Address"
+        lockDeliveryAddress
       />,
     );
-
-    const input = screen.getByPlaceholderText(/delivery address/i);
-    fireEvent.change(input, { target: { value: 'Buyer Address' } });
 
     const confirmBtn = screen.getByRole('button', {
       name: /accept.*schedule/i,

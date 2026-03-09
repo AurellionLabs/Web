@@ -146,6 +146,28 @@ export class DiamondP2PService implements IP2PService {
     );
   }
 
+  private getDiamondAddress(): string {
+    const diamondAddressFromContext = (
+      this.context as DiamondContext & {
+        getDiamondAddress?: () => string;
+      }
+    ).getDiamondAddress?.();
+
+    if (diamondAddressFromContext) {
+      return diamondAddressFromContext;
+    }
+
+    const diamond = this.context.getDiamond() as ethers.Contract & {
+      target?: string;
+      address?: string;
+    };
+
+    return (
+      String(diamond.target || diamond.address || '').trim() ||
+      NEXT_PUBLIC_DIAMOND_ADDRESS
+    );
+  }
+
   /**
    * Create a new P2P offer
    * @param input The offer details
@@ -335,58 +357,15 @@ export class DiamondP2PService implements IP2PService {
         throw new Error('acceptP2POffer transaction failed on-chain');
       }
 
-      // Poll for order state update (more efficient than fixed wait)
-      const maxAttempts = 4;
-      const intervalMs = 500;
-      let acceptedOrder = await diamond.getAuSysOrder(offerId);
-
-      for (
-        let attempt = 1;
-        attempt <= maxAttempts && acceptedOrder.currentStatus === 0n;
-        attempt++
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, intervalMs));
-        acceptedOrder = await diamond.getAuSysOrder(offerId);
-      }
-
-      // Validate order was accepted - fallback to accepting wallet when RPC returns stale state
+      // Resolve canonical participants from the accepted offer and the
+      // transaction sender instead of relying on a follow-up read that may lag.
       const signerAddress = await this.context.getSignerAddress();
-      const orderBuyer = acceptedOrder.buyer;
-      const orderSeller = acceptedOrder.seller;
-      const isBuyerSet = orderBuyer && orderBuyer !== ethers.ZeroAddress;
-      const isSellerSet = orderSeller && orderSeller !== ethers.ZeroAddress;
-
-      let buyerAddress: string;
-      if (!isBuyerSet || acceptedOrder.currentStatus === 0n) {
-        // Sell offer: acceptor = buyer
-        if (acceptedOrder.isSellerInitiated) {
-          console.warn(
-            '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as buyer',
-          );
-          buyerAddress = signerAddress;
-        } else {
-          buyerAddress = orderBuyer || signerAddress;
-        }
-      } else {
-        buyerAddress = orderBuyer;
-      }
-
-      // Resolve sender (seller) / receiver (buyer) from the accepted on-chain order.
-      // For buy offers: acceptor = seller; for sell offers: seller set at creation.
-      let senderAddress: string;
-      if (!isSellerSet || acceptedOrder.currentStatus === 0n) {
-        if (!acceptedOrder.isSellerInitiated) {
-          // Buy offer: acceptor is seller
-          console.warn(
-            '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as seller',
-          );
-          senderAddress = signerAddress;
-        } else {
-          senderAddress = String(orderSeller || '');
-        }
-      } else {
-        senderAddress = String(orderSeller);
-      }
+      const buyerAddress = order.isSellerInitiated
+        ? signerAddress
+        : String(order.buyer || '');
+      const senderAddress = order.isSellerInitiated
+        ? String(order.seller || '')
+        : signerAddress;
       const receiverAddress = isZeroAddress(delivery.receiverAddress)
         ? buyerAddress
         : delivery.receiverAddress;
@@ -478,27 +457,22 @@ export class DiamondP2PService implements IP2PService {
           this.context as unknown as ContextWithOptionalContracts
         ).getQuoteTokenContract()
       : new ethers.Contract(quoteTokenAddress, ERC20_ABI, signer);
+    const diamondAddress = this.getDiamondAddress();
 
     const currentAllowance = await quoteToken.allowance(
       signerAddress,
-      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      diamondAddress,
     );
 
     if (BigInt(currentAllowance.toString()) < amount) {
-      const tx = await quoteToken.approve(
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
-        ethers.MaxUint256,
-      );
+      const tx = await quoteToken.approve(diamondAddress, ethers.MaxUint256);
       await tx.wait();
       await this.waitForApprovalState({
         label: `ERC20 allowance for token ${quoteTokenAddress}`,
         read: async () =>
           BigInt(
             (
-              await quoteToken.allowance(
-                signerAddress,
-                NEXT_PUBLIC_DIAMOND_ADDRESS,
-              )
+              await quoteToken.allowance(signerAddress, diamondAddress)
             ).toString(),
           ),
         isSatisfied: (allowance) => allowance >= amount,
@@ -545,7 +519,7 @@ export class DiamondP2PService implements IP2PService {
   private async ensureERC1155Approval(tokenAddress: string): Promise<void> {
     const signer = this.context.getSigner();
     const signerAddress = await this.context.getSignerAddress();
-    const diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
+    const diamondAddress = this.getDiamondAddress();
 
     // When the token is the Diamond (P2P offers use Diamond as the ERC1155), use
     // the Diamond contract from context so setApprovalForAll/isApprovedForAll
