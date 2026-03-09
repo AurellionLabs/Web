@@ -27,6 +27,10 @@ export default defineConfig({
       'test/repositories/CLOBRepository.test.ts',
       'test/hooks/useUnifiedOrder.test.ts',
       'test/infrastructure/repositories/platform-repository.test.ts',
+      // Excluded from CI: renders a 1983-line page with all transitive imports
+      // un-mocked (ethers.js, all UI components). Exhausts the 7 GB runner even
+      // in isolation. TODO: refactor to mock heavy sub-components before re-enabling.
+      '__tests__/frontend/pages/p2p-create.test.tsx',
     ],
     coverage: {
       provider: 'v8',

@@ -16,7 +16,9 @@ vi.mock('@/infrastructure/contexts/repository-context', () => ({
   RepositoryContext: {
     getInstance: () => ({
       getProvider: () => ({}),
-      getSigner: () => ({}),
+      getSigner: () => ({
+        getAddress: vi.fn().mockResolvedValue('0xBuyerAddress'),
+      }),
     }),
   },
 }));
