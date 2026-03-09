@@ -32,6 +32,7 @@ const FRONTEND_ABI_PATH = path.join(
 const KEY_FACETS = [
   'NodesFacet',
   'AuSysFacet',
+  'AuSysAdminFacet',
   'AuSysViewFacet',
   'OrderRouterFacet',
   'CLOBFacetV2',

@@ -197,42 +197,6 @@ contract AuSysFacet is ReentrancyGuard {
     bytes32 public constant DRIVER_ROLE = keccak256('DRIVER_ROLE');
     bytes32 public constant DISPATCHER_ROLE = keccak256('DISPATCHER_ROLE');
 
-    function _setDriverRole(
-        DiamondStorage.AppStorage storage s,
-        address driver,
-        bool enable
-    ) internal {
-        bool wasEnabled = s.ausysRoles[DRIVER_ROLE][driver];
-        if (wasEnabled == enable) {
-            return;
-        }
-
-        s.ausysRoles[DRIVER_ROLE][driver] = enable;
-
-        if (enable) {
-            s.driverRoleMembers.push(driver);
-            s.driverRoleIndex[driver] = s.driverRoleMembers.length;
-            return;
-        }
-
-        uint256 indexPlusOne = s.driverRoleIndex[driver];
-        if (indexPlusOne == 0) {
-            return;
-        }
-
-        uint256 index = indexPlusOne - 1;
-        uint256 lastIndex = s.driverRoleMembers.length - 1;
-
-        if (index != lastIndex) {
-            address movedDriver = s.driverRoleMembers[lastIndex];
-            s.driverRoleMembers[index] = movedDriver;
-            s.driverRoleIndex[movedDriver] = index + 1;
-        }
-
-        s.driverRoleMembers.pop();
-        delete s.driverRoleIndex[driver];
-    }
-
     // ============================================================================
     // MODIFIERS
     // ============================================================================
@@ -240,19 +204,6 @@ contract AuSysFacet is ReentrancyGuard {
     modifier whenNotPaused() {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         if (s.paused) revert ContractPaused();
-        _;
-    }
-
-    modifier onlyOwner() {
-        LibDiamond.enforceIsContractOwner();
-        _;
-    }
-
-    modifier adminOnly() {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        if (!s.ausysRoles[ADMIN_ROLE][msg.sender] && msg.sender != LibDiamond.contractOwner()) {
-            revert InvalidCaller();
-        }
         _;
     }
 
@@ -281,115 +232,6 @@ contract AuSysFacet is ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         if (s.ausysJourneys[id].currentStatus != 2) revert JourneyIncomplete(); // 2 = Delivered
         _;
-    }
-
-    // ============================================================================
-    // CONFIGURATION
-    // ============================================================================
-
-    /**
-     * @notice Set the payment token for bounties and settlements
-     */
-    function setPayToken(address _payToken) external onlyOwner {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.payToken = _payToken;
-    }
-
-    /**
-     * @notice One-time initialiser for fee defaults (call after upgrading Diamond).
-     * @dev Safe to call again — only sets fees if both are currently 0 (uninitialised).
-     *      Default: 10 bps (0.1%) treasury fee, 10 bps (0.1%) node fee.
-     */
-    function initAuSysFees() external onlyOwner {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        if (s.treasuryFeeBps == 0 && s.nodeFeeBps == 0) {
-            s.treasuryFeeBps = 10; // 0.1%
-            s.nodeFeeBps = 10;     // 0.1%
-            emit TreasuryFeeBpsUpdated(0, 10);
-            emit NodeFeeBpsUpdated(0, 10);
-        }
-    }
-
-    /**
-     * @notice Set the treasury fee in basis points (100 = 1%). Max 500 bps (5%).
-     * @dev Applied to every order at creation time. Existing orders use the rate baked at creation.
-     */
-    function setTreasuryFeeBps(uint16 bps) external onlyOwner {
-        if (bps > 500) revert FeeBpsTooHigh();
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        emit TreasuryFeeBpsUpdated(s.treasuryFeeBps, bps);
-        s.treasuryFeeBps = bps;
-    }
-
-    /**
-     * @notice Set the node fee in basis points (100 = 1%). Max 500 bps (5%).
-     * @dev Only charged when intermediate nodes are present on the order.
-     */
-    function setNodeFeeBps(uint16 bps) external onlyOwner {
-        if (bps > 500) revert FeeBpsTooHigh();
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        emit NodeFeeBpsUpdated(s.nodeFeeBps, bps);
-        s.nodeFeeBps = bps;
-    }
-
-    /**
-     * @notice Claim all accrued treasury fees to a given address (owner only).
-     * @dev Pull pattern — fees accumulate in storage, owner withdraws on demand.
-     * @param to Recipient address (typically the Aurellion treasury multisig)
-     */
-    function claimTreasuryFees(address to) external onlyOwner nonReentrant {
-        if (to == address(0)) revert InvalidAddress();
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256 amount = s.treasuryAccrued;
-        if (amount == 0) revert NothingToClaim();
-        s.treasuryAccrued = 0;
-        IERC20(s.payToken).safeTransfer(to, amount);
-        emit TreasuryFeeClaimed(to, amount);
-    }
-
-    /**
-     * @notice View the current accrued treasury balance
-     */
-    function getTreasuryAccrued() external view returns (uint256) {
-        return DiamondStorage.appStorage().treasuryAccrued;
-    }
-
-    // ============================================================================
-    // RBAC (from AuSys.sol)
-    // ============================================================================
-
-    /**
-     * @notice Set an admin (from AuSys.setAdmin)
-     */
-    function setAuSysAdmin(address admin) external onlyOwner {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[ADMIN_ROLE][admin] = true;
-        emit AuSysAdminSet(admin);
-    }
-
-    /**
-     * @notice Revoke an admin (from AuSys.revokeAdmin)
-     */
-    function revokeAuSysAdmin(address admin) external onlyOwner {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[ADMIN_ROLE][admin] = false;
-        emit AuSysAdminRevoked(admin);
-    }
-
-    /**
-     * @notice Enable/disable a driver (from AuSys.setDriver)
-     */
-    function setDriver(address driver, bool enable) external adminOnly {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        _setDriverRole(s, driver, enable);
-    }
-
-    /**
-     * @notice Enable/disable a dispatcher (from AuSys.setDispatcher)
-     */
-    function setDispatcher(address dispatcher, bool enable) external adminOnly {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[DISPATCHER_ROLE][dispatcher] = enable;
     }
 
     // ============================================================================
@@ -677,12 +519,6 @@ contract AuSysFacet is ReentrancyGuard {
      *      Auditors: this field is intentionally inert in v1 — see roadmap docs.
      * @param signer The address to designate as trusted signer for future enforcement
      */
-    function setTrustedP2PSigner(address signer) external adminOnly {
-        if (signer == address(0)) revert InvalidAddress();
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.trustedP2PSigner = signer;
-    }
-
     /**
      * @dev Remove an order from the open P2P offers list
      * @notice Optimized: cache storage array to memory to avoid repeated SLOADs
@@ -1184,25 +1020,6 @@ contract AuSysFacet is ReentrancyGuard {
         }
     }
 
-    /**
-     * @notice Admin recovery of escrowed tokens when buyer has not selected a destination
-     * @param orderId The order with stuck escrow
-     * @param to The address to send the recovered tokens to
-     */
-    function adminRecoverEscrow(bytes32 orderId, address to) external adminOnly nonReentrant {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
-
-        if (!s.pendingTokenDestination[orderId]) revert NoPendingDestination();
-        if (block.timestamp <= s.ausysOrderSettledAt[orderId] + 30 days) revert RecoveryTooEarly();
-
-        s.pendingTokenDestination[orderId] = false;
-        delete s.pendingTokenBuyer[orderId];
-
-        IERC1155(O.token).safeTransferFrom(address(this), to, O.tokenId, O.tokenQuantity, '');
-        emit TokenDestinationSelected(orderId, to, bytes32(0), false);
-    }
-
     function _creditOwnerNodeSellable(
         DiamondStorage.AppStorage storage s,
         address owner,
@@ -1267,56 +1084,5 @@ contract AuSysFacet is ReentrancyGuard {
         }
     }
 
-    // ============================================================================
-    // ADMIN DATA REPAIR
-    // ============================================================================
-
-    /**
-     * @notice Correct a corrupted order tokenQuantity (admin only)
-     * @dev Used to fix orders where quantity was accidentally doubled.
-     *      Emits OrderQuantityCorrected for audit trail.
-     * @param orderId The order to correct
-     * @param correctQuantity The correct token quantity
-     */
-    function correctOrderTokenQuantity(
-        bytes32 orderId,
-        uint256 correctQuantity
-    ) external adminOnly {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
-        if (O.id == bytes32(0)) revert OfferNotFound();
-        require(correctQuantity > 0, "Quantity must be positive");
-
-        uint256 oldQuantity = O.tokenQuantity;
-        O.tokenQuantity = correctQuantity;
-
-        emit AuSysOrderStatusUpdated(orderId, O.currentStatus);
-        emit OrderQuantityCorrected(orderId, oldQuantity, correctQuantity);
-    }
-
     event OrderQuantityCorrected(bytes32 indexed orderId, uint256 oldQuantity, uint256 newQuantity);
-
-    // ============================================================================
-    // ERC1155 RECEIVER (required for holding tokens)
-    // ============================================================================
-
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external pure returns (bytes4) {
-        return this.onERC1155Received.selector;
-    }
-
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure returns (bytes4) {
-        return this.onERC1155BatchReceived.selector;
-    }
 }

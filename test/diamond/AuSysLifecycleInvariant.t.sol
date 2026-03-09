@@ -399,12 +399,11 @@ contract AuSysLifecycleInvariantTest is StdInvariant, DiamondTestBase {
     }
 
     function _addExtendedAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](5);
+        bytes4[] memory sels = new bytes4[](4);
         sels[0] = AuSysFacet.acceptP2POffer.selector;
         sels[1] = AuSysFacet.cancelP2POffer.selector;
         sels[2] = AuSysFacet.handOff.selector;
         sels[3] = AuSysFacet.selectTokenDestination.selector;
-        sels[4] = AuSysFacet.onERC1155Received.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({
@@ -653,12 +652,11 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
     }
 
     function _addExtendedAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](5);
+        bytes4[] memory sels = new bytes4[](4);
         sels[0] = AuSysFacet.acceptP2POffer.selector;
         sels[1] = AuSysFacet.cancelP2POffer.selector;
         sels[2] = AuSysFacet.handOff.selector;
         sels[3] = AuSysFacet.selectTokenDestination.selector;
-        sels[4] = AuSysFacet.onERC1155Received.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({

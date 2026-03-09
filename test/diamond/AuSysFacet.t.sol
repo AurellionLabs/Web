@@ -338,7 +338,7 @@ contract AuSysFacetTest is DiamondTestBase {
         payToken.approve(address(diamond), 1000 ether);
 
         vm.prank(admin);
-        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
+        vm.expectRevert(AuSysFacet.CallerMustBeBuyer.selector);
         ausys.createJourney(
             user1,
             user1,
@@ -360,7 +360,7 @@ contract AuSysFacetTest is DiamondTestBase {
             '34.0522', '-118.2437',
             'New York', 'Los Angeles'
         );
-        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
+        vm.expectRevert(AuSysFacet.InvalidJourneyRoute.selector);
         ausys.createOrderJourney(
             orderId,
             user1,
@@ -450,7 +450,7 @@ contract AuSysFacetTest is DiamondTestBase {
         payToken.approve(address(diamond), 1000 ether);
 
         vm.recordLogs();
-        vm.prank(admin);
+        vm.prank(user2);
         ausys.createJourney(
             driver1,
             user2,
@@ -478,7 +478,7 @@ contract AuSysFacetTest is DiamondTestBase {
         payToken.approve(address(diamond), 1000 ether);
 
         vm.recordLogs();
-        vm.prank(admin);
+        vm.prank(driver1);
         ausys.createJourney(
             user1,
             driver1,

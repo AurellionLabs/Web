@@ -453,6 +453,7 @@ function regenerateFrontendABI() {
       'OrderRouterFacet',
       'AssetsFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
       'AuSysViewFacet',
       'BridgeFacet',
       'RWYStakingFacet',
@@ -916,8 +917,8 @@ async function postDeploymentConfig(
   if (resolvedAddresses.Diamond && resolvedAddresses.Aura) {
     console.log('   Configuring AuSys pay token on Diamond...');
     try {
-      const auSysFacet = await ethers.getContractAt(
-        'AuSysFacet',
+      const auSysAdminFacet = await ethers.getContractAt(
+        'AuSysAdminFacet',
         resolvedAddresses.Diamond,
       );
       const auSysViewFacet = await ethers.getContractAt(
@@ -926,7 +927,7 @@ async function postDeploymentConfig(
       );
       const currentPayToken = await auSysViewFacet.getPayToken();
       if (currentPayToken === ethers.ZeroAddress) {
-        const tx = await auSysFacet.setPayToken(resolvedAddresses.Aura);
+        const tx = await auSysAdminFacet.setPayToken(resolvedAddresses.Aura);
         await tx.wait();
         console.log(`   ✓ AuSys pay token set to ${resolvedAddresses.Aura}`);
       } else if (

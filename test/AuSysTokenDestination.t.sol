@@ -73,13 +73,11 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
     }
 
     function _addMissingAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](6);
+        bytes4[] memory sels = new bytes4[](4);
         sels[0] = AuSysFacet.selectTokenDestination.selector;
         sels[1] = AuSysFacet.handOff.selector;
-        sels[2] = AuSysFacet.onERC1155Received.selector;
-        sels[3] = AuSysFacet.onERC1155BatchReceived.selector;
-        sels[4] = AuSysFacet.acceptP2POffer.selector;
-        sels[5] = AuSysFacet.cancelP2POffer.selector;
+        sels[2] = AuSysFacet.acceptP2POffer.selector;
+        sels[3] = AuSysFacet.cancelP2POffer.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({

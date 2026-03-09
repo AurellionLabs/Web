@@ -328,6 +328,13 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     chainConstantKey: 'NEXT_PUBLIC_AUSYS_FACET_ADDRESS',
   },
 
+  AuSysAdminFacet: {
+    name: 'AuSysAdminFacet',
+    contractName: 'AuSysAdminFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_AUSYS_ADMIN_FACET_ADDRESS',
+  },
+
   // AuSysViewFacet - Read-only AuSys helpers split from AuSysFacet
   AuSysViewFacet: {
     name: 'AuSysViewFacet',
@@ -545,6 +552,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'CLOBMEVFacet',
       'OrderMatchingFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
       'AuSysViewFacet',
       'CLOBLogisticsFacet',
       'Diamond',
@@ -570,6 +578,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'CLOBFacet',
       'OrderRouterFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
       'AuSysViewFacet',
       'Diamond',
     ],
@@ -620,6 +629,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'BridgeFacet',
       'CLOBFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
       'Diamond',
       // Standalone
       'OrderBridge',

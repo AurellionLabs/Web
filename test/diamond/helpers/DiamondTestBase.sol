@@ -11,11 +11,13 @@ import { OwnershipFacet } from 'contracts/diamond/facets/OwnershipFacet.sol';
 import { NodesFacet } from 'contracts/diamond/facets/NodesFacet.sol';
 import { AssetsFacet } from 'contracts/diamond/facets/AssetsFacet.sol';
 import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
+import { AuSysAdminFacet } from 'contracts/diamond/facets/AuSysAdminFacet.sol';
 import { AuSysViewFacet } from 'contracts/diamond/facets/AuSysViewFacet.sol';
 import { BridgeFacet } from 'contracts/diamond/facets/BridgeFacet.sol';
 import { CLOBLogisticsFacet } from 'contracts/diamond/facets/CLOBLogisticsFacet.sol';
 import { RWYStakingFacet } from 'contracts/diamond/facets/RWYStakingFacet.sol';
 import { OperatorFacet } from 'contracts/diamond/facets/OperatorFacet.sol';
+import { ERC1155ReceiverFacet } from 'contracts/diamond/facets/ERC1155ReceiverFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 
 import { ERC20Mock } from './ERC20Mock.sol';
@@ -36,11 +38,13 @@ abstract contract DiamondTestBase is Test {
     NodesFacet public nodesFacet;
     AssetsFacet public assetsFacet;
     AuSysFacet public auSysFacet;
+    AuSysAdminFacet public auSysAdminFacet;
     AuSysViewFacet public auSysViewFacet;
     BridgeFacet public bridgeFacet;
     CLOBLogisticsFacet public clobLogisticsFacet;
     RWYStakingFacet public rwyStakingFacet;
     OperatorFacet public operatorFacet;
+    ERC1155ReceiverFacet public erc1155ReceiverFacet;
 
     // Mock tokens
     ERC20Mock public payToken;
@@ -100,11 +104,13 @@ abstract contract DiamondTestBase is Test {
         nodesFacet = new NodesFacet();
         assetsFacet = new AssetsFacet();
         auSysFacet = new AuSysFacet();
+        auSysAdminFacet = new AuSysAdminFacet();
         auSysViewFacet = new AuSysViewFacet();
         bridgeFacet = new BridgeFacet();
         clobLogisticsFacet = new CLOBLogisticsFacet();
         rwyStakingFacet = new RWYStakingFacet();
         operatorFacet = new OperatorFacet();
+        erc1155ReceiverFacet = new ERC1155ReceiverFacet();
 
         // Deploy Diamond
         diamond = new Diamond(owner, address(diamondCutFacet));
@@ -122,9 +128,15 @@ abstract contract DiamondTestBase is Test {
         
         // Add AssetsFacet
         _addFacet(address(assetsFacet), _getAssetsSelectors());
+
+        // Add ERC1155ReceiverFacet
+        _addFacet(address(erc1155ReceiverFacet), _getERC1155ReceiverSelectors());
         
         // Add AuSysFacet
         _addFacet(address(auSysFacet), _getAuSysSelectors());
+
+        // Add AuSysAdminFacet
+        _addFacet(address(auSysAdminFacet), _getAuSysAdminSelectors());
 
         // Add AuSysViewFacet
         _addFacet(address(auSysViewFacet), _getAuSysViewSelectors());
@@ -209,7 +221,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _initializeFacets() internal {
-        AuSysFacet(address(diamond)).setPayToken(address(payToken));
+        AuSysAdminFacet(address(diamond)).setPayToken(address(payToken));
         BridgeFacet(address(diamond)).setQuoteTokenAddress(address(quoteToken));
         NodesFacet(address(diamond)).setNodeRegistrar(nodeOperator, true);
         NodesFacet(address(diamond)).setNodeRegistrar(user1, true);
@@ -355,20 +367,36 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getAuSysSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](13);
-        selectors[0] = AuSysFacet.setPayToken.selector;
-        selectors[1] = AuSysFacet.setAuSysAdmin.selector;
-        selectors[2] = AuSysFacet.revokeAuSysAdmin.selector;
-        selectors[3] = AuSysFacet.setDriver.selector;
-        selectors[4] = AuSysFacet.setDispatcher.selector;
-        selectors[5] = AuSysFacet.createAuSysOrder.selector;
-        selectors[6] = AuSysFacet.createJourney.selector;
-        selectors[7] = AuSysFacet.createOrderJourney.selector;
-        selectors[8] = AuSysFacet.assignDriverToJourney.selector;
-        selectors[9] = AuSysFacet.packageSign.selector;
-        selectors[10] = AuSysFacet.handOn.selector;
-        selectors[11] = AuSysFacet.correctOrderTokenQuantity.selector;
-        selectors[12] = AuSysFacet.adminRecoverEscrow.selector;
+        bytes4[] memory selectors = new bytes4[](6);
+        selectors[0] = AuSysFacet.createAuSysOrder.selector;
+        selectors[1] = AuSysFacet.createJourney.selector;
+        selectors[2] = AuSysFacet.createOrderJourney.selector;
+        selectors[3] = AuSysFacet.assignDriverToJourney.selector;
+        selectors[4] = AuSysFacet.packageSign.selector;
+        selectors[5] = AuSysFacet.handOn.selector;
+        return selectors;
+    }
+
+    function _getAuSysAdminSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](11);
+        selectors[0] = AuSysAdminFacet.setPayToken.selector;
+        selectors[1] = AuSysAdminFacet.setAuSysAdmin.selector;
+        selectors[2] = AuSysAdminFacet.revokeAuSysAdmin.selector;
+        selectors[3] = AuSysAdminFacet.setDriver.selector;
+        selectors[4] = AuSysAdminFacet.setDispatcher.selector;
+        selectors[5] = AuSysAdminFacet.setTrustedP2PSigner.selector;
+        selectors[6] = AuSysAdminFacet.correctOrderTokenQuantity.selector;
+        selectors[7] = AuSysAdminFacet.adminRecoverEscrow.selector;
+        selectors[8] = AuSysAdminFacet.setTreasuryFeeBps.selector;
+        selectors[9] = AuSysAdminFacet.setNodeFeeBps.selector;
+        selectors[10] = AuSysAdminFacet.claimTreasuryFees.selector;
+        return selectors;
+    }
+
+    function _getERC1155ReceiverSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](2);
+        selectors[0] = ERC1155ReceiverFacet.onERC1155Received.selector;
+        selectors[1] = ERC1155ReceiverFacet.onERC1155BatchReceived.selector;
         return selectors;
     }
 
