@@ -661,6 +661,10 @@ export default function CreateP2POfferPage() {
         price: parseUnits(formData.price, 18),
         isSellOffer: formData.offerType === 'sell',
         nodes: selectedNodeAddresses,
+        pickupNodeRef:
+          formData.offerType === 'sell'
+            ? selectedSellNode?.nodeHash
+            : undefined,
         targetCounterparty:
           formData.targetType === 'targeted'
             ? formData.targetAddress
@@ -692,6 +696,7 @@ export default function CreateP2POfferPage() {
     router,
     selectedAsset,
     selectedBuyFilters,
+    selectedSellNode,
     selectedSellNodeOwnerAddress,
     classAssets,
     validateDetailsStep,

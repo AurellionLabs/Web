@@ -24,6 +24,8 @@ const TOKEN_ID =
   '0xb4ea2cef8a0db05f1d5db458b7e725abe12c5dea46810992eae76b8687876a40';
 const OFFER_ID =
   '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+const SELLER_NODE_REF =
+  '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 function createMockContext(overrides: Record<string, any> = {}) {
   const mockTx = {
@@ -61,6 +63,12 @@ function createMockContext(overrides: Record<string, any> = {}) {
     createAuSysOrder: vi.fn().mockResolvedValue(mockTx),
     acceptP2POffer: vi.fn().mockResolvedValue(mockTx),
     cancelP2POffer: vi.fn().mockResolvedValue(mockTx),
+    getOwnerNodes: vi.fn().mockResolvedValue([SELLER_NODE_REF]),
+    getNode: vi.fn().mockResolvedValue({
+      lat: '-26.2000',
+      lng: '28.0000',
+      addressName: 'Seller Node',
+    }),
     getAuSysOrder: vi.fn().mockResolvedValue(defaultOrder),
     getPayToken: vi
       .fn()
@@ -221,12 +229,127 @@ describe('DiamondP2PService', () => {
         price: BigInt(1000),
         isSellOffer: true,
         nodes: [SELLER], // current UI provides owner wallet
+        pickupNodeRef: ownerNodeRef,
       });
 
       const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
       expect(orderArg.locationData.startLocation.lat).toBe('-26.2041');
       expect(orderArg.locationData.startLocation.lng).toBe('28.0473');
       expect(orderArg.locationData.startName).toBe('Johannesburg Warehouse');
+    });
+
+    it('should fallback to first owner node when selected pickup node is not owned', async () => {
+      const fallbackNodeRef =
+        '0x3333333333333333333333333333333333333333333333333333333333333333';
+      const selectedButUnowned =
+        '0x4444444444444444444444444444444444444444444444444444444444444444';
+      const getNode = vi.fn().mockResolvedValue({
+        lat: '-34.0000',
+        lng: '18.5000',
+        addressName: 'Fallback Node',
+      });
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([fallbackNodeRef]),
+          getNode,
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [SELLER],
+        pickupNodeRef: selectedButUnowned,
+      });
+
+      expect(getNode).toHaveBeenCalledWith(fallbackNodeRef);
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.locationData.startName).toBe('Fallback Node');
+    });
+
+    it('should use legacy nodes[0] only when it is an owned node reference', async () => {
+      const legacyOwnedNode =
+        '0x5555555555555555555555555555555555555555555555555555555555555555';
+      const getNode = vi.fn().mockResolvedValue({
+        lat: '-25.7479',
+        lng: '28.2293',
+        addressName: 'Legacy Selected Node',
+      });
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([legacyOwnedNode]),
+          getNode,
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [legacyOwnedNode],
+      });
+
+      expect(getNode).toHaveBeenCalledWith(legacyOwnedNode);
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.locationData.startName).toBe('Legacy Selected Node');
+    });
+
+    it('should ignore legacy nodes[0] owner address and fallback to owner node', async () => {
+      const fallbackNodeRef =
+        '0x6666666666666666666666666666666666666666666666666666666666666666';
+      const getNode = vi.fn().mockResolvedValue({
+        lat: '-33.9249',
+        lng: '18.4241',
+        addressName: 'Owner Node Fallback',
+      });
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([fallbackNodeRef]),
+          getNode,
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [SELLER],
+      });
+
+      expect(getNode).toHaveBeenCalledWith(fallbackNodeRef);
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.locationData.startName).toBe('Owner Node Fallback');
+    });
+
+    it('should throw when sell offer pickup node cannot be resolved', async () => {
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([]),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+        }),
+      ).rejects.toThrow(/Unable to resolve sell offer pickup metadata/i);
+
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
     });
 
     it('should propagate contract errors', async () => {

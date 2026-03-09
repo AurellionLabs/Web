@@ -28,6 +28,15 @@ interface ContextWithOptionalContracts {
   getERC1155Contract(address: string): ethers.Contract;
 }
 
+type DiamondNodeMetadataContract = ethers.Contract & {
+  getOwnerNodes(owner: string): Promise<string[]>;
+  getNode(nodeAddress: string): Promise<{
+    lat?: string;
+    lng?: string;
+    addressName?: string;
+  }>;
+};
+
 import {
   GET_P2P_OFFERS_BY_CREATOR,
   GET_ALL_MINTED_ASSET_CLASSES,
@@ -184,44 +193,90 @@ export class DiamondP2PService implements IP2PService {
     let sellStartLng = '';
     let sellStartName = '';
 
-    if (
-      input.isSellOffer &&
-      typeof (diamond as { getOwnerNodes?: unknown }).getOwnerNodes ===
-        'function' &&
-      typeof (diamond as { getNode?: unknown }).getNode === 'function'
-    ) {
-      try {
-        const ownerNodes = await (
-          diamond as {
-            getOwnerNodes: (owner: string) => Promise<string[]>;
-          }
-        ).getOwnerNodes(signerAddress);
+    if (input.isSellOffer) {
+      const nodeMetadataFacet = diamond as DiamondNodeMetadataContract;
+      if (
+        typeof nodeMetadataFacet.getOwnerNodes !== 'function' ||
+        typeof nodeMetadataFacet.getNode !== 'function'
+      ) {
+        throw new Error(
+          'Sell offer pickup metadata resolution is unavailable on this contract instance',
+        );
+      }
 
-        const selectedNodeRef = input.nodes?.[0];
+      const normalize = (value: string | undefined | null): string =>
+        String(value || '').trim();
+
+      const isNodeRef = (value: string): boolean =>
+        ethers.isHexString(value, 32);
+
+      const findOwnedNodeRef = (
+        candidate: string,
+        ownerNodes: string[],
+      ): string | undefined => {
+        const normalizedCandidate = normalize(candidate).toLowerCase();
+        if (!normalizedCandidate) return undefined;
+        return ownerNodes.find(
+          (ownerNodeRef) =>
+            normalize(ownerNodeRef).toLowerCase() === normalizedCandidate,
+        );
+      };
+
+      try {
+        const ownerNodes = await nodeMetadataFacet.getOwnerNodes(signerAddress);
+
+        const selectedPickupNodeRef = normalize(input.pickupNodeRef);
         const selectedOwnedNode =
-          selectedNodeRef && ownerNodes.includes(selectedNodeRef)
-            ? selectedNodeRef
+          selectedPickupNodeRef &&
+          isNodeRef(selectedPickupNodeRef) &&
+          findOwnedNodeRef(selectedPickupNodeRef, ownerNodes);
+
+        if (selectedPickupNodeRef && !selectedOwnedNode) {
+          console.warn(
+            `[DiamondP2PService] Selected pickup node is invalid or not owned; falling back. selected=${selectedPickupNodeRef}`,
+          );
+        }
+
+        const legacyNodeCandidate = normalize(input.nodes?.[0]);
+        const legacyOwnedNode =
+          !selectedOwnedNode &&
+          legacyNodeCandidate &&
+          isNodeRef(legacyNodeCandidate)
+            ? findOwnedNodeRef(legacyNodeCandidate, ownerNodes)
             : undefined;
 
-        const pickupNodeRef = selectedOwnedNode || ownerNodes?.[0];
-        if (pickupNodeRef) {
-          const node = await (
-            diamond as {
-              getNode: (nodeAddress: string) => Promise<{
-                lat?: string;
-                lng?: string;
-                addressName?: string;
-              }>;
-            }
-          ).getNode(pickupNodeRef);
-          sellStartLat = String(node?.lat || '').trim();
-          sellStartLng = String(node?.lng || '').trim();
-          sellStartName = String(node?.addressName || '').trim();
+        if (legacyNodeCandidate && !isNodeRef(legacyNodeCandidate)) {
+          console.warn(
+            `[DiamondP2PService] Ignoring legacy nodes[0] because it is not a node reference (likely owner address): ${legacyNodeCandidate}`,
+          );
+        } else if (
+          legacyNodeCandidate &&
+          !legacyOwnedNode &&
+          !selectedOwnedNode
+        ) {
+          console.warn(
+            `[DiamondP2PService] Legacy pickup node reference is not owned; falling back to first owner node. candidate=${legacyNodeCandidate}`,
+          );
         }
+
+        const pickupNodeRef =
+          selectedOwnedNode || legacyOwnedNode || ownerNodes?.[0];
+        if (!pickupNodeRef) {
+          throw new Error(
+            `Unable to resolve pickup node for sell offer. signer=${signerAddress}`,
+          );
+        }
+
+        const node = await nodeMetadataFacet.getNode(pickupNodeRef);
+
+        sellStartLat = normalize(node?.lat);
+        sellStartLng = normalize(node?.lng);
+        sellStartName = normalize(node?.addressName);
       } catch (resolveErr) {
-        console.warn(
-          '[DiamondP2PService] Unable to resolve sell offer pickup node metadata:',
-          resolveErr,
+        const message =
+          resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
+        throw new Error(
+          `Unable to resolve sell offer pickup metadata: ${message}`,
         );
       }
     }

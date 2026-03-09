@@ -491,10 +491,6 @@ export default function CustomerDashboard() {
         assetId: BigInt(order.tokenId),
         deliveryAddress: deliveryData.deliveryAddress,
       };
-      console.log(
-        'Scheduling delivery with details in Customer Dashboard:',
-        delivery,
-      );
       await createP2PJourney(scheduleDeliveryOrderId, delivery);
       setScheduleDeliveryDialogOpen(false);
       setScheduleDeliveryOrderId(null);

@@ -39,6 +39,8 @@ const TOKEN = '0xAuraAsset000000000000000000000000000000';
 const TOKEN_ID = '0xaabbccdd';
 const OFFER_ID =
   '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+const SELLER_PICKUP_NODE =
+  '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 const PRICE = BigInt('40000000000000000000'); // 40 tokens
 const TX_FEE = BigInt('800000000000000000'); // 0.8 tokens (2% of 40)
@@ -132,6 +134,12 @@ function createFlowContext(opts: MockContextOptions = {}) {
     acceptP2POffer: vi.fn().mockResolvedValue(acceptTx),
     cancelP2POffer: vi.fn().mockResolvedValue(cancelTx),
     createOrderJourney: vi.fn().mockResolvedValue(journeyTx),
+    getOwnerNodes: vi.fn().mockResolvedValue([SELLER_PICKUP_NODE]),
+    getNode: vi.fn().mockResolvedValue({
+      lat: '-26.2041',
+      lng: '28.0473',
+      addressName: 'Seller Node',
+    }),
     getAuSysOrder: vi.fn().mockResolvedValue(opts.order ?? makeSellOrder()),
     getPayToken: vi
       .fn()
@@ -215,6 +223,7 @@ describe('P2P Logical Flow Tests', () => {
         quantity: QUANTITY,
         price: PRICE,
         isSellOffer: true,
+        pickupNodeRef: SELLER_PICKUP_NODE,
       });
 
       // Must check ERC1155 approval
@@ -395,6 +404,7 @@ describe('P2P Logical Flow Tests', () => {
         quantity: QUANTITY,
         price: PRICE,
         isSellOffer: true,
+        pickupNodeRef: SELLER_PICKUP_NODE,
       });
 
       expect(ctx._erc1155.setApprovalForAll).toHaveBeenCalled();
@@ -411,6 +421,7 @@ describe('P2P Logical Flow Tests', () => {
         quantity: QUANTITY,
         price: PRICE,
         isSellOffer: true,
+        pickupNodeRef: SELLER_PICKUP_NODE,
       });
 
       expect(ctx._erc1155.setApprovalForAll).not.toHaveBeenCalled();
@@ -860,6 +871,7 @@ describe('P2P Logical Flow Tests', () => {
           quantity: QUANTITY,
           price: PRICE,
           isSellOffer: true,
+          pickupNodeRef: SELLER_PICKUP_NODE,
         }),
       ).rejects.toThrow(); // The error should propagate
     });
@@ -913,6 +925,7 @@ describe('P2P Logical Flow Tests', () => {
         quantity: QUANTITY,
         price: PRICE,
         isSellOffer: true,
+        pickupNodeRef: SELLER_PICKUP_NODE,
       });
 
       expect(createCtx._quoteToken.allowance).not.toHaveBeenCalled();

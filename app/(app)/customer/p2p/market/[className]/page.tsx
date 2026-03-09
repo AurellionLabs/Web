@@ -407,7 +407,6 @@ export default function P2PMarketOffersPage() {
           deliveryAddress: deliveryData.deliveryAddress,
         };
 
-        console.log('Accepting offer with delivery details:', delivery);
         await p2pService.acceptOfferWithDelivery(selectedOffer.id, delivery);
 
         setDeliveryDialogOpen(false);
@@ -615,7 +614,6 @@ export default function P2PMarketOffersPage() {
           assetId: BigInt(order.tokenId),
           deliveryAddress: deliveryData.deliveryAddress,
         };
-        console.log('Scheduling delivery with details:', delivery);
         await createP2PJourney(scheduleDeliveryOrderId, delivery);
         setScheduleDeliveryDialogOpen(false);
         setScheduleDeliveryOrderId(null);
