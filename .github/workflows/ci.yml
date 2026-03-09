@@ -50,21 +50,21 @@ jobs:
       - name: Validate ABIs are up to date
         run: bun scripts/validate-abis.ts
 
-  # ── Phase 2a: Vitest (2 parallel shards on separate runners) ────────────────
+  # ── Phase 2a: Vitest (3 parallel shards on separate runners) ────────────────
   #
   # Each shard gets its own fresh 7 GB runner → no cross-shard heap bleed.
   # NODE_OPTIONS=6144 gives each shard ~6 GB headroom; peak measured at
   # ~1.5 GB for the original 88-file suite (PR #98), so 6144 MB is safe even
   # as the suite grows past 110 files.
   #
-  # If a future shard OOMs again: bump total to 3/3 (update matrix + shard arg).
+  # If a future shard OOMs again: bump total to 4/4 (update matrix + shard arg).
   vitest:
     runs-on: ubuntu-latest
     needs: lint-and-build
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
 
     steps:
       - name: Checkout repository
@@ -92,11 +92,11 @@ jobs:
       - name: Generate ABIs
         run: bun scripts/gen-all.ts
 
-      - name: Run Vitest tests (shard ${{ matrix.shard }}/2)
+      - name: Run Vitest tests (shard ${{ matrix.shard }}/3)
         # Each shard is a fresh Node process on its own runner — no cross-shard
         # heap accumulation. --no-file-parallelism keeps files sequential within
         # the shard so the GC can reclaim module registries between files.
-        run: node node_modules/.bin/vitest run --no-file-parallelism --shard=${{ matrix.shard }}/2
+        run: node node_modules/.bin/vitest run --no-file-parallelism --shard=${{ matrix.shard }}/3
         env:
           NODE_OPTIONS: --max-old-space-size=6144
 
