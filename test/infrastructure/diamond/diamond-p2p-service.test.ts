@@ -199,6 +199,36 @@ describe('DiamondP2PService', () => {
       expect(orderArg.nodes).toEqual([selectedNodeHash]);
     });
 
+    it('should populate sell offer pickup metadata from seller owned node', async () => {
+      const ownerNodeRef =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([ownerNodeRef]),
+          getNode: vi.fn().mockResolvedValue({
+            lat: '-26.2041',
+            lng: '28.0473',
+            addressName: 'Johannesburg Warehouse',
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [SELLER], // current UI provides owner wallet
+      });
+
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.locationData.startLocation.lat).toBe('-26.2041');
+      expect(orderArg.locationData.startLocation.lng).toBe('28.0473');
+      expect(orderArg.locationData.startName).toBe('Johannesburg Warehouse');
+    });
+
     it('should propagate contract errors', async () => {
       const context = createMockContext({
         diamond: {
@@ -710,7 +740,9 @@ describe('acceptOfferWithDelivery', () => {
 
     return {
       getDiamond: vi.fn().mockReturnValue(diamond),
-      getSignerAddress: vi.fn().mockResolvedValue(SELLER),
+      getSignerAddress: vi
+        .fn()
+        .mockResolvedValue('0xBuyerAddr0000000000000000000000000000000'),
       getSigner: vi.fn(),
       getProvider: vi.fn(),
       getQuoteTokenContract: vi.fn().mockReturnValue(mockQuoteToken),
@@ -735,7 +767,69 @@ describe('acceptOfferWithDelivery', () => {
     expect(context._diamond.createOrderJourney).toHaveBeenCalledTimes(1);
     expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
       OFFER_ID,
-      DELIVERY_DETAILS.senderNodeAddress,
+      SELLER,
+      DELIVERY_DETAILS.receiverAddress,
+      DELIVERY_DETAILS.parcelData,
+      DELIVERY_DETAILS.bountyWei,
+      DELIVERY_DETAILS.etaTimestamp,
+      DELIVERY_DETAILS.tokenQuantity,
+      DELIVERY_DETAILS.assetId,
+    );
+  });
+
+  it('should enrich missing pickup metadata from seller node before journey creation', async () => {
+    const context = createAcceptWithDeliveryContext();
+    context._diamond.getOwnerNodes = vi
+      .fn()
+      .mockResolvedValue([
+        '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      ]);
+    context._diamond.getNode = vi.fn().mockResolvedValue({
+      lat: '-33.9249',
+      lng: '18.4241',
+      addressName: 'Cape Town Node',
+    });
+    const service = new DiamondP2PService(context);
+
+    const deliveryWithoutPickup = {
+      ...DELIVERY_DETAILS,
+      parcelData: {
+        ...DELIVERY_DETAILS.parcelData,
+        startLocation: { lat: '', lng: '' },
+        startName: '',
+      },
+    };
+
+    await service.acceptOfferWithDelivery(OFFER_ID, deliveryWithoutPickup);
+
+    expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
+      OFFER_ID,
+      SELLER,
+      DELIVERY_DETAILS.receiverAddress,
+      expect.objectContaining({
+        startLocation: { lat: '-33.9249', lng: '18.4241' },
+        startName: 'Cape Town Node',
+      }),
+      DELIVERY_DETAILS.bountyWei,
+      DELIVERY_DETAILS.etaTimestamp,
+      DELIVERY_DETAILS.tokenQuantity,
+      DELIVERY_DETAILS.assetId,
+    );
+  });
+
+  it('should ignore mismatched UI receiver and use canonical buyer', async () => {
+    const context = createAcceptWithDeliveryContext();
+    const service = new DiamondP2PService(context);
+    const deliveryWithWrongReceiver = {
+      ...DELIVERY_DETAILS,
+      receiverAddress: '0x9999999999999999999999999999999999999999',
+    };
+
+    await service.acceptOfferWithDelivery(OFFER_ID, deliveryWithWrongReceiver);
+
+    expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
+      OFFER_ID,
+      SELLER,
       DELIVERY_DETAILS.receiverAddress,
       DELIVERY_DETAILS.parcelData,
       DELIVERY_DETAILS.bountyWei,

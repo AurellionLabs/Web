@@ -775,7 +775,7 @@ describe('P2P Logical Flow Tests', () => {
 
       expect(ctx._diamond.createOrderJourney).toHaveBeenCalledWith(
         OFFER_ID,
-        delivery.senderNodeAddress,
+        SELLER,
         delivery.receiverAddress,
         delivery.parcelData,
         delivery.bountyWei,

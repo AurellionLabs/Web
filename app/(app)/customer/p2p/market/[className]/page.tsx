@@ -340,7 +340,7 @@ export default function P2PMarketOffersPage() {
         const storedLocation = offer.locationData!;
         const delivery: P2PDeliveryDetails = {
           senderNodeAddress:
-            offer.nodes && offer.nodes.length > 0 ? offer.nodes[0] : address,
+            offer.nodes && offer.nodes.length > 0 ? offer.nodes[0] : '',
           receiverAddress: offer.buyer,
           parcelData: {
             startLocation: {
@@ -351,7 +351,7 @@ export default function P2PMarketOffersPage() {
               lat: storedLocation.endLocation.lat,
               lng: storedLocation.endLocation.lng,
             },
-            startName: storedLocation.startName || 'Pickup Location',
+            startName: storedLocation.startName || '',
             endName: storedLocation.endName,
           },
           bountyWei: BigInt('500000000000000000'),
@@ -397,8 +397,7 @@ export default function P2PMarketOffersPage() {
               lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
               lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
             },
-            startName:
-              selectedOffer.locationData?.startName || 'Pickup Location',
+            startName: selectedOffer.locationData?.startName ?? '',
             endName: deliveryData.deliveryAddress,
           },
           bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
@@ -408,6 +407,7 @@ export default function P2PMarketOffersPage() {
           deliveryAddress: deliveryData.deliveryAddress,
         };
 
+        console.log('Accepting offer with delivery details:', delivery);
         await p2pService.acceptOfferWithDelivery(selectedOffer.id, delivery);
 
         setDeliveryDialogOpen(false);
@@ -606,7 +606,7 @@ export default function P2PMarketOffersPage() {
               lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
               lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
             },
-            startName: order.locationData?.startName || 'Pickup Location',
+            startName: order.locationData?.startName ?? '',
             endName: deliveryData.deliveryAddress,
           },
           bountyWei: BigInt('500000000000000000'),
@@ -615,6 +615,7 @@ export default function P2PMarketOffersPage() {
           assetId: BigInt(order.tokenId),
           deliveryAddress: deliveryData.deliveryAddress,
         };
+        console.log('Scheduling delivery with details:', delivery);
         await createP2PJourney(scheduleDeliveryOrderId, delivery);
         setScheduleDeliveryDialogOpen(false);
         setScheduleDeliveryOrderId(null);

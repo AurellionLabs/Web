@@ -625,12 +625,31 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // Resolve canonical participants from on-chain order state.
         // Event-derived order views can contain zero placeholders.
         const onchainOrder = await diamond.getAuSysOrder(orderId);
-        const senderAddress = isZeroAddress(delivery.senderNodeAddress)
-          ? String(onchainOrder.seller || '')
-          : delivery.senderNodeAddress;
-        const receiverAddress = isZeroAddress(delivery.receiverAddress)
-          ? String(onchainOrder.buyer || '')
-          : delivery.receiverAddress;
+        const canonicalSeller = String(onchainOrder.seller || '').trim();
+        const canonicalBuyer = String(onchainOrder.buyer || '').trim();
+        const providedSender = String(delivery.senderNodeAddress || '').trim();
+        const providedReceiver = String(delivery.receiverAddress || '').trim();
+        const senderAddress = canonicalSeller;
+        const receiverAddress = canonicalBuyer;
+
+        if (
+          providedSender &&
+          !isZeroAddress(providedSender) &&
+          providedSender.toLowerCase() !== canonicalSeller.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Ignoring mismatched senderNodeAddress. provided=${providedSender}, seller=${canonicalSeller}`,
+          );
+        }
+        if (
+          providedReceiver &&
+          !isZeroAddress(providedReceiver) &&
+          providedReceiver.toLowerCase() !== canonicalBuyer.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Ignoring mismatched receiverAddress. provided=${providedReceiver}, buyer=${canonicalBuyer}`,
+          );
+        }
 
         if (isZeroAddress(senderAddress)) {
           throw new Error(
@@ -672,7 +691,18 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
           try {
             const senderNodes = await diamond.getOwnerNodes(senderAddress);
-            const senderNodeHash = senderNodes?.[0];
+            let senderNodeHash = senderNodes?.[0];
+            if (!senderNodeHash) {
+              // Fallback: some UI paths may pass a node reference directly.
+              const senderRef = String(delivery.senderNodeAddress || '').trim();
+              if (
+                senderRef &&
+                !isZeroAddress(senderRef) &&
+                senderRef.toLowerCase() !== senderAddress.toLowerCase()
+              ) {
+                senderNodeHash = senderRef;
+              }
+            }
             if (senderNodeHash) {
               const senderNode = await diamond.getNode(senderNodeHash);
               parcelData.startLocation.lat = String(

@@ -69,6 +69,18 @@ export class DriverRepository implements IDriverRepository {
   }
 
   /**
+   * Resolve pickup label for driver UI.
+   * P2P flows may emit an empty start_name; in that case use sender node address.
+   */
+  private resolvePickupLabel(startName: string, senderAddress: string): string {
+    const normalizedStart = String(startName || '').trim();
+    if (normalizedStart.length > 0) return normalizedStart;
+
+    const normalizedSender = String(senderAddress || '').trim();
+    return normalizedSender;
+  }
+
+  /**
    * Convert JourneyCreated event to Delivery domain model
    */
   private journeyCreatedToDelivery(
@@ -95,7 +107,7 @@ export class DriverRepository implements IDriverRepository {
       parcelData: {
         startLocation: { lat: event.start_lat, lng: event.start_lng },
         endLocation: { lat: event.end_lat, lng: event.end_lng },
-        startName: event.start_name,
+        startName: this.resolvePickupLabel(event.start_name, event.sender),
         endName: event.end_name,
       },
     };
@@ -127,7 +139,7 @@ export class DriverRepository implements IDriverRepository {
       parcelData: {
         startLocation: { lat: event.start_lat, lng: event.start_lng },
         endLocation: { lat: event.end_lat, lng: event.end_lng },
-        startName: event.start_name,
+        startName: this.resolvePickupLabel(event.start_name, event.sender),
         endName: event.end_name,
       },
     };
