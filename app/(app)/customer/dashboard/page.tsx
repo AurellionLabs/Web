@@ -464,11 +464,7 @@ export default function CustomerDashboard() {
     try {
       setP2PActionLoading(true);
 
-      const senderNode =
-        deliveryData.senderNodeAddress ||
-        order.seller ||
-        order.nodes?.[0] ||
-        '';
+      const senderNode = String(order.seller || '').trim();
 
       const delivery: P2PDeliveryDetails = {
         senderNodeAddress: senderNode,
@@ -482,7 +478,7 @@ export default function CustomerDashboard() {
             lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
             lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
           },
-          startName: order.locationData?.startName || 'Pickup Location',
+          startName: order.locationData?.startName ?? '',
           endName: deliveryData.deliveryAddress,
         },
         bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
@@ -491,7 +487,6 @@ export default function CustomerDashboard() {
         assetId: BigInt(order.tokenId),
         deliveryAddress: deliveryData.deliveryAddress,
       };
-
       await createP2PJourney(scheduleDeliveryOrderId, delivery);
       setScheduleDeliveryDialogOpen(false);
       setScheduleDeliveryOrderId(null);

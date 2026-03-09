@@ -128,6 +128,12 @@ export interface CreateP2POfferInput {
   /** Optional: custody nodes */
   nodes?: string[];
 
+  /**
+   * Optional selected pickup node reference.
+   * Required for sell offers so pickup metadata maps to the user-selected node.
+   */
+  pickupNodeRef?: string;
+
   /** Optional: destination selected by buy-offer creator */
   deliveryDestination?: {
     address: string;

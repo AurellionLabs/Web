@@ -177,7 +177,7 @@ const EMPTY_JOURNEY_STATUS = {
 };
 
 /**
- * Mock all 8 graphqlRequest calls in getNodeOrders.
+ * Mock all 9 graphqlRequest calls in getNodeOrders.
  * Batch 1 (CLOB):
  *   0: GET_ALL_UNIFIED_ORDER_EVENTS
  *   1: GET_LOGISTICS_ORDER_CREATED_EVENTS
@@ -185,9 +185,10 @@ const EMPTY_JOURNEY_STATUS = {
  *   2: GET_P2P_OFFERS_BY_CREATOR
  *   3: GET_P2P_OFFERS_ACCEPTED_BY_USER
  *   4: GET_P2P_OFFER_DETAILS_BY_ORDER_IDS
- *   5: GET_AUSYS_ORDER_STATUS_UPDATES
- *   6: GET_JOURNEYS_BY_SENDER_ADDRESS
- *   7: GET_JOURNEY_STATUS_UPDATES_ALL
+ *   5: GET_ALL_P2P_OFFER_ACCEPTED_EVENTS
+ *   6: GET_AUSYS_ORDER_STATUS_UPDATES
+ *   7: GET_JOURNEYS_BY_ORDER
+ *   8: GET_JOURNEY_STATUS_UPDATES_ALL
  */
 function setupEmptyMocks() {
   graphqlRequestMock
@@ -196,9 +197,10 @@ function setupEmptyMocks() {
     .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 2
     .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
     .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 4 (all p2p details)
-    .mockResolvedValueOnce(EMPTY_STATUS) // 5
-    .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
-    .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
+    .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5 (all p2p accepted)
+    .mockResolvedValueOnce(EMPTY_STATUS) // 6
+    .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
+    .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
 }
 
 // -------------------------------------------------------------------
@@ -253,9 +255,10 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
         // 4: all P2P details
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
-      .mockResolvedValueOnce(EMPTY_STATUS) // 5
-      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5: all accepted
+      .mockResolvedValueOnce(EMPTY_STATUS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
@@ -304,6 +307,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce(EMPTY_P2P_CREATED)
       .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce(EMPTY_JOURNEYS)
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -325,6 +329,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce(EMPTY_P2P_CREATED)
       .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce(EMPTY_JOURNEYS)
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -354,6 +359,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce(EMPTY_P2P_CREATED)
       .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce(EMPTY_JOURNEYS)
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -384,6 +390,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce({
         diamondJourneyCreatedEventss: { items: [journey] },
@@ -417,6 +424,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pEvent] },
       })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce(EMPTY_JOURNEYS)
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -444,6 +452,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce(EMPTY_JOURNEYS)
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -464,6 +473,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce(EMPTY_JOURNEYS)
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -503,6 +513,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
       .mockResolvedValueOnce(EMPTY_STATUS)
       .mockResolvedValueOnce(EMPTY_JOURNEYS)
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
