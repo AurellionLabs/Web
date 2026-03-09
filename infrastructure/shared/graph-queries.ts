@@ -1445,6 +1445,30 @@ export const GET_P2P_OFFERS_ACCEPTED_BY_USER = gql`
 `;
 
 /**
+ * Get all P2P offer accepted events.
+ * Used to resolve the real counterparty for public offers after acceptance.
+ */
+export const GET_ALL_P2P_OFFER_ACCEPTED_EVENTS = gql`
+  query GetAllP2POfferAcceptedEvents($limit: Int = 500) {
+    diamondP2POfferAcceptedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        order_id
+        acceptor
+        is_seller_initiated
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
  * Get all P2P offer created events (for enriching accepted events with details).
  */
 export const GET_P2P_OFFER_DETAILS_BY_ORDER_IDS = gql`
@@ -1535,6 +1559,10 @@ export interface P2POffersByCreatorResponse {
 }
 
 export interface P2POffersAcceptedByUserResponse {
+  diamondP2POfferAcceptedEventss: { items: P2POfferAcceptedRawEvent[] };
+}
+
+export interface AllP2POfferAcceptedEventsResponse {
   diamondP2POfferAcceptedEventss: { items: P2POfferAcceptedRawEvent[] };
 }
 

@@ -24,12 +24,14 @@ import {
   GET_JOURNEY_STATUS_UPDATED_EVENTS,
   GET_P2P_OFFERS_BY_CREATOR,
   GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
   GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
   GET_AUSYS_ORDER_STATUS_UPDATES,
   GET_JOURNEYS_BY_ORDER,
   GET_JOURNEY_STATUS_UPDATES_ALL,
 } from '../shared/graph-queries';
 import type {
+  AllP2POfferAcceptedEventsResponse,
   P2POffersByCreatorResponse,
   P2POffersAcceptedByUserResponse,
   P2POfferDetailsResponse,
@@ -700,6 +702,7 @@ export class OrderRepository implements IOrderRepository {
         createdResp,
         acceptedResp,
         allCreatedResp,
+        allAcceptedResp,
         statusResp,
         journeysResp,
         journeyStatusResp,
@@ -717,6 +720,11 @@ export class OrderRepository implements IOrderRepository {
         graphqlRequest<P2POfferDetailsResponse>(
           this.graphQLEndpoint,
           GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AllP2POfferAcceptedEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
           { limit: 500 },
         ),
         graphqlRequest<AuSysOrderStatusUpdatesResponse>(
@@ -740,6 +748,7 @@ export class OrderRepository implements IOrderRepository {
         createdResp.diamondP2POfferCreatedEventss?.items || [],
         acceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         allCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        allAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
         userAddress,
         journeysResp.diamondJourneyCreatedEventss?.items || [],

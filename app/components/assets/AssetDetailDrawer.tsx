@@ -87,12 +87,14 @@ export function AssetDetailDrawer({
     copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
-  // The holding passed to redemption — augmented with selected node if chosen
-  // Use nodeHash if available, otherwise fall back to nodeAddress (owner wallet)
+  // The holding passed to redemption — augmented with the selected custodian
+  // wallet plus the node hash used for route lookup.
   const holdingForRedemption: UserHolding = selectedNode
     ? {
         ...holding,
-        originNode: selectedNode.nodeHash || selectedNode.nodeAddress,
+        originNode: selectedNode.nodeAddress,
+        originCustodianAddress: selectedNode.nodeAddress,
+        originNodeHash: selectedNode.nodeHash,
       }
     : holding;
 

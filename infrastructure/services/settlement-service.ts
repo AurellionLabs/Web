@@ -154,6 +154,37 @@ export class SettlementService {
       burn,
     );
     await tx.wait();
+
+    const signerAddress = await signer.getAddress();
+    await this.waitForPendingOrderClear(contract, signerAddress, orderId);
+  }
+
+  private async waitForPendingOrderClear(
+    contract: ethers.Contract,
+    buyerAddress: string,
+    orderId: string,
+  ): Promise<void> {
+    const normalizedOrderId = orderId.toLowerCase();
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+      }
+
+      const pendingOrderIds: string[] =
+        await contract.getPendingTokenDestinations(buyerAddress);
+      const stillPending = pendingOrderIds.some(
+        (pendingOrderId) => pendingOrderId.toLowerCase() === normalizedOrderId,
+      );
+
+      if (!stillPending) {
+        return;
+      }
+    }
+
+    throw new Error(
+      'Destination transaction confirmed, but the order still appears pending. Refresh and verify the latest chain state.',
+    );
   }
 
   // ---------------------------------------------------------------------------

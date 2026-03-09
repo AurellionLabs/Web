@@ -176,6 +176,8 @@ export function RedemptionDialog({
         quantity: BigInt(quantityNum),
         deliveryAddress: deliveryAddress,
         originNode: holding.originNode || '',
+        originCustodianAddress: holding.originCustodianAddress,
+        originNodeHash: holding.originNodeHash,
         confirmationLevel: confirmationLevel,
         destinationLat: deliveryCoords.lat,
         destinationLng: deliveryCoords.lng,

@@ -64,8 +64,9 @@ export function useSettlementDestination(): UseSettlementDestinationReturn {
     async (orderId: string, nodeId: string | null, burn: boolean) => {
       const service = getSettlementService();
       await service.selectDestination(orderId, nodeId, burn);
+      await fetchPending();
     },
-    [],
+    [fetchPending],
   );
 
   return useMemo(

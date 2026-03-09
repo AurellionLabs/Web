@@ -36,12 +36,14 @@ import {
   GET_SUPPORTED_ASSET_ADDED_EVENTS,
   GET_P2P_OFFERS_BY_CREATOR,
   GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
   GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
   GET_AUSYS_ORDER_STATUS_UPDATES,
   GET_JOURNEYS_BY_ORDER,
   GET_JOURNEY_STATUS_UPDATES_ALL,
 } from '@/infrastructure/shared/graph-queries';
 import type {
+  AllP2POfferAcceptedEventsResponse,
   P2POffersByCreatorResponse,
   P2POffersAcceptedByUserResponse,
   P2POfferDetailsResponse,
@@ -458,6 +460,12 @@ export class DiamondNodeRepository implements NodeRepository {
             nodeHash,
           );
 
+          const registeredCapacity = BigInt(nodeAsset.capacity.toString());
+          const effectiveCapacity =
+            custodyAmount > registeredCapacity
+              ? custodyAmount
+              : registeredCapacity;
+
           return {
             id: tokenId,
             amount: custodyAmount.toString(),
@@ -471,7 +479,7 @@ export class DiamondNodeRepository implements NodeRepository {
               location: { lat: '0', lng: '0' },
             },
             price: nodeAsset.price.toString(),
-            capacity: nodeAsset.capacity.toString(),
+            capacity: effectiveCapacity.toString(),
           };
         },
       );
@@ -604,6 +612,7 @@ export class DiamondNodeRepository implements NodeRepository {
         p2pCreatedResp,
         p2pAcceptedResp,
         allP2PCreatedResp,
+        allAcceptedResp,
         statusResp,
         journeysResp,
         journeyStatusResp,
@@ -621,6 +630,11 @@ export class DiamondNodeRepository implements NodeRepository {
         graphqlRequest<P2POfferDetailsResponse>(
           this.graphQLEndpoint,
           GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AllP2POfferAcceptedEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
           { limit: 500 },
         ),
         graphqlRequest<AuSysOrderStatusUpdatesResponse>(
@@ -644,6 +658,7 @@ export class DiamondNodeRepository implements NodeRepository {
         p2pCreatedResp.diamondP2POfferCreatedEventss?.items || [],
         p2pAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         allP2PCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        allAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
         queryAddr,
         journeysResp.diamondJourneyCreatedEventss?.items || [],
@@ -892,11 +907,14 @@ export class DiamondNodeRepository implements NodeRepository {
             ? newAmount.toString()
             : existingAmount.toString();
 
-        // Capacity is an on-chain per-registration limit. Sum is correct
-        // here since each registration adds capacity.
+        // Capacity is a node-level operational limit. Registrations add
+        // capacity, but it should never display below live node custody.
         const existingCapacity = BigInt(existing.capacity || '0');
         const newCapacity = BigInt(asset.capacity || '0');
-        existing.capacity = (existingCapacity + newCapacity).toString();
+        const summedCapacity = existingCapacity + newCapacity;
+        existing.capacity = (
+          summedCapacity > existingAmount ? summedCapacity : existingAmount
+        ).toString();
       } else {
         aggregated.set(asset.id, { ...asset });
       }

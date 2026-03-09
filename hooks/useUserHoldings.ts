@@ -25,8 +25,10 @@ export interface UserHolding {
     values: string[];
     description: string;
   }>;
-  // Node where the physical asset is stored (for redemption)
+  // Node wallet/node hash used by redemption flows
   originNode?: string;
+  originCustodianAddress?: string;
+  originNodeHash?: string;
 }
 
 /**

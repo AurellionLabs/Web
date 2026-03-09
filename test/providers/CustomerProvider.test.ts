@@ -617,6 +617,7 @@ describe('Customer Provider Business Logic', () => {
         [],
         createdByUser,
         [],
+        [],
         NODE_OPERATOR,
       );
 
@@ -688,6 +689,7 @@ describe('Customer Provider Business Logic', () => {
         accepted,
         created,
         [],
+        [],
         BUYER,
       );
 
@@ -730,7 +732,14 @@ describe('Customer Provider Business Logic', () => {
         },
       ];
 
-      const orders = aggregateP2POrdersForUser(created, [], created, [], USER);
+      const orders = aggregateP2POrdersForUser(
+        created,
+        [],
+        created,
+        [],
+        [],
+        USER,
+      );
 
       expect(orders).toHaveLength(1);
       // THE CRITICAL ASSERTION: buyer and seller must be DIFFERENT

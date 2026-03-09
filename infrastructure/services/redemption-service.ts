@@ -15,7 +15,9 @@ export interface RedemptionParams {
   tokenId: string;
   quantity: bigint;
   deliveryAddress: string;
-  originNode: string; // The node where the physical asset is stored
+  originNode: string; // Backward-compatible fallback
+  originCustodianAddress?: string;
+  originNodeHash?: string;
   confirmationLevel: number; // Number of nodes in the route (1-5)
   destinationLat: number; // Customer delivery latitude
   destinationLng: number; // Customer delivery longitude
@@ -81,6 +83,8 @@ export class RedemptionService {
       quantity,
       deliveryAddress,
       originNode,
+      originCustodianAddress,
+      originNodeHash,
       confirmationLevel,
       destinationLat,
       destinationLng,
@@ -97,14 +101,19 @@ export class RedemptionService {
         signer,
       );
 
-      if (!originNode || originNode.toLowerCase() === ethers.ZeroAddress) {
+      const custodianAddress = (
+        originCustodianAddress || originNode
+      ).toLowerCase();
+      const routeOriginNode = originNodeHash || originNode;
+
+      if (!custodianAddress || custodianAddress === ethers.ZeroAddress) {
         throw new Error('No origin custody node provided for redemption');
       }
 
       // Validate on-chain custody for the provided origin node.
       const custodyAmount = await diamondAssetContract.getCustodyInfo(
         tokenId,
-        originNode,
+        custodianAddress,
       );
       if (BigInt(custodyAmount) < quantity) {
         throw new Error(
@@ -112,7 +121,7 @@ export class RedemptionService {
         );
       }
 
-      if (originNode.toLowerCase() === signerAddress.toLowerCase()) {
+      if (custodianAddress === signerAddress.toLowerCase()) {
         throw new Error(
           'Custodian wallets cannot redeem assets from their own custody',
         );
@@ -130,7 +139,7 @@ export class RedemptionService {
 
       // Step 2: Calculate the delivery route through nodes
       const route = await this.routeCalculationService.calculateRoute(
-        originNode,
+        routeOriginNode,
         destinationLat,
         destinationLng,
         confirmationLevel,
@@ -144,13 +153,13 @@ export class RedemptionService {
       const redeemTx = await diamondAssetContract.redeem(
         tokenId,
         quantity,
-        originNode,
+        custodianAddress,
       );
       const redeemReceipt = await redeemTx.wait();
 
       // Step 4: Get origin node location for parcel data
       const originNodeLocation =
-        await this.routeCalculationService.getNodeLocation(originNode);
+        await this.routeCalculationService.getNodeLocation(routeOriginNode);
 
       // Build parcel data with actual coordinates
       const parcelData: ParcelData = {
@@ -165,7 +174,7 @@ export class RedemptionService {
           lng: destinationLng.toString(),
         },
         startName:
-          originNodeLocation?.addressName || originNode || 'Origin Node',
+          originNodeLocation?.addressName || routeOriginNode || 'Origin Node',
         endName: deliveryAddress,
       };
 
@@ -184,7 +193,7 @@ export class RedemptionService {
         price: totalFee.toString(), // Redemption fee
         txFee: (totalFee / 10n).toString(), // 10% to nodes
         buyer: signerAddress,
-        seller: originNode, // Origin custodian node is the physical seller in redemption context
+        seller: routeOriginNode,
         journeyIds: [],
         nodes: route.nodes, // All nodes in the delivery route
         locationData: parcelData,

@@ -48,12 +48,14 @@ import {
   GET_ALL_NODE_EVENTS,
   GET_P2P_OFFERS_BY_CREATOR,
   GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
   GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
   GET_AUSYS_ORDER_STATUS_UPDATES,
   GET_JOURNEYS_BY_SENDER_ADDRESS,
   GET_JOURNEY_STATUS_UPDATES_ALL,
 } from '../shared/graph-queries';
 import type {
+  AllP2POfferAcceptedEventsResponse,
   P2POffersByCreatorResponse,
   P2POffersAcceptedByUserResponse,
   P2POfferDetailsResponse,
@@ -358,6 +360,12 @@ export class BlockchainNodeRepository implements NodeRepository {
       return nodeAssetsData.map((nodeAsset) => {
         // Find balance for this token
         const balance = balanceMap.get(nodeAsset.token_id) || '0';
+        const balanceBigInt = BigInt(balance);
+        const registeredCapacity = BigInt(nodeAsset.capacity);
+        const effectiveCapacity =
+          balanceBigInt > registeredCapacity
+            ? balanceBigInt.toString()
+            : registeredCapacity.toString();
 
         return {
           id: nodeAsset.token_id,
@@ -372,7 +380,7 @@ export class BlockchainNodeRepository implements NodeRepository {
             location: { lat: '0', lng: '0' },
           },
           price: nodeAsset.price,
-          capacity: nodeAsset.capacity,
+          capacity: effectiveCapacity,
         };
       });
     } catch (error) {
@@ -582,6 +590,7 @@ export class BlockchainNodeRepository implements NodeRepository {
         p2pCreatedResp,
         p2pAcceptedResp,
         allP2PCreatedResp,
+        allAcceptedResp,
         statusResp,
         journeysResp,
         journeyStatusResp,
@@ -599,6 +608,11 @@ export class BlockchainNodeRepository implements NodeRepository {
         graphqlRequest<P2POfferDetailsResponse>(
           this.graphQLEndpoint,
           GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AllP2POfferAcceptedEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
           { limit: 500 },
         ),
         graphqlRequest<AuSysOrderStatusUpdatesResponse>(
@@ -622,6 +636,7 @@ export class BlockchainNodeRepository implements NodeRepository {
         p2pCreatedResp.diamondP2POfferCreatedEventss?.items || [],
         p2pAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         allP2PCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        allAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
         queryAddr,
         journeysResp.diamondJourneyCreatedEventss?.items || [],
