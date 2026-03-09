@@ -394,14 +394,30 @@ export class DiamondNodeRepository implements NodeRepository {
         return null;
       }
 
-      // Get node assets from Diamond
+      // Keep node-level capacity consistent with the dashboard asset read model:
+      // display at least live custody even if registered capacity is lower.
       const nodeAssets = await diamond.getNodeAssets(nodeHash);
-      const assets: NodeAsset[] = nodeAssets.map((asset: any) => ({
-        token: asset.token,
-        tokenId: asset.tokenId.toString(),
-        price: BigInt(asset.price),
-        capacity: Number(asset.capacity),
-      }));
+      const assets: NodeAsset[] = await Promise.all(
+        nodeAssets.map(async (asset: any) => {
+          const tokenId = BigInt(asset.tokenId.toString());
+          const registeredCapacity = BigInt(asset.capacity.toString());
+          const custodyAmount = await diamond.getNodeCustodyInfo(
+            tokenId,
+            nodeHash,
+          );
+          const effectiveCapacity =
+            custodyAmount > registeredCapacity
+              ? custodyAmount
+              : registeredCapacity;
+
+          return {
+            token: asset.token,
+            tokenId: asset.tokenId.toString(),
+            price: BigInt(asset.price),
+            capacity: Number(effectiveCapacity),
+          };
+        }),
+      );
 
       return {
         address: nodeAddress,
@@ -634,13 +650,12 @@ export class DiamondNodeRepository implements NodeRepository {
         logisticsItems.map((l) => [l.unified_order_id.toLowerCase(), l]),
       );
 
-      // Filter CLOB: linked via logistics node field, OR seller/buyer matches owner wallet
+      // Filter CLOB orders strictly by logistics node linkage for this node.
+      // Owner-level matching causes the same order set to appear under every
+      // node owned by the same wallet.
       const clobOrders = allAggregated.filter((order) => {
         const oid = order.unifiedOrderId.toLowerCase();
-        if (nodeLinkedOrderIds.has(oid)) return true;
-        if (owner && order.seller.toLowerCase() === owner) return true;
-        if (owner && order.buyer.toLowerCase() === owner) return true;
-        return false;
+        return nodeLinkedOrderIds.has(oid);
       });
 
       // 2. Fetch P2P orders where the node OWNER is creator or acceptor
@@ -743,25 +758,15 @@ export class DiamondNodeRepository implements NodeRepository {
         const oid = order.id.toLowerCase();
         if (seenIds.has(oid)) continue;
 
-        // For P2P orders, only include if the specific node is referenced
-        // in the order's nodes array, seller field, OR journey sender.
-        // This prevents the same P2P order from appearing under every node
-        // owned by the same wallet by cross-referencing journey sender.
+        // For node dashboards, include P2P orders only when this node is
+        // explicitly linked by the order metadata or the created journey.
         const orderNodes = (order.nodes || []).map((n) => n.toLowerCase());
         const journeySender = orderSenderMap.get(oid);
         const isLinkedToThisNode =
           orderNodes.includes(hash) ||
           order.seller?.toLowerCase() === hash ||
           journeySender === hash;
-        // If the order has no node references and no journey sender (common
-        // for P2P), fall back to showing it only on the first node to avoid
-        // duplicates.
-        const hasNoNodeRef =
-          orderNodes.length === 0 ||
-          orderNodes.every(
-            (n) => n === ethers.ZeroAddress.toLowerCase() || n === '',
-          );
-        if (!isLinkedToThisNode && !hasNoNodeRef) continue;
+        if (!isLinkedToThisNode) continue;
 
         seenIds.add(oid);
         allOrders.push(order);

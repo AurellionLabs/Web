@@ -472,11 +472,10 @@ export default function NodeDashboardPage() {
 
   // ── Reputation scores (4 categories) ──
   // 1. Amount Tokenized — tokenized quantity vs total capacity
-  const totalCapacity =
-    currentNodeData?.assets?.reduce(
-      (sum, a) => sum + Number(a.capacity || 0),
-      0,
-    ) || 0;
+  const totalCapacity = assets.reduce(
+    (sum, asset) => sum + Number(asset.capacity || 0),
+    0,
+  );
   const reputationTokenized =
     totalCapacity > 0
       ? Math.min(
@@ -761,6 +760,7 @@ export default function NodeDashboardPage() {
 
       // Safety guard: in P2P flows the sender should only sign pickup after
       // the driver has already signed pickup (driver accepted and acknowledged).
+      let senderAlreadySigned = false;
       if (order.isP2P) {
         const sigState = await getP2PSignatureState(order.id, journeyId);
         if (sigState.roleConflict) {
@@ -781,9 +781,15 @@ export default function NodeDashboardPage() {
           });
           return 'waiting_for_driver';
         }
+        senderAlreadySigned = Boolean(sigState.senderPickupSigned);
       }
 
-      await packageSign(journeyId);
+      // Auto-start logic can re-enter this handler after the sender signature is
+      // already on-chain. Re-signing is unnecessary and creates another wallet
+      // prompt, so skip packageSign once the pickup signature is visible.
+      if (!senderAlreadySigned) {
+        await packageSign(journeyId);
+      }
 
       // Try to start journey (requires both driver + sender signatures)
       try {
