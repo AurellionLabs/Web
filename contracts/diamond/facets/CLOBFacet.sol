@@ -129,9 +129,13 @@ contract CLOBFacet is Initializable {
         uint256 lpFeeAmount
     );
 
-    uint8 public constant TAKER_FEE = 10;
-    uint8 public constant MAKER_FEE = 5;
-    uint8 public constant LP_FEE = 5;
+    // Fee defaults (bps) — used only on first-time init via initCLOBFees().
+    // After init, fees are read from DiamondStorage (takerFeeBps/makerFeeBps/lpFeeBps).
+    uint16 public constant DEFAULT_TAKER_FEE_BPS = 10; // 0.1%
+    uint16 public constant DEFAULT_MAKER_FEE_BPS = 5;  // 0.05%
+    uint16 public constant DEFAULT_LP_FEE_BPS = 5;     // 0.05%
+
+    error FeeBpsTooHigh();
 
     // Struct to reduce stack depth in matching functions
     struct MatchContext {
@@ -142,6 +146,44 @@ contract CLOBFacet is Initializable {
     }
 
     function initialize() public initializer {}
+
+    /**
+     * @notice One-time initialiser for CLOB fee defaults (call after upgrading Diamond).
+     * @dev Safe to call again — only sets fees if all three are currently 0 (uninitialised).
+     */
+    function initCLOBFees() external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        if (s.takerFeeBps == 0 && s.makerFeeBps == 0 && s.lpFeeBps == 0) {
+            s.takerFeeBps = DEFAULT_TAKER_FEE_BPS;
+            s.makerFeeBps = DEFAULT_MAKER_FEE_BPS;
+            s.lpFeeBps = DEFAULT_LP_FEE_BPS;
+        }
+    }
+
+    /// @notice Set taker fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBTakerFeeBps(uint16 bps) external {
+        LibDiamond.enforceIsContractOwner();
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.takerFeeBps = bps;
+    }
+
+    /// @notice Set maker fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBMakerFeeBps(uint16 bps) external {
+        LibDiamond.enforceIsContractOwner();
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.makerFeeBps = bps;
+    }
+
+    /// @notice Set LP fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBLpFeeBps(uint16 bps) external {
+        LibDiamond.enforceIsContractOwner();
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.lpFeeBps = bps;
+    }
 
     function createMarket(
         string memory _baseToken,
@@ -495,8 +537,9 @@ contract CLOBFacet is Initializable {
         sellOrder.status = sellOrder.filledAmount >= sellOrder.amount ? 2 : 1;
 
         // Calculate and emit fees
-        uint256 takerFee = (quoteAmount * TAKER_FEE) / 10000;
-        uint256 makerFee = (quoteAmount * MAKER_FEE) / 10000;
+        DiamondStorage.AppStorage storage _s = DiamondStorage.appStorage();
+        uint256 takerFee = (quoteAmount * _s.takerFeeBps) / 10000;
+        uint256 makerFee = (quoteAmount * _s.makerFeeBps) / 10000;
 
         emit FeesCollected(tradeId, takerFee, makerFee, 0);
         emit TradeExecuted(tradeId, buyOrder.maker, sellOrder.maker, _marketId, _fillPrice, fillAmount, quoteAmount, block.timestamp);

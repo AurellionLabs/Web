@@ -108,6 +108,7 @@ contract CLOBFacetV2 is ReentrancyGuard {
     error CircuitBreakerTrippedError();
     error RateLimitExceeded();
     error FOKNotFilled();
+    error FeeBpsTooHigh();
     error OrderExpiredError();
     
     // ============================================================================
@@ -144,7 +145,25 @@ contract CLOBFacetV2 is ReentrancyGuard {
     // ============================================================================
     // INITIALIZATION
     // ============================================================================
-    
+
+    /// @notice Set taker fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBTakerFeeBps(uint16 bps) external onlyOwner {
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.appStorage().takerFeeBps = bps;
+    }
+
+    /// @notice Set maker fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBMakerFeeBps(uint16 bps) external onlyOwner {
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.appStorage().makerFeeBps = bps;
+    }
+
+    /// @notice Set LP fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBLpFeeBps(uint16 bps) external onlyOwner {
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.appStorage().lpFeeBps = bps;
+    }
+
     function initializeCLOBV2(
         uint16 _takerFeeBps,
         uint16 _makerFeeBps,
