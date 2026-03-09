@@ -264,6 +264,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [p2pCreated] },
         })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -291,6 +292,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [p2pCreatedByOther] },
         })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -307,6 +309,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
         .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -320,6 +323,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
         .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -363,6 +367,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [created] },
         })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
