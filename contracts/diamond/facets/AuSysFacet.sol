@@ -17,7 +17,6 @@ import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.s
 contract AuSysFacet is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 public constant MAX_ORDERS = 10000;
     uint256 public constant MAX_JOURNEYS_PER_ORDER = 10;
     uint256 public constant MAX_NODES_PER_ORDER = 20;
     uint256 public constant MAX_DRIVER_JOURNEYS = 10;
@@ -457,7 +456,7 @@ contract AuSysFacet is ReentrancyGuard {
             newOrder.nodes.push(order.nodes[i]);
         }
 
-        if (s.ausysOrderIds.length >= MAX_ORDERS) revert ArrayLimitExceeded();
+
         s.ausysOrderIds.push(id);
 
         // Escrow based on who initiated
